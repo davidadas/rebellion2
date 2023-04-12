@@ -18,14 +18,15 @@ public class Startup
 
     static void TestGame()
     {
-        GameSummary summary = new GameSummary();
-
         // Generate a game given a summary.
-        summary.Size = GameSize.Large;
-        summary.Difficulty = GameDifficulty.Medium;
-        summary.VictoryCondition = GameVictoryCondition.Headquarters;
-        summary.ResourceAvailability = GameResourceAvailability.Abundant;
-        summary.PlayerFactionID = "FNALL1";
+        GameSummary summary = new GameSummary
+        {
+            Size = GameSize.Large,
+            Difficulty = GameDifficulty.Medium,
+            VictoryCondition = GameVictoryCondition.Headquarters,
+            ResourceAvailability = GameResourceAvailability.Abundant,
+            PlayerFactionID = "FNALL1",
+        };
 
         Game game = GameBuilder.BuildGame(summary);
     }
