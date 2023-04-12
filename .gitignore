@@ -1,4 +1,4 @@
-# Unity files
+# Unity Files
 /[Ll]ibrary/
 /[Ll]ogs/
 /[Tt]emp/
@@ -8,3 +8,6 @@
 package.json
 yarn.lock
 node_modules
+
+# VS Files
+/**/*.vs
