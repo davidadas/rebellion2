@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Buildings>
+	<!--   **************************************************  -->
+	<!--   ******************* FACILITIES *******************  -->
+	<!--   **************************************************  -->
+	<Building>
+		<GameID>BDFA01</GameID>
+		<DisplayName>Construction Facility</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>10</ConstructionCost>
+		<MaintenanceCost>10</MaintenanceCost>
+		<Bombardment>3</Bombardment>
+		<ProcessRate>4</ProcessRate>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA02</GameID>
+		<DisplayName>Training Facility</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>10</ConstructionCost>
+		<MaintenanceCost>10</MaintenanceCost>
+		<Bombardment>3</Bombardment>
+		<ProcessRate>4</ProcessRate>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA03</GameID>
+		<DisplayName>Orbital Shipyard</DisplayName>
+		<BuildingSlot>Orbit</BuildingSlot>
+		<ConstructionCost>20</ConstructionCost>
+		<MaintenanceCost>13</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<ProcessRate>4</ProcessRate>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA04</GameID>
+		<DisplayName>Mining Facility</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>20</ConstructionCost>
+		<MaintenanceCost>0</MaintenanceCost>
+		<Bombardment>5</Bombardment>
+		<ProcessRate>5</ProcessRate>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA05</GameID>
+		<DisplayName>Refinery</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>20</ConstructionCost>
+		<MaintenanceCost>0</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<ProcessRate>5</ProcessRate>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA06</GameID>
+		<DisplayName>Advanced Training Facility</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>10</ConstructionCost>
+		<MaintenanceCost>10</MaintenanceCost>
+		<Bombardment>4</Bombardment>
+		<ProcessRate>2</ProcessRate>
+		<ResearchLevel>1</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDFA07</GameID>
+		<DisplayName>Advanced Orbital Shipyard</DisplayName>
+		<BuildingSlot>Orbit</BuildingSlot>
+		<ConstructionCost>20</ConstructionCost>
+		<MaintenanceCost>20</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<ProcessRate>2</ProcessRate>
+		<ResearchLevel>5</ResearchLevel>
+	</Building>
+	<!--   **************************************************  -->
+	<!--   ******************** DEFENSES ********************  -->
+	<!--   **************************************************  -->
+	<Building>
+		<GameID>BDDF01</GameID>
+		<DisplayName>LNR Series I</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>7</ConstructionCost>
+		<MaintenanceCost>7</MaintenanceCost>
+		<Bombardment>4</Bombardment>
+		<WeaponPower>800</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDDF02</GameID>
+		<DisplayName>GenCore Level I</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>12</ConstructionCost>
+		<MaintenanceCost>12</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<WeaponPower>0</WeaponPower>
+		<ShieldStrength>40</ShieldStrength>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDDF03</GameID>
+		<DisplayName>KDY-150</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>4</ConstructionCost>
+		<MaintenanceCost>4</MaintenanceCost>
+		<Bombardment>5</Bombardment>
+		<WeaponPower>2000</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDDF04</GameID>
+		<DisplayName>Death Star Shield</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>25</ConstructionCost>
+		<MaintenanceCost>20</MaintenanceCost>
+		<Bombardment>1</Bombardment>
+		<WeaponPower>0</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>3</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDDF05</GameID>
+		<DisplayName>LNR Series II</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>10</ConstructionCost>
+		<MaintenanceCost>4</MaintenanceCost>
+		<Bombardment>3</Bombardment>
+		<WeaponPower>5000</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>4</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDDF06</GameID>
+		<DisplayName>GenCore Level II</DisplayName>
+		<BuildingSlot>Ground</BuildingSlot>
+		<ConstructionCost>20</ConstructionCost>
+		<MaintenanceCost>7</MaintenanceCost>
+		<Bombardment>3</Bombardment>
+		<WeaponPower>0</WeaponPower>
+		<ShieldStrength>80</ShieldStrength>
+		<ResearchLevel>6</ResearchLevel>
+	</Building>
+	<!--   **************************************************  -->
+	<!--   ******************** Utility *********************  -->
+	<!--   **************************************************  -->
+	<Building>
+		<GameID>BDUT01</GameID>
+		<DisplayName>Orbital Telescope</DisplayName>
+		<BuildingSlot>Orbit</BuildingSlot>
+		<ConstructionCost>10</ConstructionCost>
+		<MaintenanceCost>10</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<WeaponPower>0</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>0</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDUT01</GameID>
+		<DisplayName>Orbital Minefield</DisplayName>
+		<BuildingSlot>Orbit</BuildingSlot>
+		<ConstructionCost>35</ConstructionCost>
+		<MaintenanceCost>10</MaintenanceCost>
+		<Bombardment>0</Bombardment>
+		<WeaponPower>1000</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>7</ResearchLevel>
+	</Building>
+	<Building>
+		<GameID>BDUT01</GameID>
+		<DisplayName>Advanced Orbital Telescope</DisplayName>
+		<BuildingSlot>Orbit</BuildingSlot>
+		<ConstructionCost>111</ConstructionCost>
+		<MaintenanceCost>73</MaintenanceCost>
+		<Bombardment>2</Bombardment>
+		<WeaponPower>0</WeaponPower>
+		<ShieldStrength>0</ShieldStrength>
+		<ResearchLevel>7</ResearchLevel>
+	</Building>
+</Buildings>
