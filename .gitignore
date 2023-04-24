@@ -13,4 +13,7 @@ yarn.lock
 node_modules
 
 # VS Extensions
-/**/*.vs
+**/*.vs
+
+# Misc Extensions
+**/*.scratch

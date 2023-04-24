@@ -9,7 +9,6 @@ public class Planet : GameNode
     public bool IsColonized;
     public int OrbitSlots;
     public int GroundSlots;
-    public int EnergySlots;
     public int NumResourceNodes;
     public string OwnerGameID;
 
@@ -22,8 +21,13 @@ public class Planet : GameNode
         new SerializableDictionary<string, int>();
 
     // Child Nodes
-    public SerializableDictionary<BuildingSlot, Building[]> Buildings =
-        new SerializableDictionary<BuildingSlot, Building[]>();
+    public SerializableDictionary<BuildingSlot, List<Building>> Buildings =
+        new SerializableDictionary<BuildingSlot, List<Building>>()
+        {
+            { BuildingSlot.Ground, new List<Building>() },
+            { BuildingSlot.Orbit, new List<Building>() },
+        };
+
     public List<Fleet> Fleets = new List<Fleet>();
     public List<Officer> Officers = new List<Officer>();
 
@@ -50,14 +54,27 @@ public class Planet : GameNode
     /// <summary>
     ///
     /// </summary>
+    /// <param name="slot"></param>
+    /// <returns></returns>
+    public int GetAvailableSlots(BuildingSlot slot)
+    {
+        int numUsedSlots = Buildings[slot].Count(building => building.Slot == slot);
+        int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
+
+        return maxSlots - numUsedSlots;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
     /// <param name="building"></param>
     public void AddBuilding(Building building)
     {
         BuildingSlot slot = building.Slot;
 
         if (
-            slot == BuildingSlot.Ground && Buildings[slot].Length == GroundSlots
-            || slot == BuildingSlot.Orbit && Buildings[slot].Length == OrbitSlots
+            slot == BuildingSlot.Ground && Buildings[slot].Count == GroundSlots
+            || slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots
         )
         {
             throw new GameException(
@@ -69,12 +86,40 @@ public class Planet : GameNode
     /// <summary>
     ///
     /// </summary>
+    /// <param name="buildings"></param>
+    public void AddBuildings(Building[] buildings)
+    {
+        IEnumerable<Building> groundBuildings = buildings.Where(
+            building => building.Slot == BuildingSlot.Ground
+        );
+        IEnumerable<Building> orbitBuildings = buildings.Where(
+            building => building.Slot == BuildingSlot.Orbit
+        );
+
+        // Ensure there is sufficient capacity for new buildings.
+        if (
+            groundBuildings.Count() > GetAvailableSlots(BuildingSlot.Ground)
+            || orbitBuildings.Count() > GetAvailableSlots(BuildingSlot.Orbit)
+        )
+        {
+            throw new GameException(
+                $"Addional buildings would exceed {this.DisplayName}'s capacity."
+            );
+        }
+
+        // Add the provided buildings to the existing building lists.
+        Buildings[BuildingSlot.Ground].AddAll(groundBuildings);
+        Buildings[BuildingSlot.Orbit].AddAll(orbitBuildings);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
     /// <returns></returns>
     public override GameNode[] GetChildNodes()
     {
         List<GameNode> combinedList = new List<GameNode>();
         combinedList.AddAll(Fleets, Officers);
-        Debug.Log(Buildings.Values.ToList());
 
         return combinedList.ToArray();
     }

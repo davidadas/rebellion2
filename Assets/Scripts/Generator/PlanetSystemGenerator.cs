@@ -27,17 +27,16 @@ public class PlanetSystemGenerator
     private void setResources(PlanetSystem parentSystem, Planet planet)
     {
         IConfig planetConfig = GetConfig().GetValue<IConfig>("Planets.ResourceAvailability");
-
-        // @TODO: Apply rules for GameResourceAvailability settings.
         string systemType = parentSystem.SystemType.ToString();
-        int[] groundSlotRange = planetConfig.GetValue<int[]>($"{systemType}.GroundSlotRange");
-        int[] orbitSlotRange = planetConfig.GetValue<int[]>($"{systemType}.OrbitSlotRange");
-        int[] resourceRange = planetConfig.GetValue<int[]>($"{systemType}.ResourceRange");
-        int[] energyRange = planetConfig.GetValue<int[]>($"{systemType}.EnergyRange");
+
+        var (groundSlotRange, orbitSlotRange, resourceRange) = (
+            planetConfig.GetValue<int[]>($"{systemType}.GroundSlotRange"),
+            planetConfig.GetValue<int[]>($"{systemType}.OrbitSlotRange"),
+            planetConfig.GetValue<int[]>($"{systemType}.ResourceRange")
+        );
 
         planet.OrbitSlots = Random.Range(orbitSlotRange[0], orbitSlotRange[1]);
         planet.GroundSlots = Random.Range(groundSlotRange[0], groundSlotRange[1]);
-        planet.EnergySlots = Random.Range(energyRange[0], planet.GroundSlots);
         planet.NumResourceNodes = Random.Range(resourceRange[0], resourceRange[1]);
     }
 
