@@ -21,13 +21,21 @@ public class Startup
         // Generate a game given a summary.
         GameSummary summary = new GameSummary
         {
-            Size = GameSize.Large,
-            Difficulty = GameDifficulty.Medium,
+            GalaxySize = GameSize.Large,
+            Difficulty = GameDifficulty.Easy,
             VictoryCondition = GameVictoryCondition.Headquarters,
             ResourceAvailability = GameResourceAvailability.Abundant,
+            PlanetaryStart = GameStartingPlanets.Sparse,
             PlayerFactionID = "FNALL1",
         };
+        GameBuilder builder = new GameBuilder(summary);
+        Game game = builder.BuildGame();
 
-        Game game = GameBuilder.BuildGame(summary);
+        // Write the scene to Debug for inspection.
+        XmlSerializer xmlSerializer = new XmlSerializer(typeof(Game));
+        using (FileStream fileStream = new FileStream("test.xml", FileMode.Open))
+        {
+            xmlSerializer.Serialize(fileStream, game);
+        }
     }
 }

@@ -2,11 +2,11 @@
 	<Faction>
 		<GameID>FNALL1</GameID>
 		<DisplayName>Alliance</DisplayName>
-		<HQPlanetGameID>PLSUM06</HQPlanetGameID>
+		<HQGameID>PLSUM06</HQGameID>
 	</Faction>
 	<Faction>
 		<GameID>FNEMP1</GameID>
 		<DisplayName>Empire</DisplayName>
-		<HQPlanetGameID>PLSEW05</HQPlanetGameID>
+		<HQGameID>PLSEW05</HQGameID>
 	</Faction>
 </Factions>

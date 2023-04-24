@@ -5,13 +5,12 @@ using System.Xml.Serialization;
 using UnityEngine;
 
 /// <summary>
-/// Determines this PlanetSystem's appearance per "Game Size" setting.
+///
 /// </summary>
-public enum PlanetSystemVisibility
+public enum PlanetSystemType
 {
-    Small,
-    Medium,
-    Large,
+    CoreSystem,
+    OuterRim,
 }
 
 /// <summary>
@@ -28,8 +27,8 @@ public enum PlanetSystemImportance
 public class PlanetSystem : GameNode
 {
     // Settings.
-    public bool IsColonized;
-    public PlanetSystemVisibility Visibility;
+    public GameSize Visibility;
+    public PlanetSystemType SystemType;
     public PlanetSystemImportance Importance;
 
     // Child Nodes.

@@ -4,10 +4,13 @@
 /[Tt]emp/
 /[Uu]ser[Ss]ettings/
 
+# Unity Extensions
+*.meta
+
 # Node Files
 package.json
 yarn.lock
 node_modules
 
-# VS Files
+# VS Extensions
 /**/*.vs

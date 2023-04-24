@@ -1,0 +1,50 @@
+{
+  "Planets": {
+    "ResourceAvailability": {
+      "CoreSystem": {
+        "GroundSlotRange": [ 5, 10 ],
+        "OrbitSlotRange": [ 3, 8 ],
+        "EnergyRange": [ 5, 12 ],
+        "ResourceRange": [ 1, 10 ]
+      },
+      "OuterRim": {
+        "GroundSlotRange": [ 1, 10 ],
+        "OrbitSlotRange": [ 1, 8 ],
+        "EnergyRange": [ 5, 12 ],
+        "ResourceRange": [ 1, 10 ]
+      }
+    },
+    "InitialPlanets": {
+      "Sparse": 4
+    }
+  },
+  "Buildings": {
+    "InitialBuildings": {
+      "GameIDs": [
+        "BDFA01",
+        "BDFA02",
+        "BDFA03",
+        "BDFA04",
+        "BDFA05",
+        "BDDF01",
+        "BDDF01"
+      ],
+      "Ranges": [
+        0.20,
+        0.20,
+        0.20,
+        0.50,
+        0.50,
+        0.50,
+        0.50
+      ]
+    }
+  },
+  "Officers": {
+    "InitialOfficers": {
+      "Small": 8,
+      "Medium": 9,
+      "Large": 11
+    }
+  }
+}
