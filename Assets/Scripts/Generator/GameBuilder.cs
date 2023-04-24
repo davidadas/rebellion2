@@ -54,6 +54,9 @@ public sealed class GameBuilder
         galaxyMap = _psGenerator.DecorateUnits(galaxyMap);
         officers = _officerGenerator.DecorateUnits(officers);
 
+        // Decorate planets/planet systems with manufacturables (buildings, fleets, regiments, etc).
+        _buildingGenerator.RandomizeUnits(buildings, planetSystems);
+
         return new Game
         {
             Summary = this._summary,

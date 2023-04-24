@@ -12,7 +12,6 @@ public class NewGameResourceRangesConfig : Config
     public int[] GroundSlotRange;
     public int[] OrbitSlotRange;
     public int[] ResourceRange;
-    public int[] EnergyRange;
 
     public NewGameResourceRangesConfig() { }
 }
@@ -72,7 +71,7 @@ public class NewGameOfficerConfig : Config
 public class NewGameInitialBuildingsConfig : Config
 {
     public string[] GameIDs;
-    public int[] Frequency;
+    public double[] Frequency;
 
     public NewGameInitialBuildingsConfig() { }
 }

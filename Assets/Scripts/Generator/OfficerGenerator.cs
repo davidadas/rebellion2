@@ -47,6 +47,11 @@ public class OfficerGenerator : UnitGenerator, IUnitSelector<Officer>, IUnitDeco
         return units;
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="officersByFaction"></param>
+    /// <returns></returns>
     private Officer[] reduceOfficerLists(Dictionary<string, List<Officer>> officersByFaction)
     {
         List<Officer> selectedOfficers = new List<Officer>();
