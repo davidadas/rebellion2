@@ -5,9 +5,9 @@ using UnityEngine;
 
 public enum GameSize
 {
-    Small,
-    Medium,
-    Large,
+    Small = 1,
+    Medium = 2,
+    Large = 3,
 }
 
 public enum GameDifficulty
@@ -31,13 +31,22 @@ public enum GameResourceAvailability
     Abundant,
 }
 
+public enum GameStartingPlanets
+{
+    Sparse,
+}
+
+/// <summary>
+///
+/// </summary>
 [Serializable]
 public sealed class GameSummary
 {
-    public GameSize Size;
+    public GameSize GalaxySize;
     public GameDifficulty Difficulty;
     public GameVictoryCondition VictoryCondition;
     public GameResourceAvailability ResourceAvailability;
+    public GameStartingPlanets PlanetaryStart;
 
     public int StartingResearchLevel;
     public string PlayerFactionID;

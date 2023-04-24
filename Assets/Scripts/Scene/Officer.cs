@@ -43,6 +43,7 @@ public class Officer : GameNode
     public bool CanBetray;
     public bool IsTraitor;
     public bool IsJedi;
+    public bool IsKnownJedi;
 
     // Jedi Info
     public int JediProbability;

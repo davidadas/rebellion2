@@ -18,7 +18,7 @@ public abstract class GameNode
         {
             if (_instanceId == null)
             {
-                _instanceId = Guid.NewGuid().ToString();
+                _instanceId = Guid.NewGuid().ToString().Replace("-", "");
             }
             return _instanceId;
         }
@@ -87,14 +87,16 @@ public abstract class GameNode
     /// <summary>
     ///
     /// </summary>
+    /// <typeparam name="T"></typeparam>
     /// <param name="property"></param>
     /// <param name="expectedValue"></param>
     /// <returns></returns>
-    public GameNode FindNodeByProperty(string property, object expectedValue)
+    public T FindNodeByProperty<T>(string property, object expectedValue)
+        where T : GameNode
     {
         GameNode[] self = new GameNode[] { this };
 
-        return getChildNodeByProperty(property, expectedValue, self);
+        return getChildNodeByProperty<T>(property, expectedValue, self);
     }
 
     /// <summary>
@@ -115,13 +117,14 @@ public abstract class GameNode
     /// <summary>
     ///
     /// </summary>
-    /// <param name="expectedType"></param>
+    /// <param name="property"></param>
+    /// <param name="expectedValues"></param>
     /// <returns></returns>
-    public GameNode[] FindNodesByType(Type expectedType)
+    public GameNode[] FindNodesByProperty(string property, object[] expectedValues)
     {
         GameNode[] self = new GameNode[] { this };
         List<GameNode> results = new List<GameNode>();
-        List<GameNode> children = getChildNodesByType(expectedType, self, results);
+        List<GameNode> children = getChildNodesByProperty(property, expectedValues, self, results);
 
         return children.ToArray();
     }
@@ -129,21 +132,51 @@ public abstract class GameNode
     /// <summary>
     ///
     /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public T[] FindNodesByType<T>()
+        where T : GameNode
+    {
+        Type expectedType = typeof(T);
+        GameNode[] self = new GameNode[] { this };
+        List<T> results = new List<T>();
+        List<T> children = getChildNodesByType<T>(expectedType, self, results);
+
+        return children.ToArray();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     /// <param name="property"></param>
     /// <param name="expectedValue"></param>
     /// <param name="nodes"></param>
     /// <returns></returns>
-    private GameNode getChildNodeByProperty(string property, object expectedValue, GameNode[] nodes)
+    private T getChildNodeByProperty<T>(string property, object expectedValue, GameNode[] nodes)
+        where T : GameNode
     {
         foreach (GameNode childNode in nodes)
         {
             PropertyInfo propertyInfo = childNode.GetType().GetProperty(property);
-            if (propertyInfo != null && propertyInfo.GetValue(childNode, null) == expectedValue)
+            if (
+                propertyInfo != null
+                && object.Equals(propertyInfo.GetValue(childNode, null), expectedValue)
+            )
             {
-                return childNode;
+                return (T)childNode;
             }
 
-            return getChildNodeByProperty(property, expectedValue, childNode.GetChildNodes());
+            GameNode result = getChildNodeByProperty<T>(
+                property,
+                expectedValue,
+                childNode.GetChildNodes()
+            );
+
+            if (result != null)
+            {
+                return (T)result;
+            }
         }
 
         return null;
@@ -185,15 +218,50 @@ public abstract class GameNode
     /// <summary>
     ///
     /// </summary>
+    /// <param name="property"></param>
+    /// <param name="expectedValues"></param>
+    /// <param name="nodes"></param>
+    /// <param name="results"></param>
+    /// <returns></returns>
+    private List<GameNode> getChildNodesByProperty(
+        string property,
+        object[] expectedValues,
+        GameNode[] nodes,
+        List<GameNode> results
+    )
+    {
+        foreach (GameNode childNode in nodes)
+        {
+            PropertyInfo propertyInfo = childNode.GetType().GetProperty(property);
+            Debug.Log(property);
+            if (
+                propertyInfo != null
+                && Array.IndexOf(expectedValues, propertyInfo.GetValue(childNode, null)) > -1
+            )
+            {
+                results.Add(childNode);
+            }
+            results = getChildNodesByProperty(
+                property,
+                expectedValues,
+                childNode.GetChildNodes(),
+                results
+            );
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     /// <param name="expectedType"></param>
     /// <param name="nodes"></param>
     /// <param name="results"></param>
     /// <returns></returns>
-    private List<GameNode> getChildNodesByType(
-        Type expectedType,
-        GameNode[] nodes,
-        List<GameNode> results
-    )
+    private List<T> getChildNodesByType<T>(Type expectedType, GameNode[] nodes, List<T> results)
+        where T : GameNode
     {
         foreach (GameNode childNode in nodes)
         {
@@ -202,9 +270,9 @@ public abstract class GameNode
 
             if (isClass || isSubclass)
             {
-                results.Add(childNode);
+                results.Add((T)childNode);
             }
-            results = getChildNodesByType(expectedType, childNode.GetChildNodes(), results);
+            results = getChildNodesByType<T>(expectedType, childNode.GetChildNodes(), results);
         }
 
         return results;
