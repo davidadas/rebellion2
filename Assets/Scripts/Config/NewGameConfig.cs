@@ -17,10 +17,20 @@ public class NewGameResourceRangesConfig : Config
 }
 
 [Serializable]
-public class NewGameResourceAvailabilityConfig : Config
+public class NewGameResourceSystemConfig : Config
 {
     public NewGameResourceRangesConfig CoreSystem;
     public NewGameResourceRangesConfig OuterRim;
+
+    public NewGameResourceSystemConfig() { }
+}
+
+[Serializable]
+public class NewGameResourceAvailabilityConfig : Config
+{
+    public NewGameResourceSystemConfig Limited;
+    public NewGameResourceSystemConfig Normal;
+    public NewGameResourceSystemConfig Abundant;
 
     public NewGameResourceAvailabilityConfig() { }
 }
@@ -28,7 +38,9 @@ public class NewGameResourceAvailabilityConfig : Config
 [Serializable]
 public class NewGameInitialPlanetsConfig : Config
 {
-    public int Sparse;
+    public int Snall;
+    public int Medium;
+    public int Large;
 
     public NewGameInitialPlanetsConfig() { }
 }

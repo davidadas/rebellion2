@@ -457,6 +457,7 @@
 			</Planet>
 			<Planet>
 				<DisplayName>Bespin</DisplayName>
+				<IsColonized>true</IsColonized>
 			</Planet>
 			<Planet>
 				<DisplayName>New Cov</DisplayName>

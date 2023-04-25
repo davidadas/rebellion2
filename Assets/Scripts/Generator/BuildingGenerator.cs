@@ -17,13 +17,18 @@ public class BuildingGenerator : UnitGenerator, IUnitRandomizer<Building, Planet
     public BuildingGenerator(GameSummary summary, IConfig config)
         : base(summary, config) { }
 
+    /// <summary>
+    /// Creates a Dictionary out of the frequency data stored in the new game config.
+    /// </summary>
+    /// <returns>A Dictionary with building GameIDs as keys as its percentage frequency.</returns>
     public Dictionary<string, double> getConfigMapping()
     {
         IConfig config = GetConfig();
         string[] gameIds = config.GetValue<string[]>("Buildings.InitialBuildings.GameIDs");
         double[] frequencies = config.GetValue<double[]>("Buildings.InitialBuildings.Frequency");
-
         Dictionary<string, double> configMapping = new Dictionary<string, double>();
+
+        // Map each building's GameID with its percentage frequency, represented as a double.
         for (int i = 0; i < gameIds.Length; i++)
         {
             configMapping[gameIds[i]] = frequencies[i];
@@ -45,8 +50,13 @@ public class BuildingGenerator : UnitGenerator, IUnitRandomizer<Building, Planet
 
         foreach (PlanetSystem planetSystem in destinations)
         {
+            // Only add buildings to populated planets.
+            IEnumerable<Planet> colonizedPlanets = planetSystem.Planets.Where(
+                planet => planet.IsColonized
+            );
+
             // Generate the planet's initial buildings.
-            foreach (Planet planet in planetSystem.Planets)
+            foreach (Planet planet in colonizedPlanets)
             {
                 // Shuffle the array to randomize the priority.
                 foreach (string buildingGameId in configMapping.Keys.ToArray().Shuffle())

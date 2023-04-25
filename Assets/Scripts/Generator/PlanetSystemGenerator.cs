@@ -26,7 +26,8 @@ public class PlanetSystemGenerator
     /// <param name="planet"></param>
     private void setResources(PlanetSystem parentSystem, Planet planet)
     {
-        IConfig planetConfig = GetConfig().GetValue<IConfig>("Planets.ResourceAvailability");
+        string resourceAvailability = GetGameSummary().ResourceAvailability.ToString();
+        IConfig planetConfig = GetConfig().GetValue<IConfig>($"Planets.ResourceAvailability.{resourceAvailability}");
         string systemType = parentSystem.SystemType.ToString();
 
         var (groundSlotRange, orbitSlotRange, resourceRange) = (

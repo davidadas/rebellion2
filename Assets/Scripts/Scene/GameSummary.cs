@@ -31,11 +31,6 @@ public enum GameResourceAvailability
     Abundant,
 }
 
-public enum GameStartingPlanets
-{
-    Sparse,
-}
-
 /// <summary>
 ///
 /// </summary>
@@ -46,7 +41,6 @@ public sealed class GameSummary
     public GameDifficulty Difficulty;
     public GameVictoryCondition VictoryCondition;
     public GameResourceAvailability ResourceAvailability;
-    public GameStartingPlanets PlanetaryStart;
 
     public int StartingResearchLevel;
     public string PlayerFactionID;

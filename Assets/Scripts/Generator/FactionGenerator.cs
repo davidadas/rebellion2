@@ -60,8 +60,8 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
     private void setStartingPlanets(Faction[] factions, PlanetSystem[] planetSystems)
     {
         Config startConfig = GetConfig().GetValue<Config>("Planets.InitialPlanets");
-        string planetaryStart = GetGameSummary().PlanetaryStart.ToString();
-        int numStartingPlanets = startConfig.GetValue<int>(planetaryStart);
+        string galaxySize = GetGameSummary().GalaxySize.ToString();
+        int numStartingPlanets = startConfig.GetValue<int>(galaxySize);
 
         // Select a complete list of starting planets from list.
         int numPlanets = numStartingPlanets * factions.Length;

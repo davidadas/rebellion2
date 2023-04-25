@@ -53,10 +53,10 @@ public class CapitalShip : GameNode, IManufacturable
         };
     public int WeaponRecharge;
     public int Bombardment;
-    public int TractorBeamPower;
-    public int TractorBeamnRange;
 
     // Misc Info
+    public int TractorBeamPower;
+    public int TractorBeamnRange;
     public bool HasGravityWell;
     public int DetectionRating;
 

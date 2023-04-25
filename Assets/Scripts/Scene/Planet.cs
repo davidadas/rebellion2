@@ -72,6 +72,11 @@ public class Planet : GameNode
     /// <param name="building"></param>
     public void AddBuilding(Building building)
     {
+        if (!IsColonized)
+            throw new GameException(
+                $"Cannot add building ${building.DisplayName} to {this.DisplayName}. Planet is not colonized."
+            );
+
         BuildingSlot slot = building.Slot;
 
         if (
@@ -91,6 +96,11 @@ public class Planet : GameNode
     /// <param name="buildings"></param>
     public void AddBuildings(Building[] buildings)
     {
+        if (!IsColonized)
+            throw new GameException(
+                $"Cannot add buildings to {this.DisplayName}. Planet is not colonized."
+            );
+
         IEnumerable<Building> groundBuildings = buildings.Where(
             building => building.Slot == BuildingSlot.Ground
         );
