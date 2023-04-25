@@ -4,6 +4,9 @@ using System.Linq;
 using ICollectionExtensions;
 using UnityEngine;
 
+/// <summary>
+///
+/// </summary>
 public class Planet : GameNode
 {
     public bool IsColonized;
@@ -21,15 +24,14 @@ public class Planet : GameNode
         new SerializableDictionary<string, int>();
 
     // Child Nodes
+    public List<Fleet> Fleets = new List<Fleet>();
+    public List<Officer> Officers = new List<Officer>();
     public SerializableDictionary<BuildingSlot, List<Building>> Buildings =
         new SerializableDictionary<BuildingSlot, List<Building>>()
         {
             { BuildingSlot.Ground, new List<Building>() },
             { BuildingSlot.Orbit, new List<Building>() },
         };
-
-    public List<Fleet> Fleets = new List<Fleet>();
-    public List<Officer> Officers = new List<Officer>();
 
     /// <summary>
     /// Default constructor.
@@ -119,7 +121,8 @@ public class Planet : GameNode
     public override GameNode[] GetChildNodes()
     {
         List<GameNode> combinedList = new List<GameNode>();
-        combinedList.AddAll(Fleets, Officers);
+        Building[] buildings = Buildings.Values.SelectMany(building => building).ToArray();
+        combinedList.AddAll(Fleets, Officers, buildings);
 
         return combinedList.ToArray();
     }

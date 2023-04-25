@@ -10,18 +10,17 @@ public enum OfficerRank
     Admiral,
 }
 
-public class Officer : GameNode
+public class Officer : GameNode, IMissionParticipant
 {
+    // Mission Stats
+    public int Diplomacy { get; set; }
+    public int Espionage { get; set; }
+    public int Combat { get; set; }
+    public int Leadership { get; set; }
+
     // Owner Info
     public string[] AllowedOwnerGameIDs;
     public string OwnerGameID;
-
-    // Stats & Modifiers
-    public int Diplomacy;
-    public int Espionage;
-    public int Combat;
-    public int Leadership;
-    public int Loyalty;
 
     // Variance Info
     public int DiplomacyVariance;
@@ -53,6 +52,9 @@ public class Officer : GameNode
     // Rank Info
     public OfficerRank[] AllowedRanks;
     public OfficerRank CurrentRank;
+
+    // Other
+    public int Loyalty;
 
     /// <summary>
     /// Default constructor

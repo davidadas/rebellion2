@@ -10,8 +10,19 @@ public enum PrimaryWeaponType
     LaserCannon,
 }
 
-public class CapitalShip : Manufacturable
+/// <summary>
+///
+/// </summary>
+public class CapitalShip : GameNode, IManufacturable
 {
+    // Manufacture Info
+    public int ConstructionCost { get; set; }
+    public int MaintenanceCost { get; set; }
+    public int BaseBuildSpeed { get; set; }
+    public string[] AllowedOwnerGameIDs { get; set; }
+    public string OwnerGameID { get; set; }
+    public int RequiredResearchLevel { get; set; }
+
     // Hull, Shield, and Repair Info
     public int HullStrength;
     public int DamageControl;

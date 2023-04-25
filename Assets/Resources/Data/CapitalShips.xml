@@ -10,7 +10,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>44</ConstructionCost>
-		<Maintenancecost>33</Maintenancecost>
+		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1299</HullStrength>
@@ -80,7 +80,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>10</ConstructionCost>
-		<Maintenancecost>10</Maintenancecost>
+		<MaintenanceCost>10</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>300</HullStrength>
@@ -150,7 +150,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>34</ConstructionCost>
-		<Maintenancecost>30</Maintenancecost>
+		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1000</HullStrength>
@@ -220,7 +220,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>26</ConstructionCost>
-		<Maintenancecost>24</Maintenancecost>
+		<MaintenanceCost>24</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1000</HullStrength>
@@ -290,7 +290,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>68</ConstructionCost>
-		<Maintenancecost>44</Maintenancecost>
+		<MaintenanceCost>44</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1800</HullStrength>
@@ -360,7 +360,7 @@
 			<string>FNEMP1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>112</ConstructionCost>
-		<Maintenancecost>71</Maintenancecost>
+		<MaintenanceCost>71</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>2750</HullStrength>
@@ -433,7 +433,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>44</ConstructionCost>
-		<Maintenancecost>33</Maintenancecost>
+		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1200</HullStrength>
@@ -503,7 +503,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>30</ConstructionCost>
-		<Maintenancecost>30</Maintenancecost>
+		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>1200</HullStrength>
@@ -573,7 +573,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>10</ConstructionCost>
-		<Maintenancecost>12</Maintenancecost>
+		<MaintenanceCost>12</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>360</HullStrength>
@@ -643,7 +643,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>24</ConstructionCost>
-		<Maintenancecost>22</Maintenancecost>
+		<MaintenanceCost>22</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>600</HullStrength>
@@ -713,7 +713,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>32</ConstructionCost>
-		<Maintenancecost>29</Maintenancecost>
+		<MaintenanceCost>29</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>900</HullStrength>
@@ -783,7 +783,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>14</ConstructionCost>
-		<Maintenancecost>23</Maintenancecost>
+		<MaintenanceCost>23</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>0</RequiredResearchLevel>
 		<HullStrength>500</HullStrength>
@@ -853,7 +853,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>34</ConstructionCost>
-		<Maintenancecost>35</Maintenancecost>
+		<MaintenanceCost>35</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>1</RequiredResearchLevel>
 		<HullStrength>600</HullStrength>
@@ -923,7 +923,7 @@
 			<string>FNALL1</string>
 		</AllowedOwnerGameIDs>
 		<ConstructionCost>92</ConstructionCost>
-		<Maintenancecost>70</Maintenancecost>
+		<MaintenanceCost>70</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
 		<RequiredResearchLevel>2</RequiredResearchLevel>
 		<HullStrength>2400</HullStrength>

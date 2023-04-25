@@ -1,17 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
-public enum BuildingSlot
-{
-    Ground,
-    Orbit,
-}
-
 /// <summary>
 ///
 /// </summary>
-public class Building : GameNode, IManufacturable
+public class SpecialForces : GameNode, IManufacturable, IMissionParticipant
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -21,18 +11,16 @@ public class Building : GameNode, IManufacturable
     public string OwnerGameID { get; set; }
     public int RequiredResearchLevel { get; set; }
 
-    // Building Info
-    public int ProcessRate;
-    public int ProductionRate;
-    public int Bombardment;
-    public int WeaponStrength;
-    public int ShieldStrength;
-    public BuildingSlot Slot;
+    // Mission Stats
+    public int Diplomacy { get; set; }
+    public int Espionage { get; set; }
+    public int Combat { get; set; }
+    public int Leadership { get; set; }
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor
     /// </summary>
-    public Building() { }
+    public SpecialForces() { }
 
     /// <summary>
     ///
@@ -40,7 +28,7 @@ public class Building : GameNode, IManufacturable
     /// <returns></returns>
     public override GameNode[] GetChildNodes()
     {
-        // Leaf node
+        // Leaf node.
         return new GameNode[] { };
     }
 }

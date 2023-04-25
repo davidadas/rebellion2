@@ -2,8 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Regiment : Manufacturable
+/// <summary>
+///
+/// </summary>
+public class Regiment : GameNode, IManufacturable
 {
+    // Construction Info
+    public int ConstructionCost { get; set; }
+    public int MaintenanceCost { get; set; }
+    public int BaseBuildSpeed { get; set; }
+    public string[] AllowedOwnerGameIDs { get; set; }
+    public string OwnerGameID { get; set; }
+    public int RequiredResearchLevel { get; set; }
+
+    // Regiment Info
     public int AttackRating;
     public int DefenseRating;
     public int DetectionRating;
