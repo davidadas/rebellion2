@@ -48,6 +48,7 @@ public class PlanetSystemGenerator
     /// <param name="planet"></param>
     private void setColonizationStatus(PlanetSystem parentsystem, Planet planet)
     {
+        double colonizationRate = GetConfig().GetValue<double>("Planets.InitialColonizationRate");
         if (parentsystem.SystemType == PlanetSystemType.CoreSystem)
         {
             planet.IsColonized = true;
@@ -56,7 +57,13 @@ public class PlanetSystemGenerator
         {
             // Allow this to be overridden from planet data.
             // For example, OuterRim Bespin is always colonized.
-            if (!planet.IsColonized) { }
+            if (!planet.IsColonized)
+            {
+                if (Random.value < colonizationRate)
+                {
+                    planet.IsColonized = true;
+                }
+            }
         }
     }
 

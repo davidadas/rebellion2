@@ -23,14 +23,14 @@ public class Config : IConfig
                 object value = fieldInfo.GetValue(key);
                 if (value == null)
                 {
-                    throw new Exception($"\"{fieldName}\" not found in config or is null.");
+                    throw new ConfigException($"\"{fieldName}\" not found in config or is null.");
                 }
                 return value;
             }
         }
 
         // If we have reached here, this property does not exist.
-        throw new Exception($"No such property \"{fieldName}\" in config.");
+        throw new ConfigException($"No such property \"{fieldName}\" in config.");
     }
 
     /// <summary>

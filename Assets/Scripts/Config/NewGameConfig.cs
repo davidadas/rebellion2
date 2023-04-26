@@ -4,6 +4,19 @@ using System.Linq;
 using System;
 
 /// **********************
+/// START SHARED CONFIGS
+/// **********************
+[Serializable]
+public class NewGamePlanetSizeConfig : Config
+{
+    public int Snall;
+    public int Medium;
+    public int Large;
+
+    public NewGamePlanetSizeConfig() { }
+}
+
+/// **********************
 /// START PLANET CONFIG
 /// **********************
 [Serializable]
@@ -38,9 +51,7 @@ public class NewGameResourceAvailabilityConfig : Config
 [Serializable]
 public class NewGameInitialPlanetsConfig : Config
 {
-    public int Snall;
-    public int Medium;
-    public int Large;
+    public NewGamePlanetSizeConfig GalaxySize;
 
     public NewGameInitialPlanetsConfig() { }
 }
@@ -50,6 +61,7 @@ public class NewGamePlanetConfig : Config
 {
     public NewGameResourceAvailabilityConfig ResourceAvailability;
     public NewGameInitialPlanetsConfig InitialPlanets;
+    public double InitialColonizationRate;
 
     public NewGamePlanetConfig() { }
 }
@@ -60,9 +72,7 @@ public class NewGamePlanetConfig : Config
 [Serializable]
 public class NewGameInitialOfficersConfig : Config
 {
-    public int Small;
-    public int Medium;
-    public int Large;
+    public NewGamePlanetSizeConfig GalaxySize;
 
     public NewGameInitialOfficersConfig() { }
 }

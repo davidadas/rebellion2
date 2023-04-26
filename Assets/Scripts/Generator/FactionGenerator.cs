@@ -42,6 +42,7 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
                     filledHQs.Add(planet.OwnerGameID);
                 }
 
+                // Return if we have filled our array already.
                 if (filledHQs.Count() == factions.Length)
                 {
                     return;
@@ -59,17 +60,17 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
     /// <param name="planetSystems"></param>
     private void setStartingPlanets(Faction[] factions, PlanetSystem[] planetSystems)
     {
-        Config startConfig = GetConfig().GetValue<Config>("Planets.InitialPlanets");
+        Config startConfig = GetConfig().GetValue<Config>("Planets.InitialPlanets.GalaxySize");
         string galaxySize = GetGameSummary().GalaxySize.ToString();
         int numStartingPlanets = startConfig.GetValue<int>(galaxySize);
 
         // Select a complete list of starting planets from list.
         int numPlanets = numStartingPlanets * factions.Length;
         IEnumerable<Planet> startingPlanets = planetSystems
-            .SelectMany(ps => ps.Planets)
-            .Where(planet => planet.IsColonized)
-            .Shuffle()
-            .Take(numPlanets);
+            .SelectMany(ps => ps.Planets)        // Flatten the array.
+            .Where(planet => planet.IsColonized) // Select only those that are colonized.
+            .Shuffle()                           // Shuffle the array to randomize the list.
+            .Take(numPlanets);                   // Take n planets to be the starting list.
 
         // Assign, randomly, the remaining start planets.
         foreach (Faction faction in factions)

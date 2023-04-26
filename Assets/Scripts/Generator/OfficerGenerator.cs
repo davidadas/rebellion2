@@ -55,8 +55,8 @@ public class OfficerGenerator : UnitGenerator, IUnitSelector<Officer>, IUnitDeco
     private Officer[] reduceOfficerLists(Dictionary<string, List<Officer>> officersByFaction)
     {
         List<Officer> selectedOfficers = new List<Officer>();
-        string gameSize = GetGameSummary().GalaxySize.ToString();
-        int numAllowedOfficers = GetConfig().GetValue<int>($"Officers.InitialOfficers.{gameSize}");
+        string galaxySize = GetGameSummary().GalaxySize.ToString();
+        int numAllowedOfficers = GetConfig().GetValue<int>($"Officers.InitialOfficers.GalaxySize.{galaxySize}");
 
         // Set the finalized list of officers for each faction.
         foreach (string ownerGameId in officersByFaction.Keys.ToArray())

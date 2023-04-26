@@ -19,13 +19,11 @@
         "CoreSystem": {
           "GroundSlotRange": [ 5, 10 ],
           "OrbitSlotRange": [ 3, 8 ],
-          "EnergyRange": [ 5, 12 ],
           "ResourceRange": [ 1, 10 ]
         },
         "OuterRim": {
           "GroundSlotRange": [ 1, 10 ],
           "OrbitSlotRange": [ 1, 8 ],
-          "EnergyRange": [ 5, 12 ],
           "ResourceRange": [ 1, 10 ]
         }
       },
@@ -33,22 +31,23 @@
         "CoreSystem": {
           "GroundSlotRange": [ 8, 10 ],
           "OrbitSlotRange": [ 6, 8 ],
-          "EnergyRange": [ 10, 12 ],
           "ResourceRange": [ 8, 10 ]
         },
         "OuterRim": {
           "GroundSlotRange": [ 5, 10 ],
           "OrbitSlotRange": [ 4, 8 ],
-          "EnergyRange": [ 8, 12 ],
           "ResourceRange": [ 5, 10 ]
         }
       }
     },
     "InitialPlanets": {
-      "Small": 8,
-      "Medium": 9,
-      "Large":  11
-    }
+      "GalaxySize": {
+        "Small": 4,
+        "Medium": 6,
+        "Large": 8
+      }
+    },
+    "InitialColonizationRate": 0.10
   },
   "Buildings": {
     "InitialBuildings": {
@@ -74,9 +73,11 @@
   },
   "Officers": {
     "InitialOfficers": {
-      "Small": 8,
-      "Medium": 9,
-      "Large": 11
+      "GalaxySize": {
+        "Small": 8,
+        "Medium": 9,
+        "Large": 11
+      }
     }
   }
 }
