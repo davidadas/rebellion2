@@ -45,17 +45,17 @@ public sealed class GameBuilder
         Officer[] officers = ResourceManager.GetGameNodeData<Officer>();
         NewGameConfig config = ResourceManager.GetConfig<NewGameConfig>();
 
-        // Build galaxy map and set each faction's initial planets/officers.
+        // Build galaxy map and set each faction's initial officers.
         PlanetSystem[] galaxyMap = _psGenerator.SelectUnits(planetSystems).GetSelectedUnits();
         IUnitSelectionResult<Officer> selectedOfficers = _officerGenerator.SelectUnits(officers);
-        _factionGenerator.DeployUnits(factions, galaxyMap);
 
         // Decorate planet and officer base stats.
         galaxyMap = _psGenerator.DecorateUnits(galaxyMap);
         officers = _officerGenerator.DecorateUnits(officers);
 
-        // Decorate planets/planet systems with manufacturables (buildings, fleets, regiments, etc).
+        // Decorate planets/planet systems with manufacturables & set starting planets.
         _buildingGenerator.RandomizeUnits(buildings, planetSystems);
+        _factionGenerator.DeployUnits(factions, galaxyMap);
 
         return new Game
         {

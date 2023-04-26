@@ -76,7 +76,6 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
         foreach (Faction faction in factions)
         {
             IEnumerable<Planet> factionStartingPlanets = startingPlanets.Take(numStartingPlanets);
-
             foreach (Planet planet in factionStartingPlanets)
             {
                 planet.OwnerGameID = faction.GameID;
