@@ -12,10 +12,6 @@ public interface IManufacturable
     public int MaintenanceCost { get; set; }
     public int BaseBuildSpeed { get; set; }
 
-    // Owner Info
-    public string[] AllowedOwnerGameIDs { get; set; }
-    public string OwnerGameID { get; set; }
-
     // Research Info
     public int RequiredResearchLevel { get; set; }
 }

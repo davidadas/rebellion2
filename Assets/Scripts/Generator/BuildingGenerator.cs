@@ -2,20 +2,21 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using ICollectionExtensions;
 using IEnumerableExtensions;
 
 /// <summary>
 ///
 /// </summary>
-public class BuildingGenerator : UnitGenerator, IUnitRandomizer<Building, PlanetSystem>
+public class BuildingGenerator : UnitGenerator<Building>
 {
     /// <summary>
     /// Default constructor, constructs a BuildingGenerator object.
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
-    /// <param name="config">The Config containing new game configurations and settings.</param>
-    public BuildingGenerator(GameSummary summary, IConfig config)
-        : base(summary, config) { }
+    /// <param name="resourceManager">The resource manager from which to load game data.</param>
+    public BuildingGenerator(GameSummary summary, IResourceManager resourceManager)
+        : base(summary, resourceManager) { }
 
     /// <summary>
     /// Creates a Dictionary out of the frequency data stored in the new game config.
@@ -41,12 +42,41 @@ public class BuildingGenerator : UnitGenerator, IUnitRandomizer<Building, Planet
     ///
     /// </summary>
     /// <param name="buildings"></param>
+    /// <returns></returns>
+    public override Building[] SelectUnits(Building[] buildings)
+    {
+        int startingResearchLevel = this.GetGameSummary().StartingResearchLevel;
+        Building[] selectedBuildings = buildings
+            .Where(
+                (building) =>
+                    building.RequiredResearchLevel <= this.GetGameSummary().StartingResearchLevel
+            )
+            .ToArray();
+        return selectedBuildings;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="buildings"></param>
+    /// <returns></returns>
+    public override Building[] DecorateUnits(Building[] buildings)
+    {
+        // No op.
+        return buildings;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="buildings"></param>
     /// <param name="destinations"></param>
     /// <returns></returns>
-    public PlanetSystem[] RandomizeUnits(Building[] buildings, PlanetSystem[] destinations)
+    public override Building[] DeployUnits(Building[] buildings, PlanetSystem[] destinations)
     {
         Dictionary<string, double> configMapping = getConfigMapping();
         List<Building> buildingList = buildings.ToList();
+        List<Building> deployedBuildings = new List<Building>();
 
         foreach (PlanetSystem planetSystem in destinations)
         {
@@ -81,10 +111,11 @@ public class BuildingGenerator : UnitGenerator, IUnitRandomizer<Building, Planet
 
                     // Add the generated buildings to the planet.
                     planet.AddBuildings(initialBuildings.ToArray());
+                    deployedBuildings.AddAll(initialBuildings);
                 }
             }
         }
 
-        return destinations;
+        return deployedBuildings.ToArray();
     }
 }

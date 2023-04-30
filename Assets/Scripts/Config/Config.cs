@@ -21,10 +21,7 @@ public class Config : IConfig
             if (fieldInfo.Name == fieldName)
             {
                 object value = fieldInfo.GetValue(key);
-                if (value == null)
-                {
-                    throw new ConfigException($"\"{fieldName}\" not found in config or is null.");
-                }
+
                 return value;
             }
         }

@@ -40,7 +40,7 @@
         }
       }
     },
-    "InitialPlanets": {
+    "NumInitialPlanets": {
       "GalaxySize": {
         "Small": 4,
         "Medium": 6,
@@ -66,17 +66,56 @@
         0.20,
         0.50,
         0.50,
-        0.50,
-        0.50
+        0.40,
+        0.40
       ]
     }
   },
   "Officers": {
-    "InitialOfficers": {
+    "NumInitialOfficers": {
       "GalaxySize": {
         "Small": 8,
         "Medium": 9,
         "Large": 11
+      }
+    }
+  },
+  "CapitalShips": {
+    "InitialCapitalShips": {
+      "GalaxySize": {
+        "Small": [
+          {
+            "OwnerGameID": "FNEMP1",
+            "ParentGameID": "PLSEW05",
+            "GameID": "CSEM006"
+          },
+          {
+            "OwnerGameID": "FNEMP1",
+            "GameID": "CSEM005"
+          },
+          {
+            "OwnerGameID": "FNALL1",
+            "GameID": "CSAL002"
+          },
+          {
+            "OwnerGameID": "FNALL1",
+            "GameID": "ALCS003"
+          },
+          {
+            "OwnerGameID": "FNALL1",
+            "GameID": "ALCS006"
+          },
+          {
+            "OwnerGameID": "FNALL1",
+            "GameID": "ALCS006"
+          }
+        ],
+        "Medium": [
+
+        ],
+        "Large": [
+
+        ]
       }
     }
   }

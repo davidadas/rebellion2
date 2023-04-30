@@ -49,18 +49,18 @@ public class NewGameResourceAvailabilityConfig : Config
 }
 
 [Serializable]
-public class NewGameInitialPlanetsConfig : Config
+public class NewGameNumInitialPlanetsConfig : Config
 {
     public NewGamePlanetSizeConfig GalaxySize;
 
-    public NewGameInitialPlanetsConfig() { }
+    public NewGameNumInitialPlanetsConfig() { }
 }
 
 [Serializable]
 public class NewGamePlanetConfig : Config
 {
     public NewGameResourceAvailabilityConfig ResourceAvailability;
-    public NewGameInitialPlanetsConfig InitialPlanets;
+    public NewGameNumInitialPlanetsConfig NumInitialPlanets;
     public double InitialColonizationRate;
 
     public NewGamePlanetConfig() { }
@@ -70,17 +70,17 @@ public class NewGamePlanetConfig : Config
 /// START OFFICER CONFIG
 /// **********************
 [Serializable]
-public class NewGameInitialOfficersConfig : Config
+public class NewGameNumInitialOfficersConfig : Config
 {
     public NewGamePlanetSizeConfig GalaxySize;
 
-    public NewGameInitialOfficersConfig() { }
+    public NewGameNumInitialOfficersConfig() { }
 }
 
 [Serializable]
 public class NewGameOfficerConfig : Config
 {
-    public NewGameInitialOfficersConfig InitialOfficers;
+    public NewGameNumInitialOfficersConfig NumInitialOfficers;
 
     public NewGameOfficerConfig() { }
 }
@@ -107,6 +107,46 @@ public class NewGameBuildingConfig : Config
 }
 
 /// **********************
+/// START CAPITALSHIPS CONFIG
+/// **********************
+
+[Serializable]
+public class NewGameCapitalShipOptions : Config
+{
+    public string OwnerGameID;
+    public string GameID;
+    public string ParentGameID;
+
+    public NewGameCapitalShipOptions() { }
+}
+
+[Serializable]
+public class NewGameCapitalShipsGalaxyConfig : Config
+{
+    public NewGameCapitalShipOptions[] Small;
+    public NewGameCapitalShipOptions[] Medium;
+    public NewGameCapitalShipOptions[] Large;
+
+    public NewGameCapitalShipsGalaxyConfig() { }
+}
+
+[Serializable]
+public class NewGameInitialCapitalShipsConfig : Config
+{
+    public NewGameCapitalShipsGalaxyConfig GalaxySize;
+
+    public NewGameInitialCapitalShipsConfig() { }
+}
+
+[Serializable]
+public class NewGameCapitalShipsConfig : Config
+{
+    public NewGameInitialCapitalShipsConfig InitialCapitalShips;
+
+    public NewGameCapitalShipsConfig() { }
+}
+
+/// **********************
 /// START ROOT CONFIG
 /// **********************
 [Serializable]
@@ -115,6 +155,7 @@ public class NewGameConfig : Config
     public NewGamePlanetConfig Planets;
     public NewGameOfficerConfig Officers;
     public NewGameBuildingConfig Buildings;
+    public NewGameCapitalShipsConfig CapitalShips;
 
     public NewGameConfig() { }
 }

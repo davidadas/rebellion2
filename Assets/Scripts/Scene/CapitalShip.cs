@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System;
+using ICollectionExtensions;
 using UnityEngine;
 
 public enum PrimaryWeaponType
@@ -19,8 +20,6 @@ public class CapitalShip : GameNode, IManufacturable
     public int ConstructionCost { get; set; }
     public int MaintenanceCost { get; set; }
     public int BaseBuildSpeed { get; set; }
-    public string[] AllowedOwnerGameIDs { get; set; }
-    public string OwnerGameID { get; set; }
     public int RequiredResearchLevel { get; set; }
 
     // Hull, Shield, and Repair Info
@@ -64,6 +63,51 @@ public class CapitalShip : GameNode, IManufacturable
     /// Default constructor.
     /// </summary>
     public CapitalShip() { }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="starfighters"></param>
+    public void AddStarfighters(Starfighter[] starfighters)
+    {
+        int capacity = StarfighterCapacity - Starfighters.Length;
+        if (starfighters.Length > capacity)
+        {
+            throw new GameException(
+                $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
+            );
+        }
+        Starfighters.AddAll(starfighters);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="regiments"></param>
+    public void AddRegiments(Regiment[] regiments)
+    {
+        int capacity = RegimentCapacity - Regiments.Length;
+        if (regiments.Length > capacity)
+        {
+            throw new GameException(
+                $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
+            );
+        }
+        Regiments.AddAll(regiments);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="officer"></param>
+    public void AddOfficer(Officer officer)
+    {
+        if (this.OwnerGameID != officer.OwnerGameID)
+        {
+            throw new SceneException(officer, this, SceneExceptionType.Access);
+        }
+        Officers.Add(officer);
+    }
 
     /// <summary>
     ///

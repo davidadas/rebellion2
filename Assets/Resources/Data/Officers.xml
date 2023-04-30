@@ -8,6 +8,7 @@
 		<DisplayName>Emperor Palpatine</DisplayName>
 		<OwnerGameID>FNEMP1</OwnerGameID>
 		<IsMain>true</IsMain>
+		<ParentGameID>PLSEW05</ParentGameID>
 		<Diplomacy>30</Diplomacy>
 		<Espionage>20</Espionage>
 		<Combat>50</Combat>

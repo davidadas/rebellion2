@@ -6,18 +6,15 @@ using UnityEngine;
 /// <summary>
 ///
 /// </summary>
-public class PlanetSystemGenerator
-    : UnitGenerator,
-        IUnitSelector<PlanetSystem>,
-        IUnitDecorator<PlanetSystem>
+public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
 {
     /// <summary>
     /// Default constructor, constructs a PlanetSystemGenerator object.
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
-    /// <param name="config">The Config containing new game configurations and settings.</param>
-    public PlanetSystemGenerator(GameSummary summary, Config config)
-        : base(summary, config) { }
+    /// <param name="resourceManager">The resource manager from which to load game data.</param>
+    public PlanetSystemGenerator(GameSummary summary, IResourceManager resourceManager)
+        : base(summary, resourceManager) { }
 
     /// <summary>
     ///
@@ -27,7 +24,8 @@ public class PlanetSystemGenerator
     private void setResources(PlanetSystem parentSystem, Planet planet)
     {
         string resourceAvailability = GetGameSummary().ResourceAvailability.ToString();
-        IConfig planetConfig = GetConfig().GetValue<IConfig>($"Planets.ResourceAvailability.{resourceAvailability}");
+        IConfig planetConfig = GetConfig()
+            .GetValue<IConfig>($"Planets.ResourceAvailability.{resourceAvailability}");
         string systemType = parentSystem.SystemType.ToString();
 
         var (groundSlotRange, orbitSlotRange, resourceRange) = (
@@ -72,7 +70,7 @@ public class PlanetSystemGenerator
     /// </summary>
     /// <param name="units"></param>
     /// <returns></returns>
-    public IUnitSelectionResult<PlanetSystem> SelectUnits(PlanetSystem[] units)
+    public override PlanetSystem[] SelectUnits(PlanetSystem[] units)
     {
         GameSize galaxySize = GetGameSummary().GalaxySize;
         List<PlanetSystem> galaxyMap = new List<PlanetSystem>();
@@ -89,7 +87,7 @@ public class PlanetSystemGenerator
             }
         }
 
-        return new UnitSelectionResult<PlanetSystem>(galaxyMap.ToArray(), units.ToArray());
+        return galaxyMap.ToArray();
     }
 
     /// <summary>
@@ -97,7 +95,7 @@ public class PlanetSystemGenerator
     /// </summary>
     /// <param name="units"></param>
     /// <returns></returns>
-    public PlanetSystem[] DecorateUnits(PlanetSystem[] units)
+    public override PlanetSystem[] DecorateUnits(PlanetSystem[] units)
     {
         IConfig planetConfig = GetConfig().GetValue<IConfig>("Planets.ResourceAvailability");
 
@@ -110,6 +108,17 @@ public class PlanetSystemGenerator
             }
         }
 
+        return units;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="units"></param>
+    /// <returns></returns>
+    public override PlanetSystem[] DeployUnits(PlanetSystem[] units, PlanetSystem[] destinations)
+    {
+        // No op.
         return units;
     }
 }

@@ -7,15 +7,15 @@ using System.Xml.Serialization;
 using System;
 using UnityEngine;
 
-public class ResourceManager
+class ResourceManagerImpl : IResourceManager
 {
     /// <summary>
     ///
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public static T GetConfig<T>()
-        where T : Config
+    public T GetConfig<T>()
+        where T : IConfig
     {
         string configName = typeof(T).ToString();
 
@@ -30,7 +30,7 @@ public class ResourceManager
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public static T[] GetGameNodeData<T>()
+    public T[] GetGameNodeData<T>()
         where T : GameNode
     {
         // Pluralize the string (e.g. Building -> Buildings).
@@ -49,5 +49,15 @@ public class ResourceManager
             T[] gameData = (T[])serializer.Deserialize(stream);
             return gameData;
         }
+    }
+}
+
+public class ResourceManager
+{
+    private static IResourceManager _resourceManager = new ResourceManagerImpl();
+
+    public static IResourceManager Instance
+    {
+        get { return _resourceManager; }
     }
 }

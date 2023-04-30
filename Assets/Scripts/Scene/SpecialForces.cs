@@ -7,8 +7,6 @@ public class SpecialForces : GameNode, IManufacturable, IMissionParticipant
     public int ConstructionCost { get; set; }
     public int MaintenanceCost { get; set; }
     public int BaseBuildSpeed { get; set; }
-    public string[] AllowedOwnerGameIDs { get; set; }
-    public string OwnerGameID { get; set; }
     public int RequiredResearchLevel { get; set; }
 
     // Mission Stats

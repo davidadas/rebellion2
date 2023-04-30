@@ -14,6 +14,7 @@ public sealed class GameBuilder
     private FactionGenerator _factionGenerator;
     private OfficerGenerator _officerGenerator;
     private BuildingGenerator _buildingGenerator;
+    private CapitalShipGenerator _csGenerator;
     private GameSummary _summary;
 
     /// <summary>
@@ -22,12 +23,14 @@ public sealed class GameBuilder
     /// <param name="summary"></param>
     public GameBuilder(GameSummary summary)
     {
-        NewGameConfig config = ResourceManager.GetConfig<NewGameConfig>();
+        IResourceManager resourceManager = ResourceManager.Instance;
 
-        _psGenerator = new PlanetSystemGenerator(summary, config);
-        _factionGenerator = new FactionGenerator(summary, config);
-        _officerGenerator = new OfficerGenerator(summary, config);
-        _buildingGenerator = new BuildingGenerator(summary, config);
+        // Initialize our unit generators.
+        _psGenerator = new PlanetSystemGenerator(summary, resourceManager);
+        _factionGenerator = new FactionGenerator(summary, resourceManager);
+        _officerGenerator = new OfficerGenerator(summary, resourceManager);
+        _buildingGenerator = new BuildingGenerator(summary, resourceManager);
+        _csGenerator = new CapitalShipGenerator(summary, resourceManager);
 
         _summary = summary;
     }
@@ -38,24 +41,20 @@ public sealed class GameBuilder
     /// <returns></returns>
     public Game BuildGame()
     {
-        // Load resources from XML files and the config file.
-        PlanetSystem[] planetSystems = ResourceManager.GetGameNodeData<PlanetSystem>();
-        Faction[] factions = ResourceManager.GetGameNodeData<Faction>();
-        Building[] buildings = ResourceManager.GetGameNodeData<Building>();
-        Officer[] officers = ResourceManager.GetGameNodeData<Officer>();
-        NewGameConfig config = ResourceManager.GetConfig<NewGameConfig>();
+        // First, generate our galaxy map with stat decorated planets.
+        IUnitGenerationResults<PlanetSystem> psResults = _psGenerator.GenerateUnits();
+        PlanetSystem[] galaxyMap = psResults.SelectedUnits;
 
-        // Build galaxy map and set each faction's initial officers.
-        PlanetSystem[] galaxyMap = _psGenerator.SelectUnits(planetSystems).GetSelectedUnits();
-        IUnitSelectionResult<Officer> selectedOfficers = _officerGenerator.SelectUnits(officers);
+        // Then decorate the galaxy map with units.
+        Building[] buildings = _buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
+        Faction[] factions = _factionGenerator.GenerateUnits(galaxyMap).UnitPool;
+        CapitalShip[] capitalShips = _csGenerator.GenerateUnits(galaxyMap).DeployedUnits;
+        IUnitGenerationResults<Officer> officerResults = _officerGenerator.GenerateUnits(galaxyMap);
 
-        // Decorate planet and officer base stats.
-        galaxyMap = _psGenerator.DecorateUnits(galaxyMap);
-        officers = _officerGenerator.DecorateUnits(officers);
-
-        // Decorate planets/planet systems with manufacturables & set starting planets.
-        _buildingGenerator.RandomizeUnits(buildings, planetSystems);
-        _factionGenerator.DeployUnits(factions, galaxyMap);
+        // Retrieve list of unrecruited officers.
+        Officer[] unrecruitedOfficers = officerResults.UnitPool
+            .Except(officerResults.SelectedUnits)
+            .ToArray();
 
         return new Game
         {
@@ -63,7 +62,7 @@ public sealed class GameBuilder
             Factions = factions.ToList<Faction>(),
             GalaxyMap = galaxyMap.ToList<PlanetSystem>(),
             BuildingResearchList = buildings.ToList(),
-            UnrecruitedOfficers = selectedOfficers.GetRemainingUnits().ToList(),
+            UnrecruitedOfficers = unrecruitedOfficers.ToList(),
         };
     }
 }
