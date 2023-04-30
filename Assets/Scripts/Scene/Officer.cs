@@ -18,10 +18,6 @@ public class Officer : GameNode, IMissionParticipant
     public int Combat { get; set; }
     public int Leadership { get; set; }
 
-    // Owner Info
-    public string[] AllowedOwnerGameIDs;
-    public string OwnerGameID;
-
     // Variance Info
     public int DiplomacyVariance;
     public int EspionageVariance;

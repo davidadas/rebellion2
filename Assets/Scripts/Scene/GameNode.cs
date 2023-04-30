@@ -5,9 +5,6 @@ using System.Reflection;
 using System.Xml.Serialization;
 using UnityEngine;
 
-/// <summary>
-///
-/// </summary>
 [Serializable]
 public abstract class GameNode
 {
@@ -35,8 +32,17 @@ public abstract class GameNode
         }
     }
     public string GameID { get; set; }
+
+    // Game Info
     public string DisplayName { get; set; }
     public string Description { get; set; }
+
+    // Graph Info
+    public string ParentGameID { get; set; }
+
+    // Owner Info
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.

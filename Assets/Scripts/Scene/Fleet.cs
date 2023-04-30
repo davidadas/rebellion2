@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using ICollectionExtensions;
 
 public class Fleet : GameNode
 {
@@ -11,6 +11,28 @@ public class Fleet : GameNode
     /// Default constructor.
     /// </summary>
     public Fleet() { }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="capitalShip"></param>
+    public void AddCapitalShip(CapitalShip capitalShip)
+    {
+        if (this.OwnerGameID != capitalShip.OwnerGameID)
+        {
+            throw new SceneException(capitalShip, this, SceneExceptionType.Access);
+        }
+        CapitalShips.Add(capitalShip);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="officer"></param>
+    public void AddOfficer(Officer officer)
+    {
+        CapitalShips[0].AddOfficer(officer);
+    }
 
     /// <summary>
     ///

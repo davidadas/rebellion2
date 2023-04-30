@@ -13,7 +13,6 @@ public class Planet : GameNode
     public int OrbitSlots;
     public int GroundSlots;
     public int NumResourceNodes;
-    public string OwnerGameID;
 
     // Status
     public bool IsDestroyed;
@@ -122,6 +121,41 @@ public class Planet : GameNode
         // Add the provided buildings to the existing building lists.
         Buildings[BuildingSlot.Ground].AddAll(groundBuildings);
         Buildings[BuildingSlot.Orbit].AddAll(orbitBuildings);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="capitalShip"></param>
+    public void AddCapitalShip(CapitalShip capitalShip)
+    {
+        if (Fleets.Count > 0)
+        {
+            Fleets[0].AddCapitalShip(capitalShip);
+        }
+        else
+        {
+            if (this.OwnerGameID != capitalShip.OwnerGameID)
+            {
+                throw new SceneException(capitalShip, this, SceneExceptionType.Access);
+            }
+            Fleet fleet = new Fleet { OwnerGameID = capitalShip.OwnerGameID };
+            fleet.AddCapitalShip(capitalShip);
+            Fleets.Add(fleet);
+        }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="officer"></param>
+    public void AddOfficer(Officer officer)
+    {
+        if (this.OwnerGameID != officer.OwnerGameID)
+        {
+            throw new SceneException(officer, this, SceneExceptionType.Access);
+        }
+        Officers.Add(officer);
     }
 
     /// <summary>

@@ -4,15 +4,15 @@ using System.Linq;
 using IEnumerableExtensions;
 using UnityEngine;
 
-public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSystem>
+public class FactionGenerator : UnitGenerator<Faction>
 {
     /// <summary>
     /// Default constructor, constructs a FactionGenerator object.
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
-    /// <param name="config">The Config containing new game configurations and settings.</param>
-    public FactionGenerator(GameSummary summary, Config config)
-        : base(summary, config) { }
+    /// <param name="resourceManager">The resource manager from which to load game data.</param>
+    public FactionGenerator(GameSummary summary, IResourceManager resourceManager)
+        : base(summary, resourceManager) { }
 
     /// <summary>
     /// Assigns each faction's headquarters to their designated planet.
@@ -60,17 +60,17 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
     /// <param name="planetSystems"></param>
     private void setStartingPlanets(Faction[] factions, PlanetSystem[] planetSystems)
     {
-        Config startConfig = GetConfig().GetValue<Config>("Planets.InitialPlanets.GalaxySize");
+        Config startConfig = GetConfig().GetValue<Config>("Planets.NumInitialPlanets.GalaxySize");
         string galaxySize = GetGameSummary().GalaxySize.ToString();
         int numStartingPlanets = startConfig.GetValue<int>(galaxySize);
 
         // Select a complete list of starting planets from list.
         int numPlanets = numStartingPlanets * factions.Length;
         IEnumerable<Planet> startingPlanets = planetSystems
-            .SelectMany(ps => ps.Planets)        // Flatten the array.
+            .SelectMany(ps => ps.Planets) // Flatten the array.
             .Where(planet => planet.IsColonized) // Select only those that are colonized.
-            .Shuffle()                           // Shuffle the array to randomize the list.
-            .Take(numPlanets);                   // Take n planets to be the starting list.
+            .Shuffle() // Shuffle the array to randomize the list.
+            .Take(numPlanets); // Take n planets to be the starting list.
 
         // Assign, randomly, the remaining start planets.
         foreach (Faction faction in factions)
@@ -84,15 +84,40 @@ public class FactionGenerator : UnitGenerator, IUnitDeployer<Faction, PlanetSyst
     }
 
     /// <summary>
+    ///
+    /// </summary>
+    /// <param name="factions"></param>
+    /// <returns></returns>
+    public override Faction[] SelectUnits(Faction[] factions)
+    {
+        // No op.
+        return factions;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="factions"></param>
+    /// <returns></returns>
+    public override Faction[] DecorateUnits(Faction[] factions)
+    {
+        // No op.
+        return factions;
+    }
+
+    /// <summary>
     /// Assign initial planets to each faction. This method does NOT assign
     /// fleets, buildings, etc. This will likely confuse most, but keep in
     /// mind it is difficult to find a design pattern that will fit every use case.
     /// </summary>
     /// <param name="units"></param>
     /// <param name="destinations"></param>
-    public void DeployUnits(Faction[] units, PlanetSystem[] destinations)
+    /// <returns></returns>
+    public override Faction[] DeployUnits(Faction[] units, PlanetSystem[] destinations)
     {
         setFactionHQs(units, destinations);
         setStartingPlanets(units, destinations);
+
+        return units;
     }
 }

@@ -1,69 +1,50 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using ICollectionExtensions;
 using IDictionaryExtensions;
 using IEnumerableExtensions;
-using UnityEngine;
 
 /// <summary>
 ///
 /// </summary>
-public class OfficerGenerator : UnitGenerator, IUnitSelector<Officer>, IUnitDecorator<Officer>
+public class OfficerGenerator : UnitGenerator<Officer>
 {
     /// <summary>
     /// Default constructor, constructs a OfficerGenerator object.
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="config">The Config containing new game configurations and settings.</param>
-    public OfficerGenerator(GameSummary summary, Config config)
-        : base(summary, config) { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
-    public Officer[] DecorateUnits(Officer[] units)
-    {
-        foreach (Officer officer in units)
-        {
-            // Set core attributes.
-            officer.Diplomacy += Random.Range(0, officer.DiplomacyVariance);
-            officer.Espionage += Random.Range(0, officer.EspionageVariance);
-            officer.Combat += Random.Range(0, officer.CombatVariance);
-            officer.Leadership += Random.Range(0, officer.CombatVariance);
-            officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
-
-            // Set research attributes
-            officer.ShipResearch += Random.Range(0, officer.ShipResearchVariance);
-            officer.TroopResearch += Random.Range(0, officer.TroopResearchVariance);
-            officer.FacilityResearch += Random.Range(0, officer.FacilityResearchVariance);
-
-            // Set Jedi attributes.
-            float jediProbability = officer.JediProbability / 100f;
-            officer.IsJedi = officer.IsJedi || Random.value < jediProbability;
-        }
-        return units;
-    }
+    public OfficerGenerator(GameSummary summary, IResourceManager resourceManager)
+        : base(summary, resourceManager) { }
 
     /// <summary>
     ///
     /// </summary>
     /// <param name="officersByFaction"></param>
     /// <returns></returns>
-    private Officer[] reduceOfficerLists(Dictionary<string, List<Officer>> officersByFaction)
+    private Officer[] selectInitialOfficers(Dictionary<string, List<Officer>> officersByFaction)
     {
         List<Officer> selectedOfficers = new List<Officer>();
         string galaxySize = GetGameSummary().GalaxySize.ToString();
-        int numAllowedOfficers = GetConfig().GetValue<int>($"Officers.InitialOfficers.GalaxySize.{galaxySize}");
+        int numAllowedOfficers = GetConfig()
+            .GetValue<int>($"Officers.NumInitialOfficers.GalaxySize.{galaxySize}");
 
         // Set the finalized list of officers for each faction.
         foreach (string ownerGameId in officersByFaction.Keys.ToArray())
         {
-            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerGameId].TakeWhile(
-                (officer, index) => officer.IsMain || index < numAllowedOfficers
-            );
+            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerGameId]
+                // Take a random selection of officers for the game start.
+                .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
+                // Set the OwnerGameID for each officer.
+                .Select(
+                    (officer) =>
+                    {
+                        officer.OwnerGameID = ownerGameId;
+                        return officer;
+                    }
+                );
             selectedOfficers.AddAll(reducedOfficers);
         }
         return selectedOfficers.ToArray();
@@ -72,9 +53,46 @@ public class OfficerGenerator : UnitGenerator, IUnitSelector<Officer>, IUnitDeco
     /// <summary>
     ///
     /// </summary>
+    /// <param name="planetSystems"></param>
+    /// <returns></returns>
+    private Dictionary<string, List<GameNode>> getDestinationMapping(PlanetSystem[] planetSystems)
+    {
+        // Flatten the list of planets from planet systems.
+        // Only pull those planets with a OwnerGameID assigned.
+        IEnumerable<Planet> flattenedPlanets = planetSystems
+            .SelectMany((planetSystem) => planetSystem.Planets)
+            .Where((planet) => planet.OwnerGameID != null);
+
+        // Create an array of fleets and planets.
+        List<GameNode> fleetsAndPlanets = new List<GameNode>();
+        foreach (Planet planet in flattenedPlanets)
+        {
+            fleetsAndPlanets.Add(planet);
+            fleetsAndPlanets.AddAll(planet.Fleets);
+        }
+
+        // Create a dictionary of factions to planets and their associated fleets.
+        Dictionary<string, List<GameNode>> destinationMapping = fleetsAndPlanets.Aggregate(
+            new Dictionary<string, List<GameNode>>(),
+            (destinationMap, nextDestination) =>
+            {
+                List<GameNode> destinations = destinationMap.GetOrAddValue(
+                    nextDestination.OwnerGameID,
+                    new List<GameNode>()
+                );
+                destinations.Add(nextDestination);
+                return destinationMap;
+            }
+        );
+        return destinationMapping;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
     /// <param name="units"></param>
     /// <returns></returns>
-    public IUnitSelectionResult<Officer> SelectUnits(Officer[] units)
+    public override Officer[] SelectUnits(Officer[] units)
     {
         Dictionary<string, List<Officer>> officersByFaction =
             new Dictionary<string, List<Officer>>();
@@ -99,6 +117,75 @@ public class OfficerGenerator : UnitGenerator, IUnitSelector<Officer>, IUnitDeco
             }
         }
 
-        return new UnitSelectionResult<Officer>(units, reduceOfficerLists(officersByFaction));
+        return selectInitialOfficers(officersByFaction);
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="units"></param>
+    /// <returns></returns>
+    public override Officer[] DecorateUnits(Officer[] units)
+    {
+        foreach (Officer officer in units)
+        {
+            // Set core attributes.
+            officer.Diplomacy += Random.Range(0, officer.DiplomacyVariance);
+            officer.Espionage += Random.Range(0, officer.EspionageVariance);
+            officer.Combat += Random.Range(0, officer.CombatVariance);
+            officer.Leadership += Random.Range(0, officer.CombatVariance);
+            officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
+
+            // Set research attributes
+            officer.ShipResearch += Random.Range(0, officer.ShipResearchVariance);
+            officer.TroopResearch += Random.Range(0, officer.TroopResearchVariance);
+            officer.FacilityResearch += Random.Range(0, officer.FacilityResearchVariance);
+
+            // Set Jedi attributes.
+            float jediProbability = officer.JediProbability / 100f;
+            officer.IsJedi = officer.IsJedi || UnityEngine.Random.value < jediProbability;
+        }
+        return units;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="units"></param>
+    /// <param name="destinations"></param>
+    /// <returns></returns>
+    public override Officer[] DeployUnits(Officer[] officers, PlanetSystem[] planetSystems)
+    {
+        Dictionary<string, List<GameNode>> destinationMapping = getDestinationMapping(
+            planetSystems
+        );
+
+        foreach (Officer officer in officers)
+        {
+            List<GameNode> destinations = destinationMapping[officer.OwnerGameID];
+            GameNode destination;
+
+            if (officer.ParentGameID != null)
+            {
+                destination = destinations.First(
+                    (gameNode) => gameNode.GameID == officer.ParentGameID
+                );
+            }
+            else
+            {
+                destination = destinations.Shuffle().First();
+            }
+
+            System.Type destinationType = destination.GetType();
+            if (destinationType.IsAssignableFrom(typeof(Planet)))
+            {
+                ((Planet)destination).AddOfficer(officer);
+            }
+            else
+            {
+                ((Fleet)destination).AddOfficer(officer);
+            }
+        }
+        return officers;
     }
 }

@@ -1,9 +1,15 @@
 # Rebellion 2
 
+![image](https://user-images.githubusercontent.com/187183/235219711-1cfc2153-d2f3-41fc-b2cb-611988d28f34.png)
+
 A remake of the 1998 Star Wars Rebellion PC game by Coolhand Interactive.
 
 ## Setup
-[Placeholder]
+1. Download/clone this repository to a local directory.
+2. From Unity Hub, select "Projects" from the left hand menu.
+3. From the "Projects" view, click "Open" and select the rebellion2 folder you cloned/downloaded.
+
+Your entry point is the `Initialize.cs` file in the `/Assets` directory. 
 
 ## Progress
 [Placeholder]
