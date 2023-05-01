@@ -79,6 +79,7 @@ public class FactionGenerator : UnitGenerator<Faction>
             foreach (Planet planet in factionStartingPlanets)
             {
                 planet.OwnerGameID = faction.GameID;
+                planet.SetPopularSupport(faction.GameID, 100);
             }
         }
     }
@@ -106,18 +107,16 @@ public class FactionGenerator : UnitGenerator<Faction>
     }
 
     /// <summary>
-    /// Assign initial planets to each faction. This method does NOT assign
-    /// fleets, buildings, etc. This will likely confuse most, but keep in
-    /// mind it is difficult to find a design pattern that will fit every use case.
+    /// Assign initial planets to each faction. This method does NOT assign units.
     /// </summary>
-    /// <param name="units"></param>
+    /// <param name="factions"></param>
     /// <param name="destinations"></param>
     /// <returns></returns>
-    public override Faction[] DeployUnits(Faction[] units, PlanetSystem[] destinations)
+    public override Faction[] DeployUnits(Faction[] factions, PlanetSystem[] destinations)
     {
-        setFactionHQs(units, destinations);
-        setStartingPlanets(units, destinations);
+        setFactionHQs(factions, destinations);
+        setStartingPlanets(factions, destinations);
 
-        return units;
+        return factions;
     }
 }
