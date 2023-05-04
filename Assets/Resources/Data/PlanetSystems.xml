@@ -8,7 +8,7 @@
 		<SystemType>CoreSystem</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>High</Importance>
-		<GameID>PLSEW</GameID>
+		<GameID>PSSEW</GameID>
 		<Planets>
 			<Planet>
 				<GameID>PLSEW01</GameID>
@@ -57,7 +57,7 @@
 		<SystemType>CoreSystem</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>High</Importance>
-		<GameID>PLCOR</GameID>
+		<GameID>PSCOR</GameID>
 		<Planets>
 			<Planet>
 				<GameID>PLCOR01</GameID>
@@ -106,7 +106,7 @@
 		<SystemType>CoreSystem</SystemType>
 		<Visibility>Large</Visibility>
 		<Importance>High</Importance>
-		<GameID>PLFAK</GameID>
+		<GameID>PSFAK</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Delaya</DisplayName>
@@ -253,35 +253,46 @@
 		<SystemType>CoreSystem</SystemType>
 		<Visibility>Large</Visibility>
 		<Importance>High</Importance>
+		<GameID>PLSLU</GameID>
 		<Planets>
 			<Planet>
+				<GameID>PLSLU01</GameID>
 				<DisplayName>Phorliss</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU02</GameID>
 				<DisplayName>Kamparas</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU03</GameID>
 				<DisplayName>Ketaris</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU04</GameID>
 				<DisplayName>Balfron</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU05</GameID>
 				<DisplayName>Pantolomin</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU06</GameID>
 				<DisplayName>Tangrene</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU07</GameID>
 				<DisplayName>Omwat</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU08</GameID>
 				<DisplayName>Wor Tandell</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU09</GameID>
 				<DisplayName>Sarka</DisplayName>
 			</Planet>
 			<Planet>
+				<GameID>PLSLU10</GameID>
 				<DisplayName>Caprionril</DisplayName>
 			</Planet>
 		</Planets>
@@ -392,36 +403,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Medium</Visibility>
 		<Importance>Low</Importance>
+		<GameID>PLQUE</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Rafa</DisplayName>
+				<GameID>PLQUE01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Pil Diller</DisplayName>
+				<GameID>PLQUE02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kirrek</DisplayName>
+				<GameID>PLQUE03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Varn</DisplayName>
+				<GameID>PLQUE04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Dathomir</DisplayName>
+				<GameID>PLQUE05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Thrakia</DisplayName>
+				<GameID>PLQUE06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Vinsoth</DisplayName>
+				<GameID>PLQUE07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Amorris</DisplayName>
+				<GameID>PLQUE08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Corstris</DisplayName>
+				<GameID>PLQUE09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Selaggis</DisplayName>
+				<GameID>PLQUE10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -430,37 +452,48 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLCHU</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Lelmra</DisplayName>
+				<GameID>PLCHU01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Gentes</DisplayName>
+				<GameID>PLCHU02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Allyuen</DisplayName>
+				<GameID>PLCHU03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Storthus</DisplayName>
+				<GameID>PLCHU04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Tokmia</DisplayName>
+				<GameID>PLCHU05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Deyer</DisplayName>
+				<GameID>PLCHU06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Hoth</DisplayName>
+				<GameID>PLCHU07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Anoat</DisplayName>
+				<GameID>PLCHU08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Bespin</DisplayName>
+				<GameID>PLCHU09</GameID>
 				<IsColonized>true</IsColonized>
 			</Planet>
 			<Planet>
 				<DisplayName>New Cov</DisplayName>
+				<GameID>PLCHU10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -469,36 +502,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Medium</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLKAN</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Xa Fel</DisplayName>
+				<GameID>PLKAN01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Vodran</DisplayName>
+				<GameID>PLKAN02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Munto Codru</DisplayName>
+				<GameID>PLKAN03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Davnar</DisplayName>
+				<GameID>PLKAN04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Derra IV</DisplayName>
+				<GameID>PLKAN05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Mindar</DisplayName>
+				<GameID>PLKAN06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Culroon III</DisplayName>
+				<GameID>PLKAN07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Spuma</DisplayName>
+				<GameID>PLKAN08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Smarteel</DisplayName>
+				<GameID>PLKAN09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Nal Hutta</DisplayName>
+				<GameID>PLKAN10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -507,36 +551,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLDUF</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Zebitrope IV</DisplayName>
+				<GameID>PLDUF01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Womrik</DisplayName>
+				<GameID>PLDUF02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Klatooine</DisplayName>
+				<GameID>PLDUF03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ord Trasi</DisplayName>
+				<GameID>PLDUF04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Algarian</DisplayName>
+				<GameID>PLDUF05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Filve</DisplayName>
+				<GameID>PLDUF06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Toprawa</DisplayName>
+				<GameID>PLDUF07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ord Mantell</DisplayName>
+				<GameID>PLDUF08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Gamorr</DisplayName>
+				<GameID>PLDUF09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ord Pardon</DisplayName>
+				<GameID>PLDUF10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -545,36 +600,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLABR</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Hishyim</DisplayName>
+				<GameID>PLABR01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ukio</DisplayName>
+				<GameID>PLABR02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Hefi</DisplayName>
+				<GameID>PLABR03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Abregado</DisplayName>
+				<GameID>PLABR04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Da Soocha</DisplayName>
+				<GameID>PLABR05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Tieos</DisplayName>
+				<GameID>PLABR06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Cathar</DisplayName>
+				<GameID>PLABR07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Galpos II</DisplayName>
+				<GameID>PLABR08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Garban</DisplayName>
+				<GameID>PLABR09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Intuci</DisplayName>
+				<GameID>PLABR10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -583,36 +649,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Large</Visibility>
 		<Importance>Low</Importance>
+		<GameID>PLXAP</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Thanta Zilbra</DisplayName>
+				<GameID>PLXAP01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Norulac</DisplayName>
+				<GameID>PLXAP02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Norulac</DisplayName>
+				<GameID>PLXAP03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ambria</DisplayName>
+				<GameID>PLXAP04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Stic</DisplayName>
+				<GameID>PLXAP05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kirdo III</DisplayName>
+				<GameID>PLXAP06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>G'rho</DisplayName>
+				<GameID>PLXAP07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ruuria</DisplayName>
+				<GameID>PLXAP08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Tund</DisplayName>
+				<GameID>PLXAP09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Neelgaimon</DisplayName>
+				<GameID>PLXAP10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -621,36 +698,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
+		<GameID>PLORU</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Lafra</DisplayName>
+				<GameID>PLORU01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Tatooine</DisplayName>
+				<GameID>PLORU02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kimanan</DisplayName>
+				<GameID>PLORU03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Chazwa</DisplayName>
+				<GameID>PLORU04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Mantessa</DisplayName>
+				<GameID>PLORU05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Bakura</DisplayName>
+				<GameID>PLORU06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Joiol</DisplayName>
+				<GameID>PLORU07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Daltar</DisplayName>
+				<GameID>PLORU08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ryloth</DisplayName>
+				<GameID>PLORU09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Poderis</DisplayName>
+				<GameID>PLORU10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -659,36 +747,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
+		<GameID>PLJOS</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Chrondre</DisplayName>
+				<GameID>PLJOS01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Waskiro</DisplayName>
+				<GameID>PLJOS02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Engira</DisplayName>
+				<GameID>PLJOS03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Cardooine</DisplayName>
+				<GameID>PLJOS04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Dar'Or</DisplayName>
+				<GameID>PLJOS05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Jomark</DisplayName>
+				<GameID>PLJOS06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Douglas III</DisplayName>
+				<GameID>PLJOS07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kiffex</DisplayName>
+				<GameID>PLJOS08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Trogan</DisplayName>
+				<GameID>PLJOS09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Azbian</DisplayName>
+				<GameID>PLJOS10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -746,36 +845,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Medium</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLGLY</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Nentan</DisplayName>
+				<GameID>PLGLY01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Elrood</DisplayName>
+				<GameID>PLGLY02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Yag'Dhul</DisplayName>
+				<GameID>PLGLY03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Sedri</DisplayName>
+				<GameID>PLGLY04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Vortex</DisplayName>
+				<GameID>PLGLY05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Valrar</DisplayName>
+				<GameID>PLGLY06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Fornax</DisplayName>
+				<GameID>PLGLY07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Altarrn</DisplayName>
+				<GameID>PLGLY08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Arkania</DisplayName>
+				<GameID>PLGLY09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Fef</DisplayName>
+				<GameID>PLGLY10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -784,36 +894,47 @@
 		<SystemType>OuterRim</SystemType>
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
+		<GameID>PLMAY</GameID>
 		<Planets>
 			<Planet>
 				<DisplayName>Kabal</DisplayName>
+				<GameID>PLMAY01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Triton</DisplayName>
+				<GameID>PLMAY02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Clak'dor VII</DisplayName>
+				<GameID>PLMAY03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>H'nemthe</DisplayName>
+				<GameID>PLMAY04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Cona</DisplayName>
+				<GameID>PLMAY05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Urdur</DisplayName>
+				<GameID>PLMAY06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Oetrago</DisplayName>
+				<GameID>PLMAY07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Chalcedon</DisplayName>
+				<GameID>PLMAY08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Dantooine</DisplayName>
+				<GameID>PLMAY09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Anchoron</DisplayName>
+				<GameID>PLMAY10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
@@ -825,33 +946,43 @@
 		<Planets>
 			<Planet>
 				<DisplayName>Akrit'tar</DisplayName>
+				<GameID>PLCAL01</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kessel</DisplayName>
+				<GameID>PLCAL02</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Norval II</DisplayName>
+				<GameID>PLCAL03</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Morvogodine</DisplayName>
+				<GameID>PLCAL04</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Ithor</DisplayName>
+				<GameID>PLCAL05</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Skor II</DisplayName>
+				<GameID>PLCAL06</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Fwillsving</DisplayName>
+				<GameID>PLCAL07</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Kubindi</DisplayName>
+				<GameID>PLCAL08</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>Jerijador</DisplayName>
+				<GameID>PLCAL09</GameID>
 			</Planet>
 			<Planet>
 				<DisplayName>F'tral</DisplayName>
+				<GameID>PLCAL10</GameID>
 			</Planet>
 		</Planets>
 	</PlanetSystem>
