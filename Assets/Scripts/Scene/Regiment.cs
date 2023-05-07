@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 /// <summary>
 ///
@@ -18,6 +17,11 @@ public class Regiment : GameNode, IManufacturable
     public int DefenseRating;
     public int DetectionRating;
     public int BombardmentDefense;
+
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.

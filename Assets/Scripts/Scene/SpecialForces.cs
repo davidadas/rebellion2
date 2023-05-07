@@ -15,6 +15,11 @@ public class SpecialForces : GameNode, IManufacturable, IMissionParticipant
     public int Combat { get; set; }
     public int Leadership { get; set; }
 
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
+
     /// <summary>
     /// Default constructor
     /// </summary>

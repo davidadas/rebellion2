@@ -5,7 +5,11 @@ using ICollectionExtensions;
 public class Fleet : GameNode
 {
     public List<CapitalShip> CapitalShips = new List<CapitalShip>();
-    public Planet Location;
+
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.

@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
+/// <summary>
+///
+/// </summary>
 public class Starfighter : GameNode, IManufacturable
 {
     // Construction Info
@@ -30,6 +32,11 @@ public class Starfighter : GameNode, IManufacturable
     public int LaserRange;
     public int IonRange;
     public int TorpedoRange;
+
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.

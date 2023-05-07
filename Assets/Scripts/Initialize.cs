@@ -1,10 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Xml;
-using System.Xml.Serialization;
 using UnityEngine;
 using UnityEditor;
 
@@ -30,11 +23,7 @@ public class Startup
         GameBuilder builder = new GameBuilder(summary);
         Game game = builder.BuildGame();
 
-        // Write the scene to Debug for inspection.
-        XmlSerializer xmlSerializer = new XmlSerializer(typeof(Game));
-        using (FileStream fileStream = new FileStream("test.xml", FileMode.Open))
-        {
-            xmlSerializer.Serialize(fileStream, game);
-        }
+        // Save the file to disk for testing.
+        SaveGameManager.Instance.SaveGameData(game, "Save 1");
     }
 }

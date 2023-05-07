@@ -39,7 +39,7 @@ public class BuildingGenerator : UnitGenerator<Building>
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="buildings"></param>
     /// <returns></returns>

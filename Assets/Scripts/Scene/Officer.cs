@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using UnityEngine;
 
 public enum OfficerRank
@@ -10,6 +11,15 @@ public enum OfficerRank
     Admiral,
 }
 
+public enum OfficerStatus
+{
+    Available,
+    Injured,
+    Captured,
+    OnMission,
+    InTransit,
+}
+
 public class Officer : GameNode, IMissionParticipant
 {
     // Mission Stats
@@ -18,27 +28,19 @@ public class Officer : GameNode, IMissionParticipant
     public int Combat { get; set; }
     public int Leadership { get; set; }
 
-    // Variance Info
-    public int DiplomacyVariance;
-    public int EspionageVariance;
-    public int CombatVariance;
-    public int LeadershipVariance;
-    public int LoyaltyVariance;
-
     // Research Info
     public int ShipResearch;
-    public int ShipResearchVariance;
     public int TroopResearch;
-    public int TroopResearchVariance;
     public int FacilityResearch;
-    public int FacilityResearchVariance;
 
     // Character Status
+    public OfficerStatus Status;
     public bool IsMain;
     public bool CanBetray;
     public bool IsTraitor;
     public bool IsJedi;
     public bool IsKnownJedi;
+    public int Loyalty;
 
     // Jedi Info
     public int JediProbability;
@@ -49,8 +51,35 @@ public class Officer : GameNode, IMissionParticipant
     public OfficerRank[] AllowedRanks;
     public OfficerRank CurrentRank;
 
-    // Other
-    public int Loyalty;
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
+
+    // Variance Info
+    [XmlIgnoreAttribute]
+    public int DiplomacyVariance;
+
+    [XmlIgnoreAttribute]
+    public int EspionageVariance;
+
+    [XmlIgnoreAttribute]
+    public int CombatVariance;
+
+    [XmlIgnoreAttribute]
+    public int LeadershipVariance;
+
+    [XmlIgnoreAttribute]
+    public int LoyaltyVariance;
+
+    [XmlIgnoreAttribute]
+    public int FacilityResearchVariance;
+
+    [XmlIgnoreAttribute]
+    public int TroopResearchVariance;
+
+    [XmlIgnoreAttribute]
+    public int ShipResearchVariance;
 
     /// <summary>
     /// Default constructor
