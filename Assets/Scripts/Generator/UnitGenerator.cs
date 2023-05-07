@@ -19,6 +19,10 @@ class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
     }
 }
 
+/// <summary>
+///
+/// </summary>
+/// <typeparam name="TUnit"></typeparam>
 public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     where TUnit : GameNode
 {

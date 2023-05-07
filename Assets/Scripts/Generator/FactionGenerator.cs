@@ -68,7 +68,7 @@ public class FactionGenerator : UnitGenerator<Faction>
         int numPlanets = numStartingPlanets * factions.Length;
         IEnumerable<Planet> startingPlanets = planetSystems
             .SelectMany(ps => ps.Planets) // Flatten the array.
-            .Where(planet => planet.IsColonized) // Select only those that are colonized.
+            .Where(planet => planet.IsColonized && planet.IsHeadquarters == false) // Select only those that are colonized & not HQs.
             .Shuffle() // Shuffle the array to randomize the list.
             .Take(numPlanets); // Take n planets to be the starting list.
 

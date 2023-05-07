@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ICollectionExtensions;
-using UnityEngine;
 
 /// <summary>
 ///
@@ -31,6 +30,11 @@ public class Planet : GameNode
             { BuildingSlot.Ground, new List<Building>() },
             { BuildingSlot.Orbit, new List<Building>() },
         };
+
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.

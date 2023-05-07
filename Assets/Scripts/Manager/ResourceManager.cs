@@ -18,8 +18,9 @@ class ResourceManagerImpl : IResourceManager
         where T : IConfig
     {
         string configName = typeof(T).ToString();
+        string filePath = Path.Combine("Configs", configName);
 
-        string json = Resources.Load<TextAsset>($"Configs/{configName}").text;
+        string json = Resources.Load<TextAsset>(filePath).text;
         T config = JsonUtility.FromJson<T>(json);
 
         return config;
@@ -35,18 +36,19 @@ class ResourceManagerImpl : IResourceManager
     {
         // Pluralize the string (e.g. Building -> Buildings).
         string pluralizedType = $"{typeof(T).ToString()}s";
+        string filePath = Path.Combine("Data", pluralizedType);
 
         // Initialize the XML Serializer.
         // Then, load the XML from the Resources directory.
         XmlRootAttribute rootElement = new XmlRootAttribute();
         rootElement.ElementName = pluralizedType;
         XmlSerializer serializer = new XmlSerializer(typeof(T[]), rootElement);
-        TextAsset gameXml = Resources.Load<TextAsset>($"Data/{pluralizedType}");
+        TextAsset gameXml = Resources.Load<TextAsset>(filePath);
 
         // Deserialize the result.
         using (MemoryStream stream = new MemoryStream(gameXml.bytes))
         {
-            T[] gameData = (T[])serializer.Deserialize(stream);
+            T[] gameData = serializer.Deserialize(stream) as T[];
             return gameData;
         }
     }
@@ -56,6 +58,9 @@ public class ResourceManager
 {
     private static IResourceManager _resourceManager = new ResourceManagerImpl();
 
+    /// <summary>
+    ///
+    /// </summary>
     public static IResourceManager Instance
     {
         get { return _resourceManager; }

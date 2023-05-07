@@ -76,8 +76,14 @@ public class OfficerGenerator : UnitGenerator<Officer>
             new Dictionary<string, List<GameNode>>(),
             (destinationMap, nextDestination) =>
             {
+                string ownerGameId =
+                    nextDestination
+                        .GetType()
+                        .GetProperty("OwnerGameID")
+                        .GetValue(nextDestination, null) as string;
+
                 List<GameNode> destinations = destinationMap.GetOrAddValue(
-                    nextDestination.OwnerGameID,
+                    ownerGameId,
                     new List<GameNode>()
                 );
                 destinations.Add(nextDestination);

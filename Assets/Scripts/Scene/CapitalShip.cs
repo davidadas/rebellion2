@@ -59,6 +59,11 @@ public class CapitalShip : GameNode, IManufacturable
     public bool HasGravityWell;
     public int DetectionRating;
 
+    // Owner Info
+    [CloneIgnore]
+    public string OwnerGameID { get; set; }
+    public string[] AllowedOwnerGameIDs;
+
     /// <summary>
     /// Default constructor.
     /// </summary>

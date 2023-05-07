@@ -12,6 +12,7 @@ public abstract class GameNode
 
     // Set the InstaceID property.
     // This is a unique ID set for each instance of an object.
+    [CloneIgnore]
     public string InstanceID
     {
         get
@@ -38,11 +39,8 @@ public abstract class GameNode
     public string Description { get; set; }
 
     // Graph Info
+    [CloneIgnore]
     public string ParentGameID { get; set; }
-
-    // Owner Info
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
 
     /// <summary>
     /// Default constructor.
