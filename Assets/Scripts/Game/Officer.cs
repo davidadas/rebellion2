@@ -20,7 +20,7 @@ public enum OfficerStatus
     InTransit,
 }
 
-public class Officer : GameNode, IMissionParticipant
+public class Officer : GameLeaf, IMissionParticipant
 {
     // Mission Stats
     public int Diplomacy { get; set; }
@@ -55,6 +55,7 @@ public class Officer : GameNode, IMissionParticipant
     [CloneIgnore]
     public string OwnerGameID { get; set; }
     public string[] AllowedOwnerGameIDs;
+    public string InitialParentGameID;
 
     // Variance Info
     [XmlIgnoreAttribute]
@@ -85,14 +86,4 @@ public class Officer : GameNode, IMissionParticipant
     /// Default constructor
     /// </summary>
     public Officer() { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return new GameNode[] { };
-    }
 }

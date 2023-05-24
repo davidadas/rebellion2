@@ -157,7 +157,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDUT01</GameID>
+		<GameID>BDUT02</GameID>
 		<DisplayName>Orbital Minefield</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>35</ConstructionCost>
@@ -168,7 +168,7 @@
 		<ResearchLevel>7</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDUT01</GameID>
+		<GameID>BDUT03</GameID>
 		<DisplayName>Advanced Orbital Telescope</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>111</ConstructionCost>

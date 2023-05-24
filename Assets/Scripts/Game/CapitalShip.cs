@@ -63,6 +63,7 @@ public class CapitalShip : GameNode, IManufacturable
     [CloneIgnore]
     public string OwnerGameID { get; set; }
     public string[] AllowedOwnerGameIDs;
+    public string InitialParentGameID { get; set; }
 
     /// <summary>
     /// Default constructor.

@@ -52,7 +52,7 @@ public class SaveGameManager
     /// </summary>
     /// <param name="fileName"></param>
     /// <returns></returns>
-    private Game LoadGameData(string fileName)
+    public Game LoadGameData(string fileName)
     {
         string saveFilePath = Path.Combine(
             Application.persistentDataPath,
