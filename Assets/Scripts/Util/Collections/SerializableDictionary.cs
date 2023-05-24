@@ -11,12 +11,12 @@ using System.Xml.Serialization;
 /// <typeparam name="TValue"></typeparam>
 public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IXmlSerializable
 {
-    protected XmlSchema xmlSchema = null;
-    protected string entryElement = "entry";
-    protected string keyElement = "key";
-    protected string valueElement = "value";
-    protected XmlSerializer keySerializer = new XmlSerializer(typeof(TKey));
-    protected XmlSerializer valueSerializer = new XmlSerializer(typeof(TValue));
+    protected XmlSchema Schema = null;
+    protected string EntryElement = "entry";
+    protected string KeyElement = "key";
+    protected string ValueElement = "value";
+    protected XmlSerializer KeySerializer = new XmlSerializer(typeof(TKey));
+    protected XmlSerializer ValueSerializer = new XmlSerializer(typeof(TValue));
 
     /// <summary>
     ///
@@ -27,10 +27,10 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IX
     /// <summary>
     ///
     /// </summary>
-    /// <param name="xmlSchema"></param>
-    public SerializableDictionary(XmlSchema xmlSchema)
+    /// <param name="Schema"></param>
+    public SerializableDictionary(XmlSchema Schema)
     {
-        this.SetSchema(xmlSchema);
+        this.SetSchema(Schema);
     }
 
     /// <summary>
@@ -39,16 +39,16 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IX
     /// <returns></returns>
     public XmlSchema GetSchema()
     {
-        return xmlSchema;
+        return Schema;
     }
 
     /// <summary>
     ///
     /// </summary>
-    /// <param name="xmlSchema"></param>
-    public void SetSchema(XmlSchema xmlSchema)
+    /// <param name="Schema"></param>
+    public void SetSchema(XmlSchema Schema)
     {
-        this.xmlSchema = xmlSchema;
+        this.Schema = Schema;
     }
 
     /// <summary>
@@ -64,16 +64,16 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IX
 
         reader.ReadStartElement();
 
-        while (reader.IsStartElement(entryElement))
+        while (reader.IsStartElement(EntryElement))
         {
-            reader.ReadStartElement(entryElement);
+            reader.ReadStartElement(EntryElement);
 
-            reader.ReadStartElement(keyElement);
-            TKey key = (TKey)keySerializer.Deserialize(reader);
+            reader.ReadStartElement(KeyElement);
+            TKey key = (TKey)KeySerializer.Deserialize(reader);
             reader.ReadEndElement();
 
-            reader.ReadStartElement(valueElement);
-            TValue value = (TValue)valueSerializer.Deserialize(reader);
+            reader.ReadStartElement(ValueElement);
+            TValue value = (TValue)ValueSerializer.Deserialize(reader);
             reader.ReadEndElement();
 
             reader.ReadEndElement();
@@ -91,14 +91,14 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IX
     {
         foreach (KeyValuePair<TKey, TValue> pairs in this)
         {
-            writer.WriteStartElement(entryElement);
+            writer.WriteStartElement(EntryElement);
 
-            writer.WriteStartElement(keyElement);
-            keySerializer.Serialize(writer, pairs.Key);
+            writer.WriteStartElement(KeyElement);
+            KeySerializer.Serialize(writer, pairs.Key);
             writer.WriteEndElement();
 
-            writer.WriteStartElement(valueElement);
-            valueSerializer.Serialize(writer, pairs.Value);
+            writer.WriteStartElement(ValueElement);
+            ValueSerializer.Serialize(writer, pairs.Value);
             writer.WriteEndElement();
 
             writer.WriteEndElement();

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 /// <summary>
 ///
 /// </summary>
-public class Regiment : GameNode, IManufacturable
+public class Starfighter : GameLeaf, IManufacturable
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -12,11 +12,26 @@ public class Regiment : GameNode, IManufacturable
     public int BaseBuildSpeed { get; set; }
     public int RequiredResearchLevel { get; set; }
 
-    // Regiment Info
-    public int AttackRating;
-    public int DefenseRating;
+    // General Info
+    public int SquadronSize;
     public int DetectionRating;
-    public int BombardmentDefense;
+    public int Bombardment;
+    public int ShieldStrength;
+
+    // Maneuverability Info
+    public int Hyperdrive;
+    public int SublightSpeed;
+    public int Agility;
+
+    // Weapon Info
+    public int LaserCannon;
+    public int IonCannon;
+    public int Torpedoes;
+
+    // Weapon Range Info
+    public int LaserRange;
+    public int IonRange;
+    public int TorpedoRange;
 
     // Owner Info
     [CloneIgnore]
@@ -26,15 +41,5 @@ public class Regiment : GameNode, IManufacturable
     /// <summary>
     /// Default constructor.
     /// </summary>
-    public Regiment() { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return new GameNode[] { };
-    }
+    public Starfighter() { }
 }

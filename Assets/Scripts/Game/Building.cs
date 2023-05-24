@@ -11,7 +11,7 @@ public enum BuildingSlot
 /// <summary>
 ///
 /// </summary>
-public class Building : GameNode, IManufacturable
+public class Building : GameLeaf, IManufacturable
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -31,14 +31,4 @@ public class Building : GameNode, IManufacturable
     /// Default constructor.
     /// </summary>
     public Building() { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node
-        return new GameNode[] { };
-    }
 }

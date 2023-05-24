@@ -10,7 +10,7 @@ public enum MessageType
     Resource,
 }
 
-public class Message : GameNode
+public class Message : GameLeaf
 {
     public MessageType Type;
     public string Text;
@@ -40,15 +40,5 @@ public class Message : GameNode
     {
         Read = false;
         return Text;
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return null;
     }
 }

@@ -63,7 +63,9 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
             CapitalShip capitalShip = capitalShips.First(
                 (capitalShip) => capitalShip.GameID == capitalShipConfig.GetValue<string>("GameID")
             );
-            capitalShip.ParentGameID = capitalShipConfig.GetValue<string>("ParentGameID");
+            capitalShip.InitialParentGameID = capitalShipConfig.GetValue<string>(
+                "InitialParentGameID"
+            );
             capitalShip.OwnerGameID = capitalShipConfig.GetValue<string>("OwnerGameID");
             mappedCapitalShips.Add(capitalShip);
         }
@@ -99,9 +101,9 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
         {
             // Handle case where capital ship has pre-defined parent.
             // We can only assign to HQs, as planets are randomly generated.
-            if (capitalShip.ParentGameID != null)
+            if (capitalShip.InitialParentGameID != null)
             {
-                Planet planet = hqs[capitalShip.ParentGameID];
+                Planet planet = hqs[capitalShip.InitialParentGameID];
                 planet.AddCapitalShip(capitalShip);
             }
             // Otherwise, randomly assign to a planet.

@@ -1,7 +1,7 @@
 /// <summary>
 ///
 /// </summary>
-public class SpecialForces : GameNode, IManufacturable, IMissionParticipant
+public class SpecialForces : GameLeaf, IManufacturable, IMissionParticipant
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -24,14 +24,4 @@ public class SpecialForces : GameNode, IManufacturable, IMissionParticipant
     /// Default constructor
     /// </summary>
     public SpecialForces() { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return new GameNode[] { };
-    }
 }

@@ -115,7 +115,7 @@ public class NewGameCapitalShipOptions : Config
 {
     public string OwnerGameID;
     public string GameID;
-    public string ParentGameID;
+    public string InitialParentGameID;
 
     public NewGameCapitalShipOptions() { }
 }

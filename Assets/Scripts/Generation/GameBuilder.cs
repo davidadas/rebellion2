@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using ICollectionExtensions;
 using IEnumerableExtensions;
 using UnityEngine;
 
@@ -36,6 +37,27 @@ public sealed class GameBuilder
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="nodes"></param>
+    /// <returns></returns>
+    private SerializableDictionary<string, ReferenceNode> getReferenceMap(params GameNode[][] nodes)
+    {
+        SerializableDictionary<string, ReferenceNode> referenceMap =
+            new SerializableDictionary<string, ReferenceNode>();
+        List<GameNode> referenceNodes = new List<GameNode>();
+        referenceNodes.AddAll(nodes);
+
+        foreach (GameNode node in referenceNodes)
+        {
+            ReferenceNode reference = new ReferenceNode(node);
+            referenceMap[node.GameID] = reference;
+        }
+
+        return referenceMap;
+    }
+
+    /// <summary>
     ///
     /// </summary>
     /// <returns></returns>
@@ -48,7 +70,7 @@ public sealed class GameBuilder
         // Then decorate the galaxy map with units.
         Building[] buildings = _buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
         Faction[] factions = _factionGenerator.GenerateUnits(galaxyMap).UnitPool;
-        CapitalShip[] capitalShips = _csGenerator.GenerateUnits(galaxyMap).DeployedUnits;
+        CapitalShip[] capitalShips = _csGenerator.GenerateUnits(galaxyMap).UnitPool;
         IUnitGenerationResults<Officer> officerResults = _officerGenerator.GenerateUnits(galaxyMap);
 
         // Retrieve list of unrecruited officers.
@@ -56,13 +78,22 @@ public sealed class GameBuilder
             .Except(officerResults.SelectedUnits)
             .ToArray();
 
-        return new Game
+        // Set the list of reference nodes (used for lookups).
+        SerializableDictionary<string, ReferenceNode> referenceMap = getReferenceMap(
+            capitalShips,
+            buildings
+        );
+
+        // Initialize our new game.
+        Game game = new Game
         {
             Summary = this._summary,
             Factions = factions.ToList<Faction>(),
             GalaxyMap = galaxyMap.ToList<PlanetSystem>(),
-            BuildingResearchList = buildings.ToList(),
             UnrecruitedOfficers = unrecruitedOfficers.ToList(),
+            Refences = referenceMap,
         };
+
+        return game;
     }
 }

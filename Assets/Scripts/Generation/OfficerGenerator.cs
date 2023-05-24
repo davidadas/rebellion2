@@ -171,10 +171,10 @@ public class OfficerGenerator : UnitGenerator<Officer>
             List<GameNode> destinations = destinationMapping[officer.OwnerGameID];
             GameNode destination;
 
-            if (officer.ParentGameID != null)
+            if (officer.InitialParentGameID != null)
             {
                 destination = destinations.First(
-                    (gameNode) => gameNode.GameID == officer.ParentGameID
+                    (gameNode) => gameNode.GameID == officer.InitialParentGameID
                 );
             }
             else

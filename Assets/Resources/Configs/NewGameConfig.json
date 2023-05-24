@@ -86,7 +86,7 @@
         "Small": [
           {
             "OwnerGameID": "FNEMP1",
-            "ParentGameID": "PLSEW05",
+            "InitialParentGameID": "PLSEW05",
             "GameID": "CSEM006"
           },
           {
