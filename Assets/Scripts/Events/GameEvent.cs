@@ -12,6 +12,17 @@ public abstract class GameEvent : GameLeaf
     public GameEvent() { }
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="target"></param>
+    public GameEvent(GameNode source, GameNode target)
+    {
+        SourceInstanceID = source.InstanceID;
+        TargetInstanceID = target.InstanceID;
+    }
+
+    /// <summary>
     ///
     /// </summary>
     /// <param name="rootNode"></param>

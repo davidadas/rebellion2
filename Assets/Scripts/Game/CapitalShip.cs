@@ -116,6 +116,35 @@ public class CapitalShip : GameNode, IManufacturable
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void AddChildNode(GameNode childNode)
+    {
+        if (childNode is Officer)
+        {
+            AddOfficer((Officers)childNode);
+        }
+        else if (childNode is Regiment)
+        {
+            AddRegiment((Regiment)childNode);
+        }
+        else if (childNode is Starfighter)
+        {
+            AddBuilding((Starfighter)childNode);
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void RemoveChildNode(GameNode childNode)
+    {
+
+    }
+
+    /// <summary>
     ///
     /// </summary>
     /// <returns></returns>

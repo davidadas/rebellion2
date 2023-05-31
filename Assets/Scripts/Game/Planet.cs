@@ -96,40 +96,6 @@ public class Planet : GameNode
     /// <summary>
     ///
     /// </summary>
-    /// <param name="buildings"></param>
-    public void AddBuildings(Building[] buildings)
-    {
-        if (!IsColonized)
-            throw new GameException(
-                $"Cannot add buildings to {this.DisplayName}. Planet is not colonized."
-            );
-
-        IEnumerable<Building> groundBuildings = buildings.Where(
-            building => building.Slot == BuildingSlot.Ground
-        );
-        IEnumerable<Building> orbitBuildings = buildings.Where(
-            building => building.Slot == BuildingSlot.Orbit
-        );
-
-        // Ensure there is sufficient capacity for new buildings.
-        if (
-            groundBuildings.Count() > GetAvailableSlots(BuildingSlot.Ground)
-            || orbitBuildings.Count() > GetAvailableSlots(BuildingSlot.Orbit)
-        )
-        {
-            throw new GameException(
-                $"Addional buildings would exceed {this.DisplayName}'s capacity."
-            );
-        }
-
-        // Add the provided buildings to the existing building lists.
-        Buildings[BuildingSlot.Ground].AddAll(groundBuildings);
-        Buildings[BuildingSlot.Orbit].AddAll(orbitBuildings);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
     /// <param name="capitalShip"></param>
     public void AddCapitalShip(CapitalShip capitalShip)
     {
@@ -160,6 +126,35 @@ public class Planet : GameNode
             throw new SceneException(officer, this, SceneExceptionType.Access);
         }
         Officers.Add(officer);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void AddChildNode(GameNode childNode)
+    {
+        if (childNode is Building)
+        {
+            AddBuilding((uilding)childNode);
+        }
+        else if (childNode is CapitalShip)
+        {
+            AddCapitalShip((CapitalShip)childNode);
+        }
+        else if (childNode is Officer)
+        {
+            AddOfficer((Officers)childNode);
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void RemoveChildNode(GameNode childNode)
+    {
+
     }
 
     /// <summary>

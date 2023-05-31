@@ -85,6 +85,21 @@ public abstract class GameNode
     ///
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    /// <param name="gameId"></param>
+    /// <returns></returns>
+    public T[] FindNodesByGameID<T>(string gameId)
+        where T : GameNode
+    {
+        GameNode[] nodes = new GameNode[] { this };
+        List<T> results = searchByGameId<T>(nodes, gameId);
+
+        return results.ToArray();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     /// <param name="nodes"></param>
     /// <param name="instanceId"></param>
     /// <returns></returns>
@@ -108,6 +123,63 @@ public abstract class GameNode
 
         return null;
     }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="nodes"></param>
+    /// <param name="gameId"></param>
+    /// <param name="results"></param>
+    /// <returns></returns>
+    private List<T> searchByGameId<T>(
+        GameNode[] nodes,
+        string gameId,
+        List<T> results = null
+    )
+        where T : GameNode
+    {
+        if (results == null)
+        {
+            results = new List<T>();
+        }
+
+        foreach (GameNode node in nodes)
+        {
+            if (node.GameID == gameId)
+            {
+                results.Add((T)node);
+            }
+
+            searchByGameId(node.GetChildNodes(), gameId, results);
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNodes"></param>
+    public void Attach(params GameNode[] childNodes)
+    {
+        foreach(GameNode childNode in childNodes)
+        {
+
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected abstract void AddChildNode(GameNode childNode);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected abstract void RemoveChildNode(GameNode childNode);
 
     /// <summary>
     ///

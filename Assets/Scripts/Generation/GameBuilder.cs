@@ -37,7 +37,7 @@ public sealed class GameBuilder
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="nodes"></param>
     /// <returns></returns>

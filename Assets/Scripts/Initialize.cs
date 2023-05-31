@@ -59,7 +59,12 @@ public class Startup
         GameBuilder builder = new GameBuilder(summary);
         Game game = builder.BuildGame();
 
-        game.AddGameEvent(1, new MoveUnitEvent());
+        Officer luke = game.FindNodesByGameID<Officer>("OFAL003")[0];
+        Planet tatooine = game.FindNodesByGameID<Planet>("PLORU02")[0]; 
+        Debug.Log(luke.DisplayName);
+        Debug.Log(tatooine.DisplayName);
+
+        game.AddGameEvent(1, new MoveUnitEvent(luke, tatooine));
         game.IncrementTick();
     }
 }
