@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Faction : GameNode
+public class Faction : GameLeaf
 {
     public SerializableDictionary<MessageType, List<Message>> Messages = new SerializableDictionary<
         MessageType,
@@ -30,15 +30,5 @@ public class Faction : GameNode
     public void AddMessage(Message message)
     {
         Messages[message.Type].Add(message);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return new GameNode[] { };
     }
 }

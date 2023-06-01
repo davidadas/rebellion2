@@ -77,6 +77,27 @@ public class Game : GameRoot
     }
 
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void AddChildNode(GameNode childNode)
+    {
+        // Do nothing. Children set during initialization.
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void RemoveChildNode(GameNode childNode)
+    {
+        if (childNode is Officer)
+        {
+            UnrecruitedOfficers.Remove((Officer)childNode);
+        }
+    }
+
+    /// <summary>
     ///
     /// </summary>
     /// <returns></returns>

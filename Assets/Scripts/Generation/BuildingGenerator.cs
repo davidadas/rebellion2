@@ -110,7 +110,7 @@ public class BuildingGenerator : UnitGenerator<Building>
                     );
 
                     // Add the generated buildings to the planet.
-                    planet.AddBuildings(initialBuildings.ToArray());
+                    planet.Attach(initialBuildings.ToArray());
                     deployedBuildings.AddAll(initialBuildings);
                 }
             }

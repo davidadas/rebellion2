@@ -71,35 +71,33 @@ public class CapitalShip : GameNode, IManufacturable
     public CapitalShip() { }
 
     /// <summary>
-    ///
+    /// 
     /// </summary>
-    /// <param name="starfighters"></param>
-    public void AddStarfighters(Starfighter[] starfighters)
+    /// <param name="starfighter"></param>
+    public void AddStarfighter(Starfighter starfighter)
     {
-        int capacity = StarfighterCapacity - Starfighters.Length;
-        if (starfighters.Length > capacity)
+        if (Starfighters.Length == StarfighterCapacity)
         {
             throw new GameException(
                 $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
             );
         }
-        Starfighters.AddAll(starfighters);
+        Starfighters.Add(starfighter);
     }
 
     /// <summary>
-    ///
+    /// 
     /// </summary>
-    /// <param name="regiments"></param>
-    public void AddRegiments(Regiment[] regiments)
+    /// <param name="regiment"></param>
+    public void AddRegiment(Regiment regiment)
     {
-        int capacity = RegimentCapacity - Regiments.Length;
-        if (regiments.Length > capacity)
+        if (Regiments.Length > RegimentCapacity)
         {
             throw new GameException(
                 $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
             );
         }
-        Regiments.AddAll(regiments);
+        Regiments.AddAll(regiment);
     }
 
     /// <summary>

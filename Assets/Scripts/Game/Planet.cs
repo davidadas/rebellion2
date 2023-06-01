@@ -73,7 +73,7 @@ public class Planet : GameNode
     ///
     /// </summary>
     /// <param name="building"></param>
-    public void AddBuilding(Building building)
+    private void AddBuilding(Building building)
     {
         if (!IsColonized)
             throw new GameException(
@@ -97,7 +97,7 @@ public class Planet : GameNode
     ///
     /// </summary>
     /// <param name="capitalShip"></param>
-    public void AddCapitalShip(CapitalShip capitalShip)
+    private void AddCapitalShip(CapitalShip capitalShip)
     {
         if (Fleets.Count > 0)
         {
@@ -119,7 +119,7 @@ public class Planet : GameNode
     ///
     /// </summary>
     /// <param name="officer"></param>
-    public void AddOfficer(Officer officer)
+    private void AddOfficer(Officer officer)
     {
         if (this.OwnerGameID != officer.OwnerGameID)
         {

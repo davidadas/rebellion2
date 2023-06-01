@@ -185,11 +185,11 @@ public class OfficerGenerator : UnitGenerator<Officer>
             System.Type destinationType = destination.GetType();
             if (destinationType.IsAssignableFrom(typeof(Planet)))
             {
-                ((Planet)destination).AddOfficer(officer);
+                ((Planet)destination).Attach(officer);
             }
             else
             {
-                ((Fleet)destination).AddOfficer(officer);
+                ((Fleet)destination).Attach(officer);
             }
         }
         return officers;

@@ -165,7 +165,7 @@ public abstract class GameNode
     {
         foreach(GameNode childNode in childNodes)
         {
-
+            AddChildNode(childNode);
         }
     }
 

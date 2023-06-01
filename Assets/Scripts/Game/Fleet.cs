@@ -20,7 +20,7 @@ public class Fleet : GameNode
     ///
     /// </summary>
     /// <param name="capitalShip"></param>
-    public void AddCapitalShip(CapitalShip capitalShip)
+    private void AddCapitalShip(CapitalShip capitalShip)
     {
         if (this.OwnerGameID != capitalShip.OwnerGameID)
         {
@@ -33,9 +33,37 @@ public class Fleet : GameNode
     ///
     /// </summary>
     /// <param name="officer"></param>
-    public void AddOfficer(Officer officer)
+    private void AddOfficer(Officer officer)
     {
         CapitalShips[0].AddOfficer(officer);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void AddChildNode(GameNode childNode)
+    {
+        if (childNode is CapitalShip)
+        {
+            AddCapitalShip((CapitalShip)childNode);
+        }
+        else if(childNode is Officer)
+        {
+            AddOfficer((Officer)childNode);
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="childNode"></param>
+    protected override void RemoveChildNode(GameNode childNode)
+    {
+        if (childNode is CapitalShip)
+        {
+            CapitalShips.Remove((CapitalShip)childNode);
+        }
     }
 
     /// <summary>
