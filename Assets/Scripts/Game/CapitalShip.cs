@@ -39,8 +39,8 @@ public class CapitalShip : GameNode, IManufacturable
 
     // Unit Info
     public List<Officer> Officers = new List<Officer>();
-    public Regiment[] Regiments;
-    public Starfighter[] Starfighters;
+    public List<Regiment> Regiments = new List<Regiment>();
+    public List<Starfighter> Starfighters = new List<Starfighter>();
 
     // Weapon Info.
     public SerializableDictionary<PrimaryWeaponType, int[]> PrimaryWeapons =
@@ -71,12 +71,12 @@ public class CapitalShip : GameNode, IManufacturable
     public CapitalShip() { }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="starfighter"></param>
     public void AddStarfighter(Starfighter starfighter)
     {
-        if (Starfighters.Length == StarfighterCapacity)
+        if (Starfighters.Count == StarfighterCapacity)
         {
             throw new GameException(
                 $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
@@ -86,18 +86,18 @@ public class CapitalShip : GameNode, IManufacturable
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="regiment"></param>
     public void AddRegiment(Regiment regiment)
     {
-        if (Regiments.Length > RegimentCapacity)
+        if (Regiments.Count > RegimentCapacity)
         {
             throw new GameException(
                 $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
             );
         }
-        Regiments.AddAll(regiment);
+        Regiments.Add(regiment);
     }
 
     /// <summary>
@@ -114,14 +114,14 @@ public class CapitalShip : GameNode, IManufacturable
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void AddChildNode(GameNode childNode)
     {
         if (childNode is Officer)
         {
-            AddOfficer((Officers)childNode);
+            AddOfficer((Officer)childNode);
         }
         else if (childNode is Regiment)
         {
@@ -129,17 +129,28 @@ public class CapitalShip : GameNode, IManufacturable
         }
         else if (childNode is Starfighter)
         {
-            AddBuilding((Starfighter)childNode);
+            AddStarfighter((Starfighter)childNode);
         }
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void RemoveChildNode(GameNode childNode)
     {
-
+        if (childNode is Officer)
+        {
+            Officers.Remove((Officer)childNode);
+        }
+        else if (childNode is Regiment)
+        {
+            Regiments.Remove((Regiment)childNode);
+        }
+        else if (childNode is Starfighter)
+        {
+            Starfighters.Remove((Starfighter)childNode);
+        }
     }
 
     /// <summary>

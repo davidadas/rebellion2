@@ -42,6 +42,7 @@ public abstract class GameNode
     [CloneIgnore]
     public string ParentGameID { get; set; }
     protected GameNode ParentNode;
+    protected object parentLock = new object();
 
     /// <summary>
     /// Default constructor.
@@ -52,10 +53,13 @@ public abstract class GameNode
     ///
     /// </summary>
     /// <param name="parentNode"></param>
-    public void SetParent(GameNode parentNode)
+    public void SetParent(GameNode? parentNode)
     {
         ParentNode = parentNode;
-        ParentGameID = parentNode.GameID;
+        if (parentNode != null)
+        {
+            ParentGameID = parentNode.GameID;
+        }
     }
 
     /// <summary>
@@ -125,18 +129,14 @@ public abstract class GameNode
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="nodes"></param>
     /// <param name="gameId"></param>
     /// <param name="results"></param>
     /// <returns></returns>
-    private List<T> searchByGameId<T>(
-        GameNode[] nodes,
-        string gameId,
-        List<T> results = null
-    )
+    private List<T> searchByGameId<T>(GameNode[] nodes, string gameId, List<T> results = null)
         where T : GameNode
     {
         if (results == null)
@@ -158,25 +158,60 @@ public abstract class GameNode
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNodes"></param>
     public void Attach(params GameNode[] childNodes)
     {
-        foreach(GameNode childNode in childNodes)
+        foreach (GameNode childNode in childNodes)
         {
-            AddChildNode(childNode);
+            lock (parentLock)
+            {
+                try
+                {
+                    AddChildNode(childNode);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Unable to Attach Node to Scene Graph. Cause: {e.Message}");
+                }
+            }
+
+            if (ParentNode != null)
+            {
+                ParentNode.Detach(childNode);
+            }
+            childNode.SetParent(this);
+        }
+    }
+
+    public void Detach(params GameNode[] childNodes)
+    {
+        foreach (GameNode childNode in childNodes)
+        {
+            lock (parentLock)
+            {
+                try
+                {
+                    RemoveChildNode(childNode);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Unable to Detach Node to Scene Graph. Cause: {e.Message}");
+                }
+            }
+            childNode.SetParent(null);
         }
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected abstract void AddChildNode(GameNode childNode);
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected abstract void RemoveChildNode(GameNode childNode);

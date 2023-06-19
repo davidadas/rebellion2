@@ -60,11 +60,12 @@ public class Startup
         Game game = builder.BuildGame();
 
         Officer luke = game.FindNodesByGameID<Officer>("OFAL003")[0];
-        Planet tatooine = game.FindNodesByGameID<Planet>("PLORU02")[0]; 
+        Planet yavin = game.FindNodesByGameID<Planet>("PLSUM06")[0];
         Debug.Log(luke.DisplayName);
-        Debug.Log(tatooine.DisplayName);
+        Debug.Log(yavin.DisplayName);
 
-        game.AddGameEvent(1, new MoveUnitEvent(luke, tatooine));
+        game.AddGameEvent(1, new MoveUnitEvent(luke, yavin));
         game.IncrementTick();
+        Debug.Log(yavin.Officers[yavin.Officers.Count - 1].DisplayName);
     }
 }

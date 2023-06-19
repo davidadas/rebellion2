@@ -40,26 +40,26 @@ public class PlanetSystem : GameNode
     public PlanetSystem() { }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void AddChildNode(GameNode childNode)
     {
-        if (childNode is Planets)
+        if (childNode is Planet)
         {
             Planets.Add((Planet)childNode);
         }
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void RemoveChildNode(GameNode childNode)
     {
         if (childNode is Planet)
         {
-            Planets.Remove(childNode);
+            Planets.Remove((Planet)childNode);
         }
     }
 

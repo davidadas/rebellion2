@@ -12,7 +12,7 @@ public abstract class GameEvent : GameLeaf
     public GameEvent() { }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="source"></param>
     /// <param name="target"></param>
@@ -28,13 +28,13 @@ public abstract class GameEvent : GameLeaf
     /// <param name="rootNode"></param>
     public void Trigger(GameRoot rootNode)
     {
-        GameNode sender = rootNode.FindNodeByInstanceID<GameNode>(SourceInstanceID);
+        GameNode source = rootNode.FindNodeByInstanceID<GameNode>(SourceInstanceID);
         GameNode target = rootNode.FindNodeByInstanceID<GameNode>(TargetInstanceID);
 
         GameEventArgs eventArgs = new GameEventArgs(target);
 
         // Invoke the child event.
-        OnTrigger(sender, eventArgs);
+        OnTrigger(source, eventArgs);
     }
 
     /// <summary>

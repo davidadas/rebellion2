@@ -101,7 +101,7 @@ public class Planet : GameNode
     {
         if (Fleets.Count > 0)
         {
-            Fleets[0].AddCapitalShip(capitalShip);
+            Fleets[0].Attach(capitalShip);
         }
         else
         {
@@ -110,7 +110,7 @@ public class Planet : GameNode
                 throw new SceneException(capitalShip, this, SceneExceptionType.Access);
             }
             Fleet fleet = new Fleet { OwnerGameID = capitalShip.OwnerGameID };
-            fleet.AddCapitalShip(capitalShip);
+            fleet.Attach(capitalShip);
             Fleets.Add(fleet);
         }
     }
@@ -129,14 +129,14 @@ public class Planet : GameNode
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void AddChildNode(GameNode childNode)
     {
         if (childNode is Building)
         {
-            AddBuilding((uilding)childNode);
+            AddBuilding((Building)childNode);
         }
         else if (childNode is CapitalShip)
         {
@@ -144,18 +144,15 @@ public class Planet : GameNode
         }
         else if (childNode is Officer)
         {
-            AddOfficer((Officers)childNode);
+            AddOfficer((Officer)childNode);
         }
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
-    protected override void RemoveChildNode(GameNode childNode)
-    {
-
-    }
+    protected override void RemoveChildNode(GameNode childNode) { }
 
     /// <summary>
     ///

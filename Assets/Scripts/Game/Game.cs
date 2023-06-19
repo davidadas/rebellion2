@@ -77,7 +77,7 @@ public class Game : GameRoot
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void AddChildNode(GameNode childNode)
@@ -86,7 +86,7 @@ public class Game : GameRoot
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void RemoveChildNode(GameNode childNode)

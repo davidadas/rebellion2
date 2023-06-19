@@ -2,7 +2,7 @@ using System;
 
 public class GameEventArgs : EventArgs
 {
-    protected GameNode Target;
+    public GameNode Target;
 
     /// <summary>
     ///

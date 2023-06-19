@@ -35,11 +35,11 @@ public class Fleet : GameNode
     /// <param name="officer"></param>
     private void AddOfficer(Officer officer)
     {
-        CapitalShips[0].AddOfficer(officer);
+        CapitalShips[0].Attach(officer);
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void AddChildNode(GameNode childNode)
@@ -48,14 +48,14 @@ public class Fleet : GameNode
         {
             AddCapitalShip((CapitalShip)childNode);
         }
-        else if(childNode is Officer)
+        else if (childNode is Officer)
         {
             AddOfficer((Officer)childNode);
         }
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="childNode"></param>
     protected override void RemoveChildNode(GameNode childNode)
