@@ -3,7 +3,7 @@
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 public interface IUnitGenerationResults<TUnit>
-    where TUnit : GameNode
+    where TUnit : SceneNode
 {
     // Array of all possible unit options.
     public TUnit[] UnitPool { get; set; }

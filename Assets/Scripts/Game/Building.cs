@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 public enum BuildingSlot
 {
@@ -11,7 +10,7 @@ public enum BuildingSlot
 /// <summary>
 ///
 /// </summary>
-public class Building : GameLeaf, IManufacturable
+public class Building : LeafNode, IManufacturable
 {
     // Construction Info
     public int ConstructionCost { get; set; }

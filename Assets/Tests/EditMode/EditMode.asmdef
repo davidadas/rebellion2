@@ -1,0 +1,12 @@
+{
+    "name": "EditMode",
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "references": [
+        "GameAssembly"
+    ]
+}

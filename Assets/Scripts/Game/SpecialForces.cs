@@ -1,7 +1,10 @@
+using System.Collections;
+using System.Collections.Generic;
+
 /// <summary>
-///
+/// Represents a special forces unit that can be used in missions.
 /// </summary>
-public class SpecialForces : GameLeaf, IManufacturable, IMissionParticipant
+public class SpecialForces : MissionParticipant, IManufacturable
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -21,7 +24,8 @@ public class SpecialForces : GameLeaf, IManufacturable, IMissionParticipant
     public string[] AllowedOwnerGameIDs;
 
     /// <summary>
-    /// Default constructor
+    /// Default constructor used for serialization.
     /// </summary>
     public SpecialForces() { }
+
 }

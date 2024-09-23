@@ -4,10 +4,9 @@ using System.Linq;
 using System.IO;
 using ICollectionExtensions;
 using IEnumerableExtensions;
-using UnityEngine;
 
 /// <summary>
-/// WARNING: This class is considered a placeholder and is likely to change in the future.
+/// Represents a class responsible for building the game by generating the galaxy map and decorating it with units.
 /// </summary>
 public sealed class GameBuilder
 {
@@ -19,9 +18,9 @@ public sealed class GameBuilder
     private GameSummary _summary;
 
     /// <summary>
-    ///
+    /// Initializes a new instance of the GameBuilder class.
     /// </summary>
-    /// <param name="summary"></param>
+    /// <param name="summary">The summary of the game.</param>
     public GameBuilder(GameSummary summary)
     {
         IResourceManager resourceManager = ResourceManager.Instance;
@@ -37,18 +36,18 @@ public sealed class GameBuilder
     }
 
     /// <summary>
-    /// 
+    /// Gets the reference map for the given game nodes.
     /// </summary>
-    /// <param name="nodes"></param>
-    /// <returns></returns>
-    private SerializableDictionary<string, ReferenceNode> getReferenceMap(params GameNode[][] nodes)
+    /// <param name="nodes">The game nodes to create the reference map from.</param>
+    /// <returns>The reference map.</returns>
+    private SerializableDictionary<string, ReferenceNode> getReferenceMap(params SceneNode[][] nodes)
     {
         SerializableDictionary<string, ReferenceNode> referenceMap =
             new SerializableDictionary<string, ReferenceNode>();
-        List<GameNode> referenceNodes = new List<GameNode>();
+        List<SceneNode> referenceNodes = new List<SceneNode>();
         referenceNodes.AddAll(nodes);
 
-        foreach (GameNode node in referenceNodes)
+        foreach (SceneNode node in referenceNodes)
         {
             ReferenceNode reference = new ReferenceNode(node);
             referenceMap[node.GameID] = reference;
@@ -58,9 +57,9 @@ public sealed class GameBuilder
     }
 
     /// <summary>
-    ///
+    /// Builds the game by generating the galaxy map and decorating it with units.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The built game.</returns>
     public Game BuildGame()
     {
         // First, generate our galaxy map with stat decorated planets.
@@ -84,14 +83,19 @@ public sealed class GameBuilder
             buildings
         );
 
+        GalaxyMap Galaxy = new GalaxyMap
+        {
+            PlanetSystems = galaxyMap.ToList<PlanetSystem>(),
+        };
+
         // Initialize our new game.
         Game game = new Game
         {
             Summary = this._summary,
+            Galaxy = Galaxy,
             Factions = factions.ToList<Faction>(),
-            GalaxyMap = galaxyMap.ToList<PlanetSystem>(),
             UnrecruitedOfficers = unrecruitedOfficers.ToList(),
-            Refences = referenceMap,
+            ReferenceDictionary = referenceMap,
         };
 
         return game;

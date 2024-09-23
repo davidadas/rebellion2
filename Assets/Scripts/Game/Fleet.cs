@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using ICollectionExtensions;
 
-public class Fleet : GameNode
+public class Fleet : SceneNode
 {
     public List<CapitalShip> CapitalShips = new List<CapitalShip>();
 
@@ -17,32 +17,67 @@ public class Fleet : GameNode
     public Fleet() { }
 
     /// <summary>
-    ///
+    /// Constructor that initializes the fleet with an owner.
     /// </summary>
-    /// <param name="capitalShip"></param>
-    public void AddCapitalShip(CapitalShip capitalShip)
+    /// <param name="capitalShip">The capital ship to add to the fleet.</param>
+    /// <exception cref="SceneAccessException">Thrown when the capital ship is not allowed to be added.</exception>
+    private void AddCapitalShip(CapitalShip capitalShip)
     {
         if (this.OwnerGameID != capitalShip.OwnerGameID)
         {
-            throw new SceneException(capitalShip, this, SceneExceptionType.Access);
+            throw new SceneAccessException(capitalShip, this);
         }
         CapitalShips.Add(capitalShip);
     }
 
     /// <summary>
-    ///
+    /// Adds an officer to the fleet.
     /// </summary>
-    /// <param name="officer"></param>
-    public void AddOfficer(Officer officer)
+    /// <param name="officer">The officer to add to the fleet.</param>
+    /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
+    private void AddOfficer(Officer officer)
     {
+        if (this.OwnerGameID != officer.OwnerGameID)
+        {
+            throw new SceneAccessException(officer, this);
+        }
         CapitalShips[0].AddOfficer(officer);
     }
 
     /// <summary>
-    ///
+    /// Adds a child to the node.
     /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
+    /// <param name="child">The child node to add.</param>
+    /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
+    protected internal override void AddChild(SceneNode child)
+    {
+        if (child is CapitalShip)
+        {
+            AddCapitalShip(child as CapitalShip);
+        }
+        else if (child is Officer officer)
+        {
+            AddOfficer(officer);
+        }
+    }
+
+    /// <summary>
+    /// Removes a child from the node.
+    /// </summary>
+    /// <param name="child">The child node to remove.</param>
+    protected internal override void RemoveChild(SceneNode child)
+    {
+        if (child is CapitalShip capitalShip)
+        {
+            CapitalShips.Remove(capitalShip);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the children of the node.
+    /// </summary>
+    /// <returns>An array of child nodes.</returns>
+    public override IEnumerable<SceneNode> GetChildren()
     {
         return CapitalShips.ToArray();
     }

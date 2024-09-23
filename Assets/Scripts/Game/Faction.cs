@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class Faction : GameNode
+/// <summary>
+/// 
+/// </summary>
+public class Faction : LeafNode
 {
     public SerializableDictionary<MessageType, List<Message>> Messages = new SerializableDictionary<
         MessageType,
@@ -24,21 +26,11 @@ public class Faction : GameNode
     public Faction() { }
 
     /// <summary>
-    ///
+    /// Adds a message to the Messages dictionary based on its type.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message to add.</param>
     public void AddMessage(Message message)
     {
         Messages[message.Type].Add(message);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public override GameNode[] GetChildNodes()
-    {
-        // Leaf node.
-        return new GameNode[] { };
     }
 }

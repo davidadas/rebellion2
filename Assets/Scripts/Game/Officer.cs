@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Xml.Serialization;
-using UnityEngine;
 
 public enum OfficerRank
 {
@@ -20,7 +19,7 @@ public enum OfficerStatus
     InTransit,
 }
 
-public class Officer : GameLeaf, IMissionParticipant
+public class Officer : MissionParticipant
 {
     // Mission Stats
     public int Diplomacy { get; set; }
@@ -86,4 +85,5 @@ public class Officer : GameLeaf, IMissionParticipant
     /// Default constructor
     /// </summary>
     public Officer() { }
+
 }

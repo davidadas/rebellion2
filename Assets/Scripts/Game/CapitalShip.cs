@@ -1,8 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System;
 using ICollectionExtensions;
-using UnityEngine;
 
 public enum PrimaryWeaponType
 {
@@ -12,9 +12,9 @@ public enum PrimaryWeaponType
 }
 
 /// <summary>
-///
+/// Represents a capital ship in the game.
 /// </summary>
-public class CapitalShip : GameNode, IManufacturable
+public class CapitalShip : SceneNode, IManufacturable
 {
     // Manufacture Info
     public int ConstructionCost { get; set; }
@@ -39,8 +39,8 @@ public class CapitalShip : GameNode, IManufacturable
 
     // Unit Info
     public List<Officer> Officers = new List<Officer>();
-    public Regiment[] Regiments;
-    public Starfighter[] Starfighters;
+    public List<Regiment> Regiments = new List<Regiment>();
+    public List<Starfighter> Starfighters = new List<Starfighter>();
 
     // Weapon Info.
     public SerializableDictionary<PrimaryWeaponType, int[]> PrimaryWeapons =
@@ -71,56 +71,101 @@ public class CapitalShip : GameNode, IManufacturable
     public CapitalShip() { }
 
     /// <summary>
-    ///
+    /// Adds a starfighter to the capital ship.
     /// </summary>
-    /// <param name="starfighters"></param>
-    public void AddStarfighters(Starfighter[] starfighters)
+    /// <param name="starfighter">The starfighter to add</param>
+    /// <exception cref="GameException">Thrown when adding the starfighter would exceed the capacity.</exception>
+    public void AddStarfighter(Starfighter starfighter)
     {
-        int capacity = StarfighterCapacity - Starfighters.Length;
-        if (starfighters.Length > capacity)
+        if (Starfighters.Count >= StarfighterCapacity)
         {
             throw new GameException(
                 $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
             );
         }
-        Starfighters.AddAll(starfighters);
+        Starfighters.Add(starfighter);
     }
 
     /// <summary>
-    ///
+    /// Adds a regiment to the capital ship.
     /// </summary>
-    /// <param name="regiments"></param>
-    public void AddRegiments(Regiment[] regiments)
+    /// <param name="regiment">The regiment to add.</param>
+    /// <exception cref="GameException">Thrown when adding the regiment would exceed the capacity.</exception>
+    public void AddRegiment(Regiment regiment)
     {
-        int capacity = RegimentCapacity - Regiments.Length;
-        if (regiments.Length > capacity)
+        if (Regiments.Count >= RegimentCapacity)
         {
             throw new GameException(
-                $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
+                $"Adding regiments to \"{this.DisplayName}\" would exceed its capacity."
             );
         }
-        Regiments.AddAll(regiments);
+        Regiments.Add(regiment);
     }
 
     /// <summary>
-    ///
+    /// Adds an officer to the capital ship.
     /// </summary>
     /// <param name="officer"></param>
+    /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     public void AddOfficer(Officer officer)
     {
         if (this.OwnerGameID != officer.OwnerGameID)
         {
-            throw new SceneException(officer, this, SceneExceptionType.Access);
+            throw new SceneAccessException(officer, this);
         }
         Officers.Add(officer);
     }
 
     /// <summary>
-    ///
+    /// Adds a child to the capital ship.
+    /// </summary>
+    /// <param name="child">The child to add</param>
+    /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
+    protected internal override void AddChild(SceneNode child)
+    {
+        if (child is Starfighter starfighter)
+        {
+            AddStarfighter(starfighter);
+        }
+        else if (child is Regiment regiment)
+        {
+            AddRegiment(regiment);
+        }
+        else if (child is Officer officer)
+        {
+            AddOfficer(officer);
+        }
+    }
+
+    /// <summary>
+    /// Adds a child to the capital ship.
+    /// </summary>
+    /// <param name="child">The child to remove</param>
+    protected internal override void RemoveChild(SceneNode child)
+    {
+        if (child is Starfighter starfighter)
+        {
+            Starfighters.Remove(starfighter);
+        }
+        else if (child is Regiment regiment)
+        {
+            Regiments.Remove(regiment);
+        }
+        else if (child is Officer officer)
+        {
+            Officers.Remove(officer);
+        }
+    }
+
+    /// <summary>
+    /// 
     /// </summary>
     /// <returns></returns>
-    public override GameNode[] GetChildNodes()
+    public override IEnumerable<SceneNode> GetChildren()
     {
-        return Officers.ToArray();
+        List<SceneNode> combinedList = new List<SceneNode>();
+        combinedList.AddAll(Officers, Starfighters, Regiments);
+
+        return combinedList.ToArray();
     }
 }

@@ -6,6 +6,7 @@
 
 # Unity Extensions
 *.meta
+Unity_lic.alf
 
 # Node Files
 package.json
@@ -18,3 +19,5 @@ node_modules
 # Misc
 **/*.scratch
 **/dump
+**/.DS_Store
+logfile.log

@@ -1,13 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System;
-using UnityEngine;
 
 public enum GameSize
 {
-    Small = 1,
-    Medium = 2,
-    Large = 3,
+    Small = 0,
+    Medium = 1,
+    Large = 2,
 }
 
 public enum GameDifficulty

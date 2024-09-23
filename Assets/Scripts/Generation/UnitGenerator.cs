@@ -5,7 +5,7 @@ using System;
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
-    where TUnit : GameNode
+    where TUnit : SceneNode
 {
     public TUnit[] UnitPool { get; set; }
     public TUnit[] SelectedUnits { get; set; }
@@ -24,7 +24,7 @@ class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
-    where TUnit : GameNode
+    where TUnit : SceneNode
 {
     private GameSummary _summary;
     private IResourceManager _resourceManager;
@@ -95,7 +95,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     )
     {
         // Load game data from file.
-        TUnit[] unitPool = _resourceManager.GetGameNodeData<TUnit>();
+        TUnit[] unitPool = _resourceManager.GetSceneNodeData<TUnit>();
 
         // Select units which shall appear in game.
         TUnit[] selectedUnits = SelectUnits(unitPool);

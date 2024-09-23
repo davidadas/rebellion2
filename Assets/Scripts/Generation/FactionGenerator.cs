@@ -2,8 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using IEnumerableExtensions;
-using UnityEngine;
 
+/// <summary>
+/// 
+/// </summary>
 public class FactionGenerator : UnitGenerator<Faction>
 {
     /// <summary>

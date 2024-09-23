@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-///
+/// Represents a starfighter squadron that can be stationed on a planet or capital ship.
 /// </summary>
-public class Starfighter : GameLeaf, IManufacturable
+public class Starfighter : LeafNode, IManufacturable
 {
     // Construction Info
     public int ConstructionCost { get; set; }
@@ -39,7 +39,8 @@ public class Starfighter : GameLeaf, IManufacturable
     public string[] AllowedOwnerGameIDs;
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor used for serialization.
     /// </summary>
     public Starfighter() { }
+
 }
