@@ -104,13 +104,13 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
             if (capitalShip.InitialParentGameID != null)
             {
                 Planet planet = hqs[capitalShip.InitialParentGameID];
-                planet.AddCapitalShip(capitalShip);
+                planet.AddChild(capitalShip);
             }
             // Otherwise, randomly assign to a planet.
             else
             {
                 Planet planet = planets[capitalShip.OwnerGameID].Shuffle().First();
-                planet.AddCapitalShip(capitalShip);
+                planet.AddChild(capitalShip);
             }
         }
 

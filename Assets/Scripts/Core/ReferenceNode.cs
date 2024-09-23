@@ -1,3 +1,4 @@
+using System;
 using System.Xml.Serialization;
 
 /// <summary>
@@ -7,24 +8,25 @@ using System.Xml.Serialization;
 /// </summary>
 [XmlInclude(typeof(Building))]
 [XmlInclude(typeof(CapitalShip))]
+[XmlInclude(typeof(Mission))]
 [XmlInclude(typeof(Regiment))]
 [XmlInclude(typeof(SpecialForces))]
 [XmlInclude(typeof(Starfighter))]
 public class ReferenceNode
 {
-    public GameNode Reference;
+    public SceneNode Node { get; set; }
 
     /// <summary>
-    /// Default constructor.
+    /// 
     /// </summary>
     public ReferenceNode() { }
 
     /// <summary>
-    ///
+    /// 
     /// </summary>
-    /// <param name="reference"></param>
-    public ReferenceNode(GameNode reference)
+    /// <param name="node"></param>
+    public ReferenceNode(SceneNode node)
     {
-        Reference = reference;
+        Node = node;
     }
 }

@@ -6,7 +6,7 @@ using ICollectionExtensions;
 using IEnumerableExtensions;
 
 /// <summary>
-///
+/// Represents a generator for creating Building units.
 /// </summary>
 public class BuildingGenerator : UnitGenerator<Building>
 {
@@ -39,10 +39,10 @@ public class BuildingGenerator : UnitGenerator<Building>
     }
 
     /// <summary>
-    ///
+    /// Selects the buildings that can be created based on the starting research level.
     /// </summary>
-    /// <param name="buildings"></param>
-    /// <returns></returns>
+    /// <param name="buildings">The available buildings.</param>
+    /// <returns>An array of selected buildings.</returns>
     public override Building[] SelectUnits(Building[] buildings)
     {
         int startingResearchLevel = this.GetGameSummary().StartingResearchLevel;
@@ -56,10 +56,10 @@ public class BuildingGenerator : UnitGenerator<Building>
     }
 
     /// <summary>
-    ///
+    /// Decorates the buildings with additional properties or behavior.
     /// </summary>
-    /// <param name="buildings"></param>
-    /// <returns></returns>
+    /// <param name="buildings">The buildings to decorate.</param>
+    /// <returns>The decorated buildings.</returns>
     public override Building[] DecorateUnits(Building[] buildings)
     {
         // No op.
@@ -67,11 +67,11 @@ public class BuildingGenerator : UnitGenerator<Building>
     }
 
     /// <summary>
-    ///
+    /// Deploys the buildings to the specified planet systems.
     /// </summary>
-    /// <param name="buildings"></param>
-    /// <param name="destinations"></param>
-    /// <returns></returns>
+    /// <param name="buildings">The buildings to deploy.</param>
+    /// <param name="destinations">The planet systems to deploy the buildings to.</param>
+    /// <returns>The deployed buildings.</returns>
     public override Building[] DeployUnits(Building[] buildings, PlanetSystem[] destinations)
     {
         Dictionary<string, double> configMapping = getConfigMapping();
@@ -110,7 +110,7 @@ public class BuildingGenerator : UnitGenerator<Building>
                     );
 
                     // Add the generated buildings to the planet.
-                    planet.AddBuildings(initialBuildings.ToArray());
+                    initialBuildings.ToList().ForEach(building => planet.AddChild(building));
                     deployedBuildings.AddAll(initialBuildings);
                 }
             }

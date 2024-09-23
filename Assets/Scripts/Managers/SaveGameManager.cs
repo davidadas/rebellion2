@@ -24,14 +24,36 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Get the directory path for saving game data.
+    /// </summary>
+    /// <returns>The directory path for saving game data.</returns>
+    public string GetSaveDirectoryPath()
+    {
+        return Path.Combine(Application.persistentDataPath, "saves");
+    }
+
+    /// <summary>
+    /// Get the full path to the save file.
+    /// </summary>
+    /// <param name="fileName">The name of the save file.</param>
+    /// <returns>The full path to the save file.</returns>
+    public string GetSaveFilePath(string fileName)
+    {
+        return Path.Combine(
+            Application.persistentDataPath,
+            "saves",
+            $"{fileName}.sav"
+        );
+    }
+
+    /// <summary>
     /// Save game data to file using XML serialization.
     /// </summary>
-    /// <param name="game"></param>
-    /// <param name="fileName"></param>
+    /// <param name="game">The game data to save.</param>
+    /// <param name="fileName">The name of the save file.</param>
     public void SaveGameData(Game game, string fileName)
     {
-        string saveDirectory = Path.Combine(Application.persistentDataPath, "saves");
-        string saveFilePath = Path.Combine(saveDirectory, $"{fileName}.sav");
+        string saveDirectory = GetSaveDirectoryPath();
 
         // Create save directory if it does not exist.
         if (!Directory.Exists(saveDirectory))
@@ -40,6 +62,7 @@ public class SaveGameManager
         }
 
         // Serialize the data to a file.
+        string saveFilePath = GetSaveFilePath(fileName);
         XmlSerializer serializer = new XmlSerializer(typeof(Game));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Create))
         {
@@ -50,21 +73,19 @@ public class SaveGameManager
     /// <summary>
     /// Load game data from file using XML deserialization.
     /// </summary>
-    /// <param name="fileName"></param>
-    /// <returns></returns>
+    /// <param name="fileName">The name of the save file.</param>
+    /// <returns>The loaded game data.</returns>
     public Game LoadGameData(string fileName)
     {
-        string saveFilePath = Path.Combine(
-            Application.persistentDataPath,
-            "saves",
-            $"{fileName}.sav"
-        );
+        string saveFilePath = GetSaveFilePath(fileName);
 
         // Deserialize the data from a file.
         XmlSerializer serializer = new XmlSerializer(typeof(Game));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Open))
         {
-            return (Game)serializer.Deserialize(fileStream);
+            Game game = (Game)serializer.Deserialize(fileStream);
+
+            return game;
         }
     }
 }

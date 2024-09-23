@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 public enum MessageType
 {
@@ -10,7 +9,7 @@ public enum MessageType
     Resource,
 }
 
-public class Message : GameLeaf
+public class Message : LeafNode
 {
     public MessageType Type;
     public string Text;

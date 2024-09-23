@@ -55,7 +55,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
     /// </summary>
     /// <param name="planetSystems"></param>
     /// <returns></returns>
-    private Dictionary<string, List<GameNode>> getDestinationMapping(PlanetSystem[] planetSystems)
+    private Dictionary<string, List<SceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
     {
         // Flatten the list of planets from planet systems.
         // Only pull those planets with a OwnerGameID assigned.
@@ -64,7 +64,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
             .Where((planet) => planet.OwnerGameID != null);
 
         // Create an array of fleets and planets.
-        List<GameNode> fleetsAndPlanets = new List<GameNode>();
+        List<SceneNode> fleetsAndPlanets = new List<SceneNode>();
         foreach (Planet planet in flattenedPlanets)
         {
             fleetsAndPlanets.Add(planet);
@@ -72,8 +72,8 @@ public class OfficerGenerator : UnitGenerator<Officer>
         }
 
         // Create a dictionary of factions to planets and their associated fleets.
-        Dictionary<string, List<GameNode>> destinationMapping = fleetsAndPlanets.Aggregate(
-            new Dictionary<string, List<GameNode>>(),
+        Dictionary<string, List<SceneNode>> destinationMapping = fleetsAndPlanets.Aggregate(
+            new Dictionary<string, List<SceneNode>>(),
             (destinationMap, nextDestination) =>
             {
                 string ownerGameId =
@@ -82,9 +82,9 @@ public class OfficerGenerator : UnitGenerator<Officer>
                         .GetProperty("OwnerGameID")
                         .GetValue(nextDestination, null) as string;
 
-                List<GameNode> destinations = destinationMap.GetOrAddValue(
+                List<SceneNode> destinations = destinationMap.GetOrAddValue(
                     ownerGameId,
-                    new List<GameNode>()
+                    new List<SceneNode>()
                 );
                 destinations.Add(nextDestination);
                 return destinationMap;
@@ -162,19 +162,19 @@ public class OfficerGenerator : UnitGenerator<Officer>
     /// <returns></returns>
     public override Officer[] DeployUnits(Officer[] officers, PlanetSystem[] planetSystems)
     {
-        Dictionary<string, List<GameNode>> destinationMapping = getDestinationMapping(
+        Dictionary<string, List<SceneNode>> destinationMapping = getDestinationMapping(
             planetSystems
         );
 
         foreach (Officer officer in officers)
         {
-            List<GameNode> destinations = destinationMapping[officer.OwnerGameID];
-            GameNode destination;
+            List<SceneNode> destinations = destinationMapping[officer.OwnerGameID];
+            SceneNode destination;
 
             if (officer.InitialParentGameID != null)
             {
                 destination = destinations.First(
-                    (gameNode) => gameNode.GameID == officer.InitialParentGameID
+                    (sceneNode) => sceneNode.GameID == officer.InitialParentGameID
                 );
             }
             else
@@ -185,11 +185,11 @@ public class OfficerGenerator : UnitGenerator<Officer>
             System.Type destinationType = destination.GetType();
             if (destinationType.IsAssignableFrom(typeof(Planet)))
             {
-                ((Planet)destination).AddOfficer(officer);
+                ((Planet)destination).AddChild(officer);
             }
             else
             {
-                ((Fleet)destination).AddOfficer(officer);
+                ((Fleet)destination).AddChild(officer);
             }
         }
         return officers;

@@ -27,15 +27,6 @@ public class SerializableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, IX
     /// <summary>
     ///
     /// </summary>
-    /// <param name="Schema"></param>
-    public SerializableDictionary(XmlSchema Schema)
-    {
-        this.SetSchema(Schema);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
     /// <returns></returns>
     public XmlSchema GetSchema()
     {

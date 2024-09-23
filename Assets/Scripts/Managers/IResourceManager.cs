@@ -12,10 +12,10 @@ public interface IResourceManager
         where T : IConfig;
 
     /// <summary>
-    ///
+    /// 
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public T[] GetGameNodeData<T>()
-        where T : GameNode;
+    public T[] GetSceneNodeData<T>()
+        where T : SceneNode;
 }

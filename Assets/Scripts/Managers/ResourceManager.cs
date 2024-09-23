@@ -7,13 +7,17 @@ using System.Xml.Serialization;
 using System;
 using UnityEngine;
 
+/// <summary>
+/// The ResourceManagerImpl class is responsible for managing the retrieval of 
+/// configuration data and scene node data from files in the Resources directory.
+/// </summary>
 class ResourceManagerImpl : IResourceManager
 {
     /// <summary>
-    ///
+    /// Retrieves the configuration data of type T.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
+    /// <typeparam name="T">The type of the configuration data.</typeparam>
+    /// <returns>The configuration data of type T.</returns>
     public T GetConfig<T>()
         where T : IConfig
     {
@@ -26,13 +30,13 @@ class ResourceManagerImpl : IResourceManager
         return config;
     }
 
-    /// <summary>
-    ///
+    // <summary>
+    /// Retrieves an array of scene node data of type T.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    public T[] GetGameNodeData<T>()
-        where T : GameNode
+    /// <typeparam name="T">The type of the scene node data.</typeparam>
+    /// <returns>An array of scene node data of type T.</returns>
+    public T[] GetSceneNodeData<T>()
+        where T : SceneNode
     {
         // Pluralize the string (e.g. Building -> Buildings).
         string pluralizedType = $"{typeof(T).ToString()}s";
