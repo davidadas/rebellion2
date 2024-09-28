@@ -51,9 +51,6 @@ public class Officer : MissionParticipant
     public OfficerRank CurrentRank;
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
     public string InitialParentGameID;
 
     // Variance Info

@@ -4,11 +4,11 @@ using System.Collections.Generic;
 /// <summary>
 /// Manages game events and their scheduling.
 /// </summary>
-public class EventManager
+public class GameEventManager
 {
     private readonly Game game;
 
-    public EventManager(Game game)
+    public GameEventManager(Game game)
     {
         this.game = game;
     }

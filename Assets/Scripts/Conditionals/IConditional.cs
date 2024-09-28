@@ -1,7 +1,7 @@
 /// <summary>
 /// Represents a condition that must be met for an event or action to proceed.
 /// </summary>
-public interface ICondition
+public interface IConditional
 {
     /// <summary>
     /// Evaluates the condition in the context of the provided game instance.

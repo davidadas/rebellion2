@@ -60,9 +60,6 @@ public class CapitalShip : SceneNode, IManufacturable
     public int DetectionRating;
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
     public string InitialParentGameID { get; set; }
 
     /// <summary>
@@ -121,7 +118,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// </summary>
     /// <param name="child">The child to add</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -141,7 +138,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// Adds a child to the capital ship.
     /// </summary>
     /// <param name="child">The child to remove</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {

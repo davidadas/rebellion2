@@ -17,7 +17,7 @@ public enum TickSpeed
 public class GameManager
 {
     private Game currentGame;
-    public EventManager EventManager { get; private set; }
+    public GameEventManager EventManager { get; private set; }
     public MissionManager MissionManager { get; private set; }
     private float? tickInterval;
     private float tickTimer;
@@ -29,7 +29,7 @@ public class GameManager
     public GameManager(Game game)
     {
         currentGame = game;
-        EventManager = new EventManager(game);
+        EventManager = new GameEventManager(game);
         MissionManager = new MissionManager(EventManager);
     }
 

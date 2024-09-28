@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using UnityEngine.TestTools;
 using System.Collections;
 
 // Mock GameEvent for testing
@@ -55,12 +54,12 @@ public class GameManagerTests
         // Simulate 4 ticks (the event should not trigger yet)
         for (int i = 0; i < 4; i++)
         {
-            gameManager.Update(1f);  // Simulate 1 second of game time (1 tick)
+            gameManager.Update(1f); // Simulate 1 second of game time (1 tick)
             Assert.IsFalse(mockEvent.WasExecuted, "Event should not have been executed yet.");
         }
 
         // Simulate 1 more tick (the 5th tick, where the event is scheduled)
-        gameManager.Update(1f);  // Simulate 1 second of game time (1 tick)
+        gameManager.Update(1f); // Simulate 1 second of game time (1 tick)
 
         Assert.IsTrue(mockEvent.WasExecuted, "Event should have been executed at tick 5.");
     }

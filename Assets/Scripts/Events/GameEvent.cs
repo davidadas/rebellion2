@@ -20,7 +20,12 @@ public abstract class GameEvent : GameEntity
     public event Action<GameEvent> OnEventTriggered;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="GameEvent"/> class with the specified parameters.
+    /// Default constructor used for serialization.
+    /// </summary>
+    public GameEvent() { }
+
+    /// <summary>
+    /// 
     /// </summary>
     /// <param name="scheduledTick">The tick at which the event is scheduled to occur.</param>
     protected GameEvent(int scheduledTick)

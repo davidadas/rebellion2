@@ -9,7 +9,6 @@ using System.Xml.Serialization;
 public abstract class Mission : SceneNode
 {
     public string Name;
-    public string OwnerGameID;
     public List<MissionParticipant> MainParticipants = new List<MissionParticipant>();
     public List<MissionParticipant> DecoyParticipants = new List<MissionParticipant>();
     public MissionParticipantSkill ParticipantSkill;
@@ -302,7 +301,7 @@ public abstract class Mission : SceneNode
     /// <summary>
     /// No-op (missions cannot have children added).
     /// </summary>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         // No-op: Missions cannot have children added.
     }
@@ -310,7 +309,7 @@ public abstract class Mission : SceneNode
     /// <summary>
     /// No-op (missions cannot have children removed).
     /// </summary>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         // No-op: Missions cannot have children removed.
     }
