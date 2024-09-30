@@ -36,11 +36,6 @@ public class Planet : SceneNode
             { BuildingSlot.Orbit, new List<Building>() },
         };
 
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
@@ -194,7 +189,7 @@ public class Planet : SceneNode
     /// Adds a reference node to the game.
     /// </summary>
     /// <param name="node">The game node to add as a reference.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Fleet fleet)
         {
@@ -222,7 +217,7 @@ public class Planet : SceneNode
     /// Removes a child node from the planet.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Fleet fleet)
         {

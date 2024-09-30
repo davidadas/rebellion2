@@ -1,39 +1,55 @@
-using System.Xml.Serialization;
 using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 
 [Serializable]
 public class GameEntity
 {
     private string _instanceId;
+    private string _ownerGameID;
 
-    // Set the InstaceID property.
-    // This is a unique ID set for each node.
+    /// <summary>
+    /// InstanceID is a unique identifier for the object. If not set, it will be generated automatically.
+    /// Its primar
+    /// </summary>
     [CloneIgnore]
     public string InstanceID
     {
-        get
-        {
-            // Generate a new instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = Guid.NewGuid().ToString().Replace("-", "");
-            }
-            return _instanceId;
-        }
-        set
-        {
-            // Set the instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = value;
-            }
-        }
+        get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
+        set => _instanceId ??= value;
     }
-    // Set the GameID property.
-    // This is a non-unique ID set for each specific types of objects, such as planets, ships, etc.
+
+    /// <summary>
+    /// GameID is a non-unique identifier for specific types of objects, such as starfighters, ships, regiments, etc.
+    ///
+    /// </summary>
     public string GameID { get; set; }
 
-    // Game Info
+    // Owner Info
     public string DisplayName { get; set; }
     public string Description { get; set; }
+    [CloneIgnore]
+    public string OwnerGameID
+    {
+        get => _ownerGameID;
+        set => SetOwnerGameID(value);
+    }
+    public List<string> AllowedOwnerGameIDs { get; set; }
+
+    /// <summary>
+    /// Sets the owner game ID. If the ID is not in the allowed list, throws an exception.
+    /// </summary>
+    /// <param name="value">The owner game ID to set.</param>
+    /// <exception cref="ArgumentException">Thrown when the owner game ID is invalid.</exception>
+    private void SetOwnerGameID(string value)
+    {
+        if (AllowedOwnerGameIDs == null || AllowedOwnerGameIDs.Count == 0 || AllowedOwnerGameIDs.Contains(value))
+        {
+            _ownerGameID = value;
+        }
+        else
+        {
+            throw new ArgumentException($"Invalid owner game ID: {value}");
+        }
+    }
 }

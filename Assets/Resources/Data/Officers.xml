@@ -5,6 +5,7 @@
 	<!--   **************************************************  -->
 	<Officer>
 		<GameID>OFEM001</GameID>
+		<InstanceID>EMPEROR_PALPATINE</InstanceID>
 		<DisplayName>Emperor Palpatine</DisplayName>
 		<OwnerGameID>FNEMP1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -36,6 +37,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM002</GameID>
+		<InstanceID>DARTH_VADER</InstanceID>
 		<DisplayName>Darth Vader</DisplayName>
 		<OwnerGameID>FNEMP1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -66,6 +68,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM003</GameID>
+		<InstanceID>JERJERROD</InstanceID>
 		<DisplayName>Jerjerrod</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -98,6 +101,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM004</GameID>
+		<InstanceID>PIETT</InstanceID>
 		<DisplayName>Piett</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -130,6 +134,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM005</GameID>
+		<InstanceID>VEERS</InstanceID>
 		<DisplayName>Veers</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -162,6 +167,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM006</GameID>
+		<InstanceID>BRANDEI</InstanceID>
 		<DisplayName>Brandei</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -194,6 +200,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM007</GameID>
+		<InstanceID>DORJA</InstanceID>
 		<DisplayName>Dorja</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -226,6 +233,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM008</GameID>
+		<InstanceID>BIN_ESSADA</InstanceID>
 		<DisplayName>Bin Essada</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -258,6 +266,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM009</GameID>
+		<InstanceID>NILES_FERRIER</InstanceID>
 		<DisplayName>Niles Ferrier</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -290,6 +299,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM010</GameID>
+		<InstanceID>GRAMMEL</InstanceID>
 		<DisplayName>Grammel</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -322,6 +332,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM011</GameID>
+		<InstanceID>GRIFF</InstanceID>
 		<DisplayName>Griff</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -354,6 +365,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM012</GameID>
+		<InstanceID>KLEV</InstanceID>
 		<DisplayName>Klev</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -386,6 +398,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM013</GameID>
+		<InstanceID>NEEDA</InstanceID>
 		<DisplayName>Needa</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -418,6 +431,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM014</GameID>
+		<InstanceID>BANE_NOTHOS</InstanceID>
 		<DisplayName>Bane Nothos</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -450,6 +464,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM015</GameID>
+		<InstanceID>ORLOK</InstanceID>
 		<DisplayName>Orlok</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -482,6 +497,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM016</GameID>
+		<InstanceID>PALLAEON</InstanceID>
 		<DisplayName>Pallaeon</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -514,6 +530,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM017</GameID>
+		<InstanceID>SCREED</InstanceID>
 		<DisplayName>Screed</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -546,6 +563,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM018</GameID>
+		<InstanceID>THRAWN</InstanceID>
 		<DisplayName>Thrawn</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -578,6 +596,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM019</GameID>
+		<InstanceID>ZUGGS</InstanceID>
 		<DisplayName>Zuggs</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -610,6 +629,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM020</GameID>
+		<InstanceID>DAALA</InstanceID>
 		<DisplayName>Daala</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -642,6 +662,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFEM021</GameID>
+		<InstanceID>THANAS</InstanceID>
 		<DisplayName>Pter Thanas</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNEMP1</string>
@@ -677,6 +698,7 @@
 	<!--   **************************************************  -->
 	<Officer>
 		<GameID>OFAL001</GameID>
+		<InstanceID>MON_MOTHMA</InstanceID>
 		<DisplayName>Mon Mothma</DisplayName>
 		<OwnerGameID>FNALL1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -706,6 +728,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL002</GameID>
+		<InstanceID>LEIA_ORGANA</InstanceID>
 		<DisplayName>Leia Organa</DisplayName>
 		<OwnerGameID>FNALL1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -735,6 +758,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL003</GameID>
+		<InstanceID>LUKE_SKYWALKER</InstanceID>
 		<DisplayName>Luke Skywalker</DisplayName>
 		<OwnerGameID>FNALL1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -765,6 +789,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL004</GameID>
+		<InstanceID>HAN_SOLO</InstanceID>
 		<DisplayName>Han Solo</DisplayName>
 		<OwnerGameID>FNALL1</OwnerGameID>
 		<IsMain>true</IsMain>
@@ -795,6 +820,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL005</GameID>
+		<InstanceID>ACKBAR</InstanceID>
 		<DisplayName>Ackbar</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -827,6 +853,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL006</GameID>
+		<InstanceID>WEDGE_ANTILLES</InstanceID>
 		<DisplayName>Wedge Antilles</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -859,6 +886,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL007</GameID>
+		<InstanceID>LANDO_CALRISSIAN</InstanceID>
 		<DisplayName>Lando Calrissian</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -891,6 +919,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL008</GameID>
+		<InstanceID>CHEWBACCA</InstanceID>
 		<DisplayName>Chewbacca</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -923,6 +952,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL009</GameID>
+		<InstanceID>JAN_DODONNA</InstanceID>
 		<DisplayName>Jan Dodonna</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -955,6 +985,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL010</GameID>
+		<InstanceID>CRIX_MADINE</InstanceID>
 		<DisplayName>Crix Madine</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -987,6 +1018,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL011</GameID>
+		<InstanceID>CARLIST_RIEEKAN</InstanceID>
 		<DisplayName>Carlist Rieekan</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1019,6 +1051,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL012</GameID>
+		<InstanceID>AFYON</InstanceID>
 		<DisplayName>Afyon</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1051,6 +1084,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL0113</GameID>
+		<InstanceID>DRAYSON</InstanceID>
 		<DisplayName>Drayson</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1083,6 +1117,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL014</GameID>
+		<InstanceID>BORSK_FEYLA</InstanceID>
 		<DisplayName>Borsk Fey'la</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1115,6 +1150,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL015</GameID>
+		<InstanceID>TURA_RAFTICAN</InstanceID>
 		<DisplayName>Tura Raftican</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1147,6 +1183,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL016</GameID>
+		<InstanceID>BREN_DERLIN</InstanceID>
 		<DisplayName>Bren Derlin</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1179,6 +1216,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL017</GameID>
+		<InstanceID>GARM_BEL_IBLIS</InstanceID>
 		<DisplayName>Garm Bel Iblis</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1211,6 +1249,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL018</GameID>
+		<InstanceID>TALON_KARRDE</InstanceID>
 		<DisplayName>Talon Karrde</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1243,6 +1282,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL019</GameID>
+		<InstanceID>NARRA</InstanceID>
 		<DisplayName>Narra</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1275,6 +1315,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL020</GameID>
+		<InstanceID>HUOBA_NEVA</InstanceID>
 		<DisplayName>Huoba Neva</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>
@@ -1307,6 +1348,7 @@
 	</Officer>
 	<Officer>
 		<GameID>OFAL021</GameID>
+		<InstanceID>PAGE</InstanceID>
 		<DisplayName>Page</DisplayName>
 		<AllowedOwnerGameIDs>
 			<string>FNALL1</string>

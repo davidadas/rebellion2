@@ -2,7 +2,7 @@ using NUnit.Framework;
 using System.Collections.Generic;
 
 // Concrete class for testing abstract Mission
-public class MockMission : Mission
+class MockMission : Mission
 {
     public bool WasSuccessful { get; private set; }
 

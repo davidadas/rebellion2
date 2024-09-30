@@ -115,7 +115,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
                     .Insert(0, officer); // Add to front of list.
             }
             // Ignore officers allowed by both factions.
-            else if (officer.AllowedOwnerGameIDs.Length == 1)
+            else if (officer.AllowedOwnerGameIDs.Count == 1)
             {
                 officersByFaction
                     .GetOrAddValue(officer.AllowedOwnerGameIDs[0], new List<Officer>())

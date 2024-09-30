@@ -1,11 +1,10 @@
 using NUnit.Framework;
 using System.Collections.Generic;
-using System.Linq;
 
+[TestFixture]
 public class PlanetTests
 {
     private Planet planet;
-    private Game game;
 
     [SetUp]
     public void Setup()
@@ -17,81 +16,64 @@ public class PlanetTests
             OrbitSlots = 3,
             OwnerGameID = "FNALL1"
         };
-
-        // Generate a game given a summary.
-        GameSummary summary = new GameSummary
-        {
-            GalaxySize = GameSize.Large,
-            Difficulty = GameDifficulty.Easy,
-            VictoryCondition = GameVictoryCondition.Headquarters,
-            ResourceAvailability = GameResourceAvailability.Abundant,
-            PlayerFactionID = "FNALL1",
-        };
-
-        // Save the file to disk for testing.
-        game = new Game
-        {
-            Summary = summary,
-            Galaxy = new GalaxyMap(),
-        };
     }
 
     [Test]
     public void TestAddFleet()
     {
         Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, fleet);
+        planet.AddChild(fleet);
 
-        Assert.Contains(fleet, planet.Fleets);
+        Assert.Contains(fleet, planet.Fleets, "Fleet should be added to the planet.");
     }
 
     [Test]
     public void TestAddOfficer()
     {
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, officer);
+        planet.AddChild(officer);
 
-        Assert.Contains(officer, planet.Officers);
+        Assert.Contains(officer, planet.Officers, "Officer should be added to the planet.");
     }
 
     [Test]
     public void TestAddBuilding()
     {
         Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
-        game.AttachNode(planet, building);
+        planet.AddChild(building);
         Building[] buildings = planet.GetBuildings(BuildingSlot.Ground);
 
-        Assert.Contains(building, buildings);
+        Assert.Contains(building, buildings, "Building should be added to the ground slots of the planet.");
     }
 
     [Test]
     public void TestRemoveFleet()
     {
         Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, fleet);
-        game.DetachNode(fleet);
+        planet.AddChild(fleet);
+        planet.RemoveChild(fleet);
 
-        Assert.IsFalse(planet.Fleets.Contains(fleet));
+        Assert.IsFalse(planet.Fleets.Contains(fleet), "Fleet should be removed from the planet.");
     }
 
     [Test]
     public void TestRemoveOfficer()
     {
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, officer);
-        game.DetachNode(officer);
+        planet.AddChild(officer);
+        planet.RemoveChild(officer);
 
-        Assert.IsFalse(planet.Officers.Contains(officer));
+        Assert.IsFalse(planet.Officers.Contains(officer), "Officer should be removed from the planet.");
     }
 
     [Test]
     public void TestRemoveBuilding()
     {
         Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
-        game.AttachNode(planet, building);
-        game.DetachNode(building);
+        planet.AddChild(building);
+        planet.RemoveChild(building);
 
-        Assert.IsFalse(planet.Buildings[BuildingSlot.Ground].Contains(building));
+        Assert.IsFalse(planet.Buildings[BuildingSlot.Ground].Contains(building), "Building should be removed from the planet.");
     }
 
     [Test]
@@ -101,13 +83,13 @@ public class PlanetTests
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
         Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
 
-        game.AttachNode(planet, fleet);
-        game.AttachNode(planet, officer);
-        game.AttachNode(planet, building);
+        planet.AddChild(fleet);
+        planet.AddChild(officer);
+        planet.AddChild(building);
 
         IEnumerable<SceneNode> children = planet.GetChildren();
         List<SceneNode> expectedChildren = new List<SceneNode> { fleet, officer, building };
 
-        CollectionAssert.AreEquivalent(expectedChildren, children);
+        CollectionAssert.AreEquivalent(expectedChildren, children, "Planet should return correct children.");
     }
 }

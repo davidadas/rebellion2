@@ -35,17 +35,35 @@ public abstract class SceneNode : GameEntity
         return ParentNode;
     }
 
-    /// <summary>
-    /// 
+    /// Gets the closest parent scene node of the specified type.
     /// </summary>
-    /// <param name="child"></param>
-    protected internal abstract void AddChild(SceneNode child);
+    /// <typeparam name="T">The type of the parent scene node.</typeparam>
+    /// <returns>The closest parent scene node of the specified type.</returns>
+    public T GetClosestParentOfType<T>() where T : SceneNode
+    {
+        SceneNode parent = ParentNode;
+        while (parent != null)
+        {
+            if (parent is T)
+            {
+                return (T)parent;
+            }
+            parent = parent.GetParent();
+        }
+        return null;
+    }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="child"></param>
-    protected internal abstract void RemoveChild(SceneNode child);
+    public abstract void AddChild(SceneNode child);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="child"></param>
+    public abstract void RemoveChild(SceneNode child);
     
     /// <summary>
     /// Gets an enumerable collection of child scene nodes.
