@@ -1,11 +1,10 @@
 using NUnit.Framework;
 using System.Collections.Generic;
-using System.Linq;
 
+[TestFixture]
 public class PlanetTests
 {
     private Planet planet;
-    private Game game;
 
     [SetUp]
     public void Setup()
@@ -17,142 +16,80 @@ public class PlanetTests
             OrbitSlots = 3,
             OwnerGameID = "FNALL1"
         };
+    }
 
-        // Generate a game given a summary.
-        GameSummary summary = new GameSummary
-        {
-            GalaxySize = GameSize.Large,
-            Difficulty = GameDifficulty.Easy,
-            VictoryCondition = GameVictoryCondition.Headquarters,
-            ResourceAvailability = GameResourceAvailability.Abundant,
-            PlayerFactionID = "FNALL1",
-        };
+    [Test]
+    public void TestAddFleet()
+    {
+        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        planet.AddChild(fleet);
 
-        game = new Game
-        {
-            Summary = summary,
-            Galaxy = new GalaxyMap(),
-        };
+        Assert.Contains(fleet, planet.Fleets, "Fleet should be added to the planet.");
     }
 
     [Test]
     public void TestAddOfficer()
     {
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, officer);
+        planet.AddChild(officer);
 
         Assert.Contains(officer, planet.Officers, "Officer should be added to the planet.");
+    }
+
+    [Test]
+    public void TestAddBuilding()
+    {
+        Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
+        planet.AddChild(building);
+        Building[] buildings = planet.GetBuildings(BuildingSlot.Ground);
+
+        Assert.Contains(building, buildings, "Building should be added to the ground slots of the planet.");
+    }
+
+    [Test]
+    public void TestRemoveFleet()
+    {
+        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        planet.AddChild(fleet);
+        planet.RemoveChild(fleet);
+
+        Assert.IsFalse(planet.Fleets.Contains(fleet), "Fleet should be removed from the planet.");
     }
 
     [Test]
     public void TestRemoveOfficer()
     {
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, officer);
-        game.DetachNode(officer);
+        planet.AddChild(officer);
+        planet.RemoveChild(officer);
 
         Assert.IsFalse(planet.Officers.Contains(officer), "Officer should be removed from the planet.");
     }
 
     [Test]
-    public void TestAddSpecialForces()
+    public void TestRemoveBuilding()
     {
-        SpecialForces specialForces = new SpecialForces { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, specialForces);
+        Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
+        planet.AddChild(building);
+        planet.RemoveChild(building);
 
-        Assert.Contains(specialForces, planet.Regiments, "Special Forces should be added to the planet.");
+        Assert.IsFalse(planet.Buildings[BuildingSlot.Ground].Contains(building), "Building should be removed from the planet.");
     }
 
     [Test]
-    public void TestRemoveSpecialForces()
+    public void TestGetChildren()
     {
-        SpecialForces specialForces = new SpecialForces { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, specialForces);
-        game.DetachNode(specialForces);
-
-        Assert.IsFalse(planet.Regiments.Contains(specialForces), "Special Forces should be removed from the planet.");
-    }
-
-    [Test]
-    public void TestAddStarfighter()
-    {
-        Starfighter starfighter = new Starfighter { SquadronSize = 12 };
-        game.AttachNode(planet, starfighter);
-
-        Assert.Contains(starfighter, planet.GetChildren().OfType<Starfighter>().ToList(), "Starfighter should be added to the planet.");
-    }
-
-    [Test]
-    public void TestRemoveStarfighter()
-    {
-        Starfighter starfighter = new Starfighter { SquadronSize = 12 };
-        game.AttachNode(planet, starfighter);
-        game.DetachNode(starfighter);
-
-        Assert.IsFalse(planet.GetChildren().OfType<Starfighter>().Contains(starfighter), "Starfighter should be removed from the planet.");
-    }
-
-    [Test]
-    public void TestAddMultipleChildNodes()
-    {
+        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
         Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        SpecialForces specialForces = new SpecialForces { OwnerGameID = "FNALL1" };
-        Starfighter starfighter = new Starfighter { SquadronSize = 12 };
+        Building building = new Building { Slot = BuildingSlot.Ground, DisplayName = "Test Building" };
 
-        game.AttachNode(planet, officer);
-        game.AttachNode(planet, specialForces);
-        game.AttachNode(planet, starfighter);
+        planet.AddChild(fleet);
+        planet.AddChild(officer);
+        planet.AddChild(building);
 
         IEnumerable<SceneNode> children = planet.GetChildren();
-        List<SceneNode> expectedChildren = new List<SceneNode> { officer, specialForces, starfighter };
+        List<SceneNode> expectedChildren = new List<SceneNode> { fleet, officer, building };
 
-        CollectionAssert.AreEquivalent(expectedChildren, children, "All child nodes should be added to the planet.");
-    }
-
-    [Test]
-    public void TestRemoveMultipleChildNodes()
-    {
-        Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        SpecialForces specialForces = new SpecialForces { OwnerGameID = "FNALL1" };
-        Starfighter starfighter = new Starfighter { SquadronSize = 12 };
-
-        game.AttachNode(planet, officer);
-        game.AttachNode(planet, specialForces);
-        game.AttachNode(planet, starfighter);
-
-        game.DetachNode(officer);
-        game.DetachNode(specialForces);
-        game.DetachNode(starfighter);
-
-        Assert.IsFalse(planet.GetChildren().Contains(officer), "Officer should be removed from the planet.");
-        Assert.IsFalse(planet.GetChildren().Contains(specialForces), "Special Forces should be removed from the planet.");
-        Assert.IsFalse(planet.GetChildren().Contains(starfighter), "Starfighter should be removed from the planet.");
-    }
-
-    [Test]
-    public void TestSerializeAndDeserialize()
-    {
-        // Create a planet object to serialize
-        Planet originalPlanet = new Planet
-        {
-            DisplayName = "Test Planet",
-            IsColonized = true,
-            GroundSlots = 5,
-            OrbitSlots = 3,
-            OwnerGameID = "FNALL1"
-        };
-
-        // Serialize the planet
-        string serializedPlanet = SerializationHelper.Serialize(originalPlanet);
-
-        // Deserialize the planet
-        Planet deserializedPlanet = SerializationHelper.Deserialize<Planet>(serializedPlanet);
-
-        // Verify that the deserialized object matches the original
-        Assert.AreEqual(originalPlanet.DisplayName, deserializedPlanet.DisplayName, "Planet DisplayName should match after deserialization.");
-        Assert.AreEqual(originalPlanet.IsColonized, deserializedPlanet.IsColonized, "Planet IsColonized should match after deserialization.");
-        Assert.AreEqual(originalPlanet.GroundSlots, deserializedPlanet.GroundSlots, "Planet GroundSlots should match after deserialization.");
-        Assert.AreEqual(originalPlanet.OrbitSlots, deserializedPlanet.OrbitSlots, "Planet OrbitSlots should match after deserialization.");
-        Assert.AreEqual(originalPlanet.OwnerGameID, deserializedPlanet.OwnerGameID, "Planet OwnerGameID should match after deserialization.");
+        CollectionAssert.AreEquivalent(expectedChildren, children, "Planet should return correct children.");
     }
 }

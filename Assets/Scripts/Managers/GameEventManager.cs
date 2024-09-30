@@ -8,51 +8,31 @@ public class GameEventManager
 {
     private readonly Game game;
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="game"></param>
     public GameEventManager(Game game)
     {
         this.game = game;
     }
-
+    
     /// <summary>
-    /// Retrieves all game events of the specified type.
+    /// 
     /// </summary>
-    /// <typeparam name="T">The type of game event to retrieve.</typeparam>
-    /// <returns>A list of game events of the specified type.</returns>
-    public List<GameEvent> GetEventsByType<T>() where T : GameEvent
-    {
-        List<GameEvent> events = new List<GameEvent>();
-
-        // Iterate through all events in the dictionary.
-        foreach (var eventList in game.GameEventDictionary.Values)
-        {
-            // Check if the event is of the specified type.
-            foreach (var gameEvent in eventList)
-            {
-                // Add the event to the list if it is of the specified type.
-                if (gameEvent is T)
-                {
-                    events.Add(gameEvent);
-                }
-            }
-        }
-
-        return events;
-    }
-
-    /// <summary>
-    /// Schedules a game event.
-    /// </summary>
-    /// <param name="gameEvent">The game event to schedule.</param>
+    /// <param name="gameEvent"></param>
     public void ScheduleEvent(GameEvent gameEvent)
     {
-        // Add the event to the dictionary.
-        if (!game.GameEventDictionary.ContainsKey(gameEvent.ScheduledTick))
+        // If the event is scheduled for the current tick, execute it immediately.
+        if (game.CurrentTick >= gameEvent.Tick)
         {
-            game.GameEventDictionary[gameEvent.ScheduledTick] = new List<GameEvent>();
+            gameEvent.Execute(game);
         }
-
-        // Add the event to the list of events for this tick.
-        game.GameEventDictionary[gameEvent.ScheduledTick].Add(gameEvent);
+        // Otherwise, schedule the event for a future tick.
+        else
+        {
+            game.AddGameEvent(gameEvent);
+        }
     }
 
     /// <summary>

@@ -156,7 +156,6 @@ public class GameTests
 
     public void TestMoveNode()
     {        
-        // Create the game.
         Game game = new Game();
 
         // Create our scene.

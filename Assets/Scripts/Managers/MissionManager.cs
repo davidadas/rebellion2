@@ -8,27 +8,26 @@ using System;
 /// </summary>
 public class MissionManager
 {
+    protected Game game;
     protected GameEventManager eventManager;
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="eventManager">The event manager.</param>
-    public MissionManager(GameEventManager eventManager)
+    public MissionManager(Game game, GameEventManager eventManager)
     {
+        this.game = game;
         this.eventManager = eventManager;
 
         // Initialize missions (i.e. register event handlers).
-        initializeMissions();
+        initializeMissions(game);
     }
 
     /// <summary>
     /// Initializes the missions by registering event handlers for mission events.
     /// </summary>
-    private void initializeMissions()
+    /// <param name="game">The game instance.</param>
+    private void initializeMissions(Game game)
     {
         // Register event handlers for mission events.
-        List<MissionEvent> missionEvents = eventManager
+        List<MissionEvent> missionEvents = game
             .GetEventsByType<MissionEvent>()
             .OfType<MissionEvent>()
             .ToList();

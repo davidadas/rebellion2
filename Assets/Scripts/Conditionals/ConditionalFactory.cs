@@ -8,16 +8,8 @@ using System;
 /// @TODO: Add mechanism for to check parameters for validity before attempting to use them.
 public static class ConditionalFactory
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    private delegate IConditional ConditionalCreator(Dictionary<string, object> parameters);
-
-    /// <summary>
-    /// 
-    /// </summary>
+    
+    private delegate GameConditional ConditionalCreator(Dictionary<string, object> parameters);
     private static readonly Dictionary<string, ConditionalCreator> conditionCreators = new Dictionary<string, ConditionalCreator>
     {
         { "IsOnSamePlanet", CreateAreOnSamePlanet },
@@ -31,7 +23,7 @@ public static class ConditionalFactory
     /// <param name="parameters"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentException"></exception>
-    public static IConditional CreateConditional(string conditionType, Dictionary<string, object> parameters)
+    public static GameConditional CreateConditional(string conditionType, Dictionary<string, object> parameters)
     {
         if (conditionCreators.TryGetValue(conditionType, out var creator))
         {
@@ -48,7 +40,7 @@ public static class ConditionalFactory
     /// </summary>
     /// <param name="parameters"></param>
     /// <returns></returns>
-    private static IConditional CreateAreOnSamePlanet(Dictionary<string, object> parameters)
+    private static GameConditional CreateAreOnSamePlanet(Dictionary<string, object> parameters)
     {
         return new GenericConditional(AreOnSamePlanet, parameters);
     }
@@ -58,7 +50,7 @@ public static class ConditionalFactory
     /// </summary>
     /// <param name="parameters"></param>
     /// <returns></returns>
-    private static IConditional CreateAreOnOpposingFactions(Dictionary<string, object> parameters)
+    private static GameConditional CreateAreOnOpposingFactions(Dictionary<string, object> parameters)
     {
         return new GenericConditional(AreOnOpposingFactions, parameters);
     }

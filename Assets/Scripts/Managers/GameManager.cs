@@ -17,8 +17,9 @@ public enum TickSpeed
 public class GameManager
 {
     private Game currentGame;
-    public GameEventManager EventManager { get; private set; }
-    public MissionManager MissionManager { get; private set; }
+    private GameEventManager eventManager;
+    private NarrativeEventManager narrativeManager;
+    private MissionManager missionManager;
     private float? tickInterval;
     private float tickTimer;
 
@@ -29,8 +30,9 @@ public class GameManager
     public GameManager(Game game)
     {
         currentGame = game;
-        EventManager = new GameEventManager(game);
-        MissionManager = new MissionManager(EventManager);
+        eventManager = new GameEventManager(currentGame);
+        narrativeManager = new NarrativeEventManager(currentGame, eventManager);
+        missionManager = new MissionManager(currentGame, eventManager);
     }
 
     /// <summary>
@@ -86,7 +88,13 @@ public class GameManager
     /// </summary>
     private void ProcessTick()
     {
-        currentGame.CurrentTick++;  // Increment the current game's tick counter
-        EventManager.ProcessEvents(currentGame.CurrentTick);  // Process any events scheduled for this tick
+        // Increment the current game's tick counter.
+        currentGame.CurrentTick++;
+
+        // Process narrative events for the current game.
+        narrativeManager.ProcessNarrativeEvents(currentGame);
+
+        // Process any events scheduled for this tick.
+        eventManager.ProcessEvents(currentGame.CurrentTick);  
     }
 }

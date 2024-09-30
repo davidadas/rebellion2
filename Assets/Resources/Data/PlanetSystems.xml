@@ -1128,4 +1128,63 @@
 			</Planet>
 		</Planets>
 	</PlanetSystem>
+	<PlanetSystem>
+		<DisplayName>Calaron</DisplayName>
+		<SystemType>OuterRim</SystemType>
+		<Visibility>Small</Visibility>
+		<Importance>Medium</Importance>
+		<GameID>PLCAL</GameID>
+		<Planets>
+			<Planet>
+				<InstanceID>AKRIT_TAR</InstanceID>
+				<DisplayName>Akrit'tar</DisplayName>
+				<GameID>PLCAL01</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>KESSEL</InstanceID>
+				<DisplayName>Kessel</DisplayName>
+				<GameID>PLCAL02</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>NORVAL_II</InstanceID>
+				<DisplayName>Norval II</DisplayName>
+				<GameID>PLCAL03</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>MORVOGODINE</InstanceID>
+				<DisplayName>Morvogodine</DisplayName>
+				<GameID>PLCAL04</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>ITHOR</InstanceID>
+				<DisplayName>Ithor</DisplayName>
+				<GameID>PLCAL05</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>SKOR_II</InstanceID>
+				<DisplayName>Skor II</DisplayName>
+				<GameID>PLCAL06</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>FWILLSVING</InstanceID>
+				<DisplayName>Fwillsving</DisplayName>
+				<GameID>PLCAL07</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>KUBINDI</InstanceID>
+				<DisplayName>Kubindi</DisplayName>
+				<GameID>PLCAL08</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>JERIJADOR</InstanceID>
+				<DisplayName>Jerijador</DisplayName>
+				<GameID>PLCAL09</GameID>
+			</Planet>
+			<Planet>
+				<InstanceID>F_TRAL</InstanceID>
+				<DisplayName>F'tral</DisplayName>
+				<GameID>PLCAL10</GameID>
+			</Planet>
+		</Planets>
+	</PlanetSystem>
 </PlanetSystems>

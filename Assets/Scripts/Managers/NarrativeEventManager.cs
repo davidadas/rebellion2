@@ -7,38 +7,59 @@ using System;
 /// </summary>
 public class NarrativeEventManager
 {
+    private Game game;
     private GameEventManager eventManager;
 
-    public NarrativeEventManager(GameEventManager eventManager)
+    public NarrativeManager(Game game, GameEventManager eventManager)
     {
+        this.game = game;
         this.eventManager = eventManager;
 
-        initializeNarrativeEvents();
+        initializeNarrativeEvents(game);
     }
 
     /// <summary>
     /// 
     /// </summary>
-    private void initializeNarrativeEvents()
+    /// <param name="game"></param>
+    public void ProcessNarrativeEvents(Game game)
     {
-        // Get all narrative events
-        List<NarrativeEvent> narrativeEvents = eventManager
-            .GetEventsByType<NarrativeEvent>()
-            .OfType<NarrativeEvent>()
-            .ToList();
-
-        // Create conditionals for each narrative event
-        foreach(NarrativeEvent narrativeEvent in narrativeEvents)
+        foreach(NarrativeEvent narrativeEvent in game.NarrativeEvents)
         {
-            List<IConditional> conditionals = narrativeEvent.ConditionalParamsDictionary.Keys
-                .Aggregate(new List<IConditional>(), (acc, key) => {
-                    //
-                    SerializableDictionary<string, object> parameters = narrativeEvent.ConditionalParamsDictionary.TryGetValue(key, out parameters) ? parameters : null;
-                    acc.Add(ConditionalFactory.CreateConditional(key, parameters));
-                    return acc;
-                });
-            
+            // Check if the event's conditions are met.
+            if (narrativeEvent.MeetsConditions(game))
+            {
+                // Schedule the event.
+                eventManager.ScheduleEvent(narrativeEvent);
+
+                // Remove the event if it is not repeatable.
+                if (!narrativeEvent.Repeatable)
+                {
+                    game.RemoveNarrativeEvent(narrativeEvent);
+                }
+            }
         }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    private void initializeNarrativeEvents(Game game)
+    {
+        // Create conditionals for each narrative event.
+        // foreach(GameEvent narrativeEvent in narrativeEvents)
+        // {
+        //     List<GameConditional> conditionals = narrativeEvent.ConditionalParamsDictionary.Keys
+        //         .Aggregate(new List<GameConditional>(), (acc, key) => {
+        //             // Get parameters for the conditional.
+        //             SerializableDictionary<string, object> parameters = narrativeEvent.ConditionalParamsDictionary.TryGetValue(key, out parameters) ? parameters : null;
+                    
+        //             // Create the conditional and add it to the list.
+        //             acc.Add(ConditionalFactory.CreateConditional(key, parameters));
+        //             return acc;
+        //         });
+
+        // }
         
     }
 }

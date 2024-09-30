@@ -16,6 +16,7 @@ public class Game
     public List<Officer> UnrecruitedOfficers = new List<Officer>(); // @TODO: Convert to dictionary for faster lookups.
     public SerializableDictionary<int, List<GameEvent>> GameEventDictionary =
         new SerializableDictionary<int, List<GameEvent>>();
+    public List<NarrativeEvent> NarrativeEvents = new List<NarrativeEvent>();
 
     // Reference List
     public SerializableDictionary<string, ReferenceNode> ReferenceDictionary =
@@ -205,7 +206,13 @@ public class Game
     /// <param name="gameEvent">The game event to add.</param>
     public void AddGameEvent(int tick, GameEvent gameEvent)
     {
-        List<GameEvent> eventList = GameEventDictionary.GetOrAddValue(tick, new List<GameEvent>());
+        gameEvent.ScheduledTick = tick;
+        AddGameEvent(gameEvent);
+    }
+
+    public void AddGameEvent(GameEvent gameEvent)
+    {
+        List<GameEvent> eventList = GameEventDictionary.GetOrAddValue(gameEvent.tick, new List<GameEvent>());
         eventList.Add(gameEvent);
     }
 
@@ -220,6 +227,50 @@ public class Game
         {
             GameEventDictionary[tick].Remove(gameEvent);
         }
+    }
+
+    /// <summary>
+    /// Retrieves all game events of the specified type.
+    /// </summary>
+    /// <typeparam name="T">The type of game event to retrieve.</typeparam>
+    /// <returns>A list of game events of the specified type.</returns>
+    public List<GameEvent> GetEventsByType<T>() where T : GameEvent
+    {
+        List<GameEvent> events = new List<GameEvent>();
+
+        // Iterate through all events in the dictionary.
+        foreach (var eventList in game.GameEventDictionary.Values)
+        {
+            // Check if the event is of the specified type.
+            foreach (var gameEvent in eventList)
+            {
+                // Add the event to the list if it is of the specified type.
+                if (gameEvent is T)
+                {
+                    events.Add(gameEvent);
+                }
+            }
+        }
+
+        return events;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="narrativeEvent"></param>
+    public void AddNarrativeEvent(NarrativeEvent narrativeEvent)
+    {
+        NarrativeEvents.Add(narrativeEvent);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="narrativeEvent"></param>
+    public void RemoveNarrativeEvent(NarrativeEvent narrativeEvent)
+    {
+        NarrativeEvents.Remove(narrativeEvent);
     }
 
     /// <summary>
