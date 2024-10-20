@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 
+/// <summary>
+/// 
+/// </summary>
 public enum OfficerRank
 {
     None,
@@ -10,30 +13,14 @@ public enum OfficerRank
     Admiral,
 }
 
-public enum OfficerStatus
+public class Officer : MissionParticipant, IMovable
 {
-    Available,
-    Injured,
-    Captured,
-    OnMission,
-    InTransit,
-}
-
-public class Officer : MissionParticipant
-{
-    // Mission Stats
-    public int Diplomacy { get; set; }
-    public int Espionage { get; set; }
-    public int Combat { get; set; }
-    public int Leadership { get; set; }
-
     // Research Info
     public int ShipResearch;
     public int TroopResearch;
     public int FacilityResearch;
 
-    // Character Status
-    public OfficerStatus Status;
+    // Officer Info
     public bool IsMain;
     public bool CanBetray;
     public bool IsTraitor;
@@ -51,10 +38,7 @@ public class Officer : MissionParticipant
     public OfficerRank CurrentRank;
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-    public string InitialParentGameID;
+    public string InitialParentTypeID;
 
     // Variance Info
     [XmlIgnoreAttribute]
@@ -80,6 +64,9 @@ public class Officer : MissionParticipant
 
     [XmlIgnoreAttribute]
     public int ShipResearchVariance;
+
+    // Status Info
+    public MovementStatus MovementStatus { get; set; }
 
     /// <summary>
     /// Default constructor

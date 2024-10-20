@@ -8,10 +8,32 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// The ResourceManagerImpl class is responsible for managing the retrieval of 
+///
+/// </summary>
+public interface IAssetManager
+{
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public T GetConfig<T>()
+        where T : IConfig;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public T[] GetSceneNodeData<T>()
+        where T : SceneNode;
+}
+
+/// <summary>
+/// The AssetManagerImpl class is responsible for managing the retrieval of 
 /// configuration data and scene node data from files in the Resources directory.
 /// </summary>
-class ResourceManagerImpl : IResourceManager
+class AssetManagerImpl : IAssetManager
 {
     /// <summary>
     /// Retrieves the configuration data of type T.
@@ -58,14 +80,17 @@ class ResourceManagerImpl : IResourceManager
     }
 }
 
-public class ResourceManager
+/// <summary>
+/// The AssetManager class is a singleton class that provides a single point of access to the AssetManagerImpl class.
+/// </summary>
+public class AssetManager
 {
-    private static IResourceManager _resourceManager = new ResourceManagerImpl();
+    private static IAssetManager _resourceManager = new AssetManagerImpl();
 
     /// <summary>
     ///
     /// </summary>
-    public static IResourceManager Instance
+    public static IAssetManager Instance
     {
         get { return _resourceManager; }
     }

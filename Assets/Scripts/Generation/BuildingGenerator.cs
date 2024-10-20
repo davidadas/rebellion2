@@ -15,24 +15,24 @@ public class BuildingGenerator : UnitGenerator<Building>
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="resourceManager">The resource manager from which to load game data.</param>
-    public BuildingGenerator(GameSummary summary, IResourceManager resourceManager)
+    public BuildingGenerator(GameSummary summary, IAssetManager resourceManager)
         : base(summary, resourceManager) { }
 
     /// <summary>
     /// Creates a Dictionary out of the frequency data stored in the new game config.
     /// </summary>
-    /// <returns>A Dictionary with building GameIDs as keys as its percentage frequency.</returns>
+    /// <returns>A Dictionary with building TypeIDs as keys as its percentage frequency.</returns>
     public Dictionary<string, double> getConfigMapping()
     {
         IConfig config = GetConfig();
-        string[] gameIds = config.GetValue<string[]>("Buildings.InitialBuildings.GameIDs");
+        string[] typeIds = config.GetValue<string[]>("Buildings.InitialBuildings.TypeIDs");
         double[] frequencies = config.GetValue<double[]>("Buildings.InitialBuildings.Frequency");
         Dictionary<string, double> configMapping = new Dictionary<string, double>();
 
-        // Map each building's GameID with its percentage frequency, represented as a double.
-        for (int i = 0; i < gameIds.Length; i++)
+        // Map each building's TypeID with its percentage frequency, represented as a double.
+        for (int i = 0; i < typeIds.Length; i++)
         {
-            configMapping[gameIds[i]] = frequencies[i];
+            configMapping[typeIds[i]] = frequencies[i];
         }
 
         return configMapping;
@@ -89,10 +89,10 @@ public class BuildingGenerator : UnitGenerator<Building>
             foreach (Planet planet in colonizedPlanets)
             {
                 // Shuffle the array to randomize the priority.
-                foreach (string buildingGameId in configMapping.Keys.ToArray().Shuffle())
+                foreach (string buildingTypeID in configMapping.Keys.ToArray().Shuffle())
                 {
                     Building building = buildingList.Find(
-                        building => building.GameID == buildingGameId
+                        building => building.TypeID == buildingTypeID
                     );
                     int numAvailableSlots = planet.GetAvailableSlots(building.Slot);
 
@@ -106,7 +106,7 @@ public class BuildingGenerator : UnitGenerator<Building>
                     // Add this building each time its frequency exceeds a random value.
                     // Halt this process after the first failure, as frequency is calculated per system.
                     IEnumerable<Building> initialBuildings = filledBuildings.TakeWhile(
-                        x => UnityEngine.Random.value < configMapping[buildingGameId]
+                        x => UnityEngine.Random.value < configMapping[buildingTypeID]
                     );
 
                     // Add the generated buildings to the planet.

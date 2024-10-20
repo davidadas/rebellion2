@@ -18,10 +18,10 @@ public class Regiment : LeafNode, IManufacturable
     public int DetectionRating;
     public int BombardmentDefense;
 
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
+    // Status Info
+    public ManufacturingStatus ManufacturingStatus { get; set; }
+    public MovementStatus MovementStatus { get; set; }
+
 
     /// <summary>
     /// Default constructor used for serialization.

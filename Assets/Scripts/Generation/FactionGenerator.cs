@@ -13,7 +13,7 @@ public class FactionGenerator : UnitGenerator<Faction>
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="resourceManager">The resource manager from which to load game data.</param>
-    public FactionGenerator(GameSummary summary, IResourceManager resourceManager)
+    public FactionGenerator(GameSummary summary, IAssetManager resourceManager)
         : base(summary, resourceManager) { }
 
     /// <summary>
@@ -27,7 +27,7 @@ public class FactionGenerator : UnitGenerator<Faction>
             new Dictionary<string, Faction>(),
             (dict, nextFaction) =>
             {
-                dict.Add(nextFaction.HQGameID, nextFaction);
+                dict.Add(nextFaction.HQTypeID, nextFaction);
                 return dict;
             }
         );
@@ -37,11 +37,11 @@ public class FactionGenerator : UnitGenerator<Faction>
         {
             foreach (Planet planet in planetSystem.Planets)
             {
-                if (hqs.Keys.ToList().Contains(planet.GameID))
+                if (hqs.Keys.ToList().Contains(planet.TypeID))
                 {
                     planet.IsHeadquarters = true;
-                    planet.OwnerGameID = hqs[planet.GameID].GameID;
-                    filledHQs.Add(planet.OwnerGameID);
+                    planet.OwnerTypeID = hqs[planet.TypeID].TypeID;
+                    filledHQs.Add(planet.OwnerTypeID);
                 }
 
                 // Return if we have filled our array already.
@@ -80,8 +80,8 @@ public class FactionGenerator : UnitGenerator<Faction>
             IEnumerable<Planet> factionStartingPlanets = startingPlanets.Take(numStartingPlanets);
             foreach (Planet planet in factionStartingPlanets)
             {
-                planet.OwnerGameID = faction.GameID;
-                planet.SetPopularSupport(faction.GameID, 100);
+                planet.OwnerTypeID = faction.TypeID;
+                planet.SetPopularSupport(faction.TypeID, 100);
             }
         }
     }

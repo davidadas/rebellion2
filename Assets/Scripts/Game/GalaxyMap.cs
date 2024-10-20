@@ -19,7 +19,7 @@ public class GalaxyMap : SceneNode
     /// Adds a child to the node.
     /// </summary>
     /// <param name="child">The child node to add.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is PlanetSystem planetSystem)
         {
@@ -31,7 +31,7 @@ public class GalaxyMap : SceneNode
     /// Removes a child from the node.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is PlanetSystem planetSystem)
         {

@@ -36,11 +36,6 @@ public class Planet : SceneNode
             { BuildingSlot.Orbit, new List<Building>() },
         };
 
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
@@ -49,38 +44,25 @@ public class Planet : SceneNode
     /// <summary>
     /// Returns the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionGameId"></param>
-    public int GetPopularSupport(string factionGameId)
+    /// <param name="factionTypeID"></param>
+    public int GetPopularSupport(string factionTypeID)
     {
-        return PopularSupport.TryGetValue(factionGameId, out int support) ? support : 0;
+        return PopularSupport.TryGetValue(factionTypeID, out int support) ? support : 0;
     }
 
     /// <summary>
     /// Sets the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionGameId">The game ID of the faction.</param>
+    /// <param name="factionTypeID">The type id of the faction.</param>
     /// <param name="support">The level of support.</param>
-    public void SetPopularSupport(string factionGameId, int support)
+    public void SetPopularSupport(string factionTypeID, int support)
     {
-        if (!PopularSupport.ContainsKey(factionGameId))
+        if (!PopularSupport.ContainsKey(factionTypeID))
         {
-            PopularSupport.Add(factionGameId, support);
+            PopularSupport.Add(factionTypeID, support);
         }
 
-        PopularSupport[factionGameId] = support;
-    }
-
-    /// <summary>
-    /// Gets the available slots for a specific building slot.
-    /// </summary>
-    /// <param name="slot">The building slot.</param>
-    /// <returns>The number of available slots.</returns>
-    public int GetAvailableSlots(BuildingSlot slot)
-    {
-        int numUsedSlots = Buildings[slot].Count(building => building.Slot == slot);
-        int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
-
-        return maxSlots - numUsedSlots;
+        PopularSupport[factionTypeID] = support;
     }
 
     /// <summary>
@@ -90,6 +72,15 @@ public class Planet : SceneNode
     public void AddFleet(Fleet fleet)
     {
         Fleets.Add(fleet);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="fleet"></param>
+    public void RemoveFleet(Fleet fleet)
+    {
+        Fleets.Remove(fleet);
     }
 
     /// <summary>
@@ -122,46 +113,6 @@ public class Planet : SceneNode
     }
 
     /// <summary>
-    /// Adds an officer to the planet.
-    /// </summary>
-    /// <param name="officer">The officer to add.</param>
-    private void AddOfficer(Officer officer)
-    {
-        if (this.OwnerGameID != officer.OwnerGameID)
-        {
-            throw new SceneAccessException(officer, this);
-        }
-        Officers.Add(officer);
-    }
-
-    /// <summary>
-    /// Adds a mission to the planet.
-    /// </summary>
-    /// <param name="mission">The mission to add.</param>
-    private void AddMission(Mission mission)
-    {
-        Missions.Add(mission);
-    }
-
-    /// <summary>
-    /// Adds a regiment to the planet.
-    /// </summary>
-    /// <param name="regiment">The regiment to add.</param>
-    private void AddRegiment(Regiment regiment)
-    {
-        Regiments.Add(regiment);
-    }
-
-    /// <summary>
-    /// Removes a mission from the planet.
-    /// </summary>
-    /// <param name="mission">The mission to remove.</param>
-    private void RemoveMission(Mission mission)
-    {
-        Missions.Remove(mission);
-    }
-
-    /// <summary>
     /// Removes a building from the planet.
     /// </summary>
     /// <param name="building">The building to remove.</param>
@@ -169,15 +120,6 @@ public class Planet : SceneNode
     {
         BuildingSlot slot = building.Slot;
         Buildings[slot].Remove(building);
-    }
-
-    /// <summary>
-    /// Remoes a regiment to the planet.
-    /// </summary>
-    /// <param name="regiment">The regiment to remove.</param>
-    private void RemoveRegiment(Regiment regiment)
-    {
-        Regiments.Remove(regiment);
     }
 
     /// <summary>
@@ -191,10 +133,81 @@ public class Planet : SceneNode
     }
 
     /// <summary>
+    /// Gets the available slots for a specific building slot.
+    /// </summary>
+    /// <param name="slot">The building slot.</param>
+    /// <returns>The number of available slots.</returns>
+    public int GetAvailableSlots(BuildingSlot slot)
+    {
+        int numUsedSlots = Buildings[slot].Count(building => building.Slot == slot);
+        int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
+
+        return maxSlots - numUsedSlots;
+    }
+
+    /// <summary>
+    /// Adds an officer to the planet.
+    /// </summary>
+    /// <param name="officer">The officer to add.</param>
+    private void AddOfficer(Officer officer)
+    {
+        if (this.OwnerTypeID != officer.OwnerTypeID)
+        {
+            throw new SceneAccessException(officer, this);
+        }
+        Officers.Add(officer);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="officer"></param>
+    private void RemoveOfficer(Officer officer)
+    {
+        Officers.Remove(officer);
+    }
+
+    /// <summary>
+    /// Adds a mission to the planet.
+    /// </summary>
+    /// <param name="mission">The mission to add.</param>
+    private void AddMission(Mission mission)
+    {
+        Missions.Add(mission);
+    }
+
+    /// <summary>
+    /// Removes a mission from the planet.
+    /// </summary>
+    /// <param name="mission">The mission to remove.</param>
+    private void RemoveMission(Mission mission)
+    {
+        Missions.Remove(mission);
+    }
+
+    /// <summary>
+    /// Adds a regiment to the planet.
+    /// </summary>
+    /// <param name="regiment">The regiment to add.</param>
+    private void AddRegiment(Regiment regiment)
+    {
+        Regiments.Add(regiment);
+    }
+
+    /// <summary>
+    /// Remoes a regiment to the planet.
+    /// </summary>
+    /// <param name="regiment">The regiment to remove.</param>
+    private void RemoveRegiment(Regiment regiment)
+    {
+        Regiments.Remove(regiment);
+    }
+
+    /// <summary>
     /// Adds a reference node to the game.
     /// </summary>
     /// <param name="node">The game node to add as a reference.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Fleet fleet)
         {
@@ -222,15 +235,15 @@ public class Planet : SceneNode
     /// Removes a child node from the planet.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Fleet fleet)
         {
-            Fleets.Remove(fleet);
+            RemoveFleet(fleet);
         }
         else if (child is Officer officer)
         {
-            Officers.Remove(officer);
+            RemoveOfficer(officer);
         }
         else if (child is Building building)
         {
@@ -252,10 +265,12 @@ public class Planet : SceneNode
     /// <returns>An array of child nodes.</returns>
     public override IEnumerable<SceneNode> GetChildren()
     {
-        List<SceneNode> combinedList = new List<SceneNode>();
-        Building[] buildings = Buildings.Values.SelectMany(building => building).ToArray();
-        combinedList.AddAll(Fleets, Officers, Missions, Regiments, buildings);
+        IEnumerable<SceneNode> buildings = Buildings.Values.SelectMany(buildingList => buildingList).Cast<SceneNode>();
 
-        return combinedList.ToArray();
+        return Fleets.Cast<SceneNode>()
+            .Concat(Officers.Cast<SceneNode>())
+            .Concat(Missions.Cast<SceneNode>())
+            .Concat(Regiments.Cast<SceneNode>())
+            .Concat(buildings);
     }
 }

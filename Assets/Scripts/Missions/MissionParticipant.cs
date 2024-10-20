@@ -1,6 +1,7 @@
+using System;
+
 public enum MissionParticipantSkill
 {
-    None,
     Diplomacy,
     Espionage,
     Combat,
@@ -15,37 +16,36 @@ public enum MissionParticipantSkill
 public class MissionParticipant : LeafNode
 {
     // Mission Stats.
-    public SerializableDictionary<MissionParticipantSkill, int> Skills = new SerializableDictionary<MissionParticipantSkill, int>()
+    public SerializableDictionary<MissionParticipantSkill, int> Skills { get; set; }
+
+    public MissionParticipant()
+    {
+        Skills = new SerializableDictionary<MissionParticipantSkill, int>
         {
             { MissionParticipantSkill.Diplomacy, 0 },
             { MissionParticipantSkill.Espionage, 0 },
-               ///  { MissionParticipantSkill.Combat, 0 },
+            { MissionParticipantSkill.Combat, 0 },
             { MissionParticipantSkill.Leadership, 0 }
         };
-
+    }
+    
     /// <summary>
-    /// Default constructor.
+    /// 
     /// </summary>
-    public MissionParticipant() { }
+    /// <param name="skill"></param>
+    /// <param name="value"></param>
+    public virtual void SetMissionSkillValue(MissionParticipantSkill skill, int value)
+    {
+        Skills[skill] = value;
+    }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="skill"></param>
-    public int GetSkill(MissionParticipantSkill skill)
+    /// <returns></returns>
+    public int GetMissionSkillValue(MissionParticipantSkill skill)
     {
         return Skills[skill];
     }
-
-    /// <summary>
-    /// Sets the value of a skill.
-    /// </summary>
-    /// <param name="skill">The skill to set.</param>
-    /// <param name="value">The value to set the skill to.</param>
-    /// <returns>The new value of the skill.</returns>
-    public int SetSkill(MissionParticipantSkill skill, int value)
-    {
-        return Skills[skill] = value;
-    }
-
 }

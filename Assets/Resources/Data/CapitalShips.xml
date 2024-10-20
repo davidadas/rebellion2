@@ -4,11 +4,11 @@
 	<!--   ******************* EMPRE SHIPS ******************  -->
 	<!--   **************************************************  -->
 	<CapitalShip>
-		<GameID>CSEM001</GameID>
+		<TypeID>CSEM001</TypeID>
 		<DisplayName>Imperial Dreadnaught</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -74,11 +74,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM002</GameID>
+		<TypeID>CSEM002</TypeID>
 		<DisplayName>Galleon</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -144,11 +144,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM003</GameID>
+		<TypeID>CSEM003</TypeID>
 		<DisplayName>Imperial Escort Carrier</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -214,11 +214,11 @@
 		<DetectionRating>4</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM004</GameID>
+		<TypeID>CSEM004</TypeID>
 		<DisplayName>Carrack Light Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>26</ConstructionCost>
 		<MaintenanceCost>24</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -284,11 +284,11 @@
 		<DetectionRating>20</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM005</GameID>
+		<TypeID>CSEM005</TypeID>
 		<DisplayName>Victory Destroyer</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>68</ConstructionCost>
 		<MaintenanceCost>44</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -354,11 +354,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM006</GameID>
+		<TypeID>CSEM006</TypeID>
 		<DisplayName>Imperial Star Destroyer</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>112</ConstructionCost>
 		<MaintenanceCost>71</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -427,11 +427,11 @@
 	<!--   ***************** ALLIANCE SHIPS *****************  -->
 	<!--   **************************************************  -->
 	<CapitalShip>
-		<GameID>CSAL001</GameID>
+		<TypeID>CSAL001</TypeID>
 		<DisplayName>Alliance Dreadnaught</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -497,11 +497,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSAL002</GameID>
+		<TypeID>CSAL002</TypeID>
 		<DisplayName>Bulk Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>30</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -567,11 +567,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS003</GameID>
+		<TypeID>ALCS003</TypeID>
 		<DisplayName>Medium Transport</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>12</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -637,11 +637,11 @@
 		<DetectionRating>5</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS004</GameID>
+		<TypeID>ALCS004</TypeID>
 		<DisplayName>Bulk Transport</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>24</ConstructionCost>
 		<MaintenanceCost>22</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -707,11 +707,11 @@
 		<DetectionRating>1</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS005</GameID>
+		<TypeID>ALCS005</TypeID>
 		<DisplayName>Alliance Escourt Carrier</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>32</ConstructionCost>
 		<MaintenanceCost>29</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -777,11 +777,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS006</GameID>
+		<TypeID>ALCS006</TypeID>
 		<DisplayName>Corellian Corvette</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>14</ConstructionCost>
 		<MaintenanceCost>23</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -848,10 +848,10 @@
 	</CapitalShip>
 	<CapitalShip>
 		<DisplayName>Nebulon-B Frigate</DisplayName>
-		<GameID>ALCS007</GameID>
-		<AllowedOwnerGameIDs>
+		<TypeID>ALCS007</TypeID>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>35</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -917,11 +917,11 @@
 		<DetectionRating>30</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS008</GameID>
+		<TypeID>ALCS008</TypeID>
 		<DisplayName>Mon Calamari Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
 			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>92</ConstructionCost>
 		<MaintenanceCost>70</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>

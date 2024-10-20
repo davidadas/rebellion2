@@ -23,7 +23,7 @@ public sealed class GameBuilder
     /// <param name="summary">The summary of the game.</param>
     public GameBuilder(GameSummary summary)
     {
-        IResourceManager resourceManager = ResourceManager.Instance;
+        IAssetManager resourceManager = AssetManager.Instance;
 
         // Initialize our unit generators.
         _psGenerator = new PlanetSystemGenerator(summary, resourceManager);
@@ -50,7 +50,7 @@ public sealed class GameBuilder
         foreach (SceneNode node in referenceNodes)
         {
             ReferenceNode reference = new ReferenceNode(node);
-            referenceMap[node.GameID] = reference;
+            referenceMap[node.TypeID] = reference;
         }
 
         return referenceMap;
@@ -62,11 +62,11 @@ public sealed class GameBuilder
     /// <returns>The built game.</returns>
     public Game BuildGame()
     {
-        // First, generate our galaxy map with stat decorated planets.
+        // Generate our galaxy map with stat decorated planets.
         IUnitGenerationResults<PlanetSystem> psResults = _psGenerator.GenerateUnits();
         PlanetSystem[] galaxyMap = psResults.SelectedUnits;
 
-        // Then decorate the galaxy map with units.
+        // Decorate the galaxy map with units.
         Building[] buildings = _buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
         Faction[] factions = _factionGenerator.GenerateUnits(galaxyMap).UnitPool;
         CapitalShip[] capitalShips = _csGenerator.GenerateUnits(galaxyMap).UnitPool;
@@ -95,7 +95,7 @@ public sealed class GameBuilder
             Galaxy = Galaxy,
             Factions = factions.ToList<Faction>(),
             UnrecruitedOfficers = unrecruitedOfficers.ToList(),
-            ReferenceDictionary = referenceMap,
+            NodesByTypeID = referenceMap,
         };
 
         return game;

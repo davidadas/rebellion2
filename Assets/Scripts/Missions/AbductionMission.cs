@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 public class AbductionMission : Mission
 {
+    public Officer TargetOfficer { get; set; }
+
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
@@ -24,13 +26,14 @@ public class AbductionMission : Mission
     /// Constructor used when initializing the AbductionMission with participants and owner.
     /// </summary>
     public AbductionMission(
-        string ownerGameID,
+        string ownerTypeID,
         List<MissionParticipant> mainParticipants,
-        List<MissionParticipant> covertParticipants
+        List<MissionParticipant> covertParticipants,
+        Officer targetOfficer
     // @TODO: Move the success probability variables to configs.
     ) : base(
         "Abduction", 
-        ownerGameID, 
+        ownerTypeID, 
         mainParticipants, 
         covertParticipants, 
         MissionParticipantSkill.Combat, 
@@ -42,6 +45,7 @@ public class AbductionMission : Mission
         minTicks: 15, 
         maxTicks: 20)
     {
+        TargetOfficer = targetOfficer;
     }
 
     /// <summary>

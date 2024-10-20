@@ -45,7 +45,7 @@ public class PlanetSystem : SceneNode
     /// Adds a planet to the planet system.
     /// </summary>
     /// <param name="child">The planet to add.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Planet planet)
         {
@@ -57,7 +57,7 @@ public class PlanetSystem : SceneNode
     /// Removes a planet from the planet system.
     /// </summary>
     /// <param name="child">The planet to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Planet planet)
         {

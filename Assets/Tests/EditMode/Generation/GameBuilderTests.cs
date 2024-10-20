@@ -68,10 +68,10 @@ public class GameBuilderTests
             bool hasHQ = game.Galaxy
                 .PlanetSystems
                 .SelectMany(ps => ps.Planets)
-                .Any(planet => planet.OwnerGameID == faction.GameID && planet.IsHeadquarters);
+                .Any(planet => planet.OwnerTypeID == faction.TypeID && planet.IsHeadquarters);
 
             // Assert that the faction has a headquarters
-            Assert.IsTrue(hasHQ, $"Faction {faction.GameID} should have a headquarters.");
+            Assert.IsTrue(hasHQ, $"Faction {faction.TypeID} should have a headquarters.");
         }
     }
 }

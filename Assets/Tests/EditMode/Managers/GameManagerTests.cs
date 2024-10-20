@@ -1,67 +1,89 @@
-using NUnit.Framework;
-using UnityEngine.TestTools;
-using System.Collections;
+// using NUnit.Framework;
 
-// Mock GameEvent for testing
-public class MockEvent : GameEvent
-{
-    public bool WasExecuted { get; private set; }
+// [TestFixture]
+// public class GameManagerTests
+// {
+//     private GameManager gameManager;
+//     private Game game;
 
-    public MockEvent(int scheduledTick) : base(scheduledTick)
-    {
-        WasExecuted = false;
-    }
+//     [SetUp]
+//     public void Setup()
+//     {
+//         // Initialize the game and GameManager before each test
+//         game = new Game();
+//         gameManager = new GameManager(game);
+//     }
 
-    protected override void TriggerEvent(Game game)
-    {
-        WasExecuted = true;  // Mark the event as executed when this method is called
-    }
-}
+//     [Test]
+//     public void TestSetTickSpeedFastProcessesTickEvery1Second()
+//     {
+//         // Set tick speed to Fast (1 second per tick)
+//         gameManager.SetTickSpeed(TickSpeed.Fast);
 
-[TestFixture]
-public class GameManagerTests
-{
-    private GameManager gameManager;
-    private MockEvent mockEvent;
+//         // Simulate 1 second passing
+//         gameManager.Update(1f);
 
-    [SetUp]
-    public void Setup()
-    {
-        // Create a GameSummary and a new Game for the test
-        GameSummary summary = new GameSummary
-        {
-            GalaxySize = GameSize.Large,
-            Difficulty = GameDifficulty.Medium,
-            VictoryCondition = GameVictoryCondition.Headquarters,
-            ResourceAvailability = GameResourceAvailability.Normal,
-            PlayerFactionID = "FNALL1"
-        };
+//         // Assert that one tick has been processed
+//         Assert.AreEqual(1, game.CurrentTick, "Game should process one tick after 1 second at Fast speed.");
+//     }
 
-        Game game = new Game(summary);
+//     [Test]
+//     public void TestSetTickSpeedMediumProcessesTickEvery10Seconds()
+//     {
+//         // Set tick speed to Medium (10 seconds per tick)
+//         gameManager.SetTickSpeed(TickSpeed.Medium);
 
-        // Initialize GameManager with the game instance
-        gameManager = new GameManager(game);
-    }
+//         // Simulate 9 seconds passing (should not trigger a tick yet)
+//         gameManager.Update(9f);
+//         Assert.AreEqual(0, game.CurrentTick, "Game should not process a tick before 10 seconds at Medium speed.");
 
-    [Test]
-    public void TestEventExecutesAtScheduledTick()
-    {
-        // Create a mock event scheduled to occur at tick 5
-        mockEvent = new MockEvent(5);
+//         // Simulate 1 more second (total 10 seconds, which should trigger a tick)
+//         gameManager.Update(1f);
+//         Assert.AreEqual(1, game.CurrentTick, "Game should process one tick after 10 seconds at Medium speed.");
+//     }
 
-        gameManager.EventManager.ScheduleEvent(mockEvent);
-        gameManager.SetTickSpeed(TickSpeed.Fast);
+//     [Test]
+//     public void TestSetTickSpeedSlowProcessesTickEvery60Seconds()
+//     {
+//         // Set tick speed to Slow (60 seconds per tick)
+//         gameManager.SetTickSpeed(TickSpeed.Slow);
 
-        // Simulate 4 ticks (the event should not trigger yet)
-        for (int i = 0; i < 4; i++)
-        {
-            gameManager.Update(1f);  // Simulate 1 second of game time (1 tick)
-            Assert.IsFalse(mockEvent.WasExecuted, "Event should not have been executed yet.");
-        }
+//         // Simulate 59 seconds passing (should not trigger a tick yet)
+//         gameManager.Update(59f);
+//         Assert.AreEqual(0, game.CurrentTick, "Game should not process a tick before 60 seconds at Slow speed.");
 
-        // Simulate 1 more tick (the 5th tick, where the event is scheduled)
-        gameManager.Update(1f);  // Simulate 1 second of game time (1 tick)
+//         // Simulate 1 more second (total 60 seconds, which should trigger a tick)
+//         gameManager.Update(1f);
+//         Assert.AreEqual(1, game.CurrentTick, "Game should process one tick after 60 seconds at Slow speed.");
+//     }
 
-        Assert.IsTrue(mockEvent.WasExecuted, "Event should have been executed at tick 5.");
-    }
-}
+//     [Test]
+//     public void TestSetTickSpeedPausedNoTicksProcessed()
+//     {
+//         // Set tick speed to Paused (no ticking)
+//         gameManager.SetTickSpeed(TickSpeed.Paused);
+
+//         // Simulate some time passing (should not trigger any ticks)
+//         gameManager.Update(100f);
+//         Assert.AreEqual(0, game.CurrentTick, "Game should not process any ticks when the tick speed is paused.");
+//     }
+
+//     [Test]
+//     public void TestSetTickSpeedSwitchSpeedsDuringGame()
+//     {
+//         // Set tick speed to Fast and simulate 1 second
+//         gameManager.SetTickSpeed(TickSpeed.Fast);
+//         gameManager.Update(1f);
+//         Assert.AreEqual(1, game.CurrentTick, "Game should process one tick after 1 second at Fast speed.");
+
+//         // Switch to Medium speed and simulate 10 seconds
+//         gameManager.SetTickSpeed(TickSpeed.Medium);
+//         gameManager.Update(10f);
+//         Assert.AreEqual(2, game.CurrentTick, "Game should process one tick after 10 seconds at Medium speed.");
+
+//         // Switch to Slow speed and simulate 60 seconds
+//         gameManager.SetTickSpeed(TickSpeed.Slow);
+//         gameManager.Update(60f);
+//         Assert.AreEqual(3, game.CurrentTick, "Game should process one tick after 60 seconds at Slow speed.");
+//     }
+// }

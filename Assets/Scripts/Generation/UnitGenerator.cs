@@ -27,7 +27,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     where TUnit : SceneNode
 {
     private GameSummary _summary;
-    private IResourceManager _resourceManager;
+    private IAssetManager _resourceManager;
     private IConfig _config;
 
     /// <summary>
@@ -35,7 +35,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     /// </summary>
     /// <param name="summary"></param>
     /// <param name="resourceManager"></param>
-    public UnitGenerator(GameSummary summary, IResourceManager resourceManager)
+    public UnitGenerator(GameSummary summary, IAssetManager resourceManager)
     {
         _summary = summary;
         _resourceManager = resourceManager;

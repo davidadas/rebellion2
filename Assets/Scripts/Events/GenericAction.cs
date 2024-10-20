@@ -1,27 +1,36 @@
 using System;
+using DependencyInjectionExtensions;
 
 /// <summary>
 /// Represents a generic action that can be executed on a game.
 /// </summary>
-public class GenericAction : IAction
+public class GenericAction : GameAction
 {
-    private Action<Game> action;
+    private readonly Action<IServiceLocator, SerializableDictionary<string, object>> callback;
+    public SerializableDictionary<string, object> parameters;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="GenericAction"/> class.
+    /// Default constructor used for serialization.
     /// </summary>
-    /// <param name="action">The action to be executed on the game.</param>
-    public GenericAction(Action<Game> action)
+    public GenericAction() { }
+
+    /// <summary>
+    /// Initializes a new instance of the GenericAction class.
+    /// </summary>
+    /// 
+    /// <param name="parameters">The parameters required for the condition.</param>
+    public GenericAction(Action<IServiceLocator, SerializableDictionary<string, object>> callback, SerializableDictionary<string, object> parameters)
     {
-        this.action = action;
+        this.callback = callback;
+        this.parameters = parameters;
     }
 
     /// <summary>
-    /// Executes the generic action on the specified game.
+    /// 
     /// </summary>
-    /// <param name="game">The game on which the action is to be executed.</param>
-    public void Execute(Game game)
+    /// <param name="locator"></param>
+    public override void Execute(IServiceLocator locator)
     {
-        action.Invoke(game);
+        callback.Invoke(locator, parameters);
     }
 }

@@ -1,7 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using ICollectionExtensions;
 
 public enum PrimaryWeaponType
@@ -53,6 +53,10 @@ public class CapitalShip : SceneNode, IManufacturable
     public int WeaponRecharge;
     public int Bombardment;
 
+    // Status Info
+    public ManufacturingStatus ManufacturingStatus { get; set; }
+    public MovementStatus MovementStatus { get; set; }
+
     // Misc Info
     public int TractorBeamPower;
     public int TractorBeamnRange;
@@ -60,10 +64,7 @@ public class CapitalShip : SceneNode, IManufacturable
     public int DetectionRating;
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-    public string InitialParentGameID { get; set; }
+    public string InitialParentTypeID { get; set; }
 
     /// <summary>
     /// Default constructor.
@@ -109,7 +110,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     public void AddOfficer(Officer officer)
     {
-        if (this.OwnerGameID != officer.OwnerGameID)
+        if (this.OwnerTypeID != officer.OwnerTypeID)
         {
             throw new SceneAccessException(officer, this);
         }
@@ -121,7 +122,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// </summary>
     /// <param name="child">The child to add</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -141,7 +142,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// Adds a child to the capital ship.
     /// </summary>
     /// <param name="child">The child to remove</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -163,9 +164,8 @@ public class CapitalShip : SceneNode, IManufacturable
     /// <returns></returns>
     public override IEnumerable<SceneNode> GetChildren()
     {
-        List<SceneNode> combinedList = new List<SceneNode>();
-        combinedList.AddAll(Officers, Starfighters, Regiments);
-
-        return combinedList.ToArray();
+        return Officers.Cast<SceneNode>()
+            .Concat(Starfighters.Cast<SceneNode>())
+            .Concat(Regiments.Cast<SceneNode>());
     }
 }

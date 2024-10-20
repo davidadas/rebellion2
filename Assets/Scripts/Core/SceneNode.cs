@@ -8,8 +8,10 @@ public abstract class SceneNode : GameEntity
 {
     // Parent Info
     [CloneIgnore]
-    public string ParentGameID { get; set; }
+    public string ParentTypeID { get; set; }
+    public string LastParentTypeID { get; set; }
     protected SceneNode ParentNode;
+    protected SceneNode LastParentNode;
 
     /// <summary>
     /// Default constructor.
@@ -22,8 +24,10 @@ public abstract class SceneNode : GameEntity
     /// <param name="parentNode">The parent scene node.</param>
     public void SetParent(SceneNode parentNode)
     {
+        LastParentNode = ParentNode;
         ParentNode = parentNode;
-        ParentGameID = parentNode?.GameID;
+        LastParentTypeID = ParentTypeID;
+        ParentTypeID = parentNode?.TypeID;
     }
 
     /// <summary>
@@ -38,14 +42,62 @@ public abstract class SceneNode : GameEntity
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="child"></param>
-    protected internal abstract void AddChild(SceneNode child);
+    /// <returns></returns>
+    public SceneNode GetLastParent()
+    {
+        return LastParentNode;
+    }
+
+    /// Gets the closest parent scene node of the specified type.
+    /// </summary>
+    /// <typeparam name="T">The type of the parent scene node.</typeparam>
+    /// <returns>The closest parent scene node of the specified type.</returns>
+    public T GetClosestParentOfType<T>() where T : SceneNode
+    {
+        SceneNode parent = ParentNode;
+        while (parent != null)
+        {
+            if (parent is T)
+            {
+                return (T)parent;
+            }
+            parent = parent.GetParent();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets all children of the current scene node that match the specified game owner id and type.
+    /// </summary>
+    /// <typeparam name="T">The type of the children to retrieve.</typeparam>
+    /// <param name="ownerTypeId">The game owner id to match.</param>
+    /// <returns>An enumerable collection of children that match the specified game owner id and type.</returns>
+    public IEnumerable<T> GetChildrenByOwnerTypeID<T>(string ownerTypeId) where T : SceneNode
+    {
+        List<T> matchingChildren = new List<T>();
+
+        Traverse(node =>
+        {
+            if (node is T && node.OwnerTypeID == ownerTypeId)
+            {
+                matchingChildren.Add((T)node);
+            }
+        });
+
+        return matchingChildren;
+    }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="child"></param>
-    protected internal abstract void RemoveChild(SceneNode child);
+    public abstract void AddChild(SceneNode child);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="child"></param>
+    public abstract void RemoveChild(SceneNode child);
     
     /// <summary>
     /// Gets an enumerable collection of child scene nodes.

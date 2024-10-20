@@ -32,11 +32,10 @@ public class Starfighter : LeafNode, IManufacturable
     public int LaserRange;
     public int IonRange;
     public int TorpedoRange;
-
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
+    
+    // Status Info
+    public ManufacturingStatus ManufacturingStatus { get; set; }
+    public MovementStatus MovementStatus { get; set; }
 
     /// <summary>
     /// Default constructor used for serialization.

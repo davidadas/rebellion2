@@ -42,7 +42,7 @@ public class GameTests
         // Create officers.
         List<Officer> officers = new List<Officer>
         {
-            new Officer { OwnerGameID = "FNALL1" }
+            new Officer { OwnerTypeID = "FNALL1" }
         };
 
         // Create capital ships.
@@ -50,7 +50,7 @@ public class GameTests
         {
             new CapitalShip
             {
-                OwnerGameID = "FNALL1",
+                OwnerTypeID = "FNALL1",
                 Officers = officers
             }
         };
@@ -60,7 +60,7 @@ public class GameTests
         {
             new Fleet
             {
-                OwnerGameID = "FNALL1",
+                OwnerTypeID = "FNALL1",
                 CapitalShips = capitalShips
             }
         };
@@ -70,7 +70,7 @@ public class GameTests
         {
             new Planet
             {
-                OwnerGameID = "FNALL1",
+                OwnerTypeID = "FNALL1",
                 Fleets = fleets
             }
         };
@@ -98,7 +98,7 @@ public class GameTests
 
         game.Galaxy.Traverse((SceneNode node) => {
             string instanceID = node.InstanceID;
-            SceneNode sceneNode = game.GetSceneNodeByInstanceID(instanceID);
+            SceneNode sceneNode = game.GetSceneNodeByInstanceID<SceneNode>(instanceID);
 
             // Check if the node is registered by instance ID.
             Assert.AreEqual(node.InstanceID, sceneNode.InstanceID, "Node should be registered by instance ID.");
@@ -134,8 +134,8 @@ public class GameTests
         };
 
         // Create our scene.
-        Planet planet = new Planet { OwnerGameID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the nodes.
         game.AttachNode(planetSystem, planet);
@@ -156,14 +156,13 @@ public class GameTests
 
     public void TestMoveNode()
     {        
-        // Create the game.
         Game game = new Game();
 
         // Create our scene.
         PlanetSystem planetSystem = new PlanetSystem();
-        Planet planet1 = new Planet { OwnerGameID = "FNALL1" };
-        Planet planet2 = new Planet { OwnerGameID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        Planet planet1 = new Planet { OwnerTypeID = "FNALL1" };
+        Planet planet2 = new Planet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the nodes.
         game.AttachNode(planetSystem, planet1);
@@ -189,8 +188,8 @@ public class GameTests
         Game game = new Game();
 
         // Create our scene.
-        Planet planet = new Planet { OwnerGameID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the fleet to the planet.
         game.AttachNode(fleet, planet);
@@ -205,14 +204,14 @@ public class GameTests
         Game game = new Game();
 
         // Create our scene.
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Check if an exception is thrown when detaching a node without a parent.
         Assert.Throws<InvalidSceneOperationException>(() => game.DetachNode(fleet), "Exception should be thrown when detaching a node without a parent.");
     }
 
     [Test]
-    public void TestRegisterAndDeregisterSceneNode()
+    public void TestRegisterAndRemoveNodeByInstanceID()
     {;
         Game game = new Game
         {
@@ -220,7 +219,7 @@ public class GameTests
         };
 
         // Create our scene.
-        Planet planet = new Planet { OwnerGameID = "FNALL1" };
+        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
         PlanetSystem planetSystem = new PlanetSystem()
         {
             Planets = new List<Planet> { planet },
@@ -230,15 +229,15 @@ public class GameTests
         game.AttachNode(game.Galaxy, planetSystem);
 
         // Check if the fleet is registered.
-        Assert.AreEqual(game.GetSceneNodeByInstanceID(planetSystem.InstanceID), planetSystem, "Planet System should be registered.");
-        Assert.AreEqual(game.GetSceneNodeByInstanceID(planet.InstanceID), planet, "Planet should be registered.");
+        Assert.AreEqual(game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID), planetSystem, "Planet System should be registered.");
+        Assert.AreEqual(game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID), planet, "Planet should be registered.");
 
         // Detach the fleet from the planet.
         game.DetachNode(planetSystem);
 
         // Check if the fleet is deregistered.
-        Assert.IsNull(game.GetSceneNodeByInstanceID(planetSystem.InstanceID), "Planet System should be deregistered.");
-        Assert.IsNull(game.GetSceneNodeByInstanceID(planet.InstanceID), "Planet should be deregistered.");
+        Assert.IsNull(game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID), "Planet System should be deregistered.");
+        Assert.IsNull(game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID), "Planet should be deregistered.");
 
     }
 }

@@ -18,7 +18,7 @@ public class Faction : LeafNode
         { MessageType.Resource, new List<Message>() }
     };
     public int ResearchLevel;
-    public string HQGameID;
+    public string HQTypeID;
 
     /// <summary>
     /// Default constructor.

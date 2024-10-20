@@ -13,7 +13,7 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="resourceManager">The resource manager from which to load game data.</param>
-    public PlanetSystemGenerator(GameSummary summary, IResourceManager resourceManager)
+    public PlanetSystemGenerator(GameSummary summary, IAssetManager resourceManager)
         : base(summary, resourceManager) { }
 
     /// <summary>

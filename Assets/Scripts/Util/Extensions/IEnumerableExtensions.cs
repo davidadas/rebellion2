@@ -27,6 +27,13 @@ namespace IEnumerableExtensions
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public static T RandomElement<T>(this List<T> list)
         {
             if (list == null || list.Count == 0)
