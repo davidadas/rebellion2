@@ -13,10 +13,19 @@ public abstract class LeafNode : SceneNode
     protected LeafNode() { }
 
     /// <summary>
+    /// Shallow copies the node. This operation is used to create a copy of the node.
+    /// </summary>
+    /// <returns></returns>
+    public LeafNode ShallowCopy()
+    {
+        return (LeafNode)MemberwiseClone();
+    }
+
+    /// <summary>
     /// Adds a child to the node. For leaf nodes, this operation does nothing.
     /// </summary>
     /// <param name="child">The child node to add.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         // Do nothing (leaf nodes do not have children).
     }
@@ -25,8 +34,7 @@ public abstract class LeafNode : SceneNode
     /// Removes a child from the node. For leaf nodes, this operation does nothing.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         // Do nothing (leaf nodes do not have children).
     }

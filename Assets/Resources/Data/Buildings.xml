@@ -4,7 +4,7 @@
 	<!--   ******************* FACILITIES *******************  -->
 	<!--   **************************************************  -->
 	<Building>
-		<GameID>BDFA01</GameID>
+		<TypeID>BDFA01</TypeID>
 		<DisplayName>Construction Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
@@ -14,7 +14,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA02</GameID>
+		<TypeID>BDFA02</TypeID>
 		<DisplayName>Training Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
@@ -24,7 +24,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA03</GameID>
+		<TypeID>BDFA03</TypeID>
 		<DisplayName>Orbital Shipyard</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
@@ -34,7 +34,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA04</GameID>
+		<TypeID>BDFA04</TypeID>
 		<DisplayName>Mining Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
@@ -44,7 +44,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA05</GameID>
+		<TypeID>BDFA05</TypeID>
 		<DisplayName>Refinery</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
@@ -54,7 +54,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA06</GameID>
+		<TypeID>BDFA06</TypeID>
 		<DisplayName>Advanced Training Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
@@ -64,7 +64,7 @@
 		<ResearchLevel>1</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA07</GameID>
+		<TypeID>BDFA07</TypeID>
 		<DisplayName>Advanced Orbital Shipyard</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
@@ -77,7 +77,7 @@
 	<!--   ******************** DEFENSES ********************  -->
 	<!--   **************************************************  -->
 	<Building>
-		<GameID>BDDF01</GameID>
+		<TypeID>BDDF01</TypeID>
 		<DisplayName>LNR Series I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>7</ConstructionCost>
@@ -88,7 +88,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF02</GameID>
+		<TypeID>BDDF02</TypeID>
 		<DisplayName>GenCore Level I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>12</ConstructionCost>
@@ -99,7 +99,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF03</GameID>
+		<TypeID>BDDF03</TypeID>
 		<DisplayName>KDY-150</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>4</ConstructionCost>
@@ -110,7 +110,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF04</GameID>
+		<TypeID>BDDF04</TypeID>
 		<DisplayName>Death Star Shield</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>25</ConstructionCost>
@@ -121,7 +121,7 @@
 		<ResearchLevel>3</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF05</GameID>
+		<TypeID>BDDF05</TypeID>
 		<DisplayName>LNR Series II</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
@@ -132,7 +132,7 @@
 		<ResearchLevel>4</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF06</GameID>
+		<TypeID>BDDF06</TypeID>
 		<DisplayName>GenCore Level II</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
@@ -146,7 +146,7 @@
 	<!--   ******************** Utility *********************  -->
 	<!--   **************************************************  -->
 	<Building>
-		<GameID>BDUT01</GameID>
+		<TypeID>BDUT01</TypeID>
 		<DisplayName>Orbital Telescope</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
@@ -157,7 +157,7 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDUT02</GameID>
+		<TypeID>BDUT02</TypeID>
 		<DisplayName>Orbital Minefield</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>35</ConstructionCost>
@@ -168,7 +168,7 @@
 		<ResearchLevel>7</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDUT03</GameID>
+		<TypeID>BDUT03</TypeID>
 		<DisplayName>Advanced Orbital Telescope</DisplayName>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>111</ConstructionCost>

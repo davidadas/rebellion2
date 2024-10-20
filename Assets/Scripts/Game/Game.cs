@@ -11,22 +11,25 @@ public class Game
     // Game Details
     public GameSummary Summary { get; set; }
 
-    // Child Nodes
-    public List<Faction> Factions = new List<Faction>();
-    public List<Officer> UnrecruitedOfficers = new List<Officer>(); // @TODO: Convert to dictionary for faster lookups.
-    public SerializableDictionary<int, List<GameEvent>> GameEventDictionary =
-        new SerializableDictionary<int, List<GameEvent>>();
+    // Game Events
+    public SerializableDictionary<int, List<ScheduledEvent>> ScheduledEvents =
+        new SerializableDictionary<int, List<ScheduledEvent>>();
+    public List<GameEvent> EventPool = new List<GameEvent>();
+    public SerializableHashSet<string> CompletedEventIDs = new SerializableHashSet<string>();
 
     // Reference List
-    public SerializableDictionary<string, ReferenceNode> ReferenceDictionary =
+    public SerializableDictionary<string, ReferenceNode> NodesByTypeID =
         new SerializableDictionary<string, ReferenceNode>();
 
     // Scene Nodes
     [XmlIgnore]
-    public SerializableDictionary<string, SceneNode> SceneNodeRegistry =
+    public SerializableDictionary<string, SceneNode> NodesByInstanceID =
         new SerializableDictionary<string, SceneNode>();
 
-    // Galaxy Map
+    
+    // Game Objects
+    public List<Faction> Factions = new List<Faction>();
+    public List<Officer> UnrecruitedOfficers = new List<Officer>(); // @TODO: Convert to dictionary for faster lookups.
     private GalaxyMap _galaxy;
     public GalaxyMap Galaxy
     {
@@ -36,9 +39,7 @@ public class Game
         }
         set
         {
-            _galaxy = value;
-            // Connect the scene graph (children to parents).
-            connectSceneGraph(_galaxy);
+            _galaxy ??= value;
         }
     }
 
@@ -75,7 +76,7 @@ public class Game
         if (node.GetParent() != null)
         {
             throw new InvalidSceneOperationException(
-                $"Cannot attach node \"{node.GameID}\" to parent \"{parent.GameID}\" because it already has a parent."
+                $"Cannot attach node \"{node.TypeID}\" to parent \"{parent.TypeID}\" because it already has a parent."
             );
         }
     
@@ -83,7 +84,7 @@ public class Game
         node.SetParent(parent);
 
         // Register the node and its children.
-        node.Traverse(RegisterSceneNode);
+        node.Traverse(AddNodeByInstanceID);
     }
 
     /// <summary>
@@ -96,7 +97,7 @@ public class Game
         if (node.GetParent() == null)
         {
             throw new InvalidSceneOperationException(
-                $"Cannot detach node \"{node.GameID}\" because it does not have a parent."
+                $"Cannot detach node \"{node.TypeID}\" because it does not have a parent."
             );
         }
 
@@ -104,7 +105,7 @@ public class Game
         node.SetParent(null);
 
         // Deregister the node and its children.
-        node.Traverse(DeregisterSceneNode);
+        node.Traverse(RemoveNodeByInstanceID);
     }
 
     /// <summary>
@@ -112,12 +113,13 @@ public class Game
     /// </summary>
     /// <param name="node">The node to move.</param>
     /// <param name="parent">The new parent to move the node to.</param>
+    /// <param name="recurse">Whether to move the node's children as well.</param>
     public void MoveNode(SceneNode node, SceneNode parent, bool? recurse = false)
     {
         if (node.GetParent() == null)
         {
             throw new InvalidSceneOperationException(
-                $"Cannot move node \"{node.GameID}\" because it does not have a parent."
+                $"Cannot move node \"{node.TypeID}\" because it does not have a parent."
             );
         }
 
@@ -142,40 +144,40 @@ public class Game
     /// Adds a reference node to the game.
     /// </summary>
     /// <param name="node">The game node to add as a reference.</param>
-    public void AddReferenceNode(SceneNode node)
+    public void AddNodeByTypeID(SceneNode node)
     {
-        ReferenceDictionary.Add(node.GameID, new ReferenceNode(node));
+        NodesByTypeID.Add(node.TypeID, new ReferenceNode(node));
     }
 
     /// <summary>
     /// Removes a reference node from the game.
     /// </summary>
     /// <param name="node">The game node to remove as a reference.</param>
-    public void RegisterSceneNode(SceneNode node)
+    public void AddNodeByInstanceID(SceneNode node)
     {
-        SceneNodeRegistry.TryAdd(node.InstanceID, node);
+        NodesByInstanceID.TryAdd(node.InstanceID, node);
     }
 
     /// <summary>
     /// Deregisters a scene node from the game.
     /// </summary>
     /// <param name="node">The scene node to deregister.</param>
-    public void DeregisterSceneNode(SceneNode node)
+    public void RemoveNodeByInstanceID(SceneNode node)
     {
-        SceneNodeRegistry.Remove(node.InstanceID);
+        NodesByInstanceID.Remove(node.InstanceID);
     }
 
-
     /// <summary>
-    /// Gets a node in the scene by its game ID.
+    /// 
     /// </summary>
-    /// <param name="gameId"></param>
-    /// <returns>The scene node with the specified game ID, or null if not found.</returns>
-    public SceneNode GetSceneNodeByGameID(string gameId)
+    /// <typeparam name="T"></typeparam>
+    /// <param name="typeId"></param>
+    /// <returns></returns>
+    public T GetSceneNodeByTypeID<T>(string typeId) where T : SceneNode
     {
-        if (SceneNodeRegistry.TryGetValue(gameId, out SceneNode node))
+        if (NodesByTypeID.TryGetValue(typeId, out ReferenceNode referenceNode))
         {
-            return node;
+            return referenceNode.GetReference() as T;
         } else
         {
             return null;
@@ -183,19 +185,40 @@ public class Game
     }
 
     /// <summary>
-    /// Gets a node in the scene by its instance ID.
+    /// 
     /// </summary>
-    /// <param name="instanceID"></param>
-    /// <returns>The scene node with the specified instance ID, or null if not found.</returns>
-    public SceneNode GetSceneNodeByInstanceID(string instanceId)
+    /// <typeparam name="T"></typeparam>
+    /// <param name="instanceId"></param>
+    /// <returns></returns>
+    public T GetSceneNodeByInstanceID<T>(string instanceId) where T : SceneNode
     {
-        if (SceneNodeRegistry.TryGetValue(instanceId, out SceneNode node))
+        if (NodesByInstanceID.TryGetValue(instanceId, out SceneNode node))
         {
-            return node;
+            return node as T;
         } else
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="instanceIDs"></param>
+    /// <returns></returns>
+    public List<SceneNode> GetSceneNodesByInstanceIDs(List<string> instanceIDs)
+    {
+        List<SceneNode> matchingNodes = new List<SceneNode>();
+
+        foreach (var instanceId in instanceIDs)
+        {
+            if (NodesByInstanceID.TryGetValue(instanceId, out SceneNode node))
+            {
+                matchingNodes.Add(node);
+            }
+        }
+
+        return matchingNodes;
     }
 
     /// <summary>
@@ -203,33 +226,42 @@ public class Game
     /// </summary>
     /// <param name="tick">The tick at which the game event occurs.</param>
     /// <param name="gameEvent">The game event to add.</param>
-    public void AddGameEvent(int tick, GameEvent gameEvent)
+    public void ScheduleGameEvent(int tick, GameEvent gameEvent)
     {
-        List<GameEvent> eventList = GameEventDictionary.GetOrAddValue(tick, new List<GameEvent>());
-        eventList.Add(gameEvent);
+        ScheduledEvent scheduledEvent = new ScheduledEvent(gameEvent, tick);
+        ScheduledEvents[tick].Add(scheduledEvent);
     }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="tick"></param>
-    /// <param name="gameEvent"></param>
-    public void RemoveGameEvent(int tick, GameEvent gameEvent)
+    /// <param name="scheduledEvent"></param>
+    public void RemoveScheduledEvent(int tick, ScheduledEvent scheduledEvent)
     {
-        if (GameEventDictionary.ContainsKey(tick))
+        if (ScheduledEvents.ContainsKey(tick))
         {
-            GameEventDictionary[tick].Remove(gameEvent);
+            ScheduledEvents[tick].Remove(scheduledEvent);
         }
+    }
+
+    /// <summary>
+    /// Adds a game event to the list of completed event IDs.
+    /// </summary>
+    /// <param name="gameEvent"></param>
+    public void AddCompletedEventID(GameEvent gameEvent)
+    {
+        CompletedEventIDs.Add(gameEvent.InstanceID);
     }
 
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="ownerGameID"></param>
+    /// <param name="ownerTypeID"></param>
     /// <returns></returns>
-    public List<Officer> GetUnrecruitedOfficers(string ownerGameID)
+    public List<Officer> GetUnrecruitedOfficers(string ownerTypeID)
     {
-        return UnrecruitedOfficers.Where(officer => officer.OwnerGameID == ownerGameID).ToList();
+        return UnrecruitedOfficers.Where(officer => officer.OwnerTypeID == ownerTypeID).ToList();
     }
 
     /// <summary>
@@ -239,20 +271,5 @@ public class Game
     public void RemoveUnrecruitedOfficer(Officer officer)
     {
         UnrecruitedOfficers.Remove(officer);
-    }
-
-    /// <summary>
-    /// Connects the scene graph by setting the parent of each node.
-    /// </summary>
-    /// <returns></returns>
-    private void connectSceneGraph(GalaxyMap galaxy)
-    {
-        galaxy.Traverse((SceneNode node) => {
-            foreach (SceneNode child in node.GetChildren()) 
-            {
-                child.SetParent(node);
-            }
-            RegisterSceneNode(node);
-        });
     }
 }

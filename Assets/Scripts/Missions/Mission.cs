@@ -9,7 +9,6 @@ using System.Xml.Serialization;
 public abstract class Mission : SceneNode
 {
     public string Name;
-    public string OwnerGameID;
     public List<MissionParticipant> MainParticipants = new List<MissionParticipant>();
     public List<MissionParticipant> DecoyParticipants = new List<MissionParticipant>();
     public MissionParticipantSkill ParticipantSkill;
@@ -54,7 +53,7 @@ public abstract class Mission : SceneNode
     /// 
     /// </summary>
     /// <param name="name"></param>
-    /// <param name="ownerGameID"></param>
+    /// <param name="ownerTypeID"></param>
     /// <param name="mainParticipants"></param>
     /// <param name="decoyParticipants"></param>
     /// <param name="participantSkill"></param>
@@ -68,7 +67,7 @@ public abstract class Mission : SceneNode
     /// <exception cref="ArgumentNullException"></exception>
     protected Mission(
         string name,
-        string ownerGameID,
+        string ownerTypeID,
         List<MissionParticipant> mainParticipants,
         List<MissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
@@ -83,7 +82,7 @@ public abstract class Mission : SceneNode
     {
         // Set mission fields.
         Name = name ?? throw new ArgumentNullException(nameof(name));
-        OwnerGameID = ownerGameID;
+        OwnerTypeID = ownerTypeID;
         MainParticipants = mainParticipants ?? new List<MissionParticipant>();
         DecoyParticipants = decoyParticipants ?? new List<MissionParticipant>();
         ParticipantSkill = participantSkill;
@@ -100,10 +99,11 @@ public abstract class Mission : SceneNode
         MaxTicks = maxTicks;
     }
 
+    /// <summary>
     /// Initializes a new instance of the <see cref="Mission"/> class.
     /// </summary>
     /// <param name="name">The name of the mission.</param>
-    /// <param name="ownerGameID">The owner game ID.</param>
+    /// <param name="ownerTypeID">The owner type id.</param>
     /// <param name="mainParticipants">The main participants of the mission.</param>
     /// <param name="decoyParticipants">The decoy participants of the mission.</param>
     /// <param name="participantSkill">The skill level of the mission participants.</param>
@@ -127,7 +127,7 @@ public abstract class Mission : SceneNode
     protected double GetAgentProbability(MissionParticipant agent)
     {
         // Get the agent's skill score and calculate the success probability.
-        double agentScore = agent.GetSkill(ParticipantSkill);
+        double agentScore = agent.GetMissionSkillValue(ParticipantSkill);
 
         double agentProbability = CalculateProbability(agentScore, QuadraticCoefficient, LinearCoefficient, ConstantTerm);
 
@@ -142,7 +142,7 @@ public abstract class Mission : SceneNode
     protected double GetDecoyProbability(MissionParticipant decoy)
     {
         // Get the agent's skill score and calculate the success probability.
-        double decoyScore = decoy.GetSkill(DecoyParticipantSkill);
+        double decoyScore = decoy.GetMissionSkillValue(DecoyParticipantSkill);
 
         return CalculateProbability(decoyScore, DecoyQuadraticCoefficient, DecoyLinearCoefficient, DecoyConstantTerm);
     }
@@ -158,7 +158,7 @@ public abstract class Mission : SceneNode
         if (GetParent() is Planet planet)
         {
             // If the planet is not owned by the mission owner, the foil probability is 0.
-            if (planet.OwnerGameID == OwnerGameID)
+            if (planet.OwnerTypeID == OwnerTypeID)
             {
                 return 0;
             }
@@ -268,10 +268,10 @@ public abstract class Mission : SceneNode
     }
 
     /// <summary>
-    /// Performs the mission, determining if it succeeds or fails.
+    /// Executes the mission, determining if it succeeds or fails.
     /// </summary>
     /// <param name="game">The game instance.</param>
-    public void Perform(Game game)
+    public void Execute(Game game)
     {
         // Get the defense score and calculate the foil probability.
         double defenseScore = GetDefenseScore();
@@ -296,13 +296,14 @@ public abstract class Mission : SceneNode
     /// </summary>
     public override IEnumerable<SceneNode> GetChildren()
     {
-        return MainParticipants.Concat<SceneNode>(DecoyParticipants);
+        return MainParticipants.Cast<SceneNode>()
+            .Concat(DecoyParticipants.Cast<SceneNode>());
     }
 
     /// <summary>
     /// No-op (missions cannot have children added).
     /// </summary>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         // No-op: Missions cannot have children added.
     }
@@ -310,7 +311,7 @@ public abstract class Mission : SceneNode
     /// <summary>
     /// No-op (missions cannot have children removed).
     /// </summary>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         // No-op: Missions cannot have children removed.
     }

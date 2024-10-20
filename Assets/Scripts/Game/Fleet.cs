@@ -6,11 +6,6 @@ public class Fleet : SceneNode
 {
     public List<CapitalShip> CapitalShips = new List<CapitalShip>();
 
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-
     /// <summary>
     /// Default constructor.
     /// </summary>
@@ -23,7 +18,7 @@ public class Fleet : SceneNode
     /// <exception cref="SceneAccessException">Thrown when the capital ship is not allowed to be added.</exception>
     private void AddCapitalShip(CapitalShip capitalShip)
     {
-        if (this.OwnerGameID != capitalShip.OwnerGameID)
+        if (this.OwnerTypeID != capitalShip.OwnerTypeID)
         {
             throw new SceneAccessException(capitalShip, this);
         }
@@ -37,7 +32,7 @@ public class Fleet : SceneNode
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     private void AddOfficer(Officer officer)
     {
-        if (this.OwnerGameID != officer.OwnerGameID)
+        if (this.OwnerTypeID != officer.OwnerTypeID)
         {
             throw new SceneAccessException(officer, this);
         }
@@ -49,7 +44,7 @@ public class Fleet : SceneNode
     /// </summary>
     /// <param name="child">The child node to add.</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is CapitalShip)
         {
@@ -65,7 +60,7 @@ public class Fleet : SceneNode
     /// Removes a child from the node.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is CapitalShip capitalShip)
         {

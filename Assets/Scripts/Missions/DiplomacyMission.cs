@@ -24,13 +24,13 @@ public class DiplomacyMission : Mission
     /// Constructor used when initializing the DiplomacyMission with participants and owner.
     /// </summary>
     public DiplomacyMission(
-        string ownerGameID,
+        string ownerTypeID,
         List<MissionParticipant> mainParticipants,
         List<MissionParticipant> covertParticipants
     // @TODO: Move the success probability variables to configs.
     ) : base(
         "Diplomacy", 
-        ownerGameID, 
+        ownerTypeID, 
         mainParticipants, 
         covertParticipants, 
         MissionParticipantSkill.Diplomacy, 
@@ -49,7 +49,7 @@ public class DiplomacyMission : Mission
     {
         if (GetParent() is Planet planet)
         {
-            planet.SetPopularSupport(OwnerGameID, planet.GetPopularSupport(OwnerGameID) + 1);
+            planet.SetPopularSupport(OwnerTypeID, planet.GetPopularSupport(OwnerTypeID) + 1);
         }
     }
 }

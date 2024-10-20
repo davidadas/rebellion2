@@ -2,7 +2,6 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 [TestFixture]
 public class SaveGameManagerTests
@@ -65,17 +64,18 @@ public class SaveGameManagerTests
             Summary = summary,
             Galaxy = new GalaxyMap(),
         };
+        string serializedShit = SerializationHelper.Serialize(game);
         SaveGameManager.Instance.SaveGameData(game, saveFileName);
 
         // Load the game from file.
         Game loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
 
         // Assert that the loaded game's summary matches the original summary.
-        Assert.AreEqual(loadedGame.Summary.GalaxySize, summary.GalaxySize);
-        Assert.AreEqual(loadedGame.Summary.Difficulty, summary.Difficulty);
-        Assert.AreEqual(loadedGame.Summary.VictoryCondition, summary.VictoryCondition);
-        Assert.AreEqual(loadedGame.Summary.ResourceAvailability, summary.ResourceAvailability);
-        Assert.AreEqual(loadedGame.Summary.PlayerFactionID, summary.PlayerFactionID);
+        Assert.AreEqual(loadedGame.Summary.GalaxySize, summary.GalaxySize, "Galaxy size does not match.");
+        Assert.AreEqual(loadedGame.Summary.Difficulty, summary.Difficulty, "Difficulty does not match.");
+        Assert.AreEqual(loadedGame.Summary.VictoryCondition, summary.VictoryCondition, "Victory condition does not match.");
+        Assert.AreEqual(loadedGame.Summary.ResourceAvailability, summary.ResourceAvailability, "Resource availability does not match.");
+        Assert.AreEqual(loadedGame.Summary.PlayerFactionID, summary.PlayerFactionID, "Player faction ID does not match.");
     }
 
     [Test]
@@ -112,20 +112,20 @@ public class SaveGameManagerTests
         };
 
         // Create planets.
-        Planet planet = new Planet { OwnerGameID = "FNALL1" };
+        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
         planetSystem.Planets.Add(planet);
         game.AttachNode(planetSystem, planet);
 
         // Create fleets.
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
         game.AttachNode(planet, fleet);
 
         // Create capital ships.
-        CapitalShip capitalShip = new CapitalShip { OwnerGameID = "FNALL1" };
+        CapitalShip capitalShip = new CapitalShip { OwnerTypeID = "FNALL1" };
         game.AttachNode(fleet, capitalShip);
 
         // Create officers.
-        Officer officer = new Officer { OwnerGameID = "FNALL1" };
+        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
         game.AttachNode(capitalShip, officer);
 
         // Save the game to disk.

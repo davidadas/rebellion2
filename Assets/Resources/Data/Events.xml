@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<GameEvents>
+    <!-- Luke Goes To Dagobah -->
+    <GameEvent>
+        <TypeID></TypeID>
+        <InstanceID>LUKE_VISITS_YODA</InstanceID>
+        <DisplayName>Luke Visits Yoda</DisplayName>
+        <IsRepeatable>false</IsRepeatable>
+
+        <Conditionals>
+            <Conditional type="IsIdle">
+                <InstanceID>LUKE_SKYWALKER</InstanceID>
+            </Conditional>
+            <Conditional type="TickCount">
+                <EqualTo>30</EqualTo>
+            </Conditional>
+        </Conditionals>
+
+        <Actions>
+            <Action type="CreateMission">
+                <Mission type="JediTraining">
+                    <Participants>
+                        <UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID>
+                        <UnitInstanceID>YODA</UnitInstanceID>
+                    </Participants>
+                    <DestinationInstanceID>DAGOBAH</DestinationInstanceID>
+                </Mission>
+            </Action>
+            <!-- @TODO: Add action to notify player/faction. -->
+        </Actions>
+    </GameEvent>
+
+    <!-- Luke Confronts Vader -->
+	<GameEvent>
+        <TypeID></TypeID>
+        <InstanceID>LUKE_CONFRONTS_VADER</InstanceID>
+        <DisplayName>Luke Confronts Vader</DisplayName>
+        <IsRepeatable>true</IsRepeatable>
+
+        <Conditionals>
+            <Conditional type="OnSamePlanet">
+                <UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID>
+                <UnitInstanceID>DARTH_VADER</UnitInstanceID>
+            </Conditional>
+
+            <Conditional type="Or">
+                <Conditionals>
+                    <Conditional type="OnMission">
+                        <UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID>
+                    </Conditional>
+                    <Conditional type="OnMission">
+                        <UnitInstanceID>DARTH_VADER</UnitInstanceID>
+                    </Conditional>
+                </Conditionals>
+            </Conditional>
+        </Conditionals>
+
+        <Actions>
+        </Actions>
+    </GameEvent>
+
+    <!-- Luke Discovers Heritage -->
+    <GameEvent>
+        <TypeID></TypeID>
+        <InstanceID>LUKE_DISCOVERS_HERITAGE</InstanceID>
+        <DisplayName>Luke Discovers Heritage</DisplayName>
+        <IsRepeatable>false</IsRepeatable>
+
+        <Actions>
+        </Actions>
+    </GameEvent>
+
+</GameEvents>

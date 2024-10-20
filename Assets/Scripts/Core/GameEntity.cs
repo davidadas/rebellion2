@@ -1,39 +1,64 @@
-using System.Xml.Serialization;
 using System;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 
 [Serializable]
 public class GameEntity
 {
     private string _instanceId;
+    private string _ownerTypeID;
 
-    // Set the InstaceID property.
-    // This is a unique ID set for each node.
+    /// <summary>
+    /// InstanceID is a unique identifier for the object. If not set, it will be generated automatically.
+    /// Its primar
+    /// </summary>
     [CloneIgnore]
     public string InstanceID
     {
-        get
-        {
-            // Generate a new instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = Guid.NewGuid().ToString().Replace("-", "");
-            }
-            return _instanceId;
-        }
-        set
-        {
-            // Set the instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = value;
-            }
-        }
+        get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
+        set => _instanceId ??= value;
     }
-    // Set the GameID property.
-    // This is a non-unique ID set for each specific types of objects, such as planets, ships, etc.
-    public string GameID { get; set; }
 
-    // Game Info
+    /// <summary>
+    /// TypeID is a non-unique identifier for specific types of objects, such as starfighters, ships, regiments, etc.
+    ///
+    /// </summary>
+    public string TypeID { get; set; }
+
+    // Owner Info
     public string DisplayName { get; set; }
     public string Description { get; set; }
+    [CloneIgnore]
+    public string OwnerTypeID
+    {
+        get => _ownerTypeID;
+        set => SetOwnerTypeID(value);
+    }
+    public List<string> AllowedOwnerTypeIDs { get; set; }
+
+    /// <summary>
+    /// Sets the owner type id. If the ID is not in the allowed list, throws an exception.
+    /// </summary>
+    /// <param name="value">The owner type id to set.</param>
+    /// <exception cref="ArgumentException">Thrown when the owner type id is invalid.</exception>
+    private void SetOwnerTypeID(string value)
+    {
+        if (AllowedOwnerTypeIDs == null || AllowedOwnerTypeIDs.Count == 0 || AllowedOwnerTypeIDs.Contains(value))
+        {
+            _ownerTypeID = value;
+        }
+        else
+        {
+            throw new ArgumentException($"Invalid owner type id: {value}");
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns></returns>
+    public SceneNode GetShallowCopy()
+    {
+        return (SceneNode)MemberwiseClone();
+    }
 }

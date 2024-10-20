@@ -1,3 +1,5 @@
+using DependencyInjectionExtensions;
+
 /// <summary>
 /// Specifies different speeds for the game tick processing.
 /// </summary>
@@ -16,28 +18,36 @@ public enum TickSpeed
 /// </summary>
 public class GameManager
 {
-    private Game currentGame;
-    public EventManager EventManager { get; private set; }
-    public MissionManager MissionManager { get; private set; }
+    private Game game;
+    private GameEventManager eventManager;
+    private MissionManager missionManager;
+    private IServiceLocator serviceLocator;
     private float? tickInterval;
     private float tickTimer;
 
     /// <summary>
-    /// Constructor that initializes the GameManager with a given game.
+    /// 
     /// </summary>
-    /// <param name="game">The game instance that this manager will control.</param>
-    public GameManager(Game game)
+    /// <param name="serviceLocator"></param>
+    /// <param name="game"></param>
+    public GameManager(IServiceLocator serviceLocator, Game game)
     {
-        currentGame = game;
-        EventManager = new EventManager(game);
-        MissionManager = new MissionManager(EventManager);
+        // Initialize private variables.
+        this.serviceLocator = serviceLocator;
+        this.game = game;
+
+        // Initialize other managers.
+        eventManager = new GameEventManager(serviceLocator);
+        missionManager = new MissionManager(serviceLocator, game);
+
+        Initialize(game);
     }
 
     /// <summary>
     /// Gets the current game instance.
     /// </summary>
     /// <returns>The current Game object.</returns>
-    public Game GetGame() => currentGame;
+    public Game GetGame() => game;
 
     /// <summary>
     /// Sets the speed of the game ticks.
@@ -86,7 +96,27 @@ public class GameManager
     /// </summary>
     private void ProcessTick()
     {
-        currentGame.CurrentTick++;  // Increment the current game's tick counter
-        EventManager.ProcessEvents(currentGame.CurrentTick);  // Process any events scheduled for this tick
+        // Increment the current game's tick counter.
+        game.CurrentTick++;
+
+        // Process any events scheduled for this tick.
+        eventManager.ProcessEvents(game.CurrentTick);  
+    }
+
+    /// <summary>
+    /// Initializes the game by adding all nodes to the game's node registry.
+    /// </summary>
+    /// <param name="game"></param>
+    public void Initialize(Game game)
+    {
+        GalaxyMap galaxy = game.Galaxy;
+
+        galaxy.Traverse((SceneNode node) => {
+            foreach (SceneNode child in node.GetChildren()) 
+            {
+                child.SetParent(node);
+            }
+            game.AddNodeByInstanceID(node);
+        });
     }
 }

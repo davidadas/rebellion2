@@ -14,7 +14,7 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="resourceManager">The resource manager from which to load game data.</param>
-    public CapitalShipGenerator(GameSummary summary, IResourceManager resourceManager)
+    public CapitalShipGenerator(GameSummary summary, IAssetManager resourceManager)
         : base(summary, resourceManager) { }
 
     /// <summary>
@@ -61,12 +61,12 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
         foreach (IConfig capitalShipConfig in capitalShipConfigs)
         {
             CapitalShip capitalShip = capitalShips.First(
-                (capitalShip) => capitalShip.GameID == capitalShipConfig.GetValue<string>("GameID")
+                (capitalShip) => capitalShip.TypeID == capitalShipConfig.GetValue<string>("TypeID")
             );
-            capitalShip.InitialParentGameID = capitalShipConfig.GetValue<string>(
-                "InitialParentGameID"
+            capitalShip.InitialParentTypeID = capitalShipConfig.GetValue<string>(
+                "InitialParentTypeID"
             );
-            capitalShip.OwnerGameID = capitalShipConfig.GetValue<string>("OwnerGameID");
+            capitalShip.OwnerTypeID = capitalShipConfig.GetValue<string>("OwnerTypeID");
             mappedCapitalShips.Add(capitalShip);
         }
 
@@ -86,30 +86,30 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
             (planetSystem) => planetSystem.Planets
         );
 
-        // Create a dictionary of planet GameIDs to planets, containing only HQs.
+        // Create a dictionary of planet TypeIDs to planets, containing only HQs.
         Dictionary<string, Planet> hqs = flattenedPlanets
             .Where((planet) => planet.IsHeadquarters)
-            .ToDictionary((planet) => planet.GameID, planet => planet);
+            .ToDictionary((planet) => planet.TypeID, planet => planet);
 
         // Create a dictionary of factions to their owned planets (sans HQs).
         Dictionary<string, Planet[]> planets = flattenedPlanets
-            .Where((planet) => planet.OwnerGameID != null && !planet.IsHeadquarters)
-            .GroupBy((planet) => planet.OwnerGameID, planet => planet)
+            .Where((planet) => planet.OwnerTypeID != null && !planet.IsHeadquarters)
+            .GroupBy((planet) => planet.OwnerTypeID, planet => planet)
             .ToDictionary((grouping) => grouping.Key, (grouping) => grouping.ToArray());
 
         foreach (CapitalShip capitalShip in capitalShips)
         {
             // Handle case where capital ship has pre-defined parent.
             // We can only assign to HQs, as planets are randomly generated.
-            if (capitalShip.InitialParentGameID != null)
+            if (capitalShip.InitialParentTypeID != null)
             {
-                Planet planet = hqs[capitalShip.InitialParentGameID];
+                Planet planet = hqs[capitalShip.InitialParentTypeID];
                 planet.AddChild(capitalShip);
             }
             // Otherwise, randomly assign to a planet.
             else
             {
-                Planet planet = planets[capitalShip.OwnerGameID].Shuffle().First();
+                Planet planet = planets[capitalShip.OwnerTypeID].Shuffle().First();
                 planet.AddChild(capitalShip);
             }
         }

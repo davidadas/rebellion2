@@ -12,20 +12,26 @@ public class SpecialForces : MissionParticipant, IManufacturable
     public int BaseBuildSpeed { get; set; }
     public int RequiredResearchLevel { get; set; }
 
-    // Mission Stats
-    public int Diplomacy { get; set; }
-    public int Espionage { get; set; }
-    public int Combat { get; set; }
-    public int Leadership { get; set; }
-
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
+    // Status Info
+    public ManufacturingStatus ManufacturingStatus { get; set; }
+    public MovementStatus MovementStatus { get; set; }
 
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
     public SpecialForces() { }
 
+    /// <summary>
+    /// Determines if the unit is currently on a mission.
+    /// </summary>
+    /// <returns>True if the unit is on a mission, otherwise false.</returns>
+    public bool IsOnMission()
+    {
+        return GetParent() is Mission;
+    }
+
+    public override void SetMissionSkillValue(MissionParticipantSkill skill, int value)
+    {
+        throw new InvalidSceneOperationException("Special forces units cannot set mission skills.");
+    }
 }

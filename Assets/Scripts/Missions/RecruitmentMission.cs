@@ -25,13 +25,13 @@ public class RecruitmentMission : Mission
     /// Creates a new RecruitmentMission with the specified owner and participants.
     /// </summary>
     public RecruitmentMission(
-        string ownerGameID,
+        string ownerTypeID,
         List<MissionParticipant> mainParticipants,
         List<MissionParticipant> covertParticipants
     // @TODO: Move the success probability variables to configs.
     ) : base(
         "Recruitment", 
-        ownerGameID,
+        ownerTypeID,
         mainParticipants, 
         covertParticipants, 
         MissionParticipantSkill.Leadership, 
@@ -42,8 +42,7 @@ public class RecruitmentMission : Mission
         maxSuccessProbability: 100, 
         minTicks: 15, 
         maxTicks: 20)
-    {
-    }
+    { }
 
     /// <summary>
     /// Adds a new officer to the factions's roster.
@@ -53,7 +52,7 @@ public class RecruitmentMission : Mission
     {
         Planet planet = GetParent() as Planet;
 
-        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerGameID);
+        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerTypeID);
         Officer recruitedOfficer = unrecruitedOfficers.RandomElement();
 
         game.RemoveUnrecruitedOfficer(recruitedOfficer);

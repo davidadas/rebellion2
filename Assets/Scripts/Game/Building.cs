@@ -26,6 +26,10 @@ public class Building : LeafNode, IManufacturable
     public int ShieldStrength;
     public BuildingSlot Slot;
 
+    // Status Info
+    public ManufacturingStatus ManufacturingStatus { get; set; }
+    public MovementStatus MovementStatus { get; set; }
+
     /// <summary>
     /// Default constructor.
     /// </summary>
