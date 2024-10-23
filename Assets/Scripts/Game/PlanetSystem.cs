@@ -28,12 +28,14 @@ public enum PlanetSystemImportance
 /// </summary>
 public class PlanetSystem : SceneNode
 {
-    // Settings.
+    // Planet System Properties
     public GameSize Visibility;
     public PlanetSystemType SystemType;
     public PlanetSystemImportance Importance;
+    public int PositionX;
+    public int PositionY;
 
-    // Child Nodes.
+    // Child Nodes
     public List<Planet> Planets = new List<Planet>();
 
     /// <summary>

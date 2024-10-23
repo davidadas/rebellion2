@@ -17,6 +17,7 @@ using DependencyInjectionExtensions;
 /// </remarks>
 [Serializable]
 [XmlInclude(typeof(StartMissionAction))]
+[XmlInclude(typeof(ExecuteMissionAction))]
 public abstract class GameAction
 {
     [XmlAttribute("Type")]

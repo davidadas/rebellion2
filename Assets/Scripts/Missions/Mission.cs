@@ -44,7 +44,7 @@ public abstract class Mission : SceneNode
     public double FoilLinearCoefficient = 0.8879;
     public double FoilConstantTerm = 84.61;
 
-    private static readonly Random _random = new Random();
+    private static readonly Random random = new Random();
 
     // Empty constructor used for serialization.
     protected Mission() {}
@@ -222,7 +222,7 @@ public abstract class Mission : SceneNode
             double successProbability = CalculateTotalSuccess(agentProbability, foilProbability);
 
             // Determine if the mission is successful.
-            bool isSuccessful = _random.NextDouble() * 100 <= successProbability;
+            bool isSuccessful = random.NextDouble() * 100 <= successProbability;
             // Only return true if the mission is successful.
             if (isSuccessful)
             {
@@ -245,7 +245,7 @@ public abstract class Mission : SceneNode
             double decoyProbability = GetDecoyProbability(decoy);
 
             // Determine if the decoy is successful.
-            bool isSuccessful = _random.NextDouble() * 100 <= decoyProbability;
+            bool isSuccessful = random.NextDouble() * 100 <= decoyProbability;
 
             // Only return true if the decoy is successful.
             if (isSuccessful)
@@ -264,7 +264,7 @@ public abstract class Mission : SceneNode
     /// <returns>True if the mission is foiled, false otherwise.</returns>
     protected bool CheckMissionFoiled(double foilProbability)
     {
-        return _random.NextDouble() * 100 <= foilProbability;
+        return random.NextDouble() * 100 <= foilProbability;
     }
 
     /// <summary>

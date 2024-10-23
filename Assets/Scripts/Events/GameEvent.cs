@@ -22,9 +22,6 @@ public class GameEvent : GameEntity
     public bool IsRepeatable { get; set; }
     public List<GameConditional> Conditionals { get; set; }
     public List<GameAction> Actions { get; set; }
-    
-    // Event Callbacks
-    public event Action<GameEvent> OnEventTriggered;
 
     /// <summary>
     /// Default constructor used for serialization.
@@ -59,8 +56,5 @@ public class GameEvent : GameEntity
         {
             action.Execute(serviceLocator);
         }
-        
-        // Trigger the event callback.
-        OnEventTriggered?.Invoke(this);
     }
 }

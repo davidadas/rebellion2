@@ -5,7 +5,7 @@ using NUnit.Framework;
 using IEnumerableExtensions;
 
 [TestFixture]
-public class TestIEnumerableExtensions
+public class IEnumerableExtensionsTests
 {
     [Test]
     public void TestShuffleRandomizesCollection()

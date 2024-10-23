@@ -10,11 +10,13 @@ using ICollectionExtensions;
 /// </summary>
 public class Planet : SceneNode
 {
-    // Properties
+    // Planet Properties
     public bool IsColonized;
     public int OrbitSlots;
     public int GroundSlots;
     public int NumResourceNodes;
+    public int PositionX;
+    public int PositionY;
 
     // Status
     public bool IsDestroyed;
