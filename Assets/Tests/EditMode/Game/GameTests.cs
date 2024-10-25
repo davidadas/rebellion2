@@ -138,8 +138,8 @@ public class GameTests
         Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the nodes.
-        game.AttachNode(planetSystem, planet);
-        game.AttachNode(planet, fleet);
+        game.AttachNode(planet, planetSystem);
+        game.AttachNode(fleet, planet);
 
         // Check if the fleet is attached to the planet.
         Assert.Contains(fleet, planet.GetChildren().ToList(), "Fleet should be attached to the planet.");
@@ -165,9 +165,9 @@ public class GameTests
         Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the nodes.
-        game.AttachNode(planetSystem, planet1);
-        game.AttachNode(planetSystem, planet2);
-        game.AttachNode(planet1, fleet);
+        game.AttachNode(planet1, planetSystem);
+        game.AttachNode(planet2, planetSystem);
+        game.AttachNode(fleet, planet1);
 
         // Check if the fleet is attached to planet1.
         Assert.Contains(fleet, planet1.GetChildren().ToList(), "Fleet should be attached to planet1.");
@@ -192,7 +192,7 @@ public class GameTests
         Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
 
         // Attach the fleet to the planet.
-        game.AttachNode(fleet, planet);
+        game.AttachNode(planet, fleet);
 
         // Check if an exception is thrown when attaching a node with a parent.
         Assert.Throws<InvalidSceneOperationException>(() => game.AttachNode(fleet, planet), "Exception should be thrown when attaching a node with a parent.");
@@ -226,7 +226,7 @@ public class GameTests
         };
 
         // Attach the fleet to the planet.
-        game.AttachNode(game.Galaxy, planetSystem);
+        game.AttachNode(planetSystem, game.Galaxy);
 
         // Check if the fleet is registered.
         Assert.AreEqual(game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID), planetSystem, "Planet System should be registered.");

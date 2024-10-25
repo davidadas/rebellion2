@@ -6,7 +6,7 @@ using DependencyInjectionExtensions;
 /// <summary>
 /// 
 /// </summary>
-public class StartMissionAction : GameAction
+public class InitiateMissionAction : GameAction
 {
     /// <summary>
     /// Default constructor used for serialization.
@@ -51,7 +51,7 @@ public class StartMissionAction : GameAction
         string targetId = (string)Parameters["TargetInstanceID"];
 
         // Execute the mission.
-        missionService.StartMission(missionType, mainParticipantIds, decoyParticipantIds, targetId);
+        missionService.InitiateMission(missionType, mainParticipantIds, decoyParticipantIds, targetId);
     }
 }
 
@@ -102,18 +102,6 @@ public class MoveUnitsAction : GameAction
     /// </summary>
     /// <param name="parameters"></param>
     public MoveUnitsAction(SerializableDictionary<string, object> parameters) : base(parameters) { }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="units"></param>
-    /// <param name="target"></param>
-    public MoveUnitsAction(List<SceneNode> units, SceneNode target)
-        : base(new SerializableDictionary<string, object>
-        {
-            { "UnitInstanceIDs", units.Select(unit => unit.InstanceID).ToList() },
-            { "TargetInstanceID", target.InstanceID }
-        }) { }
 
     /// <summary>
     /// 

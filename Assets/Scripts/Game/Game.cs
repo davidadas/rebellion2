@@ -67,10 +67,10 @@ public class Game
     /// <summary>
     /// Attaches a node to a parent node.
     /// </summary>
-    /// <param name="parent">The parent node to attach the node to.</param>
     /// <param name="node">The node to attach.</param>
+    /// <param name="parent">The parent node to attach the node to.</param>
     /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
-    public void AttachNode(SceneNode parent, SceneNode node)
+    public void AttachNode(SceneNode node, SceneNode parent)
     {
         // If the node already has a parent, throw an exception.
         if (node.GetParent() != null)

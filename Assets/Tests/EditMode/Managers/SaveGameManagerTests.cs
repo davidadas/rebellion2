@@ -114,19 +114,19 @@ public class SaveGameManagerTests
         // Create planets.
         Planet planet = new Planet { OwnerTypeID = "FNALL1" };
         planetSystem.Planets.Add(planet);
-        game.AttachNode(planetSystem, planet);
+        game.AttachNode(planet, planetSystem);
 
         // Create fleets.
         Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
-        game.AttachNode(planet, fleet);
+        game.AttachNode(fleet, planet);
 
         // Create capital ships.
         CapitalShip capitalShip = new CapitalShip { OwnerTypeID = "FNALL1" };
-        game.AttachNode(fleet, capitalShip);
+        game.AttachNode(capitalShip, fleet);
 
         // Create officers.
         Officer officer = new Officer { OwnerTypeID = "FNALL1" };
-        game.AttachNode(capitalShip, officer);
+        game.AttachNode(officer, capitalShip);
 
         // Save the game to disk.
         SaveGameManager.Instance.SaveGameData(game, saveFileName);

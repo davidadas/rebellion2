@@ -2,6 +2,14 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
+/// 
+/// </summary>.
+public interface IMovementService
+{
+    public void MoveUnits(List<string> unitInstanceIds, string targetInstanceId);
+}
+
+/// <summary>
 /// A specialized class for calculating travel time between two planets.
 /// </summary>
 internal class SpaceTravelCalculator
@@ -75,11 +83,6 @@ internal class SpaceTravelCalculator
     }
 }
 
-public interface IMovementService
-{
-    public void MoveUnits(List<string> unitInstanceIds, string targetInstanceId);
-}
-
 /// <summary>
 /// 
 /// </summary>
@@ -106,7 +109,7 @@ public class MovementService : IMovementService
     /// <param name="unit"></param>
     /// <param name="target"></param>
     /// <returns></returns>
-    public int GetTravelTime(SceneNode unit, SceneNode target)
+    public int CalculateTravelTime(SceneNode unit, SceneNode target)
     {
         Planet currentUnitLocation = unit.GetClosestParentOfType<Planet>();
         Planet targetLocation = target.GetClosestParentOfType<Planet>();
@@ -120,6 +123,23 @@ public class MovementService : IMovementService
     /// <param name="unitInstanceIds"></param>
     /// <param name="targetInstanceId"></param>
     public void MoveUnits(List<string> unitInstanceIds, string targetInstanceId)
+    {
+        List<SceneNode> units = lookupService.GetSceneNodesByInstanceIDs(unitInstanceIds);
+        SceneNode target = lookupService.GetSceneNodeByInstanceID(targetInstanceId);
+        
+        foreach (SceneNode unit in units)
+        {
+            game.MoveNode(unit, target);
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="unitInstanceIds"></param>
+    /// <param name="targetInstanceId"></param>
+    /// <returns></returns>
+    public GameEvent GetMoveUnitsEvent(List<string> unitInstanceIds, string targetInstanceId)
     {
         List<SceneNode> units = lookupService.GetSceneNodesByInstanceIDs(unitInstanceIds);
         SceneNode target = lookupService.GetSceneNodeByInstanceID<SceneNode>(targetInstanceId);
@@ -138,7 +158,6 @@ public class MovementService : IMovementService
             }
         };
 
-        // Schedule the movement event.
-        eventService.ScheduleEvent(movementEvent, game.CurrentTick + travelTime);
+        return movementEvent;
     }
 }

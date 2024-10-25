@@ -58,6 +58,6 @@ public class RecruitmentMission : Mission
         game.RemoveUnrecruitedOfficer(recruitedOfficer);
 
         // Attach the recruited officer to the planet.
-        game.AttachNode(planet, recruitedOfficer);
+        game.AttachNode(recruitedOfficer, planet);
     }
 }
