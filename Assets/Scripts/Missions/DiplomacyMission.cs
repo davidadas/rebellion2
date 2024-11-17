@@ -6,7 +6,8 @@ public class DiplomacyMission : Mission
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
-    public DiplomacyMission() : base()
+    public DiplomacyMission()
+        : base()
     // @TODO: Move the success probability variables to configs.
     {
         Name = "Diplomacy";
@@ -24,23 +25,27 @@ public class DiplomacyMission : Mission
     /// Constructor used when initializing the DiplomacyMission with participants and owner.
     /// </summary>
     public DiplomacyMission(
-        string ownerGameID,
-        List<MissionParticipant> mainParticipants,
-        List<MissionParticipant> covertParticipants
+        string ownerTypeId,
+        string targetInstanceId,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
     // @TODO: Move the success probability variables to configs.
-    ) : base(
-        "Diplomacy", 
-        ownerGameID, 
-        mainParticipants, 
-        covertParticipants, 
-        MissionParticipantSkill.Diplomacy, 
-        quadraticCoefficient: 0.005558, 
-        linearCoefficient: 0.7656, 
-        constantTerm: 20.15, 
-        minSuccessProbability: 1, 
-        maxSuccessProbability: 100, 
-        minTicks: 15, 
-        maxTicks: 20) { }
+    )
+        : base(
+            "Diplomacy",
+            ownerTypeId,
+            targetInstanceId,
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Diplomacy,
+            quadraticCoefficient: 0.005558,
+            linearCoefficient: 0.7656,
+            constantTerm: 20.15,
+            minSuccessProbability: 1,
+            maxSuccessProbability: 100,
+            minTicks: 15,
+            maxTicks: 20
+        ) { }
 
     /// <summary>
     /// Increases the planetary support for the owning faction.
@@ -49,7 +54,7 @@ public class DiplomacyMission : Mission
     {
         if (GetParent() is Planet planet)
         {
-            planet.SetPopularSupport(OwnerGameID, planet.GetPopularSupport(OwnerGameID) + 1);
+            planet.SetPopularSupport(OwnerTypeID, planet.GetPopularSupport(OwnerTypeID) + 1);
         }
     }
 }

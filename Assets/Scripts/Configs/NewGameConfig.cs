@@ -1,7 +1,7 @@
-using System.Collections;
-using System.Reflection;
-using System.Linq;
 using System;
+using System.Collections;
+using System.Linq;
+using System.Reflection;
 
 /// **********************
 /// START SHARED CONFIGS
@@ -92,7 +92,7 @@ public class NewGameOfficerConfig : Config
 [Serializable]
 public class NewGameInitialBuildingsConfig : Config
 {
-    public string[] GameIDs;
+    public string[] TypeIDs;
     public double[] Frequency;
 
     public NewGameInitialBuildingsConfig() { }
@@ -113,9 +113,9 @@ public class NewGameBuildingConfig : Config
 [Serializable]
 public class NewGameCapitalShipOptions : Config
 {
-    public string OwnerGameID;
-    public string GameID;
-    public string InitialParentGameID;
+    public string OwnerTypeID;
+    public string TypeID;
+    public string InitialParentTypeID;
 
     public NewGameCapitalShipOptions() { }
 }

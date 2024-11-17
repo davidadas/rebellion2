@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Xml;
-using System.Xml.Serialization;
 
 /// <summary>
 /// The type of planet system (core system or outer rim).
@@ -20,21 +20,24 @@ public enum PlanetSystemImportance
 {
     Low,
     Medium,
-    High
+    High,
 }
 
 /// <summary>
 /// Represents a system of planets, which is primarily a collection of planets.
 /// </summary>
+[PersistableObject]
 public class PlanetSystem : SceneNode
 {
-    // Settings.
-    public GameSize Visibility;
-    public PlanetSystemType SystemType;
-    public PlanetSystemImportance Importance;
+    // Planet System Properties
+    public GameSize Visibility { get; set; }
+    public PlanetSystemType SystemType { get; set; }
+    public PlanetSystemImportance Importance { get; set; }
+    public int PositionX { get; set; }
+    public int PositionY { get; set; }
 
-    // Child Nodes.
-    public List<Planet> Planets = new List<Planet>();
+    // Child Nodes
+    public List<Planet> Planets { get; set; } = new List<Planet>();
 
     /// <summary>
     /// Default constructor used for serialization.
@@ -42,10 +45,19 @@ public class PlanetSystem : SceneNode
     public PlanetSystem() { }
 
     /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public Point GetPosition()
+    {
+        return new Point(PositionX, PositionY);
+    }
+
+    /// <summary>
     /// Adds a planet to the planet system.
     /// </summary>
     /// <param name="child">The planet to add.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Planet planet)
         {
@@ -57,7 +69,7 @@ public class PlanetSystem : SceneNode
     /// Removes a planet from the planet system.
     /// </summary>
     /// <param name="child">The planet to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Planet planet)
         {

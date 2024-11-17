@@ -1,5 +1,4 @@
 using System.IO;
-using System.Xml.Serialization;
 using UnityEngine;
 
 /// <summary>
@@ -39,11 +38,7 @@ public class SaveGameManager
     /// <returns>The full path to the save file.</returns>
     public string GetSaveFilePath(string fileName)
     {
-        return Path.Combine(
-            Application.persistentDataPath,
-            "saves",
-            $"{fileName}.sav"
-        );
+        return Path.Combine(Application.persistentDataPath, "saves", $"{fileName}.sav");
     }
 
     /// <summary>
@@ -63,7 +58,7 @@ public class SaveGameManager
 
         // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
-        XmlSerializer serializer = new XmlSerializer(typeof(Game));
+        GameSerializer serializer = new GameSerializer(typeof(Game));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Create))
         {
             serializer.Serialize(fileStream, game);
@@ -80,7 +75,7 @@ public class SaveGameManager
         string saveFilePath = GetSaveFilePath(fileName);
 
         // Deserialize the data from a file.
-        XmlSerializer serializer = new XmlSerializer(typeof(Game));
+        GameSerializer serializer = new GameSerializer(typeof(Game));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Open))
         {
             Game game = (Game)serializer.Deserialize(fileStream);

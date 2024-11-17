@@ -1,13 +1,17 @@
-using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
+using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 [TestFixture]
 public class SaveGameManagerTests
 {
     private string saveFileName = "SaveGameManagerTest";
+    private List<Faction> factions = new List<Faction>
+    {
+        new Faction { TypeID = "FNALL1" },
+        new Faction { TypeID = "FNEMP1" },
+    };
 
     [TearDown]
     public void Teardown()
@@ -37,6 +41,7 @@ public class SaveGameManagerTests
         Game game = new Game
         {
             Summary = summary,
+            Factions = factions,
             Galaxy = new GalaxyMap(),
         };
         SaveGameManager.Instance.SaveGameData(game, saveFileName);
@@ -60,22 +65,39 @@ public class SaveGameManagerTests
         };
 
         // Save the game to disk.
-        Game game = new Game
-        {
-            Summary = summary,
-            Galaxy = new GalaxyMap(),
-        };
+        Game game = new Game { Summary = summary, Galaxy = new GalaxyMap() };
+        string serializedShit = SerializationHelper.Serialize(game);
         SaveGameManager.Instance.SaveGameData(game, saveFileName);
 
         // Load the game from file.
         Game loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
 
         // Assert that the loaded game's summary matches the original summary.
-        Assert.AreEqual(loadedGame.Summary.GalaxySize, summary.GalaxySize);
-        Assert.AreEqual(loadedGame.Summary.Difficulty, summary.Difficulty);
-        Assert.AreEqual(loadedGame.Summary.VictoryCondition, summary.VictoryCondition);
-        Assert.AreEqual(loadedGame.Summary.ResourceAvailability, summary.ResourceAvailability);
-        Assert.AreEqual(loadedGame.Summary.PlayerFactionID, summary.PlayerFactionID);
+        Assert.AreEqual(
+            loadedGame.Summary.GalaxySize,
+            summary.GalaxySize,
+            "Galaxy size does not match."
+        );
+        Assert.AreEqual(
+            loadedGame.Summary.Difficulty,
+            summary.Difficulty,
+            "Difficulty does not match."
+        );
+        Assert.AreEqual(
+            loadedGame.Summary.VictoryCondition,
+            summary.VictoryCondition,
+            "Victory condition does not match."
+        );
+        Assert.AreEqual(
+            loadedGame.Summary.ResourceAvailability,
+            summary.ResourceAvailability,
+            "Resource availability does not match."
+        );
+        Assert.AreEqual(
+            loadedGame.Summary.PlayerFactionID,
+            summary.PlayerFactionID,
+            "Player faction ID does not match."
+        );
     }
 
     [Test]
@@ -83,16 +105,10 @@ public class SaveGameManagerTests
     {
         // Create planet systems.
         PlanetSystem planetSystem = new PlanetSystem();
-        List<PlanetSystem> planetSystems = new List<PlanetSystem>
-        {
-            planetSystem,
-        };
+        List<PlanetSystem> planetSystems = new List<PlanetSystem> { planetSystem };
 
         // Create galaxy map.
-        GalaxyMap galaxy = new GalaxyMap
-        {
-            PlanetSystems = planetSystems,
-        };
+        GalaxyMap galaxy = new GalaxyMap { PlanetSystems = planetSystems };
 
         // Generate the game summary.
         GameSummary summary = new GameSummary
@@ -103,37 +119,38 @@ public class SaveGameManagerTests
             ResourceAvailability = GameResourceAvailability.Abundant,
             PlayerFactionID = "FNALL1",
         };
-        
+
         // Create the game.
         Game game = new Game
         {
             Summary = summary,
+            Factions = factions,
             Galaxy = galaxy,
         };
 
         // Create planets.
-        Planet planet = new Planet { OwnerGameID = "FNALL1" };
+        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
         planetSystem.Planets.Add(planet);
-        game.AttachNode(planetSystem, planet);
+        game.AttachNode(planet, planetSystem);
 
         // Create fleets.
-        Fleet fleet = new Fleet { OwnerGameID = "FNALL1" };
-        game.AttachNode(planet, fleet);
+        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        game.AttachNode(fleet, planet);
 
         // Create capital ships.
-        CapitalShip capitalShip = new CapitalShip { OwnerGameID = "FNALL1" };
-        game.AttachNode(fleet, capitalShip);
+        CapitalShip capitalShip = new CapitalShip { OwnerTypeID = "FNALL1" };
+        game.AttachNode(capitalShip, fleet);
 
         // Create officers.
-        Officer officer = new Officer { OwnerGameID = "FNALL1" };
-        game.AttachNode(capitalShip, officer);
+        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        game.AttachNode(officer, capitalShip);
 
         // Save the game to disk.
         SaveGameManager.Instance.SaveGameData(game, saveFileName);
 
         // Load the game from file.
         Game loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
-  
+
         // Verify the scene graph is reconstituted.
         PlanetSystem loadedPlanetSystem = loadedGame.Galaxy.PlanetSystems[0];
         Planet loadedPlanet = loadedPlanetSystem.Planets[0];
@@ -146,5 +163,4 @@ public class SaveGameManagerTests
         Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
         Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);
     }
-    
 }

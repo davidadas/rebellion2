@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 
 namespace IEnumerableExtensions
 {
-
     public static class IEnumerableExtensions
     {
         private static Random _random = new Random();
@@ -27,10 +26,19 @@ namespace IEnumerableExtensions
             }
         }
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public static T RandomElement<T>(this List<T> list)
         {
             if (list == null || list.Count == 0)
-                throw new InvalidOperationException("Cannot select a random element from an empty list.");
+                throw new InvalidOperationException(
+                    "Cannot select a random element from an empty list."
+                );
 
             int index = _random.Next(list.Count);
             return list[index];

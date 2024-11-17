@@ -1,6 +1,6 @@
-using NUnit.Framework;
 using System.Collections.Generic;
 using ICollectionExtensions;
+using NUnit.Framework;
 
 [TestFixture]
 public class ICollectionExtensionsTests
@@ -17,7 +17,11 @@ public class ICollectionExtensionsTests
 
         // Assert collection contains all elements
         Assert.AreEqual(9, collection.Count, "Collection should contain 9 elements.");
-        CollectionAssert.AreEquivalent(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, collection, "Collection should contain all elements from the enumerables.");
+        CollectionAssert.AreEquivalent(
+            new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+            collection,
+            "Collection should contain all elements from the enumerables."
+        );
     }
 
     [Test]
@@ -42,6 +46,10 @@ public class ICollectionExtensionsTests
 
         // Assert collection contains new elements
         Assert.AreEqual(4, collection.Count, "Collection should contain 4 elements.");
-        CollectionAssert.AreEquivalent(new List<int> { 0, 1, 2, 3 }, collection, "Collection should contain the initial element and all elements from the enumerable.");
+        CollectionAssert.AreEquivalent(
+            new List<int> { 0, 1, 2, 3 },
+            collection,
+            "Collection should contain the initial element and all elements from the enumerable."
+        );
     }
 }

@@ -5,7 +5,7 @@ using System;
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
-    where TUnit : SceneNode
+    where TUnit : GameEntity
 {
     public TUnit[] UnitPool { get; set; }
     public TUnit[] SelectedUnits { get; set; }
@@ -24,11 +24,11 @@ class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
-    where TUnit : SceneNode
+    where TUnit : GameEntity
 {
-    private GameSummary _summary;
-    private IResourceManager _resourceManager;
-    private IConfig _config;
+    private GameSummary summary;
+    private IResourceManager resourceManager;
+    private IConfig config;
 
     /// <summary>
     ///
@@ -37,9 +37,9 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     /// <param name="resourceManager"></param>
     public UnitGenerator(GameSummary summary, IResourceManager resourceManager)
     {
-        _summary = summary;
-        _resourceManager = resourceManager;
-        _config = _resourceManager.GetConfig<NewGameConfig>();
+        this.summary = summary;
+        this.resourceManager = resourceManager;
+        config = resourceManager.GetConfig<NewGameConfig>();
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     /// <returns></returns>
     public GameSummary GetGameSummary()
     {
-        return _summary;
+        return summary;
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     /// <returns></returns>
     public IConfig GetConfig()
     {
-        return _config;
+        return config;
     }
 
     /// <summary>
@@ -95,7 +95,7 @@ public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
     )
     {
         // Load game data from file.
-        TUnit[] unitPool = _resourceManager.GetSceneNodeData<TUnit>();
+        TUnit[] unitPool = resourceManager.GetGameData<TUnit>();
 
         // Select units which shall appear in game.
         TUnit[] selectedUnits = SelectUnits(unitPool);

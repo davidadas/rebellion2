@@ -1,17 +1,10 @@
 using System.IO;
-using System.Xml.Serialization;
 
 public static class SerializationHelper
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="obj"></param>
-    /// <returns></returns>
     public static string Serialize<T>(T obj)
     {
-        XmlSerializer serializer = new XmlSerializer(typeof(T));
+        GameSerializer serializer = new GameSerializer(typeof(T));
         using (StringWriter writer = new StringWriter())
         {
             serializer.Serialize(writer, obj);
@@ -19,15 +12,28 @@ public static class SerializationHelper
         }
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="xml"></param>
-    /// <returns></returns>
+    public static string Serialize<T>(T obj, GameSerializerSettings settings)
+    {
+        GameSerializer serializer = new GameSerializer(typeof(T), settings);
+        using (StringWriter writer = new StringWriter())
+        {
+            serializer.Serialize(writer, obj);
+            return writer.ToString();
+        }
+    }
+
     public static T Deserialize<T>(string xml)
     {
-        XmlSerializer serializer = new XmlSerializer(typeof(T));
+        GameSerializer serializer = new GameSerializer(typeof(T));
+        using (StringReader reader = new StringReader(xml))
+        {
+            return (T)serializer.Deserialize(reader);
+        }
+    }
+
+    public static T Deserialize<T>(string xml, GameSerializerSettings settings)
+    {
+        GameSerializer serializer = new GameSerializer(typeof(T), settings);
         using (StringReader reader = new StringReader(xml))
         {
             return (T)serializer.Deserialize(reader);
