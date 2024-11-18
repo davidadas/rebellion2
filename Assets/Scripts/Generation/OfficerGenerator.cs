@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using ICollectionExtensions;
 using IDictionaryExtensions;
 using IEnumerableExtensions;
+using UnityEngine;
 
 /// <summary>
 ///
@@ -32,16 +32,16 @@ public class OfficerGenerator : UnitGenerator<Officer>
             .GetValue<int>($"Officers.NumInitialOfficers.GalaxySize.{galaxySize}");
 
         // Set the finalized list of officers for each faction.
-        foreach (string ownerGameId in officersByFaction.Keys.ToArray())
+        foreach (string ownerTypeId in officersByFaction.Keys.ToArray())
         {
-            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerGameId]
+            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerTypeId]
                 // Take a random selection of officers for the game start.
                 .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
-                // Set the OwnerGameID for each officer.
+                // Set the OwnerTypeID for each officer.
                 .Select(
                     (officer) =>
                     {
-                        officer.OwnerGameID = ownerGameId;
+                        officer.OwnerTypeID = ownerTypeId;
                         return officer;
                     }
                 );
@@ -58,10 +58,10 @@ public class OfficerGenerator : UnitGenerator<Officer>
     private Dictionary<string, List<SceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
     {
         // Flatten the list of planets from planet systems.
-        // Only pull those planets with a OwnerGameID assigned.
+        // Only pull those planets with a OwnerTypeID assigned.
         IEnumerable<Planet> flattenedPlanets = planetSystems
             .SelectMany((planetSystem) => planetSystem.Planets)
-            .Where((planet) => planet.OwnerGameID != null);
+            .Where((planet) => planet.OwnerTypeID != null);
 
         // Create an array of fleets and planets.
         List<SceneNode> fleetsAndPlanets = new List<SceneNode>();
@@ -76,14 +76,14 @@ public class OfficerGenerator : UnitGenerator<Officer>
             new Dictionary<string, List<SceneNode>>(),
             (destinationMap, nextDestination) =>
             {
-                string ownerGameId =
+                string ownerTypeId =
                     nextDestination
                         .GetType()
-                        .GetProperty("OwnerGameID")
+                        .GetProperty("OwnerTypeID")
                         .GetValue(nextDestination, null) as string;
 
                 List<SceneNode> destinations = destinationMap.GetOrAddValue(
-                    ownerGameId,
+                    ownerTypeId,
                     new List<SceneNode>()
                 );
                 destinations.Add(nextDestination);
@@ -106,19 +106,19 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
         foreach (Officer officer in shuffledUnits)
         {
-            // Add officers which already have an assigned OwnerGameID to the front.
+            // Add officers which already have an assigned OwnerTypeID to the front.
             // These are the officers that will always be assigned at start.
-            if (officer.OwnerGameID != null)
+            if (officer.OwnerTypeID != null)
             {
                 officersByFaction
-                    .GetOrAddValue(officer.OwnerGameID, new List<Officer>())
+                    .GetOrAddValue(officer.OwnerTypeID, new List<Officer>())
                     .Insert(0, officer); // Add to front of list.
             }
             // Ignore officers allowed by both factions.
-            else if (officer.AllowedOwnerGameIDs.Length == 1)
+            else if (officer.AllowedOwnerTypeIDs.Count == 1)
             {
                 officersByFaction
-                    .GetOrAddValue(officer.AllowedOwnerGameIDs[0], new List<Officer>())
+                    .GetOrAddValue(officer.AllowedOwnerTypeIDs[0], new List<Officer>())
                     .Add(officer); // Add to end of list.
             }
         }
@@ -135,11 +135,21 @@ public class OfficerGenerator : UnitGenerator<Officer>
     {
         foreach (Officer officer in units)
         {
-            // Set core attributes.
-            officer.Diplomacy += Random.Range(0, officer.DiplomacyVariance);
-            officer.Espionage += Random.Range(0, officer.EspionageVariance);
-            officer.Combat += Random.Range(0, officer.CombatVariance);
-            officer.Leadership += Random.Range(0, officer.CombatVariance);
+            // Set mission skills.
+            (MissionParticipantSkill, int)[] skillVariances = new[]
+            {
+                (MissionParticipantSkill.Diplomacy, officer.DiplomacyVariance),
+                (MissionParticipantSkill.Espionage, officer.EspionageVariance),
+                (MissionParticipantSkill.Combat, officer.CombatVariance),
+                (MissionParticipantSkill.Leadership, officer.LeadershipVariance),
+            };
+
+            foreach (var (skill, variance) in skillVariances)
+            {
+                officer.Skills[skill] += Random.Range(0, variance);
+            }
+
+            // Set loyalty.
             officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
 
             // Set research attributes
@@ -168,13 +178,13 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
         foreach (Officer officer in officers)
         {
-            List<SceneNode> destinations = destinationMapping[officer.OwnerGameID];
+            List<SceneNode> destinations = destinationMapping[officer.OwnerTypeID];
             SceneNode destination;
 
-            if (officer.InitialParentGameID != null)
+            if (officer.InitialParentTypeID != null)
             {
                 destination = destinations.First(
-                    (sceneNode) => sceneNode.GameID == officer.InitialParentGameID
+                    (sceneNode) => sceneNode.TypeID == officer.InitialParentTypeID
                 );
             }
             else

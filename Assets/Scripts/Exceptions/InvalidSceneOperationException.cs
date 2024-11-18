@@ -7,5 +7,6 @@ public class InvalidSceneOperationException : SceneException
     /// Initializes a new instance of the <see cref="InvalidSceneOperationException"/> class.
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
-    public InvalidSceneOperationException(string message) : base(message) { }
+    public InvalidSceneOperationException(string message)
+        : base(message) { }
 }

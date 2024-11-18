@@ -51,7 +51,7 @@
   },
   "Buildings": {
     "InitialBuildings": {
-      "GameIDs": [
+      "TypeIDs": [
         "BDFA01",
         "BDFA02",
         "BDFA03",
@@ -85,36 +85,84 @@
       "GalaxySize": {
         "Small": [
           {
-            "OwnerGameID": "FNEMP1",
-            "InitialParentGameID": "PLSEW05",
-            "GameID": "CSEM006"
+            "OwnerTypeID": "FNEMP1",
+            "InitialParentTypeID": "PLSEW05",
+            "TypeID": "CSEM006"
           },
           {
-            "OwnerGameID": "FNEMP1",
-            "GameID": "CSEM005"
+            "OwnerTypeID": "FNEMP1",
+            "TypeID": "CSEM005"
           },
           {
-            "OwnerGameID": "FNALL1",
-            "GameID": "CSAL002"
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "CSAL002"
           },
           {
-            "OwnerGameID": "FNALL1",
-            "GameID": "ALCS003"
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS003"
           },
           {
-            "OwnerGameID": "FNALL1",
-            "GameID": "ALCS006"
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
           },
           {
-            "OwnerGameID": "FNALL1",
-            "GameID": "ALCS006"
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
           }
         ],
         "Medium": [
-
+          {
+            "OwnerTypeID": "FNEMP1",
+            "InitialParentTypeID": "PLSEW05",
+            "TypeID": "CSEM006"
+          },
+          {
+            "OwnerTypeID": "FNEMP1",
+            "TypeID": "CSEM005"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "CSAL002"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS003"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
+          }
         ],
         "Large": [
-
+          {
+            "OwnerTypeID": "FNEMP1",
+            "InitialParentTypeID": "PLSEW05",
+            "TypeID": "CSEM006"
+          },
+          {
+            "OwnerTypeID": "FNEMP1",
+            "TypeID": "CSEM005"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "CSAL002"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS003"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
+          },
+          {
+            "OwnerTypeID": "FNALL1",
+            "TypeID": "ALCS006"
+          }
         ]
       }
     }

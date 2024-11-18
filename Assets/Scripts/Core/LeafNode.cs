@@ -16,7 +16,7 @@ public abstract class LeafNode : SceneNode
     /// Adds a child to the node. For leaf nodes, this operation does nothing.
     /// </summary>
     /// <param name="child">The child node to add.</param>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         // Do nothing (leaf nodes do not have children).
     }
@@ -25,8 +25,7 @@ public abstract class LeafNode : SceneNode
     /// Removes a child from the node. For leaf nodes, this operation does nothing.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         // Do nothing (leaf nodes do not have children).
     }

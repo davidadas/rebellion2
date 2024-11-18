@@ -4,7 +4,7 @@ using System.Linq;
 using IEnumerableExtensions;
 
 /// <summary>
-/// 
+///
 /// </summary>
 public class FactionGenerator : UnitGenerator<Faction>
 {
@@ -21,13 +21,13 @@ public class FactionGenerator : UnitGenerator<Faction>
     /// </summary>
     /// <param name="factions">The factions to assign.</param>
     /// <param name="planetSystems">The planet system containing the faction's designated HQ.</param>
-    private void setFactionHQs(Faction[] factions, PlanetSystem[] planetSystems)
+    private void SetFactionHQs(Faction[] factions, PlanetSystem[] planetSystems)
     {
         Dictionary<string, Faction> hqs = factions.Aggregate(
             new Dictionary<string, Faction>(),
             (dict, nextFaction) =>
             {
-                dict.Add(nextFaction.HQGameID, nextFaction);
+                dict.Add(nextFaction.HQTypeID, nextFaction);
                 return dict;
             }
         );
@@ -37,11 +37,11 @@ public class FactionGenerator : UnitGenerator<Faction>
         {
             foreach (Planet planet in planetSystem.Planets)
             {
-                if (hqs.Keys.ToList().Contains(planet.GameID))
+                if (hqs.Keys.ToList().Contains(planet.TypeID))
                 {
                     planet.IsHeadquarters = true;
-                    planet.OwnerGameID = hqs[planet.GameID].GameID;
-                    filledHQs.Add(planet.OwnerGameID);
+                    planet.OwnerTypeID = hqs[planet.TypeID].TypeID;
+                    filledHQs.Add(planet.OwnerTypeID);
                 }
 
                 // Return if we have filled our array already.
@@ -60,7 +60,7 @@ public class FactionGenerator : UnitGenerator<Faction>
     /// </summary>
     /// <param name="factions"></param>
     /// <param name="planetSystems"></param>
-    private void setStartingPlanets(Faction[] factions, PlanetSystem[] planetSystems)
+    private void SetStartingPlanets(Faction[] factions, PlanetSystem[] planetSystems)
     {
         Config startConfig = GetConfig().GetValue<Config>("Planets.NumInitialPlanets.GalaxySize");
         string galaxySize = GetGameSummary().GalaxySize.ToString();
@@ -80,8 +80,8 @@ public class FactionGenerator : UnitGenerator<Faction>
             IEnumerable<Planet> factionStartingPlanets = startingPlanets.Take(numStartingPlanets);
             foreach (Planet planet in factionStartingPlanets)
             {
-                planet.OwnerGameID = faction.GameID;
-                planet.SetPopularSupport(faction.GameID, 100);
+                planet.OwnerTypeID = faction.TypeID;
+                planet.SetPopularSupport(faction.TypeID, 100);
             }
         }
     }
@@ -93,7 +93,16 @@ public class FactionGenerator : UnitGenerator<Faction>
     /// <returns></returns>
     public override Faction[] SelectUnits(Faction[] factions)
     {
-        // No op.
+        int researchLevel = GetGameSummary().StartingResearchLevel;
+
+        // Set the research level for each faction.
+        foreach (Faction faction in factions)
+        {
+            faction.SetManufacturingResearchLevel(ManufacturingType.Building, researchLevel);
+            faction.SetManufacturingResearchLevel(ManufacturingType.Ship, researchLevel);
+            faction.SetManufacturingResearchLevel(ManufacturingType.Troop, researchLevel);
+        }
+
         return factions;
     }
 
@@ -116,8 +125,8 @@ public class FactionGenerator : UnitGenerator<Faction>
     /// <returns></returns>
     public override Faction[] DeployUnits(Faction[] factions, PlanetSystem[] destinations)
     {
-        setFactionHQs(factions, destinations);
-        setStartingPlanets(factions, destinations);
+        SetFactionHQs(factions, destinations);
+        SetStartingPlanets(factions, destinations);
 
         return factions;
     }

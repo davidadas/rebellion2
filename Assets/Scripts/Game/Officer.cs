@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Xml.Serialization;
+using System.Drawing;
 
+/// <summary>
+///
+/// </summary>
 public enum OfficerRank
 {
     None,
@@ -10,80 +13,118 @@ public enum OfficerRank
     Admiral,
 }
 
-public enum OfficerStatus
+public class Officer : LeafNode, IMissionParticipant, IMovable
 {
-    Available,
-    Injured,
-    Captured,
-    OnMission,
-    InTransit,
-}
-
-public class Officer : MissionParticipant
-{
-    // Mission Stats
-    public int Diplomacy { get; set; }
-    public int Espionage { get; set; }
-    public int Combat { get; set; }
-    public int Leadership { get; set; }
-
     // Research Info
-    public int ShipResearch;
-    public int TroopResearch;
-    public int FacilityResearch;
+    public int ShipResearch { get; set; }
+    public int TroopResearch { get; set; }
+    public int FacilityResearch { get; set; }
 
-    // Character Status
-    public OfficerStatus Status;
-    public bool IsMain;
-    public bool CanBetray;
-    public bool IsTraitor;
-    public bool IsJedi;
-    public bool IsKnownJedi;
-    public int Loyalty;
+    // Officer Info
+    public bool IsMain { get; set; }
+    public bool IsCaptured { get; set; }
+    public bool CanBetray { get; set; }
+    public bool IsTraitor { get; set; }
+    public bool IsKnownJedi { get; set; }
+    public int Loyalty { get; set; }
 
     // Jedi Info
-    public int JediProbability;
-    public int JediLevel;
-    public int JediLevelVariance;
+    public bool IsJedi { get; set; }
+
+    [PersistableIgnore]
+    public int JediProbability { get; set; }
+    public int JediLevel { get; set; }
+    public int JediLevelVariance { get; set; }
 
     // Rank Info
-    public OfficerRank[] AllowedRanks;
-    public OfficerRank CurrentRank;
+    public OfficerRank[] AllowedRanks { get; set; }
+    public OfficerRank CurrentRank { get; set; }
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-    public string InitialParentGameID;
+    public string InitialParentTypeID { get; set; }
 
     // Variance Info
-    [XmlIgnoreAttribute]
-    public int DiplomacyVariance;
+    [PersistableIgnore]
+    public int DiplomacyVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int EspionageVariance;
+    [PersistableIgnore]
+    public int EspionageVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int CombatVariance;
+    [PersistableIgnore]
+    public int CombatVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int LeadershipVariance;
+    [PersistableIgnore]
+    public int LeadershipVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int LoyaltyVariance;
+    [PersistableIgnore]
+    public int LoyaltyVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int FacilityResearchVariance;
+    [PersistableIgnore]
+    public int FacilityResearchVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int TroopResearchVariance;
+    [PersistableIgnore]
+    public int TroopResearchVariance { get; set; }
 
-    [XmlIgnoreAttribute]
-    public int ShipResearchVariance;
+    [PersistableIgnore]
+    public int ShipResearchVariance { get; set; }
+
+    // Movement Info
+    public MovementStatus MovementStatus { get; set; }
+    public int PositionX { get; set; }
+    public int PositionY { get; set; }
+
+    // Mission Info
+    public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
+        new Dictionary<MissionParticipantSkill, int>
+        {
+            { MissionParticipantSkill.Diplomacy, 0 },
+            { MissionParticipantSkill.Espionage, 0 },
+            { MissionParticipantSkill.Combat, 0 },
+            { MissionParticipantSkill.Leadership, 0 },
+        };
 
     /// <summary>
-    /// Default constructor
+    /// Default constructor used for serialization.
     /// </summary>
     public Officer() { }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="skill"></param>
+    /// <returns></returns>
+    public int GetSkillValue(MissionParticipantSkill skill)
+    {
+        return Skills[skill];
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public bool IsMainCharacter()
+    {
+        return IsMain;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public bool IsOnMission()
+    {
+        SceneNode parent = GetParent();
+
+        // Ensure the parent is a mission and that the mission is not complete.
+        return parent is Mission && !(parent as Mission).IsComplete();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public bool IsMovable()
+    {
+        return MovementStatus == MovementStatus.Idle && !this.IsOnMission();
+    }
 }

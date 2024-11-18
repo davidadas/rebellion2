@@ -1,9 +1,18 @@
 using System;
 
 /// <summary>
-/// Attribute used to indicate that a property or field should be ignored when cloning an object.
+/// Indicates that a field or property should be ignored during the cloning process.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+/// <remarks>
+/// When applied to a field or property, the GetShallowCopy method will set the
+/// corresponding member to null in the cloned object, regardless of its value
+/// in the original object.
+/// </remarks>
+[AttributeUsage(
+    AttributeTargets.Field | AttributeTargets.Property,
+    Inherited = false,
+    AllowMultiple = false
+)]
 public class CloneIgnoreAttribute : Attribute
 {
     public CloneIgnoreAttribute()

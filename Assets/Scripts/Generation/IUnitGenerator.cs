@@ -1,8 +1,8 @@
 using System;
 
 public interface IUnitGenerator<TUnit, TDestination>
-    where TUnit : SceneNode
-    where TDestination : SceneNode
+    where TUnit : GameEntity
+    where TDestination : GameEntity
 {
     /// <summary>
     ///

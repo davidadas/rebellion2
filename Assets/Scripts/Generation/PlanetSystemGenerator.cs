@@ -21,7 +21,7 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
     /// </summary>
     /// <param name="parentSystem"></param>
     /// <param name="planet"></param>
-    private void setResources(PlanetSystem parentSystem, Planet planet)
+    private void SetResources(PlanetSystem parentSystem, Planet planet)
     {
         string resourceAvailability = GetGameSummary().ResourceAvailability.ToString();
         IConfig planetConfig = GetConfig()
@@ -44,7 +44,7 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
     /// </summary>
     /// <param name="parentsystem"></param>
     /// <param name="planet"></param>
-    private void setColonizationStatus(PlanetSystem parentsystem, Planet planet)
+    private void SetColonizationStatus(PlanetSystem parentsystem, Planet planet)
     {
         double colonizationRate = GetConfig().GetValue<double>("Planets.InitialColonizationRate");
         if (parentsystem.SystemType == PlanetSystemType.CoreSystem)
@@ -75,8 +75,6 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
         GameSize galaxySize = GetGameSummary().GalaxySize;
         List<PlanetSystem> galaxyMap = new List<PlanetSystem>();
 
-        // Subsequent GameSizes include the previous values.
-        // Therefore, we must include them in our calculations.
         IEnumerable<int> sizeRange = Enumerable.Range((int)GameSize.Small, (int)galaxySize);
 
         foreach (PlanetSystem planetSystem in units)
@@ -103,8 +101,8 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
         {
             foreach (Planet planet in planetSystem.Planets)
             {
-                setResources(planetSystem, planet);
-                setColonizationStatus(planetSystem, planet);
+                SetResources(planetSystem, planet);
+                SetColonizationStatus(planetSystem, planet);
             }
         }
 

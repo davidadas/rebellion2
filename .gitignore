@@ -15,9 +15,13 @@ node_modules
 
 # VS Extensions
 **/*.vs
+**/.vscode/
 
 # Misc
 **/*.scratch
 **/dump
 **/.DS_Store
 logfile.log
+
+# C# Files
+**/*.sln

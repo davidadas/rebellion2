@@ -4,11 +4,11 @@
 	<!--   ******************* EMPRE SHIPS ******************  -->
 	<!--   **************************************************  -->
 	<CapitalShip>
-		<GameID>CSEM001</GameID>
+		<TypeID>CSEM001</TypeID>
 		<DisplayName>Imperial Dreadnaught</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -23,11 +23,11 @@
 		<StarfighterCapacity>1</StarfighterCapacity>
 		<RegimentCapacity>2</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>40</int>
 						<int>20</int>
@@ -35,13 +35,13 @@
 						<int>70</int>
 						<int>60</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -49,13 +49,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -63,8 +63,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>7</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -74,11 +74,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM002</GameID>
+		<TypeID>CSEM002</TypeID>
 		<DisplayName>Galleon</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -93,11 +93,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>2</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -105,13 +105,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -119,13 +119,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -133,8 +133,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>0</WeaponRecharge>
 		<Bombardment>0</Bombardment>
@@ -144,11 +144,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM003</GameID>
+		<TypeID>CSEM003</TypeID>
 		<DisplayName>Imperial Escort Carrier</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -163,11 +163,11 @@
 		<StarfighterCapacity>6</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -175,13 +175,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -189,13 +189,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>30</int>
 						<int>30</int>
@@ -203,8 +203,8 @@
 						<int>60</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>4</WeaponRecharge>
 		<Bombardment>0</Bombardment>
@@ -214,11 +214,11 @@
 		<DetectionRating>4</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM004</GameID>
+		<TypeID>CSEM004</TypeID>
 		<DisplayName>Carrack Light Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>26</ConstructionCost>
 		<MaintenanceCost>24</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -233,11 +233,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -245,13 +245,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -259,13 +259,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>60</int>
 						<int>60</int>
@@ -273,8 +273,8 @@
 						<int>90</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>6</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -284,11 +284,11 @@
 		<DetectionRating>20</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM005</GameID>
+		<TypeID>CSEM005</TypeID>
 		<DisplayName>Victory Destroyer</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>68</ConstructionCost>
 		<MaintenanceCost>44</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -303,11 +303,11 @@
 		<StarfighterCapacity>2</StarfighterCapacity>
 		<RegimentCapacity>2</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>120</int>
 						<int>0</int>
@@ -315,13 +315,13 @@
 						<int>100</int>
 						<int>50</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -329,13 +329,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -343,8 +343,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>12</WeaponRecharge>
 		<Bombardment>4</Bombardment>
@@ -354,11 +354,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSEM006</GameID>
+		<TypeID>CSEM006</TypeID>
 		<DisplayName>Imperial Star Destroyer</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>112</ConstructionCost>
 		<MaintenanceCost>71</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -373,11 +373,11 @@
 		<StarfighterCapacity>6</StarfighterCapacity>
 		<RegimentCapacity>3</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>100</int>
 						<int>40</int>
@@ -385,13 +385,13 @@
 						<int>60</int>
 						<int>50</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>100</int>
 						<int>40</int>
@@ -399,13 +399,13 @@
 						<int>40</int>
 						<int>35</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -413,8 +413,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>20</WeaponRecharge>
 		<Bombardment>2</Bombardment>
@@ -427,11 +427,11 @@
 	<!--   ***************** ALLIANCE SHIPS *****************  -->
 	<!--   **************************************************  -->
 	<CapitalShip>
-		<GameID>CSAL001</GameID>
+		<TypeID>CSAL001</TypeID>
 		<DisplayName>Alliance Dreadnaught</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -446,11 +446,11 @@
 		<StarfighterCapacity>1</StarfighterCapacity>
 		<RegimentCapacity>2</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>40</int>
 						<int>20</int>
@@ -458,13 +458,13 @@
 						<int>70</int>
 						<int>60</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -472,13 +472,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -486,8 +486,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>7</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -497,11 +497,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>CSAL002</GameID>
+		<TypeID>CSAL002</TypeID>
 		<DisplayName>Bulk Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>30</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -516,11 +516,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>15</int>
 						<int>0</int>
@@ -528,13 +528,13 @@
 						<int>30</int>
 						<int>35</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -542,13 +542,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -556,8 +556,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>6</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -567,11 +567,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS003</GameID>
+		<TypeID>ALCS003</TypeID>
 		<DisplayName>Medium Transport</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>12</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -586,11 +586,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>2</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -598,13 +598,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -612,13 +612,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -626,8 +626,8 @@
 						<int>30</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>2</WeaponRecharge>
 		<Bombardment>0</Bombardment>
@@ -637,11 +637,11 @@
 		<DetectionRating>5</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS004</GameID>
+		<TypeID>ALCS004</TypeID>
 		<DisplayName>Bulk Transport</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>24</ConstructionCost>
 		<MaintenanceCost>22</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -656,11 +656,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>6</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -668,13 +668,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -682,13 +682,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -696,8 +696,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>0</WeaponRecharge>
 		<Bombardment>0</Bombardment>
@@ -707,11 +707,11 @@
 		<DetectionRating>1</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS005</GameID>
+		<TypeID>ALCS005</TypeID>
 		<DisplayName>Alliance Escourt Carrier</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>32</ConstructionCost>
 		<MaintenanceCost>29</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -726,11 +726,11 @@
 		<StarfighterCapacity>6</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -738,13 +738,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -752,13 +752,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>30</int>
 						<int>0</int>
@@ -766,8 +766,8 @@
 						<int>60</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>4</WeaponRecharge>
 		<Bombardment>0</Bombardment>
@@ -777,11 +777,11 @@
 		<DetectionRating>10</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS006</GameID>
+		<TypeID>ALCS006</TypeID>
 		<DisplayName>Corellian Corvette</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>14</ConstructionCost>
 		<MaintenanceCost>23</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -796,11 +796,11 @@
 		<StarfighterCapacity>0</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -808,13 +808,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -822,13 +822,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>120</int>
 						<int>90</int>
@@ -836,8 +836,8 @@
 						<int>120</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>8</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -848,10 +848,10 @@
 	</CapitalShip>
 	<CapitalShip>
 		<DisplayName>Nebulon-B Frigate</DisplayName>
-		<GameID>ALCS007</GameID>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<TypeID>ALCS007</TypeID>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>35</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -866,11 +866,11 @@
 		<StarfighterCapacity>2</StarfighterCapacity>
 		<RegimentCapacity>0</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>80</int>
 						<int>0</int>
@@ -878,13 +878,13 @@
 						<int>40</int>
 						<int>60</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -892,13 +892,13 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>60</int>
 						<int>60</int>
@@ -906,8 +906,8 @@
 						<int>30</int>
 						<int>17</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>12</WeaponRecharge>
 		<Bombardment>1</Bombardment>
@@ -917,11 +917,11 @@
 		<DetectionRating>30</DetectionRating>
 	</CapitalShip>
 	<CapitalShip>
-		<GameID>ALCS008</GameID>
+		<TypeID>ALCS008</TypeID>
 		<DisplayName>Mon Calamari Cruiser</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerTypeIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerTypeIDs>
 		<ConstructionCost>92</ConstructionCost>
 		<MaintenanceCost>70</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -936,11 +936,11 @@
 		<StarfighterCapacity>3</StarfighterCapacity>
 		<RegimentCapacity>1</RegimentCapacity>
 		<PrimaryWeapons>
-			<entry>
-				<key>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>60</int>
 						<int>60</int>
@@ -948,13 +948,13 @@
 						<int>120</int>
 						<int>50</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>IonCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>40</int>
 						<int>40</int>
@@ -962,13 +962,13 @@
 						<int>60</int>
 						<int>35</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
-			<entry>
-				<key>
+				</Value>
+			</Entry>
+			<Entry>
+				<Key>
 					<PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
-				</key>
-				<value>
+				</Key>
+				<Value>
 					<ArrayOfInt>
 						<int>0</int>
 						<int>0</int>
@@ -976,8 +976,8 @@
 						<int>0</int>
 						<int>0</int>
 					</ArrayOfInt>
-				</value>
-			</entry>
+				</Value>
+			</Entry>
 		</PrimaryWeapons>
 		<WeaponRecharge>18</WeaponRecharge>
 		<Bombardment>2</Bombardment>

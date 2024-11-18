@@ -1,36 +1,49 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Serialization;
 
 /// <summary>
 /// Represents a mission in the game.
 /// </summary>
 public abstract class Mission : SceneNode
 {
-    public string Name;
-    public string OwnerGameID;
-    public List<MissionParticipant> MainParticipants = new List<MissionParticipant>();
-    public List<MissionParticipant> DecoyParticipants = new List<MissionParticipant>();
+    // Mission Properties
+    public string Name { get; set; }
+    public string TargetInstanceID { get; set; }
+
+    [PersistableIgnore]
+    public List<IMissionParticipant> MainParticipants { get; set; }
+
+    [PersistableIgnore]
+    public List<IMissionParticipant> DecoyParticipants { get; set; }
     public MissionParticipantSkill ParticipantSkill;
-    
+    public int MaxProgress { get; set; }
+    public int MissionProgress { get; set; }
+
     // Success Probability Variables
-    [XmlIgnore]
-    public double QuadraticCoefficient;
-    [XmlIgnore]
-    public double LinearCoefficient;
-    [XmlIgnore]
-    public double ConstantTerm;
-    [XmlIgnore]
+    [PersistableIgnore]
+    public double QuadraticCoefficient { get; set; }
+
+    [PersistableIgnore]
+    public double LinearCoefficient { get; set; }
+
+    [PersistableIgnore]
+    public double ConstantTerm { get; set; }
+
+    [PersistableIgnore]
     public double MinSuccessProbability = 1;
-    [XmlIgnore]
+
+    [PersistableIgnore]
     public double MaxSuccessProbability = 100;
-    [XmlIgnore]
+
+    [PersistableIgnore]
     public int MinTicks = 1;
-    [XmlIgnore]
+
+    [PersistableIgnore]
     public int MaxTicks = 10;
-    [XmlIgnore]
-    public bool IsRepeatable;
+
+    [PersistableIgnore]
+    public bool IsRepeatable { get; set; }
 
     // Decoy Probability Variables
     // @TODO: Move these to a config file.
@@ -45,16 +58,17 @@ public abstract class Mission : SceneNode
     public double FoilLinearCoefficient = 0.8879;
     public double FoilConstantTerm = 84.61;
 
-    private static readonly Random _random = new Random();
+    private static readonly Random random = new Random();
 
     // Empty constructor used for serialization.
-    protected Mission() {}
+    protected Mission() { }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="name"></param>
-    /// <param name="ownerGameID"></param>
+    /// <param name="ownerTypeId"></param>
+    /// <param name="targetInstanceId"></param>
     /// <param name="mainParticipants"></param>
     /// <param name="decoyParticipants"></param>
     /// <param name="participantSkill"></param>
@@ -68,9 +82,10 @@ public abstract class Mission : SceneNode
     /// <exception cref="ArgumentNullException"></exception>
     protected Mission(
         string name,
-        string ownerGameID,
-        List<MissionParticipant> mainParticipants,
-        List<MissionParticipant> decoyParticipants,
+        string ownerTypeId,
+        string targetInstanceId,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
         double quadraticCoefficient,
         double linearCoefficient,
@@ -83,9 +98,10 @@ public abstract class Mission : SceneNode
     {
         // Set mission fields.
         Name = name ?? throw new ArgumentNullException(nameof(name));
-        OwnerGameID = ownerGameID;
-        MainParticipants = mainParticipants ?? new List<MissionParticipant>();
-        DecoyParticipants = decoyParticipants ?? new List<MissionParticipant>();
+        OwnerTypeID = ownerTypeId;
+        TargetInstanceID = targetInstanceId;
+        MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
+        DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
         ParticipantSkill = participantSkill;
 
         // Set fields for success probability calculation.
@@ -100,23 +116,68 @@ public abstract class Mission : SceneNode
         MaxTicks = maxTicks;
     }
 
-    /// Initializes a new instance of the <see cref="Mission"/> class.
+    /// <summary>
+    ///
     /// </summary>
-    /// <param name="name">The name of the mission.</param>
-    /// <param name="ownerGameID">The owner game ID.</param>
-    /// <param name="mainParticipants">The main participants of the mission.</param>
-    /// <param name="decoyParticipants">The decoy participants of the mission.</param>
-    /// <param name="participantSkill">The skill level of the mission participants.</param>
-    /// <param name="quadraticCoefficient">The quadratic coefficient for success probability calculation.</param>
-    /// <param name="linearCoefficient">The linear coefficient for success probability calculation.</param>
-    /// <param name="constantTerm">The constant term for success probability calculation.</param>
-    /// <param name="minSuccessProbability">The minimum success probability of the mission.</param>
-    /// <param name="maxSuccessProbability">The maximum success probability of the mission.</param>
-    /// <param name="minTicks">The minimum duration of the mission in ticks.</param>
-    /// <param name="maxTicks">The maximum duration of the mission in ticks.</param>
-    private double CalculateProbability(double score, double quadraticCoefficient, double linearCoefficient, double constantTerm)
+    /// <returns></returns>
+    public int[] GetTickRange()
     {
-        return (quadraticCoefficient * Math.Pow(score, 2)) + (linearCoefficient * score) + constantTerm;
+        return new int[] { MinTicks, MaxTicks };
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    public void IncrementProgress()
+    {
+        MissionProgress++;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="length"></param>
+    public void SetExecutionTick(int tick)
+    {
+        MaxProgress = tick;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public bool IsComplete()
+    {
+        return MissionProgress >= MaxProgress;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public List<IMissionParticipant> GetAllParticipants()
+    {
+        return MainParticipants.Concat(DecoyParticipants).Cast<IMissionParticipant>().ToList();
+    }
+
+    /// <summary>
+    /// Calculates the success probability based on the agent's skill score.
+    /// </summary>
+    /// <param name="score"></param>
+    /// <param name="quadraticCoefficient"></param>
+    /// <param name="linearCoefficient"></param>
+    /// <param name="constantTerm"></param>
+    /// <returns></returns>
+    private double CalculateProbability(
+        double score,
+        double quadraticCoefficient,
+        double linearCoefficient,
+        double constantTerm
+    )
+    {
+        return (quadraticCoefficient * Math.Pow(score, 2))
+            + (linearCoefficient * score)
+            + constantTerm;
     }
 
     /// <summary>
@@ -124,12 +185,17 @@ public abstract class Mission : SceneNode
     /// </summary>
     /// <param name="agent">The agent participating in the mission.</param>
     /// <returns>The calculated success probability.</returns>
-    protected double GetAgentProbability(MissionParticipant agent)
+    protected double GetAgentProbability(IMissionParticipant agent)
     {
         // Get the agent's skill score and calculate the success probability.
-        double agentScore = agent.GetSkill(ParticipantSkill);
+        double agentScore = agent.GetMissionSkillValue(ParticipantSkill);
 
-        double agentProbability = CalculateProbability(agentScore, QuadraticCoefficient, LinearCoefficient, ConstantTerm);
+        double agentProbability = CalculateProbability(
+            agentScore,
+            QuadraticCoefficient,
+            LinearCoefficient,
+            ConstantTerm
+        );
 
         return Math.Max(MinSuccessProbability, Math.Min(agentProbability, MaxSuccessProbability));
     }
@@ -139,12 +205,17 @@ public abstract class Mission : SceneNode
     /// </summary>
     /// <param name="decoy">The decoy participating in the mission.</param>
     /// <returns>The calculated decoy probability.</returns>
-    protected double GetDecoyProbability(MissionParticipant decoy)
+    protected double GetDecoyProbability(IMissionParticipant decoy)
     {
         // Get the agent's skill score and calculate the success probability.
-        double decoyScore = decoy.GetSkill(DecoyParticipantSkill);
+        double decoyScore = decoy.GetMissionSkillValue(DecoyParticipantSkill);
 
-        return CalculateProbability(decoyScore, DecoyQuadraticCoefficient, DecoyLinearCoefficient, DecoyConstantTerm);
+        return CalculateProbability(
+            decoyScore,
+            DecoyQuadraticCoefficient,
+            DecoyLinearCoefficient,
+            DecoyConstantTerm
+        );
     }
 
     /// <summary>
@@ -158,12 +229,18 @@ public abstract class Mission : SceneNode
         if (GetParent() is Planet planet)
         {
             // If the planet is not owned by the mission owner, the foil probability is 0.
-            if (planet.OwnerGameID == OwnerGameID)
+            if (planet.OwnerTypeID == OwnerTypeID)
             {
                 return 0;
             }
         }
-        return CalculateProbability(defenseScore, FoilQuadraticCoefficient, FoilLinearCoefficient, FoilConstantTerm);
+
+        return CalculateProbability(
+            defenseScore,
+            FoilQuadraticCoefficient,
+            FoilLinearCoefficient,
+            FoilConstantTerm
+        );
     }
 
     /// <summary>
@@ -175,7 +252,7 @@ public abstract class Mission : SceneNode
     {
         Planet planet = GetParent() as Planet;
         double defenseScore = 0;
-        
+
         // Sum the defense ratings of all regiments on the planet.
         foreach (SceneNode child in planet.GetChildren())
         {
@@ -198,11 +275,11 @@ public abstract class Mission : SceneNode
     {
         agentProbability = agentProbability / 100.0;
         foilProbability = foilProbability / 100.0;
-        
-        // Calculate total success probability using the formula
+
+        // Calculate total success probability using the formula.
         double totalSuccess = agentProbability * (1 - foilProbability);
-        
-        // Convert back to percentage
+
+        // Convert back to percentage.
         return totalSuccess * 100.0;
     }
 
@@ -213,7 +290,7 @@ public abstract class Mission : SceneNode
     /// <returns>True if the mission is successful, false otherwise.</returns>
     protected bool CheckMissionSuccess(double foilProbability)
     {
-        foreach (MissionParticipant participant in MainParticipants)
+        foreach (IMissionParticipant participant in MainParticipants)
         {
             // Get the agent's skill score and calculate the success probability.
             double agentProbability = GetAgentProbability(participant);
@@ -222,7 +299,8 @@ public abstract class Mission : SceneNode
             double successProbability = CalculateTotalSuccess(agentProbability, foilProbability);
 
             // Determine if the mission is successful.
-            bool isSuccessful = _random.NextDouble() * 100 <= successProbability;
+            bool isSuccessful = random.NextDouble() * 100 <= successProbability;
+
             // Only return true if the mission is successful.
             if (isSuccessful)
             {
@@ -240,12 +318,12 @@ public abstract class Mission : SceneNode
     /// <returns>True if the decoy is successful, false otherwise.</returns>
     protected bool CheckDecoySuccessful(double foilProbability)
     {
-        foreach (MissionParticipant decoy in DecoyParticipants)
+        foreach (IMissionParticipant decoy in DecoyParticipants)
         {
             double decoyProbability = GetDecoyProbability(decoy);
 
             // Determine if the decoy is successful.
-            bool isSuccessful = _random.NextDouble() * 100 <= decoyProbability;
+            bool isSuccessful = random.NextDouble() * 100 <= decoyProbability;
 
             // Only return true if the decoy is successful.
             if (isSuccessful)
@@ -264,14 +342,14 @@ public abstract class Mission : SceneNode
     /// <returns>True if the mission is foiled, false otherwise.</returns>
     protected bool CheckMissionFoiled(double foilProbability)
     {
-        return _random.NextDouble() * 100 <= foilProbability;
+        return random.NextDouble() * 100 <= foilProbability;
     }
 
     /// <summary>
-    /// Performs the mission, determining if it succeeds or fails.
+    /// Executes the mission, determining if it succeeds or fails.
     /// </summary>
     /// <param name="game">The game instance.</param>
-    public void Perform(Game game)
+    public void Execute(Game game)
     {
         // Get the defense score and calculate the foil probability.
         double defenseScore = GetDefenseScore();
@@ -296,23 +374,23 @@ public abstract class Mission : SceneNode
     /// </summary>
     public override IEnumerable<SceneNode> GetChildren()
     {
-        return MainParticipants.Concat<SceneNode>(DecoyParticipants);
+        return MainParticipants.Cast<SceneNode>().Concat(DecoyParticipants.Cast<SceneNode>());
     }
 
     /// <summary>
     /// No-op (missions cannot have children added).
     /// </summary>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
-        // No-op: Missions cannot have children added.
+        // No-op: Missions cannot have children added after initialization.
     }
 
     /// <summary>
     /// No-op (missions cannot have children removed).
     /// </summary>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
-        // No-op: Missions cannot have children removed.
+        // No-op: Missions cannot have children removed after initialization.
     }
 
     /// <summary>
