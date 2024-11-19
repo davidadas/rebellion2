@@ -9,22 +9,22 @@ public enum MessageType
     Resource,
 }
 
-public class Message : LeafNode
+public class Message : GameEntity
 {
     public MessageType Type;
     public string Text;
     public bool Read = false;
 
     /// <summary>
-    ///
+    /// Default constructor used for serialization.
     /// </summary>
     public Message() { }
 
     /// <summary>
-    ///
+    /// Constructor for creating a new message.
     /// </summary>
-    /// <param name="type"></param>
-    /// <param name="text"></param>
+    /// <param name="type">The type of message.</param>
+    /// <param name="text">The text of the message.</param>
     public Message(MessageType type, string text)
     {
         Type = type;
@@ -32,9 +32,9 @@ public class Message : LeafNode
     }
 
     /// <summary>
-    ///
+    /// Returns the type of the message.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The text of the message.</returns>
     public string GetText()
     {
         Read = false;

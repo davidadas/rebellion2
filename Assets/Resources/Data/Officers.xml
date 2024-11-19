@@ -4,11 +4,12 @@
 	<!--   ******************* EMPIRE MAIN ******************  -->
 	<!--   **************************************************  -->
 	<Officer>
-		<GameID>OFEM001</GameID>
+		<TypeID>OFEM001</TypeID>
+		<InstanceID>EMPEROR_PALPATINE</InstanceID>
 		<DisplayName>Emperor Palpatine</DisplayName>
-		<OwnerGameID>FNEMP1</OwnerGameID>
+		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<InitialParentGameID>PLSEW05</InitialParentGameID>
+		<InitialParentInstanceID>CORUSCANT</InitialParentInstanceID>
 		<Diplomacy>30</Diplomacy>
 		<Espionage>20</Espionage>
 		<Combat>50</Combat>
@@ -35,9 +36,10 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM002</GameID>
+		<TypeID>OFEM002</TypeID>
+		<InstanceID>DARTH_VADER</InstanceID>
 		<DisplayName>Darth Vader</DisplayName>
-		<OwnerGameID>FNEMP1</OwnerGameID>
+		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>19</Diplomacy>
 		<Espionage>100</Espionage>
@@ -65,11 +67,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM003</GameID>
+		<TypeID>OFEM003</TypeID>
+		<InstanceID>JERJERROD</InstanceID>
 		<DisplayName>Jerjerrod</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -97,11 +100,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM004</GameID>
+		<TypeID>OFEM004</TypeID>
+		<InstanceID>PIETT</InstanceID>
 		<DisplayName>Piett</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -129,11 +133,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM005</GameID>
+		<TypeID>OFEM005</TypeID>
+		<InstanceID>VEERS</InstanceID>
 		<DisplayName>Veers</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>00</Diplomacy>
 		<Espionage>0</Espionage>
@@ -161,11 +166,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM006</GameID>
+		<TypeID>OFEM006</TypeID>
+		<InstanceID>BRANDEI</InstanceID>
 		<DisplayName>Brandei</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -193,11 +199,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM007</GameID>
+		<TypeID>OFEM007</TypeID>
+		<InstanceID>DORJA</InstanceID>
 		<DisplayName>Dorja</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -225,11 +232,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM008</GameID>
+		<TypeID>OFEM008</TypeID>
+		<InstanceID>BIN_ESSADA</InstanceID>
 		<DisplayName>Bin Essada</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -257,11 +265,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM009</GameID>
+		<TypeID>OFEM009</TypeID>
+		<InstanceID>NILES_FERRIER</InstanceID>
 		<DisplayName>Niles Ferrier</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>80</Espionage>
@@ -289,11 +298,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM010</GameID>
+		<TypeID>OFEM010</TypeID>
+		<InstanceID>GRAMMEL</InstanceID>
 		<DisplayName>Grammel</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -321,11 +331,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM011</GameID>
+		<TypeID>OFEM011</TypeID>
+		<InstanceID>GRIFF</InstanceID>
 		<DisplayName>Griff</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -353,11 +364,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM012</GameID>
+		<TypeID>OFEM012</TypeID>
+		<InstanceID>KLEV</InstanceID>
 		<DisplayName>Klev</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -385,11 +397,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM013</GameID>
+		<TypeID>OFEM013</TypeID>
+		<InstanceID>NEEDA</InstanceID>
 		<DisplayName>Needa</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -417,11 +430,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM014</GameID>
+		<TypeID>OFEM014</TypeID>
+		<InstanceID>BANE_NOTHOS</InstanceID>
 		<DisplayName>Bane Nothos</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -449,11 +463,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM015</GameID>
+		<TypeID>OFEM015</TypeID>
+		<InstanceID>ORLOK</InstanceID>
 		<DisplayName>Orlok</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -481,11 +496,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM016</GameID>
+		<TypeID>OFEM016</TypeID>
+		<InstanceID>PALLAEON</InstanceID>
 		<DisplayName>Pallaeon</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -513,11 +529,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM017</GameID>
+		<TypeID>OFEM017</TypeID>
+		<InstanceID>SCREED</InstanceID>
 		<DisplayName>Screed</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -545,11 +562,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM018</GameID>
+		<TypeID>OFEM018</TypeID>
+		<InstanceID>THRAWN</InstanceID>
 		<DisplayName>Thrawn</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -577,11 +595,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM019</GameID>
+		<TypeID>OFEM019</TypeID>
+		<InstanceID>ZUGGS</InstanceID>
 		<DisplayName>Zuggs</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -609,11 +628,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM020</GameID>
+		<TypeID>OFEM020</TypeID>
+		<InstanceID>DAALA</InstanceID>
 		<DisplayName>Daala</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -641,11 +661,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFEM021</GameID>
+		<TypeID>OFEM021</TypeID>
+		<InstanceID>THANAS</InstanceID>
 		<DisplayName>Pter Thanas</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -676,9 +697,10 @@
 	<!--   ****************** ALLIANCE MAIN *****************  -->
 	<!--   **************************************************  -->
 	<Officer>
-		<GameID>OFAL001</GameID>
+		<TypeID>OFAL001</TypeID>
+		<InstanceID>MON_MOTHMA</InstanceID>
 		<DisplayName>Mon Mothma</DisplayName>
-		<OwnerGameID>FNALL1</OwnerGameID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>100</Diplomacy>
 		<Espionage>10</Espionage>
@@ -705,9 +727,10 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL002</GameID>
+		<TypeID>OFAL002</TypeID>
+		<InstanceID>LEIA_ORGANA</InstanceID>
 		<DisplayName>Leia Organa</DisplayName>
-		<OwnerGameID>FNALL1</OwnerGameID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>120</Diplomacy>
 		<Espionage>30</Espionage>
@@ -734,9 +757,10 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL003</GameID>
+		<TypeID>OFAL003</TypeID>
+		<InstanceID>LUKE_SKYWALKER</InstanceID>
 		<DisplayName>Luke Skywalker</DisplayName>
-		<OwnerGameID>FNALL1</OwnerGameID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>50</Diplomacy>
 		<Espionage>50</Espionage>
@@ -764,9 +788,10 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL004</GameID>
+		<TypeID>OFAL004</TypeID>
+		<InstanceID>HAN_SOLO</InstanceID>
 		<DisplayName>Han Solo</DisplayName>
-		<OwnerGameID>FNALL1</OwnerGameID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>19</Diplomacy>
 		<Espionage>100</Espionage>
@@ -794,11 +819,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL005</GameID>
+		<TypeID>OFAL005</TypeID>
+		<InstanceID>ACKBAR</InstanceID>
 		<DisplayName>Ackbar</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -826,11 +852,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL006</GameID>
+		<TypeID>OFAL006</TypeID>
+		<InstanceID>WEDGE_ANTILLES</InstanceID>
 		<DisplayName>Wedge Antilles</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -858,11 +885,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL007</GameID>
+		<TypeID>OFAL007</TypeID>
+		<InstanceID>LANDO_CALRISSIAN</InstanceID>
 		<DisplayName>Lando Calrissian</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>70</Espionage>
@@ -890,11 +918,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL008</GameID>
+		<TypeID>OFAL008</TypeID>
+		<InstanceID>CHEWBACCA</InstanceID>
 		<DisplayName>Chewbacca</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>
@@ -922,11 +951,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL009</GameID>
+		<TypeID>OFAL009</TypeID>
+		<InstanceID>JAN_DODONNA</InstanceID>
 		<DisplayName>Jan Dodonna</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -954,11 +984,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL010</GameID>
+		<TypeID>OFAL010</TypeID>
+		<InstanceID>CRIX_MADINE</InstanceID>
 		<DisplayName>Crix Madine</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -986,11 +1017,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL011</GameID>
+		<TypeID>OFAL011</TypeID>
+		<InstanceID>CARLIST_RIEEKAN</InstanceID>
 		<DisplayName>Carlist Rieekan</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1018,11 +1050,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL012</GameID>
+		<TypeID>OFAL012</TypeID>
+		<InstanceID>AFYON</InstanceID>
 		<DisplayName>Afyon</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1050,11 +1083,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL0113</GameID>
+		<TypeID>OFAL0113</TypeID>
+		<InstanceID>DRAYSON</InstanceID>
 		<DisplayName>Drayson</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1082,11 +1116,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL014</GameID>
+		<TypeID>OFAL014</TypeID>
+		<InstanceID>BORSK_FEYLA</InstanceID>
 		<DisplayName>Borsk Fey'la</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>80</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1114,11 +1149,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL015</GameID>
+		<TypeID>OFAL015</TypeID>
+		<InstanceID>TURA_RAFTICAN</InstanceID>
 		<DisplayName>Tura Raftican</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>
@@ -1146,11 +1182,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL016</GameID>
+		<TypeID>OFAL016</TypeID>
+		<InstanceID>BREN_DERLIN</InstanceID>
 		<DisplayName>Bren Derlin</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1178,11 +1215,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL017</GameID>
+		<TypeID>OFAL017</TypeID>
+		<InstanceID>GARM_BEL_IBLIS</InstanceID>
 		<DisplayName>Garm Bel Iblis</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>30</Espionage>
@@ -1210,11 +1248,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL018</GameID>
+		<TypeID>OFAL018</TypeID>
+		<InstanceID>TALON_KARRDE</InstanceID>
 		<DisplayName>Talon Karrde</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>80</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1242,11 +1281,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL019</GameID>
+		<TypeID>OFAL019</TypeID>
+		<InstanceID>NARRA</InstanceID>
 		<DisplayName>Narra</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1274,11 +1314,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL020</GameID>
+		<TypeID>OFAL020</TypeID>
+		<InstanceID>HUOBA_NEVA</InstanceID>
 		<DisplayName>Huoba Neva</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>80</Espionage>
@@ -1306,11 +1347,12 @@
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 	<Officer>
-		<GameID>OFAL021</GameID>
+		<TypeID>OFAL021</TypeID>
+		<InstanceID>PAGE</InstanceID>
 		<DisplayName>Page</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>

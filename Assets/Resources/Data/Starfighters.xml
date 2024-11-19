@@ -4,11 +4,11 @@
 	<!--   ********************* EMPIRE *********************  -->
 	<!--   **************************************************  -->
 	<Starfighter>
-		<GameID>SFEM01</GameID>
+		<TypeID>SFEM01</TypeID>
 		<DisplayName>TIE Fighter Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -27,11 +27,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFEM02</GameID>
+		<TypeID>SFEM02</TypeID>
 		<DisplayName>TIE Bomber Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -50,11 +50,11 @@
 		<ResearchLevel>1</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFEM03</GameID>
+		<TypeID>SFEM03</TypeID>
 		<DisplayName>TIE Interceptor Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -73,11 +73,11 @@
 		<ResearchLevel>3</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFEM04</GameID>
+		<TypeID>SFEM04</TypeID>
 		<DisplayName>TIE Defender Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>7</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -99,11 +99,11 @@
 	<!--   ******************** ALLIANCE ********************  -->
 	<!--   **************************************************  -->
 	<Starfighter>
-		<GameID>SFAL01</GameID>
+		<TypeID>SFAL01</TypeID>
 		<DisplayName>Y-Wing Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -122,11 +122,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFAL02</GameID>
+		<TypeID>SFAL02</TypeID>
 		<DisplayName>X-Wing Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -145,7 +145,10 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFAL03</GameID>
+		<TypeID>SFAL03</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<DisplayName>A-Wing Squadron</DisplayName>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
@@ -165,11 +168,11 @@
 		<ResearchLevel>3</ResearchLevel>
 	</Starfighter>
 	<Starfighter>
-		<GameID>SFAL04</GameID>
+		<TypeID>SFAL04</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<DisplayName>B-Wing Squadron</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
 		<ConstructionCost>7</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>

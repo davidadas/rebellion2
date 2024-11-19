@@ -1,39 +1,54 @@
-using System.Xml.Serialization;
 using System;
+using System.Collections.Generic;
+using ObjectExtensions;
 
-[Serializable]
+[PersistableObject]
 public class GameEntity
 {
     private string _instanceId;
+    private string _ownerInstanceId;
 
-    // Set the InstaceID property.
-    // This is a unique ID set for each node.
     [CloneIgnore]
     public string InstanceID
     {
-        get
-        {
-            // Generate a new instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = Guid.NewGuid().ToString().Replace("-", "");
-            }
-            return _instanceId;
-        }
-        set
-        {
-            // Set the instance ID if it is not set.
-            if (_instanceId == null)
-            {
-                _instanceId = value;
-            }
-        }
+        get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
+        set => _instanceId ??= value;
     }
-    // Set the GameID property.
-    // This is a non-unique ID set for each specific types of objects, such as planets, ships, etc.
-    public string GameID { get; set; }
 
-    // Game Info
+    public string TypeID { get; set; }
+
+    // Owner Info
     public string DisplayName { get; set; }
     public string Description { get; set; }
+
+    [CloneIgnore]
+    public string OwnerInstanceID
+    {
+        get => _ownerInstanceId;
+        set => SetOwnerInstanceID(value);
+    }
+    public List<string> AllowedOwnerInstanceIDs { get; set; }
+
+    /// <summary>
+    /// Sets the owner type id. If the ID is not in the allowed list, throws an exception.
+    /// </summary>
+    /// <param name="value">The owner type id to set.</param>
+    /// <exception cref="ArgumentException">Thrown when the owner type id is invalid.</exception>
+    private void SetOwnerInstanceID(string value)
+    {
+        if (
+            AllowedOwnerInstanceIDs == null
+            || AllowedOwnerInstanceIDs.Count == 0
+            || AllowedOwnerInstanceIDs.Contains(value)
+        )
+        {
+            _ownerInstanceId = value;
+        }
+        else
+        {
+            throw new ArgumentException(
+                $"Invalid owner type id \"{value}\" for object \"{DisplayName}\"."
+            );
+        }
+    }
 }

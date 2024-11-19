@@ -1,92 +1,184 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
 namespace ObjectExtensions
 {
+    /// <summary>
+    /// Provides extension methods for copying objects.
+    /// </summary>
     public static class ObjectExtensions
     {
         /// <summary>
-        /// Creates a shallow copy of the current object, excluding any properties or fields marked with the CloneIgnoreAttribute.
+        /// Creates a shallow copy of the given object, respecting CloneIgnore attributes.
         /// </summary>
-        /// <typeparam name="T">The type of the object to clone.</typeparam>
-        /// <param name="obj">The object to clone.</param>
-        /// <returns>A shallow copy of the current object, excluding any properties or fields marked with the CloneIgnoreAttribute.</returns>
-        public static T CloneWithoutAttribute<T>(this T source)
-            where T : new()
+        /// <typeparam name="T">The type of the object to be cloned. Must be a reference type.</typeparam>
+        /// <param name="source">The object to be cloned.</param>
+        /// <returns>A shallow copy of the source object, with fields/properties marked CloneIgnore set to null.</returns>
+        public static T GetShallowCopy<T>(this T source) where T : class
         {
-            // Create a new instance of the target type.
-            T target = new T();
+            if (source == null) return null;
 
-            // Get all the properties of the source object.
-            IEnumerable<PropertyInfo> properties = source.GetType().GetProperties();
+            Type type = source.GetType();
 
-            // Loop through each property and copy its value to the target object,
-            // unless the property has the CloneIgnore attribute.
-            foreach (PropertyInfo property in properties)
+            // For value types and strings, return the source directly.
+            if (type.IsValueType || type == typeof(string)) return source;
+
+            T result = (T)Activator.CreateInstance(type);
+
+            CopyFields(type, source, result);
+            CopyProperties(type, source, result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a deep copy of the given object, respecting CloneIgnore attributes.
+        /// </summary>
+        /// <typeparam name="T">The type of the object to be copied.</typeparam>
+        /// <param name="source">The object to be copied.</param>
+        /// <returns>A deep copy of the source object.</returns>
+        public static T GetDeepCopy<T>(this T source) where T : class
+        {
+            if (source == null) return null;
+
+            return (T)DeepCopyObject(source);
+        }
+
+        /// <summary>
+        /// Copies fields from source to target, skipping fields with CloneIgnore attribute.
+        /// </summary>
+        private static void CopyFields(Type type, object source, object target)
+        {
+            foreach (FieldInfo field in GetAllFields(type))
             {
-                if (property.GetCustomAttribute<CloneIgnoreAttribute>() == null)
+                if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute)))
                 {
-                    // If the property is a collection, clone its elements and add them
-                    // to the target collection.
-                    if (typeof(IEnumerable<object>).IsAssignableFrom(property.PropertyType))
+                    // Set ignored fields to their default value.
+                    if (!field.FieldType.IsValueType)
                     {
-                        // Create a new collection of the same type as the source property.
-                        object sourceCollection = property.GetValue(source);
-                        object targetCollection = Activator.CreateInstance(property.PropertyType);
-
-                        // Clone each element in the source collection and add it to the target collection.
-                        foreach (object item in (IEnumerable<object>)sourceCollection)
-                        {
-                            MethodInfo cloneMethod = item.GetType().GetMethod("Clone");
-                            if (cloneMethod != null)
-                            {
-                                targetCollection
-                                    .GetType()
-                                    .GetMethod("Add")
-                                    .Invoke(
-                                        targetCollection,
-                                        new[] { cloneMethod.Invoke(item, null) }
-                                    );
-                            }
-                            else
-                            {
-                                targetCollection
-                                    .GetType()
-                                    .GetMethod("Add")
-                                    .Invoke(targetCollection, new[] { item });
-                            }
-                        }
-
-                        // Set the cloned collection to the corresponding property of the target object.
-                        property.SetValue(target, targetCollection);
+                        field.SetValue(target, null);
                     }
                     else
                     {
-                        // If the property is not a collection, copy its value to the target object.
-                        object value = property.GetValue(source);
-                        property.SetValue(target, value);
+                        field.SetValue(target, Activator.CreateInstance(field.FieldType));
                     }
+                    continue;
                 }
+
+                // Copy the field value for fields not marked with CloneIgnore
+                object value = field.GetValue(source);
+                field.SetValue(target, value);
             }
+        }
 
-            // Get all the fields of the source object.
-            IEnumerable<FieldInfo> fields = source.GetType().GetFields();
-
-            // Loop through each field and copy its value to the target object,
-            // unless the field has the CloneIgnore attribute.
-            foreach (FieldInfo field in fields)
+        /// <summary>
+        /// Copies properties from source to target, skipping properties with CloneIgnore attribute.
+        /// </summary>
+        private static void CopyProperties(Type type, object source, object target)
+        {
+            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
-                if (field.GetCustomAttribute<CloneIgnoreAttribute>() == null)
+                if (Attribute.IsDefined(property, typeof(CloneIgnoreAttribute)))
                 {
-                    object value = field.GetValue(source);
-                    field.SetValue(target, value);
+                    // Explicitly set the property to its default value if writable
+                    if (property.CanWrite)
+                    {
+                        property.SetValue(target, default);
+                    }
+                    continue;
+                }
+
+                if (property.CanRead && property.CanWrite)
+                {
+                    object value = property.GetValue(source);
+                    property.SetValue(target, value);
                 }
             }
+        }
 
-            // Return the cloned object
-            return target;
+
+        /// <summary>
+        /// Recursively creates a deep copy of an object.
+        /// </summary>
+        private static object DeepCopyObject(object source)
+        {
+            Type type = source.GetType();
+
+            if (type.IsValueType || type == typeof(string)) return source;
+
+            object result = Activator.CreateInstance(type);
+
+            CopyFields(type, source, result);
+
+            foreach (FieldInfo field in GetAllFields(type))
+            {
+                if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute))) continue;
+
+                object fieldValue = field.GetValue(source);
+                if (fieldValue == null) continue;
+
+                field.SetValue(result, DeepCopyField(fieldValue));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Recursively creates a deep copy of a field value.
+        /// </summary>
+        private static object DeepCopyField(object fieldValue)
+        {
+            Type fieldType = fieldValue.GetType();
+
+            if (fieldType.IsValueType || fieldType == typeof(string)) return fieldValue;
+
+            if (typeof(IEnumerable).IsAssignableFrom(fieldType)) return DeepCopyCollection(fieldValue);
+
+            return DeepCopyObject(fieldValue);
+        }
+
+        /// <summary>
+        /// Creates a deep copy of a collection.
+        /// </summary>
+        private static object DeepCopyCollection(object collection)
+        {
+            Type type = collection.GetType();
+
+            if (type.IsArray)
+            {
+                Array sourceArray = (Array)collection;
+                Array destinationArray = Array.CreateInstance(type.GetElementType(), sourceArray.Length);
+
+                for (int i = 0; i < sourceArray.Length; i++)
+                {
+                    destinationArray.SetValue(DeepCopyField(sourceArray.GetValue(i)), i);
+                }
+
+                return destinationArray;
+            }
+
+            IList destinationCollection = (IList)Activator.CreateInstance(type);
+            foreach (object item in (IEnumerable)collection)
+            {
+                destinationCollection.Add(DeepCopyField(item));
+            }
+
+            return destinationCollection;
+        }
+
+        /// <summary>
+        /// Retrieves all fields of a given type, including inherited fields.
+        /// </summary>
+        private static IEnumerable<FieldInfo> GetAllFields(Type type)
+        {
+            return type == null
+                ? Enumerable.Empty<FieldInfo>()
+                : type
+                    .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    .Concat(GetAllFields(type.BaseType));
         }
     }
 }

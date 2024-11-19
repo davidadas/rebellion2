@@ -4,9 +4,15 @@
 	<!--   ******************* FACILITIES *******************  -->
 	<!--   **************************************************  -->
 	<Building>
-		<GameID>BDFA01</GameID>
+		<TypeID>BDFA01</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>ConstructionFacility</BuildingType>
 		<DisplayName>Construction Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
+		<ProductionType>Building</ProductionType>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
 		<Bombardment>3</Bombardment>
@@ -14,8 +20,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA02</GameID>
+		<TypeID>BDFA02</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>TrainingFacility</BuildingType>
 		<DisplayName>Training Facility</DisplayName>
+		<ProductionType>Troop</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
@@ -24,8 +36,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA03</GameID>
+		<TypeID>BDFA03</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>Shipyard</BuildingType>
 		<DisplayName>Orbital Shipyard</DisplayName>
+		<ProductionType>Ship</ProductionType>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
 		<MaintenanceCost>13</MaintenanceCost>
@@ -34,8 +52,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA04</GameID>
+		<TypeID>BDFA04</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>Mine</BuildingType>
 		<DisplayName>Mining Facility</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
 		<MaintenanceCost>0</MaintenanceCost>
@@ -44,8 +68,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA05</GameID>
+		<TypeID>BDFA05</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>Refinery</BuildingType>
 		<DisplayName>Refinery</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
 		<MaintenanceCost>0</MaintenanceCost>
@@ -54,8 +84,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA06</GameID>
+		<TypeID>BDFA06</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>TrainingFacility</BuildingType>
 		<DisplayName>Advanced Training Facility</DisplayName>
+		<ProductionType>Troop</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
@@ -64,8 +100,14 @@
 		<ResearchLevel>1</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDFA07</GameID>
+		<TypeID>BDFA07</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>Shipyard</BuildingType>
 		<DisplayName>Advanced Orbital Shipyard</DisplayName>
+		<ProductionType>Ship</ProductionType>
 		<BuildingSlot>Orbit</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
 		<MaintenanceCost>20</MaintenanceCost>
@@ -77,9 +119,15 @@
 	<!--   ******************** DEFENSES ********************  -->
 	<!--   **************************************************  -->
 	<Building>
-		<GameID>BDDF01</GameID>
+		<TypeID>BDDF01</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>LNR Series I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
+		<ProductionType>None</ProductionType>
 		<ConstructionCost>7</ConstructionCost>
 		<MaintenanceCost>7</MaintenanceCost>
 		<Bombardment>4</Bombardment>
@@ -88,9 +136,15 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF02</GameID>
+		<TypeID>BDDF02</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>GenCore Level I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
+		<ProductionType>None</ProductionType>
 		<ConstructionCost>12</ConstructionCost>
 		<MaintenanceCost>12</MaintenanceCost>
 		<Bombardment>2</Bombardment>
@@ -99,8 +153,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF03</GameID>
+		<TypeID>BDDF03</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>KDY-150</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>4</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
@@ -110,8 +170,14 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF04</GameID>
+		<TypeID>BDDF04</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>Death Star Shield</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>25</ConstructionCost>
 		<MaintenanceCost>20</MaintenanceCost>
@@ -121,8 +187,14 @@
 		<ResearchLevel>3</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF05</GameID>
+		<TypeID>BDDF05</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>LNR Series II</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
@@ -132,8 +204,14 @@
 		<ResearchLevel>4</ResearchLevel>
 	</Building>
 	<Building>
-		<GameID>BDDF06</GameID>
+		<TypeID>BDDF06</TypeID>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>GenCore Level II</DisplayName>
+		<ProductionType>None</ProductionType>
 		<BuildingSlot>Ground</BuildingSlot>
 		<ConstructionCost>20</ConstructionCost>
 		<MaintenanceCost>7</MaintenanceCost>
@@ -141,41 +219,5 @@
 		<WeaponPower>0</WeaponPower>
 		<ShieldStrength>80</ShieldStrength>
 		<ResearchLevel>6</ResearchLevel>
-	</Building>
-	<!--   **************************************************  -->
-	<!--   ******************** Utility *********************  -->
-	<!--   **************************************************  -->
-	<Building>
-		<GameID>BDUT01</GameID>
-		<DisplayName>Orbital Telescope</DisplayName>
-		<BuildingSlot>Orbit</BuildingSlot>
-		<ConstructionCost>10</ConstructionCost>
-		<MaintenanceCost>10</MaintenanceCost>
-		<Bombardment>2</Bombardment>
-		<WeaponPower>0</WeaponPower>
-		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>0</ResearchLevel>
-	</Building>
-	<Building>
-		<GameID>BDUT02</GameID>
-		<DisplayName>Orbital Minefield</DisplayName>
-		<BuildingSlot>Orbit</BuildingSlot>
-		<ConstructionCost>35</ConstructionCost>
-		<MaintenanceCost>10</MaintenanceCost>
-		<Bombardment>0</Bombardment>
-		<WeaponPower>1000</WeaponPower>
-		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>7</ResearchLevel>
-	</Building>
-	<Building>
-		<GameID>BDUT03</GameID>
-		<DisplayName>Advanced Orbital Telescope</DisplayName>
-		<BuildingSlot>Orbit</BuildingSlot>
-		<ConstructionCost>111</ConstructionCost>
-		<MaintenanceCost>73</MaintenanceCost>
-		<Bombardment>2</Bombardment>
-		<WeaponPower>0</WeaponPower>
-		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>7</ResearchLevel>
 	</Building>
 </Buildings>

@@ -1,6 +1,6 @@
+using System;
 using System.Linq;
 using System.Reflection;
-using System;
 
 public class Config : IConfig
 {
@@ -10,7 +10,7 @@ public class Config : IConfig
     /// <param name="key"></param>
     /// <param name="fieldName"></param>
     /// <returns></returns>
-    private object findField(object key, string fieldName)
+    private object FindField(object key, string fieldName)
     {
         // Unity does not support property-based serialization.
         // Therefore, we will reflect only fields here; not properties.
@@ -39,7 +39,7 @@ public class Config : IConfig
     public T GetValue<T>(string path)
     {
         string[] paths = path.Split(".");
-        object result = paths.Aggregate((object)this, findField);
+        object result = paths.Aggregate((object)this, FindField);
 
         return (T)result;
     }

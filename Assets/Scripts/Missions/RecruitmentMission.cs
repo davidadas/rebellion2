@@ -7,7 +7,8 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Default constructor used for serialization.
     /// </summary>
-    public RecruitmentMission() : base()
+    public RecruitmentMission()
+        : base()
     // @TODO: Move the success probability variables to configs.
     {
         Name = "Recruitment";
@@ -25,25 +26,27 @@ public class RecruitmentMission : Mission
     /// Creates a new RecruitmentMission with the specified owner and participants.
     /// </summary>
     public RecruitmentMission(
-        string ownerGameID,
-        List<MissionParticipant> mainParticipants,
-        List<MissionParticipant> covertParticipants
+        string ownerInstanceId,
+        string targetInstanceId,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
     // @TODO: Move the success probability variables to configs.
-    ) : base(
-        "Recruitment", 
-        ownerGameID,
-        mainParticipants, 
-        covertParticipants, 
-        MissionParticipantSkill.Leadership, 
-        quadraticCoefficient: -0.001748, 
-        linearCoefficient: 0.8657, 
-        constantTerm: 11.923, 
-        minSuccessProbability: 1, 
-        maxSuccessProbability: 100, 
-        minTicks: 15, 
-        maxTicks: 20)
-    {
-    }
+    )
+        : base(
+            "Recruitment",
+            ownerInstanceId,
+            targetInstanceId,
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Leadership,
+            quadraticCoefficient: -0.001748,
+            linearCoefficient: 0.8657,
+            constantTerm: 11.923,
+            minSuccessProbability: 1,
+            maxSuccessProbability: 100,
+            minTicks: 15,
+            maxTicks: 20
+        ) { }
 
     /// <summary>
     /// Adds a new officer to the factions's roster.
@@ -53,12 +56,22 @@ public class RecruitmentMission : Mission
     {
         Planet planet = GetParent() as Planet;
 
-        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerGameID);
+        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerInstanceID);
         Officer recruitedOfficer = unrecruitedOfficers.RandomElement();
+        recruitedOfficer.OwnerInstanceID = OwnerInstanceID;
 
         game.RemoveUnrecruitedOfficer(recruitedOfficer);
 
         // Attach the recruited officer to the planet.
-        game.AttachNode(planet, recruitedOfficer);
+        game.AttachNode(recruitedOfficer, planet);
+
+        UnityEngine.Debug.Log(
+            "Recruited officer "
+                + recruitedOfficer.DisplayName
+                + " to "
+                + planet.DisplayName
+                + " by "
+                + (MainParticipants[0] as SceneNode).DisplayName
+        );
     }
 }

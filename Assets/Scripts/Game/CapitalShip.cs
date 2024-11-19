@@ -1,7 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
-using System;
 using ICollectionExtensions;
 
 public enum PrimaryWeaponType
@@ -14,9 +15,10 @@ public enum PrimaryWeaponType
 /// <summary>
 /// Represents a capital ship in the game.
 /// </summary>
-public class CapitalShip : SceneNode, IManufacturable
+public class CapitalShip : SceneNode, IManufacturable, IMovable
 {
     // Manufacture Info
+    public string ProducerOwnerID { get; set; }
     public int ConstructionCost { get; set; }
     public int MaintenanceCost { get; set; }
     public int BaseBuildSpeed { get; set; }
@@ -43,15 +45,26 @@ public class CapitalShip : SceneNode, IManufacturable
     public List<Starfighter> Starfighters = new List<Starfighter>();
 
     // Weapon Info.
-    public SerializableDictionary<PrimaryWeaponType, int[]> PrimaryWeapons =
-        new SerializableDictionary<PrimaryWeaponType, int[]>()
-        {
-            { PrimaryWeaponType.Turbolaser, new int[5] },
-            { PrimaryWeaponType.IonCannon, new int[5] },
-            { PrimaryWeaponType.LaserCannon, new int[5] }
-        };
+    public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons = new Dictionary<
+        PrimaryWeaponType,
+        int[]
+    >()
+    {
+        { PrimaryWeaponType.Turbolaser, new int[5] },
+        { PrimaryWeaponType.IonCannon, new int[5] },
+        { PrimaryWeaponType.LaserCannon, new int[5] },
+    };
     public int WeaponRecharge;
     public int Bombardment;
+
+    // Manufacturing Info
+    public int ManufacturingProgress { get; set; } = 0;
+    public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
+
+    // Movement Info
+    public MovementStatus MovementStatus { get; set; }
+    public int PositionX { get; set; }
+    public int PositionY { get; set; }
 
     // Misc Info
     public int TractorBeamPower;
@@ -60,10 +73,7 @@ public class CapitalShip : SceneNode, IManufacturable
     public int DetectionRating;
 
     // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
-    public string InitialParentGameID { get; set; }
+    public string InitialParentInstanceID { get; set; }
 
     /// <summary>
     /// Default constructor.
@@ -109,7 +119,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     public void AddOfficer(Officer officer)
     {
-        if (this.OwnerGameID != officer.OwnerGameID)
+        if (this.OwnerInstanceID != officer.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }
@@ -121,7 +131,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// </summary>
     /// <param name="child">The child to add</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -141,7 +151,7 @@ public class CapitalShip : SceneNode, IManufacturable
     /// Adds a child to the capital ship.
     /// </summary>
     /// <param name="child">The child to remove</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -158,14 +168,32 @@ public class CapitalShip : SceneNode, IManufacturable
     }
 
     /// <summary>
-    /// 
+    /// Returns the manufacturing manufacturing type of the manufacturable.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>ManufacturingType.Ship</returns>
+    public ManufacturingType GetManufacturingType()
+    {
+        return ManufacturingType.Ship;
+    }
+
+    /// <summary>
+    /// The movement status of the capital ship.
+    /// </summary>
+    /// <returns>True if the capital ship is movable, false otherwise.</returns>
+    public bool IsMovable()
+    {
+        return MovementStatus != MovementStatus.InTransit;
+    }
+
+    /// <summary>
+    /// Retrieves the children of the node.
+    /// </summary>
+    /// <returns>The children of the node.</returns>
     public override IEnumerable<SceneNode> GetChildren()
     {
-        List<SceneNode> combinedList = new List<SceneNode>();
-        combinedList.AddAll(Officers, Starfighters, Regiments);
-
-        return combinedList.ToArray();
+        return Officers
+            .Cast<SceneNode>()
+            .Concat(Starfighters.Cast<SceneNode>())
+            .Concat(Regiments.Cast<SceneNode>());
     }
 }

@@ -1,58 +1,55 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Manages game events and their scheduling.
 /// </summary>
-public class EventManager
+public class GameEventManager
 {
-    private readonly Game game;
+    private Game game;
 
-    public EventManager(Game game)
+    public GameEventManager(Game game)
     {
         this.game = game;
     }
 
     /// <summary>
-    /// Retrieves all game events of the specified type.
+    /// Schedules the specified game event to occur at the specified tick.
     /// </summary>
-    /// <typeparam name="T">The type of game event to retrieve.</typeparam>
-    /// <returns>A list of game events of the specified type.</returns>
-    public List<GameEvent> GetEventsByType<T>() where T : GameEvent
+    /// <param name="gameEvent"></param>
+    /// <param name="tick"></param>
+    public void ScheduleEvent(GameEvent gameEvent, int tick)
     {
-        List<GameEvent> events = new List<GameEvent>();
-
-        // Iterate through all events in the dictionary.
-        foreach (var eventList in game.GameEventDictionary.Values)
-        {
-            // Check if the event is of the specified type.
-            foreach (var gameEvent in eventList)
-            {
-                // Add the event to the list if it is of the specified type.
-                if (gameEvent is T)
-                {
-                    events.Add(gameEvent);
-                }
-            }
-        }
-
-        return events;
+        game.ScheduleGameEvent(gameEvent, tick);
     }
 
     /// <summary>
-    /// Schedules a game event.
+    ///
     /// </summary>
-    /// <param name="gameEvent">The game event to schedule.</param>
-    public void ScheduleEvent(GameEvent gameEvent)
+    /// <param name="actions"></param>
+    /// <param name="tick"></param>
+    public void ScheduleEvent(List<GameAction> actions, int tick)
     {
-        // Add the event to the dictionary.
-        if (!game.GameEventDictionary.ContainsKey(gameEvent.ScheduledTick))
-        {
-            game.GameEventDictionary[gameEvent.ScheduledTick] = new List<GameEvent>();
-        }
+        List<GameConditional> conditionals = new List<GameConditional>();
+        GameEvent gameEvent = new GameEvent(conditionals, actions);
+        ScheduleEvent(gameEvent, tick);
+    }
 
-        // Add the event to the list of events for this tick.
-        game.GameEventDictionary[gameEvent.ScheduledTick].Add(gameEvent);
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="conditionals"></param>
+    /// <param name="actions"></param>
+    /// <param name="tick"></param>
+    public void ScheduleEvent(
+        List<GameConditional> conditionals,
+        List<GameAction> actions,
+        int tick
+    )
+    {
+        GameEvent gameEvent = new GameEvent(conditionals, actions);
+        ScheduleEvent(gameEvent, tick);
     }
 
     /// <summary>
@@ -61,16 +58,21 @@ public class EventManager
     /// <param name="currentTick">The current tick.</param>
     public void ProcessEvents(int currentTick)
     {
-        // Check if there are any events scheduled for this tick.
-        if (game.GameEventDictionary.ContainsKey(currentTick))
-        {
-            foreach (var gameEvent in game.GameEventDictionary[currentTick])
-            {
-                gameEvent.Execute(game);
-            }
+        List<ScheduledEvent> scheduledEvents = game.GetScheduledEvents(currentTick);
 
-            // Remove processed events for this tick
-            game.GameEventDictionary.Remove(currentTick);
+        // Check if there are any events scheduled for this tick.
+        if (scheduledEvents.Any())
+        {
+            // Execute each event.
+            foreach (ScheduledEvent scheduledEvent in scheduledEvents)
+            {
+                GameEvent gameEvent = scheduledEvent.GetEvent();
+
+                gameEvent.Execute(game);
+
+                // Add the event to the list of completed events.
+                game.AddCompletedEvent(gameEvent);
+            }
         }
     }
 }

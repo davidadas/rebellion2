@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Factions>
 	<Faction>
-		<GameID>FNALL1</GameID>
+		<InstanceID>FNALL1</InstanceID>
 		<DisplayName>Alliance</DisplayName>
-		<HQGameID>PLSUM06</HQGameID>
+		<HQInstanceID>YAVIN</HQInstanceID>
 	</Faction>
 	<Faction>
-		<GameID>FNEMP1</GameID>
+		<InstanceID>FNEMP1</InstanceID>
 		<DisplayName>Empire</DisplayName>
-		<HQGameID>PLSEW05</HQGameID>
+		<HQInstanceID>CORUSCANT</HQInstanceID>
 	</Faction>
 </Factions>

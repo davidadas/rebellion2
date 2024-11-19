@@ -1,7 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
 using ICollectionExtensions;
 using IEnumerableExtensions;
 
@@ -10,12 +11,13 @@ using IEnumerableExtensions;
 /// </summary>
 public sealed class GameBuilder
 {
-    private PlanetSystemGenerator _psGenerator;
-    private FactionGenerator _factionGenerator;
-    private OfficerGenerator _officerGenerator;
-    private BuildingGenerator _buildingGenerator;
-    private CapitalShipGenerator _csGenerator;
-    private GameSummary _summary;
+    private PlanetSystemGenerator psGenerator;
+    private FactionGenerator factionGenerator;
+    private OfficerGenerator officerGenerator;
+    private BuildingGenerator buildingGenerator;
+    private CapitalShipGenerator csGenerator;
+    private StarfighterGenerator starfighterGenerator;
+    private GameSummary summary;
 
     /// <summary>
     /// Initializes a new instance of the GameBuilder class.
@@ -26,34 +28,40 @@ public sealed class GameBuilder
         IResourceManager resourceManager = ResourceManager.Instance;
 
         // Initialize our unit generators.
-        _psGenerator = new PlanetSystemGenerator(summary, resourceManager);
-        _factionGenerator = new FactionGenerator(summary, resourceManager);
-        _officerGenerator = new OfficerGenerator(summary, resourceManager);
-        _buildingGenerator = new BuildingGenerator(summary, resourceManager);
-        _csGenerator = new CapitalShipGenerator(summary, resourceManager);
+        psGenerator = new PlanetSystemGenerator(summary, resourceManager);
+        factionGenerator = new FactionGenerator(summary, resourceManager);
+        officerGenerator = new OfficerGenerator(summary, resourceManager);
+        buildingGenerator = new BuildingGenerator(summary, resourceManager);
+        csGenerator = new CapitalShipGenerator(summary, resourceManager);
+        starfighterGenerator = new StarfighterGenerator(summary, resourceManager);
 
-        _summary = summary;
+        this.summary = summary;
     }
 
     /// <summary>
-    /// Gets the reference map for the given game nodes.
+    /// Sets the technology tree for the factions in the game.
     /// </summary>
-    /// <param name="nodes">The game nodes to create the reference map from.</param>
-    /// <returns>The reference map.</returns>
-    private SerializableDictionary<string, ReferenceNode> getReferenceMap(params SceneNode[][] nodes)
+    /// <param name="factionMap">The map of factions in the game.</param>
+    /// <param name="combinedTechnologies">The combined technologies in the game.</param>
+    private void SetTechnologyLevels(
+        Dictionary<string, Faction> factionMap,
+        IManufacturable[] combinedTechnologies
+    )
     {
-        SerializableDictionary<string, ReferenceNode> referenceMap =
-            new SerializableDictionary<string, ReferenceNode>();
-        List<SceneNode> referenceNodes = new List<SceneNode>();
-        referenceNodes.AddAll(nodes);
-
-        foreach (SceneNode node in referenceNodes)
+        foreach (Faction faction in factionMap.Values)
         {
-            ReferenceNode reference = new ReferenceNode(node);
-            referenceMap[node.GameID] = reference;
+            foreach (IManufacturable technology in combinedTechnologies)
+            {
+                Technology reference = new Technology(technology as SceneNode);
+                foreach (string allowedOwnerInstanceID in reference.GetReference().AllowedOwnerInstanceIDs)
+                {
+                    if (allowedOwnerInstanceID == faction.InstanceID)
+                    {
+                        faction.AddTechnologyNode(technology.GetRequiredResearchLevel(), reference);
+                    }
+                }
+            }
         }
-
-        return referenceMap;
     }
 
     /// <summary>
@@ -62,42 +70,45 @@ public sealed class GameBuilder
     /// <returns>The built game.</returns>
     public Game BuildGame()
     {
-        // First, generate our galaxy map with stat decorated planets.
-        IUnitGenerationResults<PlanetSystem> psResults = _psGenerator.GenerateUnits();
+        // Generate our galaxy map with stat decorated planets.
+        IUnitGenerationResults<PlanetSystem> psResults = psGenerator.GenerateUnits();
         PlanetSystem[] galaxyMap = psResults.SelectedUnits;
 
-        // Then decorate the galaxy map with units.
-        Building[] buildings = _buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
-        Faction[] factions = _factionGenerator.GenerateUnits(galaxyMap).UnitPool;
-        CapitalShip[] capitalShips = _csGenerator.GenerateUnits(galaxyMap).UnitPool;
-        IUnitGenerationResults<Officer> officerResults = _officerGenerator.GenerateUnits(galaxyMap);
+        // Decorate the galaxy map with units.
+        Faction[] factions = factionGenerator.GenerateUnits(galaxyMap).UnitPool;
+        Building[] buildings = buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
+        CapitalShip[] capitalShips = csGenerator.GenerateUnits(galaxyMap).UnitPool;
+        Starfighter[] starfighters = starfighterGenerator.GenerateUnits(galaxyMap).UnitPool;
+        IUnitGenerationResults<Officer> officerResults = officerGenerator.GenerateUnits(galaxyMap);
 
         // Retrieve list of unrecruited officers.
-        Officer[] unrecruitedOfficers = officerResults.UnitPool
-            .Except(officerResults.SelectedUnits)
+        Officer[] unrecruitedOfficers = officerResults
+            .UnitPool.Except(officerResults.SelectedUnits)
             .ToArray();
 
-        // Set the list of reference nodes (used for lookups).
-        SerializableDictionary<string, ReferenceNode> referenceMap = getReferenceMap(
-            capitalShips,
-            buildings
-        );
+        // Initialize each faction's technology tree.
+        Dictionary<string, Faction> factionMap = factions.ToDictionary(faction => faction.InstanceID);
+        IManufacturable[] combinedTechnologies = Array
+            .Empty<IManufacturable>()
+            .Concat(buildings)
+            .Concat(capitalShips)
+            .Concat(starfighters)
+            .ToArray();
 
-        GalaxyMap Galaxy = new GalaxyMap
-        {
-            PlanetSystems = galaxyMap.ToList<PlanetSystem>(),
-        };
+        // Set the technology tree for each faction.
+        SetTechnologyLevels(factionMap, combinedTechnologies);
+
+        // Set the galaxy map.
+        GalaxyMap galaxy = new GalaxyMap { PlanetSystems = galaxyMap.ToList<PlanetSystem>() };
 
         // Initialize our new game.
         Game game = new Game
         {
-            Summary = this._summary,
-            Galaxy = Galaxy,
+            Summary = this.summary,
             Factions = factions.ToList<Faction>(),
+            Galaxy = galaxy,
             UnrecruitedOfficers = unrecruitedOfficers.ToList(),
-            ReferenceDictionary = referenceMap,
         };
-
         return game;
     }
 }

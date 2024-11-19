@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using IDictionaryExtensions;
 using IEnumerableExtensions;
 
@@ -61,12 +61,12 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
         foreach (IConfig capitalShipConfig in capitalShipConfigs)
         {
             CapitalShip capitalShip = capitalShips.First(
-                (capitalShip) => capitalShip.GameID == capitalShipConfig.GetValue<string>("GameID")
+                (capitalShip) => capitalShip.TypeID == capitalShipConfig.GetValue<string>("TypeID")
             );
-            capitalShip.InitialParentGameID = capitalShipConfig.GetValue<string>(
-                "InitialParentGameID"
+            capitalShip.InitialParentInstanceID = capitalShipConfig.GetValue<string>(
+                "InitialParentInstanceID"
             );
-            capitalShip.OwnerGameID = capitalShipConfig.GetValue<string>("OwnerGameID");
+            capitalShip.OwnerInstanceID = capitalShipConfig.GetValue<string>("OwnerInstanceID");
             mappedCapitalShips.Add(capitalShip);
         }
 
@@ -86,30 +86,30 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
             (planetSystem) => planetSystem.Planets
         );
 
-        // Create a dictionary of planet GameIDs to planets, containing only HQs.
+        // Create a dictionary of planet TypeIDs to planets, containing only HQs.
         Dictionary<string, Planet> hqs = flattenedPlanets
             .Where((planet) => planet.IsHeadquarters)
-            .ToDictionary((planet) => planet.GameID, planet => planet);
+            .ToDictionary((planet) => planet.InstanceID, planet => planet);
 
         // Create a dictionary of factions to their owned planets (sans HQs).
         Dictionary<string, Planet[]> planets = flattenedPlanets
-            .Where((planet) => planet.OwnerGameID != null && !planet.IsHeadquarters)
-            .GroupBy((planet) => planet.OwnerGameID, planet => planet)
+            .Where((planet) => planet.OwnerInstanceID != null && !planet.IsHeadquarters)
+            .GroupBy((planet) => planet.OwnerInstanceID, planet => planet)
             .ToDictionary((grouping) => grouping.Key, (grouping) => grouping.ToArray());
 
         foreach (CapitalShip capitalShip in capitalShips)
         {
             // Handle case where capital ship has pre-defined parent.
             // We can only assign to HQs, as planets are randomly generated.
-            if (capitalShip.InitialParentGameID != null)
+            if (capitalShip.InitialParentInstanceID != null)
             {
-                Planet planet = hqs[capitalShip.InitialParentGameID];
+                Planet planet = hqs[capitalShip.InitialParentInstanceID];
                 planet.AddChild(capitalShip);
             }
             // Otherwise, randomly assign to a planet.
             else
             {
-                Planet planet = planets[capitalShip.OwnerGameID].Shuffle().First();
+                Planet planet = planets[capitalShip.OwnerInstanceID].Shuffle().First();
                 planet.AddChild(capitalShip);
             }
         }
@@ -124,11 +124,10 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
     /// <returns></returns>
     public override CapitalShip[] SelectUnits(CapitalShip[] capitalShips)
     {
-        int startingResearchLevel = this.GetGameSummary().StartingResearchLevel;
+        int startingResearchLevel = GetGameSummary().StartingResearchLevel;
         CapitalShip[] selectedShips = capitalShips
-            .Where(
-                capitalship =>
-                    capitalship.RequiredResearchLevel <= this.GetGameSummary().StartingResearchLevel
+            .Where(capitalship =>
+                capitalship.RequiredResearchLevel <= GetGameSummary().StartingResearchLevel
             )
             .ToArray();
 
@@ -156,8 +155,10 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
     {
         // Get the config for each capital ship we are adding to the scene.
         IConfig[] capitalShipConfigs = getCapitalShipConfigs();
+
         // Map each config previously returned to a specific capital ship.
         CapitalShip[] mappedCapitalShips = getCapitalShipMapping(units, capitalShipConfigs);
+
         // Deploy each capital ship to the scene graph.
         CapitalShip[] deployedCapitalShips = deployUnits(mappedCapitalShips, destinations);
 

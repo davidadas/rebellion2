@@ -4,11 +4,11 @@
 	<!--   ********************* EMPIRE *********************  -->
 	<!--   **************************************************  -->
 	<Regiment>
-		<GameID>REEM001</GameID>
+		<TypeID>REEM001</TypeID>
 		<DisplayName>Imperial Fleet Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>7</ConstructionCost>
 		<MaintenanceCost>5</MaintenanceCost>
 		<AttackRating>5</AttackRating>
@@ -18,11 +18,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REEM002</GameID>
+		<TypeID>REEM002</TypeID>
 		<DisplayName>Imperial Army Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<AttackRating>3</AttackRating>
@@ -32,11 +32,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REEM003</GameID>
+		<TypeID>REEM003</TypeID>
 		<DisplayName>Stormtrooper Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>9</ConstructionCost>
 		<MaintenanceCost>6</MaintenanceCost>
 		<AttackRating>6</AttackRating>
@@ -46,11 +46,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REEM004</GameID>
+		<TypeID>REEM004</TypeID>
 		<DisplayName>War Droid Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>9</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>
@@ -60,11 +60,11 @@
 		<ResearchLevel>1</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REEM005</GameID>
+		<TypeID>REEM005</TypeID>
 		<DisplayName>Dark Trooper Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNEMP1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNEMP1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>12</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>
@@ -77,11 +77,11 @@
 	<!--   ******************** ALLIANCE ********************  -->
 	<!--   **************************************************  -->
 	<Regiment>
-		<GameID>REAL001</GameID>
+		<TypeID>REAL001</TypeID>
 		<DisplayName>Alliance Fleet Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>8</ConstructionCost>
 		<MaintenanceCost>6</MaintenanceCost>
 		<AttackRating>6</AttackRating>
@@ -91,11 +91,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REAL002</GameID>
+		<TypeID>REAL002</TypeID>
 		<DisplayName>Alliance Army Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<AttackRating>3</AttackRating>
@@ -105,11 +105,11 @@
 		<ResearchLevel>0</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REAL003</GameID>
+		<TypeID>REAL003</TypeID>
 		<DisplayName>Sullustan Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>1</MaintenanceCost>
 		<AttackRating>1</AttackRating>
@@ -119,11 +119,11 @@
 		<ResearchLevel>1</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REAL004</GameID>
+		<TypeID>REAL004</TypeID>
 		<DisplayName>Mon Calamari regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<AttackRating>2</AttackRating>
@@ -133,11 +133,11 @@
 		<ResearchLevel>2</ResearchLevel>
 	</Regiment>
 	<Regiment>
-		<GameID>REAL005</GameID>
+		<TypeID>REAL005</TypeID>
 		<DisplayName>Wookie Regiment</DisplayName>
-		<AllowedOwnerGameIDs>
-			<string>FNALL1</string>
-		</AllowedOwnerGameIDs>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>

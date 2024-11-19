@@ -1,8 +1,7 @@
+using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using System.Linq;
-using System.IO;
-using System.Xml.Serialization;
 
 [TestFixture]
 public class GameBuilderTests
@@ -31,9 +30,21 @@ public class GameBuilderTests
         // Assert that the game's summary properties match the provided configurations
         Assert.AreEqual(summary.GalaxySize, game.Summary.GalaxySize, "GalaxySize should match.");
         Assert.AreEqual(summary.Difficulty, game.Summary.Difficulty, "Difficulty should match.");
-        Assert.AreEqual(summary.VictoryCondition, game.Summary.VictoryCondition, "VictoryCondition should match.");
-        Assert.AreEqual(summary.ResourceAvailability, game.Summary.ResourceAvailability, "ResourceAvailability should match.");
-        Assert.AreEqual(summary.PlayerFactionID, game.Summary.PlayerFactionID, "PlayerFactionID should match.");
+        Assert.AreEqual(
+            summary.VictoryCondition,
+            game.Summary.VictoryCondition,
+            "VictoryCondition should match."
+        );
+        Assert.AreEqual(
+            summary.ResourceAvailability,
+            game.Summary.ResourceAvailability,
+            "ResourceAvailability should match."
+        );
+        Assert.AreEqual(
+            summary.PlayerFactionID,
+            game.Summary.PlayerFactionID,
+            "PlayerFactionID should match."
+        );
     }
 
     [Test]
@@ -65,13 +76,12 @@ public class GameBuilderTests
         foreach (Faction faction in game.Factions)
         {
             // Check if the faction has a headquarters on any planet in the galaxy map
-            bool hasHQ = game.Galaxy
-                .PlanetSystems
-                .SelectMany(ps => ps.Planets)
-                .Any(planet => planet.OwnerGameID == faction.GameID && planet.IsHeadquarters);
+            bool hasHQ = game
+                .Galaxy.PlanetSystems.SelectMany(ps => ps.Planets)
+                .Any(planet => planet.OwnerInstanceID == faction.InstanceID && planet.IsHeadquarters);
 
             // Assert that the faction has a headquarters
-            Assert.IsTrue(hasHQ, $"Faction {faction.GameID} should have a headquarters.");
+            Assert.IsTrue(hasHQ, $"Faction {faction.InstanceID} should have a headquarters.");
         }
     }
 }

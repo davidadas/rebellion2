@@ -1,15 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using ICollectionExtensions;
 
-public class Fleet : SceneNode
+public class Fleet : SceneNode, IMovable
 {
-    public List<CapitalShip> CapitalShips = new List<CapitalShip>();
+    // Movement Info
+    public MovementStatus MovementStatus { get; set; }
+    public int PositionX { get; set; }
+    public int PositionY { get; set; }
 
-    // Owner Info
-    [CloneIgnore]
-    public string OwnerGameID { get; set; }
-    public string[] AllowedOwnerGameIDs;
+    // Child Nodes
+    public List<CapitalShip> CapitalShips { get; set; } = new List<CapitalShip>();
 
     /// <summary>
     /// Default constructor.
@@ -23,7 +25,7 @@ public class Fleet : SceneNode
     /// <exception cref="SceneAccessException">Thrown when the capital ship is not allowed to be added.</exception>
     private void AddCapitalShip(CapitalShip capitalShip)
     {
-        if (this.OwnerGameID != capitalShip.OwnerGameID)
+        if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
         {
             throw new SceneAccessException(capitalShip, this);
         }
@@ -37,7 +39,7 @@ public class Fleet : SceneNode
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     private void AddOfficer(Officer officer)
     {
-        if (this.OwnerGameID != officer.OwnerGameID)
+        if (this.OwnerInstanceID != officer.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }
@@ -49,7 +51,7 @@ public class Fleet : SceneNode
     /// </summary>
     /// <param name="child">The child node to add.</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    protected internal override void AddChild(SceneNode child)
+    public override void AddChild(SceneNode child)
     {
         if (child is CapitalShip)
         {
@@ -65,12 +67,21 @@ public class Fleet : SceneNode
     /// Removes a child from the node.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    protected internal override void RemoveChild(SceneNode child)
+    public override void RemoveChild(SceneNode child)
     {
         if (child is CapitalShip capitalShip)
         {
             CapitalShips.Remove(capitalShip);
         }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public bool IsMovable()
+    {
+        return true;
     }
 
     /// <summary>

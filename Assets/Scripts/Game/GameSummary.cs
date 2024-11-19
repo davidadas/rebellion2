@@ -1,6 +1,6 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System;
 
 public enum GameSize
 {
@@ -33,7 +33,7 @@ public enum GameResourceAvailability
 /// <summary>
 ///
 /// </summary>
-[Serializable]
+[PersistableObject]
 public sealed class GameSummary
 {
     public GameSize GalaxySize;
@@ -45,7 +45,7 @@ public sealed class GameSummary
     public string PlayerFactionID;
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor used for serialization.
     /// </summary>
     public GameSummary() { }
 }
