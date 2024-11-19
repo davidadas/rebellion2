@@ -65,7 +65,7 @@ public class RecruitmentMission : Mission
         // Attach the recruited officer to the planet.
         game.AttachNode(recruitedOfficer, planet);
 
-        UnityEngine.Debug.Log(
+        GameLogger.Log(
             "Recruited officer "
                 + recruitedOfficer.DisplayName
                 + " to "

@@ -29,6 +29,10 @@ public class GameManager
     private float tickTimer;
     private readonly Stopwatch stopwatch;
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="game"></param>
     public GameManager(Game game)
     {
         // Initialize private variables.
@@ -116,7 +120,7 @@ public class GameManager
         // Increment the current game's tick counter.
         game.CurrentTick++;
 
-        UnityEngine.Debug.Log("Tick: " + game.CurrentTick);
+        GameLogger.Log("Tick: " + game.CurrentTick);
 
         // Update game states.
         planetManager.Update();

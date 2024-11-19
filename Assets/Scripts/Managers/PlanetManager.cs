@@ -49,7 +49,7 @@ public class PlanetManager
     {
         for (int i = 0; i < quantity; i++)
         {
-            UnityEngine.Debug.Log(
+            GameLogger.Log(
                 "Adding manufacturable to queue: " + (manufacturable as GameEntity).DisplayName
             );
             IManufacturable clonedNode = manufacturable.GetDeepCopy();
@@ -89,7 +89,7 @@ public class PlanetManager
                     <= manufacturable.GetManufacturingProgress()
                 )
                 {
-                    UnityEngine.Debug.Log(
+                    GameLogger.Log(
                         "Manufacturable completed: "
                             + (manufacturable as GameEntity).DisplayName
                             + " "
