@@ -8,10 +8,10 @@ public abstract class SceneNode : GameEntity
 {
     // Parent Info
     [CloneIgnore]
-    public string ParentTypeID { get; set; }
+    public string ParentInstanceID { get; set; }
 
     [CloneIgnore]
-    public string LastParentTypeID { get; set; }
+    public string LastParentInstanceID { get; set; }
 
     [CloneIgnore]
     protected SceneNode ParentNode;
@@ -44,8 +44,8 @@ public abstract class SceneNode : GameEntity
         // Update parent references.
         LastParentNode = oldParent;
         ParentNode = newParent;
-        LastParentTypeID = ParentTypeID;
-        ParentTypeID = newParent?.TypeID;
+        LastParentInstanceID = ParentInstanceID;
+        ParentInstanceID = newParent?.InstanceID;
     }
 
     /// <summary>
@@ -107,16 +107,16 @@ public abstract class SceneNode : GameEntity
     /// Returns all children of the current scene node that match the specified game owner id and type.
     /// </summary>
     /// <typeparam name="T">The type of the children to retrieve.</typeparam>
-    /// <param name="ownerTypeId">The game owner id to match.</param>
+    /// <param name="ownerInstanceId">The game owner id to match.</param>
     /// <returns>An enumerable collection of children that match the specified game owner id and type.</returns>
-    public IEnumerable<T> GetChildrenByOwnerTypeID<T>(string ownerTypeId)
+    public IEnumerable<T> GetChildrenByOwnerInstanceID<T>(string ownerInstanceId)
         where T : SceneNode
     {
         List<T> matchingChildren = new List<T>();
 
         Traverse(node =>
         {
-            if (node is T && node.OwnerTypeID == ownerTypeId)
+            if (node is T && node.OwnerInstanceID == ownerInstanceId)
             {
                 matchingChildren.Add((T)node);
             }

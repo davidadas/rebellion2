@@ -6,9 +6,9 @@
 	<CapitalShip>
 		<TypeID>CSEM001</TypeID>
 		<DisplayName>Imperial Dreadnaught</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -76,9 +76,9 @@
 	<CapitalShip>
 		<TypeID>CSEM002</TypeID>
 		<DisplayName>Galleon</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>10</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -146,9 +146,9 @@
 	<CapitalShip>
 		<TypeID>CSEM003</TypeID>
 		<DisplayName>Imperial Escort Carrier</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -216,9 +216,9 @@
 	<CapitalShip>
 		<TypeID>CSEM004</TypeID>
 		<DisplayName>Carrack Light Cruiser</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>26</ConstructionCost>
 		<MaintenanceCost>24</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -286,9 +286,9 @@
 	<CapitalShip>
 		<TypeID>CSEM005</TypeID>
 		<DisplayName>Victory Destroyer</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>68</ConstructionCost>
 		<MaintenanceCost>44</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -356,9 +356,9 @@
 	<CapitalShip>
 		<TypeID>CSEM006</TypeID>
 		<DisplayName>Imperial Star Destroyer</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>112</ConstructionCost>
 		<MaintenanceCost>71</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -429,9 +429,9 @@
 	<CapitalShip>
 		<TypeID>CSAL001</TypeID>
 		<DisplayName>Alliance Dreadnaught</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>44</ConstructionCost>
 		<MaintenanceCost>33</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -499,9 +499,9 @@
 	<CapitalShip>
 		<TypeID>CSAL002</TypeID>
 		<DisplayName>Bulk Cruiser</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>30</ConstructionCost>
 		<MaintenanceCost>30</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -569,9 +569,9 @@
 	<CapitalShip>
 		<TypeID>ALCS003</TypeID>
 		<DisplayName>Medium Transport</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>12</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -639,9 +639,9 @@
 	<CapitalShip>
 		<TypeID>ALCS004</TypeID>
 		<DisplayName>Bulk Transport</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>24</ConstructionCost>
 		<MaintenanceCost>22</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -709,9 +709,9 @@
 	<CapitalShip>
 		<TypeID>ALCS005</TypeID>
 		<DisplayName>Alliance Escourt Carrier</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>32</ConstructionCost>
 		<MaintenanceCost>29</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -779,9 +779,9 @@
 	<CapitalShip>
 		<TypeID>ALCS006</TypeID>
 		<DisplayName>Corellian Corvette</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>14</ConstructionCost>
 		<MaintenanceCost>23</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -849,9 +849,9 @@
 	<CapitalShip>
 		<DisplayName>Nebulon-B Frigate</DisplayName>
 		<TypeID>ALCS007</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>34</ConstructionCost>
 		<MaintenanceCost>35</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>
@@ -919,9 +919,9 @@
 	<CapitalShip>
 		<TypeID>ALCS008</TypeID>
 		<DisplayName>Mon Calamari Cruiser</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>92</ConstructionCost>
 		<MaintenanceCost>70</MaintenanceCost>
 		<BaseBuildSpeed>0</BaseBuildSpeed>

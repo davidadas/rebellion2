@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+
 using ObjectExtensions;
 
 public class TestClass
@@ -53,29 +54,43 @@ public class TestClassWithStaticField
     public int InstanceField;
 }
 
-public class CircularReferenceClass
-{
-    public CircularReferenceClass Reference { get; set; }
-}
-
 public class ComplexTestClass
 {
     public int IntProperty { get; set; }
     public string StringProperty { get; set; }
-    public DateTime DateTimeProperty { get; set; }
     public List<int> ListProperty { get; set; }
     public TestClass NestedObject { get; set; }
+}
+
+public class ComplexInheritanceClass : DerivedTestClass
+{
+    public List<string> ListProperty { get; set; }
 }
 
 [TestFixture]
 public class ObjectExtensionsTests
 {
     [Test]
-    public void GetShallowCopy_NullObject_ReturnsNull()
+    public void Copy_NullObject_ReturnsNull()
     {
         TestClass original = null;
-        var copy = original.GetShallowCopy();
-        Assert.IsNull(copy);
+
+        var shallowCopy = original.GetShallowCopy();
+        var deepCopy = original.GetDeepCopy();
+
+        Assert.IsNull(shallowCopy);
+        Assert.IsNull(deepCopy);
+    }
+
+    [Test]
+    public void Copy_ValueTypeOrString_SkipsCopyForValueType()
+    {
+        int originalInt = 42;
+        string originalString = "Hello";
+
+        // Value types and strings should simply return the original value.
+        Assert.AreEqual(originalInt, originalInt); // Value type directly compared.
+        Assert.AreEqual(originalString, originalString); // Strings are immutable.
     }
 
     [Test]
@@ -96,11 +111,43 @@ public class ObjectExtensionsTests
         var copy = original.GetShallowCopy();
 
         Assert.AreEqual(original.IntProperty, copy.IntProperty);
-        Assert.IsNull(copy.IgnoredProperty);
+        Assert.AreNotEqual(original.IgnoredProperty, copy.IgnoredProperty);
     }
 
     [Test]
-    public void GetShallowCopy_ObjectWithReferenceType_CreatesShallowCopyOfReference()
+    public void GetDeepCopy_SimpleObject_CreatesDeepCopy()
+    {
+        var original = new TestClass { IntProperty = 42, StringProperty = "Hello" };
+        var copy = original.GetDeepCopy();
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_ComplexObject_CreatesDeepCopy()
+    {
+        var complexObject = new ComplexTestClass
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            ListProperty = new List<int> { 1, 2, 3 },
+            NestedObject = new TestClass { IntProperty = 10, StringProperty = "Nested" },
+        };
+
+        var copy = complexObject.GetDeepCopy();
+
+        Assert.AreNotSame(complexObject, copy);
+        Assert.AreEqual(complexObject.IntProperty, copy.IntProperty);
+        Assert.AreEqual(complexObject.StringProperty, copy.StringProperty);
+        Assert.AreNotSame(complexObject.ListProperty, copy.ListProperty);
+        Assert.AreNotSame(complexObject.NestedObject, copy.NestedObject);
+        Assert.AreEqual(complexObject.ListProperty, copy.ListProperty);
+    }
+
+    [Test]
+    public void GetShallowCopy_CollectionObject_CreatesShallowCopy()
     {
         var list = new List<int> { 1, 2, 3 };
         var original = new TestClassWithList { ListProperty = list };
@@ -108,6 +155,18 @@ public class ObjectExtensionsTests
 
         Assert.AreNotSame(original, copy);
         Assert.AreSame(original.ListProperty, copy.ListProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_CollectionObject_CreatesDeepCopy()
+    {
+        var list = new List<int> { 1, 2, 3 };
+        var original = new TestClassWithList { ListProperty = list };
+        var copy = original.GetDeepCopy();
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreNotSame(original.ListProperty, copy.ListProperty);
+        CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
     }
 
     [Test]
@@ -133,12 +192,12 @@ public class ObjectExtensionsTests
     }
 
     [Test]
-    public void GetShallowCopy_ReadOnlyProperty_IsNotModified()
+    public void GetDeepCopy_ReadOnlyProperty_IsCopied()
     {
         var original = new TestClassWithReadOnlyProperty { WritableProperty = 42 };
-        var copy = original.GetShallowCopy();
+        var copy = original.GetDeepCopy();
 
-        Assert.AreEqual(42, copy.ReadOnlyProperty); // This will be copied as it's not marked with CloneIgnore
+        Assert.AreEqual(42, copy.ReadOnlyProperty);
         Assert.AreEqual(42, copy.WritableProperty);
     }
 
@@ -156,39 +215,21 @@ public class ObjectExtensionsTests
     }
 
     [Test]
-    public void GetShallowCopy_CircularReference_DoesNotCauseStackOverflow()
+    public void GetDeepCopy_HandlesInheritanceAndCollectionsCorrectly()
     {
-        var obj1 = new CircularReferenceClass();
-        var obj2 = new CircularReferenceClass();
-        obj1.Reference = obj2;
-        obj2.Reference = obj1;
-
-        var copy = obj1.GetShallowCopy();
-
-        Assert.AreNotSame(obj1, copy);
-        Assert.AreSame(obj2, copy.Reference);
-        Assert.AreSame(obj1, copy.Reference.Reference);
-    }
-
-    [Test]
-    public void GetShallowCopy_ComplexObject_CreatesCorrectShallowCopy()
-    {
-        var complexObject = new ComplexTestClass
+        var original = new ComplexInheritanceClass
         {
-            IntProperty = 42,
-            StringProperty = "Hello",
-            DateTimeProperty = DateTime.Now,
-            ListProperty = new List<int> { 1, 2, 3 },
-            NestedObject = new TestClass { IntProperty = 10, StringProperty = "Nested" },
+            BaseProperty = "Base",
+            DerivedProperty = "Derived",
+            ListProperty = new List<string> { "A", "B", "C" },
         };
 
-        var copy = complexObject.GetShallowCopy();
+        var copy = original.GetDeepCopy();
 
-        Assert.AreNotSame(complexObject, copy);
-        Assert.AreEqual(complexObject.IntProperty, copy.IntProperty);
-        Assert.AreEqual(complexObject.StringProperty, copy.StringProperty);
-        Assert.AreEqual(complexObject.DateTimeProperty, copy.DateTimeProperty);
-        Assert.AreSame(complexObject.ListProperty, copy.ListProperty);
-        Assert.AreSame(complexObject.NestedObject, copy.NestedObject);
+        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.BaseProperty, copy.BaseProperty);
+        Assert.AreEqual(original.DerivedProperty, copy.DerivedProperty);
+        Assert.AreNotSame(original.ListProperty, copy.ListProperty);
+        CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
     }
 }

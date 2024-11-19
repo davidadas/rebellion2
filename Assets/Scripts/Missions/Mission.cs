@@ -67,7 +67,7 @@ public abstract class Mission : SceneNode
     ///
     /// </summary>
     /// <param name="name"></param>
-    /// <param name="ownerTypeId"></param>
+    /// <param name="ownerInstanceId"></param>
     /// <param name="targetInstanceId"></param>
     /// <param name="mainParticipants"></param>
     /// <param name="decoyParticipants"></param>
@@ -82,7 +82,7 @@ public abstract class Mission : SceneNode
     /// <exception cref="ArgumentNullException"></exception>
     protected Mission(
         string name,
-        string ownerTypeId,
+        string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
@@ -98,7 +98,7 @@ public abstract class Mission : SceneNode
     {
         // Set mission fields.
         Name = name ?? throw new ArgumentNullException(nameof(name));
-        OwnerTypeID = ownerTypeId;
+        OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
         MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
         DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
@@ -229,7 +229,7 @@ public abstract class Mission : SceneNode
         if (GetParent() is Planet planet)
         {
             // If the planet is not owned by the mission owner, the foil probability is 0.
-            if (planet.OwnerTypeID == OwnerTypeID)
+            if (planet.OwnerInstanceID == OwnerInstanceID)
             {
                 return 0;
             }

@@ -85,82 +85,82 @@
       "GalaxySize": {
         "Small": [
           {
-            "OwnerTypeID": "FNEMP1",
-            "InitialParentTypeID": "PLSEW05",
+            "OwnerInstanceID": "FNEMP1",
+            "InitialParentInstanceID": "CORUSCANT",
             "TypeID": "CSEM006"
           },
           {
-            "OwnerTypeID": "FNEMP1",
+            "OwnerInstanceID": "FNEMP1",
             "TypeID": "CSEM005"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "CSAL002"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS003"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           }
         ],
         "Medium": [
           {
-            "OwnerTypeID": "FNEMP1",
-            "InitialParentTypeID": "PLSEW05",
+            "OwnerInstanceID": "FNEMP1",
+            "InitialParentInstanceID": "CORUSCANT",
             "TypeID": "CSEM006"
           },
           {
-            "OwnerTypeID": "FNEMP1",
+            "OwnerInstanceID": "FNEMP1",
             "TypeID": "CSEM005"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "CSAL002"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS003"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           }
         ],
         "Large": [
           {
-            "OwnerTypeID": "FNEMP1",
-            "InitialParentTypeID": "PLSEW05",
+            "OwnerInstanceID": "FNEMP1",
+            "InitialParentInstanceID": "CORUSCANT",
             "TypeID": "CSEM006"
           },
           {
-            "OwnerTypeID": "FNEMP1",
+            "OwnerInstanceID": "FNEMP1",
             "TypeID": "CSEM005"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "CSAL002"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS003"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           },
           {
-            "OwnerTypeID": "FNALL1",
+            "OwnerInstanceID": "FNALL1",
             "TypeID": "ALCS006"
           }
         ]

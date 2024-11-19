@@ -6,7 +6,7 @@ using ObjectExtensions;
 public class GameEntity
 {
     private string _instanceId;
-    private string _ownerTypeId;
+    private string _ownerInstanceId;
 
     [CloneIgnore]
     public string InstanceID
@@ -22,27 +22,27 @@ public class GameEntity
     public string Description { get; set; }
 
     [CloneIgnore]
-    public string OwnerTypeID
+    public string OwnerInstanceID
     {
-        get => _ownerTypeId;
-        set => SetOwnerTypeID(value);
+        get => _ownerInstanceId;
+        set => SetOwnerInstanceID(value);
     }
-    public List<string> AllowedOwnerTypeIDs { get; set; }
+    public List<string> AllowedOwnerInstanceIDs { get; set; }
 
     /// <summary>
     /// Sets the owner type id. If the ID is not in the allowed list, throws an exception.
     /// </summary>
     /// <param name="value">The owner type id to set.</param>
     /// <exception cref="ArgumentException">Thrown when the owner type id is invalid.</exception>
-    private void SetOwnerTypeID(string value)
+    private void SetOwnerInstanceID(string value)
     {
         if (
-            AllowedOwnerTypeIDs == null
-            || AllowedOwnerTypeIDs.Count == 0
-            || AllowedOwnerTypeIDs.Contains(value)
+            AllowedOwnerInstanceIDs == null
+            || AllowedOwnerInstanceIDs.Count == 0
+            || AllowedOwnerInstanceIDs.Contains(value)
         )
         {
-            _ownerTypeId = value;
+            _ownerInstanceId = value;
         }
         else
         {

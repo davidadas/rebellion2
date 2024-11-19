@@ -27,7 +27,7 @@ public class AbductionMission : Mission
     /// Constructor used when initializing the AbductionMission with participants and owner.
     /// </summary>
     public AbductionMission(
-        string ownerTypeId,
+        string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
@@ -36,7 +36,7 @@ public class AbductionMission : Mission
     )
         : base(
             "Abduction",
-            ownerTypeId,
+            ownerInstanceId,
             targetInstanceId,
             mainParticipants,
             decoyParticipants,

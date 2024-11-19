@@ -29,7 +29,7 @@ public class MissionManager
     ///
     /// </summary>
     /// <param name="missionType"></param>
-    /// <param name="ownerTypeId"></param>
+    /// <param name="ownerInstanceId"></param>
     /// <param name="mainParticipants"></param>
     /// <param name="decoyParticipants"></param>
     /// <param name="target"></param>
@@ -37,7 +37,7 @@ public class MissionManager
     /// <exception cref="ArgumentException"></exception>
     private Mission CreateMission(
         MissionType missionType,
-        string ownerTypeId,
+        string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         SceneNode target
@@ -46,14 +46,14 @@ public class MissionManager
         return missionType switch
         {
             MissionType.Diplomacy => new DiplomacyMission(
-                ownerTypeId,
-                target.TypeID,
+                ownerInstanceId,
+                target.InstanceID,
                 mainParticipants,
                 decoyParticipants
             ),
             MissionType.Recruitment => new RecruitmentMission(
-                ownerTypeId,
-                target.TypeID,
+                ownerInstanceId,
+                target.InstanceID,
                 mainParticipants,
                 decoyParticipants
             ),
@@ -71,9 +71,9 @@ public class MissionManager
     {
         List<IMissionParticipant> mainParticipants = new List<IMissionParticipant> { participant };
         List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-        string ownerTypeId = (participant as SceneNode).OwnerTypeID;
+        string ownerInstanceId = (participant as SceneNode).OwnerInstanceID;
 
-        InitiateMission(type, ownerTypeId, mainParticipants, decoyParticipants, target);
+        InitiateMission(type, ownerInstanceId, mainParticipants, decoyParticipants, target);
     }
 
     /// <summary>
@@ -81,13 +81,13 @@ public class MissionManager
     /// The mission is scheduled to occur at the next possible tick.
     /// </summary>
     /// <param name="missionType">The type of mission to initiate.</param>
-    /// <param name="ownerTypeId">The type ID of the owner of the mission.</param>
+    /// <param name="ownerInstanceId">The type ID of the owner of the mission.</param>
     /// <param name="mainParticipants">The main participants of the mission.</param>
     /// <param name="decoyParticipants">The decoy participants of the mission.</param>
     /// <param name="target">The target of the mission. This can be a planet or a unit.</param>
     public void InitiateMission(
         MissionType missionType,
-        string ownerTypeId,
+        string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         SceneNode target
@@ -110,7 +110,7 @@ public class MissionManager
         // Instantiate the mission based on the mission type.
         Mission mission = CreateMission(
             missionType,
-            ownerTypeId,
+            ownerInstanceId,
             mainParticipants,
             decoyParticipants,
             target

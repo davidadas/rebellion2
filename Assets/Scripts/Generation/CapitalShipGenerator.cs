@@ -63,10 +63,10 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
             CapitalShip capitalShip = capitalShips.First(
                 (capitalShip) => capitalShip.TypeID == capitalShipConfig.GetValue<string>("TypeID")
             );
-            capitalShip.InitialParentTypeID = capitalShipConfig.GetValue<string>(
-                "InitialParentTypeID"
+            capitalShip.InitialParentInstanceID = capitalShipConfig.GetValue<string>(
+                "InitialParentInstanceID"
             );
-            capitalShip.OwnerTypeID = capitalShipConfig.GetValue<string>("OwnerTypeID");
+            capitalShip.OwnerInstanceID = capitalShipConfig.GetValue<string>("OwnerInstanceID");
             mappedCapitalShips.Add(capitalShip);
         }
 
@@ -89,27 +89,27 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
         // Create a dictionary of planet TypeIDs to planets, containing only HQs.
         Dictionary<string, Planet> hqs = flattenedPlanets
             .Where((planet) => planet.IsHeadquarters)
-            .ToDictionary((planet) => planet.TypeID, planet => planet);
+            .ToDictionary((planet) => planet.InstanceID, planet => planet);
 
         // Create a dictionary of factions to their owned planets (sans HQs).
         Dictionary<string, Planet[]> planets = flattenedPlanets
-            .Where((planet) => planet.OwnerTypeID != null && !planet.IsHeadquarters)
-            .GroupBy((planet) => planet.OwnerTypeID, planet => planet)
+            .Where((planet) => planet.OwnerInstanceID != null && !planet.IsHeadquarters)
+            .GroupBy((planet) => planet.OwnerInstanceID, planet => planet)
             .ToDictionary((grouping) => grouping.Key, (grouping) => grouping.ToArray());
 
         foreach (CapitalShip capitalShip in capitalShips)
         {
             // Handle case where capital ship has pre-defined parent.
             // We can only assign to HQs, as planets are randomly generated.
-            if (capitalShip.InitialParentTypeID != null)
+            if (capitalShip.InitialParentInstanceID != null)
             {
-                Planet planet = hqs[capitalShip.InitialParentTypeID];
+                Planet planet = hqs[capitalShip.InitialParentInstanceID];
                 planet.AddChild(capitalShip);
             }
             // Otherwise, randomly assign to a planet.
             else
             {
-                Planet planet = planets[capitalShip.OwnerTypeID].Shuffle().First();
+                Planet planet = planets[capitalShip.OwnerInstanceID].Shuffle().First();
                 planet.AddChild(capitalShip);
             }
         }

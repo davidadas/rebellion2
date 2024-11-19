@@ -27,7 +27,7 @@ public class FactionGenerator : UnitGenerator<Faction>
             new Dictionary<string, Faction>(),
             (dict, nextFaction) =>
             {
-                dict.Add(nextFaction.HQTypeID, nextFaction);
+                dict.Add(nextFaction.HQInstanceID, nextFaction);
                 return dict;
             }
         );
@@ -37,11 +37,11 @@ public class FactionGenerator : UnitGenerator<Faction>
         {
             foreach (Planet planet in planetSystem.Planets)
             {
-                if (hqs.Keys.ToList().Contains(planet.TypeID))
+                if (hqs.Keys.ToList().Contains(planet.InstanceID))
                 {
                     planet.IsHeadquarters = true;
-                    planet.OwnerTypeID = hqs[planet.TypeID].TypeID;
-                    filledHQs.Add(planet.OwnerTypeID);
+                    planet.OwnerInstanceID = hqs[planet.InstanceID].InstanceID;
+                    filledHQs.Add(planet.OwnerInstanceID);
                 }
 
                 // Return if we have filled our array already.
@@ -80,8 +80,8 @@ public class FactionGenerator : UnitGenerator<Faction>
             IEnumerable<Planet> factionStartingPlanets = startingPlanets.Take(numStartingPlanets);
             foreach (Planet planet in factionStartingPlanets)
             {
-                planet.OwnerTypeID = faction.TypeID;
-                planet.SetPopularSupport(faction.TypeID, 100);
+                planet.OwnerInstanceID = faction.InstanceID;
+                planet.SetPopularSupport(faction.InstanceID, 100);
             }
         }
     }

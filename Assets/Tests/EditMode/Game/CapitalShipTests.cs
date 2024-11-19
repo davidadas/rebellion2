@@ -14,7 +14,7 @@ public class CapitalShipTests
         {
             StarfighterCapacity = 2,
             RegimentCapacity = 3,
-            OwnerTypeID = "FNALL1",
+            OwnerInstanceID = "FNALL1",
         };
     }
 
@@ -88,7 +88,7 @@ public class CapitalShipTests
     public void TestAddOfficer()
     {
         // Create an officer and add it to the capital ship.
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         capitalShip.AddOfficer(officer);
 
         // Ensure the officer is added to the capital ship's list.
@@ -103,7 +103,7 @@ public class CapitalShipTests
     public void TestAddOfficerInvalidOwner()
     {
         // Attempt to add an officer with an invalid owner, which should throw an exception.
-        Officer officer = new Officer { OwnerTypeID = "INVALID" };
+        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
         Assert.Throws<SceneAccessException>(
             () => capitalShip.AddOfficer(officer),
             "Adding an officer with an invalid owner should throw a SceneAccessException."
@@ -144,7 +144,7 @@ public class CapitalShipTests
     public void TestRemoveOfficer()
     {
         // Add and then remove an officer from the capital ship.
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         capitalShip.AddOfficer(officer);
         capitalShip.RemoveChild(officer);
 
@@ -159,7 +159,7 @@ public class CapitalShipTests
     public void TestGetChildren()
     {
         // Add various child nodes to the capital ship.
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
         capitalShip.AddOfficer(officer);
@@ -182,7 +182,7 @@ public class CapitalShipTests
     public void TestSerializeAndDeserialize()
     {
         // Add components to the CapitalShip.
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
         capitalShip.AddOfficer(officer);
@@ -207,9 +207,9 @@ public class CapitalShipTests
             "RegimentCapacity should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.OwnerTypeID,
-            deserialized.OwnerTypeID,
-            "OwnerTypeID should be correctly deserialized."
+            capitalShip.OwnerInstanceID,
+            deserialized.OwnerInstanceID,
+            "OwnerInstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
             capitalShip.Officers.Count,

@@ -73,15 +73,15 @@ public class Game
     /// <summary>
     /// Returns the faction with the specified ID.
     /// </summary>
-    /// <param name="ownerTypeId">The ID of the faction to retrieve.</param>
+    /// <param name="ownerInstanceId">The ID of the faction to retrieve.</param>
     /// <returns>The faction with the specified ID.</returns>
-    public Faction GetFactionByOwnerTypeID(string ownerTypeId)
+    public Faction GetFactionByOwnerInstanceID(string ownerInstanceId)
     {
-        Faction faction = GetFactions().Find(faction => faction.TypeID == ownerTypeId);
+        Faction faction = GetFactions().Find(faction => faction.InstanceID == ownerInstanceId);
 
         if (faction == null)
         {
-            throw new SceneNodeNotFoundException(ownerTypeId);
+            throw new SceneNodeNotFoundException(ownerInstanceId);
         }
 
         return faction;
@@ -239,17 +239,17 @@ public class Game
     }
 
     /// <summary>
-    /// Retrieves units by the specified OwnerTypeID and type T.
+    /// Retrieves units by the specified OwnerInstanceID and type T.
     /// </summary>
     /// <typeparam name="T">The type of units to retrieve.</typeparam>
-    /// <param name="ownerTypeId">The OwnerTypeID of the units.</param>
-    /// <returns>A list of units of type T with the specified OwnerTypeID.</returns>
-    public List<T> GetSceneNodesByOwnerTypeID<T>(string ownerTypeId)
+    /// <param name="ownerInstanceId">The OwnerInstanceID of the units.</param>
+    /// <returns>A list of units of type T with the specified OwnerInstanceID.</returns>
+    public List<T> GetSceneNodesByOwnerInstanceID<T>(string ownerInstanceId)
         where T : GameEntity
     {
         return NodesByInstanceID
             .Values.OfType<T>() // Filter nodes by the specified type T
-            .Where(node => node.OwnerTypeID == ownerTypeId) // Match by OwnerTypeID
+            .Where(node => node.OwnerInstanceID == ownerInstanceId) // Match by OwnerInstanceID
             .ToList();
     }
 
@@ -291,9 +291,9 @@ public class Game
     /// <param name="node">The unit to register.</param>
     public void RegisterOwnedUnit(SceneNode node)
     {
-        if (node.OwnerTypeID != null)
+        if (node.OwnerInstanceID != null)
         {
-            GetFactionByOwnerTypeID(node.OwnerTypeID).AddOwnedUnit(ref node);
+            GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(ref node);
         }
     }
 
@@ -303,9 +303,9 @@ public class Game
     /// <param name="node">The unit to deregister.</param>
     public void DeregsiterOwnedUnit(SceneNode node)
     {
-        if (node.OwnerTypeID != null)
+        if (node.OwnerInstanceID != null)
         {
-            GetFactionByOwnerTypeID(node.OwnerTypeID).RemoveOwnedUnit(ref node);
+            GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(ref node);
         }
     }
 
@@ -390,12 +390,12 @@ public class Game
     /// <summary>
     /// Returns a list of unrecruited officers that can be recruited by the specified owner type ID.
     /// </summary>
-    /// <param name="ownerTypeId">The owner type ID of the faction that can recruit the officers.</param>
+    /// <param name="ownerInstanceId">The owner type ID of the faction that can recruit the officers.</param>
     /// <returns>A list of unrecruited officers that can be recruited by the specified owner type ID.</returns>
-    public List<Officer> GetUnrecruitedOfficers(string ownerTypeId)
+    public List<Officer> GetUnrecruitedOfficers(string ownerInstanceId)
     {
         return UnrecruitedOfficers
-            .Where(officer => officer.AllowedOwnerTypeIDs.Contains(ownerTypeId))
+            .Where(officer => officer.AllowedOwnerInstanceIDs.Contains(ownerInstanceId))
             .ToList();
     }
 
@@ -420,10 +420,10 @@ public class Game
                 // Register the node by its instance ID.
                 AddSceneNodeByInstanceID(node);
 
-                if (node.OwnerTypeID != null)
+                if (node.OwnerInstanceID != null)
                 {
                     // Register the node to the faction's list of owned units.
-                    GetFactionByOwnerTypeID(node.OwnerTypeID).AddOwnedUnit(ref node);
+                    GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(ref node);
                 }
 
                 // Set the parent of each child node.

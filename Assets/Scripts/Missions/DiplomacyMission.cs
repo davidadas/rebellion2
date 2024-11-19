@@ -25,7 +25,7 @@ public class DiplomacyMission : Mission
     /// Constructor used when initializing the DiplomacyMission with participants and owner.
     /// </summary>
     public DiplomacyMission(
-        string ownerTypeId,
+        string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants
@@ -33,7 +33,7 @@ public class DiplomacyMission : Mission
     )
         : base(
             "Diplomacy",
-            ownerTypeId,
+            ownerInstanceId,
             targetInstanceId,
             mainParticipants,
             decoyParticipants,
@@ -54,7 +54,7 @@ public class DiplomacyMission : Mission
     {
         if (GetParent() is Planet planet)
         {
-            planet.SetPopularSupport(OwnerTypeID, planet.GetPopularSupport(OwnerTypeID) + 1);
+            planet.SetPopularSupport(OwnerInstanceID, planet.GetPopularSupport(OwnerInstanceID) + 1);
         }
     }
 }

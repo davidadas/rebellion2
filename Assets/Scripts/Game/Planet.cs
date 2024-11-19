@@ -61,7 +61,7 @@ public class Planet : SceneNode
     /// <returns></returns>
     public bool IsBlockaded()
     {
-        return Fleets.Any(fleet => fleet.OwnerTypeID != this.OwnerTypeID);
+        return Fleets.Any(fleet => fleet.OwnerInstanceID != this.OwnerInstanceID);
     }
 
     /// <summary>
@@ -85,25 +85,25 @@ public class Planet : SceneNode
     /// <summary>
     /// Returns the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionTypeID"></param>
-    public int GetPopularSupport(string factionTypeID)
+    /// <param name="factionInstanceId"></param>
+    public int GetPopularSupport(string factionInstanceId)
     {
-        return PopularSupport.TryGetValue(factionTypeID, out int support) ? support : 0;
+        return PopularSupport.TryGetValue(factionInstanceId, out int support) ? support : 0;
     }
 
     /// <summary>
     /// Sets the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionTypeID">The type id of the faction.</param>
+    /// <param name="factionInstanceId">The type id of the faction.</param>
     /// <param name="support">The level of support.</param>
-    public void SetPopularSupport(string factionTypeID, int support)
+    public void SetPopularSupport(string factionInstanceId, int support)
     {
-        if (!PopularSupport.ContainsKey(factionTypeID))
+        if (!PopularSupport.ContainsKey(factionInstanceId))
         {
-            PopularSupport.Add(factionTypeID, support);
+            PopularSupport.Add(factionInstanceId, support);
         }
 
-        PopularSupport[factionTypeID] = support;
+        PopularSupport[factionInstanceId] = support;
     }
 
     /// <summary>
@@ -340,7 +340,7 @@ public class Planet : SceneNode
     /// <param name="officer">The officer to add.</param>
     private void AddOfficer(Officer officer)
     {
-        if (this.OwnerTypeID != officer.OwnerTypeID)
+        if (this.OwnerInstanceID != officer.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }

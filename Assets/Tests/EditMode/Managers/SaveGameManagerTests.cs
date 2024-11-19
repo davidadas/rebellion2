@@ -9,8 +9,8 @@ public class SaveGameManagerTests
     private string saveFileName = "SaveGameManagerTest";
     private List<Faction> factions = new List<Faction>
     {
-        new Faction { TypeID = "FNALL1" },
-        new Faction { TypeID = "FNEMP1" },
+        new Faction { InstanceID = "FNALL1" },
+        new Faction { InstanceID = "FNEMP1" },
     };
 
     [TearDown]
@@ -129,20 +129,20 @@ public class SaveGameManagerTests
         };
 
         // Create planets.
-        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
+        Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
         planetSystem.Planets.Add(planet);
         game.AttachNode(planet, planetSystem);
 
         // Create fleets.
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         game.AttachNode(fleet, planet);
 
         // Create capital ships.
-        CapitalShip capitalShip = new CapitalShip { OwnerTypeID = "FNALL1" };
+        CapitalShip capitalShip = new CapitalShip { OwnerInstanceID = "FNALL1" };
         game.AttachNode(capitalShip, fleet);
 
         // Create officers.
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         game.AttachNode(officer, capitalShip);
 
         // Save the game to disk.

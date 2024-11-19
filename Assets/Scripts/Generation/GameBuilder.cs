@@ -52,10 +52,10 @@ public sealed class GameBuilder
         {
             foreach (IManufacturable technology in combinedTechnologies)
             {
-                ReferenceNode reference = new ReferenceNode(technology as SceneNode);
-                foreach (string allowedOwnerTypeID in reference.GetReference().AllowedOwnerTypeIDs)
+                Technology reference = new Technology(technology as SceneNode);
+                foreach (string allowedOwnerInstanceID in reference.GetReference().AllowedOwnerInstanceIDs)
                 {
-                    if (allowedOwnerTypeID == faction.TypeID)
+                    if (allowedOwnerInstanceID == faction.InstanceID)
                     {
                         faction.AddTechnologyNode(technology.GetRequiredResearchLevel(), reference);
                     }
@@ -87,7 +87,7 @@ public sealed class GameBuilder
             .ToArray();
 
         // Initialize each faction's technology tree.
-        Dictionary<string, Faction> factionMap = factions.ToDictionary(f => f.TypeID);
+        Dictionary<string, Faction> factionMap = factions.ToDictionary(faction => faction.InstanceID);
         IManufacturable[] combinedTechnologies = Array
             .Empty<IManufacturable>()
             .Concat(buildings)

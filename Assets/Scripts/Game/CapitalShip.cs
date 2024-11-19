@@ -73,7 +73,7 @@ public class CapitalShip : SceneNode, IManufacturable, IMovable
     public int DetectionRating;
 
     // Owner Info
-    public string InitialParentTypeID { get; set; }
+    public string InitialParentInstanceID { get; set; }
 
     /// <summary>
     /// Default constructor.
@@ -119,7 +119,7 @@ public class CapitalShip : SceneNode, IManufacturable, IMovable
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     public void AddOfficer(Officer officer)
     {
-        if (this.OwnerTypeID != officer.OwnerTypeID)
+        if (this.OwnerInstanceID != officer.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }

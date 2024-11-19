@@ -53,11 +53,11 @@ public class AIManager
     /// <summary>
     ///
     /// </summary>
-    /// <param name="ownerTypeId"></param>
+    /// <param name="ownerInstanceId"></param>
     /// <returns></returns>
-    private List<Officer> GetAvailableOfficers(string ownerTypeId)
+    private List<Officer> GetAvailableOfficers(string ownerInstanceId)
     {
-        return game.GetSceneNodesByOwnerTypeID<Officer>(ownerTypeId).FindAll(o => o.IsMovable());
+        return game.GetSceneNodesByOwnerInstanceID<Officer>(ownerInstanceId).FindAll(o => o.IsMovable());
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public class AIManager
                 Planet nearestPlanet = faction.GetNearestPlanet(officer);
                 if (
                     officer.IsMainCharacter()
-                    && game.GetUnrecruitedOfficers(faction.TypeID).Count > 0
+                    && game.GetUnrecruitedOfficers(faction.InstanceID).Count > 0
                 )
                 {
                     missionManager.InitiateMission(MissionType.Recruitment, officer, nearestPlanet);

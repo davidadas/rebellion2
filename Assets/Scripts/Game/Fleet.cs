@@ -25,7 +25,7 @@ public class Fleet : SceneNode, IMovable
     /// <exception cref="SceneAccessException">Thrown when the capital ship is not allowed to be added.</exception>
     private void AddCapitalShip(CapitalShip capitalShip)
     {
-        if (this.OwnerTypeID != capitalShip.OwnerTypeID)
+        if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
         {
             throw new SceneAccessException(capitalShip, this);
         }
@@ -39,7 +39,7 @@ public class Fleet : SceneNode, IMovable
     /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
     private void AddOfficer(Officer officer)
     {
-        if (this.OwnerTypeID != officer.OwnerTypeID)
+        if (this.OwnerInstanceID != officer.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }

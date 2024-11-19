@@ -113,9 +113,9 @@ public class NewGameBuildingConfig : Config
 [Serializable]
 public class NewGameCapitalShipOptions : Config
 {
-    public string OwnerTypeID;
+    public string OwnerInstanceID;
     public string TypeID;
-    public string InitialParentTypeID;
+    public string InitialParentInstanceID;
 
     public NewGameCapitalShipOptions() { }
 }

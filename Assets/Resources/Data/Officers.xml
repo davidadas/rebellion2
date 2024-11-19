@@ -7,9 +7,9 @@
 		<TypeID>OFEM001</TypeID>
 		<InstanceID>EMPEROR_PALPATINE</InstanceID>
 		<DisplayName>Emperor Palpatine</DisplayName>
-		<OwnerTypeID>FNEMP1</OwnerTypeID>
+		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<InitialParentTypeID>PLSEW05</InitialParentTypeID>
+		<InitialParentInstanceID>CORUSCANT</InitialParentInstanceID>
 		<Diplomacy>30</Diplomacy>
 		<Espionage>20</Espionage>
 		<Combat>50</Combat>
@@ -39,7 +39,7 @@
 		<TypeID>OFEM002</TypeID>
 		<InstanceID>DARTH_VADER</InstanceID>
 		<DisplayName>Darth Vader</DisplayName>
-		<OwnerTypeID>FNEMP1</OwnerTypeID>
+		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>19</Diplomacy>
 		<Espionage>100</Espionage>
@@ -70,9 +70,9 @@
 		<TypeID>OFEM003</TypeID>
 		<InstanceID>JERJERROD</InstanceID>
 		<DisplayName>Jerjerrod</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -103,9 +103,9 @@
 		<TypeID>OFEM004</TypeID>
 		<InstanceID>PIETT</InstanceID>
 		<DisplayName>Piett</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -136,9 +136,9 @@
 		<TypeID>OFEM005</TypeID>
 		<InstanceID>VEERS</InstanceID>
 		<DisplayName>Veers</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>00</Diplomacy>
 		<Espionage>0</Espionage>
@@ -169,9 +169,9 @@
 		<TypeID>OFEM006</TypeID>
 		<InstanceID>BRANDEI</InstanceID>
 		<DisplayName>Brandei</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -202,9 +202,9 @@
 		<TypeID>OFEM007</TypeID>
 		<InstanceID>DORJA</InstanceID>
 		<DisplayName>Dorja</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -235,9 +235,9 @@
 		<TypeID>OFEM008</TypeID>
 		<InstanceID>BIN_ESSADA</InstanceID>
 		<DisplayName>Bin Essada</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -268,9 +268,9 @@
 		<TypeID>OFEM009</TypeID>
 		<InstanceID>NILES_FERRIER</InstanceID>
 		<DisplayName>Niles Ferrier</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>80</Espionage>
@@ -301,9 +301,9 @@
 		<TypeID>OFEM010</TypeID>
 		<InstanceID>GRAMMEL</InstanceID>
 		<DisplayName>Grammel</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -334,9 +334,9 @@
 		<TypeID>OFEM011</TypeID>
 		<InstanceID>GRIFF</InstanceID>
 		<DisplayName>Griff</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -367,9 +367,9 @@
 		<TypeID>OFEM012</TypeID>
 		<InstanceID>KLEV</InstanceID>
 		<DisplayName>Klev</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -400,9 +400,9 @@
 		<TypeID>OFEM013</TypeID>
 		<InstanceID>NEEDA</InstanceID>
 		<DisplayName>Needa</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -433,9 +433,9 @@
 		<TypeID>OFEM014</TypeID>
 		<InstanceID>BANE_NOTHOS</InstanceID>
 		<DisplayName>Bane Nothos</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -466,9 +466,9 @@
 		<TypeID>OFEM015</TypeID>
 		<InstanceID>ORLOK</InstanceID>
 		<DisplayName>Orlok</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -499,9 +499,9 @@
 		<TypeID>OFEM016</TypeID>
 		<InstanceID>PALLAEON</InstanceID>
 		<DisplayName>Pallaeon</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -532,9 +532,9 @@
 		<TypeID>OFEM017</TypeID>
 		<InstanceID>SCREED</InstanceID>
 		<DisplayName>Screed</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -565,9 +565,9 @@
 		<TypeID>OFEM018</TypeID>
 		<InstanceID>THRAWN</InstanceID>
 		<DisplayName>Thrawn</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -598,9 +598,9 @@
 		<TypeID>OFEM019</TypeID>
 		<InstanceID>ZUGGS</InstanceID>
 		<DisplayName>Zuggs</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -631,9 +631,9 @@
 		<TypeID>OFEM020</TypeID>
 		<InstanceID>DAALA</InstanceID>
 		<DisplayName>Daala</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -664,9 +664,9 @@
 		<TypeID>OFEM021</TypeID>
 		<InstanceID>THANAS</InstanceID>
 		<DisplayName>Pter Thanas</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -700,7 +700,7 @@
 		<TypeID>OFAL001</TypeID>
 		<InstanceID>MON_MOTHMA</InstanceID>
 		<DisplayName>Mon Mothma</DisplayName>
-		<OwnerTypeID>FNALL1</OwnerTypeID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>100</Diplomacy>
 		<Espionage>10</Espionage>
@@ -730,7 +730,7 @@
 		<TypeID>OFAL002</TypeID>
 		<InstanceID>LEIA_ORGANA</InstanceID>
 		<DisplayName>Leia Organa</DisplayName>
-		<OwnerTypeID>FNALL1</OwnerTypeID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>120</Diplomacy>
 		<Espionage>30</Espionage>
@@ -760,7 +760,7 @@
 		<TypeID>OFAL003</TypeID>
 		<InstanceID>LUKE_SKYWALKER</InstanceID>
 		<DisplayName>Luke Skywalker</DisplayName>
-		<OwnerTypeID>FNALL1</OwnerTypeID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>50</Diplomacy>
 		<Espionage>50</Espionage>
@@ -791,7 +791,7 @@
 		<TypeID>OFAL004</TypeID>
 		<InstanceID>HAN_SOLO</InstanceID>
 		<DisplayName>Han Solo</DisplayName>
-		<OwnerTypeID>FNALL1</OwnerTypeID>
+		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<Diplomacy>19</Diplomacy>
 		<Espionage>100</Espionage>
@@ -822,9 +822,9 @@
 		<TypeID>OFAL005</TypeID>
 		<InstanceID>ACKBAR</InstanceID>
 		<DisplayName>Ackbar</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -855,9 +855,9 @@
 		<TypeID>OFAL006</TypeID>
 		<InstanceID>WEDGE_ANTILLES</InstanceID>
 		<DisplayName>Wedge Antilles</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -888,9 +888,9 @@
 		<TypeID>OFAL007</TypeID>
 		<InstanceID>LANDO_CALRISSIAN</InstanceID>
 		<DisplayName>Lando Calrissian</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>70</Espionage>
@@ -921,9 +921,9 @@
 		<TypeID>OFAL008</TypeID>
 		<InstanceID>CHEWBACCA</InstanceID>
 		<DisplayName>Chewbacca</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>
@@ -954,9 +954,9 @@
 		<TypeID>OFAL009</TypeID>
 		<InstanceID>JAN_DODONNA</InstanceID>
 		<DisplayName>Jan Dodonna</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -987,9 +987,9 @@
 		<TypeID>OFAL010</TypeID>
 		<InstanceID>CRIX_MADINE</InstanceID>
 		<DisplayName>Crix Madine</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1020,9 +1020,9 @@
 		<TypeID>OFAL011</TypeID>
 		<InstanceID>CARLIST_RIEEKAN</InstanceID>
 		<DisplayName>Carlist Rieekan</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1053,9 +1053,9 @@
 		<TypeID>OFAL012</TypeID>
 		<InstanceID>AFYON</InstanceID>
 		<DisplayName>Afyon</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1086,9 +1086,9 @@
 		<TypeID>OFAL0113</TypeID>
 		<InstanceID>DRAYSON</InstanceID>
 		<DisplayName>Drayson</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>70</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1119,9 +1119,9 @@
 		<TypeID>OFAL014</TypeID>
 		<InstanceID>BORSK_FEYLA</InstanceID>
 		<DisplayName>Borsk Fey'la</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>80</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1152,9 +1152,9 @@
 		<TypeID>OFAL015</TypeID>
 		<InstanceID>TURA_RAFTICAN</InstanceID>
 		<DisplayName>Tura Raftican</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>
@@ -1185,9 +1185,9 @@
 		<TypeID>OFAL016</TypeID>
 		<InstanceID>BREN_DERLIN</InstanceID>
 		<DisplayName>Bren Derlin</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1218,9 +1218,9 @@
 		<TypeID>OFAL017</TypeID>
 		<InstanceID>GARM_BEL_IBLIS</InstanceID>
 		<DisplayName>Garm Bel Iblis</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>30</Espionage>
@@ -1251,9 +1251,9 @@
 		<TypeID>OFAL018</TypeID>
 		<InstanceID>TALON_KARRDE</InstanceID>
 		<DisplayName>Talon Karrde</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>80</Diplomacy>
 		<Espionage>0</Espionage>
@@ -1284,9 +1284,9 @@
 		<TypeID>OFAL019</TypeID>
 		<InstanceID>NARRA</InstanceID>
 		<DisplayName>Narra</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>70</Espionage>
@@ -1317,9 +1317,9 @@
 		<TypeID>OFAL020</TypeID>
 		<InstanceID>HUOBA_NEVA</InstanceID>
 		<DisplayName>Huoba Neva</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>80</Espionage>
@@ -1350,9 +1350,9 @@
 		<TypeID>OFAL021</TypeID>
 		<InstanceID>PAGE</InstanceID>
 		<DisplayName>Page</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
 		<Diplomacy>0</Diplomacy>
 		<Espionage>90</Espionage>

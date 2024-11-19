@@ -7,8 +7,8 @@ public class GameTests
 {
     private List<Faction> factions = new List<Faction>
     {
-        new Faction { TypeID = "FNALL1" },
-        new Faction { TypeID = "FNEMP1" },
+        new Faction { InstanceID = "FNALL1" },
+        new Faction { InstanceID = "FNEMP1" },
     };
 
     [Test]
@@ -54,24 +54,24 @@ public class GameTests
     public void TestSceneGraphReconstitutionAfterSerialization()
     {
         // Create officers.
-        List<Officer> officers = new List<Officer> { new Officer { OwnerTypeID = "FNALL1" } };
+        List<Officer> officers = new List<Officer> { new Officer { OwnerInstanceID = "FNALL1" } };
 
         // Create capital ships.
         List<CapitalShip> capitalShips = new List<CapitalShip>
         {
-            new CapitalShip { OwnerTypeID = "FNALL1", Officers = officers },
+            new CapitalShip { OwnerInstanceID = "FNALL1", Officers = officers },
         };
 
         // Create fleets.
         List<Fleet> fleets = new List<Fleet>
         {
-            new Fleet { OwnerTypeID = "FNALL1", CapitalShips = capitalShips },
+            new Fleet { OwnerInstanceID = "FNALL1", CapitalShips = capitalShips },
         };
 
         // Create planets.
         List<Planet> planets = new List<Planet>
         {
-            new Planet { OwnerTypeID = "FNALL1", Fleets = fleets },
+            new Planet { OwnerInstanceID = "FNALL1", Fleets = fleets },
         };
 
         // Create planet systems.
@@ -125,8 +125,8 @@ public class GameTests
         Game game = new Game { Factions = factions, Galaxy = galaxy };
 
         // Create our scene.
-        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
         // Attach the nodes.
         game.AttachNode(planet, planetSystem);
@@ -158,9 +158,9 @@ public class GameTests
 
         // Create our scene.
         PlanetSystem planetSystem = new PlanetSystem();
-        Planet planet1 = new Planet { OwnerTypeID = "FNALL1" };
-        Planet planet2 = new Planet { OwnerTypeID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Planet planet1 = new Planet { OwnerInstanceID = "FNALL1" };
+        Planet planet2 = new Planet { OwnerInstanceID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
         // Attach the nodes.
         game.AttachNode(planet1, planetSystem);
@@ -193,9 +193,9 @@ public class GameTests
         Game game = new Game { Factions = factions };
 
         // Create our scene.
-        Planet planet1 = new Planet { OwnerTypeID = "FNALL1" };
-        Planet planet2 = new Planet { OwnerTypeID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Planet planet1 = new Planet { OwnerInstanceID = "FNALL1" };
+        Planet planet2 = new Planet { OwnerInstanceID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
         // Attach the fleet to the planet.
         game.AttachNode(fleet, planet1);
@@ -213,7 +213,7 @@ public class GameTests
         Game game = new Game();
 
         // Create our scene.
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
         // Check if an exception is thrown when detaching a node without a parent.
         Assert.Throws<InvalidSceneOperationException>(
@@ -229,7 +229,7 @@ public class GameTests
         Game game = new Game { Galaxy = new GalaxyMap() };
 
         // Create our scene.
-        Planet planet = new Planet { OwnerTypeID = "FNALL1" };
+        Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
         PlanetSystem planetSystem = new PlanetSystem() { Planets = new List<Planet> { planet } };
 
         // Attach the fleet to the planet.

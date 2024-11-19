@@ -52,42 +52,42 @@ public class GameEntityTests
     }
 
     [Test]
-    public void TestOwnerTypeID()
+    public void TestOwnerInstanceID()
     {
         GameEntity entity = new GameEntity();
-        string ownerTypeId = "TestOwnerTypeID";
-        entity.AllowedOwnerTypeIDs = new List<string> { ownerTypeId };
-        entity.OwnerTypeID = ownerTypeId;
+        string ownerInstanceId = "TestOwnerInstanceID";
+        entity.AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
+        entity.OwnerInstanceID = ownerInstanceId;
 
-        // Ensure the OwnerTypeID is set correctly.
-        Assert.AreEqual(ownerTypeId, entity.OwnerTypeID, "OwnerTypeID should be set correctly.");
+        // Ensure the OwnerInstanceID is set correctly.
+        Assert.AreEqual(ownerInstanceId, entity.OwnerInstanceID, "OwnerInstanceID should be set correctly.");
     }
 
     [Test]
-    public void TestInvalidOwnerTypeID()
+    public void TestInvalidOwnerInstanceID()
     {
         GameEntity entity = new GameEntity();
-        entity.AllowedOwnerTypeIDs = new List<string> { "ValidOwnerTypeID" };
+        entity.AllowedOwnerInstanceIDs = new List<string> { "ValidOwnerInstanceID" };
 
-        // Ensure an invalid OwnerTypeID throws an exception.
+        // Ensure an invalid OwnerInstanceID throws an exception.
         Assert.Throws<ArgumentException>(
-            () => entity.OwnerTypeID = "InvalidOwnerTypeID",
-            "Setting an invalid OwnerTypeID should throw an ArgumentException."
+            () => entity.OwnerInstanceID = "InvalidOwnerInstanceID",
+            "Setting an invalid OwnerInstanceID should throw an ArgumentException."
         );
     }
 
     [Test]
-    public void TestAllowedOwnerTypeIDs()
+    public void TestAllowedOwnerInstanceIDs()
     {
         GameEntity entity = new GameEntity();
-        List<string> allowedOwnerTypeIDs = new List<string> { "Owner1", "Owner2" };
-        entity.AllowedOwnerTypeIDs = allowedOwnerTypeIDs;
+        List<string> allowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
+        entity.AllowedOwnerInstanceIDs = allowedOwnerInstanceIDs;
 
-        // Ensure the AllowedOwnerTypeIDs is set correctly.
+        // Ensure the AllowedOwnerInstanceIDs is set correctly.
         Assert.AreEqual(
-            allowedOwnerTypeIDs,
-            entity.AllowedOwnerTypeIDs,
-            "AllowedOwnerTypeIDs should be set correctly."
+            allowedOwnerInstanceIDs,
+            entity.AllowedOwnerInstanceIDs,
+            "AllowedOwnerInstanceIDs should be set correctly."
         );
     }
 }

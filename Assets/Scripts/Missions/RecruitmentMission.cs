@@ -26,7 +26,7 @@ public class RecruitmentMission : Mission
     /// Creates a new RecruitmentMission with the specified owner and participants.
     /// </summary>
     public RecruitmentMission(
-        string ownerTypeId,
+        string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants
@@ -34,7 +34,7 @@ public class RecruitmentMission : Mission
     )
         : base(
             "Recruitment",
-            ownerTypeId,
+            ownerInstanceId,
             targetInstanceId,
             mainParticipants,
             decoyParticipants,
@@ -56,9 +56,9 @@ public class RecruitmentMission : Mission
     {
         Planet planet = GetParent() as Planet;
 
-        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerTypeID);
+        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerInstanceID);
         Officer recruitedOfficer = unrecruitedOfficers.RandomElement();
-        recruitedOfficer.OwnerTypeID = OwnerTypeID;
+        recruitedOfficer.OwnerInstanceID = OwnerInstanceID;
 
         game.RemoveUnrecruitedOfficer(recruitedOfficer);
 

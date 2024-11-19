@@ -131,7 +131,7 @@ public class AreOnOpposingFactionsConditional : GameConditional
         List<SceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
 
         // Check if the units are on opposing factions.
-        return sceneNodes.Count == 2 && sceneNodes[0].OwnerTypeID != sceneNodes[1].OwnerTypeID;
+        return sceneNodes.Count == 2 && sceneNodes[0].OwnerInstanceID != sceneNodes[1].OwnerInstanceID;
     }
 }
 

@@ -4,7 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 
 [TestFixture]
-public class SceneNodeTestSuite
+public class SceneNodeTests
 {
     private class TestSceneNode : SceneNode
     {
@@ -29,15 +29,15 @@ public class SceneNodeTestSuite
     private class SpecializedTestNode : TestSceneNode { }
 
     [Test]
-    public void SetParent_UpdatesParentAndTypeID()
+    public void SetParent_UpdatesParentAndInstanceID()
     {
-        TestSceneNode parent = new TestSceneNode { TypeID = "ParentType" };
+        TestSceneNode parent = new TestSceneNode { InstanceID = "ParentType" };
         TestSceneNode child = new TestSceneNode();
 
         child.SetParent(parent);
 
         Assert.AreEqual(parent, child.GetParent());
-        Assert.AreEqual("ParentType", child.ParentTypeID);
+        Assert.AreEqual("ParentType", child.ParentInstanceID);
     }
 
     [Test]
@@ -91,18 +91,18 @@ public class SceneNodeTestSuite
     }
 
     [Test]
-    public void GetChildrenByOwnerTypeID_ReturnsMatchingChildren()
+    public void GetChildrenByOwnerInstanceID_ReturnsMatchingChildren()
     {
         TestSceneNode root = new TestSceneNode();
-        TestSceneNode child1 = new TestSceneNode { OwnerTypeID = "Type1" };
-        TestSceneNode child2 = new TestSceneNode { OwnerTypeID = "Type2" };
-        TestSceneNode grandchild = new TestSceneNode { OwnerTypeID = "Type1" };
+        TestSceneNode child1 = new TestSceneNode { OwnerInstanceID = "Type1" };
+        TestSceneNode child2 = new TestSceneNode { OwnerInstanceID = "Type2" };
+        TestSceneNode grandchild = new TestSceneNode { OwnerInstanceID = "Type1" };
 
         root.AddChild(child1);
         root.AddChild(child2);
         child1.AddChild(grandchild);
 
-        List<TestSceneNode> result = root.GetChildrenByOwnerTypeID<TestSceneNode>("Type1").ToList();
+        List<TestSceneNode> result = root.GetChildrenByOwnerInstanceID<TestSceneNode>("Type1").ToList();
 
         Assert.AreEqual(2, result.Count);
         Assert.IsTrue(result.Contains(child1));
@@ -110,15 +110,15 @@ public class SceneNodeTestSuite
     }
 
     [Test]
-    public void GetChildrenByOwnerTypeID_ReturnsEmptyWhenNoMatch()
+    public void GetChildrenByOwnerInstanceID_ReturnsEmptyWhenNoMatch()
     {
         TestSceneNode root = new TestSceneNode();
-        TestSceneNode child = new TestSceneNode { OwnerTypeID = "Type1" };
+        TestSceneNode child = new TestSceneNode { OwnerInstanceID = "Type1" };
 
         root.AddChild(child);
 
         IEnumerable<SpecializedTestNode> result =
-            root.GetChildrenByOwnerTypeID<SpecializedTestNode>("Type1");
+            root.GetChildrenByOwnerInstanceID<SpecializedTestNode>("Type1");
 
         Assert.IsEmpty(result);
     }

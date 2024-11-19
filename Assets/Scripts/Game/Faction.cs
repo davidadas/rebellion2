@@ -18,9 +18,9 @@ public class Faction : GameEntity
 
     public Dictionary<
         ManufacturingType,
-        SortedDictionary<int, List<ReferenceNode>>
+        SortedDictionary<int, List<Technology>>
     > TechnologyLevels { get; set; } =
-        new Dictionary<ManufacturingType, SortedDictionary<int, List<ReferenceNode>>>();
+        new Dictionary<ManufacturingType, SortedDictionary<int, List<Technology>>>();
 
     public Dictionary<ManufacturingType, int> ManufacturingResearchLevels { get; set; } =
         new Dictionary<ManufacturingType, int>()
@@ -30,7 +30,7 @@ public class Faction : GameEntity
             { ManufacturingType.Troop, 0 },
         };
 
-    public string HQTypeID { get; set; }
+    public string HQInstanceID { get; set; }
     public string PlayerID { get; set; }
 
     private Dictionary<Type, List<SceneNode>> ownedEntities = new Dictionary<
@@ -111,7 +111,7 @@ public class Faction : GameEntity
     /// <typeparam name="T">The type of technology to add.</typeparam>
     /// <param name="level">The level of the technology.</param>
     /// <param name="node">The technology node to add.</param>
-    public void AddTechnologyNode(int level, ReferenceNode node)
+    public void AddTechnologyNode(int level, Technology node)
     {
         SceneNode tech = node.GetReference();
         Type technologyType = tech.GetType();
@@ -125,7 +125,7 @@ public class Faction : GameEntity
         }
 
         // Check if the technology is allowed to be owned by the faction.
-        if (tech.AllowedOwnerTypeIDs != null && !tech.AllowedOwnerTypeIDs.Contains(TypeID))
+        if (tech.AllowedOwnerInstanceIDs != null && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID))
         {
             throw new GameException(
                 $"Cannot add technology {tech.DisplayName} to faction {DisplayName}. Owner IDs do not match."
@@ -140,14 +140,14 @@ public class Faction : GameEntity
             )
         )
         {
-            techLevels = new SortedDictionary<int, List<ReferenceNode>>();
+            techLevels = new SortedDictionary<int, List<Technology>>();
             TechnologyLevels[manufacturableTech.GetManufacturingType()] = techLevels;
         }
 
         // Ensure the list for this level exists.
         if (!techLevels.TryGetValue(level, out var nodesAtLevel))
         {
-            nodesAtLevel = new List<ReferenceNode>();
+            nodesAtLevel = new List<Technology>();
             techLevels[level] = nodesAtLevel;
         }
 
@@ -181,8 +181,8 @@ public class Faction : GameEntity
         // Filter technologies based on the current research level.
         return techLevels
             .Where(kvp => kvp.Key <= currentResearchLevel) // Only consider technologies up to the current research level.
-            .SelectMany(kvp => kvp.Value) // Flatten the list of ReferenceNodes.
-            .Select(referenceNode => referenceNode.GetReference() as T) // Convert each ReferenceNode to type T.
+            .SelectMany(kvp => kvp.Value) // Flatten the list of Technologys.
+            .Select(technology => technology.GetReference() as T) // Convert each Technology to type T.
             .Where(tech => tech != null && tech.GetRequiredResearchLevel() <= currentResearchLevel) // Ensure validity and requirements.
             .ToList();
     }

@@ -41,7 +41,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     public OfficerRank CurrentRank { get; set; }
 
     // Owner Info
-    public string InitialParentTypeID { get; set; }
+    public string InitialParentInstanceID { get; set; }
 
     // Variance Info
     [PersistableIgnore]

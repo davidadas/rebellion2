@@ -5,10 +5,10 @@
 	<!--   **************************************************  -->
 	<Building>
 		<TypeID>BDFA01</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>ConstructionFacility</BuildingType>
 		<DisplayName>Construction Facility</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
@@ -21,10 +21,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA02</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>TrainingFacility</BuildingType>
 		<DisplayName>Training Facility</DisplayName>
 		<ProductionType>Troop</ProductionType>
@@ -37,10 +37,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA03</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>Shipyard</BuildingType>
 		<DisplayName>Orbital Shipyard</DisplayName>
 		<ProductionType>Ship</ProductionType>
@@ -53,10 +53,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA04</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>Mine</BuildingType>
 		<DisplayName>Mining Facility</DisplayName>
 		<ProductionType>None</ProductionType>
@@ -69,10 +69,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA05</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>Refinery</BuildingType>
 		<DisplayName>Refinery</DisplayName>
 		<ProductionType>None</ProductionType>
@@ -85,10 +85,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA06</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>TrainingFacility</BuildingType>
 		<DisplayName>Advanced Training Facility</DisplayName>
 		<ProductionType>Troop</ProductionType>
@@ -101,10 +101,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDFA07</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>Shipyard</BuildingType>
 		<DisplayName>Advanced Orbital Shipyard</DisplayName>
 		<ProductionType>Ship</ProductionType>
@@ -120,10 +120,10 @@
 	<!--   **************************************************  -->
 	<Building>
 		<TypeID>BDDF01</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>LNR Series I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
@@ -137,10 +137,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDDF02</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>GenCore Level I</DisplayName>
 		<BuildingSlot>Ground</BuildingSlot>
@@ -154,10 +154,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDDF03</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>KDY-150</DisplayName>
 		<ProductionType>None</ProductionType>
@@ -171,10 +171,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDDF04</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>Death Star Shield</DisplayName>
 		<ProductionType>None</ProductionType>
@@ -188,10 +188,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDDF05</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>LNR Series II</DisplayName>
 		<ProductionType>None</ProductionType>
@@ -205,10 +205,10 @@
 	</Building>
 	<Building>
 		<TypeID>BDDF06</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<BuildingType>PlanetaryDefense</BuildingType>
 		<DisplayName>GenCore Level II</DisplayName>
 		<ProductionType>None</ProductionType>

@@ -18,10 +18,10 @@ public class GalaxyMap : SceneNode
     public GalaxyMap() { }
 
     /// <summary>
-    /// Finds the closest friendly planet to a given unit, filtered by OwnerTypeID.
+    /// Finds the closest friendly planet to a given unit, filtered by OwnerInstanceID.
     /// </summary>
     /// <param name="unit">The unit to find the closest friendly planet to.</param>
-    /// <returns>The closest friendly planet with matching OwnerTypeID, or null if no friendly planets are found.</returns>
+    /// <returns>The closest friendly planet with matching OwnerInstanceID, or null if no friendly planets are found.</returns>
     public Planet GetClosestFriendlyPlanet(SceneNode unit)
     {
         // Find the planet that the unit is currently located on.
@@ -32,10 +32,10 @@ public class GalaxyMap : SceneNode
             return null;
         }
 
-        // Filter planets by matching OwnerTypeID (friendly planets).
+        // Filter planets by matching OwnerInstanceID (friendly planets).
         List<Planet> friendlyPlanets = PlanetSystems
             .SelectMany(system => system.Planets)
-            .Where(planet => planet.OwnerTypeID == unit.OwnerTypeID)
+            .Where(planet => planet.OwnerInstanceID == unit.OwnerInstanceID)
             .ToList();
 
         // Initialize variables to track the closest planet.

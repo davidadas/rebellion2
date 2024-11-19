@@ -32,16 +32,16 @@ public class OfficerGenerator : UnitGenerator<Officer>
             .GetValue<int>($"Officers.NumInitialOfficers.GalaxySize.{galaxySize}");
 
         // Set the finalized list of officers for each faction.
-        foreach (string ownerTypeId in officersByFaction.Keys.ToArray())
+        foreach (string ownerInstanceId in officersByFaction.Keys.ToArray())
         {
-            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerTypeId]
+            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerInstanceId]
                 // Take a random selection of officers for the game start.
                 .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
-                // Set the OwnerTypeID for each officer.
+                // Set the OwnerInstanceID for each officer.
                 .Select(
                     (officer) =>
                     {
-                        officer.OwnerTypeID = ownerTypeId;
+                        officer.OwnerInstanceID = ownerInstanceId;
                         return officer;
                     }
                 );
@@ -58,10 +58,10 @@ public class OfficerGenerator : UnitGenerator<Officer>
     private Dictionary<string, List<SceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
     {
         // Flatten the list of planets from planet systems.
-        // Only pull those planets with a OwnerTypeID assigned.
+        // Only pull those planets with a OwnerInstanceID assigned.
         IEnumerable<Planet> flattenedPlanets = planetSystems
             .SelectMany((planetSystem) => planetSystem.Planets)
-            .Where((planet) => planet.OwnerTypeID != null);
+            .Where((planet) => planet.OwnerInstanceID != null);
 
         // Create an array of fleets and planets.
         List<SceneNode> fleetsAndPlanets = new List<SceneNode>();
@@ -76,14 +76,10 @@ public class OfficerGenerator : UnitGenerator<Officer>
             new Dictionary<string, List<SceneNode>>(),
             (destinationMap, nextDestination) =>
             {
-                string ownerTypeId =
-                    nextDestination
-                        .GetType()
-                        .GetProperty("OwnerTypeID")
-                        .GetValue(nextDestination, null) as string;
+                string ownerInstanceId = nextDestination.OwnerInstanceID;
 
                 List<SceneNode> destinations = destinationMap.GetOrAddValue(
-                    ownerTypeId,
+                    ownerInstanceId,
                     new List<SceneNode>()
                 );
                 destinations.Add(nextDestination);
@@ -106,19 +102,19 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
         foreach (Officer officer in shuffledUnits)
         {
-            // Add officers which already have an assigned OwnerTypeID to the front.
+            // Add officers which already have an assigned OwnerInstanceID to the front.
             // These are the officers that will always be assigned at start.
-            if (officer.OwnerTypeID != null)
+            if (officer.OwnerInstanceID != null)
             {
                 officersByFaction
-                    .GetOrAddValue(officer.OwnerTypeID, new List<Officer>())
+                    .GetOrAddValue(officer.OwnerInstanceID, new List<Officer>())
                     .Insert(0, officer); // Add to front of list.
             }
             // Ignore officers allowed by both factions.
-            else if (officer.AllowedOwnerTypeIDs.Count == 1)
+            else if (officer.AllowedOwnerInstanceIDs.Count == 1)
             {
                 officersByFaction
-                    .GetOrAddValue(officer.AllowedOwnerTypeIDs[0], new List<Officer>())
+                    .GetOrAddValue(officer.AllowedOwnerInstanceIDs[0], new List<Officer>())
                     .Add(officer); // Add to end of list.
             }
         }
@@ -165,7 +161,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
     }
 
     /// <summary>
-    ///
+    /// 
     /// </summary>
     /// <param name="units"></param>
     /// <param name="destinations"></param>
@@ -178,13 +174,13 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
         foreach (Officer officer in officers)
         {
-            List<SceneNode> destinations = destinationMapping[officer.OwnerTypeID];
+            List<SceneNode> destinations = destinationMapping[officer.OwnerInstanceID];
             SceneNode destination;
 
-            if (officer.InitialParentTypeID != null)
+            if (officer.InitialParentInstanceID != null)
             {
                 destination = destinations.First(
-                    (sceneNode) => sceneNode.TypeID == officer.InitialParentTypeID
+                    (sceneNode) => sceneNode.InstanceID == officer.InitialParentInstanceID
                 );
             }
             else

@@ -14,14 +14,14 @@ public class PlanetTests
             IsColonized = true,
             GroundSlots = 5,
             OrbitSlots = 3,
-            OwnerTypeID = "FNALL1",
+            OwnerInstanceID = "FNALL1",
         };
     }
 
     [Test]
     public void TestAddFleet()
     {
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         planet.AddChild(fleet);
 
         Assert.Contains(fleet, planet.Fleets, "Fleet should be added to the planet.");
@@ -30,7 +30,7 @@ public class PlanetTests
     [Test]
     public void TestAddOfficer()
     {
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         planet.AddChild(officer);
 
         Assert.Contains(officer, planet.Officers, "Officer should be added to the planet.");
@@ -57,7 +57,7 @@ public class PlanetTests
     [Test]
     public void TestRemoveFleet()
     {
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         planet.AddChild(fleet);
         planet.RemoveChild(fleet);
 
@@ -67,7 +67,7 @@ public class PlanetTests
     [Test]
     public void TestRemoveOfficer()
     {
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         planet.AddChild(officer);
         planet.RemoveChild(officer);
 
@@ -97,8 +97,8 @@ public class PlanetTests
     [Test]
     public void TestGetChildren()
     {
-        Fleet fleet = new Fleet { OwnerTypeID = "FNALL1" };
-        Officer officer = new Officer { OwnerTypeID = "FNALL1" };
+        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Building building = new Building
         {
             BuildingSlot = BuildingSlot.Ground,

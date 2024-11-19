@@ -1,7 +1,7 @@
 using System;
 
 [PersistableObject]
-public class ReferenceNode
+public class Technology
 {
     [PersistableInclude(typeof(Building))]
     [PersistableInclude(typeof(CapitalShip))]
@@ -12,13 +12,13 @@ public class ReferenceNode
     /// <summary>
     /// Default constructor.
     /// </summary>
-    public ReferenceNode() { }
+    public Technology() { }
 
     /// <summary>
     /// Initializes the reference node with a scene node, which is the object to be referenced.
     /// </summary>
     /// <param name="node">The scene node to reference.</param>
-    public ReferenceNode(SceneNode node)
+    public Technology(SceneNode node)
     {
         Node = node;
     }

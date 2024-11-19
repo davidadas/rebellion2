@@ -6,9 +6,9 @@
 	<Regiment>
 		<TypeID>REEM001</TypeID>
 		<DisplayName>Imperial Fleet Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>7</ConstructionCost>
 		<MaintenanceCost>5</MaintenanceCost>
 		<AttackRating>5</AttackRating>
@@ -20,9 +20,9 @@
 	<Regiment>
 		<TypeID>REEM002</TypeID>
 		<DisplayName>Imperial Army Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<AttackRating>3</AttackRating>
@@ -34,9 +34,9 @@
 	<Regiment>
 		<TypeID>REEM003</TypeID>
 		<DisplayName>Stormtrooper Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>9</ConstructionCost>
 		<MaintenanceCost>6</MaintenanceCost>
 		<AttackRating>6</AttackRating>
@@ -48,9 +48,9 @@
 	<Regiment>
 		<TypeID>REEM004</TypeID>
 		<DisplayName>War Droid Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>9</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>
@@ -62,9 +62,9 @@
 	<Regiment>
 		<TypeID>REEM005</TypeID>
 		<DisplayName>Dark Trooper Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>12</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>
@@ -79,9 +79,9 @@
 	<Regiment>
 		<TypeID>REAL001</TypeID>
 		<DisplayName>Alliance Fleet Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>8</ConstructionCost>
 		<MaintenanceCost>6</MaintenanceCost>
 		<AttackRating>6</AttackRating>
@@ -93,9 +93,9 @@
 	<Regiment>
 		<TypeID>REAL002</TypeID>
 		<DisplayName>Alliance Army Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<AttackRating>3</AttackRating>
@@ -107,9 +107,9 @@
 	<Regiment>
 		<TypeID>REAL003</TypeID>
 		<DisplayName>Sullustan Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>1</MaintenanceCost>
 		<AttackRating>1</AttackRating>
@@ -121,9 +121,9 @@
 	<Regiment>
 		<TypeID>REAL004</TypeID>
 		<DisplayName>Mon Calamari regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>6</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<AttackRating>2</AttackRating>
@@ -135,9 +135,9 @@
 	<Regiment>
 		<TypeID>REAL005</TypeID>
 		<DisplayName>Wookie Regiment</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>10</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
 		<AttackRating>8</AttackRating>

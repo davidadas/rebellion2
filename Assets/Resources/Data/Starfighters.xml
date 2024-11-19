@@ -6,9 +6,9 @@
 	<Starfighter>
 		<TypeID>SFEM01</TypeID>
 		<DisplayName>TIE Fighter Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -29,9 +29,9 @@
 	<Starfighter>
 		<TypeID>SFEM02</TypeID>
 		<DisplayName>TIE Bomber Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -52,9 +52,9 @@
 	<Starfighter>
 		<TypeID>SFEM03</TypeID>
 		<DisplayName>TIE Interceptor Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>3</ConstructionCost>
 		<MaintenanceCost>3</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -75,9 +75,9 @@
 	<Starfighter>
 		<TypeID>SFEM04</TypeID>
 		<DisplayName>TIE Defender Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNEMP1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>7</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -101,9 +101,9 @@
 	<Starfighter>
 		<TypeID>SFAL01</TypeID>
 		<DisplayName>Y-Wing Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -124,9 +124,9 @@
 	<Starfighter>
 		<TypeID>SFAL02</TypeID>
 		<DisplayName>X-Wing Squadron</DisplayName>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
 		<SquadronSize>12</SquadronSize>
@@ -146,9 +146,9 @@
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFAL03</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<DisplayName>A-Wing Squadron</DisplayName>
 		<ConstructionCost>5</ConstructionCost>
 		<MaintenanceCost>4</MaintenanceCost>
@@ -169,9 +169,9 @@
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFAL04</TypeID>
-		<AllowedOwnerTypeIDs>
+		<AllowedOwnerInstanceIDs>
 			<String>FNALL1</String>
-		</AllowedOwnerTypeIDs>
+		</AllowedOwnerInstanceIDs>
 		<DisplayName>B-Wing Squadron</DisplayName>
 		<ConstructionCost>7</ConstructionCost>
 		<MaintenanceCost>8</MaintenanceCost>
