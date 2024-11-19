@@ -1,5 +1,7 @@
 using System;
 
+using ObjectExtensions;
+
 [PersistableObject]
 public class Technology
 {
@@ -7,28 +9,37 @@ public class Technology
     [PersistableInclude(typeof(CapitalShip))]
     [PersistableInclude(typeof(SpecialForces))]
     [PersistableInclude(typeof(Starfighter))]
-    public SceneNode Node { get; set; }
+    public IManufacturable Manufacturable { get; set; }
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor used for serialization.
     /// </summary>
     public Technology() { }
 
     /// <summary>
-    /// Initializes the reference node with a scene node, which is the object to be referenced.
+    /// Initializes the technology with an <see cref="IManufacturable"/> reference. 
     /// </summary>
-    /// <param name="node">The scene node to reference.</param>
-    public Technology(SceneNode node)
+    /// <param name="manufacturable">The <see cref="IManufacturable"/> to reference.</param>
+    public Technology(IManufacturable manufacturable)
     {
-        Node = node;
+        Manufacturable = manufacturable;
     }
 
     /// <summary>
-    /// Gets the referenced scene node.
+    /// Gets the referenced manufacturable.
     /// </summary>
     /// <returns></returns>
-    public SceneNode GetReference()
+    public IManufacturable GetReference()
     {
-        return Node;
+        return Manufacturable;
+    }
+
+    /// <summary>
+    /// Gets a deep copy of the referenced manufacturable.
+    /// </summary>
+    /// <returns>The deep copy of the referenced manufacturable.</returns>
+    public IManufacturable GetCopy()
+    {
+        return Manufacturable.GetDeepCopy();
     }
 }

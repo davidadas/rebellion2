@@ -113,7 +113,7 @@ public class Faction : GameEntity
     /// <param name="node">The technology node to add.</param>
     public void AddTechnologyNode(int level, Technology node)
     {
-        SceneNode tech = node.GetReference();
+        SceneNode tech = node.GetReference() as SceneNode;
         Type technologyType = tech.GetType();
 
         // Check if the technology is manufacturable.

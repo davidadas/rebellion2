@@ -52,8 +52,9 @@ public sealed class GameBuilder
         {
             foreach (IManufacturable technology in combinedTechnologies)
             {
-                Technology reference = new Technology(technology as SceneNode);
-                foreach (string allowedOwnerInstanceID in reference.GetReference().AllowedOwnerInstanceIDs)
+                Technology reference = new Technology(technology);
+                SceneNode sceneNode = technology as SceneNode;
+                foreach (string allowedOwnerInstanceID in sceneNode.AllowedOwnerInstanceIDs)
                 {
                     if (allowedOwnerInstanceID == faction.InstanceID)
                     {
