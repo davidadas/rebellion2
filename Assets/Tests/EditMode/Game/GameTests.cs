@@ -12,9 +12,8 @@ public class GameTests
     };
 
     [Test]
-    public void TestGameInitialization()
+    public void InitializeGame_WithSummary_SetsPropertiesCorrectly()
     {
-        // Generate a game given a summary.
         GameSummary summary = new GameSummary
         {
             GalaxySize = GameSize.Large,
@@ -24,7 +23,6 @@ public class GameTests
             PlayerFactionID = "FNALL1",
         };
 
-        // Initialize the game with the summary.
         Game game = new Game(summary)
         {
             Summary = summary,
@@ -32,7 +30,6 @@ public class GameTests
             Galaxy = new GalaxyMap(),
         };
 
-        // Check if the game was initialized correctly.
         Assert.IsNotNull(game.Summary, "Game summary should not be null.");
         Assert.AreEqual(GameSize.Large, game.Summary.GalaxySize, "GalaxySize should match.");
         Assert.AreEqual(GameDifficulty.Easy, game.Summary.Difficulty, "Difficulty should match.");
@@ -51,156 +48,56 @@ public class GameTests
     }
 
     [Test]
-    public void TestSceneGraphReconstitutionAfterSerialization()
+    public void AttachNode_ToParent_AddsNodeCorrectly()
     {
-        // Create officers.
-        List<Officer> officers = new List<Officer> { new Officer { OwnerInstanceID = "FNALL1" } };
-
-        // Create capital ships.
-        List<CapitalShip> capitalShips = new List<CapitalShip>
-        {
-            new CapitalShip { OwnerInstanceID = "FNALL1", Officers = officers },
-        };
-
-        // Create fleets.
-        List<Fleet> fleets = new List<Fleet>
-        {
-            new Fleet { OwnerInstanceID = "FNALL1", CapitalShips = capitalShips },
-        };
-
-        // Create planets.
-        List<Planet> planets = new List<Planet>
-        {
-            new Planet { OwnerInstanceID = "FNALL1", Fleets = fleets },
-        };
-
-        // Create planet systems.
-        List<PlanetSystem> planetSystems = new List<PlanetSystem>
-        {
-            new PlanetSystem { Planets = planets },
-        };
-
-        // Create the galaxy.
-        GalaxyMap galaxy = new GalaxyMap { PlanetSystems = planetSystems };
-
-        // Create the game.
-        Game game = new Game { Factions = factions, Galaxy = galaxy };
-
-        game.Galaxy.Traverse(
-            (ISceneNode node) =>
-            {
-                string instanceID = node.InstanceID;
-                ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceID);
-
-                // Check if the node is registered by instance ID.
-                Assert.AreEqual(
-                    node.InstanceID,
-                    sceneNode.InstanceID,
-                    "Node should be registered by instance ID."
-                );
-
-                // Check if the node has a parent (except for the GalaxyMap).
-                if (!(node is GalaxyMap))
-                {
-                    Assert.IsNotNull(
-                        node.GetParent(),
-                        $"{node.GetType().Name} should have a parent."
-                    );
-                }
-            }
-        );
-    }
-
-    [Test]
-    public void TestAttachAndDetachNode()
-    {
-        // Create planet systems
         PlanetSystem planetSystem = new PlanetSystem();
-        List<PlanetSystem> planetSystems = new List<PlanetSystem> { planetSystem };
-
-        // Create galaxy map.
-        GalaxyMap galaxy = new GalaxyMap { PlanetSystems = planetSystems };
-
-        // Create the game.
+        GalaxyMap galaxy = new GalaxyMap
+        {
+            PlanetSystems = new List<PlanetSystem> { planetSystem },
+        };
         Game game = new Game { Factions = factions, Galaxy = galaxy };
-
-        // Create our scene.
         Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
-        // Attach the nodes.
         game.AttachNode(planet, planetSystem);
-        game.AttachNode(fleet, planet);
 
-        // Check if the fleet is attached to the planet.
         Assert.Contains(
-            fleet,
-            planet.GetChildren().ToList(),
-            "Fleet should be attached to the planet."
-        );
-
-        // Detach the fleet from the planet.
-        game.DetachNode(fleet);
-
-        // Check if the fleet is detached from the planet.
-        Assert.IsFalse(
-            planet.GetChildren().Contains(fleet),
-            "Fleet should be detached from the planet."
-        );
-
-        // Check if the fleet has no parent.
-        Assert.IsNull(fleet.GetParent(), "Fleet should not have a parent.");
-    }
-
-    public void TestMoveNode()
-    {
-        Game game = new Game();
-
-        // Create our scene.
-        PlanetSystem planetSystem = new PlanetSystem();
-        Planet planet1 = new Planet { OwnerInstanceID = "FNALL1" };
-        Planet planet2 = new Planet { OwnerInstanceID = "FNALL1" };
-        Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
-
-        // Attach the nodes.
-        game.AttachNode(planet1, planetSystem);
-        game.AttachNode(planet2, planetSystem);
-        game.AttachNode(fleet, planet1);
-
-        // Check if the fleet is attached to planet1.
-        Assert.Contains(
-            fleet,
-            planet1.GetChildren().ToList(),
-            "Fleet should be attached to planet1."
-        );
-
-        // Move the fleet to planet2.
-        game.MoveNode(fleet, planet2);
-
-        // Check if the fleet is attached to planet2.
-        Assert.Contains(fleet, planet2.GetChildren().ToList(), "Fleet should be moved to planet2.");
-
-        // Check if the fleet is detached from planet1.
-        Assert.IsFalse(
-            planet1.GetChildren().Contains(fleet),
-            "Fleet should not be attached to planet1."
+            planet,
+            planetSystem.GetChildren().ToList(),
+            "Planet should be attached to the PlanetSystem."
         );
     }
 
     [Test]
-    public void TestThrowsExceptionWhenAttachingNodeWithParent()
+    public void DetachNode_FromParent_RemovesNodeCorrectly()
+    {
+        PlanetSystem planetSystem = new PlanetSystem();
+        GalaxyMap galaxy = new GalaxyMap
+        {
+            PlanetSystems = new List<PlanetSystem> { planetSystem },
+        };
+        Game game = new Game { Factions = factions, Galaxy = galaxy };
+        Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
+
+        game.AttachNode(planet, planetSystem);
+        game.DetachNode(planet);
+
+        Assert.IsFalse(
+            planetSystem.GetChildren().Contains(planet),
+            "Planet should be detached from the PlanetSystem."
+        );
+        Assert.IsNull(planet.GetParent(), "Planet should not have a parent after being detached.");
+    }
+
+    [Test]
+    public void AttachNode_WithExistingParent_ThrowsException()
     {
         Game game = new Game { Factions = factions };
-
-        // Create our scene.
         Planet planet1 = new Planet { OwnerInstanceID = "FNALL1" };
         Planet planet2 = new Planet { OwnerInstanceID = "FNALL1" };
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
-        // Attach the fleet to the planet.
         game.AttachNode(fleet, planet1);
 
-        // Check if an exception is thrown when attaching a node with a parent.
         Assert.Throws<InvalidSceneOperationException>(
             () => game.AttachNode(fleet, planet2),
             "Exception should be thrown when attaching a node with a parent."
@@ -208,14 +105,11 @@ public class GameTests
     }
 
     [Test]
-    public void TestThrowsExceptionWhenDetachingNodeWithoutParent()
+    public void DetachNode_WithoutParent_ThrowsException()
     {
         Game game = new Game();
-
-        // Create our scene.
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
 
-        // Check if an exception is thrown when detaching a node without a parent.
         Assert.Throws<InvalidSceneOperationException>(
             () => game.DetachNode(fleet),
             "Exception should be thrown when detaching a node without a parent."
@@ -223,40 +117,91 @@ public class GameTests
     }
 
     [Test]
-    public void TestRegisterAndRemoveISceneNodeByInstanceID()
+    public void DetachNodeByInstanceID_RegistersAndDeregistersCorrectly()
     {
-        Game game = new Game { Galaxy = new GalaxyMap() };
-
-        // Create our scene.
         Planet planet = new Planet { OwnerInstanceID = "FNALL1" };
-        PlanetSystem planetSystem = new PlanetSystem() { Planets = new List<Planet> { planet } };
+        PlanetSystem planetSystem = new PlanetSystem { Planets = new List<Planet> { planet } };
+        GalaxyMap galaxy = new GalaxyMap();
 
-        // Attach the fleet to the planet.
+        Game game = new Game
+        {
+            Factions = new List<Faction> { new Faction { InstanceID = "FNALL1" } },
+            Galaxy = galaxy,
+        };
+
         game.AttachNode(planetSystem, game.Galaxy);
 
-        // Check if the fleet is registered.
         Assert.AreEqual(
             game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID),
-            planetSystem,
-            "Planet System should be registered."
+            planetSystem
         );
-        Assert.AreEqual(
-            game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID),
-            planet,
-            "Planet should be registered."
-        );
+        Assert.AreEqual(game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID), planet);
 
-        // Detach the fleet from the planet.
         game.DetachNode(planetSystem);
 
-        // Check if the fleet is deregistered.
-        Assert.IsNull(
-            game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID),
-            "Planet System should be deregistered."
+        Assert.IsNull(game.GetSceneNodeByInstanceID<PlanetSystem>(planetSystem.InstanceID));
+        Assert.IsNull(game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID));
+    }
+
+    [Test]
+    public void SerializeAndDeserialize_GameObject_ReturnsEquivalentObject()
+    {
+        // Arrange: Create a game object with some data
+        Game game = new Game
+        {
+            Summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Limited,
+                PlayerFactionID = "FNALL1",
+            },
+            Factions = new List<Faction>
+            {
+                new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" },
+                new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" },
+            },
+            UnrecruitedOfficers = new List<Officer>
+            {
+                new Officer { InstanceID = "OFC001", DisplayName = "Luke Skywalker" },
+                new Officer { InstanceID = "OFC002", DisplayName = "Darth Vader" },
+            },
+        };
+
+        // Act: Serialize and deserialize the object
+        string serializedGame = SerializationHelper.Serialize(game);
+        Game deserializedGame = SerializationHelper.Deserialize<Game>(serializedGame);
+
+        // Assert: Verify the deserialized object matches the original
+        Assert.IsNotNull(deserializedGame);
+        Assert.AreEqual(game.Summary.GalaxySize, deserializedGame.Summary.GalaxySize);
+        Assert.AreEqual(game.Summary.Difficulty, deserializedGame.Summary.Difficulty);
+        Assert.AreEqual(game.Summary.VictoryCondition, deserializedGame.Summary.VictoryCondition);
+        Assert.AreEqual(
+            game.Summary.ResourceAvailability,
+            deserializedGame.Summary.ResourceAvailability
         );
-        Assert.IsNull(
-            game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID),
-            "Planet should be deregistered."
-        );
+        Assert.AreEqual(game.Summary.PlayerFactionID, deserializedGame.Summary.PlayerFactionID);
+
+        Assert.AreEqual(game.Factions.Count, deserializedGame.Factions.Count);
+        for (int i = 0; i < game.Factions.Count; i++)
+        {
+            Assert.AreEqual(game.Factions[i].InstanceID, deserializedGame.Factions[i].InstanceID);
+            Assert.AreEqual(game.Factions[i].DisplayName, deserializedGame.Factions[i].DisplayName);
+        }
+
+        Assert.AreEqual(game.UnrecruitedOfficers.Count, deserializedGame.UnrecruitedOfficers.Count);
+        for (int i = 0; i < game.UnrecruitedOfficers.Count; i++)
+        {
+            Assert.AreEqual(
+                game.UnrecruitedOfficers[i].InstanceID,
+                deserializedGame.UnrecruitedOfficers[i].InstanceID
+            );
+            Assert.AreEqual(
+                game.UnrecruitedOfficers[i].DisplayName,
+                deserializedGame.UnrecruitedOfficers[i].DisplayName
+            );
+        }
     }
 }

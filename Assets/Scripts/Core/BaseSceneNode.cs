@@ -121,7 +121,7 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     /// Sets the owner type id. If the ID is not in the allowed list, throws an exception.
     /// </summary>
     /// <param name="value">The owner type id to set.</param>
-    /// <exception cref="ArgumentException">Thrown when the owner type id is invalid.</exception>
+    /// <exception cref="GameStateException">Thrown when the owner type id is invalid.</exception>
     private void SetOwnerInstanceID(string value)
     {
         if (
@@ -134,7 +134,7 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
         }
         else
         {
-            throw new ArgumentException(
+            throw new GameStateException(
                 $"Invalid owner type id \"{value}\" for object \"{DisplayName}\"."
             );
         }

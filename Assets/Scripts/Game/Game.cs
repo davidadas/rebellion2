@@ -116,10 +116,10 @@ public class Game
         node.SetParent(parent);
 
         // Register the node to the faction's list of owned units.
-        // RegisterOwnedUnit(node);
+        RegisterOwnedUnit(node);
 
-        // // Register the node and its children.
-        // node.Traverse(AddSceneNodeByInstanceID);
+        // Register the node and its children.
+        node.Traverse(AddSceneNodeByInstanceID);
     }
 
     /// <summary>
@@ -144,41 +144,6 @@ public class Game
 
         // Deregister the node and its children.
         node.Traverse(RemoveSceneNodeByInstanceID);
-    }
-
-    /// <summary>
-    /// Moves a node from one parent to another.
-    /// </summary>
-    /// <param name="node">The node to move.</param>
-    /// <param name="parent">The new parent to move the node to.</param>
-    /// <param name="recurse">Whether to move the node's children as well.</param>
-    public void MoveNode(ISceneNode node, ISceneNode parent, bool? recurse = false)
-    {
-        if (node.GetParent() == null)
-        {
-            throw new InvalidSceneOperationException(
-                $"Cannot move node \"{node.DisplayName}\" because it does not have a parent."
-            );
-        }
-
-        // Remove the node from its current parent and add it to the new parent.
-        node.GetParent().RemoveChild(node);
-        parent.AddChild(node);
-        node.SetParent(parent);
-
-        if (recurse == true)
-        {
-            // Register the node and its children.
-            node.Traverse(
-                (ISceneNode node) =>
-                {
-                    foreach (ISceneNode child in node.GetChildren())
-                    {
-                        MoveNode(child, node);
-                    }
-                }
-            );
-        }
     }
 
     /// <summary>

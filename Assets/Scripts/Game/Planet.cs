@@ -185,7 +185,7 @@ public class Planet : ContainerNode
     {
         if (unit is ISceneNode sceneNode && sceneNode.GetParent() == null)
         {
-            throw new ArgumentException(
+            throw new GameStateException(
                 $"Unit {sceneNode.DisplayName} must have a parent to be added to the manufacturing queue."
             );
         }
@@ -237,6 +237,10 @@ public class Planet : ContainerNode
     /// <param name="fleet">The fleet to add.</param>
     public void AddFleet(Fleet fleet)
     {
+        if (this.OwnerInstanceID != fleet.OwnerInstanceID)
+        {
+            throw new SceneAccessException(fleet, this);
+        }
         Fleets.Add(fleet);
     }
 
