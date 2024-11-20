@@ -15,7 +15,7 @@ public enum PrimaryWeaponType
 /// <summary>
 /// Represents a capital ship in the game.
 /// </summary>
-public class CapitalShip : SceneNode, IManufacturable, IMovable
+public class CapitalShip : ContainerNode, IManufacturable, IMovable
 {
     // Manufacture Info
     public string ProducerOwnerID { get; set; }
@@ -131,7 +131,7 @@ public class CapitalShip : SceneNode, IManufacturable, IMovable
     /// </summary>
     /// <param name="child">The child to add</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -151,7 +151,7 @@ public class CapitalShip : SceneNode, IManufacturable, IMovable
     /// Adds a child to the capital ship.
     /// </summary>
     /// <param name="child">The child to remove</param>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         if (child is Starfighter starfighter)
         {
@@ -189,11 +189,11 @@ public class CapitalShip : SceneNode, IManufacturable, IMovable
     /// Retrieves the children of the node.
     /// </summary>
     /// <returns>The children of the node.</returns>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
         return Officers
-            .Cast<SceneNode>()
-            .Concat(Starfighters.Cast<SceneNode>())
-            .Concat(Regiments.Cast<SceneNode>());
+            .Cast<ISceneNode>()
+            .Concat(Starfighters.Cast<ISceneNode>())
+            .Concat(Regiments.Cast<ISceneNode>());
     }
 }

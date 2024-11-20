@@ -12,7 +12,7 @@ public static class GameLogger
         Info,
         Warning,
         Error,
-        Debug
+        Debug,
     }
 
     private static string logFilePath = $"{Application.persistentDataPath}/log.txt";
@@ -25,7 +25,11 @@ public static class GameLogger
     /// <param name="filePath">Path to the log file. Defaults to Application.persistentDataPath if null.</param>
     /// <param name="enableFileLogging">Whether to log messages to a file.</param>
     /// <param name="addTimestamps">Whether to include timestamps in log messages.</param>
-    public static void Configure(string filePath = null, bool enableFileLogging = false, bool addTimestamps = true)
+    public static void Configure(
+        string filePath = null,
+        bool enableFileLogging = false,
+        bool addTimestamps = true
+    )
     {
         logFilePath = filePath ?? logFilePath;
         logToFile = enableFileLogging;
@@ -72,7 +76,9 @@ public static class GameLogger
 
     private static string FormatMessage(string message, LogLevel level)
     {
-        string timestamp = includeTimestamp ? $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] " : string.Empty;
+        string timestamp = includeTimestamp
+            ? $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] "
+            : string.Empty;
         return $"{timestamp}[{level}] {message}";
     }
 

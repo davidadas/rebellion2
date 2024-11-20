@@ -22,7 +22,7 @@ public class Game
 
     // Scene Nodes
     [PersistableIgnore]
-    public Dictionary<string, SceneNode> NodesByInstanceID = new Dictionary<string, SceneNode>();
+    public Dictionary<string, ISceneNode> NodesByInstanceID = new Dictionary<string, ISceneNode>();
 
     // Game Objects
     public List<Faction> Factions = new List<Faction>();
@@ -102,7 +102,7 @@ public class Game
     /// <param name="node">The node to attach.</param>
     /// <param name="parent">The parent node to attach the node to.</param>
     /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
-    public void AttachNode(SceneNode node, SceneNode parent)
+    public void AttachNode(ISceneNode node, ISceneNode parent)
     {
         // If the node already has a parent, throw an exception.
         if (node.GetParent() != null)
@@ -116,10 +116,10 @@ public class Game
         node.SetParent(parent);
 
         // Register the node to the faction's list of owned units.
-        RegisterOwnedUnit(node);
+        // RegisterOwnedUnit(node);
 
-        // Register the node and its children.
-        node.Traverse(AddSceneNodeByInstanceID);
+        // // Register the node and its children.
+        // node.Traverse(AddSceneNodeByInstanceID);
     }
 
     /// <summary>
@@ -127,7 +127,7 @@ public class Game
     /// </summary>
     /// <param name="node">The node to detach.</param>
     /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be detached.</exception>
-    public void DetachNode(SceneNode node)
+    public void DetachNode(ISceneNode node)
     {
         if (node.GetParent() == null)
         {
@@ -152,7 +152,7 @@ public class Game
     /// <param name="node">The node to move.</param>
     /// <param name="parent">The new parent to move the node to.</param>
     /// <param name="recurse">Whether to move the node's children as well.</param>
-    public void MoveNode(SceneNode node, SceneNode parent, bool? recurse = false)
+    public void MoveNode(ISceneNode node, ISceneNode parent, bool? recurse = false)
     {
         if (node.GetParent() == null)
         {
@@ -170,9 +170,9 @@ public class Game
         {
             // Register the node and its children.
             node.Traverse(
-                (SceneNode node) =>
+                (ISceneNode node) =>
                 {
-                    foreach (SceneNode child in node.GetChildren())
+                    foreach (ISceneNode child in node.GetChildren())
                     {
                         MoveNode(child, node);
                     }
@@ -185,7 +185,7 @@ public class Game
     /// Removes a reference node from the game.
     /// </summary>
     /// <param name="node">The game node to remove as a reference.</param>
-    public void AddSceneNodeByInstanceID(SceneNode node)
+    public void AddSceneNodeByInstanceID(ISceneNode node)
     {
         NodesByInstanceID.TryAdd(node.InstanceID, node);
     }
@@ -194,7 +194,7 @@ public class Game
     /// Deregisters a scene node from the game.
     /// </summary>
     /// <param name="node">The scene node to deregister.</param>
-    public void RemoveSceneNodeByInstanceID(SceneNode node)
+    public void RemoveSceneNodeByInstanceID(ISceneNode node)
     {
         NodesByInstanceID.Remove(node.InstanceID);
     }
@@ -208,7 +208,7 @@ public class Game
     public T GetSceneNodeByInstanceID<T>(string instanceId)
         where T : class
     {
-        if (NodesByInstanceID.TryGetValue(instanceId, out SceneNode node))
+        if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
         {
             return node as T;
         }
@@ -223,13 +223,13 @@ public class Game
     /// </summary>
     /// <param name="instanceIDs">The list of instance IDs to retrieve.</param>
     /// <returns>A list of scene nodes with the specified instance IDs.</returns>
-    public List<SceneNode> GetSceneNodesByInstanceIDs(List<string> instanceIDs)
+    public List<ISceneNode> GetSceneNodesByInstanceIDs(List<string> instanceIDs)
     {
-        List<SceneNode> matchingNodes = new List<SceneNode>();
+        List<ISceneNode> matchingNodes = new List<ISceneNode>();
 
         foreach (var instanceId in instanceIDs)
         {
-            if (NodesByInstanceID.TryGetValue(instanceId, out SceneNode node))
+            if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
             {
                 matchingNodes.Add(node);
             }
@@ -245,7 +245,7 @@ public class Game
     /// <param name="ownerInstanceId">The OwnerInstanceID of the units.</param>
     /// <returns>A list of units of type T with the specified OwnerInstanceID.</returns>
     public List<T> GetSceneNodesByOwnerInstanceID<T>(string ownerInstanceId)
-        where T : GameEntity
+        where T : ISceneNode
     {
         return NodesByInstanceID
             .Values.OfType<T>() // Filter nodes by the specified type T
@@ -263,7 +263,7 @@ public class Game
         var result = new List<T>();
 
         // Recursive function to traverse nodes.
-        void Traverse(SceneNode node)
+        void Traverse(ISceneNode node)
         {
             // If the current node is of type T, add it to the result list and stop traversing this branch.
             if (node is T typedNode)
@@ -289,7 +289,7 @@ public class Game
     /// Registers a unit to the faction that owns the unit.
     /// </summary>
     /// <param name="node">The unit to register.</param>
-    public void RegisterOwnedUnit(SceneNode node)
+    public void RegisterOwnedUnit(ISceneNode node)
     {
         if (node.OwnerInstanceID != null)
         {
@@ -301,7 +301,7 @@ public class Game
     /// Deregisters a unit from the faction that owns the unit.
     /// </summary>
     /// <param name="node">The unit to deregister.</param>
-    public void DeregsiterOwnedUnit(SceneNode node)
+    public void DeregsiterOwnedUnit(ISceneNode node)
     {
         if (node.OwnerInstanceID != null)
         {
@@ -415,7 +415,7 @@ public class Game
     private GalaxyMap initializeGalaxy(GalaxyMap galaxy)
     {
         galaxy.Traverse(
-            (SceneNode node) =>
+            (ISceneNode node) =>
             {
                 // Register the node by its instance ID.
                 AddSceneNodeByInstanceID(node);
@@ -427,7 +427,7 @@ public class Game
                 }
 
                 // Set the parent of each child node.
-                foreach (SceneNode child in node.GetChildren())
+                foreach (ISceneNode child in node.GetChildren())
                 {
                     child.SetParent(node);
                 }

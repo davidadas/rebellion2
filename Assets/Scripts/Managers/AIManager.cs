@@ -57,7 +57,8 @@ public class AIManager
     /// <returns></returns>
     private List<Officer> GetAvailableOfficers(string ownerInstanceId)
     {
-        return game.GetSceneNodesByOwnerInstanceID<Officer>(ownerInstanceId).FindAll(o => o.IsMovable());
+        return game.GetSceneNodesByOwnerInstanceID<Officer>(ownerInstanceId)
+            .FindAll(o => o.IsMovable());
     }
 
     /// <summary>

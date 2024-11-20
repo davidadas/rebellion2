@@ -113,7 +113,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     /// <returns></returns>
     public bool IsOnMission()
     {
-        SceneNode parent = GetParent();
+        ISceneNode parent = GetParent();
 
         // Ensure the parent is a mission and that the mission is not complete.
         return parent is Mission && !(parent as Mission).IsComplete();

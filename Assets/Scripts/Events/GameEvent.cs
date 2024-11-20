@@ -15,7 +15,7 @@ using System.Collections.Generic;
 /// Events can lead to the execution of one or more Actions but are primarily concerned
 /// with the context and timing of those actions.
 /// </remarks>
-public class GameEvent : GameEntity
+public class GameEvent : BaseGameEntity
 {
     // Event Properties
     public bool IsRepeatable { get; set; }

@@ -40,7 +40,7 @@ public class MissionManager
         string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        SceneNode target
+        ISceneNode target
     )
     {
         return missionType switch
@@ -67,11 +67,15 @@ public class MissionManager
     /// <param name="type"></param>
     /// <param name="participant"></param>
     /// <param name="target"></param>
-    public void InitiateMission(MissionType type, IMissionParticipant participant, SceneNode target)
+    public void InitiateMission(
+        MissionType type,
+        IMissionParticipant participant,
+        ISceneNode target
+    )
     {
         List<IMissionParticipant> mainParticipants = new List<IMissionParticipant> { participant };
         List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-        string ownerInstanceId = (participant as SceneNode).OwnerInstanceID;
+        string ownerInstanceId = participant.OwnerInstanceID;
 
         InitiateMission(type, ownerInstanceId, mainParticipants, decoyParticipants, target);
     }
@@ -90,7 +94,7 @@ public class MissionManager
         string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        SceneNode target
+        ISceneNode target
     )
     {
         if (mainParticipants.Count == 0)
@@ -105,7 +109,7 @@ public class MissionManager
         // Get the nearest planet related to the target and the participants' current planet.
         Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
         IMissionParticipant firstParticipant = mainParticipants.FirstOrDefault();
-        Planet currentPlanet = (firstParticipant as SceneNode).GetParentOfType<Planet>();
+        Planet currentPlanet = firstParticipant.GetParentOfType<Planet>();
 
         // Instantiate the mission based on the mission type.
         Mission mission = CreateMission(

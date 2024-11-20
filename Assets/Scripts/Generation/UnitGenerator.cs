@@ -5,7 +5,7 @@ using System;
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
-    where TUnit : GameEntity
+    where TUnit : BaseGameEntity
 {
     public TUnit[] UnitPool { get; set; }
     public TUnit[] SelectedUnits { get; set; }
@@ -24,7 +24,7 @@ class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
 /// </summary>
 /// <typeparam name="TUnit"></typeparam>
 public abstract class UnitGenerator<TUnit> : IUnitGenerator<TUnit, PlanetSystem>
-    where TUnit : GameEntity
+    where TUnit : BaseGameEntity
 {
     private GameSummary summary;
     private IResourceManager resourceManager;

@@ -30,7 +30,7 @@ public class GameManager
     private readonly Stopwatch stopwatch;
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="game"></param>
     public GameManager(Game game)

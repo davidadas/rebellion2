@@ -88,11 +88,11 @@ public class AreOnSamePlanetConditional : GameConditional
     public override bool IsMet(Game game)
     {
         List<string> instanceIDs = (List<string>)Parameters["UnitInstanceIDs"];
-        List<SceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
+        List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
         Planet comparator = null;
 
         // Check if all units are on the same planet.
-        foreach (SceneNode node in sceneNodes)
+        foreach (ISceneNode node in sceneNodes)
         {
             if (node == null)
             {
@@ -128,10 +128,11 @@ public class AreOnOpposingFactionsConditional : GameConditional
         List<string> instanceIDs = (List<string>)Parameters["UnitInstanceIDs"];
 
         // Get the scene nodes for the units.
-        List<SceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
+        List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
 
         // Check if the units are on opposing factions.
-        return sceneNodes.Count == 2 && sceneNodes[0].OwnerInstanceID != sceneNodes[1].OwnerInstanceID;
+        return sceneNodes.Count == 2
+            && sceneNodes[0].OwnerInstanceID != sceneNodes[1].OwnerInstanceID;
     }
 }
 
@@ -149,7 +150,7 @@ public class IsOnMissionConditional : GameConditional
     public override bool IsMet(Game game)
     {
         string instanceID = (string)Value;
-        SceneNode sceneNode = game.GetSceneNodeByInstanceID<SceneNode>(instanceID);
+        ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceID);
 
         // Check if the unit is on a mission.
         return sceneNode != null && sceneNode.GetParent() is Mission;
@@ -170,9 +171,9 @@ public class IsMovableConditional : GameConditional
     public override bool IsMet(Game game)
     {
         string instanceID = (string)Value;
-        SceneNode sceneNode = game.GetSceneNodeByInstanceID<SceneNode>(instanceID);
+        ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceID);
 
-        // Check if the SceneNode implements IMovable and is movable.
+        // Check if the ISceneNode implements IMovable and is movable.
         if (sceneNode is IMovable movable)
         {
             return movable.IsMovable();
@@ -197,7 +198,7 @@ public class AreOnPlanetConditional : GameConditional
     {
         // Get the instance IDs of the units to check.
         List<string> instanceIDs = (List<string>)Parameters["UnitInstanceIDs"];
-        List<SceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
+        List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(instanceIDs);
 
         // Check if all units are on a planet.
         return sceneNodes.All(node => node.GetParentOfType<Planet>() != null);

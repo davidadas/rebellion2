@@ -27,7 +27,7 @@ public enum PlanetSystemImportance
 /// Represents a system of planets, which is primarily a collection of planets.
 /// </summary>
 [PersistableObject]
-public class PlanetSystem : SceneNode
+public class PlanetSystem : ContainerNode
 {
     // Planet System Properties
     public GameSize Visibility { get; set; }
@@ -57,7 +57,7 @@ public class PlanetSystem : SceneNode
     /// Adds a planet to the planet system.
     /// </summary>
     /// <param name="child">The planet to add.</param>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         if (child is Planet planet)
         {
@@ -69,7 +69,7 @@ public class PlanetSystem : SceneNode
     /// Removes a planet from the planet system.
     /// </summary>
     /// <param name="child">The planet to remove.</param>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         if (child is Planet planet)
         {
@@ -81,7 +81,7 @@ public class PlanetSystem : SceneNode
     /// Returns the planets in the planet system.
     /// </summary>
     /// <returns>The planets in the planet system.</returns>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
         return Planets.ToArray();
     }

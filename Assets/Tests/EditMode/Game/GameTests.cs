@@ -87,10 +87,10 @@ public class GameTests
         Game game = new Game { Factions = factions, Galaxy = galaxy };
 
         game.Galaxy.Traverse(
-            (SceneNode node) =>
+            (ISceneNode node) =>
             {
                 string instanceID = node.InstanceID;
-                SceneNode sceneNode = game.GetSceneNodeByInstanceID<SceneNode>(instanceID);
+                ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceID);
 
                 // Check if the node is registered by instance ID.
                 Assert.AreEqual(
@@ -223,9 +223,8 @@ public class GameTests
     }
 
     [Test]
-    public void TestRegisterAndRemoveSceneNodeByInstanceID()
+    public void TestRegisterAndRemoveISceneNodeByInstanceID()
     {
-        ;
         Game game = new Game { Galaxy = new GalaxyMap() };
 
         // Create our scene.

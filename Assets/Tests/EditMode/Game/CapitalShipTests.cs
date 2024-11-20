@@ -167,10 +167,10 @@ public class CapitalShipTests
         capitalShip.AddRegiment(regiment);
 
         // Retrieve the children of the capital ship.
-        IEnumerable<SceneNode> children = capitalShip.GetChildren();
+        IEnumerable<ISceneNode> children = capitalShip.GetChildren();
 
         // Ensure all added child nodes are returned as children.
-        List<SceneNode> expectedChildren = new List<SceneNode> { officer, starfighter, regiment };
+        List<ISceneNode> expectedChildren = new List<ISceneNode> { officer, starfighter, regiment };
         CollectionAssert.AreEquivalent(
             expectedChildren,
             children,

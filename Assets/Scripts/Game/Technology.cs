@@ -1,5 +1,4 @@
 using System;
-
 using ObjectExtensions;
 
 [PersistableObject]
@@ -17,7 +16,7 @@ public class Technology
     public Technology() { }
 
     /// <summary>
-    /// Initializes the technology with an <see cref="IManufacturable"/> reference. 
+    /// Initializes the technology with an <see cref="IManufacturable"/> reference.
     /// </summary>
     /// <param name="manufacturable">The <see cref="IManufacturable"/> to reference.</param>
     public Technology(IManufacturable manufacturable)

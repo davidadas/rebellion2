@@ -34,7 +34,7 @@ public class UnitManager
     /// <param name="movable"></param>
     private void IncrementMovement(IMovable movable)
     {
-        Planet destination = (movable as SceneNode).GetParentOfType<Planet>();
+        Planet destination = movable.GetParentOfType<Planet>();
 
         if (movable.MovementStatus == MovementStatus.InTransit && destination != null)
         {

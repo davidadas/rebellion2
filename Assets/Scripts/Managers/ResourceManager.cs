@@ -25,7 +25,7 @@ public interface IResourceManager
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     public T[] GetGameData<T>()
-        where T : GameEntity;
+        where T : BaseGameEntity;
 }
 
 /// <summary>
@@ -57,7 +57,7 @@ class ResourceManagerImpl : IResourceManager
     /// <typeparam name="T">The type of the scene node data.</typeparam>
     /// <returns>An array of scene node data of type T.</returns>
     public T[] GetGameData<T>()
-        where T : GameEntity
+        where T : BaseGameEntity
     {
         // Pluralize the type name to form the file path.
         string pluralizedType = $"{typeof(T).Name}s"; // Example: PlanetSystem -> PlanetSystems

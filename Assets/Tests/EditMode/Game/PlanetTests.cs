@@ -109,8 +109,8 @@ public class PlanetTests
         planet.AddChild(officer);
         planet.AddChild(building);
 
-        IEnumerable<SceneNode> children = planet.GetChildren();
-        List<SceneNode> expectedChildren = new List<SceneNode> { fleet, officer, building };
+        IEnumerable<ISceneNode> children = planet.GetChildren();
+        List<ISceneNode> expectedChildren = new List<ISceneNode> { fleet, officer, building };
 
         CollectionAssert.AreEquivalent(
             expectedChildren,

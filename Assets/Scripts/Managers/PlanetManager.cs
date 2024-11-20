@@ -42,18 +42,16 @@ public class PlanetManager
     /// <param name="quantity"></param>
     public void AddToManufacturingQueue(
         Planet planet,
-        SceneNode target,
+        ISceneNode target,
         IManufacturable manufacturable,
         int quantity
     )
     {
         for (int i = 0; i < quantity; i++)
         {
-            GameLogger.Log(
-                "Adding manufacturable to queue: " + (manufacturable as GameEntity).DisplayName
-            );
+            GameLogger.Log("Adding manufacturable to queue: " + manufacturable.GetDisplayName());
             IManufacturable clonedNode = manufacturable.GetDeepCopy();
-            game.AttachNode(clonedNode as SceneNode, target);
+            game.AttachNode(clonedNode, target);
             planet.AddToManufacturingQueue(clonedNode);
         }
     }
@@ -91,9 +89,9 @@ public class PlanetManager
                 {
                     GameLogger.Log(
                         "Manufacturable completed: "
-                            + (manufacturable as GameEntity).DisplayName
+                            + manufacturable.DisplayName
                             + " "
-                            + (manufacturable as SceneNode).GetParent().DisplayName
+                            + manufacturable.GetParent().DisplayName
                     );
                     // Decrement index to account for removed item.
                     productionQueue.RemoveAt(i--);
@@ -101,7 +99,7 @@ public class PlanetManager
                     manufacturable.SetManufacturingStatus(ManufacturingStatus.Complete);
 
                     // Send completed item to target.
-                    (manufacturable as IMovable).MoveTo((manufacturable as SceneNode).GetParent());
+                    (manufacturable as IMovable).MoveTo(manufacturable.GetParent());
                 }
             }
         }

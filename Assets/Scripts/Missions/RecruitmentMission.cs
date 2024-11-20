@@ -71,7 +71,7 @@ public class RecruitmentMission : Mission
                 + " to "
                 + planet.DisplayName
                 + " by "
-                + (MainParticipants[0] as SceneNode).DisplayName
+                + MainParticipants[0].DisplayName
         );
     }
 }

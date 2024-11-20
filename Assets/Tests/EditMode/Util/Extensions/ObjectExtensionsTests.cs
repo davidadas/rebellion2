@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-
 using ObjectExtensions;
 
 public class TestClass

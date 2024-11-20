@@ -9,7 +9,7 @@ public enum MessageType
     Resource,
 }
 
-public class Message : GameEntity
+public class Message : BaseGameEntity
 {
     public MessageType Type;
     public string Text;

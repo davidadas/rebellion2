@@ -9,7 +9,7 @@ using ICollectionExtensions;
 /// officers, regiments, missions, and buildings. It also has a popular support rating,
 /// which is a measure of how much the planet's population supports a given faction.
 /// </summary>
-public class Planet : SceneNode
+public class Planet : ContainerNode
 {
     // Distance Constants
     private const int DISTANCE_DIVISOR = 5;
@@ -94,7 +94,7 @@ public class Planet : SceneNode
     /// <summary>
     /// Sets the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionInstanceId">The type id of the faction.</param>
+    /// <param name="factionInstanceId">The instance ID of the faction.</param>
     /// <param name="support">The level of support.</param>
     public void SetPopularSupport(string factionInstanceId, int support)
     {
@@ -183,7 +183,7 @@ public class Planet : SceneNode
     /// <param name="unit"></param>
     public void AddToManufacturingQueue(IManufacturable unit)
     {
-        if (unit is SceneNode sceneNode && sceneNode.GetParent() == null)
+        if (unit is ISceneNode sceneNode && sceneNode.GetParent() == null)
         {
             throw new ArgumentException(
                 $"Unit {sceneNode.DisplayName} must have a parent to be added to the manufacturing queue."
@@ -396,7 +396,7 @@ public class Planet : SceneNode
     /// Adds a reference node to the game.
     /// </summary>
     /// <param name="node">The game node to add as a reference.</param>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         if (child is Fleet fleet)
         {
@@ -424,7 +424,7 @@ public class Planet : SceneNode
     /// Removes a child node from the planet.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         if (child is Fleet fleet)
         {
@@ -452,17 +452,17 @@ public class Planet : SceneNode
     /// Gets the child nodes of the planet.
     /// </summary>
     /// <returns>An array of child nodes.</returns>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
-        IEnumerable<SceneNode> buildings = Buildings
+        IEnumerable<ISceneNode> buildings = Buildings
             .Values.SelectMany(buildingList => buildingList)
-            .Cast<SceneNode>();
+            .Cast<ISceneNode>();
 
         return Fleets
-            .Cast<SceneNode>()
-            .Concat(Officers.Cast<SceneNode>())
-            .Concat(Missions.Cast<SceneNode>())
-            .Concat(Regiments.Cast<SceneNode>())
+            .Cast<ISceneNode>()
+            .Concat(Officers.Cast<ISceneNode>())
+            .Concat(Missions.Cast<ISceneNode>())
+            .Concat(Regiments.Cast<ISceneNode>())
             .Concat(buildings);
     }
 }

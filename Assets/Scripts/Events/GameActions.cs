@@ -10,7 +10,7 @@ public class MoveUnitsAction : GameAction
     public MoveUnitsAction()
         : base() { }
 
-    public MoveUnitsAction(List<SceneNode> nodes, SceneNode target)
+    public MoveUnitsAction(List<ISceneNode> nodes, ISceneNode target)
         : base(
             new Dictionary<string, object>
             {
@@ -29,7 +29,7 @@ public class MoveUnitsAction : GameAction
         string targetInstanceId = (string)Parameters["TargetInstanceID"];
 
         IMovable movable = game.GetSceneNodeByInstanceID<IMovable>(unitInstanceIds[0]) as IMovable;
-        SceneNode target = game.GetSceneNodeByInstanceID<SceneNode>(targetInstanceId);
+        ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId);
 
         movable.MoveTo(target);
     }

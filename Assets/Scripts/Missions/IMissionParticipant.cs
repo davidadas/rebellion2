@@ -14,7 +14,7 @@ public enum MissionParticipantSkill
 /// Doing so allows for the calculation of mission success probabilities as
 /// well as to improve skills after a mission is completed.
 /// </summary>
-public interface IMissionParticipant
+public interface IMissionParticipant : ISceneNode
 {
     // Mission Stats.
     public Dictionary<MissionParticipantSkill, int> Skills { get; set; }
