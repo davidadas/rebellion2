@@ -5,7 +5,7 @@ using System.Linq;
 /// <summary>
 /// Represents a mission in the game.
 /// </summary>
-public abstract class Mission : SceneNode
+public abstract class Mission : ContainerNode
 {
     // Mission Properties
     public string Name { get; set; }
@@ -254,7 +254,7 @@ public abstract class Mission : SceneNode
         double defenseScore = 0;
 
         // Sum the defense ratings of all regiments on the planet.
-        foreach (SceneNode child in planet.GetChildren())
+        foreach (ISceneNode child in planet.GetChildren())
         {
             if (child is Regiment regiment)
             {
@@ -372,15 +372,15 @@ public abstract class Mission : SceneNode
     /// <summary>
     /// Returns all mission participants as children of the mission.
     /// </summary>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
-        return MainParticipants.Cast<SceneNode>().Concat(DecoyParticipants.Cast<SceneNode>());
+        return MainParticipants.Cast<ISceneNode>().Concat(DecoyParticipants.Cast<ISceneNode>());
     }
 
     /// <summary>
     /// No-op (missions cannot have children added).
     /// </summary>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         // No-op: Missions cannot have children added after initialization.
     }
@@ -388,7 +388,7 @@ public abstract class Mission : SceneNode
     /// <summary>
     /// No-op (missions cannot have children removed).
     /// </summary>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         // No-op: Missions cannot have children removed after initialization.
     }

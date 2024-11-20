@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 
@@ -9,7 +10,6 @@ public class CapitalShipTests
     [SetUp]
     public void Setup()
     {
-        // Initialize a new instance of CapitalShip for each test with defined capacities and owner.
         capitalShip = new CapitalShip
         {
             StarfighterCapacity = 2,
@@ -19,183 +19,200 @@ public class CapitalShipTests
     }
 
     [Test]
-    public void TestAddStarfighter()
+    public void AddStarfighter_WithinCapacity_AddsStarfighter()
     {
-        // Create a starfighter and add it to the capital ship.
         Starfighter starfighter = new Starfighter();
+
         capitalShip.AddStarfighter(starfighter);
 
-        // Ensure the starfighter is added to the capital ship's list.
-        Assert.Contains(
-            starfighter,
-            capitalShip.Starfighters,
-            "Starfighter should be added to the capital ship."
-        );
+        Assert.Contains(starfighter, capitalShip.Starfighters);
     }
 
     [Test]
-    public void TestAddStarfighterExceedsCapacity()
+    public void AddStarfighter_ExceedsCapacity_ThrowsException()
     {
-        // Add two starfighters within capacity.
-        Starfighter starfighter1 = new Starfighter();
-        Starfighter starfighter2 = new Starfighter();
-        capitalShip.AddStarfighter(starfighter1);
-        capitalShip.AddStarfighter(starfighter2);
+        capitalShip.AddStarfighter(new Starfighter());
+        capitalShip.AddStarfighter(new Starfighter());
 
-        // Attempt to add a third starfighter, which should exceed capacity and throw an exception.
-        Starfighter starfighter3 = new Starfighter();
-        Assert.Throws<GameException>(
-            () => capitalShip.AddStarfighter(starfighter3),
-            "Adding starfighters beyond capacity should throw an exception."
-        );
+        Assert.Throws<GameException>(() => capitalShip.AddStarfighter(new Starfighter()));
     }
 
     [Test]
-    public void TestAddRegiment()
+    public void AddRegiment_WithinCapacity_AddsRegiment()
     {
-        // Create a regiment and add it to the capital ship.
         Regiment regiment = new Regiment();
+
         capitalShip.AddRegiment(regiment);
 
-        // Ensure the regiment is added to the capital ship's list.
-        Assert.Contains(
-            regiment,
-            capitalShip.Regiments,
-            "Regiment should be added to the capital ship."
-        );
+        Assert.Contains(regiment, capitalShip.Regiments);
     }
 
     [Test]
-    public void TestAddRegimentExceedsCapacity()
+    public void AddRegiment_ExceedsCapacity_ThrowsException()
     {
-        // Add regiments to reach the capacity limit.
-        Regiment regiment1 = new Regiment();
-        Regiment regiment2 = new Regiment();
-        Regiment regiment3 = new Regiment();
-        capitalShip.AddRegiment(regiment1);
-        capitalShip.AddRegiment(regiment2);
-        capitalShip.AddRegiment(regiment3);
+        capitalShip.AddRegiment(new Regiment());
+        capitalShip.AddRegiment(new Regiment());
+        capitalShip.AddRegiment(new Regiment());
 
-        // Attempt to add another regiment, which should exceed the capacity and throw an exception.
-        Regiment regiment4 = new Regiment();
-        Assert.Throws<GameException>(
-            () => capitalShip.AddRegiment(regiment4),
-            "Adding regiments beyond capacity should throw an exception."
-        );
+        Assert.Throws<GameException>(() => capitalShip.AddRegiment(new Regiment()));
     }
 
     [Test]
-    public void TestAddOfficer()
+    public void AddOfficer_ValidOwner_AddsOfficer()
     {
-        // Create an officer and add it to the capital ship.
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+
         capitalShip.AddOfficer(officer);
 
-        // Ensure the officer is added to the capital ship's list.
-        Assert.Contains(
-            officer,
-            capitalShip.Officers,
-            "Officer should be added to the capital ship."
-        );
+        Assert.Contains(officer, capitalShip.Officers);
     }
 
     [Test]
-    public void TestAddOfficerInvalidOwner()
+    public void AddOfficer_InvalidOwner_ThrowsException()
     {
-        // Attempt to add an officer with an invalid owner, which should throw an exception.
         Officer officer = new Officer { OwnerInstanceID = "INVALID" };
-        Assert.Throws<SceneAccessException>(
-            () => capitalShip.AddOfficer(officer),
-            "Adding an officer with an invalid owner should throw a SceneAccessException."
-        );
+
+        Assert.Throws<SceneAccessException>(() => capitalShip.AddOfficer(officer));
     }
 
     [Test]
-    public void TestRemoveStarfighter()
+    public void RemoveStarfighter_RemovesStarfighter()
     {
-        // Add and then remove a starfighter from the capital ship.
         Starfighter starfighter = new Starfighter();
         capitalShip.AddStarfighter(starfighter);
+
         capitalShip.RemoveChild(starfighter);
 
-        // Ensure the starfighter is removed from the capital ship's list.
-        Assert.IsFalse(
-            capitalShip.Starfighters.Contains(starfighter),
-            "Starfighter should be removed from the capital ship."
-        );
+        Assert.IsFalse(capitalShip.Starfighters.Contains(starfighter));
     }
 
     [Test]
-    public void TestRemoveRegiment()
+    public void RemoveRegiment_RemovesRegiment()
     {
-        // Add and then remove a regiment from the capital ship.
         Regiment regiment = new Regiment();
         capitalShip.AddRegiment(regiment);
+
         capitalShip.RemoveChild(regiment);
 
-        // Ensure the regiment is removed from the capital ship's list.
-        Assert.IsFalse(
-            capitalShip.Regiments.Contains(regiment),
-            "Regiment should be removed from the capital ship."
-        );
+        Assert.IsFalse(capitalShip.Regiments.Contains(regiment));
     }
 
     [Test]
-    public void TestRemoveOfficer()
+    public void RemoveOfficer_RemovesOfficer()
     {
-        // Add and then remove an officer from the capital ship.
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         capitalShip.AddOfficer(officer);
+
         capitalShip.RemoveChild(officer);
 
-        // Ensure the officer is removed from the capital ship's list.
-        Assert.IsFalse(
-            capitalShip.Officers.Contains(officer),
-            "Officer should be removed from the capital ship."
-        );
+        Assert.IsFalse(capitalShip.Officers.Contains(officer));
     }
 
     [Test]
-    public void TestGetChildren()
+    public void GetChildren_ReturnsAllChildNodes()
     {
-        // Add various child nodes to the capital ship.
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
+
         capitalShip.AddOfficer(officer);
         capitalShip.AddStarfighter(starfighter);
         capitalShip.AddRegiment(regiment);
 
-        // Retrieve the children of the capital ship.
-        IEnumerable<SceneNode> children = capitalShip.GetChildren();
+        IEnumerable<ISceneNode> children = capitalShip.GetChildren();
 
-        // Ensure all added child nodes are returned as children.
-        List<SceneNode> expectedChildren = new List<SceneNode> { officer, starfighter, regiment };
         CollectionAssert.AreEquivalent(
-            expectedChildren,
+            new ISceneNode[] { officer, starfighter, regiment },
             children,
             "CapitalShip should return correct children."
         );
     }
 
     [Test]
-    public void TestSerializeAndDeserialize()
+    public void AddChild_AddsStarfighter()
     {
-        // Add components to the CapitalShip.
+        Starfighter starfighter = new Starfighter();
+
+        capitalShip.AddChild(starfighter);
+
+        Assert.Contains(starfighter, capitalShip.Starfighters);
+    }
+
+    [Test]
+    public void AddChild_AddsRegiment()
+    {
+        Regiment regiment = new Regiment();
+
+        capitalShip.AddChild(regiment);
+
+        Assert.Contains(regiment, capitalShip.Regiments);
+    }
+
+    [Test]
+    public void AddChild_AddsOfficer()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+
+        capitalShip.AddChild(officer);
+
+        Assert.Contains(officer, capitalShip.Officers);
+    }
+
+    [Test]
+    public void AddChild_InvalidOwner_ThrowsException()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
+
+        Assert.Throws<SceneAccessException>(() => capitalShip.AddChild(officer));
+    }
+
+    [Test]
+    public void RemoveChild_RemovesStarfighter()
+    {
+        Starfighter starfighter = new Starfighter();
+        capitalShip.AddChild(starfighter);
+
+        capitalShip.RemoveChild(starfighter);
+
+        Assert.IsFalse(capitalShip.Starfighters.Contains(starfighter));
+    }
+
+    [Test]
+    public void RemoveChild_RemovesRegiment()
+    {
+        Regiment regiment = new Regiment();
+        capitalShip.AddChild(regiment);
+
+        capitalShip.RemoveChild(regiment);
+
+        Assert.IsFalse(capitalShip.Regiments.Contains(regiment));
+    }
+
+    [Test]
+    public void RemoveChild_RemovesOfficer()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+        capitalShip.AddChild(officer);
+
+        capitalShip.RemoveChild(officer);
+
+        Assert.IsFalse(capitalShip.Officers.Contains(officer));
+    }
+
+    [Test]
+    public void SerializeAndDeserialize_MaintainsState()
+    {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
+
         capitalShip.AddOfficer(officer);
         capitalShip.AddStarfighter(starfighter);
         capitalShip.AddRegiment(regiment);
 
-        // Serialize the CapitalShip object to a string.
         string serialized = SerializationHelper.Serialize(capitalShip);
-
-        // Deserialize the string back to a CapitalShip object.
         CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
 
-        // Check that the deserialized object contains the same properties and children.
         Assert.AreEqual(
             capitalShip.StarfighterCapacity,
             deserialized.StarfighterCapacity,

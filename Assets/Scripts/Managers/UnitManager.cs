@@ -19,29 +19,17 @@ public class UnitManager
     /// <summary>
     ///
     /// </summary>
-    public void Update()
-    {
-        // Update the movement for each unit.
-        foreach (IMovable movable in game.GetSceneNodesByType<IMovable>())
-        {
-            IncrementMovement(movable);
-        }
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
     /// <param name="movable"></param>
-    private void IncrementMovement(IMovable movable)
+    public void UpdateMovement(IMovable movable)
     {
-        Planet destination = (movable as SceneNode).GetParentOfType<Planet>();
+        Planet destination = movable.GetParentOfType<Planet>();
+
+        // Retrieve target and current positions.
+        Point targetPosition = destination.GetPosition();
+        Point movablePosition = movable.GetPosition();
 
         if (movable.MovementStatus == MovementStatus.InTransit && destination != null)
         {
-            // Retrieve target and current positions.
-            Point targetPosition = destination.GetPosition();
-            Point movablePosition = movable.GetPosition();
-
             // Calculate movement direction.
             int deltaX = targetPosition.X - movablePosition.X;
             int deltaY = targetPosition.Y - movablePosition.Y;
@@ -51,6 +39,13 @@ public class UnitManager
             int newY = movablePosition.Y + Math.Sign(deltaY);
 
             movable.SetPosition(new Point(newX, newY));
+        }
+
+        // Check if unit has arrived at its destination.
+        // If so, set its status accordingly.
+        if (movablePosition.X == targetPosition.X && movablePosition.Y == targetPosition.Y)
+        {
+            movable.SetMovementStatus(MovementStatus.Idle);
         }
     }
 }

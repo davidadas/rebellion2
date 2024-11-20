@@ -11,7 +11,7 @@ using System.Xml.Serialization;
 /// to occur, and if all conditions are met, the event is executed.
 /// </remarks>
 [PersistableObject]
-public abstract class GameConditional : GameEntity
+public abstract class GameConditional : BaseGameEntity
 {
     [PersistableMember]
     public string Value { get; set; }

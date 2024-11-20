@@ -7,7 +7,7 @@ using System.Linq;
 /// <summary>
 /// Represents a galaxy map in the game world. A galaxy map is a collection of planet systems.
 /// </summary>
-public class GalaxyMap : SceneNode
+public class GalaxyMap : ContainerNode
 {
     // Child Nodes
     public List<PlanetSystem> PlanetSystems { get; set; } = new List<PlanetSystem>();
@@ -22,7 +22,7 @@ public class GalaxyMap : SceneNode
     /// </summary>
     /// <param name="unit">The unit to find the closest friendly planet to.</param>
     /// <returns>The closest friendly planet with matching OwnerInstanceID, or null if no friendly planets are found.</returns>
-    public Planet GetClosestFriendlyPlanet(SceneNode unit)
+    public Planet GetClosestFriendlyPlanet(ISceneNode unit)
     {
         // Find the planet that the unit is currently located on.
         Planet currentPlanet = unit.GetParentOfType<Planet>();
@@ -61,7 +61,7 @@ public class GalaxyMap : SceneNode
     /// Adds a child to the node.
     /// </summary>
     /// <param name="child">The child node to add.</param>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         if (child is PlanetSystem planetSystem)
         {
@@ -73,7 +73,7 @@ public class GalaxyMap : SceneNode
     /// Removes a child from the node.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         if (child is PlanetSystem planetSystem)
         {
@@ -85,7 +85,7 @@ public class GalaxyMap : SceneNode
     /// Retrieves the children of the node.
     /// </summary>
     /// <returns>An array of child nodes.</returns>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
         return PlanetSystems.ToArray();
     }

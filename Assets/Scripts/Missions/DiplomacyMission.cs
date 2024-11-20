@@ -54,7 +54,10 @@ public class DiplomacyMission : Mission
     {
         if (GetParent() is Planet planet)
         {
-            planet.SetPopularSupport(OwnerInstanceID, planet.GetPopularSupport(OwnerInstanceID) + 1);
+            planet.SetPopularSupport(
+                OwnerInstanceID,
+                planet.GetPopularSupport(OwnerInstanceID) + 1
+            );
         }
     }
 }

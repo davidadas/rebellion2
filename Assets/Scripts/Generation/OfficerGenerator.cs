@@ -55,7 +55,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
     /// </summary>
     /// <param name="planetSystems"></param>
     /// <returns></returns>
-    private Dictionary<string, List<SceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
+    private Dictionary<string, List<ISceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
     {
         // Flatten the list of planets from planet systems.
         // Only pull those planets with a OwnerInstanceID assigned.
@@ -64,7 +64,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
             .Where((planet) => planet.OwnerInstanceID != null);
 
         // Create an array of fleets and planets.
-        List<SceneNode> fleetsAndPlanets = new List<SceneNode>();
+        List<ISceneNode> fleetsAndPlanets = new List<ISceneNode>();
         foreach (Planet planet in flattenedPlanets)
         {
             fleetsAndPlanets.Add(planet);
@@ -72,15 +72,15 @@ public class OfficerGenerator : UnitGenerator<Officer>
         }
 
         // Create a dictionary of factions to planets and their associated fleets.
-        Dictionary<string, List<SceneNode>> destinationMapping = fleetsAndPlanets.Aggregate(
-            new Dictionary<string, List<SceneNode>>(),
+        Dictionary<string, List<ISceneNode>> destinationMapping = fleetsAndPlanets.Aggregate(
+            new Dictionary<string, List<ISceneNode>>(),
             (destinationMap, nextDestination) =>
             {
                 string ownerInstanceId = nextDestination.OwnerInstanceID;
 
-                List<SceneNode> destinations = destinationMap.GetOrAddValue(
+                List<ISceneNode> destinations = destinationMap.GetOrAddValue(
                     ownerInstanceId,
-                    new List<SceneNode>()
+                    new List<ISceneNode>()
                 );
                 destinations.Add(nextDestination);
                 return destinationMap;
@@ -161,21 +161,21 @@ public class OfficerGenerator : UnitGenerator<Officer>
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="units"></param>
     /// <param name="destinations"></param>
     /// <returns></returns>
     public override Officer[] DeployUnits(Officer[] officers, PlanetSystem[] planetSystems)
     {
-        Dictionary<string, List<SceneNode>> destinationMapping = getDestinationMapping(
+        Dictionary<string, List<ISceneNode>> destinationMapping = getDestinationMapping(
             planetSystems
         );
 
         foreach (Officer officer in officers)
         {
-            List<SceneNode> destinations = destinationMapping[officer.OwnerInstanceID];
-            SceneNode destination;
+            List<ISceneNode> destinations = destinationMapping[officer.OwnerInstanceID];
+            ISceneNode destination;
 
             if (officer.InitialParentInstanceID != null)
             {

@@ -113,16 +113,19 @@ public class Building : LeafNode, IManufacturable, IMovable
     /// <summary>
     /// Sets the manufacturing status of the building.
     /// </summary>
-    /// <param name="status">The manufacturing status to set.</param>
-    public void SetManufacturingStatus(ManufacturingStatus status)
+    /// <param name="manufacturingStatus">The manufacturing status to set.</param>
+    public void SetManufacturingStatus(ManufacturingStatus manufacturingStatus)
     {
-        if (status == ManufacturingStatus.Complete && status == ManufacturingStatus.Building)
+        if (
+            ManufacturingStatus == ManufacturingStatus.Complete
+            && manufacturingStatus == ManufacturingStatus.Building
+        )
         {
-            throw new ArgumentException(
+            throw new GameStateException(
                 "Invalid manufacturing status. Cannot set to Building once Complete."
             );
         }
-        ManufacturingStatus = status;
+        ManufacturingStatus = manufacturingStatus;
     }
 
     /// <summary>

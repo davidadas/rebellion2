@@ -19,7 +19,7 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestAddFleet()
+    public void AddFleet_ValidFleet_AddsToPlanet()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         planet.AddChild(fleet);
@@ -28,7 +28,18 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestAddOfficer()
+    public void AddFleet_InvalidOwner_ThrowsException()
+    {
+        Fleet fleet = new Fleet { OwnerInstanceID = "INVALID" };
+
+        Assert.Throws<SceneAccessException>(
+            () => planet.AddChild(fleet),
+            "Adding a fleet with a mismatched OwnerInstanceID should throw a SceneAccessException."
+        );
+    }
+
+    [Test]
+    public void AddOfficer_ValidOfficer_AddsToPlanet()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         planet.AddChild(officer);
@@ -37,16 +48,28 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestAddBuilding()
+    public void AddOfficer_InvalidOwner_ThrowsException()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
+
+        Assert.Throws<SceneAccessException>(
+            () => planet.AddChild(officer),
+            "Adding an officer with a mismatched OwnerInstanceID should throw a SceneAccessException."
+        );
+    }
+
+    [Test]
+    public void AddBuilding_ValidBuilding_AddsToPlanet()
     {
         Building building = new Building
         {
             BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
         };
-        planet.AddChild(building);
-        List<Building> buildings = planet.GetBuildings(BuildingSlot.Ground);
 
+        planet.AddChild(building);
+
+        List<Building> buildings = planet.GetBuildings(BuildingSlot.Ground);
         Assert.Contains(
             building,
             buildings,
@@ -55,7 +78,23 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestRemoveFleet()
+    public void AddBuilding_ExceedsCapacity_ThrowsException()
+    {
+        for (int i = 0; i < planet.GroundSlots; i++)
+        {
+            planet.AddChild(new Building { BuildingSlot = BuildingSlot.Ground });
+        }
+
+        Building extraBuilding = new Building { BuildingSlot = BuildingSlot.Ground };
+
+        Assert.Throws<GameException>(
+            () => planet.AddChild(extraBuilding),
+            "Adding a building when slots are full should throw a GameException."
+        );
+    }
+
+    [Test]
+    public void RemoveFleet_ValidFleet_RemovesFromPlanet()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         planet.AddChild(fleet);
@@ -65,7 +104,7 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestRemoveOfficer()
+    public void RemoveOfficer_ValidOfficer_RemovesFromPlanet()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         planet.AddChild(officer);
@@ -78,44 +117,148 @@ public class PlanetTests
     }
 
     [Test]
-    public void TestRemoveBuilding()
+    public void RemoveBuilding_ValidBuilding_RemovesFromPlanet()
     {
         Building building = new Building
         {
             BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
         };
+
         planet.AddChild(building);
         planet.RemoveChild(building);
 
         Assert.IsFalse(
-            planet.Buildings[BuildingSlot.Ground].Contains(building),
+            planet.GetBuildings(BuildingSlot.Ground).Contains(building),
             "Building should be removed from the planet."
         );
     }
 
     [Test]
-    public void TestGetChildren()
+    public void GetChildren_ValidChildren_ReturnsAllChildren()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        Building building = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            DisplayName = "Test Building",
-        };
+        Building building = new Building { BuildingSlot = BuildingSlot.Ground };
 
         planet.AddChild(fleet);
         planet.AddChild(officer);
         planet.AddChild(building);
 
-        IEnumerable<SceneNode> children = planet.GetChildren();
-        List<SceneNode> expectedChildren = new List<SceneNode> { fleet, officer, building };
+        IEnumerable<ISceneNode> children = planet.GetChildren();
+        List<ISceneNode> expectedChildren = new List<ISceneNode> { fleet, officer, building };
 
         CollectionAssert.AreEquivalent(
             expectedChildren,
             children,
-            "Planet should return correct children."
+            "Planet should return all correct children."
+        );
+    }
+
+    [Test]
+    public void GetPopularSupport_ExistingFaction_ReturnsSupport()
+    {
+        planet.SetPopularSupport("FNALL1", 50);
+
+        int support = planet.GetPopularSupport("FNALL1");
+        Assert.AreEqual(
+            50,
+            support,
+            "Popular support for the faction should be correctly retrieved."
+        );
+    }
+
+    [Test]
+    public void GetPopularSupport_NonExistingFaction_ReturnsZero()
+    {
+        int support = planet.GetPopularSupport("INVALID");
+        Assert.AreEqual(0, support, "Popular support for a non-existing faction should return 0.");
+    }
+
+    [Test]
+    public void SetPopularSupport_ValidFaction_SetsSupport()
+    {
+        planet.SetPopularSupport("FNALL1", 75);
+
+        int support = planet.GetPopularSupport("FNALL1");
+        Assert.AreEqual(75, support, "Popular support should be correctly set for the faction.");
+    }
+
+    [Test]
+    public void GetTravelTime_ValidTargetPlanet_ReturnsCorrectTime()
+    {
+        Planet targetPlanet = new Planet
+        {
+            PositionX = planet.PositionX + 10,
+            PositionY = planet.PositionY + 10,
+        };
+
+        int travelTime = planet.GetTravelTime(targetPlanet);
+
+        Assert.AreEqual(2, travelTime, "Travel time should be calculated correctly.");
+    }
+
+    [Test]
+    public void AddToManufacturingQueue_UnitWithoutParent_ThrowsException()
+    {
+        IManufacturable unit = new Starfighter();
+
+        Assert.Throws<GameStateException>(
+            () => planet.AddToManufacturingQueue(unit),
+            "Adding a manufacturable unit without a parent should throw a GameStateException."
+        );
+    }
+
+    [Test]
+    public void SerializeAndDeserialize_Planet_RetainsProperties()
+    {
+        planet.SetPopularSupport("FNALL1", 100);
+        planet.IsDestroyed = true;
+        planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
+
+        string serialized = SerializationHelper.Serialize(planet);
+        Planet deserialized = SerializationHelper.Deserialize<Planet>(serialized);
+
+        Assert.AreEqual(
+            planet.IsDestroyed,
+            deserialized.IsDestroyed,
+            "Deserialized planet should retain IsDestroyed property."
+        );
+        Assert.AreEqual(
+            planet.GetPopularSupport("FNALL1"),
+            deserialized.GetPopularSupport("FNALL1"),
+            "Deserialized planet should retain popular support."
+        );
+        Assert.AreEqual(
+            planet.Fleets.Count,
+            deserialized.Fleets.Count,
+            "Deserialized planet should retain fleets."
+        );
+    }
+
+    [Test]
+    public void GetProductionRate_ValidManufacturingType_ReturnsCorrectRate()
+    {
+        Building building1 = new Building
+        {
+            ProductionType = ManufacturingType.Ship,
+            ProcessRate = 2,
+        };
+        Building building2 = new Building
+        {
+            ProductionType = ManufacturingType.Ship,
+            ProcessRate = 3,
+        };
+
+        planet.AddChild(building1);
+        planet.AddChild(building2);
+
+        int rate = planet.GetProductionRate(ManufacturingType.Ship);
+
+        Assert.AreEqual(
+            1,
+            rate,
+            "Production rate should be calculated correctly based on building process rates."
         );
     }
 }

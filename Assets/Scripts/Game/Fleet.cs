@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using ICollectionExtensions;
 
-public class Fleet : SceneNode, IMovable
+public class Fleet : ContainerNode, IMovable
 {
     // Movement Info
     public MovementStatus MovementStatus { get; set; }
@@ -51,7 +51,7 @@ public class Fleet : SceneNode, IMovable
     /// </summary>
     /// <param name="child">The child node to add.</param>
     /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
-    public override void AddChild(SceneNode child)
+    public override void AddChild(ISceneNode child)
     {
         if (child is CapitalShip)
         {
@@ -67,7 +67,7 @@ public class Fleet : SceneNode, IMovable
     /// Removes a child from the node.
     /// </summary>
     /// <param name="child">The child node to remove.</param>
-    public override void RemoveChild(SceneNode child)
+    public override void RemoveChild(ISceneNode child)
     {
         if (child is CapitalShip capitalShip)
         {
@@ -88,7 +88,7 @@ public class Fleet : SceneNode, IMovable
     /// Retrieves the children of the node.
     /// </summary>
     /// <returns>An array of child nodes.</returns>
-    public override IEnumerable<SceneNode> GetChildren()
+    public override IEnumerable<ISceneNode> GetChildren()
     {
         return CapitalShips.ToArray();
     }

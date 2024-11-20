@@ -17,14 +17,17 @@ namespace ObjectExtensions
         /// <typeparam name="T">The type of the object to be cloned. Must be a reference type.</typeparam>
         /// <param name="source">The object to be cloned.</param>
         /// <returns>A shallow copy of the source object, with fields/properties marked CloneIgnore set to null.</returns>
-        public static T GetShallowCopy<T>(this T source) where T : class
+        public static T GetShallowCopy<T>(this T source)
+            where T : class
         {
-            if (source == null) return null;
+            if (source == null)
+                return null;
 
             Type type = source.GetType();
 
             // For value types and strings, return the source directly.
-            if (type.IsValueType || type == typeof(string)) return source;
+            if (type.IsValueType || type == typeof(string))
+                return source;
 
             T result = (T)Activator.CreateInstance(type);
 
@@ -40,9 +43,11 @@ namespace ObjectExtensions
         /// <typeparam name="T">The type of the object to be copied.</typeparam>
         /// <param name="source">The object to be copied.</param>
         /// <returns>A deep copy of the source object.</returns>
-        public static T GetDeepCopy<T>(this T source) where T : class
+        public static T GetDeepCopy<T>(this T source)
+            where T : class
         {
-            if (source == null) return null;
+            if (source == null)
+                return null;
 
             return (T)DeepCopyObject(source);
         }
@@ -79,7 +84,11 @@ namespace ObjectExtensions
         /// </summary>
         private static void CopyProperties(Type type, object source, object target)
         {
-            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (
+                PropertyInfo property in type.GetProperties(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                )
+            )
             {
                 if (Attribute.IsDefined(property, typeof(CloneIgnoreAttribute)))
                 {
@@ -99,7 +108,6 @@ namespace ObjectExtensions
             }
         }
 
-
         /// <summary>
         /// Recursively creates a deep copy of an object.
         /// </summary>
@@ -107,7 +115,8 @@ namespace ObjectExtensions
         {
             Type type = source.GetType();
 
-            if (type.IsValueType || type == typeof(string)) return source;
+            if (type.IsValueType || type == typeof(string))
+                return source;
 
             object result = Activator.CreateInstance(type);
 
@@ -115,10 +124,12 @@ namespace ObjectExtensions
 
             foreach (FieldInfo field in GetAllFields(type))
             {
-                if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute))) continue;
+                if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute)))
+                    continue;
 
                 object fieldValue = field.GetValue(source);
-                if (fieldValue == null) continue;
+                if (fieldValue == null)
+                    continue;
 
                 field.SetValue(result, DeepCopyField(fieldValue));
             }
@@ -133,9 +144,11 @@ namespace ObjectExtensions
         {
             Type fieldType = fieldValue.GetType();
 
-            if (fieldType.IsValueType || fieldType == typeof(string)) return fieldValue;
+            if (fieldType.IsValueType || fieldType == typeof(string))
+                return fieldValue;
 
-            if (typeof(IEnumerable).IsAssignableFrom(fieldType)) return DeepCopyCollection(fieldValue);
+            if (typeof(IEnumerable).IsAssignableFrom(fieldType))
+                return DeepCopyCollection(fieldValue);
 
             return DeepCopyObject(fieldValue);
         }
@@ -150,7 +163,10 @@ namespace ObjectExtensions
             if (type.IsArray)
             {
                 Array sourceArray = (Array)collection;
-                Array destinationArray = Array.CreateInstance(type.GetElementType(), sourceArray.Length);
+                Array destinationArray = Array.CreateInstance(
+                    type.GetElementType(),
+                    sourceArray.Length
+                );
 
                 for (int i = 0; i < sourceArray.Length; i++)
                 {
@@ -176,8 +192,12 @@ namespace ObjectExtensions
         {
             return type == null
                 ? Enumerable.Empty<FieldInfo>()
-                : type
-                    .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                : type.GetFields(
+                        BindingFlags.Instance
+                            | BindingFlags.Public
+                            | BindingFlags.NonPublic
+                            | BindingFlags.DeclaredOnly
+                    )
                     .Concat(GetAllFields(type.BaseType));
         }
     }

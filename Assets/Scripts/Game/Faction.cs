@@ -3,17 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-public class Faction : GameEntity
+public class Faction : BaseGameEntity
 {
     public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
         MessageType,
         List<Message>
     >()
     {
-        { MessageType.Conflict, new List<Message>() },
-        { MessageType.Mission, new List<Message>() },
-        { MessageType.PopularSupport, new List<Message>() },
-        { MessageType.Resource, new List<Message>() },
+        // { MessageType.Conflict, new List<Message>() },
+        // { MessageType.Mission, new List<Message>() },
+        // { MessageType.PopularSupport, new List<Message>() },
+        // { MessageType.Resource, new List<Message>() },
     };
 
     public Dictionary<
@@ -33,17 +33,17 @@ public class Faction : GameEntity
     public string HQInstanceID { get; set; }
     public string PlayerID { get; set; }
 
-    private Dictionary<Type, List<SceneNode>> ownedEntities = new Dictionary<
+    private Dictionary<Type, List<ISceneNode>> ownedEntities = new Dictionary<
         Type,
-        List<SceneNode>
+        List<ISceneNode>
     >()
     {
-        { typeof(CapitalShip), new List<SceneNode>() },
-        { typeof(Fleet), new List<SceneNode>() },
-        { typeof(Officer), new List<SceneNode>() },
-        { typeof(Planet), new List<SceneNode>() },
-        { typeof(Regiment), new List<SceneNode>() },
-        { typeof(Starfighter), new List<SceneNode>() },
+        { typeof(CapitalShip), new List<ISceneNode>() },
+        { typeof(Fleet), new List<ISceneNode>() },
+        { typeof(Officer), new List<ISceneNode>() },
+        { typeof(Planet), new List<ISceneNode>() },
+        { typeof(Regiment), new List<ISceneNode>() },
+        { typeof(Starfighter), new List<ISceneNode>() },
     };
 
     /// <summary>
@@ -61,7 +61,7 @@ public class Faction : GameEntity
     /// Returns a list of units owned by the faction.
     /// </summary>
     /// <returns>A list of units owned by the faction.</returns>
-    public List<SceneNode> GetAllOwnedUnits()
+    public List<ISceneNode> GetAllOwnedUnits()
     {
         return ownedEntities.Values.SelectMany(x => x).ToList();
     }
@@ -72,7 +72,7 @@ public class Faction : GameEntity
     /// <typeparam name="T">The type of unit to get.</typeparam>
     /// <returns>A list of units owned by the faction.</returns>
     public List<T> GetOwnedUnitsByType<T>()
-        where T : SceneNode
+        where T : ISceneNode
     {
         return ownedEntities[typeof(T)].Cast<T>().ToList();
     }
@@ -83,7 +83,7 @@ public class Faction : GameEntity
     /// <typeparam name="T">The type of unit to add.</typeparam>
     /// <param name="unit">The unit to add.</param>
     public void AddOwnedUnit<T>(ref T unit)
-        where T : SceneNode
+        where T : ISceneNode
     {
         if (ownedEntities.ContainsKey(unit.GetType()))
         {
@@ -97,7 +97,7 @@ public class Faction : GameEntity
     /// <typeparam name="T">The type of unit to remove.</typeparam>
     /// <param name="unit">The unit to remove.</param>
     public void RemoveOwnedUnit<T>(ref T unit)
-        where T : SceneNode
+        where T : ISceneNode
     {
         if (ownedEntities.ContainsKey(unit.GetType()))
         {
@@ -113,7 +113,7 @@ public class Faction : GameEntity
     /// <param name="node">The technology node to add.</param>
     public void AddTechnologyNode(int level, Technology node)
     {
-        SceneNode tech = node.GetReference();
+        ISceneNode tech = node.GetReference();
         Type technologyType = tech.GetType();
 
         // Check if the technology is manufacturable.
@@ -125,7 +125,10 @@ public class Faction : GameEntity
         }
 
         // Check if the technology is allowed to be owned by the faction.
-        if (tech.AllowedOwnerInstanceIDs != null && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID))
+        if (
+            tech.AllowedOwnerInstanceIDs != null
+            && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID)
+        )
         {
             throw new GameException(
                 $"Cannot add technology {tech.DisplayName} to faction {DisplayName}. Owner IDs do not match."
@@ -164,7 +167,7 @@ public class Faction : GameEntity
     /// <typeparam name="T">The type of technology to retrieve.</typeparam>
     /// <returns>A list of available technologies of type T.</returns>
     public List<T> GetAvailableTechnologies<T>()
-        where T : SceneNode, IManufacturable
+        where T : class, ISceneNode, IManufacturable
     {
         // Create a default instance to get the manufacturing type
         T defaultInstance = Activator.CreateInstance<T>();
@@ -251,13 +254,13 @@ public class Faction : GameEntity
     /// </summary>
     /// <param name="fromNode">The scene node to measure distance from.</param>
     /// <returns>The closest friendly planet, or null if no friendly planets are found.</returns>
-    public Planet GetNearestPlanet(SceneNode fromNode)
+    public Planet GetNearestPlanet(ISceneNode fromNode)
     {
         Planet sourcePlanet = fromNode.GetParentOfType<Planet>();
         if (sourcePlanet == null)
         {
             throw new ArgumentException(
-                "The provided SceneNode is not on a planet.",
+                "The provided ISceneNode is not on a planet.",
                 nameof(fromNode)
             );
         }
