@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -6,8 +7,10 @@ using UnityEngine;
 [TestFixture]
 public class GameBuilderTests
 {
-    [Test]
-    public void TestGameBuilderWithConfigs()
+    private Game game;
+
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
     {
         // Create a new GameSummary object with specific configurations
         GameSummary summary = new GameSummary
@@ -23,49 +26,33 @@ public class GameBuilderTests
         GameBuilder builder = new GameBuilder(summary);
 
         // Build the game using the GameBuilder
-        Game game = builder.BuildGame();
+        game = builder.BuildGame();
+    }
 
+    [Test]
+    public void BuildGame_WithSummary_SetsCorrectly()
+    {
         Assert.IsNotNull(game, "Game should not be null.");
 
         // Assert that the game's summary properties match the provided configurations
-        Assert.AreEqual(summary.GalaxySize, game.Summary.GalaxySize, "GalaxySize should match.");
-        Assert.AreEqual(summary.Difficulty, game.Summary.Difficulty, "Difficulty should match.");
+        Assert.AreEqual(GameSize.Large, game.Summary.GalaxySize, "GalaxySize should match.");
+        Assert.AreEqual(GameDifficulty.Easy, game.Summary.Difficulty, "Difficulty should match.");
         Assert.AreEqual(
-            summary.VictoryCondition,
+            GameVictoryCondition.Headquarters,
             game.Summary.VictoryCondition,
             "VictoryCondition should match."
         );
         Assert.AreEqual(
-            summary.ResourceAvailability,
+            GameResourceAvailability.Abundant,
             game.Summary.ResourceAvailability,
             "ResourceAvailability should match."
         );
-        Assert.AreEqual(
-            summary.PlayerFactionID,
-            game.Summary.PlayerFactionID,
-            "PlayerFactionID should match."
-        );
+        Assert.AreEqual("FNALL1", game.Summary.PlayerFactionID, "PlayerFactionID should match.");
     }
 
     [Test]
-    public void TestAllFactionsHaveHQs()
+    public void BuildGame_WithFactions_SetsHQs()
     {
-        // Create a new GameSummary object with specific configurations
-        GameSummary summary = new GameSummary
-        {
-            GalaxySize = GameSize.Large,
-            Difficulty = GameDifficulty.Easy,
-            VictoryCondition = GameVictoryCondition.Headquarters,
-            ResourceAvailability = GameResourceAvailability.Abundant,
-            PlayerFactionID = "FNALL1",
-        };
-
-        // Create a new GameBuilder instance with the summary
-        GameBuilder builder = new GameBuilder(summary);
-
-        // Build the game using the GameBuilder
-        Game game = builder.BuildGame();
-
         Assert.IsNotNull(game, "Game should not be null.");
 
         // Assert that the game's factions and galaxy map are not null
@@ -85,5 +72,29 @@ public class GameBuilderTests
             // Assert that the faction has a headquarters
             Assert.IsTrue(hasHQ, $"Faction {faction.InstanceID} should have a headquarters.");
         }
+    }
+
+    [Test]
+    public void BuildGame_WithOfficers_SetsOfficerValues()
+    {
+        List<Officer> officers = new List<Officer>();
+
+        game.Galaxy.Traverse(node =>
+        {
+            if (node is Officer officer)
+            {
+                officers.Add(officer);
+
+                // Ensure at least one skill is non-zero
+                bool hasNonZeroSkill = officer.Skills.Values.Any(skillValue => skillValue > 0);
+                Assert.IsTrue(
+                    hasNonZeroSkill,
+                    $"Officer {officer.InstanceID} should have at least one non-zero skill."
+                );
+            }
+        });
+
+        // Ensure the game has at least two officers
+        Assert.Greater(officers.Count, 2, "Game should have at least two officers.");
     }
 }

@@ -25,7 +25,7 @@ public class Technology
     }
 
     /// <summary>
-    /// Gets the referenced manufacturable.
+    /// Returns the referenced manufacturable.
     /// </summary>
     /// <returns></returns>
     public IManufacturable GetReference()
@@ -34,11 +34,34 @@ public class Technology
     }
 
     /// <summary>
-    /// Gets a deep copy of the referenced manufacturable.
+    /// Returns a deep copy of the referenced manufacturable.
     /// </summary>
     /// <returns>The deep copy of the referenced manufacturable.</returns>
-    public IManufacturable GetCopy()
+    public IManufacturable GetReferenceCopy()
     {
-        return Manufacturable.GetDeepCopy();
+        IManufacturable clonedManufacturable = Manufacturable.GetDeepCopy();
+
+        clonedManufacturable.SetManufacturingStatus(ManufacturingStatus.Building);
+        clonedManufacturable.SetMovementStatus(MovementStatus.Idle);
+
+        return clonedManufacturable;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public ManufacturingType GetManufacturingType()
+    {
+        return Manufacturable.GetManufacturingType();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetRequiredResearchLevel()
+    {
+        return Manufacturable.GetRequiredResearchLevel();
     }
 }

@@ -58,6 +58,37 @@ public class DiplomacyMission : Mission
                 OwnerInstanceID,
                 planet.GetPopularSupport(OwnerInstanceID) + 1
             );
+
+            // If the popular support is greater than 60, set faction as owner.
+            if (planet.GetPopularSupport(OwnerInstanceID) > 60)
+            {
+                GameLogger.Log(
+                    $"{planet.GetDisplayName()} has been joined {GetOwnerInstanceID()}."
+                );
+                planet.SetOwnerInstanceID(OwnerInstanceID);
+            }
         }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="game"></param>
+    public override bool CanContinue(Game game)
+    {
+        if (GetParent() is Planet planet)
+        {
+            if (
+                planet.GetOwnerInstanceID() == GetOwnerInstanceID()
+                || planet.GetOwnerInstanceID() == null
+            )
+            {
+                GameLogger.Log(
+                    $"{MainParticipants[0].GetDisplayName()} has increased popular support on {planet.GetDisplayName()}."
+                );
+                return planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
+            }
+        }
+        return false;
     }
 }

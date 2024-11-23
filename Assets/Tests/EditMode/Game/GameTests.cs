@@ -188,7 +188,10 @@ public class GameTests
         for (int i = 0; i < game.Factions.Count; i++)
         {
             Assert.AreEqual(game.Factions[i].InstanceID, deserializedGame.Factions[i].InstanceID);
-            Assert.AreEqual(game.Factions[i].DisplayName, deserializedGame.Factions[i].DisplayName);
+            Assert.AreEqual(
+                game.Factions[i].GetDisplayName(),
+                deserializedGame.Factions[i].GetDisplayName()
+            );
         }
 
         Assert.AreEqual(game.UnrecruitedOfficers.Count, deserializedGame.UnrecruitedOfficers.Count);
@@ -199,8 +202,8 @@ public class GameTests
                 deserializedGame.UnrecruitedOfficers[i].InstanceID
             );
             Assert.AreEqual(
-                game.UnrecruitedOfficers[i].DisplayName,
-                deserializedGame.UnrecruitedOfficers[i].DisplayName
+                game.UnrecruitedOfficers[i].GetDisplayName(),
+                deserializedGame.UnrecruitedOfficers[i].GetDisplayName()
             );
         }
     }

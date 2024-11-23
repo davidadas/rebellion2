@@ -13,6 +13,9 @@ public enum OfficerRank
     Admiral,
 }
 
+/// <summary>
+/// Represents an officer that can be used in missions.
+/// </summary>
 public class Officer : LeafNode, IMissionParticipant, IMovable
 {
     // Research Info
@@ -25,7 +28,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     public bool IsCaptured { get; set; }
     public bool CanBetray { get; set; }
     public bool IsTraitor { get; set; }
-    public bool IsKnownJedi { get; set; }
+    public bool IsForceSensitive { get; set; }
     public int Loyalty { get; set; }
 
     // Jedi Info
@@ -73,7 +76,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     public int PositionX { get; set; }
     public int PositionY { get; set; }
 
-    // Mission Info
+    // Mission Skill Related
     public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
         new Dictionary<MissionParticipantSkill, int>
         {
@@ -82,6 +85,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
             { MissionParticipantSkill.Combat, 0 },
             { MissionParticipantSkill.Leadership, 0 },
         };
+    public bool CanImproveMissionSkill => true;
 
     /// <summary>
     /// Default constructor used for serialization.
@@ -101,10 +105,12 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     /// <summary>
     ///
     /// </summary>
+    /// <param name="skill"></param>
+    /// <param name="value"></param>
     /// <returns></returns>
-    public bool IsMainCharacter()
+    public int SetSkillValue(MissionParticipantSkill skill, int value)
     {
-        return IsMain;
+        return Skills[skill] = value;
     }
 
     /// <summary>
@@ -113,10 +119,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     /// <returns></returns>
     public bool IsOnMission()
     {
-        ISceneNode parent = GetParent();
-
-        // Ensure the parent is a mission and that the mission is not complete.
-        return parent is Mission && !(parent as Mission).IsComplete();
+        return GetParent() is Mission;
     }
 
     /// <summary>

@@ -60,4 +60,13 @@ public class AbductionMission : Mission
     {
         // Logic for mission success
     }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="game"></param>
+    public override bool CanContinue(Game game)
+    {
+        return false;
+    }
 }

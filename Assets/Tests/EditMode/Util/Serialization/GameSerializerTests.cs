@@ -362,7 +362,7 @@ public class GameSerializerTests
     }
 
     [Test]
-    public void Deserialize_SimpleItem_IgnoresIgnoredPublicVariable()
+    public void Deserialize_SimpleItem_DoesNotIgnoreIgnoredPublicVariable()
     {
         GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
         string xmlInput =
@@ -381,7 +381,7 @@ public class GameSerializerTests
         Assert.AreEqual(42, deserialized.Value);
         Assert.AreEqual(TestEnum.Value2, deserialized.EnumValue);
         Assert.AreEqual("PublicValue", deserialized.PublicVariable);
-        Assert.IsNull(deserialized.IgnoredPublicVariable);
+        Assert.AreEqual("IgnoredValue", deserialized.IgnoredPublicVariable);
     }
 
     [Test]
@@ -417,7 +417,7 @@ public class GameSerializerTests
     }
 
     [Test]
-    public void Deserialize_NestedItem_IgnoresIgnoredPublicVariables()
+    public void Deserialize_NestedItem_DoesNotIgnoreIgnoredPublicVariables()
     {
         GameSerializer serializer = new GameSerializer(typeof(NestedItem));
         string xmlInput =
@@ -441,11 +441,11 @@ public class GameSerializerTests
 
         Assert.AreEqual("Nested1", deserialized.Identifier);
         Assert.AreEqual("NestedPublicValue", deserialized.PublicVariable);
-        Assert.IsNull(deserialized.IgnoredPublicVariable);
+        Assert.AreEqual("NestedIgnoredValue", deserialized.IgnoredPublicVariable);
         Assert.AreEqual(1, deserialized.Items.Count);
         Assert.AreEqual("Simple1", deserialized.Items[0].Name);
         Assert.AreEqual("SimplePublicValue", deserialized.Items[0].PublicVariable);
-        Assert.IsNull(deserialized.Items[0].IgnoredPublicVariable);
+        Assert.AreEqual("SimpleIgnoredValue", deserialized.Items[0].IgnoredPublicVariable);
     }
 
     [Test]

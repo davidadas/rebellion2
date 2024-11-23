@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using ObjectExtensions;
 
+/// <summary>
+/// Base implementation of the <see cref="IGameEntity"/> interface.
+/// </summary>
 [PersistableObject]
 public class BaseGameEntity : IGameEntity
 {
@@ -19,25 +22,25 @@ public class BaseGameEntity : IGameEntity
     public string Description { get; set; }
 
     /// <summary>
-    ///
+    /// Returns the instance ID of the entity.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The instance ID of the entity.</returns>
     public string GetInstanceID()
     {
         return InstanceID;
     }
 
     /// <summary>
-    ///
+    /// Returns the TypeID of the entity.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The TypeID of the entity.</returns>
     public string GetTypeID()
     {
         return TypeID;
     }
 
     /// <summary>
-    ///
+    /// Returns the DisplayName of the entity.
     /// </summary>
     /// <returns></returns>
     public string GetDisplayName()

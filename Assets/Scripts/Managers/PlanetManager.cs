@@ -20,37 +20,35 @@ public class PlanetManager
     }
 
     /// <summary>
-    ///
+    /// Updates the planet's uprising status and manufacturing progress.
     /// </summary>
-    public void Update()
+    /// <param name="planet">The planet to update.</param>
+    public void UpdatePlanet(Planet planet)
     {
-        List<Planet> planets = game.GetSceneNodesByType<Planet>();
-
-        foreach (Planet planet in planets)
-        {
-            UpdateUprisingStatus(planet);
-            UpdateManufacturing(planet);
-        }
+        UpdateUprisingStatus(planet);
+        UpdateManufacturing(planet);
     }
 
     /// <summary>
-    ///
+    /// Adds items to the manufacturing queue of a planet.
     /// </summary>
-    /// <param name="planet"></param>
-    /// <param name="target"></param>
-    /// <param name="manufacturable"></param>
-    /// <param name="quantity"></param>
+    /// <param name="planet">The planet where manufacturing will occur.</param>
+    /// <param name="target">The target scene node where the manufactured item will be delivered.</param>
+    /// <param name="technology">The technology to be manufactured.</param>
+    /// <param name="quantity">The number of items to add to the queue.</param>
     public void AddToManufacturingQueue(
         Planet planet,
         ISceneNode target,
-        IManufacturable manufacturable,
+        Technology technology,
         int quantity
     )
     {
         for (int i = 0; i < quantity; i++)
         {
-            GameLogger.Log("Adding manufacturable to queue: " + manufacturable.GetDisplayName());
-            IManufacturable clonedNode = manufacturable.GetDeepCopy();
+            IManufacturable clonedNode = technology.GetReferenceCopy();
+            GameLogger.Log(
+                $"Adding {clonedNode.GetDisplayName()} to manufacturing queue on {planet.GetDisplayName()}"
+            );
             game.AttachNode(clonedNode, target);
             planet.AddToManufacturingQueue(clonedNode);
         }
@@ -67,39 +65,24 @@ public class PlanetManager
         Dictionary<ManufacturingType, List<IManufacturable>> manufacturingQueue =
             planet.GetManufacturingQueue();
 
-        foreach (ManufacturingType type in manufacturingQueue.Keys)
+        foreach (var kvp in manufacturingQueue)
         {
+            ManufacturingType type = kvp.Key;
+            List<IManufacturable> productionQueue = kvp.Value;
             int remainingProgress = planet.GetProductionRate(type);
-            List<IManufacturable> productionQueue = manufacturingQueue[type];
 
             for (int i = 0; i < productionQueue.Count && remainingProgress > 0; i++)
             {
                 IManufacturable manufacturable = productionQueue[i];
-                remainingProgress = ApplyProgress(
+                remainingProgress = ApplyManufacturingProgress(
                     manufacturable,
                     remainingProgress,
                     completedManufacturables
                 );
 
-                // Remove completed items from queue.
-                if (
-                    manufacturable.GetConstructionCost()
-                    <= manufacturable.GetManufacturingProgress()
-                )
+                if (IsManufacturingComplete(manufacturable))
                 {
-                    GameLogger.Log(
-                        "Manufacturable completed: "
-                            + manufacturable.DisplayName
-                            + " "
-                            + manufacturable.GetParent().DisplayName
-                    );
-                    // Decrement index to account for removed item.
-                    productionQueue.RemoveAt(i--);
-
-                    manufacturable.SetManufacturingStatus(ManufacturingStatus.Complete);
-
-                    // Send completed item to target.
-                    (manufacturable as IMovable).MoveTo(manufacturable.GetParent());
+                    CompleteManufacturing(manufacturable, productionQueue, ref i);
                 }
             }
         }
@@ -114,7 +97,7 @@ public class PlanetManager
     /// <param name="remainingProgress">The remaining progress to be applied.</param>
     /// <param name="completedManufacturables">List to collect completed items.</param>
     /// <returns>The remaining progress after application.</returns>
-    private int ApplyProgress(
+    private int ApplyManufacturingProgress(
         IManufacturable manufacturable,
         int remainingProgress,
         List<IManufacturable> completedManufacturables
@@ -127,7 +110,7 @@ public class PlanetManager
         manufacturable.IncrementManufacturingProgress(progressToApply);
         remainingProgress -= progressToApply;
 
-        if (manufacturable.GetConstructionCost() <= manufacturable.GetManufacturingProgress())
+        if (IsManufacturingComplete(manufacturable))
         {
             completedManufacturables.Add(manufacturable);
         }
@@ -136,11 +119,48 @@ public class PlanetManager
     }
 
     /// <summary>
+    /// Checks if the manufacturing of an item is complete.
+    /// </summary>
+    /// <param name="manufacturable">The manufacturable item to check.</param>
+    /// <returns>True if manufacturing is complete, false otherwise.</returns>
+    private bool IsManufacturingComplete(IManufacturable manufacturable)
+    {
+        return manufacturable.GetConstructionCost() <= manufacturable.GetManufacturingProgress();
+    }
+
+    /// <summary>
+    /// Completes the manufacturing process for an item.
+    /// </summary>
+    /// <param name="manufacturable">The completed manufacturable item.</param>
+    /// <param name="productionQueue">The queue from which to remove the item.</param>
+    /// <param name="index">The index of the item in the queue.</param>
+    private void CompleteManufacturing(
+        IManufacturable manufacturable,
+        List<IManufacturable> productionQueue,
+        ref int index
+    )
+    {
+        GameLogger.Log(
+            $"Manufacturable completed: {manufacturable.GetDisplayName()} {manufacturable.GetParent().GetDisplayName()}"
+        );
+        productionQueue.RemoveAt(index);
+        index--; // Decrement index to account for removed item.
+
+        manufacturable.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+        // Send completed item to target.
+        if (manufacturable is IMovable movable)
+        {
+            movable.SetMovementStatus(MovementStatus.InTransit);
+        }
+    }
+
+    /// <summary>
     /// Updates the uprising status of a planet.
     /// </summary>
     /// <param name="planet">The planet to update.</param>
     private void UpdateUprisingStatus(Planet planet)
     {
-        // @TODO: Implement uprising status update logic.
+        // TODO: Implement uprising status update logic.
     }
 }

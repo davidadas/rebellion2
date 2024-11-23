@@ -5,6 +5,11 @@ using System.Collections.Generic;
 /// A simple container which acts as a reference for a SceneNode. Its primary purpose
 /// is to provide common functionality for all nodes in the scene graph which have no children.
 /// </summary>
+/// <remarks>
+/// This class is inherited by classes that have no child nodes. Examples include
+/// officers, starfighters, and other entities that do not have children. For nodes
+/// that have children, see the <see cref="ContainerNode"/> class.
+/// </remarks>
 public class LeafNode : BaseSceneNode
 {
     /// <summary>

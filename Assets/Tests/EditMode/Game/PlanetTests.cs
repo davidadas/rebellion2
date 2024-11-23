@@ -87,9 +87,9 @@ public class PlanetTests
 
         Building extraBuilding = new Building { BuildingSlot = BuildingSlot.Ground };
 
-        Assert.Throws<GameException>(
+        Assert.Throws<GameStateException>(
             () => planet.AddChild(extraBuilding),
-            "Adding a building when slots are full should throw a GameException."
+            "Adding a building when slots are full should throw a GameStateException."
         );
     }
 

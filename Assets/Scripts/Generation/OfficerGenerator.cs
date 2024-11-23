@@ -6,133 +6,129 @@ using IDictionaryExtensions;
 using IEnumerableExtensions;
 using UnityEngine;
 
-/// <summary>
-///
-/// </summary>
 public class OfficerGenerator : UnitGenerator<Officer>
 {
     /// <summary>
-    /// Default constructor, constructs a OfficerGenerator object.
+    /// Constructs an OfficerGenerator object.
     /// </summary>
-    /// <param name="summary">The GameSummary options selected by the player.</param>
-    /// <param name="config">The Config containing new game configurations and settings.</param>
+    /// <param name="summary">The game summary with options selected by the player.</param>
+    /// <param name="resourceManager">The resource manager for accessing configuration settings.</param>
     public OfficerGenerator(GameSummary summary, IResourceManager resourceManager)
         : base(summary, resourceManager) { }
 
     /// <summary>
-    ///
+    /// Selects the initial set of officers for each faction based on game configuration.
     /// </summary>
-    /// <param name="officersByFaction"></param>
-    /// <returns></returns>
-    private Officer[] selectInitialOfficers(Dictionary<string, List<Officer>> officersByFaction)
+    /// <param name="officersByFaction">Dictionary of officers grouped by faction.</param>
+    /// <returns>Array of selected officers.</returns>
+    private Officer[] SelectInitialOfficers(Dictionary<string, List<Officer>> officersByFaction)
     {
         List<Officer> selectedOfficers = new List<Officer>();
         string galaxySize = GetGameSummary().GalaxySize.ToString();
         int numAllowedOfficers = GetConfig()
             .GetValue<int>($"Officers.NumInitialOfficers.GalaxySize.{galaxySize}");
 
-        // Set the finalized list of officers for each faction.
-        foreach (string ownerInstanceId in officersByFaction.Keys.ToArray())
+        foreach (KeyValuePair<string, List<Officer>> entry in officersByFaction)
         {
-            IEnumerable<Officer> reducedOfficers = officersByFaction[ownerInstanceId]
-                // Take a random selection of officers for the game start.
+            string ownerInstanceId = entry.Key;
+            List<Officer> officers = entry.Value;
+
+            IEnumerable<Officer> reducedOfficers = officers
                 .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
-                // Set the OwnerInstanceID for each officer.
-                .Select(
-                    (officer) =>
-                    {
-                        officer.OwnerInstanceID = ownerInstanceId;
-                        return officer;
-                    }
-                );
-            selectedOfficers.AddAll(reducedOfficers);
+                .Select(officer =>
+                {
+                    officer.OwnerInstanceID = ownerInstanceId;
+                    return officer;
+                });
+
+            selectedOfficers.AddRange(reducedOfficers);
         }
+
         return selectedOfficers.ToArray();
     }
 
     /// <summary>
-    ///
+    /// Creates a mapping of factions to potential deployment destinations.
     /// </summary>
-    /// <param name="planetSystems"></param>
-    /// <returns></returns>
-    private Dictionary<string, List<ISceneNode>> getDestinationMapping(PlanetSystem[] planetSystems)
+    /// <param name="planetSystems">Array of planet systems in the game.</param>
+    /// <returns>Dictionary mapping faction IDs to a list of destinations (planets and fleets).</returns>
+    private Dictionary<string, List<ISceneNode>> GetDestinationMapping(PlanetSystem[] planetSystems)
     {
-        // Flatten the list of planets from planet systems.
-        // Only pull those planets with a OwnerInstanceID assigned.
         IEnumerable<Planet> flattenedPlanets = planetSystems
-            .SelectMany((planetSystem) => planetSystem.Planets)
-            .Where((planet) => planet.OwnerInstanceID != null);
+            .SelectMany(planetSystem => planetSystem.Planets)
+            .Where(planet => planet.OwnerInstanceID != null);
 
-        // Create an array of fleets and planets.
-        List<ISceneNode> fleetsAndPlanets = new List<ISceneNode>();
+        List<ISceneNode> destinations = new List<ISceneNode>();
         foreach (Planet planet in flattenedPlanets)
         {
-            fleetsAndPlanets.Add(planet);
-            fleetsAndPlanets.AddAll(planet.Fleets);
+            destinations.Add(planet);
+            destinations.AddRange(planet.Fleets);
         }
 
-        // Create a dictionary of factions to planets and their associated fleets.
-        Dictionary<string, List<ISceneNode>> destinationMapping = fleetsAndPlanets.Aggregate(
-            new Dictionary<string, List<ISceneNode>>(),
-            (destinationMap, nextDestination) =>
-            {
-                string ownerInstanceId = nextDestination.OwnerInstanceID;
+        Dictionary<string, List<ISceneNode>> destinationMapping =
+            new Dictionary<string, List<ISceneNode>>();
+        foreach (ISceneNode destination in destinations)
+        {
+            string ownerInstanceId = destination.OwnerInstanceID;
 
-                List<ISceneNode> destinations = destinationMap.GetOrAddValue(
-                    ownerInstanceId,
-                    new List<ISceneNode>()
-                );
-                destinations.Add(nextDestination);
-                return destinationMap;
+            if (!destinationMapping.ContainsKey(ownerInstanceId))
+            {
+                destinationMapping[ownerInstanceId] = new List<ISceneNode>();
             }
-        );
+
+            destinationMapping[ownerInstanceId].Add(destination);
+        }
+
         return destinationMapping;
     }
 
     /// <summary>
-    ///
+    /// Selects officers for deployment based on their allowed factions and ownership.
     /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
+    /// <param name="units">Array of all available officers.</param>
+    /// <returns>Array of selected officers.</returns>
     public override Officer[] SelectUnits(Officer[] units)
     {
         Dictionary<string, List<Officer>> officersByFaction =
             new Dictionary<string, List<Officer>>();
-        IEnumerable<Officer> shuffledUnits = (units.Clone() as Officer[]).Shuffle();
+        Officer[] shuffledUnits = ((Officer[])units.Clone()).Shuffle().ToArray();
 
         foreach (Officer officer in shuffledUnits)
         {
-            // Add officers which already have an assigned OwnerInstanceID to the front.
-            // These are the officers that will always be assigned at start.
             if (officer.OwnerInstanceID != null)
             {
-                officersByFaction
-                    .GetOrAddValue(officer.OwnerInstanceID, new List<Officer>())
-                    .Insert(0, officer); // Add to front of list.
+                if (!officersByFaction.ContainsKey(officer.OwnerInstanceID))
+                {
+                    officersByFaction[officer.OwnerInstanceID] = new List<Officer>();
+                }
+                // Add to front.
+                officersByFaction[officer.OwnerInstanceID].Insert(0, officer);
             }
-            // Ignore officers allowed by both factions.
             else if (officer.AllowedOwnerInstanceIDs.Count == 1)
             {
-                officersByFaction
-                    .GetOrAddValue(officer.AllowedOwnerInstanceIDs[0], new List<Officer>())
-                    .Add(officer); // Add to end of list.
+                string allowedOwnerId = officer.AllowedOwnerInstanceIDs[0];
+                if (!officersByFaction.ContainsKey(allowedOwnerId))
+                {
+                    officersByFaction[allowedOwnerId] = new List<Officer>();
+                }
+                // Add to end.
+                officersByFaction[allowedOwnerId].Add(officer);
             }
         }
 
-        return selectInitialOfficers(officersByFaction);
+        return SelectInitialOfficers(officersByFaction);
     }
 
     /// <summary>
-    ///
+    /// Decorates officers with additional randomized attributes.
     /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
+    /// <param name="units">Array of officers to decorate.</param>
+    /// <returns>Array of decorated officers.</returns>
     public override Officer[] DecorateUnits(Officer[] units)
     {
         foreach (Officer officer in units)
         {
-            // Set mission skills.
-            (MissionParticipantSkill, int)[] skillVariances = new[]
+            (MissionParticipantSkill skill, int variance)[] skillVariances = new[]
             {
                 (MissionParticipantSkill.Diplomacy, officer.DiplomacyVariance),
                 (MissionParticipantSkill.Espionage, officer.EspionageVariance),
@@ -140,35 +136,35 @@ public class OfficerGenerator : UnitGenerator<Officer>
                 (MissionParticipantSkill.Leadership, officer.LeadershipVariance),
             };
 
-            foreach (var (skill, variance) in skillVariances)
+            foreach ((MissionParticipantSkill skill, int variance) in skillVariances)
             {
-                officer.Skills[skill] += Random.Range(0, variance);
+                officer.SetSkillValue(
+                    skill,
+                    officer.GetSkillValue(skill) + Random.Range(0, variance)
+                );
             }
 
-            // Set loyalty.
             officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
-
-            // Set research attributes
             officer.ShipResearch += Random.Range(0, officer.ShipResearchVariance);
             officer.TroopResearch += Random.Range(0, officer.TroopResearchVariance);
             officer.FacilityResearch += Random.Range(0, officer.FacilityResearchVariance);
 
-            // Set Jedi attributes.
             float jediProbability = officer.JediProbability / 100f;
             officer.IsJedi = officer.IsJedi || UnityEngine.Random.value < jediProbability;
         }
+
         return units;
     }
 
     /// <summary>
-    ///
+    /// Deploys officers to initial destinations based on the game configuration.
     /// </summary>
-    /// <param name="units"></param>
-    /// <param name="destinations"></param>
-    /// <returns></returns>
+    /// <param name="officers">Array of officers to deploy.</param>
+    /// <param name="planetSystems">Array of planet systems in the game.</param>
+    /// <returns>Array of deployed officers.</returns>
     public override Officer[] DeployUnits(Officer[] officers, PlanetSystem[] planetSystems)
     {
-        Dictionary<string, List<ISceneNode>> destinationMapping = getDestinationMapping(
+        Dictionary<string, List<ISceneNode>> destinationMapping = GetDestinationMapping(
             planetSystems
         );
 
@@ -179,8 +175,8 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
             if (officer.InitialParentInstanceID != null)
             {
-                destination = destinations.First(
-                    (sceneNode) => sceneNode.InstanceID == officer.InitialParentInstanceID
+                destination = destinations.First(sceneNode =>
+                    sceneNode.InstanceID == officer.InitialParentInstanceID
                 );
             }
             else
@@ -188,16 +184,16 @@ public class OfficerGenerator : UnitGenerator<Officer>
                 destination = destinations.Shuffle().First();
             }
 
-            System.Type destinationType = destination.GetType();
-            if (destinationType.IsAssignableFrom(typeof(Planet)))
+            if (destination is Planet planet)
             {
-                ((Planet)destination).AddChild(officer);
+                planet.AddChild(officer);
             }
-            else
+            else if (destination is Fleet fleet)
             {
-                ((Fleet)destination).AddChild(officer);
+                fleet.AddChild(officer);
             }
         }
+
         return officers;
     }
 }

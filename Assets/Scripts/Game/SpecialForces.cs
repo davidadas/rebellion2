@@ -24,7 +24,7 @@ public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMo
     public int PositionX { get; set; }
     public int PositionY { get; set; }
 
-    // Mission Info
+    // Mission Skill Related
     public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
         new Dictionary<MissionParticipantSkill, int>
         {
@@ -33,6 +33,7 @@ public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMo
             { MissionParticipantSkill.Combat, 0 },
             { MissionParticipantSkill.Leadership, 0 },
         };
+    public bool CanImproveMissionSkill => true;
 
     /// <summary>
     /// Default constructor used for serialization.
@@ -74,9 +75,6 @@ public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMo
     /// <returns></returns>
     public bool IsOnMission()
     {
-        ISceneNode parent = GetParent();
-
-        // Ensure the parent is a mission and that the mission is not complete.
-        return parent is Mission && !(parent as Mission).IsComplete();
+        return GetParent() is Mission;
     }
 }

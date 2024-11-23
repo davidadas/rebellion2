@@ -247,8 +247,14 @@ static class XmlSerializer
     private static void WritePersistable(object obj, XmlWriter writer, string key = null)
     {
         Type objType = obj.GetType();
-        IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(objType);
-        IEnumerable<MemberInfo> attributes = ReflectionHelper.GetPersistableAttributes(objType);
+        IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
+            objType,
+            ReflectionHelper.OperationType.Write
+        );
+        IEnumerable<MemberInfo> attributes = ReflectionHelper.GetPersistableAttributes(
+            objType,
+            ReflectionHelper.OperationType.Write
+        );
 
         writer.WriteStartElement(key ?? objType.Name);
 
@@ -534,9 +540,13 @@ static class XmlDeserializer
         object obj = Activator.CreateInstance(actualType);
 
         IDictionary<string, MemberInfo> attributes = ReflectionHelper.GetPersistableAttributeMap(
-            actualType
+            actualType,
+            ReflectionHelper.OperationType.Write
         );
-        IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(actualType);
+        IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
+            actualType,
+            ReflectionHelper.OperationType.Read
+        );
 
         if (reader.IsEmptyElement)
         {
@@ -815,66 +825,125 @@ static class ReflectionHelper
     private const BindingFlags CommonBindingFlags =
         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
+    public enum OperationType
+    {
+        Write,
+        Read,
+    };
+
     /// <summary>
     /// Gets all persistable members of a given type.
     /// </summary>
     /// <param name="classType">The type to get members from.</param>
+    /// <param name="operationType">The type of operation to get members for.</param>
     /// <returns>An enumerable of persistable MemberInfo objects.</returns>
-    public static IEnumerable<MemberInfo> GetPersistableMembers(Type classType)
+    public static IEnumerable<MemberInfo> GetPersistableMembers(
+        Type classType,
+        OperationType operationType
+    )
     {
+        // Determine if a member is persistable based on the operation type
         bool IsPersistable(MemberInfo member)
         {
-            return (
-                    member is FieldInfo field && field.IsPublic
-                    || member is PropertyInfo property && property.GetMethod?.IsPublic == true
-                    || member.GetCustomAttributes(typeof(PersistableMemberAttribute), true).Any()
-                )
-                && !member.GetCustomAttributes(typeof(PersistableIgnoreAttribute), true).Any()
-                && !member.GetCustomAttributes(typeof(PersistableAttributeAttribute), true).Any();
+            bool isPublicField = member is FieldInfo field && field.IsPublic;
+            bool isPublicProperty =
+                member is PropertyInfo property && property.GetMethod?.IsPublic == true;
+            bool hasPersistableAttribute = member
+                .GetCustomAttributes(typeof(PersistableMemberAttribute), true)
+                .Any();
+            bool hasIgnoreAttribute = member
+                .GetCustomAttributes(typeof(PersistableIgnoreAttribute), true)
+                .Any();
+            bool hasAlternativePersistableAttribute = member
+                .GetCustomAttributes(typeof(PersistableAttributeAttribute), true)
+                .Any();
+
+            if (operationType == OperationType.Write)
+            {
+                return (isPublicField || isPublicProperty || hasPersistableAttribute)
+                    && !hasIgnoreAttribute
+                    && !hasAlternativePersistableAttribute;
+            }
+
+            return (isPublicField || isPublicProperty || hasPersistableAttribute)
+                && !hasAlternativePersistableAttribute;
         }
 
-        return classType
+        // Retrieve persistable fields.
+        IEnumerable<MemberInfo> fields = classType
             .GetFields(CommonBindingFlags)
             .Where(IsPersistable)
-            .Cast<MemberInfo>()
-            .Concat(
-                classType.GetProperties(CommonBindingFlags).Where(IsPersistable).Cast<MemberInfo>()
-            );
+            .Cast<MemberInfo>();
+
+        // Retrieve persistable properties.
+        IEnumerable<MemberInfo> properties = classType
+            .GetProperties(CommonBindingFlags)
+            .Where(property => property.CanRead && property.CanWrite)
+            .Where(IsPersistable)
+            .Cast<MemberInfo>();
+
+        // Combine and return the result
+        return fields.Concat(properties);
     }
 
     /// <summary>
     /// Gets all persistable attributes of a given type.
     /// </summary>
     /// <param name="classType">The type to get attributes from.</param>
+    /// <param name="operationType">The type of operation to get attributes for.</param>
     /// <returns>An enumerable of MemberInfo objects representing persistable attributes.</returns>
-    public static IEnumerable<MemberInfo> GetPersistableAttributes(Type classType)
+    public static IEnumerable<MemberInfo> GetPersistableAttributes(
+        Type classType,
+        OperationType operationType
+    )
     {
+        // Determine if a member is a persistable attribute based on the operation type
         bool IsPersistableAttribute(MemberInfo member)
         {
-            return member.GetCustomAttributes(typeof(PersistableAttributeAttribute), true).Any()
-                && !member.GetCustomAttributes(typeof(PersistableIgnoreAttribute), true).Any();
+            bool hasPersistableAttribute = member
+                .GetCustomAttributes(typeof(PersistableAttributeAttribute), true)
+                .Any();
+            bool hasIgnoreAttribute = member
+                .GetCustomAttributes(typeof(PersistableIgnoreAttribute), true)
+                .Any();
+
+            if (operationType == OperationType.Write)
+            {
+                return hasPersistableAttribute && !hasIgnoreAttribute;
+            }
+
+            return hasPersistableAttribute;
         }
 
-        return classType
+        // Retrieve persistable fields.
+        IEnumerable<MemberInfo> fields = classType
             .GetFields(CommonBindingFlags)
             .Where(IsPersistableAttribute)
-            .Cast<MemberInfo>()
-            .Concat(
-                classType
-                    .GetProperties(CommonBindingFlags)
-                    .Where(IsPersistableAttribute)
-                    .Cast<MemberInfo>()
-            );
+            .Cast<MemberInfo>();
+
+        // Retrieve persistable properties.
+        IEnumerable<MemberInfo> properties = classType
+            .GetProperties(CommonBindingFlags)
+            .Where(property => property.CanRead && property.CanWrite)
+            .Where(IsPersistableAttribute)
+            .Cast<MemberInfo>();
+
+        // Combine and return the result
+        return fields.Concat(properties);
     }
 
     /// <summary>
     /// Gets a dictionary mapping field names to their MemberInfo for all persistable fields of a type.
     /// </summary>
     /// <param name="classType">The type to get the field map for.</param>
+    /// <param name="operationType">The type of operation to get fields for.</param>
     /// <returns>A dictionary mapping field names to MemberInfo objects.</returns>
-    public static IDictionary<string, MemberInfo> GetPersistableMemberMap(Type classType)
+    public static IDictionary<string, MemberInfo> GetPersistableMemberMap(
+        Type classType,
+        OperationType operationType
+    )
     {
-        return GetPersistableMembers(classType)
+        return GetPersistableMembers(classType, operationType)
             .ToDictionary(
                 member =>
                     (
@@ -889,10 +958,14 @@ static class ReflectionHelper
     /// Gets a dictionary mapping attribute names to their MemberInfo for all persistable attributes of a type.
     /// </summary>
     /// <param name="classType">The type to get the attribute map for.</param>
+    /// <param name="operationType">The type of operation to get attributes for.</param>
     /// <returns>A dictionary mapping attribute names to MemberInfo objects.</returns>
-    public static IDictionary<string, MemberInfo> GetPersistableAttributeMap(Type classType)
+    public static IDictionary<string, MemberInfo> GetPersistableAttributeMap(
+        Type classType,
+        OperationType operationType
+    )
     {
-        return GetPersistableAttributes(classType)
+        return GetPersistableAttributes(classType, operationType)
             .ToDictionary(
                 member =>
                     (

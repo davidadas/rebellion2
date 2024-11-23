@@ -108,7 +108,7 @@ public class Game
         if (node.GetParent() != null)
         {
             throw new InvalidSceneOperationException(
-                $"Cannot attach node \"{node.DisplayName}\" to parent \"{parent.DisplayName}\" because it already has a parent."
+                $"Cannot attach node \"{node.GetDisplayName()}\" to parent \"{parent.GetDisplayName()}\" because it already has a parent."
             );
         }
 
@@ -132,7 +132,7 @@ public class Game
         if (node.GetParent() == null)
         {
             throw new InvalidSceneOperationException(
-                $"Cannot detach node \"{node.DisplayName}\" because it does not have a parent."
+                $"Cannot detach node \"{node.GetDisplayName()}\" because it does not have a parent."
             );
         }
 

@@ -10,7 +10,7 @@ public class SceneAccessException : SceneException
     /// <param name="accessee"></param>
     public SceneAccessException(ISceneNode accessor, ISceneNode accessee)
         : base(
-            $"Cannot add \"{accessor.DisplayName}\" to \"{accessee.DisplayName}\". Accessor does not have access."
+            $"Cannot add \"{accessor.GetDisplayName()}\" to \"{accessee.GetDisplayName()}\". Accessor does not have access."
         )
     {
         Accessor = accessor;

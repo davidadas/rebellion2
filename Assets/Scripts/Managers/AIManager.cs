@@ -72,13 +72,40 @@ public class AIManager
         {
             if (officer.IsMovable())
             {
-                Planet nearestPlanet = faction.GetNearestPlanet(officer);
-                if (
-                    officer.IsMainCharacter()
-                    && game.GetUnrecruitedOfficers(faction.InstanceID).Count > 0
+                if (officer.IsMain && game.GetUnrecruitedOfficers(faction.InstanceID).Count > 0)
+                {
+                    Planet nearestFriendlyPlanet = faction.GetNearestPlanetTo(officer);
+
+                    GameLogger.Log(
+                        $"Sending {officer.GetDisplayName()} on a recruitment mission to {nearestFriendlyPlanet.GetDisplayName()}."
+                    );
+
+                    missionManager.InitiateMission(
+                        MissionType.Recruitment,
+                        officer,
+                        nearestFriendlyPlanet
+                    );
+                }
+                else if (
+                    officer.IsMain
+                    || officer.GetSkillValue(MissionParticipantSkill.Diplomacy) > 60
                 )
                 {
-                    missionManager.InitiateMission(MissionType.Recruitment, officer, nearestPlanet);
+                    Planet nearestUnownedPlanet =
+                        officer
+                            .GetParentOfType<PlanetSystem>()
+                            .GetChildrenByOwnerInstanceID(null)
+                            .FirstOrDefault() as Planet;
+
+                    GameLogger.Log(
+                        $"Sending {officer.GetDisplayName()} on a diplomacy mission to {nearestUnownedPlanet.GetDisplayName()}."
+                    );
+
+                    missionManager.InitiateMission(
+                        MissionType.Diplomacy,
+                        officer,
+                        nearestUnownedPlanet
+                    );
                 }
             }
         }
@@ -98,21 +125,27 @@ public class AIManager
             return;
         }
 
-        List<Building> buildingOptions = faction.GetAvailableTechnologies<Building>();
+        List<Technology> buildingOptions = faction.GetResearchedTechnologies(
+            ManufacturingType.Building
+        );
 
-        IManufacturable constructionYard = buildingOptions
-            .FindAll(b => b.GetBuildingType() == BuildingType.ConstructionFacility)
+        Technology constructionYardTech = buildingOptions
+            .FindAll(technology =>
+                (technology.GetReference() as Building).GetBuildingType()
+                == BuildingType.ConstructionFacility
+            )
             .LastOrDefault();
 
         foreach (Planet planet in idleConstructionFacilities)
         {
             int facilityCount = planet.GetBuildingTypeCount(BuildingType.ConstructionFacility);
             if (
-                constructionYard is Building building
+                constructionYardTech.GetReference() is Building building
                 && planet.GetAvailableSlots(building.GetBuildingSlot()) > 0
+                && facilityCount < 5
             )
             {
-                planetManager.AddToManufacturingQueue(planet, planet, constructionYard, 1);
+                planetManager.AddToManufacturingQueue(planet, planet, constructionYardTech, 1);
             }
         }
     }
