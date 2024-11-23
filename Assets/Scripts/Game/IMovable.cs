@@ -7,12 +7,12 @@ public enum MovementStatus
 }
 
 /// <summary>
-///
+/// An interface for scene nodes/units that can be moved within the GalaxyMap.
 /// </summary>
 public interface IMovable : ISceneNode
 {
-    public int PositionX { get; set; }
-    public int PositionY { get; set; }
+    int PositionX { get; set; }
+    int PositionY { get; set; }
     MovementStatus MovementStatus { get; set; }
 
     /// <summary>
@@ -40,18 +40,18 @@ public interface IMovable : ISceneNode
         Planet targetPlanet = target.GetParentOfType<Planet>();
         Point targetPosition = targetPlanet.GetPosition();
 
+        // Set child-parent relationships.
+        SetParent(target);
+        target.AddChild(this);
+
         // If already at the target location, adjust parent-child relationships.
         if (GetPosition() == targetPosition)
         {
-            SetParent(target);
-            target.AddChild(this);
             return;
         }
 
         // Move the unit to the target, update its position, and set it as InTransit.
         SetPosition(targetPosition);
-        SetParent(target);
-        target.AddChild(this);
         MovementStatus = MovementStatus.InTransit;
 
         // Move any children that also implement IMovable.
@@ -88,6 +88,18 @@ public interface IMovable : ISceneNode
     {
         PositionX = position.X;
         PositionY = position.Y;
+    }
+
+    /// <summary>
+    /// Used to set this IMovable's next location. Provides a
+    /// default implementation which performs a simple set operation.
+    /// </summary>
+    /// <param name="x">This IMovable's new X position.</param>
+    /// <param name="y">This IMovable's new Y position.</param>
+    void SetPosition(int x, int y)
+    {
+        PositionX = x;
+        PositionY = y;
     }
 
     /// <summary>

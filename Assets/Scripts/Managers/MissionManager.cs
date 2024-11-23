@@ -20,6 +20,10 @@ public class MissionManager
     private Game game;
     private readonly Random random = new Random();
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="game"></param>
     public MissionManager(Game game)
     {
         this.game = game;
@@ -101,10 +105,6 @@ public class MissionManager
         {
             throw new ArgumentException("Main participants list cannot be empty.");
         }
-        else if (target == null)
-        {
-            throw new ArgumentException("Target cannot be null.");
-        }
 
         // Get the nearest planet related to the target and the participants' current planet.
         Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
@@ -120,42 +120,48 @@ public class MissionManager
             target
         );
 
-        int missionLength = random.Next(mission.GetTickRange()[0], mission.GetTickRange()[1]);
-        int executionTick =
-            game.CurrentTick + currentPlanet.GetTravelTime(closestPlanet) + missionLength;
-        mission.SetExecutionTick(executionTick);
-
         // Attach the mission to scene graph.
         game.AttachNode(mission, closestPlanet);
 
-        // Set the movement status of all participants to InTransit.
-        foreach (IMovable movable in mainParticipants.Concat(decoyParticipants).OfType<IMovable>())
-        {
-            movable.MoveTo(mission);
-        }
+        // Initiate the mission with the given arguments.
+        // This will set the movement status of all participants to InTransit.
+        mission.Initiate();
     }
 
-    public void Update()
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="mission"></param>
+    public void UpdateMission(Mission mission)
     {
         List<Mission> missions = game.GetSceneNodesByType<Mission>();
         GalaxyMap galaxyMap = game.GetGalaxyMap();
 
-        // Check if any missions are complete and execute the corresponding event.
-        foreach (Mission mission in missions)
+        // Increment the mission progress.
+        mission.IncrementProgress();
+
+        if (mission.IsComplete())
         {
-            // Increment the mission progress.
-            mission.IncrementProgress();
+            // Evaluate the mission success.
+            mission.Execute(game);
 
-            if (mission.IsComplete())
+            // Check if the mission can continue.
+            // If so, reset the mission progress and re-initiate the mission.
+            if (mission.CanContinue(game))
             {
-                mission.Execute(game);
-
+                mission.Initiate();
+            }
+            // Otherwise, move the participants to the closest planet and remove the mission.
+            else
+            {
                 // Move the units to the closest planet.
                 List<IMovable> combinedParticipants = mission
                     .GetAllParticipants()
                     .Cast<IMovable>()
                     .ToList();
-                Planet planet = galaxyMap.GetClosestFriendlyPlanet(mission);
+
+                Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+                Planet planet = faction.GetNearestPlanetTo(mission);
 
                 foreach (IMovable movable in combinedParticipants)
                 {

@@ -9,17 +9,10 @@ public class OfficerManager
         this.game = game;
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="officers"></param>
-    public void Update(List<Officer> officers)
+    public void Update(Officer officer)
     {
-        foreach (Officer officer in officers)
-        {
-            HealOfficer(officer);
-            AttemptJailbreak(officer);
-        }
+        HealOfficer(officer);
+        AttemptJailbreak(officer);
     }
 
     /// <summary>

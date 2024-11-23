@@ -16,9 +16,7 @@ public abstract class Mission : ContainerNode
 
     [PersistableIgnore]
     public List<IMissionParticipant> DecoyParticipants { get; set; }
-    public MissionParticipantSkill ParticipantSkill;
-    public int MaxProgress { get; set; }
-    public int MissionProgress { get; set; }
+    public MissionParticipantSkill ParticipantSkill { get; set; }
 
     // Success Probability Variables
     [PersistableIgnore]
@@ -42,8 +40,8 @@ public abstract class Mission : ContainerNode
     [PersistableIgnore]
     public int MaxTicks = 10;
 
-    [PersistableIgnore]
-    public bool IsRepeatable { get; set; }
+    public int MaxProgress { get; set; }
+    public int CurrentProgress { get; set; }
 
     // Decoy Probability Variables
     // @TODO: Move these to a config file.
@@ -58,9 +56,11 @@ public abstract class Mission : ContainerNode
     public double FoilLinearCoefficient = 0.8879;
     public double FoilConstantTerm = 84.61;
 
-    private static readonly Random random = new Random();
+    protected static readonly Random random = new Random();
 
-    // Empty constructor used for serialization.
+    /// <summary>
+    /// Default constructor used for serialization.
+    /// </summary>
     protected Mission() { }
 
     /// <summary>
@@ -116,6 +116,23 @@ public abstract class Mission : ContainerNode
         MaxTicks = maxTicks;
     }
 
+    public void Initiate()
+    {
+        // Move each unit to the mission location.
+        foreach (IMissionParticipant participant in GetAllParticipants())
+        {
+            if (participant.GetParent() != this)
+            {
+                participant.MoveTo(this);
+            }
+        }
+
+        // Set the mission progress to 0 and the max progress.
+        // Then, set the max progress to a random value between the min and max ticks.
+        CurrentProgress = 0;
+        MaxProgress = random.Next(MinTicks, MaxTicks);
+    }
+
     /// <summary>
     ///
     /// </summary>
@@ -126,11 +143,18 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    ///
+    /// Increments the mission progress by 1.
     /// </summary>
+    /// <remarks>This is called each tick to increment the mission progress.</remarks>
     public void IncrementProgress()
     {
-        MissionProgress++;
+        bool unitsAreAllInTransits = GetAllParticipants()
+            .All(unit => unit.MovementStatus == MovementStatus.InTransit);
+
+        if (CurrentProgress < MaxProgress && !unitsAreAllInTransits)
+        {
+            CurrentProgress++;
+        }
     }
 
     /// <summary>
@@ -148,7 +172,7 @@ public abstract class Mission : ContainerNode
     /// <returns></returns>
     public bool IsComplete()
     {
-        return MissionProgress >= MaxProgress;
+        return CurrentProgress >= MaxProgress;
     }
 
     /// <summary>
@@ -256,7 +280,7 @@ public abstract class Mission : ContainerNode
         // Sum the defense ratings of all regiments on the planet.
         foreach (ISceneNode child in planet.GetChildren())
         {
-            if (child is Regiment regiment)
+            if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
             {
                 defenseScore += regiment.DefenseRating;
             }
@@ -346,6 +370,24 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
+    /// Improves the mission skill of all participants.
+    /// </summary>
+    protected void ImproveMissionParticipantsSkill()
+    {
+        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+        {
+            // Check if the participant can improve their mission skill.
+            if (participant.CanImproveMissionSkill)
+            {
+                participant.SetMissionSkillValue(
+                    ParticipantSkill,
+                    participant.GetMissionSkillValue(ParticipantSkill) + 1
+                );
+            }
+        }
+    }
+
+    /// <summary>
     /// Executes the mission, determining if it succeeds or fails.
     /// </summary>
     /// <param name="game">The game instance.</param>
@@ -355,17 +397,20 @@ public abstract class Mission : ContainerNode
         double defenseScore = GetDefenseScore();
         double foilProbability = GetFoilProbability(defenseScore);
 
-        if (CheckMissionSuccess(foilProbability))
+        if (CheckMissionSuccess(foilProbability) || CheckDecoySuccessful(foilProbability))
         {
             OnSuccess(game);
-        }
-        else if (CheckDecoySuccessful(foilProbability))
-        {
-            // @TODO: Handle decoy success.
+            ImproveMissionParticipantsSkill();
         }
         else if (CheckMissionFoiled(foilProbability))
         {
+            GameLogger.Log(Name + " has been foiled.");
             // @TODO: Handle mission being foiled.
+        }
+        else
+        {
+            GameLogger.Log(Name + " has failed.");
+            // @TODO: Handle mission failure.
         }
     }
 
@@ -398,4 +443,10 @@ public abstract class Mission : ContainerNode
     /// </summary>
     /// <param name="game"></param>
     protected abstract void OnSuccess(Game game);
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="game"></param>
+    public abstract bool CanContinue(Game game);
 }

@@ -22,7 +22,7 @@ public class Fleet : ContainerNode, IMovable
     /// Constructor that initializes the fleet with an owner.
     /// </summary>
     /// <param name="capitalShip">The capital ship to add to the fleet.</param>
-    /// <exception cref="SceneAccessException">Thrown when the capital ship is not allowed to be added.</exception>
+    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent..</exception>
     private void AddCapitalShip(CapitalShip capitalShip)
     {
         if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
@@ -36,7 +36,7 @@ public class Fleet : ContainerNode, IMovable
     /// Adds an officer to the fleet.
     /// </summary>
     /// <param name="officer">The officer to add to the fleet.</param>
-    /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
+    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
     private void AddOfficer(Officer officer)
     {
         if (this.OwnerInstanceID != officer.OwnerInstanceID)
@@ -50,7 +50,7 @@ public class Fleet : ContainerNode, IMovable
     /// Adds a child to the node.
     /// </summary>
     /// <param name="child">The child node to add.</param>
-    /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
+    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
     public override void AddChild(ISceneNode child)
     {
         if (child is CapitalShip)
@@ -81,7 +81,7 @@ public class Fleet : ContainerNode, IMovable
     /// <returns></returns>
     public bool IsMovable()
     {
-        return true;
+        return MovementStatus != MovementStatus.InTransit;
     }
 
     /// <summary>

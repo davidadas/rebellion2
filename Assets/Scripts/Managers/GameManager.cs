@@ -94,7 +94,9 @@ public class GameManager
     public void Update()
     {
         if (tickInterval == null)
+        {
             return;
+        }
 
         // Calculate deltaTime using the elapsed time from the stopwatch.
         float deltaTime = (float)stopwatch.Elapsed.TotalSeconds;
@@ -112,11 +114,28 @@ public class GameManager
         }
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="node"></param>
     private void ProcessNode(ISceneNode node)
     {
+        // Update the movement of movable units.
         if (node is IMovable moveable)
         {
             unitManager.UpdateMovement(moveable);
+        }
+
+        // Update the state of planets.
+        if (node is Planet planet)
+        {
+            planetManager.UpdatePlanet(planet);
+        }
+
+        // Update the state of active missions.
+        if (node is Mission mission)
+        {
+            missionManager.UpdateMission(mission);
         }
     }
 
@@ -129,6 +148,8 @@ public class GameManager
         game.CurrentTick++;
 
         GameLogger.Log("Tick: " + game.CurrentTick);
+
+        game.Galaxy.Traverse(ProcessNode);
 
         // Update game states.
         aiManager.Update();

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
-/// <summary>
-/// Represents an abstract scene node in the game.
-/// </summary>
 public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
 {
     // Parent Info
@@ -80,6 +78,15 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     }
 
     /// <summary>
+    /// Returns the instance id of the parent scene node.
+    /// </summary>
+    /// <returns>The instance id of the parent scene node.</returns>
+    public string GetOwnerInstanceID()
+    {
+        return OwnerInstanceID;
+    }
+
+    /// <summary>
     /// Returns the closest parent scene node of the specified type.
     /// </summary>
     /// <typeparam name="T">The type of the parent scene node.</typeparam>
@@ -101,7 +108,7 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
         {
             if (!visitedNodes.Add(parent))
             {
-                // We've encountered this node before, which indicates a cycle.
+                // Node has already been visited, indicating a cycle in the scene graph.
                 throw new InvalidOperationException("Cycle detected in scene graph.");
             }
 
@@ -122,7 +129,7 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     /// </summary>
     /// <param name="value">The owner type id to set.</param>
     /// <exception cref="GameStateException">Thrown when the owner type id is invalid.</exception>
-    private void SetOwnerInstanceID(string value)
+    public void SetOwnerInstanceID(string value)
     {
         if (
             AllowedOwnerInstanceIDs == null
@@ -162,11 +169,37 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
         return matchingChildren;
     }
 
+    /// <summary>
+    /// Called when the scene node is added to the game world.
+    /// </summary>
+    /// <param name="child">The scene node to add.</param>
     public abstract void AddChild(ISceneNode child);
 
+    /// <summary>
+    /// Called when the scene node is removed from the game world.
+    /// </summary>
+    /// <param name="child">The scene node to remove.</param>
     public abstract void RemoveChild(ISceneNode child);
 
+    /// <summary>
+    /// Called to retrieve all children of the scene node.
+    /// </summary>
+    /// <returns>An enumerable collection of children.</returns>
     public abstract IEnumerable<ISceneNode> GetChildren();
 
+    /// <summary>
+    /// Returns all children of the current scene node that match the specified game owner id.
+    /// </summary>
+    /// <param name="ownerInstanceId">The game owner id to match.</param>
+    /// <returns>An enumerable collection of children that match the specified game owner id.</returns>
+    public IEnumerable<ISceneNode> GetChildrenByOwnerInstanceID(string ownerInstanceId)
+    {
+        return GetChildren().Where(child => child.OwnerInstanceID == ownerInstanceId);
+    }
+
+    /// <summary>
+    /// Called to traverse this scene node and all of its children.
+    /// </summary>
+    /// <param name="action">The action to perform on each scene node.</param>
     public abstract void Traverse(Action<ISceneNode> action);
 }

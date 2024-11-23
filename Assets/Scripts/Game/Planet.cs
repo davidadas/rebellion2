@@ -11,9 +11,10 @@ using ICollectionExtensions;
 /// </summary>
 public class Planet : ContainerNode
 {
-    // Distance Constants
+    // PLANET Constants
     private const int DISTANCE_DIVISOR = 5;
     private const int DISTANCE_BASE = 100;
+    private const int MAX_POPULAR_SUPPORT = 100;
 
     // Planet Properties
     public bool IsColonized { get; set; }
@@ -45,9 +46,9 @@ public class Planet : ContainerNode
         { BuildingSlot.Orbit, new List<Building>() },
     };
 
-    // Manufacturing Info
+    // Manufacturing Status
     [PersistableIgnore]
-    public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue =
+    public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue { get; } =
         new Dictionary<ManufacturingType, List<IManufacturable>>();
 
     /// <summary>
@@ -56,27 +57,27 @@ public class Planet : ContainerNode
     public Planet() { }
 
     /// <summary>
-    ///
+    /// Checks if the planet is blockaded.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>True if the planet is blockaded, false otherwise.</returns>
     public bool IsBlockaded()
     {
         return Fleets.Any(fleet => fleet.OwnerInstanceID != this.OwnerInstanceID);
     }
 
     /// <summary>
-    ///
+    /// Checks if units can be manufactured on this planet.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>True if units can be manufactured, false otherwise.</returns>
     public bool CanManufactureUnits()
     {
-        return IsBlockaded() || IsDestroyed || IsUprising;
+        return !IsBlockaded() && !IsDestroyed && !IsUprising;
     }
 
     /// <summary>
-    ///
+    /// Gets the manufacturing queue for the planet.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The manufacturing queue.</returns>
     public Dictionary<ManufacturingType, List<IManufacturable>> GetManufacturingQueue()
     {
         return ManufacturingQueue;
@@ -85,7 +86,8 @@ public class Planet : ContainerNode
     /// <summary>
     /// Returns the popular support for a faction on the planet.
     /// </summary>
-    /// <param name="factionInstanceId"></param>
+    /// <param name="factionInstanceId">The instance ID of the faction.</param>
+    /// <returns>The popular support for the faction.</returns>
     public int GetPopularSupport(string factionInstanceId)
     {
         return PopularSupport.TryGetValue(factionInstanceId, out int support) ? support : 0;
@@ -95,15 +97,47 @@ public class Planet : ContainerNode
     /// Sets the popular support for a faction on the planet.
     /// </summary>
     /// <param name="factionInstanceId">The instance ID of the faction.</param>
-    /// <param name="support">The level of support.</param>
+    /// <param name="support">The new level of support for the faction.</param>
     public void SetPopularSupport(string factionInstanceId, int support)
     {
-        if (!PopularSupport.ContainsKey(factionInstanceId))
-        {
-            PopularSupport.Add(factionInstanceId, support);
-        }
+        int currentSupport = PopularSupport.TryGetValue(factionInstanceId, out int existingSupport)
+            ? existingSupport
+            : 0;
+        int supportDifference = support - currentSupport;
+        int totalSupport = PopularSupport.Values.Sum();
 
-        PopularSupport[factionInstanceId] = support;
+        if (totalSupport + supportDifference <= MAX_POPULAR_SUPPORT)
+        {
+            PopularSupport[factionInstanceId] = support;
+        }
+        else
+        {
+            int overage = totalSupport + supportDifference - MAX_POPULAR_SUPPORT;
+
+            foreach (
+                KeyValuePair<string, int> kvp in PopularSupport
+                    .Where(kvp => kvp.Key != factionInstanceId)
+                    .ToList()
+            )
+            {
+                int reduction = Math.Min(overage, kvp.Value);
+                PopularSupport[kvp.Key] -= reduction;
+                overage -= reduction;
+
+                if (overage == 0)
+                    break;
+            }
+
+            if (overage > 0)
+            {
+                throw new GameStateException(
+                    $"Cannot set popular support for faction {factionInstanceId} to {support}. "
+                        + $"Total support would exceed {MAX_POPULAR_SUPPORT} even after reducing other factions' support."
+                );
+            }
+
+            PopularSupport[factionInstanceId] = support;
+        }
     }
 
     /// <summary>
@@ -123,14 +157,9 @@ public class Planet : ContainerNode
     /// <returns>Travel time in ticks.</returns>
     public int GetTravelTime(Planet targetPlanet)
     {
-        // Calculate the Euclidean distance between the two planets.
         int dx = this.PositionX - targetPlanet.PositionX;
         int dy = this.PositionY - targetPlanet.PositionY;
-
-        // Approximate the Euclidean distance using a binary search.
         double rawDistance = Math.Sqrt(dx * dx + dy * dy);
-
-        // Convert the distance to travel time in ticks.
         return (int)(rawDistance / DISTANCE_DIVISOR * DISTANCE_BASE / 100);
     }
 
@@ -146,9 +175,9 @@ public class Planet : ContainerNode
         ManufacturingType requiredManufacturingType = manufacturable.GetManufacturingType();
         double combinedRate = 0;
 
-        foreach (var slot in Buildings.Values)
+        foreach (List<Building> buildingList in Buildings.Values)
         {
-            foreach (var building in slot)
+            foreach (Building building in buildingList)
             {
                 if (building.GetProductionType() == requiredManufacturingType)
                 {
@@ -161,7 +190,6 @@ public class Planet : ContainerNode
             return 0;
 
         double combinedTime = totalMaterialCost / combinedRate;
-
         return (int)Math.Ceiling(combinedTime);
     }
 
@@ -173,20 +201,19 @@ public class Planet : ContainerNode
     public int GetProductionRate(ManufacturingType type)
     {
         double combinedRate = GetBuildings(type).Sum(building => 1.0 / building.GetProcessRate());
-
         return (int)Math.Ceiling(combinedRate);
     }
 
     /// <summary>
-    ///
+    /// Adds a manufacturable unit to the manufacturing queue.
     /// </summary>
-    /// <param name="unit"></param>
+    /// <param name="unit">The unit to be added to the manufacturing queue.</param>
     public void AddToManufacturingQueue(IManufacturable unit)
     {
         if (unit is ISceneNode sceneNode && sceneNode.GetParent() == null)
         {
             throw new GameStateException(
-                $"Unit {sceneNode.DisplayName} must have a parent to be added to the manufacturing queue."
+                $"Unit {sceneNode.GetDisplayName()} must have a parent to be added to the manufacturing queue."
             );
         }
 
@@ -197,6 +224,7 @@ public class Planet : ContainerNode
             ManufacturingQueue.Add(type, new List<IManufacturable>());
         }
 
+        unit.SetPosition(GetPosition());
         ManufacturingQueue[type].Add(unit);
     }
 
@@ -207,25 +235,23 @@ public class Planet : ContainerNode
     /// <returns>The count of idle production facilities of the specified type.</returns>
     public int GetIdleManufacturingFacilities(ManufacturingType type)
     {
-        // Check if there is any ongoing manufacturing for the specified type.
         if (
             ManufacturingQueue.TryGetValue(type, out List<IManufacturable> manufacturingQueue)
             && manufacturingQueue.Count > 0
         )
         {
-            return 0; // If there's something in the queue, return 0 idle facilities
+            return 0;
         }
 
-        // If the queue is empty or doesn't exist, return all buildings of the specified type
         return Buildings
             .Values.SelectMany(buildingList => buildingList)
             .Count(building => building.GetProductionType() == type);
     }
 
     /// <summary>
-    ///
+    /// Gets the fleets on the planet.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A list of fleets.</returns>
     public List<Fleet> GetFleets()
     {
         return Fleets;
@@ -257,7 +283,7 @@ public class Planet : ContainerNode
     /// Gets the buildings in a specific slot.
     /// </summary>
     /// <param name="slot">The building slot.</param>
-    /// <returns>An array of buildings.</returns>
+    /// <returns>A list of buildings.</returns>
     public List<Building> GetBuildings(BuildingSlot slot)
     {
         return Buildings[slot].ToList();
@@ -266,8 +292,8 @@ public class Planet : ContainerNode
     /// <summary>
     /// Gets the count of buildings of a specific type.
     /// </summary>
-    /// <param name="buildingType"></param>
-    /// <returns></returns>
+    /// <param name="buildingType">The type of building.</param>
+    /// <returns>The count of buildings of the specified type.</returns>
     public int GetBuildingTypeCount(BuildingType buildingType)
     {
         return Buildings
@@ -278,8 +304,8 @@ public class Planet : ContainerNode
     /// <summary>
     /// Gets the buildings of a specific production type.
     /// </summary>
-    /// <param name="type"></param>
-    /// <returns></returns>
+    /// <param name="productionType">The production type.</param>
+    /// <returns>A list of buildings of the specified production type.</returns>
     public List<Building> GetBuildings(ManufacturingType productionType)
     {
         return Buildings
@@ -296,8 +322,8 @@ public class Planet : ContainerNode
     private void AddBuilding(Building building)
     {
         if (!IsColonized)
-            throw new GameException(
-                $"Cannot add building {building.DisplayName} to {this.DisplayName}. Planet is not colonized."
+            throw new GameStateException(
+                $"Cannot add building {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is not colonized."
             );
 
         BuildingSlot slot = building.GetBuildingSlot();
@@ -307,8 +333,8 @@ public class Planet : ContainerNode
             || slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots
         )
         {
-            throw new GameException(
-                $"Cannot add {building.DisplayName} to {this.DisplayName}. Planet is at capacity."
+            throw new GameStateException(
+                $"Cannot add {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is at capacity."
             );
         }
 
@@ -334,7 +360,6 @@ public class Planet : ContainerNode
     {
         int numUsedSlots = Buildings[slot].Count(building => building.GetBuildingSlot() == slot);
         int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
-
         return maxSlots - numUsedSlots;
     }
 
@@ -399,28 +424,27 @@ public class Planet : ContainerNode
     /// <summary>
     /// Adds a reference node to the game.
     /// </summary>
-    /// <param name="node">The game node to add as a reference.</param>
+    /// <param name="child">The game node to add as a reference.</param>
     public override void AddChild(ISceneNode child)
     {
-        if (child is Fleet fleet)
+        switch (child)
         {
-            AddFleet(fleet);
-        }
-        else if (child is Officer officer)
-        {
-            AddOfficer(officer);
-        }
-        else if (child is Building building)
-        {
-            AddBuilding(building);
-        }
-        else if (child is Mission mission)
-        {
-            AddMission(mission);
-        }
-        else if (child is Regiment regiment)
-        {
-            AddRegiment(regiment);
+            case Fleet fleet:
+                AddFleet(fleet);
+                break;
+            case Officer officer:
+
+                AddOfficer(officer);
+                break;
+            case Building building:
+                AddBuilding(building);
+                break;
+            case Mission mission:
+                AddMission(mission);
+                break;
+            case Regiment regiment:
+                AddRegiment(regiment);
+                break;
         }
     }
 
@@ -430,32 +454,30 @@ public class Planet : ContainerNode
     /// <param name="child">The child node to remove.</param>
     public override void RemoveChild(ISceneNode child)
     {
-        if (child is Fleet fleet)
+        switch (child)
         {
-            RemoveFleet(fleet);
-        }
-        else if (child is Officer officer)
-        {
-            RemoveOfficer(officer);
-        }
-        else if (child is Building building)
-        {
-            RemoveBuilding(building);
-        }
-        else if (child is Mission mission)
-        {
-            RemoveMission(mission);
-        }
-        else if (child is Regiment regiment)
-        {
-            RemoveRegiment(regiment);
+            case Fleet fleet:
+                RemoveFleet(fleet);
+                break;
+            case Officer officer:
+                RemoveOfficer(officer);
+                break;
+            case Building building:
+                RemoveBuilding(building);
+                break;
+            case Mission mission:
+                RemoveMission(mission);
+                break;
+            case Regiment regiment:
+                RemoveRegiment(regiment);
+                break;
         }
     }
 
     /// <summary>
     /// Gets the child nodes of the planet.
     /// </summary>
-    /// <returns>An array of child nodes.</returns>
+    /// <returns>An enumerable of child nodes.</returns>
     public override IEnumerable<ISceneNode> GetChildren()
     {
         IEnumerable<ISceneNode> buildings = Buildings

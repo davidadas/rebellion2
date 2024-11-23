@@ -10,10 +10,10 @@ public class Faction : BaseGameEntity
         List<Message>
     >()
     {
-        // { MessageType.Conflict, new List<Message>() },
-        // { MessageType.Mission, new List<Message>() },
-        // { MessageType.PopularSupport, new List<Message>() },
-        // { MessageType.Resource, new List<Message>() },
+        { MessageType.Conflict, new List<Message>() },
+        { MessageType.Mission, new List<Message>() },
+        { MessageType.PopularSupport, new List<Message>() },
+        { MessageType.Resource, new List<Message>() },
     };
 
     public Dictionary<
@@ -120,7 +120,7 @@ public class Faction : BaseGameEntity
         if (!(tech is IManufacturable manufacturableTech))
         {
             throw new GameException(
-                $"Technology {tech.DisplayName} must implement IManufacturable."
+                $"Technology {tech.GetDisplayName()} must implement IManufacturable."
             );
         }
 
@@ -131,7 +131,7 @@ public class Faction : BaseGameEntity
         )
         {
             throw new GameException(
-                $"Cannot add technology {tech.DisplayName} to faction {DisplayName}. Owner IDs do not match."
+                $"Cannot add technology {tech.GetDisplayName()} to faction {DisplayName}. Owner IDs do not match."
             );
         }
 
@@ -162,31 +162,27 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Returns a list of available technologies for the faction based on their current research level.
+    /// Returns a list of technologies that have been researched.
     /// </summary>
-    /// <typeparam name="T">The type of technology to retrieve.</typeparam>
-    /// <returns>A list of available technologies of type T.</returns>
-    public List<T> GetAvailableTechnologies<T>()
-        where T : class, ISceneNode, IManufacturable
+    /// <param name="manufacturingType"></param>
+    /// <returns></returns>
+    public List<Technology> GetResearchedTechnologies(ManufacturingType manufacturingType)
     {
-        // Create a default instance to get the manufacturing type
-        T defaultInstance = Activator.CreateInstance<T>();
-        ManufacturingType manufacturingType = defaultInstance.GetManufacturingType();
-
-        // Check if the manufacturing type exists in the technology levels
+        // Check if the manufacturing type exists in the technology levels dictionary
         if (!TechnologyLevels.TryGetValue(manufacturingType, out var techLevels))
         {
-            return new List<T>();
+            // Return an empty list if there are no technologies for this manufacturing type.
+            return new List<Technology>();
         }
 
-        int currentResearchLevel = GetManufacturingResearchLevel(manufacturingType);
+        // Retrieve the current research level for the given manufacturing type.
+        int currentResearchLevel = GetResearchLevel(manufacturingType);
 
-        // Filter technologies based on the current research level.
+        // Collect technologies that meet the research level requirement.
         return techLevels
-            .Where(kvp => kvp.Key <= currentResearchLevel) // Only consider technologies up to the current research level.
-            .SelectMany(kvp => kvp.Value) // Flatten the list of Technologys.
-            .Select(technology => technology.GetReference() as T) // Convert each Technology to type T.
-            .Where(tech => tech != null && tech.GetRequiredResearchLevel() <= currentResearchLevel) // Ensure validity and requirements.
+            .Where(kvp => kvp.Key <= currentResearchLevel) // Only consider levels up to the current research level.
+            .SelectMany(kvp => kvp.Value) // Flatten all technology lists at or below the research level.
+            .Where(tech => tech.GetRequiredResearchLevel() <= currentResearchLevel) // Ensure the technology is within the allowed research level.
             .ToList();
     }
 
@@ -195,7 +191,7 @@ public class Faction : BaseGameEntity
     /// </summary>
     /// <param name="manufacturingType"></param>
     /// <returns></returns>
-    public int GetManufacturingResearchLevel(ManufacturingType manufacturingType)
+    public int GetResearchLevel(ManufacturingType manufacturingType)
     {
         return ManufacturingResearchLevels[manufacturingType];
     }
@@ -206,7 +202,7 @@ public class Faction : BaseGameEntity
     /// <param name="manufacturingType"></param>
     /// <param name="level"></param>
     /// <returns></returns>
-    public void SetManufacturingResearchLevel(ManufacturingType manufacturingType, int level)
+    public void SetResearchLevel(ManufacturingType manufacturingType, int level)
     {
         ManufacturingResearchLevels[manufacturingType] = level;
     }
@@ -254,7 +250,7 @@ public class Faction : BaseGameEntity
     /// </summary>
     /// <param name="fromNode">The scene node to measure distance from.</param>
     /// <returns>The closest friendly planet, or null if no friendly planets are found.</returns>
-    public Planet GetNearestPlanet(ISceneNode fromNode)
+    public Planet GetNearestPlanetTo(ISceneNode fromNode)
     {
         Planet sourcePlanet = fromNode.GetParentOfType<Planet>();
         if (sourcePlanet == null)

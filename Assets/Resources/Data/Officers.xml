@@ -10,10 +10,24 @@
 		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
 		<InitialParentInstanceID>CORUSCANT</InitialParentInstanceID>
-		<Diplomacy>30</Diplomacy>
-		<Espionage>20</Espionage>
-		<Combat>50</Combat>
-		<Leadership>100</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>30</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>20</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>50</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>100</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -28,7 +42,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>true</IsKnownJedi>
+		<IsForceSensitive>true</IsForceSensitive>
 		<IsJedi>true</IsJedi>
 		<JediProbability>100</JediProbability>
 		<JediLevel>150</JediLevel>
@@ -41,10 +55,24 @@
 		<DisplayName>Darth Vader</DisplayName>
 		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<Diplomacy>19</Diplomacy>
-		<Espionage>100</Espionage>
-		<Combat>100</Combat>
-		<Leadership>90</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>19</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>100</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>100</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>90</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -59,7 +87,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>true</IsKnownJedi>
+		<IsForceSensitive>true</IsForceSensitive>
 		<IsJedi>true</IsJedi>
 		<JediProbability>0</JediProbability>
 		<JediLevel>120</JediLevel>
@@ -74,10 +102,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -92,7 +134,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -107,10 +149,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -125,7 +181,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>20</JediLevel>
@@ -140,10 +196,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>00</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -158,7 +228,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>20</JediLevel>
@@ -173,10 +243,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -191,7 +275,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -206,10 +290,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -224,7 +322,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -239,10 +337,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -257,7 +369,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -272,10 +384,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>80</Espionage>
-		<Combat>80</Combat>
-		<Leadership>0</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>0</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>20</EspionageVariance>
@@ -290,7 +416,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -305,10 +431,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -323,7 +463,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -338,10 +478,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -356,7 +510,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -371,10 +525,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -389,7 +557,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -404,10 +572,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -422,7 +604,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -437,10 +619,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -455,7 +651,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -470,10 +666,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -488,7 +698,7 @@
 		<FacilityResearchVariance>50</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -503,10 +713,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -521,7 +745,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -536,10 +760,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>70</Combat>
-		<Leadership>90</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>90</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -554,7 +792,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -569,10 +807,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>70</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>70</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -587,7 +839,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>0</JediProbability>
 		<JediLevel>0</JediLevel>
@@ -602,10 +854,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -620,7 +886,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -635,10 +901,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>90</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>90</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -653,7 +933,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -668,10 +948,24 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>59</EspionageVariance>
@@ -686,7 +980,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -702,10 +996,24 @@
 		<DisplayName>Mon Mothma</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<Diplomacy>100</Diplomacy>
-		<Espionage>10</Espionage>
-		<Combat>10</Combat>
-		<Leadership>100</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>100</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>10</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>10</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>100</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -732,10 +1040,24 @@
 		<DisplayName>Leia Organa</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<Diplomacy>120</Diplomacy>
-		<Espionage>30</Espionage>
-		<Combat>50</Combat>
-		<Leadership>70</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>120</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>30</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>50</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>70</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -762,10 +1084,24 @@
 		<DisplayName>Luke Skywalker</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<Diplomacy>50</Diplomacy>
-		<Espionage>50</Espionage>
-		<Combat>90</Combat>
-		<Leadership>70</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>50</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>50</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>70</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -781,7 +1117,7 @@
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
 		<IsJedi>true</IsJedi>
-		<IsKnownJedi>true</IsKnownJedi>
+		<IsForceSensitive>true</IsForceSensitive>
 		<JediProbability>100</JediProbability>
 		<JediLevel>50</JediLevel>
 		<JediLevelVariance>0</JediLevelVariance>
@@ -793,10 +1129,24 @@
 		<DisplayName>Han Solo</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
-		<Diplomacy>19</Diplomacy>
-		<Espionage>100</Espionage>
-		<Combat>100</Combat>
-		<Leadership>90</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>19</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>100</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>100</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>90</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>0</DiplomacyVariance>
 		<EspionageVariance>0</EspionageVariance>
@@ -811,7 +1161,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>0</JediProbability>
 		<JediLevel>0</JediLevel>
@@ -826,10 +1176,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>90</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>90</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -844,7 +1208,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -859,10 +1223,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -877,7 +1255,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -892,10 +1270,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -910,7 +1302,7 @@
 		<FacilityResearchVariance>50</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -925,10 +1317,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>90</Espionage>
-		<Combat>90</Combat>
-		<Leadership>0</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>0</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>10</EspionageVariance>
@@ -943,7 +1349,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -958,10 +1364,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -976,7 +1396,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>10</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -991,10 +1411,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -1009,7 +1443,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1024,10 +1458,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -1042,7 +1490,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1057,10 +1505,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -1075,7 +1537,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>20</JediLevel>
@@ -1090,10 +1552,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>70</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -1108,7 +1584,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1123,10 +1599,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>80</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>0</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>0</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>20</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -1141,7 +1631,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1156,10 +1646,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>90</Espionage>
-		<Combat>80</Combat>
-		<Leadership>0</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>0</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>10</EspionageVariance>
@@ -1174,7 +1678,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>20</JediLevel>
@@ -1189,10 +1693,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -1207,7 +1725,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1222,10 +1740,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>30</Espionage>
-		<Combat>80</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>30</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>20</EspionageVariance>
@@ -1240,7 +1772,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1255,10 +1787,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>80</Diplomacy>
-		<Espionage>0</Espionage>
-		<Combat>0</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>20</DiplomacyVariance>
 		<EspionageVariance>50</EspionageVariance>
@@ -1273,7 +1819,7 @@
 		<FacilityResearchVariance>50</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1288,10 +1834,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>70</Espionage>
-		<Combat>70</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>70</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>30</EspionageVariance>
@@ -1306,7 +1866,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1321,10 +1881,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>80</Espionage>
-		<Combat>80</Combat>
-		<Leadership>80</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>80</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>80</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>20</EspionageVariance>
@@ -1339,7 +1913,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
@@ -1354,10 +1928,24 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
-		<Diplomacy>0</Diplomacy>
-		<Espionage>90</Espionage>
-		<Combat>90</Combat>
-		<Leadership>9</Leadership>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>0</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>90</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>9</Value>
+			</Entry>
+		</Skills>
 		<Loyalty>100</Loyalty>
 		<DiplomacyVariance>30</DiplomacyVariance>
 		<EspionageVariance>10</EspionageVariance>
@@ -1372,7 +1960,7 @@
 		<FacilityResearchVariance>0</FacilityResearchVariance>
 		<CanBetray>false</CanBetray>
 		<IsTraitor>false</IsTraitor>
-		<IsKnownJedi>false</IsKnownJedi>
+		<IsForceSensitive>false</IsForceSensitive>
 		<IsJedi>false</IsJedi>
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>

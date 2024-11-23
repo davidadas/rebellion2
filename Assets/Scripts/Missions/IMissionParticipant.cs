@@ -14,13 +14,15 @@ public enum MissionParticipantSkill
 /// Doing so allows for the calculation of mission success probabilities as
 /// well as to improve skills after a mission is completed.
 /// </summary>
-public interface IMissionParticipant : ISceneNode
+public interface IMissionParticipant : ISceneNode, IMovable
 {
-    // Mission Stats.
+    // Mission Stats
     public Dictionary<MissionParticipantSkill, int> Skills { get; set; }
+    public bool CanImproveMissionSkill { get; }
 
     /// <summary>
-    ///
+    /// Called to set the value of a mission skill. Provides a default implementation
+    /// which sets the value of the skill.
     /// </summary>
     /// <param name="skill"></param>
     /// <param name="value"></param>
@@ -30,17 +32,18 @@ public interface IMissionParticipant : ISceneNode
     }
 
     /// <summary>
-    ///
+    /// Called to get the value of a mission skill. Provides a default implementation
+    /// which returns the value of the skill.
     /// </summary>
-    /// <param name="skill"></param>
-    /// <returns></returns>
+    /// <param name="skill">The skill whose value to get.</param>
+    /// <returns>The value of the skill.</returns>
     public int GetMissionSkillValue(MissionParticipantSkill skill)
     {
         return Skills[skill];
     }
 
     /// <summary>
-    ///
+    /// Called to determine whether the participant is the main character of the game.
     /// </summary>
     public bool IsOnMission();
 }

@@ -87,33 +87,34 @@ public class FactionGenerator : UnitGenerator<Faction>
     }
 
     /// <summary>
-    ///
+    /// Select the units for each faction. As all factions are deployed
+    /// at the start of the game, this method does nothing.
     /// </summary>
     /// <param name="factions"></param>
     /// <returns></returns>
     public override Faction[] SelectUnits(Faction[] factions)
+    {
+        // No-op.
+        return factions;
+    }
+
+    /// <summary>
+    /// Decorate the units of each faction.
+    /// </summary>
+    /// <param name="factions">The factions to decorate.</param>
+    /// <returns>The decorated factions.</returns>
+    public override Faction[] DecorateUnits(Faction[] factions)
     {
         int researchLevel = GetGameSummary().StartingResearchLevel;
 
         // Set the research level for each faction.
         foreach (Faction faction in factions)
         {
-            faction.SetManufacturingResearchLevel(ManufacturingType.Building, researchLevel);
-            faction.SetManufacturingResearchLevel(ManufacturingType.Ship, researchLevel);
-            faction.SetManufacturingResearchLevel(ManufacturingType.Troop, researchLevel);
+            faction.SetResearchLevel(ManufacturingType.Building, researchLevel);
+            faction.SetResearchLevel(ManufacturingType.Ship, researchLevel);
+            faction.SetResearchLevel(ManufacturingType.Troop, researchLevel);
         }
 
-        return factions;
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="factions"></param>
-    /// <returns></returns>
-    public override Faction[] DecorateUnits(Faction[] factions)
-    {
-        // No op.
         return factions;
     }
 

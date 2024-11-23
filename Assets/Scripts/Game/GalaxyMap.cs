@@ -18,46 +18,6 @@ public class GalaxyMap : ContainerNode
     public GalaxyMap() { }
 
     /// <summary>
-    /// Finds the closest friendly planet to a given unit, filtered by OwnerInstanceID.
-    /// </summary>
-    /// <param name="unit">The unit to find the closest friendly planet to.</param>
-    /// <returns>The closest friendly planet with matching OwnerInstanceID, or null if no friendly planets are found.</returns>
-    public Planet GetClosestFriendlyPlanet(ISceneNode unit)
-    {
-        // Find the planet that the unit is currently located on.
-        Planet currentPlanet = unit.GetParentOfType<Planet>();
-
-        if (currentPlanet == null)
-        {
-            return null;
-        }
-
-        // Filter planets by matching OwnerInstanceID (friendly planets).
-        List<Planet> friendlyPlanets = PlanetSystems
-            .SelectMany(system => system.Planets)
-            .Where(planet => planet.OwnerInstanceID == unit.OwnerInstanceID)
-            .ToList();
-
-        // Initialize variables to track the closest planet.
-        Planet closestPlanet = null;
-        double closestDistance = double.MaxValue;
-
-        // Iterate through friendly planets to find the closest one.
-        foreach (var planet in friendlyPlanets)
-        {
-            double travelDistance = currentPlanet.GetTravelTime(planet);
-
-            if (travelDistance < closestDistance)
-            {
-                closestDistance = travelDistance;
-                closestPlanet = planet;
-            }
-        }
-
-        return closestPlanet;
-    }
-
-    /// <summary>
     /// Adds a child to the node.
     /// </summary>
     /// <param name="child">The child node to add.</param>

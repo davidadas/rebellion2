@@ -76,7 +76,7 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     public string InitialParentInstanceID { get; set; }
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor used for serialization.
     /// </summary>
     public CapitalShip() { }
 
@@ -90,7 +90,7 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
         if (Starfighters.Count >= StarfighterCapacity)
         {
             throw new GameException(
-                $"Adding starfighters to \"{this.DisplayName}\" would exceed its capacity."
+                $"Adding starfighters to \"{this.GetDisplayName()}\" would exceed its capacity."
             );
         }
         Starfighters.Add(starfighter);
@@ -100,13 +100,13 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     /// Adds a regiment to the capital ship.
     /// </summary>
     /// <param name="regiment">The regiment to add.</param>
-    /// <exception cref="GameException">Thrown when adding the regiment would exceed the capacity.</exception>
+    /// <exception cref="GameException">Thrown when adding the regiment would exceed the capacity limit.</exception>
     public void AddRegiment(Regiment regiment)
     {
         if (Regiments.Count >= RegimentCapacity)
         {
             throw new GameException(
-                $"Adding regiments to \"{this.DisplayName}\" would exceed its capacity."
+                $"Adding regiments to \"{this.GetDisplayName()}\" would exceed its capacity."
             );
         }
         Regiments.Add(regiment);
@@ -116,7 +116,7 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     /// Adds an officer to the capital ship.
     /// </summary>
     /// <param name="officer"></param>
-    /// <exception cref="SceneAccessException">Thrown when the officer is not allowed to be added.</exception>
+    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
     public void AddOfficer(Officer officer)
     {
         if (this.OwnerInstanceID != officer.OwnerInstanceID)
@@ -130,7 +130,7 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     /// Adds a child to the capital ship.
     /// </summary>
     /// <param name="child">The child to add</param>
-    /// <exception cref="SceneAccessException">Thrown when the child is not allowed to be added.</exception>
+    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
     public override void AddChild(ISceneNode child)
     {
         if (child is Starfighter starfighter)

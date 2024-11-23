@@ -67,11 +67,16 @@ public class RecruitmentMission : Mission
 
         GameLogger.Log(
             "Recruited officer "
-                + recruitedOfficer.DisplayName
+                + recruitedOfficer.GetDisplayName()
                 + " to "
-                + planet.DisplayName
+                + planet.GetDisplayName()
                 + " by "
-                + MainParticipants[0].DisplayName
+                + MainParticipants[0].GetDisplayName()
         );
+    }
+
+    public override bool CanContinue(Game game)
+    {
+        return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;
     }
 }

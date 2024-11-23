@@ -1,51 +1,107 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 
+/// <summary>
+///
+/// </summary>
 public class UnitManager
 {
-    private Game game;
+    private readonly Game game;
 
     /// <summary>
-    ///
+    /// Initializes a new instance of the UnitManager class.
     /// </summary>
-    /// <param name="game"></param>
+    /// <param name="game">The game instance this manager is associated with.</param>
     public UnitManager(Game game)
     {
         this.game = game;
     }
 
     /// <summary>
-    ///
+    /// Updates the movement of a movable unit.
     /// </summary>
-    /// <param name="movable"></param>
+    /// <param name="movable">The movable unit to update.</param>
     public void UpdateMovement(IMovable movable)
     {
-        Planet destination = movable.GetParentOfType<Planet>();
-
-        // Retrieve target and current positions.
-        Point targetPosition = destination.GetPosition();
-        Point movablePosition = movable.GetPosition();
-
-        if (movable.MovementStatus == MovementStatus.InTransit && destination != null)
+        // Early returns for units that shouldn't move.
+        if (ShouldSkipMovement(movable))
         {
-            // Calculate movement direction.
-            int deltaX = targetPosition.X - movablePosition.X;
-            int deltaY = targetPosition.Y - movablePosition.Y;
-
-            // Update position by moving one step in both X and Y directions as needed.
-            int newX = movablePosition.X + Math.Sign(deltaX);
-            int newY = movablePosition.Y + Math.Sign(deltaY);
-
-            movable.SetPosition(new Point(newX, newY));
+            return;
         }
 
-        // Check if unit has arrived at its destination.
-        // If so, set its status accordingly.
-        if (movablePosition.X == targetPosition.X && movablePosition.Y == targetPosition.Y)
+        Planet destination = movable.GetParentOfType<Planet>();
+        if (destination == null)
+        {
+            throw new GameStateException(
+                $"Unit {movable.GetDisplayName()} in transit without destination."
+            );
+        }
+
+        // Calculate and apply movement.
+        Point newPosition = CalculateNewPosition(movable, destination);
+        ApplyMovement(movable, newPosition);
+
+        // Check if the unit has arrived at its destination.
+        // If so, update its movement status accordingly.
+        CheckArrival(movable, destination, newPosition);
+    }
+
+    /// <summary>
+    /// Determines if movement should be skipped for the given movable.
+    /// </summary>
+    private bool ShouldSkipMovement(IMovable movable)
+    {
+        if (movable.MovementStatus != MovementStatus.InTransit)
+        {
+            return true;
+        }
+
+        if (
+            movable is IManufacturable manufacturable
+            && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
+        )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Calculates the new position for the movable unit.
+    /// </summary>
+    private Point CalculateNewPosition(IMovable movable, Planet destination)
+    {
+        Point targetPosition = destination.GetPosition();
+        Point currentPosition = movable.GetPosition();
+
+        int deltaX = targetPosition.X - currentPosition.X;
+        int deltaY = targetPosition.Y - currentPosition.Y;
+
+        int newX = currentPosition.X + Math.Sign(deltaX);
+        int newY = currentPosition.Y + Math.Sign(deltaY);
+
+        return new Point(newX, newY);
+    }
+
+    /// <summary>
+    /// Applies the movement to the movable unit.
+    /// </summary>
+    private void ApplyMovement(IMovable movable, Point newPosition)
+    {
+        GameLogger.Log($"Incrementing movement for {movable.GetDisplayName()}.");
+        movable.SetPosition(newPosition);
+    }
+
+    /// <summary>
+    /// Checks if the unit has arrived at its destination and updates its status if so.
+    /// </summary>
+    private void CheckArrival(IMovable movable, Planet destination, Point newPosition)
+    {
+        if (newPosition == destination.GetPosition())
         {
             movable.SetMovementStatus(MovementStatus.Idle);
+            GameLogger.Log($"Unit {movable.GetDisplayName()} has arrived at its destination.");
         }
     }
 }
