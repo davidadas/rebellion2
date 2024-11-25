@@ -207,25 +207,30 @@ public class Planet : ContainerNode
     /// <summary>
     /// Adds a manufacturable unit to the manufacturing queue.
     /// </summary>
-    /// <param name="unit">The unit to be added to the manufacturing queue.</param>
-    public void AddToManufacturingQueue(IManufacturable unit)
+    /// <param name="manufacturable">The unit to be added to the manufacturing queue.</param>
+    public void AddToManufacturingQueue(IManufacturable manufacturable)
     {
-        if (unit is ISceneNode sceneNode && sceneNode.GetParent() == null)
+        if (manufacturable is ISceneNode sceneNode && sceneNode.GetParent() == null)
         {
             throw new GameStateException(
                 $"Unit {sceneNode.GetDisplayName()} must have a parent to be added to the manufacturing queue."
             );
         }
 
-        ManufacturingType type = unit.GetManufacturingType();
+        if (this.OwnerInstanceID != manufacturable.OwnerInstanceID)
+        {
+            throw new SceneAccessException(manufacturable, this);
+        }
+
+        ManufacturingType type = manufacturable.GetManufacturingType();
 
         if (!ManufacturingQueue.ContainsKey(type))
         {
             ManufacturingQueue.Add(type, new List<IManufacturable>());
         }
 
-        unit.SetPosition(GetPosition());
-        ManufacturingQueue[type].Add(unit);
+        manufacturable.SetPosition(GetPosition());
+        ManufacturingQueue[type].Add(manufacturable);
     }
 
     /// <summary>
@@ -263,10 +268,6 @@ public class Planet : ContainerNode
     /// <param name="fleet">The fleet to add.</param>
     public void AddFleet(Fleet fleet)
     {
-        if (this.OwnerInstanceID != fleet.OwnerInstanceID)
-        {
-            throw new SceneAccessException(fleet, this);
-        }
         Fleets.Add(fleet);
     }
 
@@ -322,9 +323,16 @@ public class Planet : ContainerNode
     private void AddBuilding(Building building)
     {
         if (!IsColonized)
+        {
             throw new GameStateException(
                 $"Cannot add building {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is not colonized."
             );
+        }
+
+        if (building.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+        {
+            throw new SceneAccessException(building, this);
+        }
 
         BuildingSlot slot = building.GetBuildingSlot();
 
@@ -369,7 +377,7 @@ public class Planet : ContainerNode
     /// <param name="officer">The officer to add.</param>
     private void AddOfficer(Officer officer)
     {
-        if (this.OwnerInstanceID != officer.OwnerInstanceID)
+        if (officer.GetOwnerInstanceID() != this.OwnerInstanceID)
         {
             throw new SceneAccessException(officer, this);
         }
@@ -409,6 +417,10 @@ public class Planet : ContainerNode
     /// <param name="regiment">The regiment to add.</param>
     private void AddRegiment(Regiment regiment)
     {
+        if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+        {
+            throw new SceneAccessException(regiment, this);
+        }
         Regiments.Add(regiment);
     }
 
@@ -433,7 +445,6 @@ public class Planet : ContainerNode
                 AddFleet(fleet);
                 break;
             case Officer officer:
-
                 AddOfficer(officer);
                 break;
             case Building building:
@@ -445,6 +456,11 @@ public class Planet : ContainerNode
             case Regiment regiment:
                 AddRegiment(regiment);
                 break;
+            default:
+                throw new InvalidSceneOperationException(
+                    $"Cannot add {child.GetDisplayName()} to {this.GetDisplayName()}. "
+                        + $"Only fleets, officers, buildings, missions, and regiments are allowed."
+                );
         }
     }
 
@@ -486,9 +502,9 @@ public class Planet : ContainerNode
 
         return Fleets
             .Cast<ISceneNode>()
-            .Concat(Officers.Cast<ISceneNode>())
-            .Concat(Missions.Cast<ISceneNode>())
-            .Concat(Regiments.Cast<ISceneNode>())
+            .Concat(Officers)
+            .Concat(Missions)
+            .Concat(Regiments)
             .Concat(buildings);
     }
 }

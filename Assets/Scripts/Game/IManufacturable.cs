@@ -95,6 +95,15 @@ public interface IManufacturable : IMovable
     }
 
     /// <summary>
+    /// Returns the base build speed of the manufacturable.
+    /// </summary>
+    /// <returns></returns>
+    public bool IsManufacturingComplete()
+    {
+        return GetConstructionCost() <= GetManufacturingProgress();
+    }
+
+    /// <summary>
     /// Returns the manufacturing type of the manufacturable.
     /// </summary>
     /// <returns>The manufacturing type of the manufacturable.</returns>

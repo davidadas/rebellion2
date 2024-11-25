@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ICollectionExtensions;
@@ -6,6 +5,9 @@ using IDictionaryExtensions;
 using IEnumerableExtensions;
 using UnityEngine;
 
+/// <summary>
+/// Responsible for generating and deploying officers in the game.
+/// </summary>
 public class OfficerGenerator : UnitGenerator<Officer>
 {
     /// <summary>
@@ -28,11 +30,8 @@ public class OfficerGenerator : UnitGenerator<Officer>
         int numAllowedOfficers = GetConfig()
             .GetValue<int>($"Officers.NumInitialOfficers.GalaxySize.{galaxySize}");
 
-        foreach (KeyValuePair<string, List<Officer>> entry in officersByFaction)
+        foreach (var (ownerInstanceId, officers) in officersByFaction)
         {
-            string ownerInstanceId = entry.Key;
-            List<Officer> officers = entry.Value;
-
             IEnumerable<Officer> reducedOfficers = officers
                 .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
                 .Select(officer =>
@@ -54,32 +53,39 @@ public class OfficerGenerator : UnitGenerator<Officer>
     /// <returns>Dictionary mapping faction IDs to a list of destinations (planets and fleets).</returns>
     private Dictionary<string, List<ISceneNode>> GetDestinationMapping(PlanetSystem[] planetSystems)
     {
-        IEnumerable<Planet> flattenedPlanets = planetSystems
-            .SelectMany(planetSystem => planetSystem.Planets)
-            .Where(planet => planet.OwnerInstanceID != null);
+        var destinationMapping = new Dictionary<string, List<ISceneNode>>();
 
-        List<ISceneNode> destinations = new List<ISceneNode>();
-        foreach (Planet planet in flattenedPlanets)
+        IEnumerable<Planet> ownedPlanets = planetSystems
+            .SelectMany(ps => ps.Planets)
+            .Where(p => p.OwnerInstanceID != null);
+
+        foreach (Planet planet in ownedPlanets)
         {
-            destinations.Add(planet);
-            destinations.AddRange(planet.Fleets);
-        }
-
-        Dictionary<string, List<ISceneNode>> destinationMapping =
-            new Dictionary<string, List<ISceneNode>>();
-        foreach (ISceneNode destination in destinations)
-        {
-            string ownerInstanceId = destination.OwnerInstanceID;
-
-            if (!destinationMapping.ContainsKey(ownerInstanceId))
+            AddDestination(destinationMapping, planet);
+            foreach (Fleet fleet in planet.Fleets)
             {
-                destinationMapping[ownerInstanceId] = new List<ISceneNode>();
+                AddDestination(destinationMapping, fleet);
             }
-
-            destinationMapping[ownerInstanceId].Add(destination);
         }
 
         return destinationMapping;
+    }
+
+    /// <summary>
+    /// Adds a destination to the destination mapping.
+    /// </summary>
+    /// <param name="mapping">The destination mapping to update.</param>
+    /// <param name="destination">The destination to add.</param>
+    private void AddDestination(
+        Dictionary<string, List<ISceneNode>> mapping,
+        ISceneNode destination
+    )
+    {
+        if (!mapping.ContainsKey(destination.OwnerInstanceID))
+        {
+            mapping[destination.OwnerInstanceID] = new List<ISceneNode>();
+        }
+        mapping[destination.OwnerInstanceID].Add(destination);
     }
 
     /// <summary>
@@ -89,34 +95,80 @@ public class OfficerGenerator : UnitGenerator<Officer>
     /// <returns>Array of selected officers.</returns>
     public override Officer[] SelectUnits(Officer[] units)
     {
-        Dictionary<string, List<Officer>> officersByFaction =
-            new Dictionary<string, List<Officer>>();
-        Officer[] shuffledUnits = ((Officer[])units.Clone()).Shuffle().ToArray();
+        var officersByFaction = new Dictionary<string, List<Officer>>();
+        Officer[] shuffledUnits = units.Shuffle().ToArray();
 
         foreach (Officer officer in shuffledUnits)
         {
-            if (officer.OwnerInstanceID != null)
+            string factionId =
+                officer.OwnerInstanceID
+                ?? (
+                    officer.AllowedOwnerInstanceIDs.Count == 1
+                        ? officer.AllowedOwnerInstanceIDs[0]
+                        : null
+                );
+
+            if (factionId != null)
             {
-                if (!officersByFaction.ContainsKey(officer.OwnerInstanceID))
+                if (!officersByFaction.ContainsKey(factionId))
                 {
-                    officersByFaction[officer.OwnerInstanceID] = new List<Officer>();
+                    officersByFaction[factionId] = new List<Officer>();
                 }
-                // Add to front.
-                officersByFaction[officer.OwnerInstanceID].Insert(0, officer);
-            }
-            else if (officer.AllowedOwnerInstanceIDs.Count == 1)
-            {
-                string allowedOwnerId = officer.AllowedOwnerInstanceIDs[0];
-                if (!officersByFaction.ContainsKey(allowedOwnerId))
+
+                if (officer.OwnerInstanceID != null)
                 {
-                    officersByFaction[allowedOwnerId] = new List<Officer>();
+                    officersByFaction[factionId].Insert(0, officer); // Add to front
                 }
-                // Add to end.
-                officersByFaction[allowedOwnerId].Add(officer);
+                else
+                {
+                    officersByFaction[factionId].Add(officer); // Add to end
+                }
             }
         }
 
         return SelectInitialOfficers(officersByFaction);
+    }
+
+    /// <summary>
+    /// Decorates an officer's skills with random variances.
+    /// </summary>
+    /// <param name="officer">The officer to decorate.</param>
+    private void DecorateOfficerSkills(Officer officer)
+    {
+        var skillVariances = new[]
+        {
+            (MissionParticipantSkill.Diplomacy, officer.DiplomacyVariance),
+            (MissionParticipantSkill.Espionage, officer.EspionageVariance),
+            (MissionParticipantSkill.Combat, officer.CombatVariance),
+            (MissionParticipantSkill.Leadership, officer.LeadershipVariance),
+        };
+
+        foreach (var (skill, variance) in skillVariances)
+        {
+            officer.SetSkillValue(skill, officer.GetSkillValue(skill) + Random.Range(0, variance));
+        }
+    }
+
+    /// <summary>
+    /// Decorates an officer's attributes with random variances.
+    /// </summary>
+    /// <param name="officer">The officer to decorate.</param>
+    private void DecorateOfficerAttributes(Officer officer)
+    {
+        officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
+        officer.ShipResearch += Random.Range(0, officer.ShipResearchVariance);
+        officer.TroopResearch += Random.Range(0, officer.TroopResearchVariance);
+        officer.FacilityResearch += Random.Range(0, officer.FacilityResearchVariance);
+    }
+
+    /// <summary>
+    /// Determines if an officer is a Jedi based on probability.
+    /// </summary>
+    /// <param name="officer">The officer to check.</param>
+    private void DetermineJediStatus(Officer officer)
+    {
+        float jediProbability = officer.JediProbability / 100f;
+        officer.IsJedi = officer.IsJedi || Random.value < jediProbability;
     }
 
     /// <summary>
@@ -128,29 +180,9 @@ public class OfficerGenerator : UnitGenerator<Officer>
     {
         foreach (Officer officer in units)
         {
-            (MissionParticipantSkill skill, int variance)[] skillVariances = new[]
-            {
-                (MissionParticipantSkill.Diplomacy, officer.DiplomacyVariance),
-                (MissionParticipantSkill.Espionage, officer.EspionageVariance),
-                (MissionParticipantSkill.Combat, officer.CombatVariance),
-                (MissionParticipantSkill.Leadership, officer.LeadershipVariance),
-            };
-
-            foreach ((MissionParticipantSkill skill, int variance) in skillVariances)
-            {
-                officer.SetSkillValue(
-                    skill,
-                    officer.GetSkillValue(skill) + Random.Range(0, variance)
-                );
-            }
-
-            officer.Loyalty += Random.Range(0, officer.LoyaltyVariance);
-            officer.ShipResearch += Random.Range(0, officer.ShipResearchVariance);
-            officer.TroopResearch += Random.Range(0, officer.TroopResearchVariance);
-            officer.FacilityResearch += Random.Range(0, officer.FacilityResearchVariance);
-
-            float jediProbability = officer.JediProbability / 100f;
-            officer.IsJedi = officer.IsJedi || UnityEngine.Random.value < jediProbability;
+            DecorateOfficerSkills(officer);
+            DecorateOfficerAttributes(officer);
+            DetermineJediStatus(officer);
         }
 
         return units;
@@ -171,18 +203,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
         foreach (Officer officer in officers)
         {
             List<ISceneNode> destinations = destinationMapping[officer.OwnerInstanceID];
-            ISceneNode destination;
-
-            if (officer.InitialParentInstanceID != null)
-            {
-                destination = destinations.First(sceneNode =>
-                    sceneNode.InstanceID == officer.InitialParentInstanceID
-                );
-            }
-            else
-            {
-                destination = destinations.Shuffle().First();
-            }
+            ISceneNode destination = GetOfficerDestination(officer, destinations);
 
             if (destination is Planet planet)
             {
@@ -195,5 +216,20 @@ public class OfficerGenerator : UnitGenerator<Officer>
         }
 
         return officers;
+    }
+
+    /// <summary>
+    /// Determines the destination for an officer.
+    /// </summary>
+    /// <param name="officer">The officer to deploy.</param>
+    /// <param name="destinations">List of possible destinations.</param>
+    /// <returns>The selected destination for the officer.</returns>
+    private ISceneNode GetOfficerDestination(Officer officer, List<ISceneNode> destinations)
+    {
+        if (officer.InitialParentInstanceID != null)
+        {
+            return destinations.First(node => node.InstanceID == officer.InitialParentInstanceID);
+        }
+        return destinations.Shuffle().First();
     }
 }

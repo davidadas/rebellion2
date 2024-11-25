@@ -137,7 +137,7 @@ static class XmlSerializer
         {
             WriteCollection(enumerable, writer, name);
         }
-        else if (TypeHelper.IsPersistableObject(objType))
+        else if (TypeHelper.HasAttribute<PersistableObjectAttribute>(objType))
         {
             WritePersistable(obj, writer, name);
         }
@@ -362,7 +362,7 @@ static class XmlDeserializer
             {
                 return ReadCollection(objType, reader);
             }
-            else if (TypeHelper.IsPersistableObject(objType))
+            else if (TypeHelper.HasAttribute<PersistableObjectAttribute>(objType))
             {
                 return ReadPersistable(objType, reader, attributes);
             }
@@ -720,100 +720,6 @@ static class XmlDeserializer
         };
 
         return ReadValue(type, reader, attributes);
-    }
-}
-
-/// <summary>
-/// Provides helper methods for type-related operations.
-/// </summary>
-static class TypeHelper
-{
-    /// <summary>
-    /// Determines whether the specified type is a primitive type.
-    /// </summary>
-    /// <param name="type">The type to check.</param>
-    /// <returns>True if the type is primitive, otherwise false.</returns>
-    public static bool IsPrimitive(Type type)
-    {
-        return type.IsPrimitive || type == typeof(string);
-    }
-
-    /// <summary>
-    /// Determines whether the specified type is enumerable.
-    /// </summary>
-    /// <param name="type">The type to check.</param>
-    /// <returns>True if the type is enumerable, otherwise false.</returns>
-    public static bool IsEnumerable(Type type)
-    {
-        return typeof(IEnumerable).IsAssignableFrom(type) && type != typeof(string);
-    }
-
-    /// <summary>
-    /// Determines whether the specified type is a dictionary.
-    /// </summary>
-    /// <param name="type">The type to check.</param>
-    /// <returns>True if the type is a dictionary, otherwise false.</returns>
-    public static bool IsDictionary(Type type)
-    {
-        return typeof(IDictionary).IsAssignableFrom(type);
-    }
-
-    /// <summary>
-    /// Determines whether the specified type is a persistable object.
-    /// </summary>
-    /// <param name="type">The type to check.</param>
-    /// <returns>True if the type is a persistable object, otherwise false.</returns>
-    public static bool IsPersistableObject(Type type)
-    {
-        return type.IsDefined(typeof(PersistableObjectAttribute), true);
-    }
-
-    /// <summary>
-    /// Converts a string to a primitive type.
-    /// </summary>
-    /// <param name="content">The string to convert.</param>
-    /// <param name="targetType">The target primitive type.</param>
-    /// <returns>The converted primitive value.</returns>
-    public static object ConvertToPrimitive(string content, Type targetType)
-    {
-        if (targetType == typeof(string))
-            return content;
-        if (targetType == typeof(int))
-            return int.Parse(content);
-        if (targetType == typeof(double))
-            return double.Parse(content);
-        if (targetType == typeof(bool))
-            return bool.Parse(content);
-        if (targetType == typeof(float))
-            return float.Parse(content);
-        if (targetType == typeof(long))
-            return long.Parse(content);
-
-        throw new InvalidOperationException($"Unsupported primitive type: {targetType.FullName}");
-    }
-
-    /// <summary>
-    /// Converts the specified value to its string representation.
-    /// </summary>
-    /// <param name="value">The value to convert.</param>
-    /// <returns>A string representation of the value.</returns>
-    public static string ConvertToString(object value)
-    {
-        if (value == null)
-            return string.Empty;
-
-        Type type = value.GetType();
-
-        if (type.IsEnum)
-            return value.ToString();
-        if (type == typeof(DateTime))
-            return ((DateTime)value).ToString("o");
-        if (type == typeof(DateTimeOffset))
-            return ((DateTimeOffset)value).ToString("o");
-        if (type == typeof(TimeSpan))
-            return ((TimeSpan)value).ToString("c");
-
-        return value.ToString();
     }
 }
 

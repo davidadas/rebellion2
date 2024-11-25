@@ -125,24 +125,25 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     }
 
     /// <summary>
-    /// Sets the owner type id. If the ID is not in the allowed list, throws an exception.
+    /// Sets the owner Instance ID. If the ID is not in the allowed list, throws an exception.
     /// </summary>
-    /// <param name="value">The owner type id to set.</param>
-    /// <exception cref="GameStateException">Thrown when the owner type id is invalid.</exception>
-    public void SetOwnerInstanceID(string value)
+    /// <param name="value">The owner Instance ID to set.</param>
+    /// <exception cref="GameStateException">Thrown when the owner Instance ID is invalid.</exception>
+    public void SetOwnerInstanceID(string ownerInstanceId)
     {
         if (
             AllowedOwnerInstanceIDs == null
             || AllowedOwnerInstanceIDs.Count == 0
-            || AllowedOwnerInstanceIDs.Contains(value)
+            || AllowedOwnerInstanceIDs.Contains(ownerInstanceId)
+            || ownerInstanceId == null
         )
         {
-            _ownerInstanceId = value;
+            _ownerInstanceId = ownerInstanceId;
         }
         else
         {
             throw new GameStateException(
-                $"Invalid owner type id \"{value}\" for object \"{DisplayName}\"."
+                $"Invalid OwnerInstanceID \"{ownerInstanceId}\" for object \"{DisplayName}\". Allowed values: {string.Join(", ", AllowedOwnerInstanceIDs)}, or null."
             );
         }
     }

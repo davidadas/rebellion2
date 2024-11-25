@@ -48,6 +48,7 @@ public class AIManager
     {
         UpdateOfficers(faction);
         UpdateManufacturing(faction);
+        UpdateShipyards(faction);
     }
 
     /// <summary>
@@ -146,6 +147,48 @@ public class AIManager
             )
             {
                 planetManager.AddToManufacturingQueue(planet, planet, constructionYardTech, 1);
+            }
+        }
+    }
+
+    private void UpdateShipyards(Faction faction)
+    {
+        List<Planet> idleShipyards = faction.GetIdleFacilities(ManufacturingType.Ship);
+
+        if (idleShipyards.Count == 0)
+        {
+            return;
+        }
+
+        List<Technology> shipyardOptions = faction.GetResearchedTechnologies(
+            ManufacturingType.Ship
+        );
+
+        Technology starfighterTech = shipyardOptions
+            .FindAll(technology => (technology.GetReference().GetType() == typeof(Starfighter)))
+            .LastOrDefault();
+
+        foreach (Planet planet in idleShipyards)
+        {
+            int shipyardCount = planet.GetBuildingTypeCount(BuildingType.Shipyard);
+
+            List<Fleet> fleets = faction.GetOwnedUnitsByType<Fleet>();
+            List<Fleet> sortedFleets = fleets
+                .OrderBy(fleet => fleet.GetExcessStarfighterCapacity())
+                .ToList();
+
+            GameLogger.Log($"Found {fleets.Count} fleets for {faction.GetDisplayName()}.");
+            foreach (Fleet fleet in sortedFleets)
+            {
+                GameLogger.Log(
+                    $"Adding {fleet.GetExcessStarfighterCapacity()} {starfighterTech.GetReference().GetDisplayName()} to the manufacturing queue of {planet.GetDisplayName()}."
+                );
+                planetManager.AddToManufacturingQueue(
+                    planet,
+                    fleet,
+                    starfighterTech,
+                    fleet.GetExcessStarfighterCapacity()
+                );
             }
         }
     }

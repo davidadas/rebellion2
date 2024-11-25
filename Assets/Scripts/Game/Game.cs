@@ -101,8 +101,9 @@ public class Game
     /// </summary>
     /// <param name="node">The node to attach.</param>
     /// <param name="parent">The parent node to attach the node to.</param>
+    /// <param name="recursive">Whether to attach the node and its children recursively.</param>
     /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
-    public void AttachNode(ISceneNode node, ISceneNode parent)
+    public void AttachNode(ISceneNode node, ISceneNode parent, bool recursive = true)
     {
         // If the node already has a parent, throw an exception.
         if (node.GetParent() != null)
@@ -118,8 +119,11 @@ public class Game
         // Register the node to the faction's list of owned units.
         RegisterOwnedUnit(node);
 
-        // Register the node and its children.
-        node.Traverse(AddSceneNodeByInstanceID);
+        if (recursive)
+        {
+            // Register the node and its children.
+            node.Traverse(AddSceneNodeByInstanceID);
+        }
     }
 
     /// <summary>
@@ -152,7 +156,17 @@ public class Game
     /// <param name="node">The game node to remove as a reference.</param>
     public void AddSceneNodeByInstanceID(ISceneNode node)
     {
-        NodesByInstanceID.TryAdd(node.InstanceID, node);
+        try
+        {
+            NodesByInstanceID.Add(node.InstanceID, node);
+        }
+        // If the node already exists in the game, throw an exception.
+        catch (ArgumentException)
+        {
+            throw new GameException(
+                $"Node with Instance ID \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" already exists in the game."
+            );
+        }
     }
 
     /// <summary>
@@ -165,11 +179,11 @@ public class Game
     }
 
     /// <summary>
-    /// Retrieves a list of scene nodes by their type IDs.
+    /// Retrieves a list of scene nodes by their Instance IDs.
     /// </summary>
     /// <typeparam name="T">The type of nodes to retrieve.</typeparam>
-    /// <param name="instanceId">The instance ID of the nodes to retrieve.</param>
-    /// <returns>A list of scene nodes with the specified type IDs.</returns>
+    /// <param name="instanceId">The Instance ID of the nodes to retrieve.</param>
+    /// <returns>A list of scene nodes with the specified Instance IDs.</returns>
     public T GetSceneNodeByInstanceID<T>(string instanceId)
         where T : class
     {
@@ -204,10 +218,10 @@ public class Game
     }
 
     /// <summary>
-    /// Retrieves units by the specified OwnerInstanceID and type T.
+    /// Retrieves units by the specified owner's InstanceID and type T.
     /// </summary>
     /// <typeparam name="T">The type of units to retrieve.</typeparam>
-    /// <param name="ownerInstanceId">The OwnerInstanceID of the units.</param>
+    /// <param name="ownerInstanceId">The owner's InstanceID of the units.</param>
     /// <returns>A list of units of type T with the specified OwnerInstanceID.</returns>
     public List<T> GetSceneNodesByOwnerInstanceID<T>(string ownerInstanceId)
         where T : ISceneNode
@@ -258,7 +272,7 @@ public class Game
     {
         if (node.OwnerInstanceID != null)
         {
-            GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(ref node);
+            GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(node);
         }
     }
 
@@ -270,7 +284,7 @@ public class Game
     {
         if (node.OwnerInstanceID != null)
         {
-            GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(ref node);
+            GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(node);
         }
     }
 
@@ -353,10 +367,10 @@ public class Game
     }
 
     /// <summary>
-    /// Returns a list of unrecruited officers that can be recruited by the specified owner type ID.
+    /// Returns a list of unrecruited officers that can be recruited by the specified owner Instance ID.
     /// </summary>
-    /// <param name="ownerInstanceId">The owner type ID of the faction that can recruit the officers.</param>
-    /// <returns>A list of unrecruited officers that can be recruited by the specified owner type ID.</returns>
+    /// <param name="ownerInstanceId">The owner Instance ID of the faction that can recruit the officers.</param>
+    /// <returns>A list of unrecruited officers that can be recruited by the specified owner Instance ID.</returns>
     public List<Officer> GetUnrecruitedOfficers(string ownerInstanceId)
     {
         return UnrecruitedOfficers
@@ -385,16 +399,16 @@ public class Game
                 // Register the node by its instance ID.
                 AddSceneNodeByInstanceID(node);
 
-                if (node.OwnerInstanceID != null)
-                {
-                    // Register the node to the faction's list of owned units.
-                    GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(ref node);
-                }
-
                 // Set the parent of each child node.
                 foreach (ISceneNode child in node.GetChildren())
                 {
                     child.SetParent(node);
+                }
+
+                // Register the node to the faction's list of owned units.
+                if (node.OwnerInstanceID != null)
+                {
+                    RegisterOwnedUnit(node);
                 }
             }
         );

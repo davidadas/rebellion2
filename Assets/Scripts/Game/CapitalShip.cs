@@ -81,6 +81,24 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     public CapitalShip() { }
 
     /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetStarfighterCapacity()
+    {
+        return StarfighterCapacity;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentStarfighterCount()
+    {
+        return Starfighters.Count;
+    }
+
+    /// <summary>
     /// Adds a starfighter to the capital ship.
     /// </summary>
     /// <param name="starfighter">The starfighter to add</param>

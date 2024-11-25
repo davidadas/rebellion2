@@ -64,6 +64,12 @@ public interface ISceneNode : IGameEntity
     /// <summary>
     ///
     /// </summary>
+    /// <param name="ownerInstanceID"></param>
+    void SetOwnerInstanceID(string ownerInstanceID);
+
+    /// <summary>
+    ///
+    /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     T GetParentOfType<T>()

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using ICollectionExtensions;
 
 public class Fleet : ContainerNode, IMovable
@@ -17,6 +18,29 @@ public class Fleet : ContainerNode, IMovable
     /// Default constructor.
     /// </summary>
     public Fleet() { }
+
+    /// <summary>
+    /// Returns the total starfighter capacity of the fleet.
+    /// </summary>
+    /// <returns>The total starfighter capacity of the fleet.</returns>
+    public int GetStarfighterCapacity()
+    {
+        return CapitalShips.Sum(capitalShip => capitalShip.GetStarfighterCapacity());
+    }
+
+    public int GetCurrentStarfighterCount()
+    {
+        return CapitalShips.Sum(capitalShip => capitalShip.GetCurrentStarfighterCount());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetExcessStarfighterCapacity()
+    {
+        return GetStarfighterCapacity() - GetCurrentStarfighterCount();
+    }
 
     /// <summary>
     /// Constructor that initializes the fleet with an owner.
@@ -90,6 +114,6 @@ public class Fleet : ContainerNode, IMovable
     /// <returns>An array of child nodes.</returns>
     public override IEnumerable<ISceneNode> GetChildren()
     {
-        return CapitalShips.ToArray();
+        return CapitalShips.ToList();
     }
 }

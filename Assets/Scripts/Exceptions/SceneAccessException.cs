@@ -3,6 +3,9 @@
 /// </summary>
 public class SceneAccessException : SceneException
 {
+    public ISceneNode Accessor { get; }
+    public ISceneNode Accessee { get; }
+
     /// <summary>
     ///
     /// </summary>
@@ -10,14 +13,10 @@ public class SceneAccessException : SceneException
     /// <param name="accessee"></param>
     public SceneAccessException(ISceneNode accessor, ISceneNode accessee)
         : base(
-            $"Cannot add \"{accessor.GetDisplayName()}\" to \"{accessee.GetDisplayName()}\". Accessor does not have access."
+            $"Cannot add \"{accessor.GetDisplayName()}\" to \"{accessee.GetDisplayName()}\". Owners do not match."
         )
     {
         Accessor = accessor;
         Accessee = accessee;
     }
-
-    public ISceneNode Accessor { get; }
-
-    public ISceneNode Accessee { get; }
 }

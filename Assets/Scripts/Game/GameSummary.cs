@@ -36,11 +36,11 @@ public enum GameResourceAvailability
 [PersistableObject]
 public sealed class GameSummary
 {
+    // Game Options
     public GameSize GalaxySize;
     public GameDifficulty Difficulty;
     public GameVictoryCondition VictoryCondition;
     public GameResourceAvailability ResourceAvailability;
-
     public int StartingResearchLevel;
     public string PlayerFactionID;
 

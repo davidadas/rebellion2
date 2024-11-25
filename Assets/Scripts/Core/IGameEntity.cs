@@ -14,6 +14,8 @@
 /// </remarks>
 public interface IGameEntity
 {
+    [CloneIgnore]
+    [PersistableIgnore]
     public string InstanceID { get; set; }
     public string TypeID { get; set; }
     public string DisplayName { get; set; }
