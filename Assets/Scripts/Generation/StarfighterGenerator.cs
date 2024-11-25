@@ -7,7 +7,7 @@ using IEnumerableExtensions;
 using ObjectExtensions;
 
 /// <summary>
-/// Represents a generator for creating Starfighter units.
+/// Responsible for generating and deploying starfighters to the scene graph.
 /// </summary>
 public class StarfighterGenerator : UnitGenerator<Starfighter>
 {

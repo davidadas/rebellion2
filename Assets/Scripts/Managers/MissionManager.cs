@@ -89,7 +89,7 @@ public class MissionManager
     /// The mission is scheduled to occur at the next possible tick.
     /// </summary>
     /// <param name="missionType">The type of mission to initiate.</param>
-    /// <param name="ownerInstanceId">The type ID of the owner of the mission.</param>
+    /// <param name="ownerInstanceId">The Instance ID of the owner of the mission.</param>
     /// <param name="mainParticipants">The main participants of the mission.</param>
     /// <param name="decoyParticipants">The decoy participants of the mission.</param>
     /// <param name="target">The target of the mission. This can be a planet or a unit.</param>
@@ -121,7 +121,7 @@ public class MissionManager
         );
 
         // Attach the mission to scene graph.
-        game.AttachNode(mission, closestPlanet);
+        game.AttachNode(mission, closestPlanet, false);
 
         // Initiate the mission with the given arguments.
         // This will set the movement status of all participants to InTransit.

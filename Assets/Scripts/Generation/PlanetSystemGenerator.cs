@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-///
+/// Responsible for generating and deploying planet systems to the scene graph.
 /// </summary>
 public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
 {

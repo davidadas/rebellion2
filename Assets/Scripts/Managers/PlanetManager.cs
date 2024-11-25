@@ -46,6 +46,7 @@ public class PlanetManager
         for (int i = 0; i < quantity; i++)
         {
             IManufacturable clonedNode = technology.GetReferenceCopy();
+            clonedNode.SetOwnerInstanceID(planet.GetOwnerInstanceID());
             GameLogger.Log(
                 $"Adding {clonedNode.GetDisplayName()} to manufacturing queue on {planet.GetDisplayName()}"
             );
@@ -80,7 +81,7 @@ public class PlanetManager
                     completedManufacturables
                 );
 
-                if (IsManufacturingComplete(manufacturable))
+                if (manufacturable.IsManufacturingComplete())
                 {
                     CompleteManufacturing(manufacturable, productionQueue, ref i);
                 }
@@ -110,22 +111,12 @@ public class PlanetManager
         manufacturable.IncrementManufacturingProgress(progressToApply);
         remainingProgress -= progressToApply;
 
-        if (IsManufacturingComplete(manufacturable))
+        if (manufacturable.IsManufacturingComplete())
         {
             completedManufacturables.Add(manufacturable);
         }
 
         return remainingProgress;
-    }
-
-    /// <summary>
-    /// Checks if the manufacturing of an item is complete.
-    /// </summary>
-    /// <param name="manufacturable">The manufacturable item to check.</param>
-    /// <returns>True if manufacturing is complete, false otherwise.</returns>
-    private bool IsManufacturingComplete(IManufacturable manufacturable)
-    {
-        return manufacturable.GetConstructionCost() <= manufacturable.GetManufacturingProgress();
     }
 
     /// <summary>

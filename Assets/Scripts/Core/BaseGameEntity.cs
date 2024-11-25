@@ -8,6 +8,7 @@ using ObjectExtensions;
 [PersistableObject]
 public class BaseGameEntity : IGameEntity
 {
+    [CloneIgnore]
     private string _instanceId;
 
     [CloneIgnore]

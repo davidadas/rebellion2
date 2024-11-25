@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using ObjectExtensions;
 
-public class TestClass
+public class SimpleTestClass
 {
     public int IntProperty { get; set; }
     public string StringProperty { get; set; }
@@ -12,14 +12,60 @@ public class TestClass
 public class TestClassWithIgnore
 {
     public int IntProperty { get; set; }
+    public string StringProperty { get; set; }
 
     [CloneIgnore]
-    public string IgnoredProperty { get; set; }
+    public int IgnoredIntProperty { get; set; }
+
+    [CloneIgnore]
+    public string IgnoredStringProperty { get; set; }
+
+    [CloneIgnore]
+    public List<int> IgnoredListProperty { get; set; }
 }
 
-public class TestClassWithList
+public class ComplexTestClass
 {
+    public int IntProperty { get; set; }
+    public string StringProperty { get; set; }
     public List<int> ListProperty { get; set; }
+    public SimpleTestClass NestedObject { get; set; }
+    public Dictionary<string, List<int>> DictionaryProperty { get; set; }
+}
+
+public class TestClassWithNestedCollections
+{
+    public List<List<int>> NestedList { get; set; }
+    public Dictionary<string, Dictionary<int, string>> NestedDictionary { get; set; }
+}
+
+public class TestClassWithArrays
+{
+    public int[] IntArray { get; set; }
+    public string[] StringArray { get; set; }
+    public SimpleTestClass[] ObjectArray { get; set; }
+}
+
+public class TestClassWithReadOnlyProperty
+{
+    public int ReadOnlyProperty { get; } = 42;
+    public int WritableProperty { get; set; }
+}
+
+public class TestClassWithPrivateSetters
+{
+    public int PublicGetPrivateSet { get; private set; }
+    private string PrivateProperty { get; set; }
+
+    public TestClassWithPrivateSetters() { }
+
+    public TestClassWithPrivateSetters(int value, string text)
+    {
+        PublicGetPrivateSet = value;
+        PrivateProperty = text;
+    }
+
+    public string GetPrivateProperty() => PrivateProperty;
 }
 
 public class BaseTestClass
@@ -32,92 +78,65 @@ public class DerivedTestClass : BaseTestClass
     public string DerivedProperty { get; set; }
 }
 
-public class TestClassWithPrivateField
+public struct StructWithReferenceTypes
 {
-    private int _privateField;
-
-    public void SetPrivateField(int value) => _privateField = value;
-
-    public int GetPrivateField() => _privateField;
+    public int IntValue { get; set; }
+    public string StringValue { get; set; }
+    public SimpleTestClass ObjectValue { get; set; }
 }
 
-public class TestClassWithReadOnlyProperty
+public class ClassWithStruct
 {
-    public int ReadOnlyProperty { get; } = 42;
-    public int WritableProperty { get; set; }
+    public StructWithReferenceTypes StructProperty { get; set; }
 }
 
-public class TestClassWithStaticField
+public class TestClassWithoutDefaultConstructor
 {
-    public static int StaticField;
-    public int InstanceField;
+    public int Value { get; }
+
+    public TestClassWithoutDefaultConstructor(int value)
+    {
+        Value = value;
+    }
 }
 
-public class ComplexTestClass
+public class GenericTestClass<T1, T2>
 {
-    public int IntProperty { get; set; }
-    public string StringProperty { get; set; }
-    public List<int> ListProperty { get; set; }
-    public TestClass NestedObject { get; set; }
-}
+    public T1 GenericProperty1 { get; set; }
+    public T2 GenericProperty2 { get; set; }
+    public List<Tuple<T1, T2>> GenericList { get; set; }
 
-public class ComplexInheritanceClass : DerivedTestClass
-{
-    public List<string> ListProperty { get; set; }
+    public GenericTestClass() { }
 }
 
 [TestFixture]
 public class ObjectExtensionsTests
 {
     [Test]
-    public void Copy_NullObject_ReturnsNull()
+    public void GetDeepCopy_NullObject_ReturnsNull()
     {
-        TestClass original = null;
-
-        var shallowCopy = original.GetShallowCopy();
-        var deepCopy = original.GetDeepCopy();
-
-        Assert.IsNull(shallowCopy);
-        Assert.IsNull(deepCopy);
+        SimpleTestClass original = null;
+        SimpleTestClass copy = original.GetDeepCopy();
+        Assert.IsNull(copy);
     }
 
     [Test]
-    public void Copy_ValueTypeOrString_SkipsCopyForValueType()
+    public void GetShallowCopy_NullObject_ReturnsNull()
     {
-        int originalInt = 42;
-        string originalString = "Hello";
-
-        // Value types and strings should simply return the original value.
-        Assert.AreEqual(originalInt, originalInt); // Value type directly compared.
-        Assert.AreEqual(originalString, originalString); // Strings are immutable.
-    }
-
-    [Test]
-    public void GetShallowCopy_SimpleObject_CreatesShallowCopy()
-    {
-        var original = new TestClass { IntProperty = 42, StringProperty = "Hello" };
-        var copy = original.GetShallowCopy();
-
-        Assert.AreNotSame(original, copy);
-        Assert.AreEqual(original.IntProperty, copy.IntProperty);
-        Assert.AreEqual(original.StringProperty, copy.StringProperty);
-    }
-
-    [Test]
-    public void GetShallowCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
-    {
-        var original = new TestClassWithIgnore { IntProperty = 42, IgnoredProperty = "Ignore me" };
-        var copy = original.GetShallowCopy();
-
-        Assert.AreEqual(original.IntProperty, copy.IntProperty);
-        Assert.AreNotEqual(original.IgnoredProperty, copy.IgnoredProperty);
+        SimpleTestClass original = null;
+        SimpleTestClass copy = original.GetShallowCopy();
+        Assert.IsNull(copy);
     }
 
     [Test]
     public void GetDeepCopy_SimpleObject_CreatesDeepCopy()
     {
-        var original = new TestClass { IntProperty = 42, StringProperty = "Hello" };
-        var copy = original.GetDeepCopy();
+        SimpleTestClass original = new SimpleTestClass
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+        };
+        SimpleTestClass copy = original.GetDeepCopy();
 
         Assert.AreNotSame(original, copy);
         Assert.AreEqual(original.IntProperty, copy.IntProperty);
@@ -125,54 +144,228 @@ public class ObjectExtensionsTests
     }
 
     [Test]
+    public void GetShallowCopy_SimpleObject_CreatesShallowCopy()
+    {
+        SimpleTestClass original = new SimpleTestClass
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+        };
+        SimpleTestClass copy = original.GetShallowCopy();
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetDeepCopy();
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(0, copy.IgnoredIntProperty);
+        Assert.IsNull(copy.IgnoredStringProperty);
+        Assert.IsNull(copy.IgnoredListProperty);
+    }
+
+    [Test]
+    public void GetShallowCopy_ObjectWithCloneIgnore_IgnoresMarkedProperties()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetShallowCopy();
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(0, copy.IgnoredIntProperty);
+        Assert.IsNull(copy.IgnoredStringProperty);
+        Assert.IsNull(copy.IgnoredListProperty);
+    }
+
+    [Test]
     public void GetDeepCopy_ComplexObject_CreatesDeepCopy()
     {
-        var complexObject = new ComplexTestClass
+        ComplexTestClass original = new ComplexTestClass
         {
             IntProperty = 42,
             StringProperty = "Hello",
             ListProperty = new List<int> { 1, 2, 3 },
-            NestedObject = new TestClass { IntProperty = 10, StringProperty = "Nested" },
+            NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
+            DictionaryProperty = new Dictionary<string, List<int>>
+            {
+                {
+                    "Key",
+                    new List<int> { 4, 5, 6 }
+                },
+            },
         };
 
-        var copy = complexObject.GetDeepCopy();
-
-        Assert.AreNotSame(complexObject, copy);
-        Assert.AreEqual(complexObject.IntProperty, copy.IntProperty);
-        Assert.AreEqual(complexObject.StringProperty, copy.StringProperty);
-        Assert.AreNotSame(complexObject.ListProperty, copy.ListProperty);
-        Assert.AreNotSame(complexObject.NestedObject, copy.NestedObject);
-        Assert.AreEqual(complexObject.ListProperty, copy.ListProperty);
-    }
-
-    [Test]
-    public void GetShallowCopy_CollectionObject_CreatesShallowCopy()
-    {
-        var list = new List<int> { 1, 2, 3 };
-        var original = new TestClassWithList { ListProperty = list };
-        var copy = original.GetShallowCopy();
+        ComplexTestClass copy = original.GetDeepCopy();
 
         Assert.AreNotSame(original, copy);
-        Assert.AreSame(original.ListProperty, copy.ListProperty);
-    }
-
-    [Test]
-    public void GetDeepCopy_CollectionObject_CreatesDeepCopy()
-    {
-        var list = new List<int> { 1, 2, 3 };
-        var original = new TestClassWithList { ListProperty = list };
-        var copy = original.GetDeepCopy();
-
-        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
         Assert.AreNotSame(original.ListProperty, copy.ListProperty);
         CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
+        Assert.AreNotSame(original.NestedObject, copy.NestedObject);
+        Assert.AreEqual(original.NestedObject.IntProperty, copy.NestedObject.IntProperty);
+        Assert.AreEqual(original.NestedObject.StringProperty, copy.NestedObject.StringProperty);
+        Assert.AreNotSame(original.DictionaryProperty, copy.DictionaryProperty);
+        CollectionAssert.AreEqual(
+            original.DictionaryProperty["Key"],
+            copy.DictionaryProperty["Key"]
+        );
     }
 
     [Test]
-    public void GetShallowCopy_DerivedClass_CopiesBaseAndDerivedProperties()
+    public void GetShallowCopy_ComplexObject_SharesReferences()
     {
-        var original = new DerivedTestClass { BaseProperty = "Base", DerivedProperty = "Derived" };
-        var copy = original.GetShallowCopy();
+        ComplexTestClass original = new ComplexTestClass
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            ListProperty = new List<int> { 1, 2, 3 },
+            NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
+            DictionaryProperty = new Dictionary<string, List<int>>
+            {
+                {
+                    "Key",
+                    new List<int> { 4, 5, 6 }
+                },
+            },
+        };
+
+        ComplexTestClass copy = original.GetShallowCopy();
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreSame(original.ListProperty, copy.ListProperty);
+        Assert.AreSame(original.NestedObject, copy.NestedObject);
+        Assert.AreSame(original.DictionaryProperty, copy.DictionaryProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_NestedCollections_AreDeeplyCopied()
+    {
+        TestClassWithNestedCollections original = new TestClassWithNestedCollections
+        {
+            NestedList = new List<List<int>>
+            {
+                new List<int> { 1, 2 },
+                new List<int> { 3, 4 },
+            },
+            NestedDictionary = new Dictionary<string, Dictionary<int, string>>
+            {
+                {
+                    "outer",
+                    new Dictionary<int, string> { { 1, "one" }, { 2, "two" } }
+                },
+            },
+        };
+
+        TestClassWithNestedCollections copy = original.GetDeepCopy();
+
+        Assert.AreNotSame(original.NestedList, copy.NestedList);
+        Assert.AreNotSame(original.NestedList[0], copy.NestedList[0]);
+        Assert.AreNotSame(original.NestedList[1], copy.NestedList[1]);
+        CollectionAssert.AreEqual(original.NestedList, copy.NestedList);
+
+        Assert.AreNotSame(original.NestedDictionary, copy.NestedDictionary);
+        Assert.AreNotSame(original.NestedDictionary["outer"], copy.NestedDictionary["outer"]);
+        CollectionAssert.AreEqual(
+            original.NestedDictionary["outer"],
+            copy.NestedDictionary["outer"]
+        );
+    }
+
+    [Test]
+    public void GetDeepCopy_ArrayProperties_AreDeeplyCopied()
+    {
+        TestClassWithArrays original = new TestClassWithArrays
+        {
+            IntArray = new int[] { 1, 2, 3 },
+            StringArray = new string[] { "one", "two", "three" },
+            ObjectArray = new SimpleTestClass[]
+            {
+                new SimpleTestClass { IntProperty = 1, StringProperty = "one" },
+                new SimpleTestClass { IntProperty = 2, StringProperty = "two" },
+            },
+        };
+
+        TestClassWithArrays copy = original.GetDeepCopy();
+
+        Assert.AreNotSame(original.IntArray, copy.IntArray);
+        Assert.AreNotSame(original.StringArray, copy.StringArray);
+        Assert.AreNotSame(original.ObjectArray, copy.ObjectArray);
+
+        CollectionAssert.AreEqual(original.IntArray, copy.IntArray);
+        CollectionAssert.AreEqual(original.StringArray, copy.StringArray);
+
+        for (int i = 0; i < original.ObjectArray.Length; i++)
+        {
+            Assert.AreNotSame(original.ObjectArray[i], copy.ObjectArray[i]);
+            Assert.AreEqual(original.ObjectArray[i].IntProperty, copy.ObjectArray[i].IntProperty);
+            Assert.AreEqual(
+                original.ObjectArray[i].StringProperty,
+                copy.ObjectArray[i].StringProperty
+            );
+        }
+    }
+
+    [Test]
+    public void GetDeepCopy_ReadOnlyProperties_AreCopied()
+    {
+        TestClassWithReadOnlyProperty original = new TestClassWithReadOnlyProperty
+        {
+            WritableProperty = 42,
+        };
+
+        TestClassWithReadOnlyProperty copy = original.GetDeepCopy();
+
+        Assert.AreEqual(original.ReadOnlyProperty, copy.ReadOnlyProperty);
+        Assert.AreEqual(original.WritableProperty, copy.WritableProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_PrivateSetters_AreCopied()
+    {
+        TestClassWithPrivateSetters original = new TestClassWithPrivateSetters(42, "Hello");
+
+        TestClassWithPrivateSetters copy = original.GetDeepCopy();
+
+        Assert.AreEqual(original.PublicGetPrivateSet, copy.PublicGetPrivateSet);
+        Assert.AreEqual(original.GetPrivateProperty(), copy.GetPrivateProperty());
+    }
+
+    [Test]
+    public void GetDeepCopy_DerivedClass_CopiesBaseAndDerivedProperties()
+    {
+        DerivedTestClass original = new DerivedTestClass
+        {
+            BaseProperty = "Base",
+            DerivedProperty = "Derived",
+        };
+
+        DerivedTestClass copy = original.GetDeepCopy();
 
         Assert.AreNotSame(original, copy);
         Assert.IsInstanceOf<DerivedTestClass>(copy);
@@ -181,54 +374,62 @@ public class ObjectExtensionsTests
     }
 
     [Test]
-    public void GetShallowCopy_PrivateFields_AreCopied()
+    public void GetDeepCopy_ClassWithStruct_IsDeeplyCopied()
     {
-        var original = new TestClassWithPrivateField();
-        original.SetPrivateField(42);
-        var copy = original.GetShallowCopy();
-
-        Assert.AreEqual(42, copy.GetPrivateField());
-    }
-
-    [Test]
-    public void GetDeepCopy_ReadOnlyProperty_IsCopied()
-    {
-        var original = new TestClassWithReadOnlyProperty { WritableProperty = 42 };
-        var copy = original.GetDeepCopy();
-
-        Assert.AreEqual(42, copy.ReadOnlyProperty);
-        Assert.AreEqual(42, copy.WritableProperty);
-    }
-
-    [Test]
-    public void GetShallowCopy_StaticField_IsNotCopied()
-    {
-        TestClassWithStaticField.StaticField = 42;
-        var original = new TestClassWithStaticField { InstanceField = 10 };
-        var copy = original.GetShallowCopy();
-
-        TestClassWithStaticField.StaticField = 100;
-
-        Assert.AreEqual(10, copy.InstanceField);
-        Assert.AreEqual(100, TestClassWithStaticField.StaticField);
-    }
-
-    [Test]
-    public void GetDeepCopy_HandlesInheritanceAndCollectionsCorrectly()
-    {
-        var original = new ComplexInheritanceClass
+        ClassWithStruct original = new ClassWithStruct
         {
-            BaseProperty = "Base",
-            DerivedProperty = "Derived",
-            ListProperty = new List<string> { "A", "B", "C" },
+            StructProperty = new StructWithReferenceTypes
+            {
+                IntValue = 42,
+                StringValue = "Hello",
+                ObjectValue = new SimpleTestClass { IntProperty = 10, StringProperty = "World" },
+            },
         };
 
-        var copy = original.GetDeepCopy();
+        ClassWithStruct copy = original.GetDeepCopy();
 
         Assert.AreNotSame(original, copy);
-        Assert.AreEqual(original.BaseProperty, copy.BaseProperty);
-        Assert.AreEqual(original.DerivedProperty, copy.DerivedProperty);
-        Assert.AreNotSame(original.ListProperty, copy.ListProperty);
-        CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
+        Assert.AreEqual(original.StructProperty.IntValue, copy.StructProperty.IntValue);
+        Assert.AreEqual(original.StructProperty.StringValue, copy.StructProperty.StringValue);
+        Assert.AreNotSame(original.StructProperty.ObjectValue, copy.StructProperty.ObjectValue);
+        Assert.AreEqual(
+            original.StructProperty.ObjectValue.IntProperty,
+            copy.StructProperty.ObjectValue.IntProperty
+        );
+        Assert.AreEqual(
+            original.StructProperty.ObjectValue.StringProperty,
+            copy.StructProperty.ObjectValue.StringProperty
+        );
+    }
+
+    [Test]
+    public void GetDeepCopy_ObjectWithoutDefaultConstructor_ThrowsException()
+    {
+        TestClassWithoutDefaultConstructor original = new TestClassWithoutDefaultConstructor(42);
+
+        Assert.Throws<InvalidOperationException>(() => original.GetDeepCopy());
+    }
+
+    [Test]
+    public void GetDeepCopy_GenericClass_IsDeeplyCopied()
+    {
+        GenericTestClass<int, string> original = new GenericTestClass<int, string>
+        {
+            GenericProperty1 = 42,
+            GenericProperty2 = "Hello",
+            GenericList = new List<Tuple<int, string>>
+            {
+                new Tuple<int, string>(1, "One"),
+                new Tuple<int, string>(2, "Two"),
+            },
+        };
+
+        GenericTestClass<int, string> copy = original.GetDeepCopy();
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreEqual(original.GenericProperty1, copy.GenericProperty1);
+        Assert.AreEqual(original.GenericProperty2, copy.GenericProperty2);
+        Assert.AreNotSame(original.GenericList, copy.GenericList);
+        CollectionAssert.AreEqual(original.GenericList, copy.GenericList);
     }
 }

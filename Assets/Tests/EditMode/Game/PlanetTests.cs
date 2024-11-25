@@ -28,12 +28,12 @@ public class PlanetTests
     }
 
     [Test]
-    public void AddFleet_InvalidOwner_ThrowsException()
+    public void AddBuilding_InvalidOwner_ThrowsException()
     {
-        Fleet fleet = new Fleet { OwnerInstanceID = "INVALID" };
+        Building building = new Building { OwnerInstanceID = "INVALID" };
 
         Assert.Throws<SceneAccessException>(
-            () => planet.AddChild(fleet),
+            () => planet.AddChild(building),
             "Adding a fleet with a mismatched OwnerInstanceID should throw a SceneAccessException."
         );
     }
@@ -65,6 +65,7 @@ public class PlanetTests
         {
             BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
+            OwnerInstanceID = "FNALL1",
         };
 
         planet.AddChild(building);
@@ -82,10 +83,16 @@ public class PlanetTests
     {
         for (int i = 0; i < planet.GroundSlots; i++)
         {
-            planet.AddChild(new Building { BuildingSlot = BuildingSlot.Ground });
+            planet.AddChild(
+                new Building { BuildingSlot = BuildingSlot.Ground, OwnerInstanceID = "FNALL1" }
+            );
         }
 
-        Building extraBuilding = new Building { BuildingSlot = BuildingSlot.Ground };
+        Building extraBuilding = new Building
+        {
+            BuildingSlot = BuildingSlot.Ground,
+            OwnerInstanceID = "FNALL1",
+        };
 
         Assert.Throws<GameStateException>(
             () => planet.AddChild(extraBuilding),
@@ -123,6 +130,7 @@ public class PlanetTests
         {
             BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
+            OwnerInstanceID = "FNALL1",
         };
 
         planet.AddChild(building);
@@ -139,7 +147,11 @@ public class PlanetTests
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        Building building = new Building { BuildingSlot = BuildingSlot.Ground };
+        Building building = new Building
+        {
+            BuildingSlot = BuildingSlot.Ground,
+            OwnerInstanceID = "FNALL1",
+        };
 
         planet.AddChild(fleet);
         planet.AddChild(officer);
@@ -243,11 +255,13 @@ public class PlanetTests
         {
             ProductionType = ManufacturingType.Ship,
             ProcessRate = 2,
+            OwnerInstanceID = "FNALL1",
         };
         Building building2 = new Building
         {
             ProductionType = ManufacturingType.Ship,
             ProcessRate = 3,
+            OwnerInstanceID = "FNALL1",
         };
 
         planet.AddChild(building1);

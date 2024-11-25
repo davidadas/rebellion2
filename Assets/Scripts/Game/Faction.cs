@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>
+/// Represents a faction in the game, managing its resources, technologies, and owned entities.
+/// </summary>
 public class Faction : BaseGameEntity
 {
     public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
@@ -47,9 +50,15 @@ public class Faction : BaseGameEntity
     };
 
     /// <summary>
-    /// Default constructor used for serializaiton.
+    /// Default constructor used for serialization.
     /// </summary>
     public Faction() { }
+
+    /// <summary>
+    /// Returns the instance ID of the faction's headquarters.
+    /// </summary>
+    /// <returns>The HQ instance ID.</returns>
+    public string GetHQInstanceID() => HQInstanceID;
 
     /// <summary>
     /// Checks if the faction is controlled by AI.
@@ -58,19 +67,19 @@ public class Faction : BaseGameEntity
     public bool IsAIControlled() => string.IsNullOrEmpty(PlayerID);
 
     /// <summary>
-    /// Returns a list of units owned by the faction.
+    /// Returns a list of all units owned by the faction.
     /// </summary>
-    /// <returns>A list of units owned by the faction.</returns>
+    /// <returns>A list of all owned units.</returns>
     public List<ISceneNode> GetAllOwnedUnits()
     {
         return ownedEntities.Values.SelectMany(x => x).ToList();
     }
 
     /// <summary>
-    /// Returns a list of units owned by the faction.
+    /// Returns a list of units of a specific type owned by the faction.
     /// </summary>
     /// <typeparam name="T">The type of unit to get.</typeparam>
-    /// <returns>A list of units owned by the faction.</returns>
+    /// <returns>A list of owned units of the specified type.</returns>
     public List<T> GetOwnedUnitsByType<T>()
         where T : ISceneNode
     {
@@ -78,11 +87,11 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Adds a unit to the ownedEntities dictionary.
+    /// Adds a unit to the faction's owned entities.
     /// </summary>
     /// <typeparam name="T">The type of unit to add.</typeparam>
     /// <param name="unit">The unit to add.</param>
-    public void AddOwnedUnit<T>(ref T unit)
+    public void AddOwnedUnit<T>(T unit)
         where T : ISceneNode
     {
         if (ownedEntities.ContainsKey(unit.GetType()))
@@ -92,11 +101,11 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Removes a unit from the ownedEntities dictionary.
+    /// Removes a unit from the faction's owned entities.
     /// </summary>
     /// <typeparam name="T">The type of unit to remove.</typeparam>
     /// <param name="unit">The unit to remove.</param>
-    public void RemoveOwnedUnit<T>(ref T unit)
+    public void RemoveOwnedUnit<T>(T unit)
         where T : ISceneNode
     {
         if (ownedEntities.ContainsKey(unit.GetType()))
@@ -106,25 +115,14 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Adds a technology node to the TechnologyLevels dictionary.
+    /// Adds a technology node to the faction's technology levels.
     /// </summary>
-    /// <typeparam name="T">The type of technology to add.</typeparam>
     /// <param name="level">The level of the technology.</param>
     /// <param name="node">The technology node to add.</param>
     public void AddTechnologyNode(int level, Technology node)
     {
-        ISceneNode tech = node.GetReference();
-        Type technologyType = tech.GetType();
+        IManufacturable tech = node.GetReference();
 
-        // Check if the technology is manufacturable.
-        if (!(tech is IManufacturable manufacturableTech))
-        {
-            throw new GameException(
-                $"Technology {tech.GetDisplayName()} must implement IManufacturable."
-            );
-        }
-
-        // Check if the technology is allowed to be owned by the faction.
         if (
             tech.AllowedOwnerInstanceIDs != null
             && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID)
@@ -135,26 +133,18 @@ public class Faction : BaseGameEntity
             );
         }
 
-        // Ensure the dictionary for this technology type exists.
-        if (
-            !TechnologyLevels.TryGetValue(
-                manufacturableTech.GetManufacturingType(),
-                out var techLevels
-            )
-        )
+        if (!TechnologyLevels.TryGetValue(tech.GetManufacturingType(), out var techLevels))
         {
             techLevels = new SortedDictionary<int, List<Technology>>();
-            TechnologyLevels[manufacturableTech.GetManufacturingType()] = techLevels;
+            TechnologyLevels[tech.GetManufacturingType()] = techLevels;
         }
 
-        // Ensure the list for this level exists.
         if (!techLevels.TryGetValue(level, out var nodesAtLevel))
         {
             nodesAtLevel = new List<Technology>();
             techLevels[level] = nodesAtLevel;
         }
 
-        // Add the new node to the list, if it's not already present.
         if (!nodesAtLevel.Contains(node))
         {
             nodesAtLevel.Add(node);
@@ -162,55 +152,51 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Returns a list of technologies that have been researched.
+    /// Returns a list of technologies that have been researched for a specific manufacturing type.
     /// </summary>
-    /// <param name="manufacturingType"></param>
-    /// <returns></returns>
+    /// <param name="manufacturingType">The manufacturing type to check.</param>
+    /// <returns>A list of researched technologies.</returns>
     public List<Technology> GetResearchedTechnologies(ManufacturingType manufacturingType)
     {
-        // Check if the manufacturing type exists in the technology levels dictionary
         if (!TechnologyLevels.TryGetValue(manufacturingType, out var techLevels))
         {
-            // Return an empty list if there are no technologies for this manufacturing type.
             return new List<Technology>();
         }
 
-        // Retrieve the current research level for the given manufacturing type.
         int currentResearchLevel = GetResearchLevel(manufacturingType);
 
-        // Collect technologies that meet the research level requirement.
         return techLevels
-            .Where(kvp => kvp.Key <= currentResearchLevel) // Only consider levels up to the current research level.
-            .SelectMany(kvp => kvp.Value) // Flatten all technology lists at or below the research level.
-            .Where(tech => tech.GetRequiredResearchLevel() <= currentResearchLevel) // Ensure the technology is within the allowed research level.
+            .Where(kvp => kvp.Key <= currentResearchLevel)
+            .SelectMany(kvp => kvp.Value)
+            .Where(tech => tech.GetRequiredResearchLevel() <= currentResearchLevel)
             .ToList();
     }
 
     /// <summary>
-    /// Returns the research level required to manufacture the manufacturable.
+    /// Returns the research level for a specific manufacturing type.
     /// </summary>
-    /// <param name="manufacturingType"></param>
-    /// <returns></returns>
+    /// <param name="manufacturingType">The manufacturing type to check.</param>
+    /// <returns>The research level for the specified manufacturing type.</returns>
     public int GetResearchLevel(ManufacturingType manufacturingType)
     {
         return ManufacturingResearchLevels[manufacturingType];
     }
 
     /// <summary>
-    /// Sets the research level required to manufacture the manufacturable.
+    /// Sets the research level for a specific manufacturing type.
     /// </summary>
-    /// <param name="manufacturingType"></param>
-    /// <param name="level"></param>
-    /// <returns></returns>
+    /// <param name="manufacturingType">The manufacturing type to set.</param>
+    /// <param name="level">The new research level.</param>
     public void SetResearchLevel(ManufacturingType manufacturingType, int level)
     {
         ManufacturingResearchLevels[manufacturingType] = level;
     }
 
     /// <summary>
-    /// Returns a list of planets with idle manufacturing facilities.
+    /// Returns a list of planets with idle manufacturing facilities for a specific manufacturing type.
     /// </summary>
-    /// <returns>A list of planets with idle manufacturing facilities.</returns>
+    /// <param name="manufacturingType">The manufacturing type to check.</param>
+    /// <returns>A list of planets with idle facilities.</returns>
     public List<Planet> GetIdleFacilities(ManufacturingType manufacturingType)
     {
         return GetOwnedUnitsByType<Planet>()
@@ -218,7 +204,7 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Adds a message to the Messages dictionary based on its type.
+    /// Adds a message to the faction's message list.
     /// </summary>
     /// <param name="message">The message to add.</param>
     public void AddMessage(Message message)
@@ -227,9 +213,9 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    ///
+    /// Removes a message from the faction's message list.
     /// </summary>
-    /// <param name="message"></param>
+    /// <param name="message">The message to remove.</param>
     public void RemoveMessage(Message message)
     {
         Messages[message.Type].Remove(message);

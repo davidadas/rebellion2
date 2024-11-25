@@ -3,12 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 
+/// <summary>
+/// Represents the possible slots where a building can be placed.
+/// </summary>
 public enum BuildingSlot
 {
     Ground,
     Orbit,
 }
 
+/// <summary>
+/// Represents the different types of buildings available in the game.
+/// </summary>
 public enum BuildingType
 {
     None,
@@ -22,7 +28,7 @@ public enum BuildingType
 }
 
 /// <summary>
-///
+/// Represents a building in the game, implementing both IManufacturable and IMovable interfaces.
 /// </summary>
 public class Building : LeafNode, IManufacturable, IMovable
 {
@@ -52,7 +58,7 @@ public class Building : LeafNode, IManufacturable, IMovable
     public MovementStatus MovementStatus { get; set; }
 
     /// <summary>
-    /// Default constructor.
+    /// Default constructor for the Building class.
     /// </summary>
     public Building() { }
 
@@ -75,25 +81,25 @@ public class Building : LeafNode, IManufacturable, IMovable
     }
 
     /// <summary>
-    ///
+    /// Returns the rate at which this building processes resources or units.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The process rate of the building.</returns>
     public int GetProcessRate()
     {
         return ProcessRate;
     }
 
     /// <summary>
-    ///
+    /// Returns the type of production this building is capable of.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The production type of the building.</returns>
     public ManufacturingType GetProductionType()
     {
         return ProductionType;
     }
 
     /// <summary>
-    /// Returns this node's manuacturing type.
+    /// Returns this node's manufacturing type.
     /// </summary>
     /// <returns>ManufacturingType.Building</returns>
     public ManufacturingType GetManufacturingType()
@@ -114,6 +120,7 @@ public class Building : LeafNode, IManufacturable, IMovable
     /// Sets the manufacturing status of the building.
     /// </summary>
     /// <param name="manufacturingStatus">The manufacturing status to set.</param>
+    /// <exception cref="GameStateException">Thrown when trying to set status to Building after it's Complete.</exception>
     public void SetManufacturingStatus(ManufacturingStatus manufacturingStatus)
     {
         if (

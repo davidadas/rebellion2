@@ -34,4 +34,4 @@ I work as a manager at a FAANG company. Unless I am joined by additional contrib
 
 ### 4. Will Disney permit this?
 
-I have absolutely *zero* desire to step on Disney's toes here. I have built a lot of seriously awesome stuff for Disney over the years and have no desire to harm our working relationship. My ultimate hope is that I can produce enough to entice Disney into bringing this project in-house (even if that means closing the game's source code, which they would almost certainly require). Should they ask me to de-Rebellion the game, however, I will do so without hesitation and build something entirely different.
+I have absolutely *zero* desire to step on Disney's toes here. My ultimate hope is that I can produce enough to entice Disney into bringing this project in-house (even if that means closing the game's source code, which they would almost certainly require). Should they ask me to de-Rebellion the game, however, I will do so without hesitation and build something entirely different out of the existing code I have.

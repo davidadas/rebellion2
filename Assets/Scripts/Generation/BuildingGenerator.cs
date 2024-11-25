@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ICollectionExtensions;
@@ -7,12 +6,12 @@ using IEnumerableExtensions;
 using ObjectExtensions;
 
 /// <summary>
-/// Represents a generator for creating Building units.
+/// Responsible for generating and deploying buildings to the scene graph.
 /// </summary>
 public class BuildingGenerator : UnitGenerator<Building>
 {
     /// <summary>
-    /// Default constructor, constructs a BuildingGenerator object.
+    /// Constructs a BuildingGenerator object.
     /// </summary>
     /// <param name="summary">The GameSummary options selected by the player.</param>
     /// <param name="resourceManager">The resource manager from which to load game data.</param>
@@ -20,23 +19,93 @@ public class BuildingGenerator : UnitGenerator<Building>
         : base(summary, resourceManager) { }
 
     /// <summary>
-    /// Creates a Dictionary out of the frequency data stored in the new game config.
+    /// Creates a Dictionary from the frequency data stored in the new game config.
+    /// Handles potential duplicate TypeIDs by keeping the entry with the highest frequency.
     /// </summary>
-    /// <returns>A Dictionary with building TypeIDs as keys as its percentage frequency.</returns>
-    public Dictionary<string, double> getConfigMapping()
+    /// <returns>A Dictionary with building TypeIDs as keys and their percentage frequency as values.</returns>
+    private Dictionary<string, double> GetConfigMapping()
     {
         IConfig config = GetConfig();
         string[] typeIds = config.GetValue<string[]>("Buildings.InitialBuildings.TypeIDs");
         double[] frequencies = config.GetValue<double[]>("Buildings.InitialBuildings.Frequency");
-        Dictionary<string, double> configMapping = new Dictionary<string, double>();
 
-        // Map each building's TypeID with its percentage frequency, represented as a double.
-        for (int i = 0; i < typeIds.Length; i++)
+        return typeIds
+            .Zip(frequencies, (id, freq) => new { Id = id, Frequency = freq })
+            .GroupBy(x => x.Id)
+            .ToDictionary(group => group.Key, group => group.Max(x => x.Frequency));
+    }
+
+    /// <summary>
+    /// Deploys buildings to a specific planet.
+    /// </summary>
+    /// <param name="planet">The planet to deploy buildings to.</param>
+    /// <param name="availableBuildings">List of available buildings.</param>
+    /// <param name="configMapping">Configuration mapping for building frequencies.</param>
+    /// <param name="deployedBuildings">List to store deployed buildings.</param>
+    private void DeployBuildingsToPlanet(
+        Planet planet,
+        List<Building> availableBuildings,
+        Dictionary<string, double> configMapping,
+        List<Building> deployedBuildings
+    )
+    {
+        foreach (string buildingTypeId in configMapping.Keys.ToArray().Shuffle())
         {
-            configMapping[typeIds[i]] = frequencies[i];
-        }
+            Building buildingTemplate = availableBuildings.Find(b => b.TypeID == buildingTypeId);
+            int availableSlots = planet.GetAvailableSlots(buildingTemplate.GetBuildingSlot());
 
-        return configMapping;
+            if (availableSlots == 0)
+                continue;
+
+            List<Building> generatedBuildings = GenerateBuildings(
+                buildingTemplate,
+                availableSlots,
+                planet.GetOwnerInstanceID()
+            );
+            List<Building> selectedBuildings = SelectBuildingsBasedOnFrequency(
+                generatedBuildings,
+                configMapping[buildingTypeId]
+            );
+
+            selectedBuildings.ForEach(planet.AddChild);
+            deployedBuildings.AddRange(selectedBuildings);
+        }
+    }
+
+    /// <summary>
+    /// Generates a list of buildings based on a template and available slots.
+    /// </summary>
+    /// <param name="template">The building template to copy.</param>
+    /// <param name="count">Number of buildings to generate.</param>
+    /// <param name="ownerInstanceId">The owner's instance ID.</param>
+    /// <returns>A list of generated buildings.</returns>
+    private List<Building> GenerateBuildings(Building template, int count, string ownerInstanceId)
+    {
+        return Enumerable
+            .Range(0, count)
+            .Select(_ =>
+            {
+                Building copy = (Building)template.GetDeepCopy();
+                copy.SetOwnerInstanceID(ownerInstanceId);
+                copy.SetManufacturingStatus(ManufacturingStatus.Complete);
+                copy.MovementStatus = MovementStatus.Idle;
+                return copy;
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Selects buildings based on their frequency.
+    /// </summary>
+    /// <param name="buildings">List of buildings to select from.</param>
+    /// <param name="frequency">The frequency of selection.</param>
+    /// <returns>A list of selected buildings.</returns>
+    private List<Building> SelectBuildingsBasedOnFrequency(
+        List<Building> buildings,
+        double frequency
+    )
+    {
+        return buildings.TakeWhile(_ => UnityEngine.Random.value < frequency).ToList();
     }
 
     /// <summary>
@@ -46,14 +115,11 @@ public class BuildingGenerator : UnitGenerator<Building>
     /// <returns>An array of selected buildings.</returns>
     public override Building[] SelectUnits(Building[] buildings)
     {
-        int startingResearchLevel = GetGameSummary().StartingResearchLevel;
-        Building[] selectedBuildings = buildings
-            .Where(
-                (building) =>
-                    building.RequiredResearchLevel <= GetGameSummary().StartingResearchLevel
+        return buildings
+            .Where(building =>
+                building.RequiredResearchLevel <= GetGameSummary().StartingResearchLevel
             )
             .ToArray();
-        return selectedBuildings;
     }
 
     /// <summary>
@@ -63,7 +129,7 @@ public class BuildingGenerator : UnitGenerator<Building>
     /// <returns>The decorated buildings.</returns>
     public override Building[] DecorateUnits(Building[] buildings)
     {
-        // No op.
+        // No additional decoration needed for buildings.
         return buildings;
     }
 
@@ -75,52 +141,18 @@ public class BuildingGenerator : UnitGenerator<Building>
     /// <returns>The deployed buildings.</returns>
     public override Building[] DeployUnits(Building[] buildings, PlanetSystem[] destinations)
     {
-        Dictionary<string, double> configMapping = getConfigMapping();
-        List<Building> buildingList = buildings.ToList();
+        Dictionary<string, double> configMapping = GetConfigMapping();
+        List<Building> buildingList = new List<Building>(buildings);
         List<Building> deployedBuildings = new List<Building>();
 
         foreach (PlanetSystem planetSystem in destinations)
         {
-            // Only add buildings to populated planets.
             IEnumerable<Planet> colonizedPlanets = planetSystem.Planets.Where(planet =>
                 planet.IsColonized
             );
-
-            // Generate the planet's initial buildings.
             foreach (Planet planet in colonizedPlanets)
             {
-                // Shuffle the array to randomize the priority.
-                foreach (string buildingTypeID in configMapping.Keys.ToArray().Shuffle())
-                {
-                    Building building = buildingList.Find(building =>
-                        building.TypeID == buildingTypeID
-                    );
-                    int numAvailableSlots = planet.GetAvailableSlots(building.GetBuildingSlot());
-
-                    if (numAvailableSlots == 0)
-                        continue;
-
-                    // Create an array of buildings and fill it with the current building type.
-                    Building[] filledBuildings = new Building[numAvailableSlots];
-
-                    for (int i = 0; i < numAvailableSlots; i++)
-                    {
-                        Building copiedBuilding = (Building)building.GetDeepCopy();
-                        copiedBuilding.SetManufacturingStatus(ManufacturingStatus.Complete);
-                        copiedBuilding.MovementStatus = MovementStatus.Idle;
-                        filledBuildings[i] = copiedBuilding;
-                    }
-
-                    // Add this building each time its frequency exceeds a random value.
-                    // Halt this process after the first failure, as frequency is calculated per system.
-                    IEnumerable<Building> initialBuildings = filledBuildings.TakeWhile(x =>
-                        UnityEngine.Random.value < configMapping[buildingTypeID]
-                    );
-
-                    // Add the generated buildings to the planet.
-                    initialBuildings.ToList().ForEach(building => planet.AddChild(building));
-                    deployedBuildings.AddAll(initialBuildings);
-                }
+                DeployBuildingsToPlanet(planet, buildingList, configMapping, deployedBuildings);
             }
         }
 
