@@ -45,7 +45,7 @@ public sealed class GameSummary
     public string PlayerFactionID;
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public GameSummary() { }
 }

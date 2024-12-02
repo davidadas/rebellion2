@@ -52,7 +52,7 @@ public class Planet : ContainerNode
         new Dictionary<ManufacturingType, List<IManufacturable>>();
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Planet() { }
 
@@ -113,30 +113,32 @@ public class Planet : ContainerNode
         else
         {
             int overage = totalSupport + supportDifference - MAX_POPULAR_SUPPORT;
-
-            foreach (
-                KeyValuePair<string, int> kvp in PopularSupport
-                    .Where(kvp => kvp.Key != factionInstanceId)
-                    .ToList()
-            )
-            {
-                int reduction = Math.Min(overage, kvp.Value);
-                PopularSupport[kvp.Key] -= reduction;
-                overage -= reduction;
-
-                if (overage == 0)
-                    break;
-            }
-
-            if (overage > 0)
-            {
-                throw new GameStateException(
-                    $"Cannot set popular support for faction {factionInstanceId} to {support}. "
-                        + $"Total support would exceed {MAX_POPULAR_SUPPORT} even after reducing other factions' support."
-                );
-            }
-
+            ShiftFactionSupport(factionInstanceId, overage);
             PopularSupport[factionInstanceId] = support;
+        }
+    }
+
+    /// <summary>
+    /// Shifts the support of other factions to accommodate the increase in support for the given faction.
+    /// </summary>
+    /// <param name="excludedFactionId">The faction ID to exclude from reduction.</param>
+    /// <param name="overage">The amount of support to reduce from other factions.</param>
+    private void ShiftFactionSupport(string excludedFactionId, int overage)
+    {
+        // Sort the factions by support in descending order.
+        foreach (
+            KeyValuePair<string, int> kvp in PopularSupport
+                .Where(kvp => kvp.Key != excludedFactionId)
+                .ToList()
+        )
+        {
+            // Reduce the support for the faction by the minimum of the overage and the faction's current support.
+            int reduction = Math.Min(overage, kvp.Value);
+            PopularSupport[kvp.Key] -= reduction;
+            overage -= reduction;
+
+            if (overage == 0)
+                break;
         }
     }
 
@@ -173,18 +175,7 @@ public class Planet : ContainerNode
     {
         int totalMaterialCost = manufacturable.GetConstructionCost() * quantity;
         ManufacturingType requiredManufacturingType = manufacturable.GetManufacturingType();
-        double combinedRate = 0;
-
-        foreach (List<Building> buildingList in Buildings.Values)
-        {
-            foreach (Building building in buildingList)
-            {
-                if (building.GetProductionType() == requiredManufacturingType)
-                {
-                    combinedRate += 1.0 / building.GetProcessRate();
-                }
-            }
-        }
+        double combinedRate = GetCombinedProductionRate(requiredManufacturingType);
 
         if (combinedRate == 0)
             return 0;
@@ -194,13 +185,26 @@ public class Planet : ContainerNode
     }
 
     /// <summary>
+    /// Calculates the combined production rate for a specific manufacturing type.
+    /// </summary>
+    /// <param name="manufacturingType">The manufacturing type to calculate the rate for.</param>
+    /// <returns>The combined production rate.</returns>
+    private double GetCombinedProductionRate(ManufacturingType manufacturingType)
+    {
+        return Buildings
+            .Values.SelectMany(buildingList => buildingList)
+            .Where(building => building.GetProductionType() == manufacturingType)
+            .Sum(building => 1.0 / building.GetProcessRate());
+    }
+
+    /// <summary>
     /// Calculates the total production progress per tick for a given manufacturing type on a planet.
     /// </summary>
     /// <param name="type">The manufacturing type.</param>
     /// <returns>The calculated progress.</returns>
     public int GetProductionRate(ManufacturingType type)
     {
-        double combinedRate = GetBuildings(type).Sum(building => 1.0 / building.GetProcessRate());
+        double combinedRate = GetCombinedProductionRate(type);
         return (int)Math.Ceiling(combinedRate);
     }
 
@@ -210,18 +214,7 @@ public class Planet : ContainerNode
     /// <param name="manufacturable">The unit to be added to the manufacturing queue.</param>
     public void AddToManufacturingQueue(IManufacturable manufacturable)
     {
-        if (manufacturable is ISceneNode sceneNode && sceneNode.GetParent() == null)
-        {
-            throw new GameStateException(
-                $"Unit {sceneNode.GetDisplayName()} must have a parent to be added to the manufacturing queue."
-            );
-        }
-
-        if (this.OwnerInstanceID != manufacturable.OwnerInstanceID)
-        {
-            throw new SceneAccessException(manufacturable, this);
-        }
-
+        ValidateManufacturable(manufacturable);
         ManufacturingType type = manufacturable.GetManufacturingType();
 
         if (!ManufacturingQueue.ContainsKey(type))
@@ -231,6 +224,26 @@ public class Planet : ContainerNode
 
         manufacturable.SetPosition(GetPosition());
         ManufacturingQueue[type].Add(manufacturable);
+    }
+
+    /// <summary>
+    /// Validates if a manufacturable can be added to the manufacturing queue.
+    /// </summary>
+    /// <param name="manufacturable">The manufacturable to validate.</param>
+    ///
+    private void ValidateManufacturable(IManufacturable manufacturable)
+    {
+        if (manufacturable is ISceneNode sceneNode && sceneNode.GetParent() == null)
+        {
+            throw new InvalidSceneOperationException(
+                $"Unit {sceneNode.GetDisplayName()} must have a parent to be added to the manufacturing queue."
+            );
+        }
+
+        if (this.OwnerInstanceID != manufacturable.OwnerInstanceID)
+        {
+            throw new SceneAccessException(manufacturable, this);
+        }
     }
 
     /// <summary>
@@ -322,6 +335,17 @@ public class Planet : ContainerNode
     /// <exception cref="GameException">Thrown when the planet is not colonized or at capacity.</exception>
     private void AddBuilding(Building building)
     {
+        ValidateBuilding(building);
+        BuildingSlot slot = building.GetBuildingSlot();
+        Buildings[slot].Add(building);
+    }
+
+    /// <summary>
+    /// Validates if a building can be added to the planet.
+    /// </summary>
+    /// <param name="building">The building to validate.</param>
+    private void ValidateBuilding(Building building)
+    {
         if (!IsColonized)
         {
             throw new GameStateException(
@@ -335,18 +359,15 @@ public class Planet : ContainerNode
         }
 
         BuildingSlot slot = building.GetBuildingSlot();
-
         if (
-            slot == BuildingSlot.Ground && Buildings[slot].Count == GroundSlots
-            || slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots
+            (slot == BuildingSlot.Ground && Buildings[slot].Count == GroundSlots)
+            || (slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots)
         )
         {
             throw new GameStateException(
                 $"Cannot add {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is at capacity."
             );
         }
-
-        Buildings[slot].Add(building);
     }
 
     /// <summary>
@@ -487,6 +508,11 @@ public class Planet : ContainerNode
             case Regiment regiment:
                 RemoveRegiment(regiment);
                 break;
+            default:
+                throw new InvalidSceneOperationException(
+                    $"Cannot remove {child.GetDisplayName()} from {this.GetDisplayName()}. "
+                        + $"Only fleets, officers, buildings, missions, and regiments are allowed."
+                );
         }
     }
 

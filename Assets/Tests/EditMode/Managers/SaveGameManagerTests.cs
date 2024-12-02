@@ -130,7 +130,6 @@ public class SaveGameManagerTests
 
         // Create planets.
         Planet planet = new Planet { DisplayName = "Planet", OwnerInstanceID = "FNALL1" };
-        // planetSystem.Planets.Add(planet);
         game.AttachNode(planet, planetSystem);
 
         // Create fleets.

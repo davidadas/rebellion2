@@ -21,30 +21,28 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
     /// <summary>
     /// Retrieves the configuration for all capital ships based on the current galaxy size.
     /// </summary>
-    /// <returns>An array of IConfig objects representing the capital ships for the current galaxy size.</returns>
+    /// <returns>An array of <cref="IConfig"/> objects representing the capital ships for the current galaxy size.</returns>
     private IConfig[] GetCapitalShipConfigs()
     {
         GameSize galaxySize = GetGameSummary().GalaxySize;
         IConfig config = GetConfig();
 
         // Generate a range of galaxy sizes and retrieve configurations for each
-        return Enumerable
-            .Range((int)GameSize.Small, (int)galaxySize)
-            .SelectMany(size =>
-                config.GetValue<IConfig[]>(
-                    $"CapitalShips.InitialCapitalShips.GalaxySize.{(GameSize)size}"
-                )
+        return config
+            .GetValue<IConfig[]>(
+                $"CapitalShips.InitialCapitalShips.GalaxySize.{(galaxySize).ToString()}"
             )
             .ToArray();
     }
 
     /// <summary>
-    /// Maps the provided capital ships to their corresponding configurations.
+    /// Maps the provided capital ships to the config files, capital ship selection and placement
+    /// are set. The result is a list of capital ships which should then be deployed to the scene graph.
     /// </summary>
     /// <param name="capitalShips">The list of available capital ships.</param>
     /// <param name="capitalShipConfigs">The configurations to map to the ships.</param>
     /// <returns>An array of mapped CapitalShip objects with updated configurations.</returns>
-    private CapitalShip[] MapCapitalShipsToConfigs(
+    private CapitalShip[] GetCapitalShipsToDeploy(
         CapitalShip[] capitalShips,
         IConfig[] capitalShipConfigs
     )
@@ -52,7 +50,7 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
         return capitalShipConfigs
             .Select(config =>
             {
-                // Find matching ship and update its properties
+                // Find matching ship and update its properties.
                 CapitalShip ship = capitalShips.First(s =>
                     s.TypeID == config.GetValue<string>("TypeID")
                 );
@@ -184,7 +182,7 @@ public class CapitalShipGenerator : UnitGenerator<CapitalShip>
     public override CapitalShip[] DeployUnits(CapitalShip[] units, PlanetSystem[] destinations)
     {
         IConfig[] capitalShipConfigs = GetCapitalShipConfigs();
-        CapitalShip[] mappedCapitalShips = MapCapitalShipsToConfigs(units, capitalShipConfigs);
-        return AssignUnits(mappedCapitalShips, destinations);
+        CapitalShip[] shipsToDeploy = GetCapitalShipsToDeploy(units, capitalShipConfigs);
+        return AssignUnits(shipsToDeploy, destinations);
     }
 }

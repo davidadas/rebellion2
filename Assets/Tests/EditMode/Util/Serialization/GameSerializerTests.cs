@@ -159,6 +159,9 @@ public class ItemWithCustomName
     [PersistableMember(Name = "CustomNamedProperty")]
     public string Property { get; set; }
 
+    [PersistableAttribute(Name = "CustomNamedAttribute")]
+    public string Attribute { get; set; }
+
     public ItemWithCustomName() { }
 }
 
@@ -1281,12 +1284,16 @@ public class GameSerializerTests
     public void Serialize_ItemWithCustomName_UsesCustomName()
     {
         GameSerializer serializer = new GameSerializer(typeof(ItemWithCustomName));
-        ItemWithCustomName item = new ItemWithCustomName { Property = "TestValue" };
+        ItemWithCustomName item = new ItemWithCustomName
+        {
+            Property = "TestValue",
+            Attribute = "TestAttr",
+        };
 
         string serializedXml = SerializeToString(serializer, item);
         string expectedXml =
             @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ItemWithCustomName>
+<ItemWithCustomName CustomNamedAttribute=""TestAttr"">
   <CustomNamedProperty>TestValue</CustomNamedProperty>
 </ItemWithCustomName>";
 
@@ -1303,7 +1310,7 @@ public class GameSerializerTests
         GameSerializer serializer = new GameSerializer(typeof(ItemWithCustomName));
         string xmlInput =
             @"<?xml version=""1.0"" encoding=""utf-8""?>
-<ItemWithCustomName>
+<ItemWithCustomName CustomNamedAttribute=""TestAttr"">
   <CustomNamedProperty>TestValue</CustomNamedProperty>
 </ItemWithCustomName>";
 
@@ -1316,6 +1323,11 @@ public class GameSerializerTests
             "TestValue",
             deserialized.Property,
             "Deserialized value should match the input for the custom-named property."
+        );
+        Assert.AreEqual(
+            "TestAttr",
+            deserialized.Attribute,
+            "Deserialized value should match the input for the custom-named attribute."
         );
     }
 

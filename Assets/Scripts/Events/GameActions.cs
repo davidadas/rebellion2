@@ -2,84 +2,84 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+[PersistableObject(Name = "MoveUnits")]
 public class MoveUnitsAction : GameAction
 {
+    public List<string> UnitInstanceIDs { get; set; } = new List<string>();
+    public string TargetInstanceID { get; set; }
+
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public MoveUnitsAction()
         : base() { }
 
-    public MoveUnitsAction(List<ISceneNode> nodes, ISceneNode target)
-        : base(
-            new Dictionary<string, object>
-            {
-                { "UnitInstanceIDs", nodes.Select(n => n.InstanceID).ToList() },
-                { "TargetInstanceID", target.InstanceID },
-            }
-        ) { }
-
-    public MoveUnitsAction(Dictionary<string, object> parameters)
-        : base(parameters) { }
-
     public override void Execute(Game game)
     {
         // Get the parameters for the action.
-        List<string> unitInstanceIds = (List<string>)Parameters["UnitInstanceIDs"];
-        string targetInstanceId = (string)Parameters["TargetInstanceID"];
-
-        IMovable movable = game.GetSceneNodeByInstanceID<IMovable>(unitInstanceIds[0]) as IMovable;
-        ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId);
+        IMovable movable = game.GetSceneNodeByInstanceID<IMovable>(UnitInstanceIDs[0]) as IMovable;
+        ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
 
         movable.MoveTo(target);
     }
 }
 
+[PersistableObject(Name = "RandomOutcome")]
 public class RandomOutcomeAction : GameAction
 {
+    public List<GameAction> Actions { get; set; } = new List<GameAction>();
     private Random random = new Random();
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public RandomOutcomeAction()
         : base() { }
 
-    public RandomOutcomeAction(Dictionary<string, object> parameters)
-        : base(parameters) { }
-
     public override void Execute(Game game)
     {
-        double probability = Convert.ToDouble(Value);
-
-        // Get the parameters for the action.
-        List<GameAction> actions = (List<GameAction>)Parameters["Actions"];
+        double probability = Convert.ToDouble(this.GetActionValue());
 
         // Execute a random action.
         if (random.NextDouble() < probability)
         {
-            actions[random.Next(actions.Count)].Execute(game);
+            Actions[random.Next(Actions.Count)].Execute(game);
         }
     }
 }
 
+[PersistableObject(Name = "TriggerDuel")]
+public class TriggerDuelAction : GameAction
+{
+    public List<string> AttackerInstanceIDs { get; set; }
+    public List<string> DefenderInstanceIDs { get; set; }
+
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
+    public TriggerDuelAction()
+        : base() { }
+
+    public override void Execute(Game game)
+    {
+        // @TODO: Implement
+    }
+}
+
+[PersistableObject(Name = "TriggerEvent")]
 public class TriggerEventAction : GameAction
 {
+    public string EventInstanceID { get; set; }
+
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public TriggerEventAction()
         : base() { }
 
-    public TriggerEventAction(Dictionary<string, object> parameters)
-        : base(parameters) { }
-
     public override void Execute(Game game)
     {
-        // Get the parameters for the action.
-        string eventId = (string)Parameters["EventID"];
-
-        GameEvent gameEvent = game.GetPoolEventByID(eventId);
+        GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
 
         gameEvent.Execute(game);
     }

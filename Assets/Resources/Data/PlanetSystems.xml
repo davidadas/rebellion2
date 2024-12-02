@@ -9,8 +9,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PSSEW</TypeID>
-		<Resid>11648</Resid>
-		<Sector>20</Sector>
 		<PositionX>469</PositionX>
 		<PositionY>642</PositionY>
 		<Planets>
@@ -92,8 +90,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PSCOR</TypeID>
-		<Resid>11649</Resid>
-		<Sector>21</Sector>
 		<PositionX>272</PositionX>
 		<PositionY>96</PositionY>
 		<Planets>
@@ -175,8 +171,6 @@
 		<Visibility>Large</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PSFAK</TypeID>
-		<Resid>11655</Resid>
-		<Sector>27</Sector>
 		<PositionX>385</PositionX>
 		<PositionY>525</PositionY>
 		<Planets>
@@ -258,8 +252,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PLDOL</TypeID>
-		<Resid>11653</Resid>
-		<Sector>25</Sector>
 		<PositionX>472</PositionX>
 		<PositionY>253</PositionY>
 		<Planets>
@@ -341,8 +333,6 @@
 		<Visibility>Medium</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PLFAR</TypeID>
-		<Resid>11656</Resid>
-		<Sector>28</Sector>
 		<PositionX>587</PositionX>
 		<PositionY>370</PositionY>
 		<Planets>
@@ -424,8 +414,6 @@
 		<Visibility>Large</Visibility>
 		<Importance>High</Importance>
 		<TypeID>PLSLU</TypeID>
-		<Resid>11653</Resid>
-		<Sector>25</Sector>
 		<PositionX>472</PositionX>
 		<PositionY>253</PositionY>
 		<Planets>
@@ -510,8 +498,6 @@
 		<Visibility>Large</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLATR</TypeID>
-		<Resid>11649</Resid>
-		<Sector>21</Sector>
 		<PositionX>272</PositionX>
 		<PositionY>96</PositionY>
 		<Planets>
@@ -593,8 +579,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLMOD</TypeID>
-		<Resid>11661</Resid>
-		<Sector>33</Sector>
 		<PositionX>191</PositionX>
 		<PositionY>148</PositionY>
 		<Planets>
@@ -676,8 +660,6 @@
 		<Visibility>Medium</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLQUE</TypeID>
-		<Resid>11663</Resid>
-		<Sector>35</Sector>
 		<PositionX>113</PositionX>
 		<PositionY>277</PositionY>
 		<Planets>
@@ -759,8 +741,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLCHU</TypeID>
-		<Resid>11650</Resid>
-		<Sector>22</Sector>
 		<PositionX>132</PositionX>
 		<PositionY>417</PositionY>
 		<Planets>
@@ -843,8 +823,6 @@
 		<Visibility>Medium</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLKAN</TypeID>
-		<Resid>11659</Resid>
-		<Sector>31</Sector>
 		<PositionX>221</PositionX>
 		<PositionY>569</PositionY>
 		<Planets>
@@ -926,8 +904,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLDUF</TypeID>
-		<Resid>11654</Resid>
-		<Sector>26</Sector>
 		<PositionX>359</PositionX>
 		<PositionY>663</PositionY>
 		<Planets>
@@ -1009,8 +985,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLABR</TypeID>
-		<Resid>11648</Resid>
-		<Sector>20</Sector>
 		<PositionX>469</PositionX>
 		<PositionY>642</PositionY>
 		<Planets>
@@ -1092,8 +1066,6 @@
 		<Visibility>Large</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLXAP</TypeID>
-		<Resid>11667</Resid>
-		<Sector>39</Sector>
 		<PositionX>575</PositionX>
 		<PositionY>755</PositionY>
 		<Planets>
@@ -1113,8 +1085,8 @@
 			</Planet>
 			<Planet>
 				<TypeID>PLXAP03</TypeID>
-				<InstanceID>NORULAC</InstanceID>
-				<DisplayName>Norulac</DisplayName>
+				<InstanceID>MISSING_NAME</InstanceID>
+				<DisplayName>missing_name</DisplayName>
 				<PositionX>585</PositionX>
 				<PositionY>790</PositionY>
 			</Planet>
@@ -1175,8 +1147,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLORU</TypeID>
-		<Resid>11662</Resid>
-		<Sector>34</Sector>
 		<PositionX>695</PositionX>
 		<PositionY>684</PositionY>
 		<Planets>
@@ -1258,8 +1228,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLJOS</TypeID>
-		<Resid>11658</Resid>
-		<Sector>30</Sector>
 		<PositionX>737</PositionX>
 		<PositionY>548</PositionY>
 		<Planets>
@@ -1341,8 +1309,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Low</Importance>
 		<TypeID>PLSUM</TypeID>
-		<Resid>11666</Resid>
-		<Sector>38</Sector>
 		<PositionX>717</PositionX>
 		<PositionY>438</PositionY>
 		<Planets>
@@ -1424,8 +1390,6 @@
 		<Visibility>Medium</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLGLY</TypeID>
-		<Resid>11667</Resid>
-		<Sector>39</Sector>
 		<PositionX>575</PositionX>
 		<PositionY>755</PositionY>
 		<Planets>
@@ -1507,8 +1471,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLMAY</TypeID>
-		<Resid>11660</Resid>
-		<Sector>32</Sector>
 		<PositionX>488</PositionX>
 		<PositionY>129</PositionY>
 		<Planets>
@@ -1590,8 +1552,6 @@
 		<Visibility>Small</Visibility>
 		<Importance>Medium</Importance>
 		<TypeID>PLCAL</TypeID>
-		<Resid>11652</Resid>
-		<Sector>24</Sector>
 		<PositionX>380</PositionX>
 		<PositionY>129</PositionY>
 		<Planets>

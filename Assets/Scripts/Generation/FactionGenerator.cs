@@ -25,6 +25,13 @@ public class FactionGenerator : UnitGenerator<Faction>
         Dictionary<string, Faction> hqs = factions.ToDictionary(f => f.HQInstanceID);
         HashSet<string> filledHQs = new HashSet<string>();
 
+        if (planetSystems.Length == 0)
+        {
+            throw new GameException(
+                "Cannot assign faction headquarters. No planet systems available."
+            );
+        }
+
         foreach (PlanetSystem planetSystem in planetSystems)
         {
             foreach (Planet planet in planetSystem.Planets)
@@ -57,7 +64,7 @@ public class FactionGenerator : UnitGenerator<Faction>
         string galaxySize = GetGameSummary().GalaxySize.ToString();
         int numStartingPlanets = startConfig.GetValue<int>(galaxySize);
 
-        // Select and shuffle starting planets
+        // Select and shuffle starting planets.
         Queue<Planet> startingPlanets = new Queue<Planet>(
             planetSystems
                 .SelectMany(ps => ps.Planets)
@@ -66,7 +73,7 @@ public class FactionGenerator : UnitGenerator<Faction>
                 .Take(numStartingPlanets * factions.Length)
         );
 
-        // Assign planets to factions
+        // Assign planets to factions.
         foreach (Faction faction in factions)
         {
             for (int i = 0; i < numStartingPlanets; i++)

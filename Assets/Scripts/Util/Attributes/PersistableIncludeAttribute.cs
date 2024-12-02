@@ -23,6 +23,11 @@ public class PersistableIncludeAttribute : Attribute
     /// <summary>
     /// Initializes a new instance of the <see cref="PersistableIncludeAttribute"/> class.
     /// </summary>
+    public PersistableIncludeAttribute() { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PersistableIncludeAttribute"/> class.
+    /// </summary>
     /// <param name="persistableType">The type that is expected to be persisted for this field or property.</param>
     public PersistableIncludeAttribute(Type persistableType)
     {

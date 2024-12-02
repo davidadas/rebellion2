@@ -18,32 +18,43 @@ using System.Collections.Generic;
 public abstract class GameAction
 {
     [PersistableAttribute(Name = "Type")]
-    public string ActionType { get; set; }
+    protected string ActionType { get; set; }
 
-    public string Value { get; set; }
-    public Dictionary<string, object> Parameters { get; set; }
+    [PersistableAttribute(Name = "Value")]
+    protected string ActionValue { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public GameAction() { }
 
     /// <summary>
     /// Creates a new GameAction with a specific value (as an XML attribute).
     /// </summary>
+    /// <param name="type">The type of the action.</param>
     /// <param name="value">The value of the action.</param>
-    public GameAction(string value)
+    public GameAction(string type, string value)
     {
-        Value = value;
+        ActionType = type;
+        ActionValue = value;
     }
 
     /// <summary>
-    /// Creates a new GameAction with specific parameters.
+    ///
     /// </summary>
-    /// <param name="parameters">The parameters of the action.</param>
-    public GameAction(Dictionary<string, object> parameters)
+    /// <returns></returns>
+    protected string GetActionType()
     {
-        Parameters = parameters;
+        return ActionType;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    protected string GetActionValue()
+    {
+        return ActionValue;
     }
 
     /// <summary>

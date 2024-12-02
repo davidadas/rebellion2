@@ -25,6 +25,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
 
     // Officer Info
     public bool IsMain { get; set; }
+    public bool IsRecruitable { get; set; }
     public bool IsCaptured { get; set; }
     public bool CanBetray { get; set; }
     public bool IsTraitor { get; set; }
@@ -88,7 +89,7 @@ public class Officer : LeafNode, IMissionParticipant, IMovable
     public bool CanImproveMissionSkill => true;
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Officer() { }
 

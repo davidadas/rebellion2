@@ -215,7 +215,7 @@ public class PlanetTests
     {
         IManufacturable unit = new Starfighter();
 
-        Assert.Throws<GameStateException>(
+        Assert.Throws<InvalidSceneOperationException>(
             () => planet.AddToManufacturingQueue(unit),
             "Adding a manufacturable unit without a parent should throw a GameStateException."
         );

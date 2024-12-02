@@ -15,8 +15,6 @@ public class Game
     public int CurrentTick = 0;
 
     // Game Events
-    public Dictionary<int, List<ScheduledEvent>> ScheduledEvents =
-        new Dictionary<int, List<ScheduledEvent>>();
     public List<GameEvent> EventPool = new List<GameEvent>();
     public HashSet<string> CompletedEventIDs = new HashSet<string>();
 
@@ -101,9 +99,8 @@ public class Game
     /// </summary>
     /// <param name="node">The node to attach.</param>
     /// <param name="parent">The parent node to attach the node to.</param>
-    /// <param name="recursive">Whether to attach the node and its children recursively.</param>
     /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
-    public void AttachNode(ISceneNode node, ISceneNode parent, bool recursive = true)
+    public void AttachNode(ISceneNode node, ISceneNode parent)
     {
         // If the node already has a parent, throw an exception.
         if (node.GetParent() != null)
@@ -119,11 +116,8 @@ public class Game
         // Register the node to the faction's list of owned units.
         RegisterOwnedUnit(node);
 
-        if (recursive)
-        {
-            // Register the node and its children.
-            node.Traverse(AddSceneNodeByInstanceID);
-        }
+        // Register the node and its children.
+        node.Traverse(AddSceneNodeByInstanceID);
     }
 
     /// <summary>
@@ -164,7 +158,7 @@ public class Game
         catch (ArgumentException)
         {
             throw new GameException(
-                $"Node with Instance ID \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" already exists in the game."
+                $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
             );
         }
     }
@@ -239,7 +233,7 @@ public class Game
     /// <returns>A list of nodes of type T.</returns>
     public List<T> GetSceneNodesByType<T>()
     {
-        var result = new List<T>();
+        List<T> result = new List<T>();
 
         // Recursive function to traverse nodes.
         void Traverse(ISceneNode node)
@@ -289,62 +283,31 @@ public class Game
     }
 
     /// <summary>
-    /// Retrieves all nodes of a specified type T, stopping further traversal if the type is found.
+    ///
     /// </summary>
-    /// <param name="eventID">The ID of the event to retrieve.</param>
-    /// <returns>The game event with the specified ID.</returns>
-    public GameEvent GetPoolEventByID(string eventID)
+    /// <returns></returns>
+    public List<GameEvent> GetEventPool()
     {
-        return EventPool.FirstOrDefault(gameEvent => gameEvent.InstanceID == eventID);
+        return EventPool;
     }
 
     /// <summary>
-    /// Retrieves a list of scheduled events for the specified tick.
+    ///
     /// </summary>
-    /// <returns>A list of scheduled events for the specified tick.</returns>
-    public List<ScheduledEvent> GetScheduledEvents(int tick)
+    /// <param name="gameEvent"></param>
+    public void RemoveEvent(GameEvent gameEvent)
     {
-        if (ScheduledEvents.TryGetValue(tick, out List<ScheduledEvent> scheduledEvents))
-        {
-            return scheduledEvents;
-        }
-        else
-        {
-            return new List<ScheduledEvent>();
-        }
+        EventPool.Remove(gameEvent);
     }
 
     /// <summary>
-    /// Adds a game event to the game event dictionary.
+    ///
     /// </summary>
-    /// <param name="gameEvent">The game event to add.</param>
-    /// <param name="tick">The tick at which the game event occurs.</param>
-    public void ScheduleGameEvent(GameEvent gameEvent, int tick)
+    /// <param name="instanceId"></param>
+    /// <returns></returns>
+    public GameEvent GetEventByInstanceID(string instanceId)
     {
-        if (ScheduledEvents.ContainsKey(tick))
-        {
-            ScheduledEvents[tick].Add(new ScheduledEvent(gameEvent, tick));
-        }
-        else
-        {
-            ScheduledEvents[tick] = new List<ScheduledEvent>
-            {
-                new ScheduledEvent(gameEvent, tick),
-            };
-        }
-    }
-
-    /// <summary>
-    /// Removes a scheduled event from the game event dictionary.
-    /// </summary>
-    /// <param name="scheduledEvent">The scheduled event to remove.</param>
-    /// <param name="tick">The tick at which the scheduled event occurs.</param>
-    public void RemoveScheduledEvent(ScheduledEvent scheduledEvent, int tick)
-    {
-        if (ScheduledEvents.ContainsKey(tick))
-        {
-            ScheduledEvents[tick].Remove(scheduledEvent);
-        }
+        return EventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);
     }
 
     /// <summary>

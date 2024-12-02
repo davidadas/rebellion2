@@ -8,17 +8,7 @@ using System.Linq;
 /// </summary>
 public class Faction : BaseGameEntity
 {
-    public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
-        MessageType,
-        List<Message>
-    >()
-    {
-        { MessageType.Conflict, new List<Message>() },
-        { MessageType.Mission, new List<Message>() },
-        { MessageType.PopularSupport, new List<Message>() },
-        { MessageType.Resource, new List<Message>() },
-    };
-
+    public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
     public Dictionary<
         ManufacturingType,
         SortedDictionary<int, List<Technology>>
@@ -49,8 +39,19 @@ public class Faction : BaseGameEntity
         { typeof(Starfighter), new List<ISceneNode>() },
     };
 
+    public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
+        MessageType,
+        List<Message>
+    >()
+    {
+        { MessageType.Conflict, new List<Message>() },
+        { MessageType.Mission, new List<Message>() },
+        { MessageType.PopularSupport, new List<Message>() },
+        { MessageType.Resource, new List<Message>() },
+    };
+
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Faction() { }
 
@@ -170,6 +171,15 @@ public class Faction : BaseGameEntity
             .SelectMany(kvp => kvp.Value)
             .Where(tech => tech.GetRequiredResearchLevel() <= currentResearchLevel)
             .ToList();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public Dictionary<ManufacturingType, int> GetResearchLevels()
+    {
+        return ManufacturingResearchLevels;
     }
 
     /// <summary>

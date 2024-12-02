@@ -140,6 +140,8 @@ static class TypeHelper
     /// <returns>The converted primitive value.</returns>
     public static object ConvertToPrimitive(string content, Type targetType)
     {
+        if (targetType.IsEnum)
+            return Enum.Parse(targetType, content);
         if (targetType == typeof(string))
             return content;
         if (targetType == typeof(int))

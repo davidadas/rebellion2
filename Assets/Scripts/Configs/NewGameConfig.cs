@@ -9,7 +9,7 @@ using System.Reflection;
 [Serializable]
 public class NewGamePlanetSizeConfig : Config
 {
-    public int Snall;
+    public int Small;
     public int Medium;
     public int Large;
 

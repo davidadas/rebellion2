@@ -138,7 +138,8 @@ public static class GameLogger
         {
             if (!File.Exists(logFilePath))
             {
-                File.Create(logFilePath).Dispose(); // Create and immediately close the file.
+                // Create and immediately close the file.
+                File.Create(logFilePath).Dispose();
             }
             WriteToFile($"Log initialized at {DateTime.Now}");
         }

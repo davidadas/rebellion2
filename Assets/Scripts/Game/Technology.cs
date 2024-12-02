@@ -11,7 +11,7 @@ public class Technology
     public IManufacturable Manufacturable { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Technology() { }
 
@@ -28,6 +28,7 @@ public class Technology
     /// Returns the referenced manufacturable.
     /// </summary>
     /// <returns></returns>
+    /// <seealso cref="IManufacturable"/>
     public IManufacturable GetReference()
     {
         return Manufacturable;
@@ -37,6 +38,7 @@ public class Technology
     /// Returns a deep copy of the referenced manufacturable.
     /// </summary>
     /// <returns>The deep copy of the referenced manufacturable.</returns>
+    /// <seealso cref="IManufacturable"/>
     public IManufacturable GetReferenceCopy()
     {
         IManufacturable clonedManufacturable = Manufacturable.GetDeepCopy();
@@ -48,18 +50,19 @@ public class Technology
     }
 
     /// <summary>
-    ///
+    /// Returns the manufacturing type of the referenced manufacturable.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The manufacturing type of the referenced manufacturable.</returns>
+    /// <seealso cref="ManufacturingType"/>
     public ManufacturingType GetManufacturingType()
     {
         return Manufacturable.GetManufacturingType();
     }
 
     /// <summary>
-    ///
+    /// Returns the required research level of the referenced manufacturable.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The required research level of the referenced manufacturable.</returns>
     public int GetRequiredResearchLevel()
     {
         return Manufacturable.GetRequiredResearchLevel();

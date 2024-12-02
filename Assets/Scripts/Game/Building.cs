@@ -45,6 +45,7 @@ public class Building : LeafNode, IManufacturable, IMovable
     public int Bombardment { get; set; }
     public int WeaponStrength { get; set; }
     public int ShieldStrength { get; set; }
+    public int WeaponPower { get; set; }
 
     // Manufacturing Info
     public string ProducerOwnerID { get; set; }

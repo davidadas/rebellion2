@@ -24,7 +24,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>0</IonRange>
 		<TorpedoRange>0</TorpedoRange>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFEM02</TypeID>
@@ -47,7 +47,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>12</IonRange>
 		<TorpedoRange>7</TorpedoRange>
-		<ResearchLevel>1</ResearchLevel>
+		<RequiredResearchLevel>1</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFEM03</TypeID>
@@ -70,7 +70,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>0</IonRange>
 		<TorpedoRange>0</TorpedoRange>
-		<ResearchLevel>3</ResearchLevel>
+		<RequiredResearchLevel>3</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFEM04</TypeID>
@@ -93,7 +93,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>0</IonRange>
 		<TorpedoRange>10</TorpedoRange>
-		<ResearchLevel>8</ResearchLevel>
+		<RequiredResearchLevel>8</RequiredResearchLevel>
 	</Starfighter>
 	<!--   **************************************************  -->
 	<!--   ******************** ALLIANCE ********************  -->
@@ -119,7 +119,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>12</IonRange>
 		<TorpedoRange>7</TorpedoRange>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFAL02</TypeID>
@@ -142,7 +142,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>12</IonRange>
 		<TorpedoRange>7</TorpedoRange>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFAL03</TypeID>
@@ -165,7 +165,7 @@
 		<LaserRange>12</LaserRange>
 		<IonRange>0</IonRange>
 		<TorpedoRange>0</TorpedoRange>
-		<ResearchLevel>3</ResearchLevel>
+		<RequiredResearchLevel>3</RequiredResearchLevel>
 	</Starfighter>
 	<Starfighter>
 		<TypeID>SFAL04</TypeID>
@@ -188,6 +188,6 @@
 		<LaserRange>20</LaserRange>
 		<IonRange>18</IonRange>
 		<TorpedoRange>7</TorpedoRange>
-		<ResearchLevel>5</ResearchLevel>
+		<RequiredResearchLevel>5</RequiredResearchLevel>
 	</Starfighter>
 </Starfighters>
