@@ -72,14 +72,16 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
     /// <returns></returns>
     public override PlanetSystem[] SelectUnits(PlanetSystem[] units)
     {
-        GameSize galaxySize = GetGameSummary().GalaxySize;
+        int galaxySize = (int)GetGameSummary().GalaxySize;
         List<PlanetSystem> galaxyMap = new List<PlanetSystem>();
 
-        IEnumerable<int> sizeRange = Enumerable.Range((int)GameSize.Small, (int)galaxySize);
-
+        // Select planet systems with visibility greater than or equal to the galaxy size.
         foreach (PlanetSystem planetSystem in units)
         {
-            if (sizeRange.Contains((int)planetSystem.Visibility))
+            int visibilityValue = (int)planetSystem.Visibility;
+
+            // Add the planet system to the galaxy map if it is visible.
+            if (visibilityValue <= galaxySize)
             {
                 galaxyMap.Add(planetSystem);
             }

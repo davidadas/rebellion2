@@ -17,7 +17,7 @@
 		<MaintenanceCost>10</MaintenanceCost>
 		<Bombardment>3</Bombardment>
 		<ProcessRate>4</ProcessRate>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA02</TypeID>
@@ -33,7 +33,7 @@
 		<MaintenanceCost>10</MaintenanceCost>
 		<Bombardment>3</Bombardment>
 		<ProcessRate>4</ProcessRate>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA03</TypeID>
@@ -49,7 +49,7 @@
 		<MaintenanceCost>13</MaintenanceCost>
 		<Bombardment>2</Bombardment>
 		<ProcessRate>4</ProcessRate>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA04</TypeID>
@@ -65,7 +65,7 @@
 		<MaintenanceCost>0</MaintenanceCost>
 		<Bombardment>5</Bombardment>
 		<ProcessRate>5</ProcessRate>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA05</TypeID>
@@ -81,7 +81,7 @@
 		<MaintenanceCost>0</MaintenanceCost>
 		<Bombardment>2</Bombardment>
 		<ProcessRate>5</ProcessRate>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA06</TypeID>
@@ -97,7 +97,7 @@
 		<MaintenanceCost>10</MaintenanceCost>
 		<Bombardment>4</Bombardment>
 		<ProcessRate>2</ProcessRate>
-		<ResearchLevel>1</ResearchLevel>
+		<RequiredResearchLevel>1</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDFA07</TypeID>
@@ -113,7 +113,7 @@
 		<MaintenanceCost>20</MaintenanceCost>
 		<Bombardment>2</Bombardment>
 		<ProcessRate>2</ProcessRate>
-		<ResearchLevel>5</ResearchLevel>
+		<RequiredResearchLevel>5</RequiredResearchLevel>
 	</Building>
 	<!--   **************************************************  -->
 	<!--   ******************** DEFENSES ********************  -->
@@ -133,7 +133,7 @@
 		<Bombardment>4</Bombardment>
 		<WeaponPower>800</WeaponPower>
 		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDDF02</TypeID>
@@ -150,7 +150,7 @@
 		<Bombardment>2</Bombardment>
 		<WeaponPower>0</WeaponPower>
 		<ShieldStrength>40</ShieldStrength>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDDF03</TypeID>
@@ -167,7 +167,7 @@
 		<Bombardment>5</Bombardment>
 		<WeaponPower>2000</WeaponPower>
 		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>0</ResearchLevel>
+		<RequiredResearchLevel>0</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDDF04</TypeID>
@@ -184,7 +184,7 @@
 		<Bombardment>1</Bombardment>
 		<WeaponPower>0</WeaponPower>
 		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>3</ResearchLevel>
+		<RequiredResearchLevel>3</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDDF05</TypeID>
@@ -201,7 +201,7 @@
 		<Bombardment>3</Bombardment>
 		<WeaponPower>5000</WeaponPower>
 		<ShieldStrength>0</ShieldStrength>
-		<ResearchLevel>4</ResearchLevel>
+		<RequiredResearchLevel>4</RequiredResearchLevel>
 	</Building>
 	<Building>
 		<TypeID>BDDF06</TypeID>
@@ -218,6 +218,6 @@
 		<Bombardment>3</Bombardment>
 		<WeaponPower>0</WeaponPower>
 		<ShieldStrength>80</ShieldStrength>
-		<ResearchLevel>6</ResearchLevel>
+		<RequiredResearchLevel>6</RequiredResearchLevel>
 	</Building>
 </Buildings>

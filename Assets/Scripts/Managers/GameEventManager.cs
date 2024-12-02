@@ -14,65 +14,41 @@ public class GameEventManager
         this.game = game;
     }
 
-    /// <summary>
-    /// Schedules the specified game event to occur at the specified tick.
-    /// </summary>
-    /// <param name="gameEvent"></param>
-    /// <param name="tick"></param>
-    public void ScheduleEvent(GameEvent gameEvent, int tick)
+    private void ProcessEvent(GameEvent gameEvent)
     {
-        game.ScheduleGameEvent(gameEvent, tick);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="actions"></param>
-    /// <param name="tick"></param>
-    public void ScheduleEvent(List<GameAction> actions, int tick)
-    {
-        List<GameConditional> conditionals = new List<GameConditional>();
-        GameEvent gameEvent = new GameEvent(conditionals, actions);
-        ScheduleEvent(gameEvent, tick);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="conditionals"></param>
-    /// <param name="actions"></param>
-    /// <param name="tick"></param>
-    public void ScheduleEvent(
-        List<GameConditional> conditionals,
-        List<GameAction> actions,
-        int tick
-    )
-    {
-        GameEvent gameEvent = new GameEvent(conditionals, actions);
-        ScheduleEvent(gameEvent, tick);
-    }
-
-    /// <summary>
-    /// Processes the game events for the specified tick.
-    /// </summary>
-    /// <param name="currentTick">The current tick.</param>
-    public void ProcessEvents(int currentTick)
-    {
-        List<ScheduledEvent> scheduledEvents = game.GetScheduledEvents(currentTick);
-
-        // Check if there are any events scheduled for this tick.
-        if (scheduledEvents.Any())
+        if (gameEvent.AreConditionsMet(game))
         {
-            // Execute each event.
-            foreach (ScheduledEvent scheduledEvent in scheduledEvents)
+            GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
+            gameEvent.Execute(game);
+            game.AddCompletedEvent(gameEvent);
+        }
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="gameEvenst"></param>
+    public void ProcessEvents(List<GameEvent> gameEvents)
+    {
+        List<GameEvent> eventsToRemove = new List<GameEvent>();
+
+        foreach (GameEvent gameEvent in gameEvents)
+        {
+            ProcessEvent(gameEvent);
+
+            if (!gameEvent.IsRepeatable)
             {
-                GameEvent gameEvent = scheduledEvent.GetEvent();
-
-                gameEvent.Execute(game);
-
-                // Add the event to the list of completed events.
-                game.AddCompletedEvent(gameEvent);
+                if (!gameEvent.IsRepeatable)
+                {
+                    eventsToRemove.Add(gameEvent);
+                }
             }
+        }
+
+        // Remove events that are no longer needed.
+        foreach (GameEvent eventToRemove in eventsToRemove)
+        {
+            game.RemoveEvent(eventToRemove);
         }
     }
 }

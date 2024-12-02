@@ -36,7 +36,7 @@ public class SpecialForces : LeafNode, IMissionParticipant, IManufacturable, IMo
     public bool CanImproveMissionSkill => true;
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public SpecialForces() { }
 

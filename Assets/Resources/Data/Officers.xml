@@ -9,6 +9,7 @@
 		<DisplayName>Emperor Palpatine</DisplayName>
 		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<InitialParentInstanceID>CORUSCANT</InitialParentInstanceID>
 		<Skills>
 			<Entry>
@@ -55,6 +56,7 @@
 		<DisplayName>Darth Vader</DisplayName>
 		<OwnerInstanceID>FNEMP1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -102,6 +104,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -149,6 +152,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -196,6 +200,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -243,6 +248,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -290,6 +296,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -337,6 +344,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -384,6 +392,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -431,6 +440,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -478,6 +488,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -525,6 +536,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -572,6 +584,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -619,6 +632,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -666,6 +680,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -713,6 +728,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -760,6 +776,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -807,6 +824,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -854,6 +872,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -901,6 +920,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -948,6 +968,7 @@
 			<String>FNEMP1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -996,6 +1017,7 @@
 		<DisplayName>Mon Mothma</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1040,6 +1062,7 @@
 		<DisplayName>Leia Organa</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1084,6 +1107,7 @@
 		<DisplayName>Luke Skywalker</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1129,6 +1153,7 @@
 		<DisplayName>Han Solo</DisplayName>
 		<OwnerInstanceID>FNALL1</OwnerInstanceID>
 		<IsMain>true</IsMain>
+		<IsRecruitable>false</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1176,6 +1201,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1223,6 +1249,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1270,6 +1297,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1317,6 +1345,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1364,6 +1393,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1411,6 +1441,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1458,6 +1489,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1505,6 +1537,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1552,6 +1585,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1599,6 +1633,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1646,6 +1681,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1693,6 +1729,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1740,6 +1777,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1787,6 +1825,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1834,6 +1873,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1881,6 +1921,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1928,6 +1969,7 @@
 			<String>FNALL1</String>
 		</AllowedOwnerInstanceIDs>
 		<IsMain>false</IsMain>
+		<IsRecruitable>true</IsRecruitable>
 		<Skills>
 			<Entry>
 				<Key>Diplomacy</Key>
@@ -1965,6 +2007,54 @@
 		<JediProbability>20</JediProbability>
 		<JediLevel>10</JediLevel>
 		<JediLevelVariance>40</JediLevelVariance>
+		<CurrentRank>None</CurrentRank>
+	</Officer>
+	<Officer>
+		<TypeID>OFAL022</TypeID>
+		<InstanceID>YODA</InstanceID>
+		<DisplayName>Yoda</DisplayName>
+		<AllowedOwnerInstanceIDs>
+			<String>FNALL1</String>
+		</AllowedOwnerInstanceIDs>
+		<IsMain>false</IsMain>
+		<IsRecruitable>false</IsRecruitable>
+		<Skills>
+			<Entry>
+				<Key>Diplomacy</Key>
+				<Value>150</Value>
+			</Entry>
+			<Entry>
+				<Key>Espionage</Key>
+				<Value>150</Value>
+			</Entry>
+			<Entry>
+				<Key>Combat</Key>
+				<Value>150</Value>
+			</Entry>
+			<Entry>
+				<Key>Leadership</Key>
+				<Value>150</Value>
+			</Entry>
+		</Skills>
+		<Loyalty>100</Loyalty>
+		<DiplomacyVariance>0</DiplomacyVariance>
+		<EspionageVariance>0</EspionageVariance>
+		<CombatVariance>0</CombatVariance>
+		<LeadershipVariance>0</LeadershipVariance>
+		<LoyaltyVariance>0</LoyaltyVariance>
+		<ShipResearch>0</ShipResearch>
+		<ShipResearchVariance>0</ShipResearchVariance>
+		<TroopResearch>0</TroopResearch>
+		<TroopResearchVariance>0</TroopResearchVariance>
+		<FacilityResearch>0</FacilityResearch>
+		<FacilityResearchVariance>0</FacilityResearchVariance>
+		<CanBetray>false</CanBetray>
+		<IsTraitor>false</IsTraitor>
+		<IsForceSensitive>false</IsForceSensitive>
+		<IsJedi>true</IsJedi>
+		<JediProbability>0</JediProbability>
+		<JediLevel>100</JediLevel>
+		<JediLevelVariance>0</JediLevelVariance>
 		<CurrentRank>None</CurrentRank>
 	</Officer>
 </Officers>

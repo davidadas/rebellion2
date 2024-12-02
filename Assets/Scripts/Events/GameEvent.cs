@@ -19,11 +19,11 @@ public class GameEvent : BaseGameEntity
 {
     // Event Properties
     public bool IsRepeatable { get; set; }
-    public List<GameConditional> Conditionals { get; set; }
-    public List<GameAction> Actions { get; set; }
+    public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+    public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public GameEvent() { }
 

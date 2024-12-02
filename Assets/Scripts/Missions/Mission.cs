@@ -17,6 +17,7 @@ public abstract class Mission : ContainerNode
     [PersistableIgnore]
     public List<IMissionParticipant> DecoyParticipants { get; set; }
     public MissionParticipantSkill ParticipantSkill { get; set; }
+    public bool HasInitiated = false;
 
     // Success Probability Variables
     [PersistableIgnore]
@@ -59,7 +60,7 @@ public abstract class Mission : ContainerNode
     protected static readonly Random random = new Random();
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     protected Mission() { }
 
@@ -131,6 +132,8 @@ public abstract class Mission : ContainerNode
         // Then, set the max progress to a random value between the min and max ticks.
         CurrentProgress = 0;
         MaxProgress = random.Next(MinTicks, MaxTicks);
+
+        HasInitiated = true;
     }
 
     /// <summary>
@@ -419,7 +422,13 @@ public abstract class Mission : ContainerNode
     /// </summary>
     public override IEnumerable<ISceneNode> GetChildren()
     {
-        return MainParticipants.Cast<ISceneNode>().Concat(DecoyParticipants.Cast<ISceneNode>());
+        if (HasInitiated)
+        {
+            return MainParticipants.Cast<ISceneNode>().Concat(DecoyParticipants.Cast<ISceneNode>());
+        }
+
+        // Return an empty list.
+        return new List<ISceneNode>();
     }
 
     /// <summary>

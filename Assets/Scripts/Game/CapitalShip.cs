@@ -76,7 +76,7 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     public string InitialParentInstanceID { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public CapitalShip() { }
 
@@ -96,6 +96,24 @@ public class CapitalShip : ContainerNode, IManufacturable, IMovable
     public int GetCurrentStarfighterCount()
     {
         return Starfighters.Count;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetRegimentCapacity()
+    {
+        return RegimentCapacity;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentRegimentCount()
+    {
+        return Regiments.Count;
     }
 
     /// <summary>

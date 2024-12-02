@@ -13,31 +13,42 @@ using System.Xml.Serialization;
 [PersistableObject]
 public abstract class GameConditional : BaseGameEntity
 {
-    [PersistableMember]
-    public string Value { get; set; }
-    public Dictionary<string, object> Parameters { get; set; }
+    [PersistableAttribute(Name = "Value")]
+    public string ConditionalValue { get; set; }
+
+    [PersistableAttribute(Name = "Type")]
+    public string ConditionalType { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public GameConditional() { }
 
     /// <summary>
     /// Creates a new GameConditional with a specific value (as an XML attribute).
     /// </summary>
-    /// <param name="value">The value of the condition.</param>
-    public GameConditional(string value)
+    /// <param name="conditionalValue">The value of the condition.</param>
+    public GameConditional(string conditionalValue)
     {
-        Value = value;
+        ConditionalValue = conditionalValue;
     }
 
     /// <summary>
-    /// Creates a new GameConditional with specific parameters.
+    ///
     /// </summary>
-    /// <param name="parameters">The parameters of the condition.</param>
-    public GameConditional(Dictionary<string, object> parameters)
+    /// <returns></returns>
+    public string GetConditionalValue()
     {
-        Parameters = parameters;
+        return ConditionalValue;
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public string GetConditionalType()
+    {
+        return ConditionalType;
     }
 
     /// <summary>

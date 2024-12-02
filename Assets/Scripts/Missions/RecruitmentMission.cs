@@ -5,7 +5,7 @@ using IEnumerableExtensions;
 public class RecruitmentMission : Mission
 {
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public RecruitmentMission()
         : base()
@@ -56,25 +56,37 @@ public class RecruitmentMission : Mission
     {
         Planet planet = GetParent() as Planet;
 
-        List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerInstanceID);
-        Officer recruitedOfficer = unrecruitedOfficers.RandomElement();
-        recruitedOfficer.OwnerInstanceID = OwnerInstanceID;
+        if (game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0)
+        {
+            List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerInstanceID);
+            Officer recruitedOfficer = unrecruitedOfficers.RandomElement();
+            recruitedOfficer.OwnerInstanceID = OwnerInstanceID;
 
-        game.RemoveUnrecruitedOfficer(recruitedOfficer);
+            game.RemoveUnrecruitedOfficer(recruitedOfficer);
 
-        // Attach the recruited officer to the planet.
-        game.AttachNode(recruitedOfficer, planet);
+            // Attach the recruited officer to the planet.
+            game.AttachNode(recruitedOfficer, planet);
 
-        GameLogger.Log(
-            "Recruited officer "
-                + recruitedOfficer.GetDisplayName()
-                + " to "
-                + planet.GetDisplayName()
-                + " by "
-                + MainParticipants[0].GetDisplayName()
-        );
+            GameLogger.Log(
+                "Recruited officer "
+                    + recruitedOfficer.GetDisplayName()
+                    + " to "
+                    + planet.GetDisplayName()
+                    + " by "
+                    + MainParticipants[0].GetDisplayName()
+            );
+        }
+        else
+        {
+            // @TODO: No one left to recruit so abort the mission.
+        }
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="game"></param>
+    /// <returns></returns>
     public override bool CanContinue(Game game)
     {
         return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;

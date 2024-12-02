@@ -33,6 +33,7 @@ public class OfficerGenerator : UnitGenerator<Officer>
         foreach (var (ownerInstanceId, officers) in officersByFaction)
         {
             IEnumerable<Officer> reducedOfficers = officers
+                .Where(officer => officer.IsMain || officer.IsRecruitable)
                 .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
                 .Select(officer =>
                 {
@@ -117,11 +118,11 @@ public class OfficerGenerator : UnitGenerator<Officer>
 
                 if (officer.OwnerInstanceID != null)
                 {
-                    officersByFaction[factionId].Insert(0, officer); // Add to front
+                    officersByFaction[factionId].Insert(0, officer);
                 }
                 else
                 {
-                    officersByFaction[factionId].Add(officer); // Add to end
+                    officersByFaction[factionId].Add(officer);
                 }
             }
         }

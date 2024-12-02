@@ -46,7 +46,7 @@ public class Starfighter : LeafNode, IManufacturable, IMovable
     public int PositionY { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Starfighter() { }
 

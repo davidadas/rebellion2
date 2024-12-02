@@ -3,172 +3,96 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-///
-/// </summary>
-public enum MissionType
-{
-    Diplomacy,
-    Recruitment,
-}
-
-/// <summary>
-/// Manager for handling missions in the game.
-/// This includes scheduling missions and rescheduling mission events.
+/// Manager for handling the lifecycle of missions in the game.
+/// Responsible for updating missions and managing their progression.
+/// Creation and initiation of missions are delegated to the <see cref="MissionFactory"/>.
 /// </summary>
 public class MissionManager
 {
-    private Game game;
-    private readonly Random random = new Random();
+    private readonly Game game;
+    private readonly MissionFactory missionFactory;
 
     /// <summary>
-    ///
+    /// Initializes a new instance of the <see cref="MissionManager"/> class.
     /// </summary>
-    /// <param name="game"></param>
+    /// <param name="game">The game instance being managed.</param>
     public MissionManager(Game game)
     {
         this.game = game;
+        // Initialize the MissionFactory for mission creation and initiation.
+        this.missionFactory = new MissionFactory(game);
     }
 
     /// <summary>
-    ///
+    /// Initiates a mission with a single participant and target.
     /// </summary>
-    /// <param name="missionType"></param>
-    /// <param name="ownerInstanceId"></param>
-    /// <param name="mainParticipants"></param>
-    /// <param name="decoyParticipants"></param>
-    /// <param name="target"></param>
-    /// <returns></returns>
-    /// <exception cref="ArgumentException"></exception>
-    private Mission CreateMission(
-        MissionType missionType,
-        string ownerInstanceId,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ISceneNode target
-    )
-    {
-        return missionType switch
-        {
-            MissionType.Diplomacy => new DiplomacyMission(
-                ownerInstanceId,
-                target.InstanceID,
-                mainParticipants,
-                decoyParticipants
-            ),
-            MissionType.Recruitment => new RecruitmentMission(
-                ownerInstanceId,
-                target.InstanceID,
-                mainParticipants,
-                decoyParticipants
-            ),
-            _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
-        };
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="type"></param>
-    /// <param name="participant"></param>
-    /// <param name="target"></param>
+    /// <param name="missionType">The type of mission to initiate.</param>
+    /// <param name="participant">The main participant of the mission.</param>
+    /// <param name="target">The target of the mission.</param>
     public void InitiateMission(
-        MissionType type,
+        MissionType missionType,
         IMissionParticipant participant,
         ISceneNode target
     )
     {
+        // Wrap the participant in a list to use the overload for multiple participants.
         List<IMissionParticipant> mainParticipants = new List<IMissionParticipant> { participant };
         List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
         string ownerInstanceId = participant.OwnerInstanceID;
 
-        InitiateMission(type, ownerInstanceId, mainParticipants, decoyParticipants, target);
-    }
-
-    /// <summary>
-    /// Initiates a mission with the specified parameters.
-    /// The mission is scheduled to occur at the next possible tick.
-    /// </summary>
-    /// <param name="missionType">The type of mission to initiate.</param>
-    /// <param name="ownerInstanceId">The Instance ID of the owner of the mission.</param>
-    /// <param name="mainParticipants">The main participants of the mission.</param>
-    /// <param name="decoyParticipants">The decoy participants of the mission.</param>
-    /// <param name="target">The target of the mission. This can be a planet or a unit.</param>
-    public void InitiateMission(
-        MissionType missionType,
-        string ownerInstanceId,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ISceneNode target
-    )
-    {
-        if (mainParticipants.Count == 0)
-        {
-            throw new ArgumentException("Main participants list cannot be empty.");
-        }
-
-        // Get the nearest planet related to the target and the participants' current planet.
-        Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
-        IMissionParticipant firstParticipant = mainParticipants.FirstOrDefault();
-        Planet currentPlanet = firstParticipant.GetParentOfType<Planet>();
-
-        // Instantiate the mission based on the mission type.
-        Mission mission = CreateMission(
+        missionFactory.CreateAndInitiateMission(
             missionType,
             ownerInstanceId,
             mainParticipants,
             decoyParticipants,
             target
         );
-
-        // Attach the mission to scene graph.
-        game.AttachNode(mission, closestPlanet, false);
-
-        // Initiate the mission with the given arguments.
-        // This will set the movement status of all participants to InTransit.
-        mission.Initiate();
     }
 
     /// <summary>
-    ///
+    /// Updates the state of an ongoing mission.
+    /// This involves incrementing mission progress, evaluating success,
+    /// and handling mission completion or continuation.
     /// </summary>
-    /// <param name="mission"></param>
+    /// <param name="mission">The mission to update.</param>
     public void UpdateMission(Mission mission)
     {
-        List<Mission> missions = game.GetSceneNodesByType<Mission>();
-        GalaxyMap galaxyMap = game.GetGalaxyMap();
-
-        // Increment the mission progress.
+        // Increment the mission's progress.
         mission.IncrementProgress();
 
+        // Check if the mission is complete.
         if (mission.IsComplete())
         {
-            // Evaluate the mission success.
+            // Evaluate the mission's success or failure.
             mission.Execute(game);
 
-            // Check if the mission can continue.
-            // If so, reset the mission progress and re-initiate the mission.
+            // Check if the mission can continue (e.g., repeatable missions).
             if (mission.CanContinue(game))
             {
+                // Reset progress and re-initiate the mission.
                 mission.Initiate();
             }
-            // Otherwise, move the participants to the closest planet and remove the mission.
             else
             {
-                // Move the units to the closest planet.
+                // Handle mission completion and return participants to the nearest planet.
+
+                // Get all participants (both main and decoy) that can be moved.
                 List<IMovable> combinedParticipants = mission
                     .GetAllParticipants()
                     .Cast<IMovable>()
                     .ToList();
 
+                // Find the nearest planet to the mission's location for participants to return to.
                 Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
-                Planet planet = faction.GetNearestPlanetTo(mission);
+                Planet nearestPlanet = faction.GetNearestPlanetTo(mission);
 
+                // Move each participant to the nearest planet.
                 foreach (IMovable movable in combinedParticipants)
                 {
-                    movable.MoveTo(planet);
+                    movable.MoveTo(nearestPlanet);
                 }
 
-                // Permanently remove the mission from the game.
+                // Remove the mission from the game permanently.
                 game.DetachNode(mission);
             }
         }

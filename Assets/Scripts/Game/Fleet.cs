@@ -28,6 +28,10 @@ public class Fleet : ContainerNode, IMovable
         return CapitalShips.Sum(capitalShip => capitalShip.GetStarfighterCapacity());
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
     public int GetCurrentStarfighterCount()
     {
         return CapitalShips.Sum(capitalShip => capitalShip.GetCurrentStarfighterCount());
@@ -40,6 +44,33 @@ public class Fleet : ContainerNode, IMovable
     public int GetExcessStarfighterCapacity()
     {
         return GetStarfighterCapacity() - GetCurrentStarfighterCount();
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetRegimentCapacity()
+    {
+        return CapitalShips.Sum(capitalShip => capitalShip.GetRegimentCapacity());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentRegimentCount()
+    {
+        return CapitalShips.Sum(capitalShip => capitalShip.GetCurrentRegimentCount());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetExcessRegimentCapacity()
+    {
+        return GetRegimentCapacity() - GetCurrentRegimentCount();
     }
 
     /// <summary>

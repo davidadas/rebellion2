@@ -118,7 +118,7 @@ public class GameManager
     ///
     /// </summary>
     /// <param name="node"></param>
-    private void ProcessNode(ISceneNode node)
+    private void UpdateNode(ISceneNode node)
     {
         // Update the movement of movable units.
         if (node is IMovable moveable)
@@ -149,12 +149,13 @@ public class GameManager
 
         GameLogger.Log("Tick: " + game.CurrentTick);
 
-        game.Galaxy.Traverse(ProcessNode);
-
-        // Update game states.
-        aiManager.Update();
+        // Update the state of each scene node in the game.
+        game.GetGalaxyMap().Traverse(UpdateNode);
 
         // Process any events scheduled for this tick.
-        eventManager.ProcessEvents(game.CurrentTick);
+        eventManager.ProcessEvents(game.GetEventPool());
+
+        // Update the NPC AI factions in the game.
+        aiManager.Update();
     }
 }

@@ -26,8 +26,11 @@ public class StarfighterGenerator : UnitGenerator<Starfighter>
     /// <returns>An array of all starfighters.</returns>
     public override Starfighter[] SelectUnits(Starfighter[] starfighters)
     {
-        // No op.
-        return starfighters;
+        return starfighters
+            .Where(starfighter =>
+                starfighter.RequiredResearchLevel <= GetGameSummary().StartingResearchLevel
+            )
+            .ToArray();
     }
 
     /// <summary>

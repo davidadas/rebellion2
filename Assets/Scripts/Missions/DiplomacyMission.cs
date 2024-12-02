@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class DiplomacyMission : Mission
 {
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public DiplomacyMission()
         : base()

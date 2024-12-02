@@ -255,7 +255,6 @@ static class XmlSerializer
             objType,
             ReflectionHelper.OperationType.Write
         );
-
         writer.WriteStartElement(key ?? objType.Name);
 
         foreach (MemberInfo attribute in attributes)
@@ -541,22 +540,23 @@ static class XmlDeserializer
 
         IDictionary<string, MemberInfo> attributes = ReflectionHelper.GetPersistableAttributeMap(
             actualType,
-            ReflectionHelper.OperationType.Write
+            ReflectionHelper.OperationType.Read
         );
+
         IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
             actualType,
             ReflectionHelper.OperationType.Read
         );
 
+        if (reader.HasAttributes)
+        {
+            ReadAttributes(reader, attributes, obj);
+        }
+
         if (reader.IsEmptyElement)
         {
             reader.Read();
             return obj;
-        }
-
-        if (reader.HasAttributes)
-        {
-            ReadAttributes(reader, attributes, obj);
         }
 
         reader.ReadStartElement();
@@ -565,7 +565,9 @@ static class XmlDeserializer
         {
             if (reader.NodeType == XmlNodeType.Element)
             {
+                string elementName = reader.Name;
                 MemberInfo member = FindMemberForElement(members, reader.Name);
+
                 if (member != null)
                 {
                     object value = ReadMember(member, reader);
@@ -573,7 +575,9 @@ static class XmlDeserializer
                 }
                 else
                 {
-                    reader.Skip();
+                    throw new InvalidOperationException(
+                        $"Unknown element '{elementName}' encountered while deserializing {objType.Name}."
+                    );
                 }
             }
             else
@@ -638,10 +642,12 @@ static class XmlDeserializer
             reader.MoveToAttribute(i);
             if (attributes.TryGetValue(reader.Name, out MemberInfo attribute))
             {
-                object value = ReadValue(ReflectionHelper.GetMemberType(attribute), reader);
+                Type attributeType = ReflectionHelper.GetMemberType(attribute);
+                object value = TypeHelper.ConvertToPrimitive(reader.Value, attributeType);
                 ReflectionHelper.SetMemberValue(attribute, obj, value);
             }
         }
+        reader.MoveToElement();
     }
 
     /// <summary>
@@ -659,6 +665,7 @@ static class XmlDeserializer
         {
             PersistableIncludeAttribute[] typeAttributes = (PersistableIncludeAttribute[])
                 Attribute.GetCustomAttributes(member, typeof(PersistableIncludeAttribute));
+
             foreach (PersistableIncludeAttribute typeAttr in typeAttributes)
             {
                 if (typeAttr.PersistableType.Name == elementName)
@@ -748,7 +755,6 @@ static class ReflectionHelper
         OperationType operationType
     )
     {
-        // Determine if a member is persistable based on the operation type
         bool IsPersistable(MemberInfo member)
         {
             bool isPublicField = member is FieldInfo field && field.IsPublic;
@@ -775,20 +781,17 @@ static class ReflectionHelper
                 && !hasAlternativePersistableAttribute;
         }
 
-        // Retrieve persistable fields.
         IEnumerable<MemberInfo> fields = classType
             .GetFields(CommonBindingFlags)
             .Where(IsPersistable)
             .Cast<MemberInfo>();
 
-        // Retrieve persistable properties.
         IEnumerable<MemberInfo> properties = classType
             .GetProperties(CommonBindingFlags)
             .Where(property => property.CanRead && property.CanWrite)
             .Where(IsPersistable)
             .Cast<MemberInfo>();
 
-        // Combine and return the result
         return fields.Concat(properties);
     }
 
@@ -803,7 +806,6 @@ static class ReflectionHelper
         OperationType operationType
     )
     {
-        // Determine if a member is a persistable attribute based on the operation type
         bool IsPersistableAttribute(MemberInfo member)
         {
             bool hasPersistableAttribute = member
@@ -821,20 +823,17 @@ static class ReflectionHelper
             return hasPersistableAttribute;
         }
 
-        // Retrieve persistable fields.
         IEnumerable<MemberInfo> fields = classType
             .GetFields(CommonBindingFlags)
             .Where(IsPersistableAttribute)
             .Cast<MemberInfo>();
 
-        // Retrieve persistable properties.
         IEnumerable<MemberInfo> properties = classType
             .GetProperties(CommonBindingFlags)
             .Where(property => property.CanRead && property.CanWrite)
             .Where(IsPersistableAttribute)
             .Cast<MemberInfo>();
 
-        // Combine and return the result
         return fields.Concat(properties);
     }
 
@@ -871,18 +870,27 @@ static class ReflectionHelper
         OperationType operationType
     )
     {
-        return GetPersistableAttributes(classType, operationType)
-            .ToDictionary(
-                member =>
-                    (
-                        (PersistableAttributeAttribute)
-                            Attribute.GetCustomAttribute(
-                                member,
-                                typeof(PersistableAttributeAttribute)
-                            )
-                    )?.Name ?? member.Name,
-                member => member
-            );
+        Dictionary<string, MemberInfo> attributeMap = new Dictionary<string, MemberInfo>();
+        Type currentType = classType;
+
+        while (currentType != null)
+        {
+            foreach (MemberInfo member in GetPersistableAttributes(currentType, operationType))
+            {
+                PersistableAttributeAttribute attr = (PersistableAttributeAttribute)
+                    Attribute.GetCustomAttribute(member, typeof(PersistableAttributeAttribute));
+                string key = attr?.Name ?? member.Name;
+
+                if (!attributeMap.ContainsKey(key))
+                {
+                    attributeMap[key] = member;
+                }
+            }
+
+            currentType = currentType.BaseType;
+        }
+
+        return attributeMap;
     }
 
     /// <summary>
@@ -933,7 +941,9 @@ static class ReflectionHelper
     public static void SetMemberValue(MemberInfo member, object obj, object value)
     {
         if (value == null)
+        {
             return;
+        }
 
         switch (member)
         {

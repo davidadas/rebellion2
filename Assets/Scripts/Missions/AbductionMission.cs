@@ -6,7 +6,7 @@ public class AbductionMission : Mission
     public Officer TargetOfficer { get; set; }
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public AbductionMission()
         : base()

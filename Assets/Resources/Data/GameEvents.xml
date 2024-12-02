@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<GameEvents>
+    <!-- Luke Visits Yoda -->
+    <GameEvent>
+        <DisplayName>Luke Visits Yoda</DisplayName>
+        <InstanceID>LUKE_VISITS_YODA</InstanceID>
+        <IsRepeatable>false</IsRepeatable>
+        <Conditionals>
+            <TickCount Type="GreaterThan" Value="30"/>
+            <IsMovable Value="LUKE_SKYWALKER"/>
+            <Not>
+                <Conditionals>
+                    <IsOnMission Value="LUKE_SKYWALKER"/>
+                </Conditionals>
+            </Not>
+        </Conditionals>
+    </GameEvent>
+
+    <!-- Luke Confronts Vader -->
+    <GameEvent>
+        <DisplayName>Luke Confronts Vader</DisplayName>
+        <InstanceID>LUKE_CONFRONTS_VADER</InstanceID>
+        <IsRepeatable>true</IsRepeatable>
+        <Conditionals>
+            <AreOnSamePlanet>
+                <UnitInstanceIDs>
+                    <string>LUKE_SKYWALKER</string>
+                    <string>DARTH_VADER</string>
+                </UnitInstanceIDs>
+            </AreOnSamePlanet>
+            <Xor>
+                <Conditionals>
+                    <IsOnMission Value="LUKE_SKYWALKER"/>
+                    <IsOnMission Value="DARTH_VADER"/>
+                </Conditionals>
+            </Xor>
+        </Conditionals>
+        <Actions>
+            <!-- @TODO: Trigger combat. -->
+        </Actions>
+    </GameEvent>
+
+    <GameEvent>
+        <DisplayName>Luke Discovers Heritage</DisplayName>
+        <InstanceID>LUKE_DISCOVERS_HERITAGE</InstanceID>
+        <IsRepeatable>false</IsRepeatable>
+        <Actions>
+            <!-- @TODO: Send messages indicating Luke's discovery to both factions. -->
+        </Actions>
+    </GameEvent>
+
+</GameEvents>

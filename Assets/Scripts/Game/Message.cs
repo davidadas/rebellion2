@@ -16,7 +16,7 @@ public class Message : BaseGameEntity
     public bool Read = false;
 
     /// <summary>
-    /// Default constructor used for serialization.
+    /// Default constructor used for deserialization.
     /// </summary>
     public Message() { }
 

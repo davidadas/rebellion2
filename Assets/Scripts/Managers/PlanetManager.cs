@@ -48,7 +48,7 @@ public class PlanetManager
             IManufacturable clonedNode = technology.GetReferenceCopy();
             clonedNode.SetOwnerInstanceID(planet.GetOwnerInstanceID());
             GameLogger.Log(
-                $"Adding {clonedNode.GetDisplayName()} to manufacturing queue on {planet.GetDisplayName()}"
+                $"{planet.GetDisplayName()} adding {quantity} {clonedNode.GetDisplayName()}(s) to manufacturing queue on {planet.GetDisplayName()}"
             );
             game.AttachNode(clonedNode, target);
             planet.AddToManufacturingQueue(clonedNode);
@@ -135,7 +135,7 @@ public class PlanetManager
             $"Manufacturable completed: {manufacturable.GetDisplayName()} {manufacturable.GetParent().GetDisplayName()}"
         );
         productionQueue.RemoveAt(index);
-        index--; // Decrement index to account for removed item.
+        index--; // Decrement index to account for the removed item.
 
         manufacturable.SetManufacturingStatus(ManufacturingStatus.Complete);
 
