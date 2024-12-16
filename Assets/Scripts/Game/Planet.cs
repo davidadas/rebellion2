@@ -20,7 +20,7 @@ public class Planet : ContainerNode
     public bool IsColonized { get; set; }
     public int OrbitSlots { get; set; }
     public int GroundSlots { get; set; }
-    public int NumResourceNodes { get; set; }
+    public int NumRawResourceNodes { get; set; }
     public int PositionX { get; set; }
     public int PositionY { get; set; }
 
@@ -66,22 +66,68 @@ public class Planet : ContainerNode
     }
 
     /// <summary>
-    /// Checks if units can be manufactured on this planet.
+    /// Gets the total number of raw resource nodes available on the planet or system.
+    /// This represents the maximum number of resources that can be utilized.
     /// </summary>
-    /// <returns>True if units can be manufactured, false otherwise.</returns>
-    public bool CanManufactureUnits()
+    /// <returns>The total number of raw resource nodes.</returns>
+    public int GetRawResourceNodes()
     {
-        return !IsBlockaded() && !IsDestroyed && !IsUprising;
+        return NumRawResourceNodes;
     }
 
     /// <summary>
-    /// Gets the manufacturing queue for the planet.
+    /// Gets the number of available resource nodes that are not blockaded.
+    /// If the location is blockaded, no resources can be accessed.
     /// </summary>
-    /// <returns>The manufacturing queue.</returns>
-    public Dictionary<ManufacturingType, List<IManufacturable>> GetManufacturingQueue()
+    /// <returns>The number of accessible resource nodes, or 0 if blockaded.</returns>
+    public int GetAvailableResourceNodes()
     {
-        return ManufacturingQueue;
+        return IsBlockaded() ? 0 : GetRawMinedResourceNodes();
     }
+
+    /// <summary>
+    /// Gets the total number of mined resource nodes, capped by the raw resource node count.
+    /// This reflects the effective number of resource nodes that can be mined based on mining buildings.
+    /// </summary>
+    /// <returns>The total number of mined resource nodes, limited by the raw node count.</returns>
+    public int GetRawMinedResourceNodes()
+    {
+        int mineCount = GetBuildingTypeCount(BuildingType.Mine);
+        return Math.Min(NumRawResourceNodes, mineCount);
+    }
+
+    /// <summary>
+    /// Gets the number of mined resources that are available and not under construction.
+    /// If the location is blockaded, no resources are available.
+    /// </summary>
+    /// <returns>The number of available mined resources, or 0 if blockaded.</returns>
+    public int GetAvailableMinedResources()
+    {
+        if (IsBlockaded())
+        {
+            return 0;
+        }
+
+        int mineCount = GetBuildingTypeCount(BuildingType.Mine, includeUnderConstruction: false);
+        return Math.Min(NumRawResourceNodes, mineCount);
+    }
+
+    /// <summary>
+    /// Gets the total refinement capacity based on available refinery buildings.
+    /// This represents the maximum number of resources that can be refined.
+    /// </summary>
+    /// <returns>The total refinement capacity.</returns>
+    public int GetRawRefinementCapacity()
+    {
+        return GetBuildingTypeCount(BuildingType.Refinery);
+    }
+
+    /// <summary>
+    /// Gets the available refinement capacity that is not blockaded and excludes refineries under construction.
+    /// If the location is blockaded, no refinement capacity is available.
+    /// </summary>
+    /// <returns>The available refinement capacity, or 0 if blockaded
+
 
     /// <summary>
     /// Returns the popular support for a faction on the planet.
@@ -100,16 +146,19 @@ public class Planet : ContainerNode
     /// <param name="support">The new level of support for the faction.</param>
     public void SetPopularSupport(string factionInstanceId, int support)
     {
+        // Calculate the difference between the new support and the current support.
         int currentSupport = PopularSupport.TryGetValue(factionInstanceId, out int existingSupport)
             ? existingSupport
             : 0;
         int supportDifference = support - currentSupport;
         int totalSupport = PopularSupport.Values.Sum();
 
+        // Check if the total support is within the maximum limit.
         if (totalSupport + supportDifference <= MAX_POPULAR_SUPPORT)
         {
             PopularSupport[factionInstanceId] = support;
         }
+        // If the total support exceeds the maximum limit, shift support from other factions.
         else
         {
             int overage = totalSupport + supportDifference - MAX_POPULAR_SUPPORT;
@@ -125,21 +174,22 @@ public class Planet : ContainerNode
     /// <param name="overage">The amount of support to reduce from other factions.</param>
     private void ShiftFactionSupport(string excludedFactionId, int overage)
     {
-        // Sort the factions by support in descending order.
-        foreach (
-            KeyValuePair<string, int> kvp in PopularSupport
-                .Where(kvp => kvp.Key != excludedFactionId)
-                .ToList()
-        )
-        {
-            // Reduce the support for the faction by the minimum of the overage and the faction's current support.
-            int reduction = Math.Min(overage, kvp.Value);
-            PopularSupport[kvp.Key] -= reduction;
-            overage -= reduction;
+        PopularSupport
+            .Where(kvp => kvp.Key != excludedFactionId) // Filter out the excluded faction.
+            .OrderByDescending(kvp => kvp.Value) // Sort factions by support in descending order.
+            .ToList()
+            .ForEach(kvp =>
+            {
+                // Decrease faction's support by the overage amount.
+                int reduction = Math.Min(overage, kvp.Value);
+                PopularSupport[kvp.Key] -= reduction;
+                overage -= reduction;
 
-            if (overage == 0)
-                break;
-        }
+                if (overage <= 0)
+                {
+                    return;
+                }
+            });
     }
 
     /// <summary>
@@ -157,11 +207,12 @@ public class Planet : ContainerNode
     /// </summary>
     /// <param name="targetPlanet">The target planet.</param>
     /// <returns>Travel time in ticks.</returns>
-    public int GetTravelTime(Planet targetPlanet)
+    public int GetDistanceTo(Planet targetPlanet)
     {
         int dx = this.PositionX - targetPlanet.PositionX;
         int dy = this.PositionY - targetPlanet.PositionY;
         double rawDistance = Math.Sqrt(dx * dx + dy * dy);
+
         return (int)(rawDistance / DISTANCE_DIVISOR * DISTANCE_BASE / 100);
     }
 
@@ -173,14 +224,21 @@ public class Planet : ContainerNode
     /// <returns>The total days required to complete the manufacturing.</returns>
     public int GetBuildTime(IManufacturable manufacturable, int quantity)
     {
+        // Calculate the total material cost and the combined production rate for the manufacturable.
         int totalMaterialCost = manufacturable.GetConstructionCost() * quantity;
+
+        // Calculate the combined time required to produce the items.
         ManufacturingType requiredManufacturingType = manufacturable.GetManufacturingType();
         double combinedRate = GetCombinedProductionRate(requiredManufacturingType);
 
         if (combinedRate == 0)
+        {
             return 0;
+        }
 
+        // Calculate the combined time required to produce the items.
         double combinedTime = totalMaterialCost / combinedRate;
+
         return (int)Math.Ceiling(combinedTime);
     }
 
@@ -205,7 +263,26 @@ public class Planet : ContainerNode
     public int GetProductionRate(ManufacturingType type)
     {
         double combinedRate = GetCombinedProductionRate(type);
+
         return (int)Math.Ceiling(combinedRate);
+    }
+
+    /// <summary>
+    /// Checks if units can be manufactured on this planet.
+    /// </summary>
+    /// <returns>True if units can be manufactured, false otherwise.</returns>
+    public bool CanManufactureUnits()
+    {
+        return !IsBlockaded() && !IsDestroyed && !IsUprising;
+    }
+
+    /// <summary>
+    /// Gets the manufacturing queue for the planet.
+    /// </summary>
+    /// <returns>The manufacturing queue.</returns>
+    public Dictionary<ManufacturingType, List<IManufacturable>> GetManufacturingQueue()
+    {
+        return ManufacturingQueue;
     }
 
     /// <summary>
@@ -297,8 +374,9 @@ public class Planet : ContainerNode
     /// Gets the buildings in a specific slot.
     /// </summary>
     /// <param name="slot">The building slot.</param>
+    /// <param name="includeUnderConstruction">Whether to include buildings under construction.</param>
     /// <returns>A list of buildings.</returns>
-    public List<Building> GetBuildings(BuildingSlot slot)
+    public List<Building> GetBuildings(BuildingSlot slot, bool includeUnderConstruction = false)
     {
         return Buildings[slot].ToList();
     }
@@ -307,12 +385,20 @@ public class Planet : ContainerNode
     /// Gets the count of buildings of a specific type.
     /// </summary>
     /// <param name="buildingType">The type of building.</param>
+    /// <param name="includeUnderConstruction">Whether to include buildings under construction.</param>
     /// <returns>The count of buildings of the specified type.</returns>
-    public int GetBuildingTypeCount(BuildingType buildingType)
+    public int GetBuildingTypeCount(BuildingType buildingType, bool includeUnderConstruction = true)
     {
         return Buildings
             .Values.SelectMany(buildingList => buildingList)
-            .Count(building => building.GetBuildingType() == buildingType);
+            .Count(building =>
+            {
+                return (
+                        includeUnderConstruction
+                        || building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    )
+                    && building.GetBuildingType() == buildingType;
+            });
     }
 
     /// <summary>
@@ -346,6 +432,7 @@ public class Planet : ContainerNode
     /// <param name="building">The building to validate.</param>
     private void ValidateBuilding(Building building)
     {
+        // Check if the planet is colonized.
         if (!IsColonized)
         {
             throw new GameStateException(
@@ -353,11 +440,13 @@ public class Planet : ContainerNode
             );
         }
 
+        // Check if the building is owned by the planet's owner.
         if (building.GetOwnerInstanceID() != this.GetOwnerInstanceID())
         {
             throw new SceneAccessException(building, this);
         }
 
+        // Check if the planet is at capacity.
         BuildingSlot slot = building.GetBuildingSlot();
         if (
             (slot == BuildingSlot.Ground && Buildings[slot].Count == GroundSlots)

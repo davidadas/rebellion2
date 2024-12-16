@@ -25,7 +25,7 @@ public class SaveGameManagerTests
     }
 
     [Test]
-    public void TestSaveGame()
+    public void SaveGameData_SavesGameToFile()
     {
         // Generate a game given a summary.
         GameSummary summary = new GameSummary
@@ -37,7 +37,7 @@ public class SaveGameManagerTests
             PlayerFactionID = "FNALL1",
         };
 
-        // Save the file to disk for testing
+        // Save the file to disk for testing.
         Game game = new Game
         {
             Summary = summary,
@@ -53,7 +53,7 @@ public class SaveGameManagerTests
     }
 
     [Test]
-    public void TestLoadGame()
+    public void LoadGameData_LoadsGameFromFile()
     {
         GameSummary summary = new GameSummary
         {
@@ -101,7 +101,7 @@ public class SaveGameManagerTests
     }
 
     [Test]
-    public void TestBasicSceneGraphLoaded()
+    public void LoadGameData_ReconstitutesSceneGraph()
     {
         // Create planet systems.
         PlanetSystem planetSystem = new PlanetSystem { DisplayName = "Planet System" };

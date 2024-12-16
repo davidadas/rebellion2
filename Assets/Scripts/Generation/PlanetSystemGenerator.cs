@@ -36,7 +36,7 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
 
         planet.OrbitSlots = Random.Range(orbitSlotRange[0], orbitSlotRange[1]);
         planet.GroundSlots = Random.Range(groundSlotRange[0], groundSlotRange[1]);
-        planet.NumResourceNodes = Random.Range(resourceRange[0], resourceRange[1]);
+        planet.NumRawResourceNodes = Random.Range(resourceRange[0], resourceRange[1]);
     }
 
     /// <summary>

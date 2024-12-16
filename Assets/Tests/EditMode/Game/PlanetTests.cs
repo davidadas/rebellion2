@@ -197,7 +197,7 @@ public class PlanetTests
     }
 
     [Test]
-    public void GetTravelTime_ValidTargetPlanet_ReturnsCorrectTime()
+    public void GetDistanceTo_ValidTargetPlanet_ReturnsCorrectTime()
     {
         Planet targetPlanet = new Planet
         {
@@ -205,7 +205,7 @@ public class PlanetTests
             PositionY = planet.PositionY + 10,
         };
 
-        int travelTime = planet.GetTravelTime(targetPlanet);
+        int travelTime = planet.GetDistanceTo(targetPlanet);
 
         Assert.AreEqual(2, travelTime, "Travel time should be calculated correctly.");
     }

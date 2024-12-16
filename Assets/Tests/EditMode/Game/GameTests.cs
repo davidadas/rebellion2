@@ -113,7 +113,7 @@ public class GameTests
         );
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units"
         );
@@ -151,7 +151,7 @@ public class GameTests
         );
         Assert.IsFalse(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should not contain planet in owned units"
         );
@@ -289,7 +289,7 @@ public class GameTests
         // Verify registration is successful.
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units after registration"
         );
@@ -305,7 +305,7 @@ public class GameTests
         // Verify deregistration was successful.
         Assert.IsFalse(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should not contain planet in owned units after deregistration"
         );
@@ -425,13 +425,13 @@ public class GameTests
 
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units"
         );
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(fleet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(fleet),
             "Faction should contain fleet in owned units"
         );

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -250,7 +251,7 @@ public class AIManager
     private Technology GetHighestTierTechnology(
         Faction faction,
         ManufacturingType manufacturingType,
-        System.Type referenceType
+        Type referenceType
     )
     {
         return faction

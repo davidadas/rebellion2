@@ -78,6 +78,7 @@ public class DiplomacyMission : Mission
     {
         if (GetParent() is Planet planet)
         {
+            // Only continue if the planet is owned by the player or unowned.
             if (
                 planet.GetOwnerInstanceID() == GetOwnerInstanceID()
                 || planet.GetOwnerInstanceID() == null

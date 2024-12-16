@@ -8,6 +8,7 @@ using System.Linq;
 /// </summary>
 public class Faction : BaseGameEntity
 {
+    // Faction Info
     public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
     public Dictionary<
         ManufacturingType,
@@ -22,16 +23,17 @@ public class Faction : BaseGameEntity
             { ManufacturingType.Ship, 0 },
             { ManufacturingType.Troop, 0 },
         };
-
     public string HQInstanceID { get; set; }
     public string PlayerID { get; set; }
 
+    // Owned Entities (Fleets, Planets, etc).
     private Dictionary<Type, List<ISceneNode>> ownedEntities = new Dictionary<
         Type,
         List<ISceneNode>
     >()
     {
         { typeof(CapitalShip), new List<ISceneNode>() },
+        { typeof(Building), new List<ISceneNode>() },
         { typeof(Fleet), new List<ISceneNode>() },
         { typeof(Officer), new List<ISceneNode>() },
         { typeof(Planet), new List<ISceneNode>() },
@@ -39,6 +41,7 @@ public class Faction : BaseGameEntity
         { typeof(Starfighter), new List<ISceneNode>() },
     };
 
+    // Messages and Notifications
     public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
         MessageType,
         List<Message>
@@ -71,7 +74,7 @@ public class Faction : BaseGameEntity
     /// Returns a list of all units owned by the faction.
     /// </summary>
     /// <returns>A list of all owned units.</returns>
-    public List<ISceneNode> GetAllOwnedUnits()
+    public List<ISceneNode> GetAllOwnedNodes()
     {
         return ownedEntities.Values.SelectMany(x => x).ToList();
     }
@@ -203,14 +206,70 @@ public class Faction : BaseGameEntity
     }
 
     /// <summary>
-    /// Returns a list of planets with idle manufacturing facilities for a specific manufacturing type.
+    ///
     /// </summary>
-    /// <param name="manufacturingType">The manufacturing type to check.</param>
-    /// <returns>A list of planets with idle facilities.</returns>
-    public List<Planet> GetIdleFacilities(ManufacturingType manufacturingType)
+    /// <returns></returns>
+    public int GetBaseRawResourceNodes()
     {
-        return GetOwnedUnitsByType<Planet>()
-            .FindAll(p => p.GetIdleManufacturingFacilities(manufacturingType) > 0);
+        return GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawResourceNodes());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetBaseManufacturingCosts()
+    {
+        return ownedEntities
+            .Where(kvp => typeof(IManufacturable).IsAssignableFrom(kvp.Key))
+            .SelectMany(kvp => kvp.Value)
+            .OfType<IManufacturable>()
+            .Sum(manufacturable =>
+            {
+                int cost = manufacturable.GetConstructionCost();
+
+                if (manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building)
+                {
+                    cost += manufacturable.GetMaintenanceCost();
+                }
+
+                return cost;
+            });
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetBaseUnprocessedMaterials()
+    {
+        return GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawMinedResourceNodes());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetBaseRefinementCapacity()
+    {
+        return GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawRefinementCapacity());
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public int GetAvailableMaterials()
+    {
+        int manufacturingCosts = GetBaseManufacturingCosts();
+        int unprocessedMaterials = GetBaseUnprocessedMaterials();
+        int refinementCapacity = GetBaseRefinementCapacity();
+
+        // @TODO: Move refinement multiplier to a global setting.
+        // It is currently being held here while a more robust modifier system is implemented.
+        int processedMaterials = Math.Min(unprocessedMaterials, refinementCapacity) * 50;
+
+        return processedMaterials - manufacturingCosts;
     }
 
     /// <summary>
@@ -258,7 +317,18 @@ public class Faction : BaseGameEntity
         }
 
         return GetOwnedUnitsByType<Planet>()
-            .OrderBy(p => sourcePlanet.GetTravelTime(p))
+            .OrderBy(p => sourcePlanet.GetDistanceTo(p))
             .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Returns a list of planets with idle manufacturing facilities for a specific manufacturing type.
+    /// </summary>
+    /// <param name="manufacturingType">The manufacturing type to check.</param>
+    /// <returns>A list of planets with idle facilities.</returns>
+    public List<Planet> GetIdleFacilities(ManufacturingType manufacturingType)
+    {
+        return GetOwnedUnitsByType<Planet>()
+            .FindAll(p => p.GetIdleManufacturingFacilities(manufacturingType) > 0);
     }
 }

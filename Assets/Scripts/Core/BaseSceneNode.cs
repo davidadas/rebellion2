@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>
+/// Base implementation of the <see cref="ISceneNode"/> interface.
+/// </summary>
 public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
 {
     // Parent Info
@@ -42,15 +45,14 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     public void SetParent(ISceneNode newParent)
     {
         if (ParentNode == newParent)
+        {
             return;
+        }
 
         ISceneNode oldParent = ParentNode;
 
         // Remove from old parent.
-        if (oldParent != null)
-        {
-            oldParent.RemoveChild(this);
-        }
+        oldParent?.RemoveChild(this);
 
         // Update parent references.
         LastParentNode = oldParent;
@@ -94,22 +96,16 @@ public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     public T GetParentOfType<T>()
         where T : class, ISceneNode
     {
-        // Check if the current scene node is the specified type.
-        if (this is T matchingSelf)
-        {
-            return matchingSelf;
-        }
-
         // Check the parent scene nodes.
         ISceneNode parent = ParentNode;
-        HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
+        HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode> { this };
 
         while (parent != null)
         {
             if (!visitedNodes.Add(parent))
             {
                 // Node has already been visited, indicating a cycle in the scene graph.
-                throw new InvalidOperationException("Cycle detected in scene graph.");
+                throw new InvalidSceneOperationException("Cycle detected in scene graph.");
             }
 
             if (parent is T matchingParent)
