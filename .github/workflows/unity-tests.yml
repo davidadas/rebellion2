@@ -39,7 +39,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 2021.3.12f1
+          unityVersion: 2022.3.43f1
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
@@ -54,7 +54,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 2021.3.12f1
+          unityVersion: 2022.3.43f1
           targetPlatform: StandaloneWindows64
 
       # Upload build artifact
