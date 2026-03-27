@@ -45,6 +45,12 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
 
+      # Discard Unity package resolution changes
+      - name: Reset package files
+        run: |
+          git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
+          git clean -fd
+
       # Build the Unity project
       - name: Build project
         uses: game-ci/unity-builder@v4
