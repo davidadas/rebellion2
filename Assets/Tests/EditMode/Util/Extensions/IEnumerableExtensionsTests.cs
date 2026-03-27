@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using IEnumerableExtensions;
 using NUnit.Framework;
+using Rebellion.Util.Extensions;
 
 [TestFixture]
 public class IEnumerableExtensionsTests

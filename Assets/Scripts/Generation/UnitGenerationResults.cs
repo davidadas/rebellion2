@@ -1,18 +1,23 @@
-/// <summary>
-///
-/// </summary>
-/// <typeparam name="TUnit"></typeparam>
-class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
-    where TUnit : BaseGameEntity
-{
-    public TUnit[] UnitPool { get; set; }
-    public TUnit[] SelectedUnits { get; set; }
-    public TUnit[] DeployedUnits { get; set; }
+using Rebellion.SceneGraph;
 
-    public UnitGenerationResults(TUnit[] unitPool, TUnit[] selectedUnits, TUnit[] deployedUnits)
+namespace Rebellion.Generation
+{
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="TUnit"></typeparam>
+    class UnitGenerationResults<TUnit> : IUnitGenerationResults<TUnit>
+        where TUnit : BaseGameEntity
     {
-        UnitPool = unitPool;
-        SelectedUnits = selectedUnits;
-        DeployedUnits = deployedUnits;
+        public TUnit[] UnitPool { get; set; }
+        public TUnit[] SelectedUnits { get; set; }
+        public TUnit[] DeployedUnits { get; set; }
+
+        public UnitGenerationResults(TUnit[] unitPool, TUnit[] selectedUnits, TUnit[] deployedUnits)
+        {
+            UnitPool = unitPool;
+            SelectedUnits = selectedUnits;
+            DeployedUnits = deployedUnits;
+        }
     }
 }

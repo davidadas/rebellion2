@@ -1,10 +1,11 @@
 using System.Collections.Generic;
+using Rebellion.Game;
 
 public class OfficerManager
 {
-    private Game game;
+    private GameRoot game;
 
-    public OfficerManager(Game game)
+    public OfficerManager(GameRoot game)
     {
         this.game = game;
     }

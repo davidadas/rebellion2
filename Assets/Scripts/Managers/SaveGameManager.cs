@@ -1,5 +1,26 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Systems;
+using Rebellion.Util.Serialization;
 using UnityEngine;
+
+/// <summary>
+///
+/// </summary>
+public sealed class SaveGameEntry
+{
+    public string FileName { get; }
+    public GameMetadata Metadata { get; }
+
+    public SaveGameEntry(string fileName, GameMetadata metadata)
+    {
+        FileName = fileName;
+        Metadata = metadata;
+    }
+}
 
 /// <summary>
 /// The SaveGameManager is responsible for managing the saving and loading of the game state.
@@ -42,11 +63,57 @@ public class SaveGameManager
     }
 
     /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    public IReadOnlyList<SaveGameEntry> GetSavedGames()
+    {
+        string saveDirectory = GetSaveDirectoryPath();
+
+        if (!Directory.Exists(saveDirectory))
+            return Array.Empty<SaveGameEntry>();
+
+        FileInfo[] files = new DirectoryInfo(saveDirectory).GetFiles(
+            "*.sav",
+            SearchOption.TopDirectoryOnly
+        );
+
+        List<SaveGameEntry> saves = new List<SaveGameEntry>(files.Length);
+
+        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+
+        foreach (FileInfo file in files)
+        {
+            try
+            {
+                using FileStream stream = new FileStream(
+                    file.FullName,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read
+                );
+
+                GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(stream);
+
+                saves.Add(new SaveGameEntry(Path.GetFileNameWithoutExtension(file.Name), metadata));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to read save metadata for {file.Name}: {ex.Message}");
+                // Skip corrupted/bad files
+            }
+        }
+
+        // Sort newest first (based on metadata, not file system)
+        return saves.OrderByDescending(s => s.Metadata.LastSavedUtc).ToList();
+    }
+
+    /// <summary>
     /// Save game data to file using XML serialization.
     /// </summary>
     /// <param name="game">The game data to save.</param>
     /// <param name="fileName">The name of the save file.</param>
-    public void SaveGameData(Game game, string fileName)
+    public void SaveGameData(GameRoot game, string fileName)
     {
         string saveDirectory = GetSaveDirectoryPath();
 
@@ -58,7 +125,7 @@ public class SaveGameManager
 
         // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
-        GameSerializer serializer = new GameSerializer(typeof(Game));
+        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Create))
         {
             serializer.Serialize(fileStream, game);
@@ -70,15 +137,25 @@ public class SaveGameManager
     /// </summary>
     /// <param name="fileName">The name of the save file.</param>
     /// <returns>The loaded game data.</returns>
-    public Game LoadGameData(string fileName)
+    public GameRoot LoadGameData(string fileName)
     {
         string saveFilePath = GetSaveFilePath(fileName);
 
         // Deserialize the data from a file.
-        GameSerializer serializer = new GameSerializer(typeof(Game));
+        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
         using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Open))
         {
-            Game game = (Game)serializer.Deserialize(fileStream);
+            GameRoot game = (GameRoot)serializer.Deserialize(fileStream);
+
+            // Rebuild technology levels from current data (respects mods)
+            foreach (Faction faction in game.GetFactions())
+            {
+                faction.RebuildTechnologyLevels(game);
+            }
+
+            // Rebuild manufacturing queues from serialized state
+            ManufacturingSystem manufacturingSystem = new ManufacturingSystem(game);
+            manufacturingSystem.RebuildQueues();
 
             return game;
         }

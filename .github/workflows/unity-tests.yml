@@ -12,6 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
 
     steps:
       # Checkout repository
@@ -19,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
 
       # Cache
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: Library
           key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
@@ -35,11 +39,23 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 2021.3.12f1
+          unityVersion: 2022.3.43f1
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
+
+      # Run Roslynator analyzer
+      - name: Run code analyzers
+        run: |
+          dotnet build GameAssembly.csproj -p:TreatWarningsAsErrors=false -verbosity:normal
+        continue-on-error: true
+
+      # Discard Unity package resolution changes
+      - name: Reset package files
+        run: |
+          git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
+          sudo rm -rf artifacts || true
 
       # Build the Unity project
       - name: Build project
@@ -50,12 +66,5 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 2021.3.12f1
+          unityVersion: 2022.3.43f1
           targetPlatform: StandaloneWindows64
-
-      # Upload build artifact
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: Build
-          path: build

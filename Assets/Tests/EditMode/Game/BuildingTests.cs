@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Util.Extensions;
 
 [TestFixture]
 public class BuildingTests
@@ -8,7 +10,7 @@ public class BuildingTests
     [Test]
     public void ConstructionInfo_SetValues_ReturnsCorrectValues()
     {
-        var building = new Building
+        Building building = new Building
         {
             ConstructionCost = 100,
             MaintenanceCost = 50,
@@ -25,7 +27,7 @@ public class BuildingTests
     [Test]
     public void GetBuildingType_ValidBuildingType_ReturnsCorrectType()
     {
-        var building = new Building { BuildingType = BuildingType.Mine };
+        Building building = new Building { BuildingType = BuildingType.Mine };
 
         Assert.AreEqual(BuildingType.Mine, building.GetBuildingType());
     }
@@ -33,7 +35,7 @@ public class BuildingTests
     [Test]
     public void GetBuildingSlot_ValidSlot_ReturnsCorrectSlot()
     {
-        var building = new Building { BuildingSlot = BuildingSlot.Orbit };
+        Building building = new Building { BuildingSlot = BuildingSlot.Orbit };
 
         Assert.AreEqual(BuildingSlot.Orbit, building.GetBuildingSlot());
     }
@@ -41,7 +43,7 @@ public class BuildingTests
     [Test]
     public void SetManufacturingStatus_ValidStatus_UpdatesSuccessfully()
     {
-        var building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
 
         building.SetManufacturingStatus(ManufacturingStatus.Complete);
 
@@ -51,17 +53,17 @@ public class BuildingTests
     [Test]
     public void SetManufacturingStatus_InvalidTransition_ThrowsException()
     {
-        var building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
 
-        Assert.Throws<GameStateException>(
-            () => building.SetManufacturingStatus(ManufacturingStatus.Building)
+        Assert.Throws<GameStateException>(() =>
+            building.SetManufacturingStatus(ManufacturingStatus.Building)
         );
     }
 
     [Test]
     public void IsMovable_IdleStatus_ReturnsTrue()
     {
-        var building = new Building { MovementStatus = MovementStatus.Idle };
+        Building building = new Building { Movement = null };
 
         Assert.IsTrue(building.IsMovable());
     }
@@ -69,15 +71,133 @@ public class BuildingTests
     [Test]
     public void IsMovable_InTransitStatus_ReturnsFalse()
     {
-        var building = new Building { MovementStatus = MovementStatus.InTransit };
+        Building building = new Building { Movement = new MovementState() };
 
         Assert.IsFalse(building.IsMovable());
     }
 
     [Test]
+    public void GetProcessRate_ValidProcessRate_ReturnsCorrectValue()
+    {
+        Building building = new Building { ProcessRate = 25 };
+
+        Assert.AreEqual(25, building.GetProcessRate());
+    }
+
+    [Test]
+    public void GetProductionType_ValidProductionType_ReturnsCorrectType()
+    {
+        Building building = new Building { ProductionType = ManufacturingType.Building };
+
+        Assert.AreEqual(ManufacturingType.Building, building.GetProductionType());
+    }
+
+    [Test]
+    public void GetManufacturingType_Always_ReturnsBuilding()
+    {
+        Building building = new Building();
+
+        Assert.AreEqual(ManufacturingType.Building, building.GetManufacturingType());
+    }
+
+    [Test]
+    public void GetManufacturingStatus_ValidStatus_ReturnsCorrectStatus()
+    {
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+        Assert.AreEqual(ManufacturingStatus.Complete, building.GetManufacturingStatus());
+    }
+
+    [Test]
+    public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
+    {
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+        building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+        Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+    }
+
+    [Test]
+    public void SetManufacturingStatus_CompleteToComplete_UpdatesSuccessfully()
+    {
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+        building.SetManufacturingStatus(ManufacturingStatus.Complete);
+
+        Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+    }
+
+    [Test]
+    public void SetManufacturingStatus_BuildingToBuilding_UpdatesSuccessfully()
+    {
+        Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+        building.SetManufacturingStatus(ManufacturingStatus.Building);
+
+        Assert.AreEqual(ManufacturingStatus.Building, building.ManufacturingStatus);
+    }
+
+    [Test]
+    public void Bombardment_SetValue_ReturnsCorrectValue()
+    {
+        Building building = new Building { Bombardment = 10 };
+
+        Assert.AreEqual(10, building.Bombardment);
+    }
+
+    [Test]
+    public void WeaponStrength_SetValue_ReturnsCorrectValue()
+    {
+        Building building = new Building { WeaponStrength = 20 };
+
+        Assert.AreEqual(20, building.WeaponStrength);
+    }
+
+    [Test]
+    public void ShieldStrength_SetValue_ReturnsCorrectValue()
+    {
+        Building building = new Building { ShieldStrength = 30 };
+
+        Assert.AreEqual(30, building.ShieldStrength);
+    }
+
+    [Test]
+    public void ManufacturingProgress_ZeroValue_ReturnsZero()
+    {
+        Building building = new Building { ManufacturingProgress = 0 };
+
+        Assert.AreEqual(0, building.ManufacturingProgress);
+    }
+
+    [Test]
+    public void ManufacturingProgress_MaxValue_ReturnsMaxValue()
+    {
+        Building building = new Building { ManufacturingProgress = int.MaxValue };
+
+        Assert.AreEqual(int.MaxValue, building.ManufacturingProgress);
+    }
+
+    [Test]
+    public void ManufacturingProgress_NegativeValue_ReturnsNegativeValue()
+    {
+        Building building = new Building { ManufacturingProgress = -10 };
+
+        Assert.AreEqual(-10, building.ManufacturingProgress);
+    }
+
+    [Test]
+    public void ManufacturingProgress_PartialProgress_ReturnsCorrectValue()
+    {
+        Building building = new Building { ManufacturingProgress = 75 };
+
+        Assert.AreEqual(75, building.ManufacturingProgress);
+    }
+
+    [Test]
     public void SerializeDeserialize_BuildingObject_RetainsProperties()
     {
-        var building = new Building
+        Building building = new Building
         {
             ConstructionCost = 100,
             MaintenanceCost = 50,
@@ -93,13 +213,11 @@ public class BuildingTests
             ManufacturingProgress = 50,
             ManufacturingStatus = ManufacturingStatus.Building,
             ProductionType = ManufacturingType.Building,
-            PositionX = 10,
-            PositionY = 20,
-            MovementStatus = MovementStatus.Idle,
+            Movement = null,
         };
 
         string xml = SerializationHelper.Serialize(building);
-        var deserializedBuilding = SerializationHelper.Deserialize<Building>(xml);
+        Building deserializedBuilding = SerializationHelper.Deserialize<Building>(xml);
 
         Assert.AreEqual(building.ConstructionCost, deserializedBuilding.ConstructionCost);
         Assert.AreEqual(building.MaintenanceCost, deserializedBuilding.MaintenanceCost);
@@ -115,8 +233,8 @@ public class BuildingTests
         Assert.AreEqual(building.ManufacturingProgress, deserializedBuilding.ManufacturingProgress);
         Assert.AreEqual(building.ManufacturingStatus, deserializedBuilding.ManufacturingStatus);
         Assert.AreEqual(building.ProductionType, deserializedBuilding.ProductionType);
-        Assert.AreEqual(building.PositionX, deserializedBuilding.PositionX);
-        Assert.AreEqual(building.PositionY, deserializedBuilding.PositionY);
-        Assert.AreEqual(building.MovementStatus, deserializedBuilding.MovementStatus);
+        Assert.AreEqual(building.GetPosition().X, deserializedBuilding.GetPosition().X);
+        Assert.AreEqual(building.GetPosition().Y, deserializedBuilding.GetPosition().Y);
+        Assert.AreEqual(building.Movement, deserializedBuilding.Movement);
     }
 }

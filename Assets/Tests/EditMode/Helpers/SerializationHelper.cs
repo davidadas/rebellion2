@@ -1,4 +1,5 @@
 using System.IO;
+using Rebellion.Util.Serialization;
 
 public static class SerializationHelper
 {

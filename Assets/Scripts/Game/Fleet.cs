@@ -1,150 +1,170 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using ICollectionExtensions;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Attributes;
+using Rebellion.Util.Extensions;
 
-public class Fleet : ContainerNode, IMovable
+namespace Rebellion.Game
 {
-    // Movement Info
-    public MovementStatus MovementStatus { get; set; }
-    public int PositionX { get; set; }
-    public int PositionY { get; set; }
-
-    // Child Nodes
-    public List<CapitalShip> CapitalShips { get; set; } = new List<CapitalShip>();
-
-    /// <summary>
-    /// Default constructor.
-    /// </summary>
-    public Fleet() { }
-
-    /// <summary>
-    /// Returns the total starfighter capacity of the fleet.
-    /// </summary>
-    /// <returns>The total starfighter capacity of the fleet.</returns>
-    public int GetStarfighterCapacity()
+    public class Fleet : ContainerNode, IMovable
     {
-        return CapitalShips.Sum(capitalShip => capitalShip.GetStarfighterCapacity());
-    }
+        // Movement Info
+        public MovementState Movement { get; set; }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public int GetCurrentStarfighterCount()
-    {
-        return CapitalShips.Sum(capitalShip => capitalShip.GetCurrentStarfighterCount());
-    }
+        // Child Nodes
+        public List<CapitalShip> CapitalShips { get; set; } = new List<CapitalShip>();
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public int GetExcessStarfighterCapacity()
-    {
-        return GetStarfighterCapacity() - GetCurrentStarfighterCount();
-    }
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        public Fleet() { }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public int GetRegimentCapacity()
-    {
-        return CapitalShips.Sum(capitalShip => capitalShip.GetRegimentCapacity());
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public int GetCurrentRegimentCount()
-    {
-        return CapitalShips.Sum(capitalShip => capitalShip.GetCurrentRegimentCount());
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public int GetExcessRegimentCapacity()
-    {
-        return GetRegimentCapacity() - GetCurrentRegimentCount();
-    }
-
-    /// <summary>
-    /// Constructor that initializes the fleet with an owner.
-    /// </summary>
-    /// <param name="capitalShip">The capital ship to add to the fleet.</param>
-    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent..</exception>
-    private void AddCapitalShip(CapitalShip capitalShip)
-    {
-        if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
+        /// <summary>
+        /// Returns the total starfighter capacity of the fleet.
+        /// </summary>
+        public int GetStarfighterCapacity()
         {
-            throw new SceneAccessException(capitalShip, this);
+            return CapitalShips.Sum(ship => ship.GetStarfighterCapacity());
         }
-        CapitalShips.Add(capitalShip);
-    }
 
-    /// <summary>
-    /// Adds an officer to the fleet.
-    /// </summary>
-    /// <param name="officer">The officer to add to the fleet.</param>
-    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
-    private void AddOfficer(Officer officer)
-    {
-        if (this.OwnerInstanceID != officer.OwnerInstanceID)
+        /// <summary>
+        /// Returns the total starfighters currently assigned.
+        /// </summary>
+        public int GetCurrentStarfighterCount()
         {
-            throw new SceneAccessException(officer, this);
+            return CapitalShips.Sum(ship => ship.GetCurrentStarfighterCount());
         }
-        CapitalShips[0].AddOfficer(officer);
-    }
 
-    /// <summary>
-    /// Adds a child to the node.
-    /// </summary>
-    /// <param name="child">The child node to add.</param>
-    /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
-    public override void AddChild(ISceneNode child)
-    {
-        if (child is CapitalShip)
+        /// <summary>
+        /// Returns unused starfighter capacity.
+        /// </summary>
+        public int GetExcessStarfighterCapacity()
         {
-            AddCapitalShip(child as CapitalShip);
+            return GetStarfighterCapacity() - GetCurrentStarfighterCount();
         }
-        else if (child is Officer officer)
+
+        /// <summary>
+        /// Returns total regiment capacity.
+        /// </summary>
+        public int GetRegimentCapacity()
         {
-            AddOfficer(officer);
+            return CapitalShips.Sum(ship => ship.GetRegimentCapacity());
         }
-    }
 
-    /// <summary>
-    /// Removes a child from the node.
-    /// </summary>
-    /// <param name="child">The child node to remove.</param>
-    public override void RemoveChild(ISceneNode child)
-    {
-        if (child is CapitalShip capitalShip)
+        /// <summary>
+        /// Returns current regiment count.
+        /// </summary>
+        public int GetCurrentRegimentCount()
         {
-            CapitalShips.Remove(capitalShip);
+            return CapitalShips.Sum(ship => ship.GetCurrentRegimentCount());
         }
-    }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public bool IsMovable()
-    {
-        return MovementStatus != MovementStatus.InTransit;
-    }
+        /// <summary>
+        /// Returns unused regiment capacity.
+        /// </summary>
+        public int GetExcessRegimentCapacity()
+        {
+            return GetRegimentCapacity() - GetCurrentRegimentCount();
+        }
 
-    /// <summary>
-    /// Retrieves the children of the node.
-    /// </summary>
-    /// <returns>An array of child nodes.</returns>
-    public override IEnumerable<ISceneNode> GetChildren()
-    {
-        return CapitalShips.ToList();
+        /// <summary>
+        /// Returns all starfighters across the fleet.
+        /// </summary>
+        public IEnumerable<Starfighter> GetStarfighters()
+        {
+            return CapitalShips.SelectMany(ship => ship.Starfighters);
+        }
+
+        /// <summary>
+        /// Returns all regiments across the fleet.
+        /// </summary>
+        public IEnumerable<Regiment> GetRegiments()
+        {
+            return CapitalShips.SelectMany(ship => ship.Regiments);
+        }
+
+        /// <summary>
+        /// Returns all officers across the fleet.
+        /// </summary>
+        public IEnumerable<Officer> GetOfficers()
+        {
+            return CapitalShips.SelectMany(ship => ship.Officers);
+        }
+
+        /// <summary>
+        /// Adds a capital ship to the fleet.
+        /// </summary>
+        private void AddCapitalShip(CapitalShip capitalShip)
+        {
+            if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
+            {
+                throw new SceneAccessException(capitalShip, this);
+            }
+
+            CapitalShips.Add(capitalShip);
+        }
+
+        /// <summary>
+        /// Adds an officer to the fleet (default to first ship).
+        /// </summary>
+        private void AddOfficer(Officer officer)
+        {
+            if (this.OwnerInstanceID != officer.OwnerInstanceID)
+            {
+                throw new SceneAccessException(officer, this);
+            }
+
+            if (CapitalShips.Count == 0)
+            {
+                throw new GameException("Cannot add officer to fleet with no capital ships.");
+            }
+
+            CapitalShips[0].AddOfficer(officer);
+        }
+
+        /// <summary>
+        /// Adds a child node.
+        /// </summary>
+        public override void AddChild(ISceneNode child)
+        {
+            if (child is CapitalShip capitalShip)
+            {
+                AddCapitalShip(capitalShip);
+            }
+            else if (child is Officer officer)
+            {
+                AddOfficer(officer);
+            }
+        }
+
+        /// <summary>
+        /// Removes a child node.
+        /// </summary>
+        public override void RemoveChild(ISceneNode child)
+        {
+            if (child is CapitalShip capitalShip)
+            {
+                CapitalShips.Remove(capitalShip);
+            }
+        }
+
+        /// <summary>
+        /// Determines if the fleet can move.
+        /// </summary>
+        public bool IsMovable()
+        {
+            // Movement == null means not moving (can be moved)
+            return Movement == null;
+        }
+
+        /// <summary>
+        /// Retrieves child nodes (capital ships only).
+        /// </summary>
+        public override IEnumerable<ISceneNode> GetChildren()
+        {
+            return CapitalShips.Cast<ISceneNode>();
+        }
     }
 }

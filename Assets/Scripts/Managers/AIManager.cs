@@ -1,58 +1,71 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Core.Simulation;
+using Rebellion.Game;
+using Rebellion.SceneGraph;
+using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Manages AI behavior for factions in the game.
-/// Note: This is a simplified implementation for testing purposes.
+///
+/// @NOTE: This is not meant to be the game's final AI system. This is just a simple AI system
+/// that is meant to be replaced with a more sophisticated one in the future.
 /// </summary>
 public class AIManager
 {
-    private readonly Game game;
-    private readonly MissionManager missionManager;
-    private readonly UnitManager unitManager;
-    private readonly PlanetManager planetManager;
+    private readonly GameRoot game;
+    private readonly MissionSystem missionManager;
+    private readonly MovementSystem movementManager;
+    private readonly ManufacturingSystem manufacturingManager;
 
     public AIManager(
-        Game game,
-        MissionManager missionManager,
-        UnitManager unitManager,
-        PlanetManager planetManager
+        GameRoot game,
+        MissionSystem missionManager,
+        MovementSystem movementManager,
+        ManufacturingSystem manufacturingManager
     )
     {
         this.game = game;
         this.missionManager = missionManager;
-        this.unitManager = unitManager;
-        this.planetManager = planetManager;
+        this.movementManager = movementManager;
+        this.manufacturingManager = manufacturingManager;
     }
 
     /// <summary>
     /// Updates the AI for all AI-controlled factions.
     /// </summary>
-    public void Update()
+    /// <param name="provider">Random number provider for AI decisions.</param>
+    public void Update(IRandomNumberProvider provider)
     {
         foreach (Faction faction in game.Factions.Where(f => f.IsAIControlled()))
         {
-            UpdateFaction(faction);
+            UpdateFaction(faction, provider);
         }
     }
 
     /// <summary>
     /// Updates various aspects of the AI for a specific faction.
     /// </summary>
-    /// <param name="faction">The faction to update.</param>
-    private void UpdateFaction(Faction faction)
+    /// <param name="provider">Random number provider for AI decisions.</param>
+    private void UpdateFaction(Faction faction, IRandomNumberProvider provider)
     {
-        UpdateOfficers(faction);
+        GameLogger.Log(
+            $"Faction {faction.GetDisplayName()} Balance: {game.GetRefinedMaterials(faction)}"
+        );
+
+        UpdateOfficers(faction, provider);
         UpdateBuildings(faction);
-        UpdateShipyards(faction);
-        UpdateTrainingFacilities(faction);
+        UpdateShipProduction(faction);
+        UpdateTroopTraining(faction);
     }
 
     /// <summary>
     /// Manages officer assignments for missions.
     /// </summary>
-    /// <param name="faction">The faction to update officer assignments for.</param>
-    private void UpdateOfficers(Faction faction)
+    /// <param name="provider">Random number provider for mission initiation.</param>
+    private void UpdateOfficers(Faction faction, IRandomNumberProvider provider)
     {
         List<Officer> availableOfficers = faction.GetAvailableOfficers(faction);
 
@@ -63,14 +76,14 @@ public class AIManager
 
             if (officer.IsMain && game.GetUnrecruitedOfficers(faction.InstanceID).Any())
             {
-                InitiateRecruitmentMission(officer, faction);
+                InitiateRecruitmentMission(officer, faction, provider);
             }
             else if (
                 officer.IsMain
                 || officer.GetSkillValue(MissionParticipantSkill.Diplomacy) > 60
             )
             {
-                InitiateDiplomacyMission(officer);
+                InitiateDiplomacyMission(officer, provider);
             }
         }
     }
@@ -78,87 +91,126 @@ public class AIManager
     /// <summary>
     /// Initiates a recruitment mission for the given officer.
     /// </summary>
-    /// <param name="officer">The officer to send on the recruitment mission.</param>
-    /// <param name="faction">The faction the officer belongs to.</param>
-    private void InitiateRecruitmentMission(Officer officer, Faction faction)
+    /// <param name="provider">Random number provider for mission duration.</param>
+    private void InitiateRecruitmentMission(
+        Officer officer,
+        Faction faction,
+        IRandomNumberProvider provider
+    )
     {
-        Planet nearestFriendlyPlanet = faction.GetNearestPlanetTo(officer);
+        Planet targetPlanet = faction.GetNearestPlanetTo(officer);
         GameLogger.Log(
-            $"Sending {officer.GetDisplayName()} on a recruitment mission to {nearestFriendlyPlanet.GetDisplayName()}."
+            $"Sending {officer.GetDisplayName()} on a recruitment mission to {targetPlanet.GetDisplayName()}."
         );
-        missionManager.InitiateMission(MissionType.Recruitment, officer, nearestFriendlyPlanet);
+        missionManager.InitiateMission(MissionType.Recruitment, officer, targetPlanet, provider);
     }
 
     /// <summary>
     /// Initiates a diplomacy mission for the given officer.
     /// </summary>
-    /// <param name="officer">The officer to send on the diplomacy mission.</param>
-    private void InitiateDiplomacyMission(Officer officer)
+    /// <param name="provider">Random number provider for mission duration.</param>
+    private void InitiateDiplomacyMission(Officer officer, IRandomNumberProvider provider)
     {
-        Planet nearestUnownedPlanet =
-            officer
-                .GetParentOfType<PlanetSystem>()
-                .GetChildrenByOwnerInstanceID(null)
-                .FirstOrDefault() as Planet;
-
-        if (nearestUnownedPlanet != null)
+        Planet targetPlanet = FindNearestUnownedPlanet(officer);
+        if (targetPlanet != null)
         {
             GameLogger.Log(
-                $"Sending {officer.GetDisplayName()} on a diplomacy mission to {nearestUnownedPlanet.GetDisplayName()}."
+                $"Sending {officer.GetDisplayName()} on a diplomacy mission to {targetPlanet.GetDisplayName()}."
             );
-            missionManager.InitiateMission(MissionType.Diplomacy, officer, nearestUnownedPlanet);
+            missionManager.InitiateMission(MissionType.Diplomacy, officer, targetPlanet, provider);
         }
+    }
+
+    /// <summary>
+    /// Finds the nearest unowned planet for diplomacy missions.
+    /// </summary>
+    private Planet FindNearestUnownedPlanet(Officer officer)
+    {
+        return officer
+                .GetParentOfType<PlanetSystem>()
+                .GetChildren<Planet>(node =>
+                    node is Planet planet
+                    && planet.GetOwnerInstanceID() == null
+                    && planet.IsColonized
+                )
+                .FirstOrDefault() as Planet;
     }
 
     /// <summary>
     /// Manages construction of buildings.
     /// </summary>
-    /// <param name="faction">The faction to update building construction for.</param>
     private void UpdateBuildings(Faction faction)
     {
-        List<Planet> idleConstructionFacilities = faction.GetIdleFacilities(
-            ManufacturingType.Building
+        Queue<Planet> idleConstructionYards = new Queue<Planet>(
+            faction.GetIdleFacilities(ManufacturingType.Building)
         );
-        if (!idleConstructionFacilities.Any())
+
+        if (!idleConstructionYards.Any())
             return;
 
-        Technology constructionYardTech = GetHighestTierTechnology(
+        BuildStructures(idleConstructionYards, faction, BuildingType.Mine);
+        BuildStructures(idleConstructionYards, faction, BuildingType.Refinery);
+        BuildStructures(idleConstructionYards, faction, BuildingType.ConstructionFacility);
+        BuildStructures(idleConstructionYards, faction, BuildingType.Shipyard);
+        BuildStructures(idleConstructionYards, faction, BuildingType.TrainingFacility);
+    }
+
+    /// <summary>
+    /// Builds structures of a specific type for the faction.
+    /// </summary>
+    private void BuildStructures(
+        Queue<Planet> idleConstructionYards,
+        Faction faction,
+        BuildingType buildingType
+    )
+    {
+        Technology buildingTech = GetHighestTierTechnology(
             faction,
             ManufacturingType.Building,
-            BuildingType.ConstructionFacility
+            buildingType
         );
+        IManufacturable manufacturable = buildingTech.GetReference();
 
-        foreach (Planet planet in idleConstructionFacilities)
+        if (
+            game.GetRefinedMaterials(faction) < manufacturable.GetConstructionCost()
+            || !idleConstructionYards.Any()
+        )
+            return;
+
+        if (manufacturable is Building building)
         {
-            if (ShouldBuildConstructionFacility(planet, constructionYardTech))
+            Planet targetPlanet = GetBestPlanetForBuilding(
+                idleConstructionYards.Peek(),
+                faction,
+                building
+            );
+            if (targetPlanet != null)
             {
-                planetManager.AddToManufacturingQueue(planet, planet, constructionYardTech, 1);
+                Planet sourcePlanet = idleConstructionYards.Dequeue();
+
+                // Create building from technology template
+                IManufacturable item = buildingTech.GetReferenceCopy();
+                item.SetOwnerInstanceID(faction.GetInstanceID());
+
+                // Set destination for movement after completion
+                if (item is IMovable movable)
+                {
+                    movable.Movement.DestinationInstanceID = targetPlanet.GetInstanceID();
+                }
+
+                // Enqueue on source planet (AI bypasses cost check)
+                manufacturingManager.Enqueue(sourcePlanet, item, ignoreCost: true);
             }
         }
     }
 
     /// <summary>
-    /// Determines if a construction facility should be built on the given planet.
-    /// </summary>
-    /// <param name="planet">The planet to check.</param>
-    /// <param name="constructionYardTech">The construction yard technology to use.</param>
-    /// <returns>True if a construction facility should be built, false otherwise.</returns>
-    private bool ShouldBuildConstructionFacility(Planet planet, Technology constructionYardTech)
-    {
-        if (constructionYardTech?.GetReference() is not Building building)
-            return false;
-
-        return planet.GetAvailableSlots(building.GetBuildingSlot()) > 0
-            && planet.GetBuildingTypeCount(BuildingType.ConstructionFacility) < 5;
-    }
-
-    /// <summary>
     /// Manages production of ships.
     /// </summary>
-    /// <param name="faction">The faction to update ship production for.</param>
-    private void UpdateShipyards(Faction faction)
+    private void UpdateShipProduction(Faction faction)
     {
         List<Planet> idleShipyards = faction.GetIdleFacilities(ManufacturingType.Ship);
+
         if (!idleShipyards.Any())
             return;
 
@@ -167,42 +219,62 @@ public class AIManager
             ManufacturingType.Ship,
             typeof(Starfighter)
         );
+        IManufacturable manufacturable = starfighterTech.GetReference();
 
-        foreach (Planet planet in idleShipyards)
+        if (game.GetRefinedMaterials(faction) <= manufacturable.GetConstructionCost())
+            return;
+
+        foreach (Planet shipyard in idleShipyards)
         {
-            AssignStarfightersToFleets(faction, planet, starfighterTech);
+            AssignStarfightersToFleets(faction, shipyard, starfighterTech);
         }
     }
 
     /// <summary>
     /// Assigns starfighters to fleets with available capacity.
     /// </summary>
-    /// <param name="faction">The faction to assign starfighters for.</param>
-    /// <param name="planet">The planet with the idle shipyard.</param>
-    /// <param name="starfighterTech">The starfighter technology to use.</param>
     private void AssignStarfightersToFleets(
         Faction faction,
-        Planet planet,
+        Planet shipyard,
         Technology starfighterTech
     )
     {
-        List<Fleet> fleets = faction
+        IEnumerable<Fleet> fleetsWithCapacity = faction
             .GetOwnedUnitsByType<Fleet>()
-            .OrderBy(fleet => fleet.GetExcessStarfighterCapacity())
             .Where(fleet => fleet.GetExcessStarfighterCapacity() > 0)
-            .ToList();
+            .OrderBy(fleet => fleet.GetExcessStarfighterCapacity());
 
-        foreach (Fleet fleet in fleets)
+        foreach (Fleet fleet in fleetsWithCapacity)
         {
-            planetManager.AddToManufacturingQueue(planet, fleet, starfighterTech, 1);
+            if (
+                game.GetRefinedMaterials(faction)
+                > starfighterTech.GetReference().GetConstructionCost()
+            )
+            {
+                // Create starfighter from technology template
+                IManufacturable item = starfighterTech.GetReferenceCopy();
+                item.SetOwnerInstanceID(faction.GetInstanceID());
+
+                // Set destination for movement after completion
+                if (item is IMovable movable)
+                {
+                    movable.Movement.DestinationInstanceID = fleet.GetInstanceID();
+                }
+
+                // Enqueue on shipyard planet (AI bypasses cost check)
+                manufacturingManager.Enqueue(shipyard, item, ignoreCost: true);
+            }
+            else
+            {
+                break; // Stop if we can't afford more starfighters
+            }
         }
     }
 
     /// <summary>
     /// Manages training of troops.
     /// </summary>
-    /// <param name="faction">The faction to update troop training for.</param>
-    private void UpdateTrainingFacilities(Faction faction)
+    private void UpdateTroopTraining(Faction faction)
     {
         List<Planet> idleTrainingFacilities = faction.GetIdleFacilities(ManufacturingType.Troop);
         if (!idleTrainingFacilities.Any())
@@ -213,44 +285,133 @@ public class AIManager
             ManufacturingType.Troop,
             typeof(Regiment)
         );
+        IManufacturable manufacturable = regimentTech.GetReference();
 
-        foreach (Planet planet in idleTrainingFacilities)
+        if (game.GetRefinedMaterials(faction) <= manufacturable.GetConstructionCost())
+            return;
+
+        foreach (Planet trainingFacility in idleTrainingFacilities)
         {
-            AssignRegimentsToFleets(faction, planet, regimentTech);
+            AssignRegimentsToFleets(faction, trainingFacility, regimentTech);
         }
     }
 
     /// <summary>
     /// Assigns regiments to fleets with available capacity.
     /// </summary>
-    /// <param name="faction">The faction to assign regiments for.</param>
-    /// <param name="planet">The planet with the idle training facility.</param>
-    /// <param name="regimentTech">The regiment technology to use.</param>
-    private void AssignRegimentsToFleets(Faction faction, Planet planet, Technology regimentTech)
+    private void AssignRegimentsToFleets(
+        Faction faction,
+        Planet trainingFacility,
+        Technology regimentTech
+    )
     {
-        List<Fleet> fleets = faction
+        IEnumerable<Fleet> fleetsWithCapacity = faction
             .GetOwnedUnitsByType<Fleet>()
-            .OrderBy(fleet => fleet.GetExcessRegimentCapacity())
             .Where(fleet => fleet.GetExcessRegimentCapacity() > 0)
-            .ToList();
+            .OrderBy(fleet => fleet.GetExcessRegimentCapacity());
 
-        foreach (Fleet fleet in fleets)
+        foreach (Fleet fleet in fleetsWithCapacity)
         {
-            planetManager.AddToManufacturingQueue(planet, fleet, regimentTech, 1);
+            if (
+                game.GetRefinedMaterials(faction)
+                > regimentTech.GetReference().GetConstructionCost()
+            )
+            {
+                // Create regiment from technology template
+                IManufacturable item = regimentTech.GetReferenceCopy();
+                item.SetOwnerInstanceID(faction.GetInstanceID());
+
+                // Set destination for movement after completion
+                if (item is IMovable movable)
+                {
+                    movable.Movement.DestinationInstanceID = fleet.GetInstanceID();
+                }
+
+                // Enqueue on training facility planet (AI bypasses cost check)
+                manufacturingManager.Enqueue(trainingFacility, item, ignoreCost: true);
+            }
+            else
+            {
+                break; // Stop if we can't afford more regiments
+            }
         }
+    }
+
+    /// <summary>
+    /// Finds the best planet for constructing the given building.
+    /// </summary>
+    private Planet GetBestPlanetForBuilding(Planet source, Faction faction, Building building)
+    {
+        BuildingType buildingType = building.GetBuildingType();
+        BuildingSlot buildingSlot = building.GetBuildingSlot();
+
+        return faction
+            .GetOwnedUnitsByType<Planet>()
+            .Where(planet => planet.GetBuildingSlotCapacity(buildingSlot) > 0)
+            .OrderBy(planet => CalculateBuildingPriority(planet, buildingType))
+            .ThenByDescending(planet => planet.GetBuildingSlotCapacity(buildingSlot))
+            .ThenBy(planet => source.GetRawDistanceTo(planet))
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Calculates the priority score for building placement.
+    /// </summary>
+    private int CalculateBuildingPriority(Planet planet, BuildingType buildingType)
+    {
+        switch (buildingType)
+        {
+            case BuildingType.Mine:
+                return CalculateMinePriority(planet);
+            case BuildingType.Defense:
+                return planet.GetBuildingTypeCount(BuildingType.Defense);
+            case BuildingType.Refinery:
+                return CalculateRefineryPriority(planet);
+            case BuildingType.Shipyard:
+            case BuildingType.TrainingFacility:
+            case BuildingType.ConstructionFacility:
+                return CalculateFacilityPriority(planet, buildingType);
+            default:
+                return 0;
+        }
+    }
+
+    private int CalculateMinePriority(Planet planet)
+    {
+        return planet.GetBuildingTypeCount(BuildingType.TrainingFacility)
+            + planet.GetBuildingTypeCount(BuildingType.ConstructionFacility)
+            + planet.GetBuildingTypeCount(BuildingType.Shipyard);
+    }
+
+    private int CalculateRefineryPriority(Planet planet)
+    {
+        int rawResourceNodeCount = planet.GetRawResourceNodes();
+        int manufacturingFacilityScore = CalculateMinePriority(planet);
+        return rawResourceNodeCount * 1000 + manufacturingFacilityScore;
+    }
+
+    private int CalculateFacilityPriority(Planet planet, BuildingType facilityType)
+    {
+        int sameFacilityCount = planet.GetBuildingTypeCount(facilityType);
+        int otherFacilityCount = new[]
+        {
+            BuildingType.Shipyard,
+            BuildingType.TrainingFacility,
+            BuildingType.ConstructionFacility,
+        }
+            .Where(type => type != facilityType)
+            .Sum(type => planet.GetBuildingTypeCount(type));
+
+        return otherFacilityCount * 1000 - sameFacilityCount;
     }
 
     /// <summary>
     /// Retrieves the highest-tier technology for the given manufacturing type and reference type.
     /// </summary>
-    /// <param name="faction">The faction to get the technology for.</param>
-    /// <param name="manufacturingType">The manufacturing type to filter by.</param>
-    /// <param name="referenceType">The type of the technology reference to filter by.</param>
-    /// <returns>The highest-tier technology matching the criteria, or null if not found.</returns>
     private Technology GetHighestTierTechnology(
         Faction faction,
         ManufacturingType manufacturingType,
-        System.Type referenceType
+        Type referenceType
     )
     {
         return faction
@@ -262,10 +423,6 @@ public class AIManager
     /// <summary>
     /// Retrieves the highest-tier technology for the given manufacturing type and building type.
     /// </summary>
-    /// <param name="faction">The faction to get the technology for.</param>
-    /// <param name="manufacturingType">The manufacturing type to filter by.</param>
-    /// <param name="buildingType">The building type to filter by.</param>
-    /// <returns>The highest-tier technology matching the criteria, or null if not found.</returns>
     private Technology GetHighestTierTechnology(
         Faction faction,
         ManufacturingType manufacturingType,

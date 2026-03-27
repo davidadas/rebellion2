@@ -1,60 +1,87 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
+using Rebellion.Core.Simulation;
+using Rebellion.Game;
 using UnityEngine;
 
-/// <summary>
-/// Responsible for generating and deploying planet systems to the scene graph.
-/// </summary>
-public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
+namespace Rebellion.Generation
 {
     /// <summary>
-    /// Default constructor, constructs a PlanetSystemGenerator object.
+    /// Responsible for generating and configuring planet systems.
+    /// Applies galaxy size filtering, resource allocation, and colonization
+    /// rules based on GameSummary and strongly-typed GameGenerationRules.
     /// </summary>
-    /// <param name="summary">The GameSummary options selected by the player.</param>
-    /// <param name="resourceManager">The resource manager from which to load game data.</param>
-    public PlanetSystemGenerator(GameSummary summary, IResourceManager resourceManager)
-        : base(summary, resourceManager) { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="parentSystem"></param>
-    /// <param name="planet"></param>
-    private void SetResources(PlanetSystem parentSystem, Planet planet)
+    public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
     {
-        string resourceAvailability = GetGameSummary().ResourceAvailability.ToString();
-        IConfig planetConfig = GetConfig()
-            .GetValue<IConfig>($"Planets.ResourceAvailability.{resourceAvailability}");
-        string systemType = parentSystem.SystemType.ToString();
+        /// <summary>
+        /// Constructs a PlanetSystemGenerator.
+        /// </summary>
+        /// <param name="summary">The GameSummary options selected by the player.</param>
+        /// <param name="resourceManager">The resource manager used to load game data and configuration.</param>
+        /// <param name="randomProvider">Random number provider for deterministic generation.</param>
+        public PlanetSystemGenerator(
+            GameSummary summary,
+            IResourceManager resourceManager,
+            IRandomNumberProvider randomProvider
+        )
+            : base(summary, resourceManager, randomProvider) { }
 
-        var (groundSlotRange, orbitSlotRange, resourceRange) = (
-            planetConfig.GetValue<int[]>($"{systemType}.GroundSlotRange"),
-            planetConfig.GetValue<int[]>($"{systemType}.OrbitSlotRange"),
-            planetConfig.GetValue<int[]>($"{systemType}.ResourceRange")
-        );
-
-        planet.OrbitSlots = Random.Range(orbitSlotRange[0], orbitSlotRange[1]);
-        planet.GroundSlots = Random.Range(groundSlotRange[0], groundSlotRange[1]);
-        planet.NumResourceNodes = Random.Range(resourceRange[0], resourceRange[1]);
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="parentsystem"></param>
-    /// <param name="planet"></param>
-    private void SetColonizationStatus(PlanetSystem parentsystem, Planet planet)
-    {
-        double colonizationRate = GetConfig().GetValue<double>("Planets.InitialColonizationRate");
-        if (parentsystem.SystemType == PlanetSystemType.CoreSystem)
+        /// <summary>
+        /// Assigns resource slots and raw resource nodes to a planet
+        /// using the selected GameResourceAvailability setting.
+        /// </summary>
+        /// <param name="parentSystem">The parent planet system.</param>
+        /// <param name="planet">The planet being configured.</param>
+        private void SetResources(PlanetSystem parentSystem, Planet planet)
         {
-            planet.IsColonized = true;
+            GameGenerationRules rules = GetRules();
+
+            ResourceAvailabilityProfile availabilityProfile = rules.Planets.ResourceAvailability;
+
+            ResourceSystemProfile selectedProfile = GetGameSummary().ResourceAvailability switch
+            {
+                GameResourceAvailability.Limited => availabilityProfile.Limited,
+                GameResourceAvailability.Normal => availabilityProfile.Normal,
+                GameResourceAvailability.Abundant => availabilityProfile.Abundant,
+                _ => throw new System.Exception("Invalid resource availability."),
+            };
+
+            ResourceRanges ranges =
+                parentSystem.SystemType == PlanetSystemType.CoreSystem
+                    ? selectedProfile.CoreSystem
+                    : selectedProfile.OuterRim;
+
+            planet.OrbitSlots = Random.Range(ranges.OrbitSlotRange.Min, ranges.OrbitSlotRange.Max);
+
+            planet.GroundSlots = Random.Range(
+                ranges.GroundSlotRange.Min,
+                ranges.GroundSlotRange.Max
+            );
+
+            planet.NumRawResourceNodes = Random.Range(
+                ranges.ResourceRange.Min,
+                ranges.ResourceRange.Max
+            );
         }
-        else
+
+        /// <summary>
+        /// Determines the initial colonization state of a planet.
+        /// Core systems are always colonized.
+        /// Outer systems use the configured initial colonization probability,
+        /// unless overridden directly by planet data.
+        /// </summary>
+        /// <param name="parentSystem">The parent planet system.</param>
+        /// <param name="planet">The planet being evaluated.</param>
+        private void SetColonizationStatus(PlanetSystem parentSystem, Planet planet)
         {
-            // Allow this to be overridden from planet data.
-            // For example, OuterRim Bespin is always colonized.
+            GameGenerationRules rules = GetRules();
+            double colonizationRate = rules.Planets.InitialColonizationRate;
+
+            if (parentSystem.SystemType == PlanetSystemType.CoreSystem)
+            {
+                planet.IsColonized = true;
+                return;
+            }
+
             if (!planet.IsColonized)
             {
                 if (Random.value < colonizationRate)
@@ -63,62 +90,112 @@ public class PlanetSystemGenerator : UnitGenerator<PlanetSystem>
                 }
             }
         }
-    }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
-    public override PlanetSystem[] SelectUnits(PlanetSystem[] units)
-    {
-        int galaxySize = (int)GetGameSummary().GalaxySize;
-        List<PlanetSystem> galaxyMap = new List<PlanetSystem>();
-
-        // Select planet systems with visibility greater than or equal to the galaxy size.
-        foreach (PlanetSystem planetSystem in units)
+        /// <summary>
+        /// Initializes equal popular support for all player factions.
+        /// Ensures total support equals 100.
+        /// </summary>
+        private void SetPopularSupport(Planet planet)
         {
-            int visibilityValue = (int)planetSystem.Visibility;
+            string[] factionIds = GetGameSummary().StartingFactionIDs;
 
-            // Add the planet system to the galaxy map if it is visible.
-            if (visibilityValue <= galaxySize)
+            if (factionIds == null || factionIds.Length == 0)
+                return;
+
+            planet.PopularSupport.Clear();
+
+            int factionCount = factionIds.Length;
+
+            int baseShare = 100 / factionCount;
+            int remainder = 100 % factionCount;
+
+            for (int i = 0; i < factionCount; i++)
             {
-                galaxyMap.Add(planetSystem);
+                int value = baseShare;
+
+                // Deterministically distribute remainder to first factions
+                if (i < remainder)
+                    value += 1;
+
+                planet.PopularSupport[factionIds[i]] = value;
             }
         }
 
-        return galaxyMap.ToArray();
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
-    public override PlanetSystem[] DecorateUnits(PlanetSystem[] units)
-    {
-        IConfig planetConfig = GetConfig().GetValue<IConfig>("Planets.ResourceAvailability");
-
-        foreach (PlanetSystem planetSystem in units)
+        /// <summary>
+        /// Sets the initial visitor status for a planet.
+        /// Core systems have all starting factions as visitors.
+        /// </summary>
+        /// <param name="system">The planet system containing the planet.</param>
+        /// <param name="planet">The planet to set visitor status for.</param>
+        private void SetVisitorStatus(PlanetSystem system, Planet planet)
         {
-            foreach (Planet planet in planetSystem.Planets)
+            if (system.GetSystemType() == PlanetSystemType.CoreSystem)
             {
-                SetResources(planetSystem, planet);
-                SetColonizationStatus(planetSystem, planet);
+                string[] factionIds = GetGameSummary().StartingFactionIDs;
+                foreach (string factionId in factionIds)
+                {
+                    planet.AddVisitor(factionId);
+                }
             }
         }
 
-        return units;
-    }
+        /// <summary>
+        /// Filters planet systems based on the selected galaxy size.
+        /// Systems whose visibility exceeds the selected size are excluded.
+        /// </summary>
+        /// <param name="units">All available planet systems.</param>
+        /// <returns>The filtered set of planet systems included in the game.</returns>
+        public override PlanetSystem[] SelectUnits(PlanetSystem[] units)
+        {
+            int galaxySize = (int)GetGameSummary().GalaxySize;
+            List<PlanetSystem> galaxyMap = new List<PlanetSystem>();
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="units"></param>
-    /// <returns></returns>
-    public override PlanetSystem[] DeployUnits(PlanetSystem[] units, PlanetSystem[] destinations)
-    {
-        // No op.
-        return units;
+            foreach (PlanetSystem system in units)
+            {
+                if ((int)system.Visibility <= galaxySize)
+                {
+                    galaxyMap.Add(system);
+                }
+            }
+
+            return galaxyMap.ToArray();
+        }
+
+        /// <summary>
+        /// Applies runtime configuration to selected planet systems,
+        /// including resource slot generation and colonization state.
+        /// </summary>
+        /// <param name="units">The selected planet systems.</param>
+        /// <returns>The decorated planet systems.</returns>
+        public override PlanetSystem[] DecorateUnits(PlanetSystem[] units)
+        {
+            foreach (PlanetSystem system in units)
+            {
+                foreach (Planet planet in system.Planets)
+                {
+                    SetResources(system, planet);
+                    SetColonizationStatus(system, planet);
+                    SetPopularSupport(planet);
+                    SetVisitorStatus(system, planet);
+                }
+            }
+
+            return units;
+        }
+
+        /// <summary>
+        /// Planet systems do not require deployment into other nodes.
+        /// They already exist at the galaxy root.
+        /// </summary>
+        /// <param name="units">The configured planet systems.</param>
+        /// <param name="destinations">Unused.</param>
+        /// <returns>The unchanged planet systems.</returns>
+        public override PlanetSystem[] DeployUnits(
+            PlanetSystem[] units,
+            PlanetSystem[] destinations = default
+        )
+        {
+            return units;
+        }
     }
 }

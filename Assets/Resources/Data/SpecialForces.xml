@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<SpecialForces>
+  <SpecialForce>
+    <TypeID>OFAL021</TypeID>
+    <InstanceID>PAGE</InstanceID>
+    <DisplayName>Page</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_page</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>7</ConstructionCost>
+    <MaintenanceCost>5</MaintenanceCost>
+    <Skills>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Skills>
+    <Loyalty>100</Loyalty>
+    <DiplomacyVariance>30</DiplomacyVariance>
+    <EspionageVariance>20</EspionageVariance>
+    <CombatVariance>30</CombatVariance>
+    <LeadershipVariance>20</LeadershipVariance>
+    <LoyaltyVariance>0</LoyaltyVariance>
+    <CanBetray>false</CanBetray>
+    <IsTraitor>false</IsTraitor>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </SpecialForce>
+</SpecialForces>

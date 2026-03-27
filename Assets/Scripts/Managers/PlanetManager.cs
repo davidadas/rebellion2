@@ -1,20 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ObjectExtensions;
+using Rebellion.Game;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Manages updates to planets, including uprising status and manufacturing progress.
 /// </summary>
 public class PlanetManager
 {
-    private Game game;
+    private GameRoot game;
 
     /// <summary>
     /// Initializes a new instance of the PlanetManager with the specified game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
-    public PlanetManager(Game game)
+    public PlanetManager(GameRoot game)
     {
         this.game = game;
     }
@@ -32,26 +35,38 @@ public class PlanetManager
     /// <summary>
     /// Adds items to the manufacturing queue of a planet.
     /// </summary>
-    /// <param name="planet">The planet where manufacturing will occur.</param>
+    /// <param name="owner">The faction who will manufacture the provided unit.</param>
+    /// <param name="source">The planet where manufacturing will occur.</param>
     /// <param name="target">The target scene node where the manufactured item will be delivered.</param>
     /// <param name="technology">The technology to be manufactured.</param>
     /// <param name="quantity">The number of items to add to the queue.</param>
     public void AddToManufacturingQueue(
-        Planet planet,
+        Faction owner,
+        Planet source,
         ISceneNode target,
         Technology technology,
-        int quantity
+        int quantity = 1
     )
     {
+        IManufacturable manufacturable = technology.GetReference();
+        int totalCosts = manufacturable.GetConstructionCost() * quantity;
+
+        if (totalCosts > game.GetRefinedMaterials(owner))
+        {
+            throw new InvalidSceneOperationException(
+                $"Faction {owner.GetDisplayName()} does not have sufficient funds to craft {manufacturable.GetDisplayName()}"
+            );
+        }
+
         for (int i = 0; i < quantity; i++)
         {
             IManufacturable clonedNode = technology.GetReferenceCopy();
-            clonedNode.SetOwnerInstanceID(planet.GetOwnerInstanceID());
+            clonedNode.SetOwnerInstanceID(owner.GetInstanceID());
             GameLogger.Log(
-                $"{planet.GetDisplayName()} adding {quantity} {clonedNode.GetDisplayName()}(s) to manufacturing queue on {planet.GetDisplayName()}"
+                $"{source.GetDisplayName()} adding {quantity} {clonedNode.GetDisplayName()}(s) to manufacturing queue on {source.GetDisplayName()}"
             );
             game.AttachNode(clonedNode, target);
-            planet.AddToManufacturingQueue(clonedNode);
+            source.AddToManufacturingQueue(clonedNode);
         }
     }
 
@@ -140,9 +155,13 @@ public class PlanetManager
         manufacturable.SetManufacturingStatus(ManufacturingStatus.Complete);
 
         // Send completed item to target.
+        // NOTE: This is incorrect - movement should be initiated by MovementManager.
+        // This code path is obsolete (PlanetManager no longer used).
         if (manufacturable is IMovable movable)
         {
-            movable.SetMovementStatus(MovementStatus.InTransit);
+            // Would need MovementManager.RequestMove() here for proper lifecycle
+            // Placeholder: just mark as null for now
+            movable.Movement = null;
         }
     }
 

@@ -3,9 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Rebellion.Util.Attributes;
+using Rebellion.Util.Common;
 
-namespace ObjectExtensions
+namespace Rebellion.Util.Extensions
 {
+    public enum CloneMode
+    {
+        Normal,
+        Full,
+    }
+
     /// <summary>
     /// Provides extension methods for creating shallow and deep copies of objects,
     /// while respecting custom attributes such as CloneIgnore.
@@ -17,8 +25,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <typeparam name="T">The type of the object to be copied.</typeparam>
         /// <param name="source">The source object to be copied.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>A deep copy of the source object.</returns>
-        public static T GetDeepCopy<T>(this T source)
+        public static T GetDeepCopy<T>(this T source, CloneMode mode = CloneMode.Normal)
             where T : class
         {
             if (source == null)
@@ -26,7 +35,7 @@ namespace ObjectExtensions
                 return null;
             }
 
-            return (T)CopyValue(source, shallow: false);
+            return (T)CopyValue(source, shallow: false, mode);
         }
 
         /// <summary>
@@ -34,8 +43,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <typeparam name="T">The type of the object to be copied.</typeparam>
         /// <param name="source">The source object to be copied.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>A shallow copy of the source object.</returns>
-        public static T GetShallowCopy<T>(this T source)
+        public static T GetShallowCopy<T>(this T source, CloneMode mode = CloneMode.Normal)
             where T : class
         {
             if (source == null)
@@ -43,7 +53,7 @@ namespace ObjectExtensions
                 return null;
             }
 
-            return (T)CopyValue(source, shallow: true);
+            return (T)CopyValue(source, shallow: true, mode);
         }
 
         /// <summary>
@@ -51,8 +61,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <param name="source">The source object to be copied.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied object.</returns>
-        private static object CopyValue(object source, bool shallow)
+        private static object CopyValue(object source, bool shallow, CloneMode mode)
         {
             if (source == null)
             {
@@ -65,25 +76,25 @@ namespace ObjectExtensions
             {
                 if (TypeHelper.IsStruct(type))
                 {
-                    return CopyStruct(source, shallow);
+                    return CopyStruct(source, shallow, mode);
                 }
                 return source;
             }
             if (TypeHelper.IsDictionary(type))
             {
-                return CopyDictionary((IDictionary)source, shallow);
+                return CopyDictionary((IDictionary)source, shallow, mode);
             }
             if (TypeHelper.IsEnumerable(type))
             {
-                return CopyCollection((IEnumerable)source, shallow);
+                return CopyCollection((IEnumerable)source, shallow, mode);
             }
             if (TypeHelper.IsTuple(type))
             {
-                return CopyTuple(source, type, shallow);
+                return CopyTuple(source, type, shallow, mode);
             }
             if (TypeHelper.IsClass(type))
             {
-                return CopyObject(source, shallow);
+                return CopyObject(source, shallow, mode);
             }
 
             throw new ArgumentException($"Type {type} not supported when copying objects.");
@@ -94,8 +105,13 @@ namespace ObjectExtensions
         /// </summary>
         /// <param name="dictionary">The dictionary to be copied.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied dictionary.</returns>
-        private static IDictionary CopyDictionary(IDictionary dictionary, bool shallow)
+        private static IDictionary CopyDictionary(
+            IDictionary dictionary,
+            bool shallow,
+            CloneMode mode
+        )
         {
             if (shallow)
             {
@@ -107,8 +123,8 @@ namespace ObjectExtensions
 
             foreach (DictionaryEntry entry in dictionary)
             {
-                object copiedKey = CopyValue(entry.Key, shallow);
-                object copiedValue = CopyValue(entry.Value, shallow);
+                object copiedKey = CopyValue(entry.Key, shallow, mode);
+                object copiedValue = CopyValue(entry.Value, shallow, mode);
                 result.Add(copiedKey, copiedValue);
             }
 
@@ -120,8 +136,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <param name="collection">The collection to be copied.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied collection.</returns>
-        private static object CopyCollection(IEnumerable collection, bool shallow)
+        private static object CopyCollection(IEnumerable collection, bool shallow, CloneMode mode)
         {
             if (shallow)
             {
@@ -140,7 +157,7 @@ namespace ObjectExtensions
 
                 for (int i = 0; i < sourceArray.Length; i++)
                 {
-                    destinationArray.SetValue(CopyValue(sourceArray.GetValue(i), shallow), i);
+                    destinationArray.SetValue(CopyValue(sourceArray.GetValue(i), shallow, mode), i);
                 }
 
                 return destinationArray;
@@ -152,7 +169,7 @@ namespace ObjectExtensions
 
             foreach (object item in collection)
             {
-                newList.Add(CopyValue(item, shallow));
+                newList.Add(CopyValue(item, shallow, mode));
             }
 
             return newList;
@@ -163,8 +180,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <param name="source">The struct to be copied.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied struct.</returns>
-        private static object CopyStruct(object source, bool shallow)
+        private static object CopyStruct(object source, bool shallow, CloneMode mode)
         {
             Type type = source.GetType();
             object result = Activator.CreateInstance(type);
@@ -176,7 +194,7 @@ namespace ObjectExtensions
             foreach (FieldInfo field in fields)
             {
                 object fieldValue = field.GetValue(source);
-                object copiedValue = shallow ? fieldValue : CopyValue(fieldValue, shallow);
+                object copiedValue = shallow ? fieldValue : CopyValue(fieldValue, shallow, mode);
                 field.SetValue(result, copiedValue);
             }
 
@@ -189,8 +207,9 @@ namespace ObjectExtensions
         /// <param name="source">The tuple to be copied.</param>
         /// <param name="tupleType">The type of the tuple.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied tuple.</returns>
-        private static object CopyTuple(object source, Type tupleType, bool shallow)
+        private static object CopyTuple(object source, Type tupleType, bool shallow, CloneMode mode)
         {
             int tupleLength = tupleType.GetGenericArguments().Length;
             object[] values = new object[tupleLength];
@@ -199,7 +218,7 @@ namespace ObjectExtensions
             {
                 PropertyInfo itemProperty = tupleType.GetProperty($"Item{i + 1}");
                 object itemValue = itemProperty.GetValue(source);
-                values[i] = shallow ? itemValue : CopyValue(itemValue, shallow);
+                values[i] = shallow ? itemValue : CopyValue(itemValue, shallow, mode);
             }
 
             return Activator.CreateInstance(tupleType, values);
@@ -210,8 +229,9 @@ namespace ObjectExtensions
         /// </summary>
         /// <param name="source">The object to be copied.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
+        /// <param name="mode">The mode of cloning to be used.</param>
         /// <returns>The copied object.</returns>
-        private static object CopyObject(object source, bool shallow)
+        private static object CopyObject(object source, bool shallow, CloneMode mode)
         {
             Type type = source.GetType();
 
@@ -226,17 +246,20 @@ namespace ObjectExtensions
 
             foreach (FieldInfo field in GetAllFields(type))
             {
-                if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute)))
+                if (
+                    mode == CloneMode.Normal
+                    && Attribute.IsDefined(field, typeof(CloneIgnoreAttribute))
+                )
                 {
                     SetDefaultFieldValue(result, field);
                     continue;
                 }
 
                 object fieldValue = field.GetValue(source);
-                field.SetValue(result, shallow ? fieldValue : CopyValue(fieldValue, shallow));
+                field.SetValue(result, shallow ? fieldValue : CopyValue(fieldValue, shallow, mode));
             }
 
-            CopyProperties(type, source, result, shallow);
+            CopyProperties(type, source, result, shallow, mode);
 
             return result;
         }
@@ -248,7 +271,14 @@ namespace ObjectExtensions
         /// <param name="source">The source object.</param>
         /// <param name="target">The target object.</param>
         /// <param name="shallow">Whether to perform a shallow copy.</param>
-        private static void CopyProperties(Type type, object source, object target, bool shallow)
+        /// <param name="mode">The mode of cloning to be used.</param>
+        private static void CopyProperties(
+            Type type,
+            object source,
+            object target,
+            bool shallow,
+            CloneMode mode
+        )
         {
             foreach (
                 PropertyInfo property in type.GetProperties(
@@ -261,7 +291,10 @@ namespace ObjectExtensions
                     continue;
                 }
 
-                if (Attribute.IsDefined(property, typeof(CloneIgnoreAttribute)))
+                if (
+                    mode == CloneMode.Normal
+                    && Attribute.IsDefined(property, typeof(CloneIgnoreAttribute))
+                )
                 {
                     object defaultValue = property.PropertyType.IsValueType
                         ? Activator.CreateInstance(property.PropertyType)
@@ -284,7 +317,7 @@ namespace ObjectExtensions
                     object propertyValue = property.GetValue(source, null);
                     property.SetValue(
                         target,
-                        shallow ? propertyValue : CopyValue(propertyValue, shallow),
+                        shallow ? propertyValue : CopyValue(propertyValue, shallow, mode),
                         null
                     );
                 }

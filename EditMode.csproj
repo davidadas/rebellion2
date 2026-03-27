@@ -59,26 +59,44 @@
     <UnityVersion>2022.3.43f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="/Users/dadmsna/.vscode/extensions/visualstudiotoolsforunity.vstuc-1.0.4/Analyzers/Microsoft.Unity.Analyzers.dll" />
+    <Analyzer Include="/Users/davidadams/.vscode/extensions/visualstudiotoolsforunity.vstuc-1.2.1/Analyzers/Microsoft.Unity.Analyzers.dll" />
     <Analyzer Include="/Applications/Unity/Hub/Editor/2022.3.43f1/Unity.app/Contents/Tools/Unity.SourceGenerators/Unity.SourceGenerators.dll" />
     <Analyzer Include="/Applications/Unity/Hub/Editor/2022.3.43f1/Unity.app/Contents/Tools/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Tests/EditMode/Generation/GameBuilderTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/MessageTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/RegimentTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Core/GameConfigTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/GameSummaryTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Util/Extensions/ObjectExtensionsTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Game/CapitalShipTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Util/Extensions/ICollectionExtensionsTests.cs" />
-    <Compile Include="Assets/Tests/EditMode/Events/ConditionalFactoryTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/BuildingTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Game/GameTests.cs" />
-    <Compile Include="Assets/Tests/EditMode/Core/SceneNodeTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/PlanetSystemTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Util/Extensions/IDictionaryExtensionsTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Util/Extensions/IEnumerableExtensionsTests.cs" />
-    <Compile Include="Assets/Tests/EditMode/Core/GameEntityTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/SceneGraph/BaseSceneNodeTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Game/PlanetTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/JediSystemTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/ManufacturingSystemTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/BlockadeSystemTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Managers/SaveGameManagerTests.cs" />
-    <Compile Include="Assets/Tests/EditMode/Missions/MissionTests.cs" />
-    <Compile Include="Assets/Tests/EditMode/Helpers/ServiceLocatorHelper.cs" />
-    <Compile Include="Assets/Tests/EditMode/Managers/GameManagerTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/SceneGraph/LeafNodeTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/StarfighterTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/SpecialForcesTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/UprisingSystemTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/CombatSystemTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Util/Serialization/GameSerializerTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/OfficerTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/FleetTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/SceneGraph/ContainerNodeTests.cs" />
     <Compile Include="Assets/Tests/EditMode/Helpers/SerializationHelper.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/GalaxyMapTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/SceneGraph/BaseGameEntityTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Game/FactionTests.cs" />
+    <Compile Include="Assets/Tests/EditMode/Systems/FogOfWarSystemTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets/Tests/EditMode/EditMode.asmdef" />

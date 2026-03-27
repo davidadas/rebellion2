@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace IDictionaryExtensions
+namespace Rebellion.Util.Extensions
 {
     public static class IDictionaryExtensions
     {

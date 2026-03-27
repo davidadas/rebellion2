@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Factions>
-	<Faction>
-		<InstanceID>FNALL1</InstanceID>
-		<DisplayName>Alliance</DisplayName>
-		<HQInstanceID>YAVIN</HQInstanceID>
-	</Faction>
-	<Faction>
-		<InstanceID>FNEMP1</InstanceID>
-		<DisplayName>Empire</DisplayName>
-		<HQInstanceID>CORUSCANT</HQInstanceID>
-	</Faction>
+  <Faction>
+    <InstanceID>FNALL1</InstanceID>
+    <DisplayName>Alliance</DisplayName>
+    <HQInstanceID>YAVIN</HQInstanceID>
+  </Faction>
+  <Faction>
+    <InstanceID>FNEMP1</InstanceID>
+    <DisplayName>Empire</DisplayName>
+    <HQInstanceID>CORUSCANT</HQInstanceID>
+  </Faction>
 </Factions>
