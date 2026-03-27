@@ -49,7 +49,7 @@ jobs:
       - name: Reset package files
         run: |
           git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
-          rm -rf artifacts
+          sudo rm -rf artifacts || true
 
       # Build the Unity project
       - name: Build project
