@@ -3,24 +3,26 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Generation;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 [TestFixture]
 public class GameBuilderTests
 {
-    private static readonly Lazy<Game[]> LazyGameTestCases = new Lazy<Game[]>(
-        () =>
-            new[]
-            {
-                CreateGame(GameSize.Small, GameDifficulty.Medium, GameVictoryCondition.Conquest),
-                CreateGame(GameSize.Medium, GameDifficulty.Medium, GameVictoryCondition.Conquest),
-                CreateGame(GameSize.Large, GameDifficulty.Medium, GameVictoryCondition.Conquest),
-            }
+    private static readonly Lazy<GameRoot[]> LazyGameTestCases = new Lazy<GameRoot[]>(() =>
+        new[]
+        {
+            CreateGame(GameSize.Small, GameDifficulty.Medium, GameVictoryCondition.Conquest),
+            CreateGame(GameSize.Medium, GameDifficulty.Medium, GameVictoryCondition.Conquest),
+            CreateGame(GameSize.Large, GameDifficulty.Medium, GameVictoryCondition.Conquest),
+        }
     );
 
-    private static Game[] GameTestCases => LazyGameTestCases.Value;
+    private static GameRoot[] GameTestCases => LazyGameTestCases.Value;
 
-    private static Game CreateGame(
+    private static GameRoot CreateGame(
         GameSize size,
         GameDifficulty difficulty,
         GameVictoryCondition victoryCondition
@@ -44,7 +46,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsConsistentOwners(Game game)
+    public void BuildGame_SetsConsistentOwners(GameRoot game)
     {
         // Traverse the galaxy map to find planets.
         game.Galaxy.Traverse(node =>
@@ -70,7 +72,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsChildParentRelationships(Game game)
+    public void BuildGame_SetsChildParentRelationships(GameRoot game)
     {
         game.Galaxy.Traverse(node =>
         {
@@ -89,7 +91,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsGameSummary(Game game)
+    public void BuildGame_SetsGameSummary(GameRoot game)
     {
         Assert.IsNotNull(game, "Game should not be null.");
         Assert.IsNotNull(game.Summary, "Game summary should not be null.");
@@ -120,7 +122,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsFactions(Game game)
+    public void BuildGame_SetsFactions(GameRoot game)
     {
         Assert.IsNotNull(game.Factions, "Factions should not be null.");
 
@@ -129,7 +131,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsFactionTechnologies(Game game)
+    public void BuildGame_SetsFactionTechnologies(GameRoot game)
     {
         foreach (Faction faction in game.Factions)
         {
@@ -168,7 +170,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsHQs(Game game)
+    public void BuildGame_SetsHQs(GameRoot game)
     {
         // Assert that the game's factions and galaxy map are not null.
         Assert.IsNotNull(game.Factions, "Factions should not be null.");
@@ -189,7 +191,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_AssignsFactionsPlanets(Game game)
+    public void BuildGame_AssignsFactionsPlanets(GameRoot game)
     {
         Dictionary<string, List<Planet>> factionPlanets = new Dictionary<string, List<Planet>>();
 
@@ -219,7 +221,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_DeploysOfficers(Game game)
+    public void BuildGame_DeploysOfficers(GameRoot game)
     {
         List<Officer> officers = new List<Officer>();
 
@@ -237,7 +239,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_InitializesOfficers(Game game)
+    public void BuildGame_InitializesOfficers(GameRoot game)
     {
         // Traverse the galaxy map to find officers.
         game.Galaxy.Traverse(node =>
@@ -255,7 +257,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_DeploysFleets(Game game)
+    public void BuildGame_DeploysFleets(GameRoot game)
     {
         Dictionary<string, int> fleetsPerFaction = new Dictionary<string, int>();
 
@@ -287,7 +289,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_DeploysMaxOneFleet(Game game)
+    public void BuildGame_DeploysMaxOneFleet(GameRoot game)
     {
         // Traverse the galaxy map to find planets.
         game.Galaxy.Traverse(node =>
@@ -305,7 +307,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_DeploysCapitalShips(Game game)
+    public void BuildGame_DeploysCapitalShips(GameRoot game)
     {
         // Traverse the galaxy map to find fleets.
         game.Galaxy.Traverse(node =>
@@ -324,7 +326,7 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsGameEvents(Game game)
+    public void BuildGame_SetsGameEvents(GameRoot game)
     {
         // Ensure the game has at least one event in the event pool.
         Assert.GreaterOrEqual(

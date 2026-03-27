@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Core.Configuration;
+using Rebellion.Game;
+using Rebellion.SceneGraph;
 
 [TestFixture]
 public class GameTests
 {
-    private Game game;
+    private GameRoot game;
     private GameSummary summary;
     private Faction faction1;
     private Faction faction2;
@@ -39,7 +42,8 @@ public class GameTests
         fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
         // Initialize the game.
-        game = new Game(summary);
+        GameConfig config = ConfigLoader.LoadGameConfig();
+        game = new GameRoot(summary, config);
         game.Factions.Add(faction1);
         game.Factions.Add(faction2);
     }
@@ -113,7 +117,7 @@ public class GameTests
         );
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units"
         );
@@ -151,7 +155,7 @@ public class GameTests
         );
         Assert.IsFalse(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should not contain planet in owned units"
         );
@@ -289,7 +293,7 @@ public class GameTests
         // Verify registration is successful.
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units after registration"
         );
@@ -305,7 +309,7 @@ public class GameTests
         // Verify deregistration was successful.
         Assert.IsFalse(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should not contain planet in owned units after deregistration"
         );
@@ -425,15 +429,236 @@ public class GameTests
 
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(planet),
             "Faction should contain planet in owned units"
         );
         Assert.IsTrue(
             game.GetFactionByOwnerInstanceID(fleet.OwnerInstanceID)
-                .GetAllOwnedUnits()
+                .GetAllOwnedNodes()
                 .Contains(fleet),
             "Faction should contain fleet in owned units"
         );
+    }
+
+    [Test]
+    public void GetPlayerFaction_ReturnsCorrectFaction()
+    {
+        // Get player faction and verify.
+        Faction playerFaction = game.GetPlayerFaction();
+        Assert.AreEqual(faction1, playerFaction, "Should return the correct player faction");
+        Assert.AreEqual(
+            "FACTION1",
+            playerFaction.InstanceID,
+            "Player faction should have correct ID"
+        );
+    }
+
+    [Test]
+    public void GetPlayerFaction_ThrowsException_WhenSummaryIsNull()
+    {
+        // Create game without summary.
+        GameRoot gameWithoutSummary = new GameRoot();
+
+        // Attempt to get player faction.
+        Assert.Throws<GameException>(
+            () => gameWithoutSummary.GetPlayerFaction(),
+            "Should throw exception when GameSummary is null"
+        );
+    }
+
+    [Test]
+    public void GetPlayerFaction_ThrowsException_WhenPlayerFactionIDIsNull()
+    {
+        // Create game with summary but no player faction ID.
+        GameSummary summaryWithoutPlayer = new GameSummary();
+        GameConfig config = ConfigLoader.LoadGameConfig();
+        GameRoot gameWithoutPlayerID = new GameRoot(summaryWithoutPlayer, config);
+
+        // Attempt to get player faction.
+        Assert.Throws<GameException>(
+            () => gameWithoutPlayerID.GetPlayerFaction(),
+            "Should throw exception when PlayerFactionID is null or empty"
+        );
+    }
+
+    [Test]
+    public void GetPlayerFaction_ThrowsException_WhenPlayerFactionNotFound()
+    {
+        // Create game with invalid player faction ID.
+        GameSummary summaryWithInvalidPlayer = new GameSummary { PlayerFactionID = "NONEXISTENT" };
+        GameConfig config = ConfigLoader.LoadGameConfig();
+        GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
+        gameWithInvalidPlayer.Factions.Add(faction1);
+
+        // Attempt to get player faction.
+        Assert.Throws<GameException>(
+            () => gameWithInvalidPlayer.GetPlayerFaction(),
+            "Should throw exception when player faction does not exist"
+        );
+    }
+
+    [Test]
+    public void SetGameSpeed_SetsSpeedCorrectly()
+    {
+        // Set game speed and verify.
+        game.SetGameSpeed(TickSpeed.Fast);
+        Assert.AreEqual(TickSpeed.Fast, game.GameSpeed, "Game speed should be set to Fast");
+
+        game.SetGameSpeed(TickSpeed.Medium);
+        Assert.AreEqual(TickSpeed.Medium, game.GameSpeed, "Game speed should be set to Medium");
+
+        game.SetGameSpeed(TickSpeed.Slow);
+        Assert.AreEqual(TickSpeed.Slow, game.GameSpeed, "Game speed should be set to Slow");
+
+        game.SetGameSpeed(TickSpeed.Paused);
+        Assert.AreEqual(TickSpeed.Paused, game.GameSpeed, "Game speed should be set to Paused");
+    }
+
+    [Test]
+    public void GetGameSpeed_ReturnsCorrectSpeed()
+    {
+        // Set game speed and verify getter returns correct value.
+        game.SetGameSpeed(TickSpeed.Fast);
+        TickSpeed speed = game.GetGameSpeed();
+        Assert.AreEqual(TickSpeed.Fast, speed, "GetGameSpeed should return Fast");
+
+        game.SetGameSpeed(TickSpeed.Medium);
+        speed = game.GetGameSpeed();
+        Assert.AreEqual(TickSpeed.Medium, speed, "GetGameSpeed should return Medium");
+    }
+
+    [Test]
+    public void GetGameSpeed_ReturnsDefaultSpeed()
+    {
+        // Verify default speed is Paused.
+        TickSpeed speed = game.GetGameSpeed();
+        Assert.AreEqual(TickSpeed.Paused, speed, "Default game speed should be Paused");
+    }
+
+    [Test]
+    public void ChangeUnitOwnership_ChangesOwnerCorrectly()
+    {
+        // Register planet to faction1.
+        game.RegisterOwnedUnit(planet);
+
+        // Verify planet is owned by faction1.
+        Assert.IsTrue(
+            faction1.GetAllOwnedNodes().Contains(planet),
+            "Faction1 should initially own the planet"
+        );
+        Assert.IsFalse(
+            faction2.GetAllOwnedNodes().Contains(planet),
+            "Faction2 should not initially own the planet"
+        );
+
+        // Change ownership to faction2.
+        game.ChangeUnitOwnership(planet, "FACTION2");
+
+        // Verify planet is now owned by faction2.
+        Assert.IsFalse(
+            faction1.GetAllOwnedNodes().Contains(planet),
+            "Faction1 should no longer own the planet"
+        );
+        Assert.IsTrue(
+            faction2.GetAllOwnedNodes().Contains(planet),
+            "Faction2 should now own the planet"
+        );
+    }
+
+    [Test]
+    public void ChangeUnitOwnership_ThrowsException_WhenNewOwnerNotFound()
+    {
+        // Register planet to faction1.
+        game.RegisterOwnedUnit(planet);
+
+        // Attempt to change ownership to non-existent faction.
+        Assert.Throws<SceneNodeNotFoundException>(
+            () => game.ChangeUnitOwnership(planet, "NONEXISTENT"),
+            "Should throw exception when new owner faction does not exist"
+        );
+    }
+
+    [Test]
+    public void GetUnrecruitedOfficers_ReturnsCorrectOfficers()
+    {
+        // Create officers with different allowed owner IDs.
+        Officer officer1 = new Officer
+        {
+            InstanceID = "OFFICER1",
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION1", "FACTION2" },
+        };
+        Officer officer2 = new Officer
+        {
+            InstanceID = "OFFICER2",
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+        };
+        Officer officer3 = new Officer
+        {
+            InstanceID = "OFFICER3",
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION2" },
+        };
+
+        game.UnrecruitedOfficers.Add(officer1);
+        game.UnrecruitedOfficers.Add(officer2);
+        game.UnrecruitedOfficers.Add(officer3);
+
+        // Get unrecruited officers for faction1.
+        List<Officer> faction1Officers = game.GetUnrecruitedOfficers("FACTION1");
+        Assert.AreEqual(2, faction1Officers.Count, "Faction1 should have access to 2 officers");
+        Assert.Contains(officer1, faction1Officers, "Should contain officer1");
+        Assert.Contains(officer2, faction1Officers, "Should contain officer2");
+
+        // Get unrecruited officers for faction2.
+        List<Officer> faction2Officers = game.GetUnrecruitedOfficers("FACTION2");
+        Assert.AreEqual(2, faction2Officers.Count, "Faction2 should have access to 2 officers");
+        Assert.Contains(officer1, faction2Officers, "Should contain officer1");
+        Assert.Contains(officer3, faction2Officers, "Should contain officer3");
+    }
+
+    [Test]
+    public void GetUnrecruitedOfficers_ReturnsEmptyList_WhenNoOfficersAvailable()
+    {
+        // Get unrecruited officers for faction with no available officers.
+        List<Officer> officers = game.GetUnrecruitedOfficers("FACTION1");
+        Assert.IsEmpty(officers, "Should return empty list when no officers are available");
+    }
+
+    [Test]
+    public void RemoveUnrecruitedOfficer_RemovesOfficerCorrectly()
+    {
+        // Create and add officer.
+        Officer officer = new Officer
+        {
+            InstanceID = "OFFICER1",
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+        };
+        game.UnrecruitedOfficers.Add(officer);
+
+        // Verify officer is in the list.
+        Assert.Contains(officer, game.UnrecruitedOfficers, "Officer should be in unrecruited list");
+
+        // Remove officer.
+        game.RemoveUnrecruitedOfficer(officer);
+
+        // Verify officer is removed.
+        Assert.IsFalse(
+            game.UnrecruitedOfficers.Contains(officer),
+            "Officer should be removed from unrecruited list"
+        );
+    }
+
+    [Test]
+    public void RemoveUnrecruitedOfficer_HandlesNonExistentOfficer()
+    {
+        // Create officer that is not in the list.
+        Officer officer = new Officer
+        {
+            InstanceID = "OFFICER1",
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+        };
+
+        // Remove non-existent officer (should not throw exception).
+        Assert.DoesNotThrow(() => game.RemoveUnrecruitedOfficer(officer));
     }
 }

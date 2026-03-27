@@ -4,9 +4,17 @@
 /[Tt]emp/
 /[Uu]ser[Ss]ettings/
 
-# Unity Extensions
+# Unity Files
 *.meta
 Unity_lic.alf
+/temp
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/UIElementsSchema/
+/TestResults**.xml
 
 # Node Files
 package.json
@@ -18,10 +26,18 @@ node_modules
 **/.vscode/
 
 # Misc
-**/*.scratch
-**/dump
-**/.DS_Store
-logfile.log
+
 
 # C# Files
 **/*.sln
+
+# Misc
+*.md
+!README.md
+*.tmp.driveupload*
+**/*.scratch
+**/dump
+**/.DS_Store
+**/*.ini
+*.bak
+logfile.log

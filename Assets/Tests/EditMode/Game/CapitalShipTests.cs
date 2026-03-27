@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.SceneGraph;
 
 [TestFixture]
 public class CapitalShipTests
@@ -15,6 +17,19 @@ public class CapitalShipTests
             StarfighterCapacity = 2,
             RegimentCapacity = 3,
             OwnerInstanceID = "FNALL1",
+            HullStrength = 100,
+            DamageControl = 10,
+            MaxShieldStrength = 50,
+            ShieldRechargeRate = 5,
+            Hyperdrive = 2,
+            SublightSpeed = 15,
+            Maneuverability = 8,
+            WeaponRecharge = 12,
+            Bombardment = 20,
+            TractorBeamPower = 7,
+            TractorBeamnRange = 3,
+            HasGravityWell = false,
+            DetectionRating = 25,
         };
     }
 
@@ -243,5 +258,153 @@ public class CapitalShipTests
             deserialized.Regiments.Count,
             "Regiments should be correctly deserialized."
         );
+    }
+
+    [Test]
+    public void GetStarfighterCapacity_ReturnsCorrectCapacity()
+    {
+        int capacity = capitalShip.GetStarfighterCapacity();
+
+        Assert.AreEqual(2, capacity);
+    }
+
+    [Test]
+    public void GetCurrentStarfighterCount_NoStarfighters_ReturnsZero()
+    {
+        int count = capitalShip.GetCurrentStarfighterCount();
+
+        Assert.AreEqual(0, count);
+    }
+
+    [Test]
+    public void GetCurrentStarfighterCount_WithStarfighters_ReturnsCorrectCount()
+    {
+        capitalShip.AddStarfighter(new Starfighter());
+        capitalShip.AddStarfighter(new Starfighter());
+
+        int count = capitalShip.GetCurrentStarfighterCount();
+
+        Assert.AreEqual(2, count);
+    }
+
+    [Test]
+    public void GetRegimentCapacity_ReturnsCorrectCapacity()
+    {
+        int capacity = capitalShip.GetRegimentCapacity();
+
+        Assert.AreEqual(3, capacity);
+    }
+
+    [Test]
+    public void GetCurrentRegimentCount_NoRegiments_ReturnsZero()
+    {
+        int count = capitalShip.GetCurrentRegimentCount();
+
+        Assert.AreEqual(0, count);
+    }
+
+    [Test]
+    public void GetCurrentRegimentCount_WithRegiments_ReturnsCorrectCount()
+    {
+        capitalShip.AddRegiment(new Regiment());
+        capitalShip.AddRegiment(new Regiment());
+
+        int count = capitalShip.GetCurrentRegimentCount();
+
+        Assert.AreEqual(2, count);
+    }
+
+    [Test]
+    public void PrimaryWeapons_InitializedWithCorrectTypes()
+    {
+        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.Turbolaser));
+        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.IonCannon));
+        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
+    }
+
+    [Test]
+    public void PrimaryWeapons_InitializedWithCorrectArraySizes()
+    {
+        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser].Length);
+        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon].Length);
+        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
+    }
+
+    [Test]
+    public void WeaponRecharge_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(12, capitalShip.WeaponRecharge);
+    }
+
+    [Test]
+    public void Bombardment_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(20, capitalShip.Bombardment);
+    }
+
+    [Test]
+    public void HullStrength_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(100, capitalShip.HullStrength);
+    }
+
+    [Test]
+    public void DamageControl_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(10, capitalShip.DamageControl);
+    }
+
+    [Test]
+    public void MaxShieldStrength_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(50, capitalShip.MaxShieldStrength);
+    }
+
+    [Test]
+    public void ShieldRechargeRate_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(5, capitalShip.ShieldRechargeRate);
+    }
+
+    [Test]
+    public void Hyperdrive_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(2, capitalShip.Hyperdrive);
+    }
+
+    [Test]
+    public void SublightSpeed_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(15, capitalShip.SublightSpeed);
+    }
+
+    [Test]
+    public void Maneuverability_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(8, capitalShip.Maneuverability);
+    }
+
+    [Test]
+    public void TractorBeamPower_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(7, capitalShip.TractorBeamPower);
+    }
+
+    [Test]
+    public void TractorBeamRange_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(3, capitalShip.TractorBeamnRange);
+    }
+
+    [Test]
+    public void HasGravityWell_ReturnsCorrectValue()
+    {
+        Assert.IsFalse(capitalShip.HasGravityWell);
+    }
+
+    [Test]
+    public void DetectionRating_ReturnsCorrectValue()
+    {
+        Assert.AreEqual(25, capitalShip.DetectionRating);
     }
 }

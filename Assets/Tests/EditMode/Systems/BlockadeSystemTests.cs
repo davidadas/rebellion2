@@ -1,0 +1,734 @@
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.SceneGraph;
+using Rebellion.Systems;
+
+namespace Rebellion.Tests.Systems
+{
+    /// <summary>
+    /// Tests for BlockadeSystem.
+    /// Tests transition detection (start/end) and side effects (troop destruction).
+    /// Does NOT test blockade detection logic (that's Planet.IsBlockaded(), tested in PlanetTests).
+    /// </summary>
+    [TestFixture]
+    public class BlockadeSystemTests
+    {
+        // ── Transition Tests ────────────────────────────────────────────────────
+
+        [Test]
+        public void ProcessTick_NewBlockade_DestroysInTransitDefenders()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var inTransitRegiment = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Stormtroopers",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(inTransitRegiment, planet);
+
+            // Verify setup: planet is blockaded, regiment exists and is in transit
+            Assert.IsTrue(planet.IsBlockaded());
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNotNull(inTransitRegiment.Movement);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: in-transit regiment destroyed
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+
+        [Test]
+        public void ProcessTick_NewBlockade_GarrisonedDefendersSurvive()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var garrisonedRegiment = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Garrison",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(garrisonedRegiment, planet);
+
+            // Verify setup: planet is blockaded, regiment exists and is garrisoned
+            Assert.IsTrue(planet.IsBlockaded());
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNull(garrisonedRegiment.Movement);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: garrisoned regiment survives
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+
+        [Test]
+        public void ProcessTick_AlreadyBlockaded_DoesNotTriggerStartAgain()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var regiment1 = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Regiment 1",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var regiment2 = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Regiment 2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(regiment1, planet);
+
+            // First tick: blockade starts, regiment1 destroyed
+            manager.ProcessTick(game);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+
+            // Add second in-transit regiment while blockade is ongoing
+            game.AttachNode(regiment2, planet);
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+
+            // Act: second tick, blockade already active
+            manager.ProcessTick(game);
+
+            // Assert: regiment2 NOT destroyed (no start event fired again)
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeEnds_TriggersEnd()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var defenderFleet = new Fleet
+            {
+                InstanceID = "f2",
+                DisplayName = "Imperial Fleet",
+                OwnerInstanceID = "empire",
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+
+            // First tick: blockade starts
+            Assert.IsTrue(planet.IsBlockaded());
+            manager.ProcessTick(game);
+
+            // Defender arrives
+            game.AttachNode(defenderFleet, planet);
+            Assert.IsFalse(planet.IsBlockaded());
+
+            // Act: blockade ends this tick
+            manager.ProcessTick(game);
+
+            // Assert: No exception, end event fired (logged internally)
+            Assert.IsFalse(planet.IsBlockaded());
+        }
+
+        [Test]
+        public void ProcessTick_NotBlockaded_DoesNotTriggerEndAgain()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var defenderFleet = new Fleet
+            {
+                InstanceID = "f2",
+                DisplayName = "Imperial Fleet",
+                OwnerInstanceID = "empire",
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+
+            // Blockade starts
+            manager.ProcessTick(game);
+            Assert.IsTrue(planet.IsBlockaded());
+
+            // Blockade ends
+            game.AttachNode(defenderFleet, planet);
+            manager.ProcessTick(game);
+            Assert.IsFalse(planet.IsBlockaded());
+
+            // Act: third tick, still not blockaded
+            manager.ProcessTick(game);
+
+            // Assert: No exception, no duplicate end event
+            Assert.IsFalse(planet.IsBlockaded());
+        }
+
+        // ── Troop Destruction ───────────────────────────────────────────────────
+
+        [Test]
+        public void ProcessTick_BlockadeStart_DestroysOnlyInTransitDefendingRegiments()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var empireInTransit = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Stormtroopers",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var allianceInTransit = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Rebel Troops",
+                OwnerInstanceID = "alliance",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(empireInTransit, planet);
+
+            // Manually attach enemy regiment (bypasses owner validation)
+            allianceInTransit.ParentNode = planet;
+            allianceInTransit.ParentInstanceID = planet.InstanceID;
+            planet.Regiments.Add(allianceInTransit);
+            game.AddSceneNodeByInstanceID(allianceInTransit);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: only defending in-transit regiment destroyed
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeStart_DestroysAllInTransitDefendingRegiments()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var regiment1 = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Regiment 1",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var regiment2 = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Regiment 2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var regiment3 = new Regiment
+            {
+                InstanceID = "r3",
+                DisplayName = "Regiment 3",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(regiment1, planet);
+            game.AttachNode(regiment2, planet);
+            game.AttachNode(regiment3, planet);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: all in-transit defending regiments destroyed
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r3"));
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeStart_GarrisonedDefendersSurvive()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var garrisoned1 = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Garrison 1",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+            var garrisoned2 = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Garrison 2",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+            var inTransit = new Regiment
+            {
+                InstanceID = "r3",
+                DisplayName = "In Transit",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(garrisoned1, planet);
+            game.AttachNode(garrisoned2, planet);
+            game.AttachNode(inTransit, planet);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: garrisoned survive, in-transit destroyed
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r3"));
+        }
+
+        // ── Multi-Planet ────────────────────────────────────────────────────────
+
+        [Test]
+        public void ProcessTick_MultiplePlanets_HandledIndependently()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system1 = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var system2 = new PlanetSystem { InstanceID = "s2", DisplayName = "Hoth System" };
+            var planet1 = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var planet2 = new Planet
+            {
+                InstanceID = "p2",
+                DisplayName = "Hoth",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var defenderFleet = new Fleet
+            {
+                InstanceID = "f2",
+                DisplayName = "Imperial Fleet",
+                OwnerInstanceID = "empire",
+            };
+            var regiment1 = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Troops 1",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var regiment2 = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Troops 2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p2",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system1, game.GetGalaxyMap());
+            game.AttachNode(system2, game.GetGalaxyMap());
+            game.AttachNode(planet1, system1);
+            game.AttachNode(planet2, system2);
+            game.AttachNode(hostileFleet, planet1); // Only planet1 blockaded
+            game.AttachNode(defenderFleet, planet2); // Planet2 defended
+            game.AttachNode(regiment1, planet1);
+            game.AttachNode(regiment2, planet2);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: only planet1 in-transit regiment destroyed
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+        }
+
+        [Test]
+        public void ProcessTick_SimultaneousBlockades_AllHandled()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system1 = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var system2 = new PlanetSystem { InstanceID = "s2", DisplayName = "Hoth System" };
+            var planet1 = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var planet2 = new Planet
+            {
+                InstanceID = "p2",
+                DisplayName = "Hoth",
+                OwnerInstanceID = "empire",
+            };
+            var fleet1 = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = "alliance",
+            };
+            var fleet2 = new Fleet
+            {
+                InstanceID = "f2",
+                DisplayName = "Fleet 2",
+                OwnerInstanceID = "alliance",
+            };
+            var regiment1 = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Troops 1",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+            var regiment2 = new Regiment
+            {
+                InstanceID = "r2",
+                DisplayName = "Troops 2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p2",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system1, game.GetGalaxyMap());
+            game.AttachNode(system2, game.GetGalaxyMap());
+            game.AttachNode(planet1, system1);
+            game.AttachNode(planet2, system2);
+            game.AttachNode(fleet1, planet1);
+            game.AttachNode(fleet2, planet2);
+            game.AttachNode(regiment1, planet1);
+            game.AttachNode(regiment2, planet2);
+
+            // Act
+            manager.ProcessTick(game);
+
+            // Assert: both in-transit regiments destroyed
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+        }
+
+        // ── Edge Cases ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void ProcessTick_NullGame_ThrowsException()
+        {
+            var manager = new BlockadeSystem(new GameRoot());
+            Assert.Throws<GameException>(() => manager.ProcessTick(null));
+        }
+
+        [Test]
+        public void ProcessTick_BlockadeEnds_DoesNotRestoreTroops()
+        {
+            // Arrange
+            var game = new GameRoot();
+            var manager = new BlockadeSystem(game);
+
+            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
+            var planet = new Planet
+            {
+                InstanceID = "p1",
+                DisplayName = "Tatooine",
+                OwnerInstanceID = "empire",
+            };
+            var hostileFleet = new Fleet
+            {
+                InstanceID = "f1",
+                DisplayName = "Rebel Fleet",
+                OwnerInstanceID = "alliance",
+            };
+            var defenderFleet = new Fleet
+            {
+                InstanceID = "f2",
+                DisplayName = "Imperial Fleet",
+                OwnerInstanceID = "empire",
+            };
+            var regiment = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Stormtroopers",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState
+                {
+                    DestinationInstanceID = "p1",
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                },
+            };
+
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(regiment, planet);
+
+            // Blockade starts, in-transit regiment destroyed
+            manager.ProcessTick(game);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+
+            // Blockade ends
+            game.AttachNode(defenderFleet, planet);
+            manager.ProcessTick(game);
+
+            // Assert: regiment still destroyed (not restored)
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+    }
+}

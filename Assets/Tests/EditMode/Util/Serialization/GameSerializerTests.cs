@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
+using Rebellion.Util.Attributes;
+using Rebellion.Util.Serialization;
 
 public enum TestEnum
 {

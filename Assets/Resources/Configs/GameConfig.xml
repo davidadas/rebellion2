@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GameConfig.xml - Runtime simulation parameters
+
+  This file contains constants that control simulation behavior.
+  Changes apply to ALL saves (not frozen into save files).
+  Loaded on every game start/load via Resources.Load<TextAsset>("Configs/GameConfig").
+
+  DO NOT put player choices here - those belong in GameSummary.
+  DO NOT put new game setup here - those belong in GameGenerationRules.xml.
+-->
+<GameConfig>
+  <!-- AI System Configuration -->
+  <AI>
+    <!-- Tick interval between AI decision cycles (default: 7) -->
+    <TickInterval>7</TickInterval>
+
+    <!-- Minimum skill required for diplomacy missions (default: 60) -->
+    <DiplomacySkillThreshold>60</DiplomacySkillThreshold>
+
+    <!-- Target popularity cap for diplomacy missions (0.0-1.0, default: 0.8) -->
+    <DiplomacyTargetPopularityCap>0.8</DiplomacyTargetPopularityCap>
+
+    <!-- Minimum skill required for espionage missions (default: 30) -->
+    <EspionageSkillThreshold>30</EspionageSkillThreshold>
+
+    <!-- Minimum success probability for covert missions (0.0-1.0, default: 0.5) -->
+    <CovertMinSuccessProbability>0.5</CovertMinSuccessProbability>
+
+    <!-- Maximum simultaneous attack fronts (default: 3) -->
+    <MaxAttackFronts>3</MaxAttackFronts>
+
+    <!-- Ticks before AI can attack same system again (default: 100) -->
+    <BattleCooldownTicks>100</BattleCooldownTicks>
+
+    <!-- Distance divisor for proximity scoring (default: 100) -->
+    <ProximityDivisor>100</ProximityDivisor>
+
+    <!-- Weight factors for attack target scoring (sum to 1.0) -->
+    <WeightWeakness>0.30</WeightWeakness>
+    <WeightProximity>0.30</WeightProximity>
+    <WeightDeconfliction>0.25</WeightDeconfliction>
+    <WeightFreshness>0.15</WeightFreshness>
+
+    <!-- Popularity threshold for covert ops targeting (0.0-1.0, default: 0.3) -->
+    <CovertTargetPopularityThreshold>0.3</CovertTargetPopularityThreshold>
+  </AI>
+
+  <!-- Movement System Configuration -->
+  <Movement>
+    <!-- Distance scaling factor for transit time calculation (default: 2) -->
+    <DistanceScale>2</DistanceScale>
+
+    <!-- Minimum transit ticks regardless of distance (default: 10) -->
+    <MinTransitTicks>10</MinTransitTicks>
+
+    <!-- Default hyperdrive rating for fighters/troops (default: 60) -->
+    <DefaultFighterHyperdrive>60</DefaultFighterHyperdrive>
+  </Movement>
+
+  <!-- Production System Configuration -->
+  <Production>
+    <!-- Multiplier for raw materials to refined materials (default: 50) -->
+    <RefinementMultiplier>50</RefinementMultiplier>
+  </Production>
+
+  <!-- Planet Mechanics Configuration -->
+  <Planet>
+    <!-- Distance divisor for planet formula calculations (default: 5) -->
+    <DistanceDivisor>5</DistanceDivisor>
+
+    <!-- Base value for distance calculations (default: 100) -->
+    <DistanceBase>100</DistanceBase>
+
+    <!-- Maximum popular support value (default: 100) -->
+    <MaxPopularSupport>100</MaxPopularSupport>
+  </Planet>
+
+  <!-- Victory System Configuration -->
+  <Victory>
+    <!-- Minimum tick before victory conditions can trigger (default: 200) -->
+    <MinVictoryTick>200</MinVictoryTick>
+  </Victory>
+
+  <!-- Jedi / Force Training System Configuration -->
+  <Jedi>
+    <!-- XP required to advance from Aware to Training tier (default: 50) -->
+    <XpToTraining>50</XpToTraining>
+
+    <!-- XP required to advance from Training to Experienced tier (default: 150) -->
+    <XpToExperienced>150</XpToExperienced>
+
+    <!-- Ticks between Jedi detection checks (default: 30) -->
+    <DetectionCheckInterval>30</DetectionCheckInterval>
+
+    <!-- Detection probability per check for Aware tier (0.0-1.0, default: 0.05 = 5%) -->
+    <DetectProbAware>0.05</DetectProbAware>
+
+    <!-- Detection probability per check for Training tier (0.0-1.0, default: 0.15 = 15%) -->
+    <DetectProbTraining>0.15</DetectProbTraining>
+
+    <!-- Detection probability per check for Experienced tier (0.0-1.0, default: 0.30 = 30%) -->
+    <DetectProbExperienced>0.30</DetectProbExperienced>
+  </Jedi>
+
+  <!-- Probability Tables -->
+  <!-- All probability tables live together, grouped by data type not usage -->
+  <ProbabilityTables>
+    <!-- Non-mission probability tables -->
+    <UprisingStart>
+      <Entry>
+        <Key>1</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>6</Key>
+        <Value>1</Value>
+      </Entry>
+      <Entry>
+        <Key>10</Key>
+        <Value>2</Value>
+      </Entry>
+    </UprisingStart>
+
+    <!-- Mission-related probability tables -->
+    <Mission>
+      <Abduction>
+        <Entry>
+          <Key>-100</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>-80</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>-60</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>-40</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>-20</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>95</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Abduction>
+
+      <Assassination>
+        <Entry>
+          <Key>-100</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>-80</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>-60</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>-40</Key>
+          <Value>15</Value>
+        </Entry>
+        <Entry>
+          <Key>-20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>25</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>35</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>45</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>55</Value>
+        </Entry>
+      </Assassination>
+
+      <Diplomacy>
+        <Entry>
+          <Key>-39</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-29</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>-19</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>-9</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>70</Value>
+        </Entry>
+      </Diplomacy>
+
+      <DeathStarSabotage>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </DeathStarSabotage>
+
+      <Espionage>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Espionage>
+
+      <InciteUprising>
+        <Entry>
+          <Key>-20</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-10</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </InciteUprising>
+
+      <Recruitment>
+        <Entry>
+          <Key>0</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>35</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>45</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>55</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>80</Value>
+        </Entry>
+      </Recruitment>
+
+      <Rescue>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Rescue>
+
+      <Sabotage>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Sabotage>
+
+      <SubdueUprising>
+        <Entry>
+          <Key>-20</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-10</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </SubdueUprising>
+    </Mission>
+  </ProbabilityTables>
+</GameConfig>

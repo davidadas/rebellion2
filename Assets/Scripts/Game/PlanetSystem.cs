@@ -3,87 +3,101 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Xml;
+using Rebellion.SceneGraph;
+using Rebellion.Util.Attributes;
 
-/// <summary>
-/// The type of planet system (core system or outer rim).
-/// </summary>
-public enum PlanetSystemType
+namespace Rebellion.Game
 {
-    CoreSystem,
-    OuterRim,
-}
-
-/// <summary>
-/// A carry-over from the original Rebellion.
-/// Frankly, I have no idea what this does.
-/// </summary>
-public enum PlanetSystemImportance
-{
-    Low,
-    Medium,
-    High,
-}
-
-/// <summary>
-/// Represents a system of planets, which is primarily a collection of planets.
-/// </summary>
-[PersistableObject]
-public class PlanetSystem : ContainerNode
-{
-    // Planet System Properties
-    public GameSize Visibility { get; set; }
-    public PlanetSystemType SystemType { get; set; }
-    public PlanetSystemImportance Importance { get; set; }
-    public int PositionX { get; set; }
-    public int PositionY { get; set; }
-
-    // Child Nodes
-    public List<Planet> Planets { get; set; } = new List<Planet>();
-
     /// <summary>
-    /// Default constructor used for deserialization.
+    /// The type of planet system (core system or outer rim).
     /// </summary>
-    public PlanetSystem() { }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public Point GetPosition()
+    public enum PlanetSystemType
     {
-        return new Point(PositionX, PositionY);
+        CoreSystem,
+        OuterRim,
     }
 
     /// <summary>
-    /// Adds a planet to the planet system.
+    /// A carry-over from the original Rebellion.
+    /// Frankly, I have no idea what this does.
     /// </summary>
-    /// <param name="child">The planet to add.</param>
-    public override void AddChild(ISceneNode child)
+    public enum PlanetSystemImportance
     {
-        if (child is Planet planet)
+        Low,
+        Medium,
+        High,
+    }
+
+    /// <summary>
+    /// Represents a system of planets, which is primarily a collection of planets.
+    /// </summary>
+    [PersistableObject]
+    public class PlanetSystem : ContainerNode
+    {
+        // Planet System Properties
+        public GameSize Visibility { get; set; }
+        public PlanetSystemType SystemType { get; set; }
+        public PlanetSystemImportance Importance { get; set; }
+        public int PositionX { get; set; }
+        public int PositionY { get; set; }
+
+        // Child Nodes
+        public List<Planet> Planets { get; set; } = new List<Planet>();
+
+        /// <summary>
+        /// Default constructor used for deserialization.
+        /// </summary>
+        public PlanetSystem() { }
+
+        /// <summary>
+        /// Returns the type of the planet system.
+        /// </summary>
+        /// <returns>The type of the planet system.</returns>
+        public PlanetSystemType GetSystemType()
         {
-            Planets.Add(planet);
+            return SystemType;
         }
-    }
 
-    /// <summary>
-    /// Removes a planet from the planet system.
-    /// </summary>
-    /// <param name="child">The planet to remove.</param>
-    public override void RemoveChild(ISceneNode child)
-    {
-        if (child is Planet planet)
+        /// <summary>
+        /// Returns the position of the planet system.
+        /// </summary>
+        /// <returns>The position of the planet system as a Point.</returns>
+        public Point GetPosition()
         {
-            Planets.Remove(planet);
+            return new Point(PositionX, PositionY);
         }
-    }
 
-    /// <summary>
-    /// Returns the planets in the planet system.
-    /// </summary>
-    /// <returns>The planets in the planet system.</returns>
-    public override IEnumerable<ISceneNode> GetChildren()
-    {
-        return Planets.ToArray();
+        /// <summary>
+        /// Adds a planet to the planet system.
+        /// </summary>
+        /// <param name="child">The planet to add.</param>
+        public override void AddChild(ISceneNode child)
+        {
+            if (child is Planet planet)
+            {
+                Planets.Add(planet);
+            }
+        }
+
+        /// <summary>
+        /// Removes a planet from the planet system.
+        /// </summary>
+        /// <param name="child">The planet to remove.</param>
+        public override void RemoveChild(ISceneNode child)
+        {
+            if (child is Planet planet)
+            {
+                Planets.Remove(planet);
+            }
+        }
+
+        /// <summary>
+        /// Returns the planets in the planet system.
+        /// </summary>
+        /// <returns>The planets in the planet system.</returns>
+        public override IEnumerable<ISceneNode> GetChildren()
+        {
+            return Planets.ToArray();
+        }
     }
 }

@@ -1,150 +1,149 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <Regiments>
-	<!--   **************************************************  -->
-	<!--   ********************* EMPIRE *********************  -->
-	<!--   **************************************************  -->
-	<Regiment>
-		<TypeID>REEM001</TypeID>
-		<DisplayName>Imperial Fleet Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNEMP1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>7</ConstructionCost>
-		<MaintenanceCost>5</MaintenanceCost>
-		<AttackRating>5</AttackRating>
-		<DefenseRating>3</DefenseRating>
-		<BombardmentDefense>2</BombardmentDefense>
-		<DetectionRating>20</DetectionRating>
-		<RequiredResearchLevel>0</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REEM002</TypeID>
-		<DisplayName>Imperial Army Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNEMP1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>6</ConstructionCost>
-		<MaintenanceCost>3</MaintenanceCost>
-		<AttackRating>3</AttackRating>
-		<DefenseRating>5</DefenseRating>
-		<BombardmentDefense>5</BombardmentDefense>
-		<DetectionRating>15</DetectionRating>
-		<RequiredResearchLevel>0</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REEM003</TypeID>
-		<DisplayName>Stormtrooper Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNEMP1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>9</ConstructionCost>
-		<MaintenanceCost>6</MaintenanceCost>
-		<AttackRating>6</AttackRating>
-		<DefenseRating>6</DefenseRating>
-		<BombardmentDefense>5</BombardmentDefense>
-		<DetectionRating>25</DetectionRating>
-		<RequiredResearchLevel>0</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REEM004</TypeID>
-		<DisplayName>War Droid Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNEMP1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>9</ConstructionCost>
-		<MaintenanceCost>8</MaintenanceCost>
-		<AttackRating>8</AttackRating>
-		<DefenseRating>2</DefenseRating>
-		<BombardmentDefense>2</BombardmentDefense>
-		<DetectionRating>5</DetectionRating>
-		<RequiredResearchLevel>1</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REEM005</TypeID>
-		<DisplayName>Dark Trooper Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNEMP1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>12</ConstructionCost>
-		<MaintenanceCost>8</MaintenanceCost>
-		<AttackRating>8</AttackRating>
-		<DefenseRating>8</DefenseRating>
-		<BombardmentDefense>6</BombardmentDefense>
-		<DetectionRating>30</DetectionRating>
-		<RequiredResearchLevel>2</RequiredResearchLevel>
-	</Regiment>
-	<!--   **************************************************  -->
-	<!--   ******************** ALLIANCE ********************  -->
-	<!--   **************************************************  -->
-	<Regiment>
-		<TypeID>REAL001</TypeID>
-		<DisplayName>Alliance Fleet Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNALL1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>8</ConstructionCost>
-		<MaintenanceCost>6</MaintenanceCost>
-		<AttackRating>6</AttackRating>
-		<DefenseRating>3</DefenseRating>
-		<BombardmentDefense>5</BombardmentDefense>
-		<DetectionRating>15</DetectionRating>
-		<RequiredResearchLevel>0</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REAL002</TypeID>
-		<DisplayName>Alliance Army Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNALL1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>6</ConstructionCost>
-		<MaintenanceCost>3</MaintenanceCost>
-		<AttackRating>3</AttackRating>
-		<DefenseRating>5</DefenseRating>
-		<BombardmentDefense>5</BombardmentDefense>
-		<DetectionRating>15</DetectionRating>
-		<RequiredResearchLevel>0</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REAL003</TypeID>
-		<DisplayName>Sullustan Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNALL1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>3</ConstructionCost>
-		<MaintenanceCost>1</MaintenanceCost>
-		<AttackRating>1</AttackRating>
-		<DefenseRating>4</DefenseRating>
-		<BombardmentDefense>2</BombardmentDefense>
-		<DetectionRating>35</DetectionRating>
-		<RequiredResearchLevel>1</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REAL004</TypeID>
-		<DisplayName>Mon Calamari regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNALL1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>6</ConstructionCost>
-		<MaintenanceCost>4</MaintenanceCost>
-		<AttackRating>2</AttackRating>
-		<DefenseRating>8</DefenseRating>
-		<BombardmentDefense>9</BombardmentDefense>
-		<DetectionRating>20</DetectionRating>
-		<RequiredResearchLevel>2</RequiredResearchLevel>
-	</Regiment>
-	<Regiment>
-		<TypeID>REAL005</TypeID>
-		<DisplayName>Wookie Regiment</DisplayName>
-		<AllowedOwnerInstanceIDs>
-			<String>FNALL1</String>
-		</AllowedOwnerInstanceIDs>
-		<ConstructionCost>10</ConstructionCost>
-		<MaintenanceCost>8</MaintenanceCost>
-		<AttackRating>8</AttackRating>
-		<DefenseRating>4</DefenseRating>
-		<BombardmentDefense>4</BombardmentDefense>
-		<DetectionRating>20</DetectionRating>
-		<RequiredResearchLevel>3</RequiredResearchLevel>
-	</Regiment>
+  <!--   **************************************************  -->
+  <!--   ********************* EMPIRE *********************  -->
+  <!--   **************************************************  -->
+  <Regiment>
+    <TypeID>REEM001</TypeID>
+    <DisplayName>Imperial Fleet Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>7</ConstructionCost>
+    <MaintenanceCost>5</MaintenanceCost>
+    <AttackRating>5</AttackRating>
+    <DefenseRating>3</DefenseRating>
+    <BombardmentDefense>2</BombardmentDefense>
+    <DetectionRating>20</DetectionRating>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REEM002</TypeID>
+    <DisplayName>Imperial Army Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <AttackRating>3</AttackRating>
+    <DefenseRating>5</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <DetectionRating>15</DetectionRating>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REEM003</TypeID>
+    <DisplayName>Stormtrooper Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>9</ConstructionCost>
+    <MaintenanceCost>6</MaintenanceCost>
+    <AttackRating>6</AttackRating>
+    <DefenseRating>6</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <DetectionRating>25</DetectionRating>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REEM004</TypeID>
+    <DisplayName>War Droid Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>9</ConstructionCost>
+    <MaintenanceCost>8</MaintenanceCost>
+    <AttackRating>8</AttackRating>
+    <DefenseRating>2</DefenseRating>
+    <BombardmentDefense>2</BombardmentDefense>
+    <DetectionRating>5</DetectionRating>
+    <RequiredResearchLevel>1</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REEM005</TypeID>
+    <DisplayName>Dark Trooper Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>12</ConstructionCost>
+    <MaintenanceCost>8</MaintenanceCost>
+    <AttackRating>8</AttackRating>
+    <DefenseRating>8</DefenseRating>
+    <BombardmentDefense>6</BombardmentDefense>
+    <DetectionRating>30</DetectionRating>
+    <RequiredResearchLevel>2</RequiredResearchLevel>
+  </Regiment>
+  <!--   **************************************************  -->
+  <!--   ******************** ALLIANCE ********************  -->
+  <!--   **************************************************  -->
+  <Regiment>
+    <TypeID>REAL001</TypeID>
+    <DisplayName>Alliance Fleet Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>8</ConstructionCost>
+    <MaintenanceCost>6</MaintenanceCost>
+    <AttackRating>6</AttackRating>
+    <DefenseRating>3</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <DetectionRating>15</DetectionRating>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL002</TypeID>
+    <DisplayName>Alliance Army Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <AttackRating>3</AttackRating>
+    <DefenseRating>5</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <DetectionRating>15</DetectionRating>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL003</TypeID>
+    <DisplayName>Sullustan Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <AttackRating>1</AttackRating>
+    <DefenseRating>4</DefenseRating>
+    <BombardmentDefense>2</BombardmentDefense>
+    <DetectionRating>35</DetectionRating>
+    <RequiredResearchLevel>1</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL004</TypeID>
+    <DisplayName>Mon Calamari regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>4</MaintenanceCost>
+    <AttackRating>2</AttackRating>
+    <DefenseRating>8</DefenseRating>
+    <BombardmentDefense>9</BombardmentDefense>
+    <DetectionRating>20</DetectionRating>
+    <RequiredResearchLevel>2</RequiredResearchLevel>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL005</TypeID>
+    <DisplayName>Wookie Regiment</DisplayName>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>10</ConstructionCost>
+    <MaintenanceCost>8</MaintenanceCost>
+    <AttackRating>8</AttackRating>
+    <DefenseRating>4</DefenseRating>
+    <BombardmentDefense>4</BombardmentDefense>
+    <DetectionRating>20</DetectionRating>
+    <RequiredResearchLevel>3</RequiredResearchLevel>
+  </Regiment>
 </Regiments>
-

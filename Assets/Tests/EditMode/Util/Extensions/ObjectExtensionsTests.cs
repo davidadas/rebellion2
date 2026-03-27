@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using ObjectExtensions;
+using Rebellion.Util.Attributes;
+using Rebellion.Util.Extensions;
 
 public class SimpleTestClass
 {
@@ -431,5 +432,110 @@ public class ObjectExtensionsTests
         Assert.AreEqual(original.GenericProperty2, copy.GenericProperty2);
         Assert.AreNotSame(original.GenericList, copy.GenericList);
         CollectionAssert.AreEqual(original.GenericList, copy.GenericList);
+    }
+
+    [Test]
+    public void GetDeepCopy_NormalMode_RespectsCloneIgnore()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetDeepCopy(CloneMode.Normal);
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(0, copy.IgnoredIntProperty);
+        Assert.IsNull(copy.IgnoredStringProperty);
+        Assert.IsNull(copy.IgnoredListProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_FullMode_IgnoresCloneIgnore()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetDeepCopy(CloneMode.Full);
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(100, copy.IgnoredIntProperty);
+        Assert.AreEqual("Ignore me", copy.IgnoredStringProperty);
+        Assert.AreNotSame(original.IgnoredListProperty, copy.IgnoredListProperty);
+        CollectionAssert.AreEqual(original.IgnoredListProperty, copy.IgnoredListProperty);
+    }
+
+    [Test]
+    public void GetShallowCopy_NormalMode_RespectsCloneIgnore()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetShallowCopy(CloneMode.Normal);
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(0, copy.IgnoredIntProperty);
+        Assert.IsNull(copy.IgnoredStringProperty);
+        Assert.IsNull(copy.IgnoredListProperty);
+    }
+
+    [Test]
+    public void GetShallowCopy_FullMode_IgnoresCloneIgnore()
+    {
+        TestClassWithIgnore original = new TestClassWithIgnore
+        {
+            IntProperty = 42,
+            StringProperty = "Hello",
+            IgnoredIntProperty = 100,
+            IgnoredStringProperty = "Ignore me",
+            IgnoredListProperty = new List<int> { 1, 2, 3 },
+        };
+
+        TestClassWithIgnore copy = original.GetShallowCopy(CloneMode.Full);
+
+        Assert.AreEqual(original.IntProperty, copy.IntProperty);
+        Assert.AreEqual(original.StringProperty, copy.StringProperty);
+        Assert.AreEqual(100, copy.IgnoredIntProperty);
+        Assert.AreEqual("Ignore me", copy.IgnoredStringProperty);
+        Assert.AreSame(original.IgnoredListProperty, copy.IgnoredListProperty);
+    }
+
+    [Test]
+    public void GetDeepCopy_FullMode_DeeplyCopiesNestedIgnoredObjects()
+    {
+        ComplexTestClass original = new ComplexTestClass
+        {
+            IntProperty = 42,
+            ListProperty = new List<int> { 1, 2, 3 },
+            NestedObject = new SimpleTestClass { IntProperty = 10, StringProperty = "Nested" },
+        };
+
+        ComplexTestClass copy = original.GetDeepCopy(CloneMode.Full);
+
+        Assert.AreNotSame(original, copy);
+        Assert.AreNotSame(original.ListProperty, copy.ListProperty);
+        Assert.AreNotSame(original.NestedObject, copy.NestedObject);
+        CollectionAssert.AreEqual(original.ListProperty, copy.ListProperty);
+        Assert.AreEqual(original.NestedObject.IntProperty, copy.NestedObject.IntProperty);
+        Assert.AreEqual(original.NestedObject.StringProperty, copy.NestedObject.StringProperty);
     }
 }
