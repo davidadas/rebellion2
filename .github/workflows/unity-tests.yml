@@ -45,6 +45,12 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
 
+      # Run Roslynator analyzer
+      - name: Run code analyzers
+        run: |
+          dotnet build GameAssembly.csproj -p:TreatWarningsAsErrors=false -verbosity:normal
+        continue-on-error: true
+
       # Discard Unity package resolution changes
       - name: Reset package files
         run: |
