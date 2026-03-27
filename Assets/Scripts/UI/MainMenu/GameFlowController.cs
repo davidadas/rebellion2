@@ -104,7 +104,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void EnterGameplay()
     {
-        StrategyController strategy = FindFirstObjectByType<StrategyController>();
+        StrategyController strategy = FindObjectOfType<StrategyController>();
 
         if (strategy == null)
         {
