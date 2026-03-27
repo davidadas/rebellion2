@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <PackageReference Include="Roslynator.Analyzers" Version="4.12.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
