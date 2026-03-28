@@ -359,21 +359,16 @@ public class AIManager
     /// </summary>
     private int CalculateBuildingPriority(Planet planet, BuildingType buildingType)
     {
-        switch (buildingType)
+        return buildingType switch
         {
-            case BuildingType.Mine:
-                return CalculateMinePriority(planet);
-            case BuildingType.Defense:
-                return planet.GetBuildingTypeCount(BuildingType.Defense);
-            case BuildingType.Refinery:
-                return CalculateRefineryPriority(planet);
-            case BuildingType.Shipyard:
-            case BuildingType.TrainingFacility:
-            case BuildingType.ConstructionFacility:
-                return CalculateFacilityPriority(planet, buildingType);
-            default:
-                return 0;
-        }
+            BuildingType.Mine => CalculateMinePriority(planet),
+            BuildingType.Defense => planet.GetBuildingTypeCount(BuildingType.Defense),
+            BuildingType.Refinery => CalculateRefineryPriority(planet),
+            BuildingType.Shipyard
+            or BuildingType.TrainingFacility
+            or BuildingType.ConstructionFacility => CalculateFacilityPriority(planet, buildingType),
+            _ => 0,
+        };
     }
 
     private int CalculateMinePriority(Planet planet)

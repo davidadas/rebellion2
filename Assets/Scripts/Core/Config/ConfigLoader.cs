@@ -32,13 +32,11 @@ namespace Rebellion.Core.Configuration
             try
             {
                 var serializer = new GameSerializer(typeof(GameConfig));
-                using (var reader = new StringReader(configAsset.text))
-                {
-                    GameConfig config = (GameConfig)serializer.Deserialize(reader);
-                    config.Validate();
-                    GameLogger.Log("GameConfig.xml loaded and validated successfully");
-                    return config;
-                }
+                using var reader = new StringReader(configAsset.text);
+                GameConfig config = (GameConfig)serializer.Deserialize(reader);
+                config.Validate();
+                GameLogger.Log("GameConfig.xml loaded and validated successfully");
+                return config;
             }
             catch (Exception ex)
             {

@@ -43,17 +43,16 @@ namespace Rebellion.Systems.Results
         public override string ToString()
         {
             string officerName = Officer?.GetDisplayName() ?? "Unknown";
-            switch (EventType)
+            return EventType switch
             {
-                case JediEventType.TierAdvanced:
-                    return $"{officerName} advanced to {NewTier} tier at tick {Tick}";
-                case JediEventType.TrainingComplete:
-                    return $"{officerName} completed Jedi training at tick {Tick}";
-                case JediEventType.JediDiscovered:
-                    return $"{officerName} discovered as Force user at tick {Tick}";
-                default:
-                    return $"{officerName} unknown Jedi event at tick {Tick}";
-            }
+                JediEventType.TierAdvanced =>
+                    $"{officerName} advanced to {NewTier} tier at tick {Tick}",
+                JediEventType.TrainingComplete =>
+                    $"{officerName} completed Jedi training at tick {Tick}",
+                JediEventType.JediDiscovered =>
+                    $"{officerName} discovered as Force user at tick {Tick}",
+                _ => $"{officerName} unknown Jedi event at tick {Tick}",
+            };
         }
     }
 }
