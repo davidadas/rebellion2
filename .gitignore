@@ -14,7 +14,8 @@ Unity_lic.alf
 /[Bb]uild/
 /[Bb]uilds/
 /UIElementsSchema/
-/TestResults**.xml
+*[Tt]est*[Rr]esults*.xml
+*[Tt]est*[Ll]og*
 
 # Node Files
 package.json
@@ -26,7 +27,13 @@ node_modules
 **/.vscode/
 
 # Misc
+.vsconfig
 
+# Assets - local files not tracked in source control
+Assets/Resources/Art/
+Assets/Resources/Audio/
+Assets/Resources/Videos/
+Assets/TextMesh Pro/
 
 # C# Files
 **/*.sln

@@ -112,21 +112,13 @@ namespace Rebellion.Systems
             return ForceTier.None;
         }
 
-        private double DetectionProbability(ForceTier tier)
-        {
-            switch (tier)
+        private double DetectionProbability(ForceTier tier) =>
+            tier switch
             {
-                case ForceTier.None:
-                    return 0.0;
-                case ForceTier.Aware:
-                    return game.Config.Jedi.DetectProbAware;
-                case ForceTier.Training:
-                    return game.Config.Jedi.DetectProbTraining;
-                case ForceTier.Experienced:
-                    return game.Config.Jedi.DetectProbExperienced;
-                default:
-                    return 0.0;
-            }
-        }
+                ForceTier.Aware => game.Config.Jedi.DetectProbAware,
+                ForceTier.Training => game.Config.Jedi.DetectProbTraining,
+                ForceTier.Experienced => game.Config.Jedi.DetectProbExperienced,
+                _ => 0.0,
+            };
     }
 }

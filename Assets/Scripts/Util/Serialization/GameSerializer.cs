@@ -1058,18 +1058,13 @@ namespace Rebellion.Util.Serialization
         /// <param name="member">The MemberInfo of the member to get the value from.</param>
         /// <param name="obj">The object to get the member value from.</param>
         /// <returns>The value of the member.</returns>
-        public static object GetMemberValue(MemberInfo member, object obj)
-        {
-            switch (member)
+        public static object GetMemberValue(MemberInfo member, object obj) =>
+            member switch
             {
-                case FieldInfo field:
-                    return field.GetValue(obj);
-                case PropertyInfo property:
-                    return property.GetValue(obj);
-                default:
-                    throw new ArgumentException($"Unsupported member type: {member.GetType()}");
-            }
-        }
+                FieldInfo field => field.GetValue(obj),
+                PropertyInfo property => property.GetValue(obj),
+                _ => throw new ArgumentException($"Unsupported member type: {member.GetType()}"),
+            };
 
         /// <summary>
         /// Sets the value of a member on an object.
@@ -1102,18 +1097,13 @@ namespace Rebellion.Util.Serialization
         /// </summary>
         /// <param name="info">The MemberInfo to get the type from.</param>
         /// <returns>The Type of the member.</returns>
-        public static Type GetMemberType(MemberInfo info)
-        {
-            switch (info)
+        public static Type GetMemberType(MemberInfo info) =>
+            info switch
             {
-                case FieldInfo field:
-                    return field.FieldType;
-                case PropertyInfo property:
-                    return property.PropertyType;
-                default:
-                    throw new ArgumentException($"Unsupported member type: {info.GetType()}");
-            }
-        }
+                FieldInfo field => field.FieldType,
+                PropertyInfo property => property.PropertyType,
+                _ => throw new ArgumentException($"Unsupported member type: {info.GetType()}"),
+            };
 
         /// <summary>
         /// Returns a type given the type name.

@@ -91,17 +91,15 @@ internal class ResourceManagerImpl : IResourceManager
 
         GameSerializer serializer = new GameSerializer(typeof(T), settings);
 
-        using (MemoryStream stream = new MemoryStream(asset.bytes))
+        using MemoryStream stream = new MemoryStream(asset.bytes);
+        object result = serializer.Deserialize(stream);
+
+        if (result == null)
         {
-            object result = serializer.Deserialize(stream);
-
-            if (result == null)
-            {
-                throw new Exception($"Failed to deserialize config: {typeName}");
-            }
-
-            return result as T;
+            throw new Exception($"Failed to deserialize config: {typeName}");
         }
+
+        return result as T;
     }
 
     /// <summary>
@@ -125,17 +123,15 @@ internal class ResourceManagerImpl : IResourceManager
 
         GameSerializer serializer = new GameSerializer(typeof(T[]), settings);
 
-        using (MemoryStream stream = new MemoryStream(asset.bytes))
+        using MemoryStream stream = new MemoryStream(asset.bytes);
+        object result = serializer.Deserialize(stream);
+
+        if (result == null)
         {
-            object result = serializer.Deserialize(stream);
-
-            if (result == null)
-            {
-                throw new Exception($"Failed to deserialize game data: {pluralizedType}");
-            }
-
-            return result as T[];
+            throw new Exception($"Failed to deserialize game data: {pluralizedType}");
         }
+
+        return result as T[];
     }
 
     /// <summary>
