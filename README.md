@@ -3,11 +3,34 @@
 A remake of the 1998 Star Wars Rebellion PC game by Coolhand Interactive.
 
 ## Setup
-1. Install Unity 2022.3.43f1 via Unity Hub.
-2. Download/clone this repository to a local directory.
-3. From Unity Hub, select "Projects" from the left hand menu.
-4. From the "Projects" view, click "Open" and select the rebellion2 folder you cloned/downloaded.
-5. Hit the play button. :tada:.
+
+### Prerequisites
+- [Unity 6000.4.0f1](https://unity.com/releases/editor/whats-new/6000.4.0) via Unity Hub
+- [.NET Framework 4.7.1 Developer Pack](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net471) (required for building/testing outside Unity)
+
+### Steps
+1. Clone this repository to a local directory.
+2. Install Unity 6000.4.0f1 via Unity Hub if you haven't already.
+3. In Unity Hub, select **Projects** from the left-hand menu, click **Open**, and select the cloned `rebellion2` folder.
+4. Once the project opens, import TextMesh Pro assets: **Window > TextMeshPro > Import TMP Essential Resources**.
+5. Hit the play button.
+
+### Running Tests & Linting
+Tests are run via Unity's built-in test runner. From the command line:
+
+```bash
+# Lint (Roslynator static analysis)
+./lint.sh
+
+# Run EditMode tests
+"C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe" \
+  -runTests -testPlatform EditMode \
+  -projectPath . \
+  -testResults TestResults.xml \
+  -batchmode -nographics
+```
+
+> **Note:** If `dotnet build` fails with a missing .NET Framework 4.7.1 reference assemblies error, ensure the Developer Pack is installed and update `FrameworkPathOverride` in `Directory.Build.props` to match your local installation path.
 
 ## Progress
 [Placeholder]
