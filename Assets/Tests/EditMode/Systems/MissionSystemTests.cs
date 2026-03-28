@@ -40,8 +40,7 @@ namespace Rebellion.Tests.Systems
                     maxTicks: 1
                 ) { }
 
-            protected override List<GameResult> OnSuccess(GameRoot game) =>
-                new List<GameResult>();
+            protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
 
             public override bool CanContinue(GameRoot game) => false;
         }
@@ -57,7 +56,12 @@ namespace Rebellion.Tests.Systems
             Faction faction = new Faction { InstanceID = "empire" };
             game.Factions.Add(faction);
 
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1", PositionX = 0, PositionY = 0 };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
             game.AttachNode(system, game.Galaxy);
 
             Planet planet = new Planet
@@ -97,7 +101,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMission_OnCompletion_WithFriendlyPlanet_EmitsCharacterMovedResult()
         {
-            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             InstantMission mission = CreateMission(game, planet, officer);
             MissionSystem system = new MissionSystem(game, movement);
 
@@ -106,7 +112,9 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = system.UpdateMission(mission, new AlwaysSucceedRNG());
 
-            List<CharacterMovedResult> moveResults = results.OfType<CharacterMovedResult>().ToList();
+            List<CharacterMovedResult> moveResults = results
+                .OfType<CharacterMovedResult>()
+                .ToList();
             Assert.AreEqual(1, moveResults.Count, "Should emit one CharacterMovedResult");
             Assert.AreEqual("o1", moveResults[0].CharacterInstanceID);
             Assert.AreEqual(planet.InstanceID, moveResults[0].ToLocationInstanceID);
@@ -122,7 +130,12 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "sys1", PositionX = 0, PositionY = 0 };
+            PlanetSystem planetSystem = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
             game.AttachNode(planetSystem, game.Galaxy);
 
             Planet planet = new Planet
@@ -175,7 +188,9 @@ namespace Rebellion.Tests.Systems
             // (it's in the owned list), so this is effectively the same as the happy path.
             // Distinct scenario: simulate GetNearestPlanetTo returning null by having
             // the faction own the mission planet — fallback path lands on same planet.
-            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             InstantMission mission = CreateMission(game, planet, officer);
             MissionSystem system = new MissionSystem(game, movement);
 
@@ -184,7 +199,9 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = system.UpdateMission(mission, new AlwaysSucceedRNG());
 
-            List<CharacterMovedResult> moveResults = results.OfType<CharacterMovedResult>().ToList();
+            List<CharacterMovedResult> moveResults = results
+                .OfType<CharacterMovedResult>()
+                .ToList();
             Assert.AreEqual(1, moveResults.Count, "Should emit CharacterMovedResult");
             Assert.AreEqual(planet.InstanceID, moveResults[0].ToLocationInstanceID);
         }
@@ -192,7 +209,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMission_OnCompletion_DetachesMission()
         {
-            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             InstantMission mission = CreateMission(game, planet, officer);
             MissionSystem system = new MissionSystem(game, movement);
 
@@ -201,7 +220,10 @@ namespace Rebellion.Tests.Systems
 
             system.UpdateMission(mission, new AlwaysSucceedRNG());
 
-            Assert.IsNull(mission.GetParent(), "Mission should be detached from scene graph after completion");
+            Assert.IsNull(
+                mission.GetParent(),
+                "Mission should be detached from scene graph after completion"
+            );
         }
     }
 }

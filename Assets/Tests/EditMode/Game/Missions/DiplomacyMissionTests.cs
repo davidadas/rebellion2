@@ -19,7 +19,11 @@ namespace Rebellion.Tests.Game.Missions
             public int NextInt(int min, int max) => min;
         }
 
-        private GameRoot BuildGame(out Planet planet, int empireSupport, string planetOwner = "empire")
+        private GameRoot BuildGame(
+            out Planet planet,
+            int empireSupport,
+            string planetOwner = "empire"
+        )
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -62,7 +66,8 @@ namespace Rebellion.Tests.Game.Missions
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
-            List<GameResult> results = (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+            List<GameResult> results =
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -82,7 +87,8 @@ namespace Rebellion.Tests.Game.Missions
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
-            List<GameResult> results = (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+            List<GameResult> results =
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
 
             PlanetOwnershipChangedResult ownershipResult = results
                 .OfType<PlanetOwnershipChangedResult>()
@@ -103,7 +109,8 @@ namespace Rebellion.Tests.Game.Missions
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
-            List<GameResult> results = (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+            List<GameResult> results =
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -124,7 +131,11 @@ namespace Rebellion.Tests.Game.Missions
             );
             onSuccess.Invoke(mission, new object[] { game });
 
-            Assert.AreEqual(62, planet.GetPopularSupport("empire"), "Support should still increment");
+            Assert.AreEqual(
+                62,
+                planet.GetPopularSupport("empire"),
+                "Support should still increment"
+            );
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
         }
     }

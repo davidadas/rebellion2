@@ -119,7 +119,8 @@ public class DiplomacyMission : Mission
             return (
                     planet.GetOwnerInstanceID() == GetOwnerInstanceID()
                     || planet.GetOwnerInstanceID() == null
-                ) && planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
+                )
+                && planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
         }
         return false;
     }
