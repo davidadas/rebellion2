@@ -23,11 +23,7 @@ namespace Rebellion.Systems
         private readonly GameRoot game;
         private readonly FogOfWarSystem fogOfWar;
 
-        private const int DISTANCE_SCALE = 2;
-        private const int MIN_TRANSIT_TICKS = 10;
-        private const int DEFAULT_FIGHTER_HYPERDRIVE = 60;
-
-        /// <summary>
+/// <summary>
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
         /// <param name="game">The game instance this manager is associated with.</param>
@@ -108,9 +104,9 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Calculates transit time in ticks based on distance and hyperdrive rating.
-        /// Uses Euclidean distance between systems: transit_ticks = ceil((distance * DISTANCE_SCALE) / slowest_hyperdrive)
+        /// Uses Euclidean distance between systems: transit_ticks = ceil((distance * DistanceScale) / slowest_hyperdrive)
         /// Han Solo's hyperdrive_modifier subtracts from the total.
-        /// Result is clamped to MIN_TRANSIT_TICKS.
+        /// Result is clamped to MinTransitTicks.
         /// </summary>
         private int CalculateTransitTicks(IMovable unit, Planet origin, Planet destination)
         {
@@ -122,7 +118,7 @@ namespace Rebellion.Systems
             double distance = Math.Sqrt(dx * dx + dy * dy);
 
             // Determine slowest hyperdrive rating
-            int slowestHyperdrive = DEFAULT_FIGHTER_HYPERDRIVE;
+            int slowestHyperdrive = game.GetConfig().Movement.DefaultFighterHyperdrive;
 
             if (unit is Fleet fleet)
             {
@@ -145,7 +141,7 @@ namespace Rebellion.Systems
             // Other units (fighters, troops, buildings) use DEFAULT_FIGHTER_HYPERDRIVE
 
             // Calculate base transit time
-            int baseTicks = (int)Math.Ceiling((distance * DISTANCE_SCALE) / slowestHyperdrive);
+            int baseTicks = (int)Math.Ceiling((distance * game.GetConfig().Movement.DistanceScale) / slowestHyperdrive);
 
             // Han Solo speed bonus: best hyperdrive_modifier among fleet characters
             int hanBonus = 0;
@@ -159,7 +155,7 @@ namespace Rebellion.Systems
             }
 
             // Apply bonus and clamp to minimum
-            int transitTicks = Math.Max(baseTicks - hanBonus, MIN_TRANSIT_TICKS);
+            int transitTicks = Math.Max(baseTicks - hanBonus, game.GetConfig().Movement.MinTransitTicks);
 
             return transitTicks;
         }

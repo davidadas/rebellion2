@@ -37,8 +37,9 @@ Assets/TextMesh Pro/
 
 # C# Files
 **/*.sln
-Assembly-CSharp-Editor.csproj
-EditMode.csproj
+**/*.slnx
+*.csproj
+!GameAssembly.csproj
 
 # Misc
 *.md
