@@ -47,7 +47,7 @@ namespace Rebellion.Game
         public MovementState() { }
 
         /// <summary>
-        /// Progress fraction in [0.0, 1.0] — 0.0 = just departed, 1.0 = arrived.
+        /// Progress fraction in [0.0, 1.0] - 0.0 = just departed, 1.0 = arrived.
         /// </summary>
         public float Progress()
         {

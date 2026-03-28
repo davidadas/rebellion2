@@ -89,7 +89,7 @@ namespace Rebellion.Systems
         }
 
         // -----------------------------------------------------------------------
-        // Space combat auto-resolve — 7-phase pipeline
+        // Space combat auto-resolve - 7-phase pipeline
         // -----------------------------------------------------------------------
 
         /// <summary>

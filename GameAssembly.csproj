@@ -98,7 +98,6 @@
     <Compile Include="Assets\Scripts\UI\Cutscenes\CutsceneManager.cs" />
     <Compile Include="Assets\Scripts\Game\Technology.cs" />
     <Compile Include="Assets\Scripts\UI\Core\UIContext.cs" />
-    <Compile Include="Assets\Scripts\Game\Results\CharacterReturnedFromNarrativeResult.cs" />
     <Compile Include="Assets\Scripts\UI\StrategyView\GalaxyView.cs" />
     <Compile Include="Assets\Scripts\Game\PlanetSystem.cs" />
     <Compile Include="Assets\Scripts\Game\Missions\SubdueUprisingMission.cs" />

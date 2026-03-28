@@ -10,10 +10,6 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages the lifecycle of missions each tick.
     /// Creation and initiation of missions are delegated to MissionFactory.
-    ///
-    /// RESULT PIPELINE:
-    /// ProcessTick → UpdateMission → mission.Execute → OnSuccess/OnFoiled/OnFailed
-    /// All results bubble up through List<GameResult> — no logging inside missions.
     /// </summary>
     public class MissionSystem
     {
@@ -94,21 +90,29 @@ namespace Rebellion.Systems
             {
                 Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
                 Planet nearestPlanet = faction.GetNearestPlanetTo(mission);
+                if (nearestPlanet == null)
+                {
+                    Planet missionPlanet = mission.GetParent() as Planet;
+                    if (missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
+                        nearestPlanet = missionPlanet;
+                }
 
                 foreach (IMovable movable in mission.GetAllParticipants().Cast<IMovable>())
                 {
-                    movementManager.RequestMove(movable, nearestPlanet);
+                    if (nearestPlanet != null)
+                    {
+                        movementManager.RequestMove(movable, nearestPlanet);
 
-                    // @TODO: emit CharacterReturnedFromNarrativeResult when participant.WasInNarrativeState
-                    results.Add(
-                        new CharacterMovedResult
-                        {
-                            CharacterInstanceID = ((ISceneNode)movable).GetInstanceID(),
-                            FromLocationInstanceID = mission.InstanceID,
-                            ToLocationInstanceID = nearestPlanet?.InstanceID,
-                            Tick = game.CurrentTick,
-                        }
-                    );
+                        results.Add(
+                            new CharacterMovedResult
+                            {
+                                CharacterInstanceID = ((ISceneNode)movable).GetInstanceID(),
+                                FromLocationInstanceID = mission.InstanceID,
+                                ToLocationInstanceID = nearestPlanet.InstanceID,
+                                Tick = game.CurrentTick,
+                            }
+                        );
+                    }
                 }
 
                 game.DetachNode(mission);
