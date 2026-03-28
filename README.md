@@ -15,6 +15,20 @@ A remake of the 1998 Star Wars Rebellion PC game by Coolhand Interactive.
 4. Once the project opens, import TextMesh Pro assets: **Window > TextMeshPro > Import TMP Essential Resources**.
 5. Hit the play button.
 
+### Game Assets
+
+The game's art, audio, and video assets are **not included** in this repository. To obtain them, you must prove ownership of the original *Star Wars: Rebellion* game.
+
+1. Join the [Star Wars Rebellion Discord](https://discord.com/invite/rWP4vzw8Gg).
+2. Follow the instructions in the server to verify ownership of the original game.
+3. Once verified, you will be granted access to the asset pack.
+4. Place the downloaded assets into the following directories:
+   - `Assets/Resources/Art/`
+   - `Assets/Resources/Audio/`
+   - `Assets/Resources/Videos/`
+
+> **Note:** The game will not run without these assets.
+
 ### Running Tests & Linting
 Tests are run via Unity's built-in test runner. From the command line:
 
