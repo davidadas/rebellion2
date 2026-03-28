@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Systems.Results;
+using Rebellion.Game.Results;
 
 /// <summary>
 /// Manages victory condition checking during each game tick.
-/// Ported from open-rebellion/crates/rebellion-core/src/victory.rs
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -25,8 +24,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Checks victory conditions for the current tick.
-        /// Ported from open-rebellion victory.rs (fleet presence logic),
-        /// modified to check planet ownership (not verified against original game).
         /// </summary>
         /// <returns>VictoryResult if a victory condition is met, null otherwise.</returns>
         public VictoryResult? CheckVictory()

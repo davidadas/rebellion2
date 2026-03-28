@@ -130,12 +130,12 @@ public sealed class FleetsPane : MonoBehaviour
         string ownerId = fleet.GetOwnerInstanceID();
 
         if (string.IsNullOrEmpty(ownerId))
-            throw new GameException("Fleet missing owner instance ID.");
+            throw new InvalidOperationException("Fleet missing owner instance ID.");
 
         FactionTheme theme = uiContext.GetTheme(ownerId);
 
         if (theme == null)
-            throw new GameException($"FactionTheme missing for owner '{ownerId}'.");
+            throw new InvalidOperationException($"FactionTheme missing for owner '{ownerId}'.");
 
         ApplyFactionTint(theme);
         ApplyFleetImage(theme);

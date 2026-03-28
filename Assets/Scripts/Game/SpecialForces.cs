@@ -57,12 +57,10 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="skill"></param>
         /// <param name="value"></param>
-        /// <exception cref="InvalidSceneOperationException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value)
         {
-            throw new InvalidSceneOperationException(
-                "Special forces units cannot set mission skills."
-            );
+            throw new InvalidOperationException("Special forces units cannot set mission skills.");
         }
 
         /// <summary>

@@ -149,7 +149,7 @@ namespace Rebellion.Game
                 && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID)
             )
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Cannot add technology {tech.GetDisplayName()} to faction {DisplayName}. Owner IDs do not match."
                 );
             }

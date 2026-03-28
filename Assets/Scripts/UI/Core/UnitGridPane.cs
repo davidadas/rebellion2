@@ -50,7 +50,9 @@ public sealed class UnitGridPane : MonoBehaviour
         Sprite sprite = uiContext.GetSprite(node);
 
         if (sprite == null)
-            throw new GameException($"Missing sprite for node '{node.GetDisplayName()}'");
+            throw new InvalidOperationException(
+                $"Missing sprite for node '{node.GetDisplayName()}'"
+            );
 
         string ownerId = node.OwnerInstanceID;
         Color factionColor = uiContext.GetFactionColor(ownerId);

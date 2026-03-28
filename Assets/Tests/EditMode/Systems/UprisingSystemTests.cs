@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Systems
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
-            onSuccessMethod.Invoke(mission, new object[] { game, new MockRNG() });
+            onSuccessMethod.Invoke(mission, new object[] { game });
 
             Assert.IsFalse(
                 planet.IsInUprising,
@@ -261,7 +261,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            Assert.Throws<InvalidSceneOperationException>(
+            Assert.Throws<InvalidOperationException>(
                 () =>
                 {
                     new SubdueUprisingMission(

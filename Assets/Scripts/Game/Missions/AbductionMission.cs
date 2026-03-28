@@ -1,13 +1,13 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 public class AbductionMission : Mission
 {
-    public Officer TargetOfficer { get; set; }
+    public string TargetOfficerInstanceID { get; set; }
 
     /// <summary>
     /// Default constructor used for deserialization.
@@ -32,7 +32,7 @@ public class AbductionMission : Mission
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        Officer targetOfficer,
+        string targetOfficerInstanceId,
         ProbabilityTable successProbabilityTable = null
     )
         : base(
@@ -52,23 +52,30 @@ public class AbductionMission : Mission
             maxTicks: 20
         )
     {
-        TargetOfficer = targetOfficer;
+        TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
-    /// <summary>
-    /// Handles successful abduction mission.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">Random number provider (not used in this mission).</param>
-    protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider)
+    protected override List<GameResult> OnSuccess(GameRoot game)
     {
-        // Logic for mission success
+        Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+
+        if (target == null || target.IsCaptured)
+            return new List<GameResult>();
+
+        target.IsCaptured = true;
+
+        return new List<GameResult>
+        {
+            new CharacterCapturedResult
+            {
+                CharacterInstanceID = target.InstanceID,
+                CapturingFactionInstanceID = OwnerInstanceID,
+                LocationInstanceID = (GetParent() as Planet)?.InstanceID,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="game"></param>
     public override bool CanContinue(GameRoot game)
     {
         return false;

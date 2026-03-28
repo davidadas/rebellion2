@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Rebellion.Game;
 using Rebellion.Generation;
 using UnityEngine;
@@ -42,7 +42,9 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (summary == null)
         {
-            throw new GameException("GameLaunchContext.Summary is null. Cannot start new game.");
+            throw new InvalidOperationException(
+                "GameLaunchContext.Summary is null. Cannot start new game."
+            );
         }
 
         GameBuilder builder = new GameBuilder(summary);
@@ -64,7 +66,7 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (string.IsNullOrEmpty(fileName))
         {
-            throw new GameException("LoadGame called but SaveFileName is null.");
+            throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
         }
 
         game = SaveGameManager.Instance.LoadGameData(fileName);
@@ -81,7 +83,7 @@ public sealed class GameFlowController : MonoBehaviour
     {
         if (faction == null)
         {
-            throw new GameException("Player faction is null.");
+            throw new InvalidOperationException("Player faction is null.");
         }
 
         FactionTheme theme = themeLibrary.GetTheme(faction.InstanceID);
@@ -108,7 +110,7 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (strategy == null)
         {
-            throw new GameException("StrategyController not found in Strategy scene.");
+            throw new InvalidOperationException("StrategyController not found in Strategy scene.");
         }
 
         // Get runtime from AppBootstrap (creates if missing for scene testing)

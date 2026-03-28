@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 
 [TestFixture]
@@ -15,7 +17,7 @@ public class SpecialForcesTests
             DecoyParticipants = new List<IMissionParticipant>();
         }
 
-        protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider) { }
+        protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
 
         public override bool CanContinue(GameRoot game)
         {
@@ -58,7 +60,7 @@ public class SpecialForcesTests
     [Test]
     public void SetMissionSkillValue_ThrowsException()
     {
-        Assert.Throws<InvalidSceneOperationException>(
+        Assert.Throws<InvalidOperationException>(
             () => specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50),
             "Special forces should not allow setting mission skills"
         );

@@ -10,22 +10,11 @@ using Rebellion.Util.Extensions;
 /// <summary>
 /// Manages unit movement during each game tick.
 ///
-/// MOVEMENT AUTHORITY:
+/// <remarks>
 /// MovementSystem is the ONLY system that calls game.MoveNode() for movement purposes.
 /// Other systems request movement via RequestMove() - they never call MoveNode() directly.
-/// (Manufacturing/spawning is exempt - they use MoveNode() for initial placement, not movement.)
-///
-/// DESTINATION MODEL:
-/// All movement is planet-based. Destinations must resolve to a planet location.
-/// Fleets, missions, and other containers proxy through their parent planet.
-/// Deep-space or fleet-to-fleet movement is not supported.
-///
-/// MOVEMENTSTATE LIFECYCLE (transient state):
-/// 1. RequestMove() - Creates new MovementState with destination and transit params, unit stays at current parent
-/// 2. ProcessTick() - Increments TicksElapsed and interpolates CurrentPosition toward destination
-/// 3. Arrival - CheckArrival() calls game.MoveNode() for final relocation, destroys MovementState (sets to null)
-/// 4. Rejection - If MoveNode() fails (capacity/ownership), fallback to nearest friendly planet or destroy MovementState
-/// Note: Movement == null means unit is NOT moving (at rest). Movement != null means unit IS moving (in transit).
+/// (Manufacturing/spawning is exempt - they use MoveNode() for initial placement, not movement).
+/// </remarks>
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -34,7 +23,6 @@ namespace Rebellion.Systems
         private readonly GameRoot game;
         private readonly FogOfWarSystem fogOfWar;
 
-        // Movement speed constants (from open-rebellion movement.rs)
         private const int DISTANCE_SCALE = 2;
         private const int MIN_TRANSIT_TICKS = 10;
         private const int DEFAULT_FIGHTER_HYPERDRIVE = 60;
@@ -56,7 +44,7 @@ namespace Rebellion.Systems
         /// The unit will travel toward the destination over multiple ticks.
         ///
         /// IMPORTANT: This is the ONLY valid way to initiate movement.
-        /// Do not call game.MoveNode() directly for movement - that's MovementSystem's job.
+        /// Do not call game.MoveNode() directly for movement.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target destination (Planet or other container).</param>
@@ -208,7 +196,7 @@ namespace Rebellion.Systems
             // Strict validation: InTransit requires valid destination
             if (string.IsNullOrWhiteSpace(movable.Movement?.DestinationInstanceID))
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} is InTransit but has no destination. "
                         + "This indicates corrupted game state. Movement must be requested via RequestMove()."
                 );
@@ -219,7 +207,7 @@ namespace Rebellion.Systems
             );
             if (destination == null)
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} destination {movable.Movement.DestinationInstanceID} not found. "
                         + "Destination was deleted or never existed. This indicates corrupted game state."
                 );
@@ -231,7 +219,7 @@ namespace Rebellion.Systems
                 : destination.GetParentOfType<Planet>();
             if (destinationPlanet == null)
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Destination {destination.GetDisplayName()} is not at a planet location. "
                         + "All movement must resolve to a planet. Deep-space destinations are not supported."
                 );

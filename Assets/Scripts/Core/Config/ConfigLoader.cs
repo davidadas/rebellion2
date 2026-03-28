@@ -16,7 +16,7 @@ namespace Rebellion.Core.Configuration
 
         /// <summary>
         /// Loads runtime simulation configuration from XML.
-        /// Throws GameException if file not found or deserialization fails.
+        /// Throws InvalidOperationException if file not found or deserialization fails.
         /// </summary>
         /// <returns>The loaded GameConfig.</returns>
         public static GameConfig LoadGameConfig()
@@ -24,7 +24,9 @@ namespace Rebellion.Core.Configuration
             TextAsset configAsset = Resources.Load<TextAsset>(CONFIG_PATH);
             if (configAsset == null)
             {
-                throw new GameException($"GameConfig.xml not found at Resources/{CONFIG_PATH}");
+                throw new InvalidOperationException(
+                    $"GameConfig.xml not found at Resources/{CONFIG_PATH}"
+                );
             }
 
             try
@@ -40,7 +42,7 @@ namespace Rebellion.Core.Configuration
             }
             catch (Exception ex)
             {
-                throw new GameException($"Failed to load GameConfig.xml: {ex.Message}");
+                throw new InvalidOperationException($"Failed to load GameConfig.xml: {ex.Message}");
             }
         }
     }

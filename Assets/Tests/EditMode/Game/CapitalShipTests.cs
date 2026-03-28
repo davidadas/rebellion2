@@ -49,7 +49,9 @@ public class CapitalShipTests
         capitalShip.AddStarfighter(new Starfighter());
         capitalShip.AddStarfighter(new Starfighter());
 
-        Assert.Throws<GameException>(() => capitalShip.AddStarfighter(new Starfighter()));
+        Assert.Throws<InvalidOperationException>(() =>
+            capitalShip.AddStarfighter(new Starfighter())
+        );
     }
 
     [Test]
@@ -69,7 +71,7 @@ public class CapitalShipTests
         capitalShip.AddRegiment(new Regiment());
         capitalShip.AddRegiment(new Regiment());
 
-        Assert.Throws<GameException>(() => capitalShip.AddRegiment(new Regiment()));
+        Assert.Throws<InvalidOperationException>(() => capitalShip.AddRegiment(new Regiment()));
     }
 
     [Test]
@@ -257,6 +259,26 @@ public class CapitalShipTests
             capitalShip.Regiments.Count,
             deserialized.Regiments.Count,
             "Regiments should be correctly deserialized."
+        );
+    }
+
+    [Test]
+    public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
+    {
+        capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
+
+        ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Complete);
+
+        Assert.AreEqual(ManufacturingStatus.Complete, capitalShip.ManufacturingStatus);
+    }
+
+    [Test]
+    public void SetManufacturingStatus_CompleteToBuilding_ThrowsException()
+    {
+        capitalShip.ManufacturingStatus = ManufacturingStatus.Complete;
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Building)
         );
     }
 

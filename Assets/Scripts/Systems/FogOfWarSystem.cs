@@ -237,7 +237,7 @@ namespace Rebellion.Systems
                     {
                         // Snapshot.
                         viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
-                        viewPlanet.PopularSupport = null;
+                        viewPlanet.PopularSupport = new Dictionary<string, int>();
                         viewPlanet.Officers.AddRange(planetSnapshot.Officers.Select(CopyOfficer));
                         viewPlanet.Fleets.AddRange(
                             planetSnapshot.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))

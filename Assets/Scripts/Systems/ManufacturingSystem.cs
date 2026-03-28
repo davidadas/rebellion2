@@ -9,7 +9,6 @@ using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Manages unit and facility production during each game tick.
-/// Ported from open-rebellion/crates/rebellion-core/src/manufacturing.rs
 /// </summary>
 namespace Rebellion.Systems
 {

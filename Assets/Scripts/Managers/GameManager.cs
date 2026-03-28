@@ -4,9 +4,9 @@ using System.Diagnostics;
 using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Systems.Results;
 using Rebellion.Util.Common;
 
 /// <summary>
@@ -93,7 +93,7 @@ public class GameManager
     public void ReplaceGame(GameRoot newGame)
     {
         if (newGame == null)
-            throw new GameException("Cannot replace game with null.");
+            throw new InvalidOperationException("Cannot replace game with null.");
 
         // Replace game instance
         game = newGame;
@@ -259,7 +259,7 @@ public class GameManager
         if (outcome != null)
         {
             // TODO: Handle victory outcome (set game over flag, show victory screen, etc.)
-            GameLogger.Log($"Victory condition met: {outcome.Value}");
+            GameLogger.Log($"Victory condition met: {outcome}");
         }
     }
 }

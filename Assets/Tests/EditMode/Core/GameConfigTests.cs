@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Core
 
             GameRoot game = new GameRoot();
 
-            Assert.Throws<GameException>(
+            Assert.Throws<InvalidOperationException>(
                 () => game.SetConfig(invalidConfig),
                 "SetConfig should throw on invalid config"
             );

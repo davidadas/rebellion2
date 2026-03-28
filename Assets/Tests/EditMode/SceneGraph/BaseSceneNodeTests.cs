@@ -128,7 +128,7 @@ public class BaseSceneNodeTests
     }
 
     [Test]
-    public void GetParentOfType_CyclicGraphWithDifferentMockTypes_ThrowsInvalidSceneOperationException()
+    public void GetParentOfType_CyclicGraphWithDifferentMockTypes_ThrowsInvalidOperationException()
     {
         rootNode.SetParent(childNode1);
         childNode1.SetParent(rootNode);
@@ -136,7 +136,7 @@ public class BaseSceneNodeTests
         Assert.AreEqual(rootNode, childNode1.GetParent(), "NodeB's parent should be NodeA.");
         Assert.AreEqual(childNode1, rootNode.GetParent(), "NodeA's parent should be NodeB.");
 
-        Assert.Throws<InvalidSceneOperationException>(
+        Assert.Throws<InvalidOperationException>(
             () => childNode1.GetParentOfType<MockSceneNodeA>(),
             "Cycle detection did not throw an exception as expected."
         );
@@ -152,11 +152,11 @@ public class BaseSceneNodeTests
     }
 
     [Test]
-    public void SetOwnerInstanceID_DisallowedID_ThrowsGameStateException()
+    public void SetOwnerInstanceID_DisallowedID_ThrowsInvalidOperationException()
     {
         childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
 
-        GameStateException ex = Assert.Throws<GameStateException>(() =>
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
             childNode1.SetOwnerInstanceID("InvalidOwner")
         );
         Assert.That(ex.Message, Does.Contain("Invalid OwnerInstanceID"));

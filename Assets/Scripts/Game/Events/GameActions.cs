@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.SceneGraph;
+using Rebellion.Game.Results;
 using Rebellion.Util.Attributes;
 
 [PersistableObject(Name = "RandomOutcome")]
@@ -14,32 +13,21 @@ public class RandomOutcomeAction : GameAction
     [PersistableIgnore]
     private IRandomNumberProvider provider;
 
-    /// <summary>
-    /// Default constructor used for deserialization.
-    /// </summary>
     public RandomOutcomeAction()
         : base() { }
 
-    /// <summary>
-    /// Initializes a new instance with injected random provider.
-    /// </summary>
-    /// <param name="provider">Random number provider for action selection.</param>
     public RandomOutcomeAction(IRandomNumberProvider provider)
         : base()
     {
         this.provider = provider;
     }
 
-    /// <summary>
-    /// Sets the random number provider. Must be called after deserialization.
-    /// </summary>
-    /// <param name="provider">Random number provider for action selection.</param>
     public void SetRandomProvider(IRandomNumberProvider provider)
     {
         this.provider = provider;
     }
 
-    public override void Execute(GameRoot game)
+    public override List<GameResult> Execute(GameRoot game)
     {
         if (provider == null)
         {
@@ -50,29 +38,36 @@ public class RandomOutcomeAction : GameAction
 
         double probability = Convert.ToDouble(this.GetActionValue());
 
-        // Execute a random action.
         if (provider.NextDouble() < probability)
         {
-            Actions[provider.NextInt(0, Actions.Count)].Execute(game);
+            return Actions[provider.NextInt(0, Actions.Count)].Execute(game);
         }
+
+        return new List<GameResult>();
     }
 }
 
 [PersistableObject(Name = "TriggerDuel")]
 public class TriggerDuelAction : GameAction
 {
-    public List<string> AttackerInstanceIDs { get; set; }
-    public List<string> DefenderInstanceIDs { get; set; }
+    public List<string> AttackerInstanceIDs { get; set; } = new List<string>();
+    public List<string> DefenderInstanceIDs { get; set; } = new List<string>();
 
-    /// <summary>
-    /// Default constructor used for deserialization.
-    /// </summary>
     public TriggerDuelAction()
         : base() { }
 
-    public override void Execute(GameRoot game)
+    public override List<GameResult> Execute(GameRoot game)
     {
-        // @TODO: Implement
+        // @TODO: Implement duel resolution
+        return new List<GameResult>
+        {
+            new DuelTriggeredResult
+            {
+                AttackerInstanceIDs = AttackerInstanceIDs,
+                DefenderInstanceIDs = DefenderInstanceIDs,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 }
 
@@ -84,27 +79,18 @@ public class TriggerEventAction : GameAction
     [PersistableIgnore]
     private IRandomNumberProvider provider;
 
-    /// <summary>
-    /// Default constructor used for deserialization.
-    /// </summary>
     public TriggerEventAction()
         : base() { }
 
-    /// <summary>
-    /// Sets the random number provider. Must be called before Execute.
-    /// </summary>
     public void SetRandomProvider(IRandomNumberProvider provider)
     {
         this.provider = provider;
     }
 
-    public override void Execute(GameRoot game)
+    public override List<GameResult> Execute(GameRoot game)
     {
         GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
-
-        // Use the provider that was set by GameEvent.Execute
-        // If not set (shouldn't happen in normal flow), create a local one
         var eventProvider = provider ?? new SystemRandomProvider(new Random().Next());
-        gameEvent.Execute(game, eventProvider);
+        return gameEvent.Execute(game, eventProvider);
     }
 }

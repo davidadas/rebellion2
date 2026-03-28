@@ -236,7 +236,7 @@ public class TickCountConditional : GameConditional
                 > Convert.ToInt32(this.GetConditionalValue()),
             ComparisonType.LessThan => game.CurrentTick
                 < Convert.ToInt32(this.GetConditionalValue()),
-            _ => throw new InvalidSceneOperationException(
+            _ => throw new InvalidOperationException(
                 $"Invalid comparison type \"{comparison}\" for TickCountConditional."
             ),
         };

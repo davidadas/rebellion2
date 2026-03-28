@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 
 [TestFixture]
 public class OfficerTests
@@ -14,7 +15,7 @@ public class OfficerTests
             DecoyParticipants = new List<IMissionParticipant>();
         }
 
-        protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider) { }
+        protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
 
         public override bool CanContinue(GameRoot game)
         {

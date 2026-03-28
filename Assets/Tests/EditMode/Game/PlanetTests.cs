@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -96,9 +97,9 @@ public class PlanetTests
             OwnerInstanceID = "FNALL1",
         };
 
-        Assert.Throws<GameStateException>(
+        Assert.Throws<InvalidOperationException>(
             () => planet.AddChild(extraBuilding),
-            "Adding a building when slots are full should throw a GameStateException."
+            "Adding a building when slots are full should throw a InvalidOperationException."
         );
     }
 
@@ -217,9 +218,9 @@ public class PlanetTests
     {
         IManufacturable unit = new Starfighter();
 
-        Assert.Throws<InvalidSceneOperationException>(
+        Assert.Throws<InvalidOperationException>(
             () => planet.AddToManufacturingQueue(unit),
-            "Adding a manufacturable unit without a parent should throw a GameStateException."
+            "Adding a manufacturable unit without a parent should throw a InvalidOperationException."
         );
     }
 
