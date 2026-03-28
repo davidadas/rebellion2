@@ -30,6 +30,7 @@ node_modules
 
 # C# Files
 **/*.sln
+Assembly-CSharp-Editor.csproj
 
 # Misc
 *.md
