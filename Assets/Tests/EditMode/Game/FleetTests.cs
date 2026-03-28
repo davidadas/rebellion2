@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -351,7 +352,7 @@ public class FleetTests
     {
         Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
 
-        Assert.Throws<GameException>(() => fleet.AddChild(officer));
+        Assert.Throws<InvalidOperationException>(() => fleet.AddChild(officer));
     }
 
     [Test]

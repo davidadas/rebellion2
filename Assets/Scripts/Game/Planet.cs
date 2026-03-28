@@ -429,7 +429,7 @@ namespace Rebellion.Game
         {
             if (manufacturable is ISceneNode sceneNode && sceneNode.GetParent() == null)
             {
-                throw new InvalidSceneOperationException(
+                throw new InvalidOperationException(
                     $"Unit {sceneNode.GetDisplayName()} must have a parent to be added to the manufacturing queue."
                 );
             }
@@ -581,7 +581,7 @@ namespace Rebellion.Game
         /// Adds a building to the planet.
         /// </summary>
         /// <param name="building">The building to add.</param>
-        /// <exception cref="GameException">Thrown when the planet is not colonized or at capacity.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the planet is not colonized or at capacity.</exception>
         private void AddBuilding(Building building)
         {
             ValidateBuilding(building);
@@ -598,7 +598,7 @@ namespace Rebellion.Game
             // Check if the planet is colonized.
             if (!IsColonized)
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Cannot add building {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is not colonized."
                 );
             }
@@ -616,7 +616,7 @@ namespace Rebellion.Game
                 || (slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots)
             )
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Cannot add {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is at capacity."
                 );
             }
@@ -812,7 +812,7 @@ namespace Rebellion.Game
                     AddRegiment(regiment);
                     break;
                 default:
-                    throw new InvalidSceneOperationException(
+                    throw new InvalidOperationException(
                         $"Cannot add {child.GetDisplayName()} to {this.GetDisplayName()}. "
                             + $"Only fleets, officers, buildings, missions, and regiments are allowed."
                     );
@@ -843,7 +843,7 @@ namespace Rebellion.Game
                     RemoveRegiment(regiment);
                     break;
                 default:
-                    throw new InvalidSceneOperationException(
+                    throw new InvalidOperationException(
                         $"Cannot remove {child.GetDisplayName()} from {this.GetDisplayName()}. "
                             + $"Only fleets, officers, buildings, missions, and regiments are allowed."
                     );

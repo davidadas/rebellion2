@@ -118,7 +118,9 @@ namespace Rebellion.Game
 
             if (CapitalShips.Count == 0)
             {
-                throw new GameException("Cannot add officer to fleet with no capital ships.");
+                throw new InvalidOperationException(
+                    "Cannot add officer to fleet with no capital ships."
+                );
             }
 
             CapitalShips[0].AddOfficer(officer);

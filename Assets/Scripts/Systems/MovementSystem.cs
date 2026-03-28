@@ -34,7 +34,6 @@ namespace Rebellion.Systems
         private readonly GameRoot game;
         private readonly FogOfWarSystem fogOfWar;
 
-        // Movement speed constants (from open-rebellion movement.rs)
         private const int DISTANCE_SCALE = 2;
         private const int MIN_TRANSIT_TICKS = 10;
         private const int DEFAULT_FIGHTER_HYPERDRIVE = 60;
@@ -208,7 +207,7 @@ namespace Rebellion.Systems
             // Strict validation: InTransit requires valid destination
             if (string.IsNullOrWhiteSpace(movable.Movement?.DestinationInstanceID))
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} is InTransit but has no destination. "
                         + "This indicates corrupted game state. Movement must be requested via RequestMove()."
                 );
@@ -219,7 +218,7 @@ namespace Rebellion.Systems
             );
             if (destination == null)
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} destination {movable.Movement.DestinationInstanceID} not found. "
                         + "Destination was deleted or never existed. This indicates corrupted game state."
                 );
@@ -231,7 +230,7 @@ namespace Rebellion.Systems
                 : destination.GetParentOfType<Planet>();
             if (destinationPlanet == null)
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Destination {destination.GetDisplayName()} is not at a planet location. "
                         + "All movement must resolve to a planet. Deep-space destinations are not supported."
                 );

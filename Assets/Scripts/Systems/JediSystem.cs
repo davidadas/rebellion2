@@ -1,13 +1,18 @@
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.Systems.Results;
+using Rebellion.Game.Results;
 
 /// <summary>
-/// Manages Jedi Force progression and detection during each game tick.
-/// Reads officer.ForceExperience and advances ForceTier when XP crosses thresholds.
-/// Performs periodic detection checks for undiscovered Force users.
-/// XP accumulation is currently unimplemented (reserved for future mission integration).
+/// Processes Jedi Force tier advancement and detection checks each tick.
+///
+/// TIER ADVANCEMENT:
+/// Reads officer.ForceExperience and promotes ForceTier when XP crosses config thresholds.
+/// XP accumulation is unimplemented - reserved for future mission integration.
+///
+/// DETECTION:
+/// Every DetectionCheckInterval ticks, undiscovered Force users roll against a per-tier
+/// probability. A successful roll sets IsDiscoveredJedi = true.
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -15,22 +20,15 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot game;
 
-        /// <summary>
-        /// Creates a new JediSystem.
-        /// </summary>
-        /// <param name="game">The game instance.</param>
         public JediSystem(GameRoot game)
         {
             this.game = game;
         }
 
         /// <summary>
-        /// Processes Jedi Force tier advancement and detection checks.
-        /// Effects are applied directly to officer state; returned events are for logging only.
+        /// Processes Force tier advancement and detection for all officers.
+        /// Effects are applied directly to officer state; returned results are for logging only.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="rng">Random number provider for detection checks.</param>
-        /// <returns>List of JediResult events (tier advancements, training completions, discoveries).</returns>
         public List<JediResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
         {
             List<JediResult> events = new List<JediResult>();
@@ -103,9 +101,6 @@ namespace Rebellion.Systems
             return events;
         }
 
-        /// <summary>
-        /// Determines Force tier for a given XP value using config thresholds.
-        /// </summary>
         private ForceTier TierForXP(int xp)
         {
             if (xp >= game.Config.Jedi.XpToExperienced)
@@ -117,9 +112,6 @@ namespace Rebellion.Systems
             return ForceTier.None;
         }
 
-        /// <summary>
-        /// Returns detection probability per check interval for a given Force tier.
-        /// </summary>
         private double DetectionProbability(ForceTier tier)
         {
             switch (tier)

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
@@ -281,7 +282,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mine, coruscant);
 
             // Attempt to enqueue on different planet should throw
-            Assert.Throws<InvalidSceneOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
             {
                 manager.Enqueue(tatooine, mine, ignoreCost: true);
             });
@@ -303,7 +304,7 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, mine, ignoreCost: true);
 
             // Second enqueue should throw - same instance already has a parent
-            Assert.Throws<InvalidSceneOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
             {
                 manager.Enqueue(coruscant, mine, ignoreCost: true);
             });

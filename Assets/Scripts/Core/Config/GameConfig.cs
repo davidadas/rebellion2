@@ -26,7 +26,7 @@ public class GameConfig
 
     /// <summary>
     /// Validates configuration values for sanity.
-    /// Throws GameException if critical values are invalid.
+    /// Throws InvalidOperationException if critical values are invalid.
     /// Call this after deserialization or before use.
     /// </summary>
     public void Validate()
@@ -34,15 +34,19 @@ public class GameConfig
         // Movement validation
         if (Movement.DistanceScale <= 0)
         {
-            throw new GameException("GameConfig.Movement.DistanceScale must be positive");
+            throw new InvalidOperationException(
+                "GameConfig.Movement.DistanceScale must be positive"
+            );
         }
         if (Movement.MinTransitTicks < 0)
         {
-            throw new GameException("GameConfig.Movement.MinTransitTicks cannot be negative");
+            throw new InvalidOperationException(
+                "GameConfig.Movement.MinTransitTicks cannot be negative"
+            );
         }
         if (Movement.DefaultFighterHyperdrive <= 0)
         {
-            throw new GameException(
+            throw new InvalidOperationException(
                 "GameConfig.Movement.DefaultFighterHyperdrive must be positive"
             );
         }
@@ -50,33 +54,41 @@ public class GameConfig
         // AI validation
         if (AI.TickInterval <= 0)
         {
-            throw new GameException("GameConfig.AI.TickInterval must be positive");
+            throw new InvalidOperationException("GameConfig.AI.TickInterval must be positive");
         }
         if (AI.MaxAttackFronts < 0)
         {
-            throw new GameException("GameConfig.AI.MaxAttackFronts cannot be negative");
+            throw new InvalidOperationException("GameConfig.AI.MaxAttackFronts cannot be negative");
         }
 
         // Production validation
         if (Production.RefinementMultiplier <= 0)
         {
-            throw new GameException("GameConfig.Production.RefinementMultiplier must be positive");
+            throw new InvalidOperationException(
+                "GameConfig.Production.RefinementMultiplier must be positive"
+            );
         }
 
         // Planet validation
         if (Planet.DistanceDivisor <= 0)
         {
-            throw new GameException("GameConfig.Planet.DistanceDivisor must be positive");
+            throw new InvalidOperationException(
+                "GameConfig.Planet.DistanceDivisor must be positive"
+            );
         }
         if (Planet.MaxPopularSupport <= 0)
         {
-            throw new GameException("GameConfig.Planet.MaxPopularSupport must be positive");
+            throw new InvalidOperationException(
+                "GameConfig.Planet.MaxPopularSupport must be positive"
+            );
         }
 
         // Victory validation
         if (Victory.MinVictoryTick < 0)
         {
-            throw new GameException("GameConfig.Victory.MinVictoryTick cannot be negative");
+            throw new InvalidOperationException(
+                "GameConfig.Victory.MinVictoryTick cannot be negative"
+            );
         }
     }
 

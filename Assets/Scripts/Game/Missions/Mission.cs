@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Attributes;
@@ -421,13 +422,14 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Executes the mission, determining if it succeeds or fails.
+    /// Executes the mission, determines the outcome, and returns all results.
+    /// MissionCompletedResult is always the last item in the list.
     /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">Random number provider for probability checks.</param>
-    public void Execute(GameRoot game, IRandomNumberProvider provider)
+    public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
-        // Get the defense score and calculate the foil probability.
+        List<GameResult> results = new List<GameResult>();
+        MissionOutcome outcome;
+
         double defenseScore = GetDefenseScore();
         double foilProbability = GetFoilProbability(defenseScore);
 
@@ -436,20 +438,41 @@ public abstract class Mission : ContainerNode
             || CheckDecoySuccessful(provider, foilProbability)
         )
         {
-            OnSuccess(game, provider);
+            outcome = MissionOutcome.Success;
+            results.AddRange(OnSuccess(game));
             ImproveMissionParticipantsSkill();
         }
         else if (CheckMissionFoiled(provider, foilProbability))
         {
-            GameLogger.Log(Name + " has been foiled.");
-            // @TODO: Handle mission being foiled.
+            outcome = MissionOutcome.Foiled;
+            results.AddRange(OnFoiled(game));
         }
         else
         {
-            GameLogger.Log(Name + " has failed.");
-            // @TODO: Handle mission failure.
+            outcome = MissionOutcome.Failed;
+            results.AddRange(OnFailed(game));
         }
+
+        results.Add(
+            new MissionCompletedResult
+            {
+                MissionInstanceID = InstanceID,
+                ParticipantInstanceIDs = GetAllParticipants()
+                    .Select(p => p.GetInstanceID())
+                    .ToList(),
+                Outcome = outcome,
+                Tick = game.CurrentTick,
+            }
+        );
+
+        return results;
     }
+
+    protected abstract List<GameResult> OnSuccess(GameRoot game);
+
+    protected virtual List<GameResult> OnFoiled(GameRoot game) => new List<GameResult>();
+
+    protected virtual List<GameResult> OnFailed(GameRoot game) => new List<GameResult>();
 
     /// <summary>
     /// Returns all mission participants as children of the mission.
@@ -481,16 +504,5 @@ public abstract class Mission : ContainerNode
         // No-op: Missions cannot have children removed after initialization.
     }
 
-    /// <summary>
-    /// Method to handle mission success. To be implemented by derived classes.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">Random number provider for success effects.</param>
-    protected abstract void OnSuccess(GameRoot game, IRandomNumberProvider provider);
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="game"></param>
     public abstract bool CanContinue(GameRoot game);
 }

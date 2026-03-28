@@ -124,7 +124,7 @@ namespace Rebellion.Game
         /// Sets the manufacturing status of the building.
         /// </summary>
         /// <param name="manufacturingStatus">The manufacturing status to set.</param>
-        /// <exception cref="GameStateException">Thrown when trying to set status to Building after it's Complete.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when trying to set status to Building after it's Complete.</exception>
         public void SetManufacturingStatus(ManufacturingStatus manufacturingStatus)
         {
             if (
@@ -132,7 +132,7 @@ namespace Rebellion.Game
                 && manufacturingStatus == ManufacturingStatus.Building
             )
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     "Invalid manufacturing status. Cannot set to Building once Complete."
                 );
             }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -41,7 +41,7 @@ public sealed class FactionThemeLibrary
 
             if (themesByFactionId.ContainsKey(theme.FactionInstanceID))
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Duplicate FactionTheme detected for FactionInstanceID '{theme.FactionInstanceID}'."
                 );
             }
@@ -51,7 +51,7 @@ public sealed class FactionThemeLibrary
 
         if (defaultTheme == null)
         {
-            throw new GameException(
+            throw new InvalidOperationException(
                 "No default FactionTheme defined. A theme with empty FactionInstanceID is required."
             );
         }

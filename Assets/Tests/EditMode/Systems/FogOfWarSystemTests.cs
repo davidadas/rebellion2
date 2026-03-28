@@ -427,7 +427,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_Snapshot_PopularSupportIsNull()
+        public void BuildFactionView_Snapshot_PopularSupportIsEmpty()
         {
             coruscant.PopularSupport["FNALL1"] = 50;
 
@@ -439,7 +439,8 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsNull(viewCoruscant.PopularSupport);
+            Assert.IsNotNull(viewCoruscant.PopularSupport);
+            Assert.IsEmpty(viewCoruscant.PopularSupport);
         }
 
         [Test]

@@ -122,12 +122,12 @@ namespace Rebellion.Game
         /// Adds a starfighter to the capital ship.
         /// </summary>
         /// <param name="starfighter">The starfighter to add</param>
-        /// <exception cref="GameException">Thrown when adding the starfighter would exceed the capacity.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when adding the starfighter would exceed the capacity.</exception>
         public void AddStarfighter(Starfighter starfighter)
         {
             if (Starfighters.Count >= StarfighterCapacity)
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Adding starfighters to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }
@@ -138,12 +138,12 @@ namespace Rebellion.Game
         /// Adds a regiment to the capital ship.
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
-        /// <exception cref="GameException">Thrown when adding the regiment would exceed the capacity limit.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when adding the regiment would exceed the capacity limit.</exception>
         public void AddRegiment(Regiment regiment)
         {
             if (Regiments.Count >= RegimentCapacity)
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Adding regiments to \"{this.GetDisplayName()}\" would exceed its capacity."
                 );
             }

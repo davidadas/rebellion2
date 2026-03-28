@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -668,7 +669,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_NullGame_ThrowsException()
         {
             var manager = new BlockadeSystem(new GameRoot());
-            Assert.Throws<GameException>(() => manager.ProcessTick(null));
+            Assert.Throws<InvalidOperationException>(() => manager.ProcessTick(null));
         }
 
         [Test]

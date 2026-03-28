@@ -146,7 +146,7 @@ public class FactionTests
         };
         Technology restrictedTech = new Technology(restrictedBuilding);
 
-        Assert.Throws<GameException>(
+        Assert.Throws<InvalidOperationException>(
             () => faction.AddTechnologyNode(1, restrictedTech),
             "Should throw exception when owner IDs do not match"
         );

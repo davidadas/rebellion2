@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using TMPro;
@@ -61,7 +61,9 @@ public sealed class PlanetSystemPanel : MonoBehaviour
     public void Initialize(UIContext context)
     {
         if (context == null)
-            throw new GameException("PlanetSystemPanel.Initialize received null UIContext.");
+            throw new InvalidOperationException(
+                "PlanetSystemPanel.Initialize received null UIContext."
+            );
 
         uiContext = context;
     }
@@ -74,10 +76,10 @@ public sealed class PlanetSystemPanel : MonoBehaviour
     public void Show(PlanetSystem system)
     {
         if (uiContext == null)
-            throw new GameException("PlanetSystemPanel.Show called before Initialize.");
+            throw new InvalidOperationException("PlanetSystemPanel.Show called before Initialize.");
 
         if (system == null)
-            throw new GameException("PlanetSystemPanel.Show received null system.");
+            throw new InvalidOperationException("PlanetSystemPanel.Show received null system.");
 
         currentSystem = system;
         gameObject.SetActive(true);

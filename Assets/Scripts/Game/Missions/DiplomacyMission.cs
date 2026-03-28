@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -50,89 +51,75 @@ public class DiplomacyMission : Mission
         )
     {
         if (target == null)
-        {
             throw new ArgumentNullException(nameof(target), "The target cannot be null.");
-        }
 
         if (!(target is Planet))
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target must be a planet. Target type: {target.GetType().Name}"
             );
-        }
 
         Planet planet = (Planet)target;
 
         if (!planet.IsColonized)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target planet '{planet.DisplayName}' cannot perform diplomacy. The planet is not colonized."
             );
-        }
 
         if (planet.GetPopularSupport(ownerInstanceId) == 100)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target planet '{planet.DisplayName}' already has maximum popular support."
             );
-        }
 
         string planetOwner = planet.GetOwnerInstanceID();
         if (planetOwner != null && planetOwner != ownerInstanceId)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target planet '{planet.DisplayName}' is owned by another faction and cannot perform diplomacy."
             );
-        }
 
         if (planet.IsInUprising)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target planet '{planet.DisplayName}' is in an uprising and cannot perform diplomacy."
             );
-        }
     }
 
-    /// <summary>
-    /// Increases the planetary support for the owning faction.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">Random number provider (not used in this mission).</param>
-    protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider)
+    protected override List<GameResult> OnSuccess(GameRoot game)
     {
-        if (GetParent() is Planet planet)
-        {
-            int newSupport = planet.GetPopularSupport(OwnerInstanceID) + 1;
-            game.SetPlanetPopularSupport(planet, OwnerInstanceID, newSupport);
+        if (!(GetParent() is Planet planet))
+            return new List<GameResult>();
 
-            // If the popular support is greater than 60, set faction as owner.
-            if (planet.GetPopularSupport(OwnerInstanceID) > 60)
-            {
-                GameLogger.Log($"{planet.GetDisplayName()} has joined {GetOwnerInstanceID()}.");
-                game.ChangeUnitOwnership(this.GetParent(), this.GetOwnerInstanceID());
-            }
+        List<GameResult> results = new List<GameResult>();
+
+        int newSupport = planet.GetPopularSupport(OwnerInstanceID) + 1;
+        game.SetPlanetPopularSupport(planet, OwnerInstanceID, newSupport);
+
+        // Ownership changes only when support crosses 60
+        if (planet.GetPopularSupport(OwnerInstanceID) > 60)
+        {
+            string previousOwner = planet.GetOwnerInstanceID();
+            game.ChangeUnitOwnership(planet, OwnerInstanceID);
+
+            results.Add(
+                new PlanetOwnershipChangedResult
+                {
+                    PlanetInstanceID = planet.InstanceID,
+                    PreviousOwnerInstanceID = previousOwner,
+                    NewOwnerInstanceID = OwnerInstanceID,
+                    Tick = game.CurrentTick,
+                }
+            );
         }
+
+        return results;
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="game"></param>
     public override bool CanContinue(GameRoot game)
     {
         if (GetParent() is Planet planet)
         {
-            // Only continue if the planet is owned by the player or unowned.
-            if (
-                planet.GetOwnerInstanceID() == GetOwnerInstanceID()
-                || planet.GetOwnerInstanceID() == null
-            )
-            {
-                GameLogger.Log(
-                    $"{MainParticipants[0].GetDisplayName()} has increased popular support on {planet.GetDisplayName()}."
-                );
-                return planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
-            }
+            return (
+                    planet.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    || planet.GetOwnerInstanceID() == null
+                ) && planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
         }
         return false;
     }

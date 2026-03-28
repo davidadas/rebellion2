@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using Rebellion.Game;
 using TMPro;
 using UnityEngine;
@@ -62,16 +63,20 @@ public sealed class StrategyController : MonoBehaviour
     public void Initialize(GameManager gameManager, UIContext uiContext)
     {
         if (gameManager == null)
-            throw new GameException("StrategyController.Initialize received null GameManager.");
+            throw new InvalidOperationException(
+                "StrategyController.Initialize received null GameManager."
+            );
 
         if (uiContext == null)
-            throw new GameException("StrategyController.Initialize received null UIContext.");
+            throw new InvalidOperationException(
+                "StrategyController.Initialize received null UIContext."
+            );
 
         if (galaxyView == null)
-            throw new GameException("StrategyController missing GalaxyView reference.");
+            throw new InvalidOperationException("StrategyController missing GalaxyView reference.");
 
         if (this.gameManager != null)
-            throw new GameException("StrategyController.Initialize called twice.");
+            throw new InvalidOperationException("StrategyController.Initialize called twice.");
 
         this.gameManager = gameManager;
         this.uiContext = uiContext;
@@ -140,7 +145,7 @@ public sealed class StrategyController : MonoBehaviour
     {
         Faction faction = gameManager.GetPlayerFaction();
         if (faction == null)
-            throw new GameException("Player faction missing.");
+            throw new InvalidOperationException("Player faction missing.");
 
         FactionTheme theme = uiContext.GetPlayerFactionTheme();
 
@@ -152,7 +157,9 @@ public sealed class StrategyController : MonoBehaviour
     private void ApplyMainBackground(FactionTheme theme)
     {
         if (theme == null || string.IsNullOrEmpty(theme.TacticalHUDLayout.ImagePath))
-            throw new GameException("FactionTheme missing TacticalHUDLayout ImagePath.");
+            throw new InvalidOperationException(
+                "FactionTheme missing TacticalHUDLayout ImagePath."
+            );
 
         Sprite background = ResourceManager.Instance.GetSprite(theme.TacticalHUDLayout.ImagePath);
         factionBackground.sprite = background;
@@ -161,10 +168,10 @@ public sealed class StrategyController : MonoBehaviour
     private void ApplyGalaxyBackground(GalaxyBackground galaxy)
     {
         if (galaxy == null)
-            throw new GameException("GalaxyBackground missing.");
+            throw new InvalidOperationException("GalaxyBackground missing.");
 
         if (string.IsNullOrEmpty(galaxy.ImagePath))
-            throw new GameException("GalaxyBackground missing ImagePath.");
+            throw new InvalidOperationException("GalaxyBackground missing ImagePath.");
 
         Sprite sprite = ResourceManager.Instance.GetSprite(galaxy.ImagePath);
         galaxyBackground.sprite = sprite;

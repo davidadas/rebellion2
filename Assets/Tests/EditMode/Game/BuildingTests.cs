@@ -55,7 +55,7 @@ public class BuildingTests
     {
         Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
 
-        Assert.Throws<GameStateException>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             building.SetManufacturingStatus(ManufacturingStatus.Building)
         );
     }

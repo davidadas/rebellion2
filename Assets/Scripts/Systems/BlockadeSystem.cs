@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -30,7 +31,9 @@ namespace Rebellion.Systems
         public void ProcessTick(GameRoot game)
         {
             if (game == null)
-                throw new GameException("BlockadeSystem.ProcessTick called with null game");
+                throw new InvalidOperationException(
+                    "BlockadeSystem.ProcessTick called with null game"
+                );
 
             // Compute current blockade set from world state
             var nowBlockaded = new HashSet<string>();

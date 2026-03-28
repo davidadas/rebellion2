@@ -1,4 +1,5 @@
-﻿using Rebellion.Game;
+using System;
+using Rebellion.Game;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,7 +16,7 @@ public sealed class PlanetIcon : MonoBehaviour
     /// </summary>
     /// <param name="planet"></param>
     /// <param name="context"></param>
-    /// <exception cref="GameException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     public void Initialize(Planet planet, UIContext context)
     {
         this.planet = planet;
@@ -37,7 +38,7 @@ public sealed class PlanetIcon : MonoBehaviour
         UnityEngine.Debug.Log(theme);
 
         if (string.IsNullOrEmpty(path))
-            throw new GameException("Planet icon path missing.");
+            throw new InvalidOperationException("Planet icon path missing.");
 
         Image img = gameObject.AddComponent<Image>();
         img.sprite = ResourceManager.Instance.GetSprite(path);

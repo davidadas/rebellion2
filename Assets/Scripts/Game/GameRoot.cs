@@ -165,19 +165,21 @@ namespace Rebellion.Game
         {
             if (Summary == null)
             {
-                throw new GameException("GameSummary is null. Cannot determine player faction.");
+                throw new InvalidOperationException(
+                    "GameSummary is null. Cannot determine player faction."
+                );
             }
 
             if (string.IsNullOrEmpty(Summary.PlayerFactionID))
             {
-                throw new GameException("PlayerFactionID was not set in GameSummary.");
+                throw new InvalidOperationException("PlayerFactionID was not set in GameSummary.");
             }
 
             Faction faction = Factions.FirstOrDefault(f => f.InstanceID == Summary.PlayerFactionID);
 
             if (faction == null)
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Player faction with InstanceID '{Summary.PlayerFactionID}' does not exist in this game."
                 );
             }
@@ -212,7 +214,7 @@ namespace Rebellion.Game
         {
             if (faction == null)
             {
-                throw new GameException("Faction is null.");
+                throw new InvalidOperationException("Faction is null.");
             }
 
             int rawCount = faction.GetTotalAvailableMaterialsRaw();
@@ -233,7 +235,7 @@ namespace Rebellion.Game
         {
             if (faction == null)
             {
-                throw new GameException("Faction is null.");
+                throw new InvalidOperationException("Faction is null.");
             }
 
             return faction.GetTotalAvailableMaterialsRaw();
@@ -249,7 +251,7 @@ namespace Rebellion.Game
         {
             if (planet == null)
             {
-                throw new GameException("Planet is null.");
+                throw new InvalidOperationException("Planet is null.");
             }
 
             int maxSupport = GetConfig().Planet.MaxPopularSupport;
@@ -266,11 +268,11 @@ namespace Rebellion.Game
         {
             if (from == null)
             {
-                throw new GameException("Origin planet is null.");
+                throw new InvalidOperationException("Origin planet is null.");
             }
             if (to == null)
             {
-                throw new GameException("Destination planet is null.");
+                throw new InvalidOperationException("Destination planet is null.");
             }
 
             var config = GetConfig().Planet;
@@ -300,7 +302,7 @@ namespace Rebellion.Game
             // If the node already has a parent, throw an exception.
             if (node.GetParent() != null)
             {
-                throw new InvalidSceneOperationException(
+                throw new InvalidOperationException(
                     $"Cannot attach node \"{node.GetDisplayName()}\" to parent \"{parent.GetDisplayName()}\" because it already has a parent."
                 );
             }
@@ -324,7 +326,7 @@ namespace Rebellion.Game
         {
             if (node.GetParent() == null)
             {
-                throw new InvalidSceneOperationException(
+                throw new InvalidOperationException(
                     $"Cannot detach node \"{node.GetDisplayName()}\" because it does not have a parent."
                 );
             }
@@ -345,7 +347,7 @@ namespace Rebellion.Game
         /// <param name="node"></param>
         /// <param name="newParent"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="InvalidSceneOperationException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public void MoveNode(ISceneNode node, ISceneNode newParent)
         {
             if (node == null)
@@ -357,7 +359,7 @@ namespace Rebellion.Game
 
             if (oldParent == null)
             {
-                throw new InvalidSceneOperationException(
+                throw new InvalidOperationException(
                     $"Cannot move node \"{node.GetDisplayName()}\" because it has no parent."
                 );
             }
@@ -567,7 +569,7 @@ namespace Rebellion.Game
             // If the node already exists in the game, throw an exception.
             catch (ArgumentException)
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }

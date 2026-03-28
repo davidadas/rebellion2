@@ -1,13 +1,14 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 public class RecruitmentMission : Mission
 {
+    public string TargetOfficerInstanceID { get; set; }
+
     /// <summary>
     /// Default constructor used for deserialization.
     /// </summary>
@@ -16,7 +17,7 @@ public class RecruitmentMission : Mission
     // @TODO: Move the success probability variables to configs.
     {
         Name = "Recruitment";
-        ParticipantSkill = MissionParticipantSkill.Combat;
+        ParticipantSkill = MissionParticipantSkill.Leadership;
         QuadraticCoefficient = 0.005558;
         LinearCoefficient = 0.7656;
         ConstantTerm = 20.15;
@@ -31,6 +32,7 @@ public class RecruitmentMission : Mission
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
+        string targetOfficerInstanceId,
         ProbabilityTable successProbabilityTable = null
     )
         : base(
@@ -48,48 +50,36 @@ public class RecruitmentMission : Mission
             maxSuccessProbability: 100,
             minTicks: 15,
             maxTicks: 20
-        ) { }
-
-    /// <summary>
-    /// Adds a new officer to the faction's roster.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">Random number provider for officer selection.</param>
-    protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        )
     {
-        Planet planet = GetParent() as Planet;
-
-        if (game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0)
-        {
-            List<Officer> unrecruitedOfficers = game.GetUnrecruitedOfficers(OwnerInstanceID);
-            Officer recruitedOfficer = unrecruitedOfficers.RandomElement(provider);
-            recruitedOfficer.OwnerInstanceID = OwnerInstanceID;
-
-            game.RemoveUnrecruitedOfficer(recruitedOfficer);
-
-            // Attach the recruited officer to the planet.
-            game.AttachNode(recruitedOfficer, planet);
-
-            GameLogger.Log(
-                "Recruited officer "
-                    + recruitedOfficer.GetDisplayName()
-                    + " to "
-                    + planet.GetDisplayName()
-                    + " by "
-                    + MainParticipants[0].GetDisplayName()
-            );
-        }
-        else
-        {
-            // @TODO: No one left to recruit so abort the mission.
-        }
+        TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
-    /// <summary>
-    ///
-    /// </summary>
-    /// <param name="game"></param>
-    /// <returns></returns>
+    protected override List<GameResult> OnSuccess(GameRoot game)
+    {
+        Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+
+        if (target == null || target.OwnerInstanceID == OwnerInstanceID)
+            return new List<GameResult>();
+
+        Planet planet = GetParent() as Planet;
+
+        target.OwnerInstanceID = OwnerInstanceID;
+        game.RemoveUnrecruitedOfficer(target);
+        game.AttachNode(target, planet);
+
+        return new List<GameResult>
+        {
+            new CharacterMovedResult
+            {
+                CharacterInstanceID = target.InstanceID,
+                FromLocationInstanceID = "UNRECRUITED_POOL",
+                ToLocationInstanceID = planet?.InstanceID,
+                Tick = game.CurrentTick,
+            },
+        };
+    }
+
     public override bool CanContinue(GameRoot game)
     {
         return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;

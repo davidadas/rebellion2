@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Rebellion.SceneGraph;
@@ -148,13 +149,16 @@ namespace Rebellion.Game
         /// Sets the manufacturing status of the manufacturable.
         /// </summary>
         /// <param name="status">The new manufacturing status.</param>
-        /// <exception cref="InvalidSceneOperationException">Thrown when the status is invalid.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the status is invalid.</exception>
         public void SetManufacturingStatus(ManufacturingStatus status)
         {
             // Check for invalid status.
-            if (status == ManufacturingStatus.Complete && status == ManufacturingStatus.Building)
+            if (
+                GetManufacturingStatus() == ManufacturingStatus.Complete
+                && status == ManufacturingStatus.Building
+            )
             {
-                throw new InvalidSceneOperationException(
+                throw new InvalidOperationException(
                     "Invalid manufacturing status. Cannot set to 'Building' once 'Complete'."
                 );
             }

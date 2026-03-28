@@ -108,7 +108,7 @@ namespace Rebellion.SceneGraph
                 if (!visitedNodes.Add(parent))
                 {
                     // Node has already been visited, indicating a cycle in the scene graph.
-                    throw new InvalidSceneOperationException("Cycle detected in scene graph.");
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
                 }
 
                 if (parent is T matchingParent)
@@ -127,7 +127,7 @@ namespace Rebellion.SceneGraph
         /// Sets the owner Instance ID. If the ID is not in the allowed list, throws an exception.
         /// </summary>
         /// <param name="value">The owner Instance ID to set.</param>
-        /// <exception cref="GameStateException">Thrown when the owner Instance ID is invalid.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the owner Instance ID is invalid.</exception>
         public void SetOwnerInstanceID(string ownerInstanceId)
         {
             if (
@@ -141,7 +141,7 @@ namespace Rebellion.SceneGraph
             }
             else
             {
-                throw new GameStateException(
+                throw new InvalidOperationException(
                     $"Invalid OwnerInstanceID \"{ownerInstanceId}\" for object \"{DisplayName}\". Allowed values: {string.Join(", ", AllowedOwnerInstanceIDs)}, or null."
                 );
             }

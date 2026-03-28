@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -61,14 +61,14 @@ public sealed class UIContext
             string ownerId = node.OwnerInstanceID;
 
             if (string.IsNullOrEmpty(ownerId))
-                throw new GameException("Fleet missing OwnerInstanceID.");
+                throw new InvalidOperationException("Fleet missing OwnerInstanceID.");
 
             FactionTheme theme = GetTheme(ownerId);
 
             string path = theme?.PlanetWindowTheme?.FleetsPane?.FleetsImagePath;
 
             if (string.IsNullOrEmpty(path))
-                throw new GameException("FleetsTab.NormalImagePath missing.");
+                throw new InvalidOperationException("FleetsTab.NormalImagePath missing.");
 
             return ResourceManager.Instance.GetSprite(path);
         }
@@ -78,7 +78,9 @@ public sealed class UIContext
         if (!string.IsNullOrEmpty(nodePath))
             return ResourceManager.Instance.GetSprite(nodePath);
 
-        throw new GameException($"No sprite mapping defined for '{node.GetDisplayName()}'.");
+        throw new InvalidOperationException(
+            $"No sprite mapping defined for '{node.GetDisplayName()}'."
+        );
     }
 
     public List<FactionTheme> GetAllThemes()

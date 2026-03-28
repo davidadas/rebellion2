@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
@@ -36,7 +37,7 @@ namespace Rebellion.Generation
 
             if (planetSystems.Length == 0)
             {
-                throw new GameException(
+                throw new InvalidOperationException(
                     "Cannot assign faction headquarters. No planet systems available."
                 );
             }
@@ -61,7 +62,7 @@ namespace Rebellion.Generation
                 }
             }
 
-            throw new GameException("Invalid planet designated as headquarters.");
+            throw new InvalidOperationException("Invalid planet designated as headquarters.");
         }
 
         /// <summary>
@@ -110,7 +111,9 @@ namespace Rebellion.Generation
                     }
                     else
                     {
-                        throw new GameException("Not enough planets to assign to factions.");
+                        throw new InvalidOperationException(
+                            "Not enough planets to assign to factions."
+                        );
                     }
                 }
             }

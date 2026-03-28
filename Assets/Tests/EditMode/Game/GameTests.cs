@@ -130,7 +130,7 @@ public class GameTests
         game.AttachNode(planet, planetSystem);
 
         // Attempt to attach the same node to another parent.
-        Assert.Throws<InvalidSceneOperationException>(
+        Assert.Throws<InvalidOperationException>(
             () => game.AttachNode(planet, new PlanetSystem()),
             "Should throw exception when attaching a node that already has a parent"
         );
@@ -165,7 +165,7 @@ public class GameTests
     public void DetachNode_ThrowsException_WhenNodeHasNoParent()
     {
         // Attempt to detach a node with no parent.
-        Assert.Throws<InvalidSceneOperationException>(
+        Assert.Throws<InvalidOperationException>(
             () => game.DetachNode(planet),
             "Should throw exception when detaching a node with no parent"
         );
@@ -189,7 +189,7 @@ public class GameTests
         game.AddSceneNodeByInstanceID(planet);
 
         // Attempt to add the same node again.
-        Assert.Throws<GameException>(
+        Assert.Throws<InvalidOperationException>(
             () => game.AddSceneNodeByInstanceID(planet),
             "Should throw exception when adding a duplicate node"
         );
@@ -461,7 +461,7 @@ public class GameTests
         GameRoot gameWithoutSummary = new GameRoot();
 
         // Attempt to get player faction.
-        Assert.Throws<GameException>(
+        Assert.Throws<InvalidOperationException>(
             () => gameWithoutSummary.GetPlayerFaction(),
             "Should throw exception when GameSummary is null"
         );
@@ -476,7 +476,7 @@ public class GameTests
         GameRoot gameWithoutPlayerID = new GameRoot(summaryWithoutPlayer, config);
 
         // Attempt to get player faction.
-        Assert.Throws<GameException>(
+        Assert.Throws<InvalidOperationException>(
             () => gameWithoutPlayerID.GetPlayerFaction(),
             "Should throw exception when PlayerFactionID is null or empty"
         );
@@ -492,7 +492,7 @@ public class GameTests
         gameWithInvalidPlayer.Factions.Add(faction1);
 
         // Attempt to get player faction.
-        Assert.Throws<GameException>(
+        Assert.Throws<InvalidOperationException>(
             () => gameWithInvalidPlayer.GetPlayerFaction(),
             "Should throw exception when player faction does not exist"
         );

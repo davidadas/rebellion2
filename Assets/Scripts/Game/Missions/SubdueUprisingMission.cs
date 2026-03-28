@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -49,45 +50,42 @@ public class SubdueUprisingMission : Mission
         )
     {
         if (target == null)
-        {
             throw new ArgumentNullException(nameof(target), "The target cannot be null.");
-        }
 
         if (!(target is Planet))
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target must be a planet. Target type: {target.GetType().Name}"
             );
-        }
 
         Planet planet = (Planet)target;
 
         if (!planet.IsInUprising)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"The target planet '{planet.DisplayName}' is not in uprising."
             );
-        }
 
         if (planet.GetOwnerInstanceID() != ownerInstanceId)
-        {
-            throw new InvalidSceneOperationException(
+            throw new InvalidOperationException(
                 $"Cannot subdue uprising on planet owned by another faction."
             );
-        }
     }
 
-    /// <summary>
-    /// Attempts to subdue the uprising using UprisingManager.
-    /// Success is determined by a probability table based on current loyalty.
-    /// </summary>
-    protected override void OnSuccess(GameRoot game, IRandomNumberProvider provider)
+    protected override List<GameResult> OnSuccess(GameRoot game)
     {
-        if (GetParent() is Planet planet && planet.IsInUprising)
+        if (!(GetParent() is Planet planet) || !planet.IsInUprising)
+            return new List<GameResult>();
+
+        planet.EndUprising();
+
+        return new List<GameResult>
         {
-            planet.EndUprising();
-            GameLogger.Log($"Uprising subdued at {planet.GetDisplayName()}");
-        }
+            new PlanetUprisingEndedResult
+            {
+                PlanetInstanceID = planet.InstanceID,
+                FactionInstanceID = OwnerInstanceID,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 
     /// <summary>

@@ -57,7 +57,6 @@ namespace Rebellion.Systems
 
                 // Combat occurs between different factions
                 // Original behavior: only first fleet per faction fights
-                // Source: main.rs lines 330-351, FUN_005457f0 entry point
                 List<Fleet> attackerFleets = factionGroups[0].ToList();
                 List<Fleet> defenderFleets = factionGroups[1].ToList();
 
@@ -97,7 +96,6 @@ namespace Rebellion.Systems
         /// Auto-resolve space combat between two fleets at a system.
         ///
         /// Implements the 7-phase C++ pipeline from FUN_005457f0 → FUN_00549910.
-        /// Source: combat.rs lines 149-235.
         /// </summary>
         /// <param name="attackerFleet">Attacking fleet</param>
         /// <param name="defenderFleet">Defending fleet</param>
@@ -145,11 +143,9 @@ namespace Rebellion.Systems
             {
                 // Phase 4: Shield absorption (FUN_00544130, 83 lines, vtable +0x1c8)
                 // Note: Shield absorption is merged into phase 3 weapon fire
-                // (see combat.rs lines 316-318)
 
                 // Phase 5: Hull damage application (FUN_005443f0, 54 lines, vtable +0x1d0)
                 // Note: Hull damage is applied directly in phase 3
-                // (see combat.rs lines 321-324)
 
                 // Phase 6: Fighter engagement (FUN_005444e0, 53 lines, vtable +0x1d4)
                 PhaseFighterEngage(
@@ -192,7 +188,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Build mutable hull snapshots for one fleet.
-        /// Source: combat.rs lines 237-261.
         /// </summary>
         private static (List<ShipSnap>, List<int>) SnapshotFleet(Fleet fleet)
         {
@@ -222,7 +217,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Phase 3: One side fires at the other.
-        /// Source: combat.rs lines 263-326.
         /// </summary>
         private static void PhaseWeaponFire(
             Fleet firingFleet,
@@ -276,7 +270,6 @@ namespace Rebellion.Systems
                 int damage = Math.Max(firePerTarget + variance, 0);
 
                 // Shield absorption: shield_nibble / 15 fraction absorbed
-                // (merges phases 3-5 into one step per combat.rs lines 316-318)
                 int absorbed = (int)(damage * targets[idx].ShieldNibble / 15.0);
                 int hullDamage = Math.Max(damage - absorbed, 0);
 
@@ -290,7 +283,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Phase 6: Fighter engagement.
-        /// Source: combat.rs lines 328-377.
         /// </summary>
         private static void PhaseFighterEngage(
             Fleet attackerFleet,
@@ -317,7 +309,6 @@ namespace Rebellion.Systems
             double rollDef = provider.NextDouble();
 
             // Loss = (enemy_count / (my_count + enemy_count)) * 0.3 * total_squads * roll
-            // Factor 0.3: approximation pending vtable +0x1d4 decompile (combat.rs line 368)
             double atkHitRate = (double)defTotal / (atkTotal + defTotal);
             double defHitRate = (double)atkTotal / (atkTotal + defTotal);
 
@@ -330,7 +321,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Fighters attack enemy capital ships.
-        /// Source: combat.rs lines 379-415.
         /// </summary>
         private static void FightersAttackShips(
             List<int> squadrons,
@@ -358,7 +348,6 @@ namespace Rebellion.Systems
 
                 Starfighter fighter = fighters[sqIdx];
 
-                // Fighter attack against capital ships (approximation from combat.rs lines 399-415)
                 int totalAttack =
                     (fighter.LaserCannon + fighter.IonCannon + fighter.Torpedoes)
                     * squadrons[sqIdx];
@@ -683,7 +672,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Mutable snapshot of one hull for the duration of a single space battle.
-        /// Mirrors ShipSnap from combat.rs lines 118-127.
         /// </summary>
         private class ShipSnap
         {
