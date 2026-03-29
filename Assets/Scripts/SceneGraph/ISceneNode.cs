@@ -109,6 +109,13 @@ namespace Rebellion.SceneGraph
         /// <summary>
         ///
         /// </summary>
+        /// <param name="ownerInstanceId"></param>
+        /// <returns></returns>
+        bool HasAllowedOwnerInstanceID(string ownerInstanceId);
+
+        /// <summary>
+        ///
+        /// </summary>
         /// <param name="action"></param>
         void Traverse(Action<ISceneNode> action);
     }

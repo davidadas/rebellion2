@@ -90,7 +90,8 @@ public class TriggerEventAction : GameAction
     public override List<GameResult> Execute(GameRoot game)
     {
         GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
-        var eventProvider = provider ?? new SystemRandomProvider(new Random().Next());
+        IRandomNumberProvider eventProvider =
+            provider ?? new SystemRandomProvider(new Random().Next());
         return gameEvent.Execute(game, eventProvider);
     }
 }

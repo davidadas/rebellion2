@@ -13,36 +13,16 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class UprisingSystemTests
     {
-        private class MockRNG : IRandomNumberProvider
-        {
-            private Queue<double> values;
-
-            public MockRNG(params double[] values)
-            {
-                this.values = new Queue<double>(values);
-            }
-
-            public double NextDouble()
-            {
-                return values.Count > 0 ? values.Dequeue() : 0.5;
-            }
-
-            public int NextInt(int min, int max)
-            {
-                return (int)(NextDouble() * (max - min)) + min;
-            }
-        }
-
         [Test]
         public void ProcessTick_LowLoyalty_EmitsUprisingEvent()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -50,8 +30,8 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            var manager = new UprisingSystem(game);
-            manager.ProcessTick(new MockRNG(0.01));
+            UprisingSystem manager = new UprisingSystem(game);
+            manager.ProcessTick(new QueueRNG(0.01));
 
             Assert.IsTrue(planet.IsInUprising, "Planet should be in uprising");
             Assert.AreEqual(
@@ -64,22 +44,22 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HighLoyalty_NoEvent()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 }, { "rebels", 20 } },
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var manager = new UprisingSystem(game);
-            manager.ProcessTick(new MockRNG(0.01));
+            UprisingSystem manager = new UprisingSystem(game);
+            manager.ProcessTick(new QueueRNG(0.01));
 
             Assert.IsFalse(planet.IsInUprising, "Planet should not be in uprising");
         }
@@ -87,9 +67,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_SameSeed_SameEvents()
         {
-            var config1 = new GameConfig();
-            var game1 = new GameRoot(config1);
-            var planet1 = new Planet
+            GameConfig config1 = new GameConfig();
+            GameRoot game1 = new GameRoot(config1);
+            Planet planet1 = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -97,9 +77,9 @@ namespace Rebellion.Tests.Systems
             };
             game1.GetGalaxyMap().AddChild(planet1);
 
-            var config2 = new GameConfig();
-            var game2 = new GameRoot(config2);
-            var planet2 = new Planet
+            GameConfig config2 = new GameConfig();
+            GameRoot game2 = new GameRoot(config2);
+            Planet planet2 = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -107,8 +87,8 @@ namespace Rebellion.Tests.Systems
             };
             game2.GetGalaxyMap().AddChild(planet2);
 
-            var manager1 = new UprisingSystem(game1);
-            var manager2 = new UprisingSystem(game2);
+            UprisingSystem manager1 = new UprisingSystem(game1);
+            UprisingSystem manager2 = new UprisingSystem(game2);
 
             manager1.ProcessTick(new SystemRandomProvider(42));
             manager2.ProcessTick(new SystemRandomProvider(42));
@@ -123,22 +103,22 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoPopulation_NoEvent()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 PopularSupport = new Dictionary<string, int>(),
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var manager = new UprisingSystem(game);
-            manager.ProcessTick(new MockRNG(0.01));
+            UprisingSystem manager = new UprisingSystem(game);
+            manager.ProcessTick(new QueueRNG(0.01));
 
             Assert.IsFalse(planet.IsInUprising, "Planet with no population should not revolt");
         }
@@ -146,24 +126,24 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CooldownDoesNotBlockUprisingRoll()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 PopularSupport = new Dictionary<string, int> { { "empire", 10 }, { "rebels", 50 } },
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
             game.CurrentTick = 100;
 
-            var manager = new UprisingSystem(game);
+            UprisingSystem manager = new UprisingSystem(game);
 
-            manager.ProcessTick(new MockRNG(0.99));
+            manager.ProcessTick(new QueueRNG(0.99));
 
             Assert.IsFalse(
                 planet.IsInUprising,
@@ -171,7 +151,7 @@ namespace Rebellion.Tests.Systems
             );
 
             game.CurrentTick = 101;
-            manager.ProcessTick(new MockRNG(0.01));
+            manager.ProcessTick(new QueueRNG(0.01));
 
             Assert.IsTrue(planet.IsInUprising, "Uprising roll must not be blocked by cooldown");
         }
@@ -179,13 +159,13 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void SubdueMission_WhenInUprising_ClearsState()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -194,7 +174,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            var mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = new SubdueUprisingMission(
                 "empire",
                 planet,
                 new List<IMissionParticipant>(),
@@ -203,7 +183,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
 
             // Directly call OnSuccess to test the uprising clearing logic
-            var onSuccessMethod = typeof(SubdueUprisingMission).GetMethod(
+            System.Reflection.MethodInfo onSuccessMethod = typeof(SubdueUprisingMission).GetMethod(
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
@@ -218,13 +198,13 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void BeginUprising_Idempotent_NoDuplicateEffects()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -232,9 +212,9 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            // Call BeginUprising twice
-            planet.BeginUprising("rebels");
-            planet.BeginUprising("rebels");
+            game.ChangeUnitOwnership(planet, "rebels");
+            planet.BeginUprising();
+            planet.BeginUprising(); // Calling twice should be idempotent
 
             Assert.AreEqual(
                 "rebels",
@@ -247,12 +227,12 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void SubdueMission_WhenNotInUprising_Throws()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",

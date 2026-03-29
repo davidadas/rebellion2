@@ -56,10 +56,6 @@ public class GameConfig
         {
             throw new InvalidOperationException("GameConfig.AI.TickInterval must be positive");
         }
-        if (AI.MaxAttackFronts < 0)
-        {
-            throw new InvalidOperationException("GameConfig.AI.MaxAttackFronts cannot be negative");
-        }
 
         // Production validation
         if (Production.RefinementMultiplier <= 0)
@@ -94,7 +90,7 @@ public class GameConfig
 
     /// <summary>
     /// AI system configuration.
-    /// Controls AI decision-making, targeting, and mission dispatch.
+    /// Controls AI decision-making and mission dispatch.
     /// </summary>
     [Serializable]
     [PersistableObject]
@@ -103,41 +99,34 @@ public class GameConfig
         /// <summary>Ticks between AI decision cycles (default: 7)</summary>
         public int TickInterval { get; set; } = 7;
 
-        /// <summary>Minimum skill required for diplomacy missions (default: 60)</summary>
-        public int DiplomacySkillThreshold { get; set; } = 60;
+        /// <summary>Mission dispatch probability tables (from original MSTB .DAT files)</summary>
+        public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
+    }
 
-        /// <summary>Target popularity cap for diplomacy missions (default: 0.8)</summary>
-        public float DiplomacyTargetPopularityCap { get; set; } = 0.8f;
+    /// <summary>
+    /// AI mission dispatch tables.
+    /// Each table maps a score to a dispatch probability (0 = don't dispatch).
+    /// Score formula: (officer_skill - planet_state) + officer_leadership_rank
+    /// Source: DIPLMSTB_DAT, SUBDMSTB_DAT, ESPIMSTB_DAT, INCTMSTB_DAT, RESCMSTB_DAT
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class AIMissionTablesConfig
+    {
+        /// <summary>Diplomacy dispatch table (DIPLMSTB_DAT). Score = (diplomacy - popular_support) + rank</summary>
+        public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Minimum skill required for espionage missions (default: 30)</summary>
-        public int EspionageSkillThreshold { get; set; } = 30;
+        /// <summary>SubdueUprising dispatch table (SUBDMSTB_DAT). Score = (combat - popular_support) + rank</summary>
+        public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Minimum success probability for covert missions (default: 0.5)</summary>
-        public double CovertMinSuccessProbability { get; set; } = 0.5;
+        /// <summary>Espionage dispatch table (ESPIMSTB_DAT) — for future use</summary>
+        public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Maximum simultaneous attack fronts (default: 3)</summary>
-        public int MaxAttackFronts { get; set; } = 3;
+        /// <summary>InciteUprising dispatch table (INCTMSTB_DAT) — for future use</summary>
+        public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Ticks before AI can attack same system again (default: 100)</summary>
-        public float BattleCooldownTicks { get; set; } = 100f;
-
-        /// <summary>Distance divisor for proximity scoring (default: 100)</summary>
-        public float ProximityDivisor { get; set; } = 100f;
-
-        /// <summary>Weight factor for target weakness in scoring (default: 0.30)</summary>
-        public float WeightWeakness { get; set; } = 0.30f;
-
-        /// <summary>Weight factor for target proximity in scoring (default: 0.30)</summary>
-        public float WeightProximity { get; set; } = 0.30f;
-
-        /// <summary>Weight factor for deconfliction in scoring (default: 0.25)</summary>
-        public float WeightDeconfliction { get; set; } = 0.25f;
-
-        /// <summary>Weight factor for battle freshness in scoring (default: 0.15)</summary>
-        public float WeightFreshness { get; set; } = 0.15f;
-
-        /// <summary>Popularity threshold for covert ops targeting (default: 0.3)</summary>
-        public float CovertTargetPopularityThreshold { get; set; } = 0.3f;
+        /// <summary>Rescue dispatch table (RESCMSTB_DAT) — for future use</summary>
+        public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
     }
 
     /// <summary>

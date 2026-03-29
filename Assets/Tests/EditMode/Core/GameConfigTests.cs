@@ -32,18 +32,17 @@ namespace Rebellion.Tests.Core
 
             // AI defaults
             Assert.AreEqual(7, config.AI.TickInterval);
-            Assert.AreEqual(60, config.AI.DiplomacySkillThreshold);
-            Assert.AreEqual(0.8f, config.AI.DiplomacyTargetPopularityCap, 0.01f);
-            Assert.AreEqual(30, config.AI.EspionageSkillThreshold);
-            Assert.AreEqual(0.5, config.AI.CovertMinSuccessProbability, 0.01);
-            Assert.AreEqual(3, config.AI.MaxAttackFronts);
-            Assert.AreEqual(100f, config.AI.BattleCooldownTicks, 0.01f);
-            Assert.AreEqual(100f, config.AI.ProximityDivisor, 0.01f);
-            Assert.AreEqual(0.30f, config.AI.WeightWeakness, 0.01f);
-            Assert.AreEqual(0.30f, config.AI.WeightProximity, 0.01f);
-            Assert.AreEqual(0.25f, config.AI.WeightDeconfliction, 0.01f);
-            Assert.AreEqual(0.15f, config.AI.WeightFreshness, 0.01f);
-            Assert.AreEqual(0.3f, config.AI.CovertTargetPopularityThreshold, 0.01f);
+            Assert.IsNotNull(config.AI.MissionTables, "MissionTables should not be null");
+            Assert.Greater(
+                config.AI.MissionTables.Diplomacy.Count,
+                0,
+                "Diplomacy dispatch table should have entries"
+            );
+            Assert.Greater(
+                config.AI.MissionTables.SubdueUprising.Count,
+                0,
+                "SubdueUprising dispatch table should have entries"
+            );
 
             // Movement defaults
             Assert.AreEqual(2, config.Movement.DistanceScale);

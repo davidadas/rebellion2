@@ -678,7 +678,7 @@ public class FactionTests
     }
 
     [Test]
-    public void GetNearestPlanetTo_ReturnsClosestPlanet()
+    public void GetNearestFriendlyPlanetTo_ReturnsClosestPlanet()
     {
         Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION1" };
 
@@ -698,20 +698,20 @@ public class FactionTests
         faction.AddOwnedUnit(planet2);
         faction.AddOwnedUnit(planet3);
 
-        Planet nearest = faction.GetNearestPlanetTo(testBuilding);
+        Planet nearest = faction.GetNearestFriendlyPlanetTo(testBuilding);
 
         Assert.AreEqual("PLANET1", nearest.InstanceID, "Should return the nearest planet");
     }
 
     [Test]
-    public void GetNearestPlanetTo_WithNodeNotOnPlanet_ThrowsException()
+    public void GetNearestFriendlyPlanetTo_WithNodeNotOnPlanet_ThrowsException()
     {
         Fleet floatingFleet = new Fleet { InstanceID = "FLEET2", OwnerInstanceID = "FACTION1" };
 
         faction.AddOwnedUnit(planet1);
 
         Assert.Throws<ArgumentException>(
-            () => faction.GetNearestPlanetTo(floatingFleet),
+            () => faction.GetNearestFriendlyPlanetTo(floatingFleet),
             "Should throw exception when node is not on a planet"
         );
     }

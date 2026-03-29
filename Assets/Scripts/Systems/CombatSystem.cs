@@ -9,6 +9,16 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
+    /// Captures the context of a pending combat encounter requiring player resolution.
+    /// Held by GameManager until the player resolves combat via ResolveCombat().
+    /// </summary>
+    public class CombatDecisionContext
+    {
+        public string AttackerFleetInstanceID { get; set; }
+        public string DefenderFleetInstanceID { get; set; }
+    }
+
+    /// <summary>
     /// Manages combat resolution during each game tick.
     /// Detects hostile fleets at each system and resolves space combat.
     /// Implements the 7-phase pipeline reverse-engineered from REBEXE.EXE.
@@ -30,72 +40,151 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Processes combat for the current tick.
-        /// Scans each system for hostile fleets and resolves battles.
+        /// Detects the first hostile fleet encounter this tick.
+        /// If found, sets decision and returns true — the tick must stop immediately.
+        /// The encounter is NOT resolved here; call Resolve() after player decision.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public bool TryStartCombat(GameRoot game, out CombatDecisionContext decision)
         {
-            // Scan all planets for hostile fleets
-            IEnumerable<Planet> planets = game.GetSceneNodesByType<Planet>();
+            decision = null;
 
-            foreach (Planet planet in planets)
+            if (!DetectFleetCollision(game, out Fleet attacker, out Fleet defender))
             {
-                // Get all fleets at this system
-                List<Fleet> fleets = planet.GetChildren<Fleet>(f => true, recurse: false).ToList();
+                return false;
+            }
+
+            attacker.IsInCombat = true;
+            defender.IsInCombat = true;
+
+            decision = new CombatDecisionContext
+            {
+                AttackerFleetInstanceID = attacker.GetInstanceID(),
+                DefenderFleetInstanceID = defender.GetInstanceID(),
+            };
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves a pending combat encounter after the player has decided.
+        /// Clears IsInCombat on both fleets regardless of outcome.
+        /// </summary>
+        public void Resolve(
+            GameRoot game,
+            CombatDecisionContext decision,
+            bool autoResolve,
+            IRandomNumberProvider rng
+        )
+        {
+            if (autoResolve)
+            {
+                AutoResolveCombat(game, decision, rng);
+            }
+            else
+            {
+                RunManualCombat(game, decision);
+            }
+
+            // Clear combat flag on surviving fleets (destroyed fleets are already removed)
+            Fleet attacker = game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
+            Fleet defender = game.GetSceneNodeByInstanceID<Fleet>(decision.DefenderFleetInstanceID);
+            if (attacker != null)
+                attacker.IsInCombat = false;
+            if (defender != null)
+                defender.IsInCombat = false;
+        }
+
+        /// <summary>
+        /// Finds the first pair of hostile fleets occupying the same planet.
+        /// Skips fleets already engaged in a pending combat encounter.
+        /// Faction groups are sorted by owner ID for deterministic selection.
+        /// </summary>
+        private bool DetectFleetCollision(GameRoot game, out Fleet attacker, out Fleet defender)
+        {
+            attacker = null;
+            defender = null;
+
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            {
+                List<Fleet> fleets = planet
+                    .GetChildren<Fleet>(f => !f.IsInCombat, recurse: false)
+                    .ToList();
+
                 if (fleets.Count < 2)
                     continue;
 
-                // Group fleets by faction
                 List<IGrouping<string, Fleet>> factionGroups = fleets
                     .GroupBy(f => f.GetOwnerInstanceID())
                     .Where(g => g.Key != null)
+                    .OrderBy(g => g.Key)
                     .ToList();
 
                 if (factionGroups.Count < 2)
                     continue;
 
-                // Combat occurs between different factions
-                // Original behavior: only first fleet per faction fights
-                List<Fleet> attackerFleets = factionGroups[0].ToList();
-                List<Fleet> defenderFleets = factionGroups[1].ToList();
-
-                if (attackerFleets.Count == 0 || defenderFleets.Count == 0)
-                    continue;
-
-                // Take first fleet from each faction (matches original 2-faction combat)
-                Fleet attacker = attackerFleets[0];
-                Fleet defender = defenderFleets[0];
-
-                // Resolve space combat
-                SpaceCombatResult result = ResolveSpace(
-                    attacker,
-                    defender,
-                    planet,
-                    provider,
-                    game.CurrentTick
-                );
-
-                // Apply results
-                ApplyCombatResult(result);
-
-                // Log combat outcome
-                GameLogger.Log(
-                    $"Combat at {planet.GetDisplayName()}: "
-                        + $"{attacker.GetDisplayName()} vs {defender.GetDisplayName()} - "
-                        + $"Winner: {result.Winner}"
-                );
+                attacker = factionGroups[0].First();
+                defender = factionGroups[1].First();
+                return true;
             }
+
+            return false;
         }
 
-        // -----------------------------------------------------------------------
-        // Space combat auto-resolve - 7-phase pipeline
-        // -----------------------------------------------------------------------
+        /// <summary>
+        /// Auto-resolves combat using the 7-phase pipeline.
+        /// </summary>
+        private void AutoResolveCombat(
+            GameRoot game,
+            CombatDecisionContext decision,
+            IRandomNumberProvider rng
+        )
+        {
+            Fleet attacker = game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
+            Fleet defender = game.GetSceneNodeByInstanceID<Fleet>(decision.DefenderFleetInstanceID);
+
+            if (attacker == null || defender == null)
+            {
+                GameLogger.Warning("AutoResolveCombat: one or both fleets no longer exist.");
+                return;
+            }
+
+            Planet planet = attacker.GetParentOfType<Planet>();
+            if (planet == null)
+            {
+                GameLogger.Warning(
+                    $"AutoResolveCombat: attacker {attacker.GetDisplayName()} is not at a planet."
+                );
+                return;
+            }
+
+            SpaceCombatResult result = ResolveSpace(
+                attacker,
+                defender,
+                planet,
+                rng,
+                game.CurrentTick
+            );
+            ApplyCombatResult(result);
+
+            GameLogger.Log(
+                $"Combat at {planet.GetDisplayName()}: "
+                    + $"{attacker.GetDisplayName()} vs {defender.GetDisplayName()} — "
+                    + $"Winner: {result.Winner}"
+            );
+        }
+
+        /// <summary>
+        /// Placeholder for manual/interactive combat resolution.
+        /// </summary>
+        private void RunManualCombat(GameRoot game, CombatDecisionContext decision)
+        {
+            // TODO: Implement manual combat resolution
+        }
 
         /// <summary>
         /// Auto-resolve space combat between two fleets at a system.
         ///
-        /// Implements the 7-phase C++ pipeline from FUN_005457f0 → FUN_00549910.
+        /// Implements a 7-phase space combat pipeline.
         /// </summary>
         /// <param name="attackerFleet">Attacking fleet</param>
         /// <param name="defenderFleet">Defending fleet</param>
@@ -111,13 +200,13 @@ namespace Rebellion.Systems
             int tick
         )
         {
-            // Phase 1: Initialize - build mutable hull snapshots (FUN_005442f0)
+            // Phase 1: Initialize - build mutable hull snapshots
             (List<ShipSnap> atkShips, List<int> atkFighters) = SnapshotFleet(attackerFleet);
             (List<ShipSnap> defShips, List<int> defFighters) = SnapshotFleet(defenderFleet);
             List<int> atkInitialFighters = atkFighters.ToList();
             List<int> defInitialFighters = defFighters.ToList();
 
-            // Phase 2: Fleet composition evaluation (FUN_00544da0, 96 lines)
+            // Phase 2: Fleet composition evaluation
             // Checks if either side has armed ships or fighters with weapons
             bool anyArmed =
                 atkShips.Any(s => s.Alive && s.WeaponNibble > 0)
@@ -127,7 +216,7 @@ namespace Rebellion.Systems
 
             bool phasesEnabled = false;
 
-            // Phase 3: Weapon fire (FUN_00544030)
+            // Phase 3: Weapon fire
             // Gate: weapon fire runs BEFORE the pipeline is fully armed
             if (anyArmed)
             {
@@ -141,13 +230,13 @@ namespace Rebellion.Systems
             // Phases 4-6: Gate on phasesEnabled
             if (phasesEnabled)
             {
-                // Phase 4: Shield absorption (FUN_00544130, 83 lines, vtable +0x1c8)
+                // Phase 4: Shield absorption
                 // Note: Shield absorption is merged into phase 3 weapon fire
 
-                // Phase 5: Hull damage application (FUN_005443f0, 54 lines, vtable +0x1d0)
+                // Phase 5: Hull damage application
                 // Note: Hull damage is applied directly in phase 3
 
-                // Phase 6: Fighter engagement (FUN_005444e0, 53 lines, vtable +0x1d4)
+                // Phase 6: Fighter engagement
                 PhaseFighterEngage(
                     attackerFleet,
                     defenderFleet,
@@ -159,7 +248,7 @@ namespace Rebellion.Systems
                 );
             }
 
-            // Phase 7: Result determination (FUN_005445d0, 175 lines)
+            // Phase 7: Result determination
             bool atkAlive = atkShips.Any(s => s.Alive) || atkFighters.Any(c => c > 0);
             bool defAlive = defShips.Any(s => s.Alive) || defFighters.Any(c => c > 0);
 

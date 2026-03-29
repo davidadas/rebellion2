@@ -1,4 +1,3 @@
-using System;
 using System.Drawing;
 using Rebellion.SceneGraph;
 
@@ -18,28 +17,10 @@ namespace Rebellion.Game
     {
         MovementState Movement { get; set; }
 
-        /// <summary>
-        /// Used to determine whether this IMovable can be moved.
-        /// </summary>
-        /// <returns>True if the IMovable can be moved, false otherwise.</returns>
         bool IsMovable();
 
-        /// <summary>
-        ///
-        /// </summary>
-        /// <returns></returns>
-        bool CanBlockade()
-        {
-            return false;
-        }
+        bool CanBlockade() => false;
 
-        /// <summary>
-        ///
-        /// </summary>
-        /// <returns></returns>
-        bool IgnoresBlockade()
-        {
-            return false;
-        }
+        bool IgnoresBlockade() => false;
     }
 }

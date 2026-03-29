@@ -36,11 +36,11 @@ namespace Rebellion.Systems
                 );
 
             // Compute current blockade set from world state
-            var nowBlockaded = new HashSet<string>();
+            HashSet<string> nowBlockaded = new HashSet<string>();
 
-            foreach (var system in game.GetGalaxyMap().PlanetSystems)
+            foreach (PlanetSystem system in game.GetGalaxyMap().PlanetSystems)
             {
-                foreach (var planet in system.Planets)
+                foreach (Planet planet in system.Planets)
                 {
                     if (planet.IsBlockaded())
                     {
@@ -50,12 +50,12 @@ namespace Rebellion.Systems
             }
 
             // Detect new blockades (entered this tick)
-            foreach (var planetId in nowBlockaded)
+            foreach (string planetId in nowBlockaded)
             {
                 if (!blockadedPlanets.Contains(planetId))
                 {
                     // Blockade started
-                    var planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
+                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
                         OnBlockadeStarted(planet, game);
@@ -64,12 +64,12 @@ namespace Rebellion.Systems
             }
 
             // Detect cleared blockades (ended this tick)
-            foreach (var planetId in blockadedPlanets)
+            foreach (string planetId in blockadedPlanets)
             {
                 if (!nowBlockaded.Contains(planetId))
                 {
                     // Blockade ended
-                    var planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
+                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
                         OnBlockadeEnded(planet);
@@ -79,7 +79,7 @@ namespace Rebellion.Systems
 
             // Update tracked state
             blockadedPlanets.Clear();
-            foreach (var planetId in nowBlockaded)
+            foreach (string planetId in nowBlockaded)
             {
                 blockadedPlanets.Add(planetId);
             }
@@ -88,12 +88,12 @@ namespace Rebellion.Systems
         private void OnBlockadeStarted(Planet planet, GameRoot game)
         {
             // Destroy in-transit troops belonging to the defending faction
-            var defendingFaction = planet.OwnerInstanceID;
-            var regimentsToDestroy = planet
+            string defendingFaction = planet.OwnerInstanceID;
+            List<Regiment> regimentsToDestroy = planet
                 .Regiments.Where(r => r.OwnerInstanceID == defendingFaction && r.Movement != null)
                 .ToList();
 
-            foreach (var regiment in regimentsToDestroy)
+            foreach (Regiment regiment in regimentsToDestroy)
             {
                 game.DetachNode(regiment);
             }

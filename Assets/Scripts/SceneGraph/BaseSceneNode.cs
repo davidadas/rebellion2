@@ -176,6 +176,25 @@ namespace Rebellion.SceneGraph
             where T : class, ISceneNode;
 
         /// <summary>
+        /// Determines whether the specified owner instance ID is present in the allowed owner list.
+        /// </summary>
+        /// <param name="ownerInstanceId">The instance ID of the owner to validate.</param>
+        /// <returns>True if the owner instance ID exists in the allowed list; otherwise, false.</returns>
+        public bool HasAllowedOwnerInstanceID(string ownerInstanceId)
+        {
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            // If null or empty, assumes universally that it is allowed.
+            // This is done so that when modding you do not need to add new faction IDs
+            // to every single planet that exists inside of the game.
+            if (AllowedOwnerInstanceIDs == null || AllowedOwnerInstanceIDs.Count == 0)
+                return true;
+
+            return AllowedOwnerInstanceIDs.Contains(ownerInstanceId);
+        }
+
+        /// <summary>
         /// Called to traverse this scene node and all of its children.
         /// </summary>
         /// <param name="action">The action to perform on each scene node.</param>

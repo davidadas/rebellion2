@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
@@ -14,6 +13,7 @@ public enum MissionType
 {
     Diplomacy,
     Recruitment,
+    SubdueUprising,
 }
 
 /// <summary>
@@ -22,12 +22,10 @@ public enum MissionType
 public class MissionFactory
 {
     private readonly GameRoot game;
-    private readonly MovementSystem movementManager;
 
-    public MissionFactory(GameRoot game, MovementSystem movementManager)
+    public MissionFactory(GameRoot game)
     {
         this.game = game;
-        this.movementManager = movementManager;
     }
 
     /// <summary>
@@ -43,7 +41,9 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
-        var missionTables = game.Config?.ProbabilityTables?.Mission;
+        GameConfig.MissionProbabilityTablesConfig missionTables = game.Config
+            ?.ProbabilityTables
+            ?.Mission;
 
         return missionType switch
         {
@@ -62,14 +62,22 @@ public class MissionFactory
                 SelectRecruitmentTarget(ownerInstanceId, provider),
                 missionTables != null ? new ProbabilityTable(missionTables.Recruitment) : null
             ),
+            MissionType.SubdueUprising => new SubdueUprisingMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                missionTables != null ? new ProbabilityTable(missionTables.SubdueUprising) : null
+            ),
             _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
         };
     }
 
     /// <summary>
-    /// Creates and initiates a mission, attaching it to the game scene graph.
+    /// Creates a mission and attaches it to the scene graph at the target planet.
+    /// Participant movement and mission initiation are handled by MissionSystem.
     /// </summary>
-    public Mission CreateAndInitiateMission(
+    public Mission CreateAndAttachMission(
         MissionType missionType,
         string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
@@ -92,15 +100,14 @@ public class MissionFactory
 
         Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
         game.AttachNode(mission, closestPlanet);
-        mission.Initiate(game, movementManager, provider);
 
         return mission;
     }
 
     /// <summary>
-    /// Creates and initiates a mission from a string mission type.
+    /// Creates and attaches a mission from a string mission type.
     /// </summary>
-    public Mission CreateAndInitiateMission(
+    public Mission CreateAndAttachMission(
         string missionTypeString,
         string ownerInstanceId,
         List<IMissionParticipant> mainParticipants,
@@ -111,7 +118,7 @@ public class MissionFactory
     {
         if (Enum.TryParse(missionTypeString, true, out MissionType missionType))
         {
-            return CreateAndInitiateMission(
+            return CreateAndAttachMission(
                 missionType,
                 ownerInstanceId,
                 mainParticipants,

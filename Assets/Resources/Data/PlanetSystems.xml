@@ -486,7 +486,7 @@
         <DisplayName>Bpfassh</DisplayName>
         <PositionX>789</PositionX>
         <PositionY>824</PositionY>
-        <PlanetIconPath>Art/UI/StrategyView/blue_green_4_planet_icon</PlanetIconPath>
+        <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_blue_green_4_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
         <TypeID>PLDOL04</TypeID>
@@ -518,7 +518,7 @@
         <DisplayName>Praesitlyn</DisplayName>
         <PositionX>801</PositionX>
         <PositionY>850</PositionY>
-        <PlanetIconPath>Art/UI/StrategyView/dark_green_blue_2_planet_icon</PlanetIconPath>
+        <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_dark_green_blue_2_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
         <TypeID>PLDOL08</TypeID>
@@ -534,7 +534,7 @@
         <DisplayName>Umgul</DisplayName>
         <PositionX>838</PositionX>
         <PositionY>812</PositionY>
-        <PlanetIconPath>Art/UI/StrategyView/red_planet_icon</PlanetIconPath>
+        <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_red_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
         <TypeID>PLDOL10</TypeID>

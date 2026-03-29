@@ -58,6 +58,9 @@ namespace Rebellion.Systems
 
             foreach (Fleet fleet in planet.Fleets)
             {
+                if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
+                    continue;
+
                 planetSnapshot.Fleets.Add(fleet.GetShallowCopy(CloneMode.Full));
                 InvalidateEntityFromOtherSnapshots(faction, fleet.InstanceID, planet.InstanceID);
             }
@@ -196,14 +199,6 @@ namespace Rebellion.Systems
                         );
                     }
 
-                    if (!isVisible && planetSnapshot == null)
-                    {
-                        // Unexplored.
-                        viewPlanet.IsLive = false;
-                        viewSystem.Planets.Add(viewPlanet);
-                        continue;
-                    }
-
                     if (isVisible)
                     {
                         // Real-time.
@@ -213,7 +208,11 @@ namespace Rebellion.Systems
                         );
                         viewPlanet.Officers.AddRange(masterPlanet.Officers.Select(CopyOfficer));
                         viewPlanet.Fleets.AddRange(
-                            masterPlanet.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))
+                            masterPlanet
+                                .Fleets.Where(f =>
+                                    f.Movement == null || f.OwnerInstanceID == faction.InstanceID
+                                )
+                                .Select(f => f.GetShallowCopy(CloneMode.Full))
                         );
                         viewPlanet.Regiments.AddRange(
                             masterPlanet.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
@@ -231,13 +230,26 @@ namespace Rebellion.Systems
                             masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
                         );
                         viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
-                        viewPlanet.IsLive = true;
+                        // Also surface enemy fleets and missions captured in a prior snapshot
+                        // (e.g. via espionage or prior occupation) — persists alongside live data.
+                        if (planetSnapshot != null)
+                        {
+                            viewPlanet.Fleets.AddRange(
+                                planetSnapshot
+                                    .Fleets.Where(f => f.GetOwnerInstanceID() != faction.InstanceID)
+                                    .Select(f => f.GetShallowCopy(CloneMode.Full))
+                            );
+                        }
                     }
                     else if (planetSnapshot != null)
                     {
                         // Snapshot.
                         viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
-                        viewPlanet.PopularSupport = new Dictionary<string, int>();
+                        // Core system popular support is always visible regardless of fog.
+                        viewPlanet.PopularSupport =
+                            masterSystem.SystemType == PlanetSystemType.CoreSystem
+                                ? new Dictionary<string, int>(masterPlanet.PopularSupport)
+                                : new Dictionary<string, int>();
                         viewPlanet.Officers.AddRange(planetSnapshot.Officers.Select(CopyOfficer));
                         viewPlanet.Fleets.AddRange(
                             planetSnapshot.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))
@@ -256,8 +268,19 @@ namespace Rebellion.Systems
                             )
                         );
                         viewPlanet.NumRawResourceNodes = 0;
-                        viewPlanet.IsLive = false;
                     }
+                    else
+                    {
+                        // Unexplored — no visibility, no snapshot.
+                    }
+
+                    // Own-faction missions are always visible regardless of fog state —
+                    // you always know about operations you dispatched.
+                    viewPlanet.Missions.AddRange(
+                        masterPlanet.Missions.Where(m =>
+                            m.GetOwnerInstanceID() == faction.InstanceID
+                        )
+                    );
 
                     viewSystem.Planets.Add(viewPlanet);
                 }

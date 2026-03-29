@@ -73,6 +73,8 @@ public sealed class PlanetSystemPanel : MonoBehaviour
         return currentSystem == system;
     }
 
+    public string CurrentSystemInstanceID => currentSystem?.InstanceID;
+
     public void Show(PlanetSystem system)
     {
         if (uiContext == null)
@@ -91,6 +93,16 @@ public sealed class PlanetSystemPanel : MonoBehaviour
         AudioManager.Instance.PlaySFX(
             "Audio/SFX/StrategyView/sfx_strategyview_planet_system_panel_open"
         );
+    }
+
+    public void Refresh(PlanetSystem updatedSystem)
+    {
+        if (updatedSystem == null)
+            return;
+
+        currentSystem = updatedSystem;
+        systemNameText.text = updatedSystem.DisplayName;
+        BuildPlanets();
     }
 
     private void BuildPlanets()

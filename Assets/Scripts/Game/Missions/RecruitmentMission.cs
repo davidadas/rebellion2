@@ -80,6 +80,8 @@ public class RecruitmentMission : Mission
         };
     }
 
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
     public override bool CanContinue(GameRoot game)
     {
         return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;

@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 
 [TestFixture]
@@ -334,5 +335,116 @@ public class GameBuilderTests
             1,
             "Game should have at most one event in the event pool."
         );
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_FogOfWar_CoreSystemsHaveInitialSnapshotsForNonOwners(GameRoot game)
+    {
+        foreach (
+            PlanetSystem system in game.Galaxy.PlanetSystems.Where(s =>
+                s.SystemType == PlanetSystemType.CoreSystem
+            )
+        )
+        {
+            foreach (Faction faction in game.Factions)
+            {
+                foreach (Planet planet in system.Planets)
+                {
+                    bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
+                    if (isOwner)
+                        continue; // owner sees live — no snapshot required
+
+                    bool hasSnapshot =
+                        faction.Fog.Snapshots.TryGetValue(system.InstanceID, out SystemSnapshot ss)
+                        && ss.Planets.ContainsKey(planet.InstanceID);
+
+                    Assert.IsTrue(
+                        hasSnapshot,
+                        $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core planet '{planet.GetDisplayName()}'"
+                    );
+                }
+            }
+        }
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_FogOfWar_OuterRimPlanetsStartUnexplored(GameRoot game)
+    {
+        foreach (
+            PlanetSystem system in game.Galaxy.PlanetSystems.Where(s =>
+                s.SystemType == PlanetSystemType.OuterRim
+            )
+        )
+        {
+            foreach (Faction faction in game.Factions)
+            {
+                foreach (Planet planet in system.Planets)
+                {
+                    bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
+                    if (isOwner)
+                        continue; // owner always sees their own planet live
+
+                    bool hasSnapshot =
+                        faction.Fog.Snapshots.TryGetValue(system.InstanceID, out SystemSnapshot ss)
+                        && ss.Planets.ContainsKey(planet.InstanceID);
+
+                    Assert.IsFalse(
+                        hasSnapshot,
+                        $"Faction '{faction.GetDisplayName()}' should not have a snapshot for outer rim planet '{planet.GetDisplayName()}' at game start"
+                    );
+                }
+            }
+        }
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_FogOfWar_OuterRimOwnerCanSeeOwnPlanet(GameRoot game)
+    {
+        FogOfWarSystem fogSystem = new FogOfWarSystem(game);
+
+        foreach (
+            PlanetSystem system in game.Galaxy.PlanetSystems.Where(s =>
+                s.SystemType == PlanetSystemType.OuterRim
+            )
+        )
+        {
+            foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
+            {
+                Faction owner = game.Factions.First(f => f.InstanceID == planet.OwnerInstanceID);
+
+                Assert.IsTrue(
+                    fogSystem.IsPlanetVisible(planet, owner),
+                    $"Owner '{owner.GetDisplayName()}' should be able to see their outer rim planet '{planet.GetDisplayName()}'"
+                );
+            }
+        }
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_FogOfWar_OuterRimEnemyPlanetNotVisible(GameRoot game)
+    {
+        FogOfWarSystem fogSystem = new FogOfWarSystem(game);
+
+        foreach (
+            PlanetSystem system in game.Galaxy.PlanetSystems.Where(s =>
+                s.SystemType == PlanetSystemType.OuterRim
+            )
+        )
+        {
+            foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
+            {
+                foreach (
+                    Faction other in game.Factions.Where(f =>
+                        f.InstanceID != planet.OwnerInstanceID
+                    )
+                )
+                {
+                    Assert.IsFalse(
+                        fogSystem.IsPlanetVisible(planet, other),
+                        $"Faction '{other.GetDisplayName()}' should not be able to see enemy outer rim planet '{planet.GetDisplayName()}' at game start"
+                    );
+                }
+            }
+        }
     }
 }

@@ -2,23 +2,14 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.Systems;
 
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
     public class DiplomacyMissionTests
     {
-        private class AlwaysSucceedRNG : IRandomNumberProvider
-        {
-            public double NextDouble() => 0.01;
-
-            public int NextInt(int min, int max) => min;
-        }
-
         private GameRoot BuildGame(
             out Planet planet,
             int empireSupport,
@@ -137,6 +128,31 @@ namespace Rebellion.Tests.Game.Missions
                 "Support should still increment"
             );
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
+        }
+
+        [Test]
+        public void CanContinue_SupportAtMax_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+            game.SetPlanetPopularSupport(planet, "empire", 100);
+
+            Assert.IsFalse(
+                mission.CanContinue(game),
+                "Mission should cancel when support is at 100"
+            );
+        }
+
+        [Test]
+        public void CanContinue_SupportBelowMax_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Mission should continue when support is below 100"
+            );
         }
     }
 }

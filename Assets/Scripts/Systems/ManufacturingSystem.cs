@@ -42,7 +42,11 @@ namespace Rebellion.Systems
             }
 
             // Get faction that owns this planet
-            Faction faction = game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
+            string ownerInstanceId = planet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
             if (faction == null)
             {
                 return false;
@@ -192,7 +196,17 @@ namespace Rebellion.Systems
         /// </summary>
         private void CompleteCapitalShipManufacturing(CapitalShip capitalShip, Planet planet)
         {
-            Faction faction = game.GetFactionByOwnerInstanceID(capitalShip.GetOwnerInstanceID());
+            string ownerId = capitalShip.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerId))
+            {
+                GameLogger.Error(
+                    $"Cannot create fleet for {capitalShip.GetDisplayName()}: no owner set"
+                );
+                game.DetachNode(capitalShip);
+                return;
+            }
+
+            Faction faction = game.GetFactionByOwnerInstanceID(ownerId);
             if (faction == null)
             {
                 GameLogger.Error(
@@ -489,7 +503,8 @@ namespace Rebellion.Systems
             // First, clear all existing queues
             foreach (var planet in game.GetSceneNodesByType<Planet>())
             {
-                var queue = planet.GetManufacturingQueue();
+                Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                    planet.GetManufacturingQueue();
                 foreach (var kvp in queue)
                 {
                     kvp.Value.Clear();
@@ -531,7 +546,8 @@ namespace Rebellion.Systems
             // Sort each queue by manufacturing progress (lowest progress first)
             foreach (var planet in game.GetSceneNodesByType<Planet>())
             {
-                var queue = planet.GetManufacturingQueue();
+                Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                    planet.GetManufacturingQueue();
                 foreach (var kvp in queue)
                 {
                     kvp.Value.Sort(

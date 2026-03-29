@@ -1,26 +1,32 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.Game.Results;
 
 [TestFixture]
 public class OfficerTests
 {
-    private class TestMission : Mission
+    [Test]
+    public void IsMovable_OnActiveMission_ReturnsFalse()
     {
-        public TestMission()
-        {
-            MainParticipants = new List<IMissionParticipant>();
-            DecoyParticipants = new List<IMissionParticipant>();
-        }
+        Officer officer = new Officer { OwnerInstanceID = "rebels" };
+        StubMission mission = new StubMission();
+        mission.MaxProgress = 5;
+        mission.CurrentProgress = 0; // IsComplete() == false
+        officer.SetParent(mission);
 
-        protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
+        Assert.IsFalse(officer.IsMovable(), "Officer on an active mission should not be movable");
+    }
 
-        public override bool CanContinue(GameRoot game)
-        {
-            return true;
-        }
+    [Test]
+    public void IsMovable_OnCompletedMission_ReturnsTrue()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "rebels" };
+        StubMission mission = new StubMission();
+        mission.MaxProgress = 1;
+        mission.CurrentProgress = 1; // IsComplete() == true
+        officer.SetParent(mission);
+
+        Assert.IsTrue(officer.IsMovable(), "Officer on a completed mission should be movable");
     }
 
     [Test]
@@ -44,7 +50,7 @@ public class OfficerTests
     [Test]
     public void IsOnMission_WhenAssignedToMission_ReturnsTrue()
     {
-        TestMission mission = new TestMission();
+        StubMission mission = new StubMission();
         Officer officer = new Officer();
         officer.SetParent(mission);
         bool isOnMission = officer.IsOnMission();
@@ -70,7 +76,9 @@ public class OfficerTests
     [Test]
     public void IsMovable_WhenOnMission_ReturnsFalse()
     {
-        TestMission mission = new TestMission();
+        StubMission mission = new StubMission();
+        mission.MaxProgress = 5;
+        mission.CurrentProgress = 0;
         Officer officer = new Officer { Movement = null };
         officer.SetParent(mission);
         bool isMovable = officer.IsMovable();

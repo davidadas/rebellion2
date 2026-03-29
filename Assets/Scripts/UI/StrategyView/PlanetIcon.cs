@@ -35,7 +35,6 @@ public sealed class PlanetIcon : MonoBehaviour
         FactionTheme theme = context.GetTheme(factionOwnerId);
 
         string path = theme?.GalaxyBackground?.PlanetIcons?.Large;
-        UnityEngine.Debug.Log(theme);
 
         if (string.IsNullOrEmpty(path))
             throw new InvalidOperationException("Planet icon path missing.");

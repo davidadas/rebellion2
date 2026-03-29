@@ -162,7 +162,9 @@ namespace Rebellion.Game
         /// <returns></returns>
         public bool IsMovable()
         {
-            return Movement == null && !this.IsOnMission();
+            if (GetParent() is Mission mission)
+                return mission.IsComplete() && Movement == null;
+            return Movement == null;
         }
     }
 }

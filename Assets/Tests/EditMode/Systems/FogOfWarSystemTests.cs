@@ -60,6 +60,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "CORUSCANT",
                 DisplayName = "Coruscant",
                 OwnerInstanceID = "FNEMP1",
+                IsColonized = true,
             };
             game.AttachNode(coruscant, coreSystem);
 
@@ -76,6 +77,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "HOTH",
                 DisplayName = "Hoth",
                 OwnerInstanceID = "FNALL1",
+                IsColonized = true,
             };
             game.AttachNode(hoth, outerRimSystem);
         }
@@ -102,7 +104,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, viewTatooine.Officers.Count);
             Assert.AreEqual(0, viewTatooine.Fleets.Count);
             Assert.AreEqual(0, viewTatooine.Regiments.Count);
-            Assert.IsFalse(viewTatooine.IsLive);
         }
 
         [Test]
@@ -328,7 +329,6 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
                 .Planets.First(p => p.InstanceID == "HOTH");
 
-            Assert.IsTrue(viewHoth.IsLive);
             Assert.AreEqual(1, viewHoth.Officers.Count);
             Assert.AreEqual("LEIA", viewHoth.Officers[0].InstanceID);
         }
@@ -382,7 +382,6 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsFalse(viewCoruscant.IsLive);
             Assert.AreEqual(1, viewCoruscant.Officers.Count);
             Assert.AreEqual("VADER", viewCoruscant.Officers[0].InstanceID);
         }
@@ -427,7 +426,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_Snapshot_PopularSupportIsEmpty()
+        public void BuildFactionView_CoreSystemSnapshot_PopularSupportIsVisible()
         {
             coruscant.PopularSupport["FNALL1"] = 50;
 
@@ -440,7 +439,15 @@ namespace Rebellion.Tests.Systems
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsNotNull(viewCoruscant.PopularSupport);
-            Assert.IsEmpty(viewCoruscant.PopularSupport);
+            Assert.IsNotEmpty(
+                viewCoruscant.PopularSupport,
+                "Core system popular support should always be visible"
+            );
+            Assert.AreEqual(
+                50,
+                viewCoruscant.PopularSupport["FNALL1"],
+                "Popular support value should match live data"
+            );
         }
 
         [Test]
@@ -475,8 +482,6 @@ namespace Rebellion.Tests.Systems
             Planet viewCoruscant = view
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
-
-            Assert.IsTrue(viewCoruscant.IsLive);
         }
 
         [Test]
@@ -498,7 +503,6 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsFalse(viewCoruscant.IsLive);
             Assert.AreEqual(1, viewCoruscant.Officers.Count);
         }
 
@@ -590,10 +594,7 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
                 .Planets.First(p => p.InstanceID == "HOTH");
 
-            Assert.IsFalse(viewTatooine.IsLive);
             Assert.AreEqual(1, viewTatooine.Officers.Count);
-
-            Assert.IsTrue(viewHoth.IsLive);
         }
 
         [Test]
@@ -619,7 +620,6 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
                 .Planets.First(p => p.InstanceID == "HOTH");
 
-            Assert.IsFalse(viewHoth.IsLive);
             Assert.AreEqual(0, viewHoth.Officers.Count);
         }
 
@@ -711,7 +711,7 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_Invalidation_RemovesOnlyTargetEntity()
         {
             Officer vader = CreateOfficer("VADER", empire);
-            Officer tarkin = CreateOfficer("TARKIN", empire);
+            Officer tarkin = CreateOfficer("PALPATINE", empire);
             Fleet fleet = CreateFleet("FLEET1", empire);
             game.AttachNode(vader, coruscant);
             game.AttachNode(tarkin, coruscant);
@@ -726,11 +726,15 @@ namespace Rebellion.Tests.Systems
             SystemSnapshot coreSnapshot = alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
 
-            Assert.AreEqual(1, coruscantSnapshot.Officers.Count, "Should have 1 officer (Tarkin)");
             Assert.AreEqual(
-                "TARKIN",
+                1,
+                coruscantSnapshot.Officers.Count,
+                "Should have 1 officer (Palpatine)"
+            );
+            Assert.AreEqual(
+                "PALPATINE",
                 coruscantSnapshot.Officers[0].InstanceID,
-                "Tarkin should remain"
+                "Palpatine should remain"
             );
             Assert.AreEqual(1, coruscantSnapshot.Fleets.Count, "Fleet should remain");
 
@@ -785,61 +789,421 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        private Officer CreateOfficer(string id, Faction faction)
+        private Officer CreateOfficer(string id, Faction faction) =>
+            EntityFactory.CreateOfficer(id, faction.InstanceID);
+
+        private Fleet CreateFleet(string id, Faction faction) =>
+            EntityFactory.CreateFleet(id, faction.InstanceID);
+
+        private Regiment CreateRegiment(string id, Faction faction) =>
+            EntityFactory.CreateRegiment(id, faction.InstanceID);
+
+        private Building CreateBuilding(string id, Faction faction) =>
+            EntityFactory.CreateBuilding(id, faction.InstanceID);
+
+        private Starfighter CreateStarfighter(string id, Faction faction) =>
+            EntityFactory.CreateStarfighter(id, faction.InstanceID);
+
+        private StubMission CreateMission(string id, Faction owner, Planet target) =>
+            EntityFactory.CreateMission(id, owner.InstanceID, target.InstanceID);
+
+        // --- Partial visibility: missions ---
+
+        [Test]
+        public void BuildFactionView_OwnPlanet_EnemyMissionsNotVisible()
         {
-            return new Officer
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = faction.InstanceID,
-                Skills = new Dictionary<MissionParticipantSkill, int>
-                {
-                    { MissionParticipantSkill.Diplomacy, 50 },
-                    { MissionParticipantSkill.Espionage, 50 },
-                    { MissionParticipantSkill.Combat, 50 },
-                    { MissionParticipantSkill.Leadership, 50 },
-                },
-            };
+            // Empire owns coruscant; alliance runs a mission there.
+            // Empire's view should not expose the alliance mission.
+            Mission allianceMission = CreateMission("M1", alliance, coruscant);
+            game.AttachNode(allianceMission, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(empire);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Missions.Count,
+                "Enemy missions should not be visible on your own planet"
+            );
         }
 
-        private Fleet CreateFleet(string id, Faction faction)
+        [Test]
+        public void BuildFactionView_OwnPlanet_OwnMissionsVisible()
         {
-            return new Fleet
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = faction.InstanceID,
-            };
+            // Empire owns coruscant and runs a mission there.
+            // Empire's view SHOULD show their own mission.
+            // NOTE: This test is RED until BuildFactionView exposes own-faction missions.
+            coruscant.PopularSupport["FNALL1"] = 50;
+            Mission empireMission = CreateMission("M1", empire, coruscant);
+            game.AttachNode(empireMission, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(empire);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Missions.Count,
+                "Own missions should be visible on your own planet"
+            );
         }
 
-        private Regiment CreateRegiment(string id, Faction faction)
+        [Test]
+        public void BuildFactionView_LivePlanet_EnemyMissionsNeverVisible()
         {
-            return new Regiment
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = faction.InstanceID,
-            };
+            // Alliance takes a snapshot of coruscant (e.g. via espionage) then gets live intel.
+            // Enemy missions must never be visible — not from snapshot, not from live sight.
+            Officer vader = CreateOfficer("VADER", empire);
+            game.AttachNode(vader, coruscant);
+
+            Mission empireMission = CreateMission("M1", empire, coruscant);
+            game.AttachNode(empireMission, coruscant);
+
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Officers.Count,
+                "Live officer (Vader) should be visible"
+            );
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Missions.Count,
+                "Enemy missions must never be visible"
+            );
         }
 
-        private Building CreateBuilding(string id, Faction faction)
+        [Test]
+        public void BuildFactionView_FleetAtEnemyPlanet_EnemyMissionsStillHidden()
         {
-            return new Building
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = faction.InstanceID,
-            };
+            // Alliance fleet sits at coruscant (empire planet).
+            // Alliance should see units (live) but NOT empire missions running there.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            Mission empireMission = CreateMission("M1", empire, coruscant);
+            game.AttachNode(empireMission, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Missions.Count,
+                "Enemy missions should remain hidden even when a friendly fleet is present"
+            );
         }
 
-        private Starfighter CreateStarfighter(string id, Faction faction)
+        // --- Partial visibility: enemy units visible when you have live intel ---
+
+        [Test]
+        public void BuildFactionView_FleetAtEnemyPlanet_EnemyOfficerVisible()
         {
-            return new Starfighter
+            // Alliance fleet orbits coruscant (empire's planet) → live view for alliance.
+            // Empire officer is stationed there (valid — same owner as planet).
+            // Alliance live view should include the enemy officer.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            Officer tarkin = CreateOfficer("PALPATINE", empire);
+            game.AttachNode(tarkin, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Officers.Count,
+                "Enemy officer should be visible when you have live intel on the planet"
+            );
+            Assert.AreEqual("PALPATINE", viewCoruscant.Officers[0].InstanceID);
+        }
+
+        // --- Snapshot does not reveal post-snapshot changes ---
+
+        [Test]
+        public void BuildFactionView_SnapshotPlanet_EntityAddedAfterSnapshot_NotVisible()
+        {
+            // Snapshot coruscant; then add a new officer after the snapshot is taken.
+            // The new officer must NOT appear in the view.
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            Officer lateArrival = CreateOfficer("MOFF1", empire);
+            game.AttachNode(lateArrival, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Officers.Count,
+                "Officer added after snapshot should not appear in the view"
+            );
+        }
+
+        // --- Live planet + snapshot: own stale data ignored, enemy snapshot data surfaced ---
+
+        [Test]
+        public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
+        {
+            // Snapshot hoth while alliance has a fleet there.
+            // Fleet moves away — now stale in the snapshot.
+            // Live view should show only what is actually on hoth, not the stale snapshot fleet.
+            Fleet staleFleet = CreateFleet("FLEET_STALE", alliance);
+            game.AttachNode(staleFleet, hoth);
+            fogSystem.CaptureSnapshot(alliance, hoth, outerRimSystem, 10);
+            game.MoveNode(staleFleet, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+
+            Assert.AreEqual(0, viewHoth.Fleets.Count, "Stale own-faction fleet should not appear");
+        }
+
+        [Test]
+        public void BuildFactionView_PlanetCapturedFromEnemy_LiveOwnData_PlusSnapshotEnemyFleet()
+        {
+            // Coruscant was empire's. Alliance took a snapshot when empire owned it —
+            // capturing an empire fleet. Alliance then takes ownership.
+            // View should show live own data alongside the snapshot enemy fleet.
+            // Enemy missions are never visible regardless of snapshot.
+            Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
+            game.AttachNode(empireFleet, coruscant);
+            Mission empireMission = CreateMission("M1", empire, coruscant);
+            game.AttachNode(empireMission, coruscant);
+
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            // Alliance takes ownership — empire units depart.
+            coruscant.OwnerInstanceID = alliance.InstanceID;
+            game.MoveNode(empireFleet, hoth);
+            game.DetachNode(empireMission);
+
+            // Alliance officer now stationed on the captured planet.
+            Officer leia = CreateOfficer("LEIA", alliance);
+            game.AttachNode(leia, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(1, viewCoruscant.Officers.Count, "Live alliance officer should appear");
+            Assert.AreEqual("LEIA", viewCoruscant.Officers[0].InstanceID);
+            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Snapshot empire fleet should appear");
+            Assert.AreEqual("EMPIRE_FLEET", viewCoruscant.Fleets[0].InstanceID);
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Missions.Count,
+                "Enemy missions must never be visible"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_OwnMission_OnEnemyPlanet_VisibleWithoutSnapshotOrFleet()
+        {
+            // Alliance runs a mission on coruscant (empire-owned).
+            // No alliance fleet there, no prior snapshot.
+            // Alliance should still see their own mission.
+            Mission allianceMission = CreateMission("M1", alliance, coruscant);
+            game.AttachNode(allianceMission, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Missions.Count,
+                "Own mission on enemy planet should be visible without a snapshot or fleet"
+            );
+            Assert.AreEqual("M1", viewCoruscant.Missions[0].InstanceID);
+        }
+
+        [Test]
+        public void BuildFactionView_OwnMission_OnNeutralPlanet_VisibleWithoutSnapshotOrFleet()
+        {
+            // Alliance runs a mission on tatooine (neutral, uncolonized).
+            // No fleet, no snapshot.
+            Mission allianceMission = CreateMission("M1", alliance, tatooine);
+            game.AttachNode(allianceMission, tatooine);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewTatooine = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "TATOOINE");
+
+            Assert.AreEqual(
+                1,
+                viewTatooine.Missions.Count,
+                "Own mission on neutral planet should be visible without a snapshot or fleet"
+            );
+            Assert.AreEqual("M1", viewTatooine.Missions[0].InstanceID);
+        }
+
+        [Test]
+        public void BuildFactionView_OwnFleet_AtEnemyPlanet_PlanetLiveWithoutSnapshot()
+        {
+            // Alliance fleet arrives at coruscant (empire-owned). No prior snapshot.
+            // Planet should be live and fleet visible.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Own fleet should be visible");
+            Assert.AreEqual("FLEET1", viewCoruscant.Fleets[0].InstanceID);
+        }
+
+        // --- Blockade visibility ---
+
+        [Test]
+        public void BuildFactionView_BlockadedOwnPlanet_StationaryEnemyFleet_IsVisible()
+        {
+            // Alliance owns Hoth; empire fleet is sitting at Hoth (not in transit).
+            // Alliance should see the enemy fleet in their live view.
+            Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
+            game.AttachNode(empireFleet, hoth);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+
+            Assert.AreEqual(1, viewHoth.Fleets.Count, "Stationary enemy fleet should be visible");
+            Assert.AreEqual("EMPIRE_FLEET", viewHoth.Fleets[0].InstanceID);
+        }
+
+        [Test]
+        public void BuildFactionView_BlockadedOwnPlanet_EnemyFleetInTransit_NotVisible()
+        {
+            // Alliance owns Hoth; empire fleet is en route to Hoth (in transit, Movement != null).
+            // Fleet is parented to Hoth because RequestMove reparents immediately,
+            // but it has not yet arrived. Alliance should NOT see it.
+            Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
+            game.AttachNode(empireFleet, hoth);
+            empireFleet.Movement = new MovementState
             {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = faction.InstanceID,
+                DestinationInstanceID = "HOTH",
+                TransitTicks = 10,
+                TicksElapsed = 5,
             };
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+
+            Assert.AreEqual(
+                0,
+                viewHoth.Fleets.Count,
+                "In-transit enemy fleet should not appear in the view"
+            );
+        }
+
+        [Test]
+        public void IsPlanetVisible_OwnFleetInTransit_GrantsVisibility()
+        {
+            // Alliance fleet is en route to Coruscant. Even though it hasn't arrived,
+            // you dispatched it and know it's heading there — it grants live visibility.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+            allianceFleet.Movement = new MovementState
+            {
+                DestinationInstanceID = "CORUSCANT",
+                TransitTicks = 10,
+                TicksElapsed = 3,
+            };
+
+            bool visible = fogSystem.IsPlanetVisible(coruscant, alliance);
+
+            Assert.IsTrue(
+                visible,
+                "An in-transit own fleet should still grant visibility of the destination"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_OwnFleetInTransit_IsVisible()
+        {
+            // Alliance fleet is in transit to Hoth (alliance-owned). You should see your own fleet.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, hoth);
+            allianceFleet.Movement = new MovementState
+            {
+                DestinationInstanceID = "HOTH",
+                TransitTicks = 10,
+                TicksElapsed = 4,
+            };
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+
+            Assert.AreEqual(1, viewHoth.Fleets.Count, "Own in-transit fleet should be visible");
+            Assert.AreEqual("FLEET1", viewHoth.Fleets[0].InstanceID);
+        }
+
+        // --- Outer rim: support hidden in snapshots ---
+
+        [Test]
+        public void BuildFactionView_OuterRimSnapshot_PopularSupportHidden()
+        {
+            // Outer rim planet: popular support is NOT universally visible.
+            // Only core system support is always shown.
+            tatooine.OwnerInstanceID = empire.InstanceID;
+            tatooine.PopularSupport["FNALL1"] = 40;
+
+            fogSystem.CaptureSnapshot(alliance, tatooine, outerRimSystem, 10);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewTatooine = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "TATOOINE");
+
+            Assert.IsEmpty(
+                viewTatooine.PopularSupport,
+                "Popular support on outer rim snapshots should be hidden"
+            );
         }
     }
 }

@@ -22,8 +22,8 @@ public class DiplomacyMission : Mission
         ConstantTerm = 20.15;
         MinSuccessProbability = 1;
         MaxSuccessProbability = 100;
-        MinTicks = 15;
-        MaxTicks = 20;
+        MinTicks = 5;
+        MaxTicks = 10;
     }
 
     public DiplomacyMission(
@@ -89,7 +89,25 @@ public class DiplomacyMission : Mission
 
         List<GameResult> results = new List<GameResult>();
 
-        int newSupport = planet.GetPopularSupport(OwnerInstanceID) + 1;
+        int currentSupport = planet.GetPopularSupport(OwnerInstanceID);
+        int increment = 1;
+
+        if (SuccessProbabilityTable != null && MainParticipants.Count > 0)
+        {
+            Officer officer = MainParticipants[0] as Officer;
+            if (officer != null)
+            {
+                int score =
+                    (int)officer.CurrentRank
+                    - currentSupport
+                    + officer.Skills[MissionParticipantSkill.Diplomacy];
+                int tableValue = SuccessProbabilityTable.Lookup(score);
+                if (tableValue > 0)
+                    increment = tableValue;
+            }
+        }
+
+        int newSupport = Math.Min(100, currentSupport + increment);
         game.SetPlanetPopularSupport(planet, OwnerInstanceID, newSupport);
 
         // Ownership changes only when support crosses 60 and the planet isn't already ours
@@ -112,6 +130,8 @@ public class DiplomacyMission : Mission
         return results;
     }
 
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
     public override bool CanContinue(GameRoot game)
     {
         if (GetParent() is Planet planet)
@@ -120,7 +140,7 @@ public class DiplomacyMission : Mission
                     planet.GetOwnerInstanceID() == GetOwnerInstanceID()
                     || planet.GetOwnerInstanceID() == null
                 )
-                && planet.GetPopularSupport(GetOwnerInstanceID()) <= 100;
+                && planet.GetPopularSupport(GetOwnerInstanceID()) < 100;
         }
         return false;
     }

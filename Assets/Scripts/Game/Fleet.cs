@@ -8,18 +8,51 @@ using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game
 {
+    public enum FleetRoleType
+    {
+        Battle,
+        Patrol,
+    }
+
     public class Fleet : ContainerNode, IMovable
     {
         // Movement Info
         public MovementState Movement { get; set; }
 
+        /// <summary>
+        /// Designates whether this fleet is a battle fleet or a patrol/presence fleet.
+        /// Mirrors the original game's fleet subtype (class 0x8, subtype 4 = Patrol).
+        /// Battle fleets engage in combat and defend key systems.
+        /// Patrol fleets provide system presence but are not sent on attack missions.
+        /// </summary>
+        public FleetRoleType RoleType { get; set; } = FleetRoleType.Battle;
+
+        /// <summary>
+        /// True while this fleet is engaged in a pending combat encounter.
+        /// Cleared after combat is resolved. Not persisted to save files.
+        /// </summary>
+        [PersistableIgnore]
+        public bool IsInCombat { get; set; }
+
         // Child Nodes
         public List<CapitalShip> CapitalShips { get; set; } = new List<CapitalShip>();
 
         /// <summary>
-        /// Default constructor.
+        /// Default constructor used for deserialization.
         /// </summary>
         public Fleet() { }
+
+        public Fleet(
+            string ownerInstanceId,
+            string displayName,
+            List<CapitalShip> capitalShips = null
+        )
+        {
+            AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
+            OwnerInstanceID = ownerInstanceId;
+            DisplayName = displayName;
+            CapitalShips = capitalShips ?? new List<CapitalShip>();
+        }
 
         /// <summary>
         /// Returns the total starfighter capacity of the fleet.

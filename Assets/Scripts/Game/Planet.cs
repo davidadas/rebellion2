@@ -33,11 +33,6 @@ namespace Rebellion.Game
         /// <summary>
         /// True if this planet data is real-time (fleet present or owned).
         /// False if this is a snapshot from fog of war.
-        /// Used by UI to hide missions and show staleness indicators.
-        /// </summary>
-        [PersistableIgnore]
-        public bool IsLive { get; set; } = true;
-
         // Popular Support
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
@@ -126,10 +121,9 @@ namespace Rebellion.Game
         /// Order matters: uprising state is set before ownership changes.
         /// Centralizes all uprising state mutations in one place.
         /// </summary>
-        public void BeginUprising(string newOwnerID)
+        public void BeginUprising()
         {
             IsInUprising = true;
-            OwnerInstanceID = newOwnerID;
         }
 
         /// <summary>
@@ -726,6 +720,28 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Adds a starfighter to the planet.
+        /// </summary>
+        /// <param name="starfighter">The starfighter to add.</param>
+        private void AddStarfighter(Starfighter starfighter)
+        {
+            if (starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            {
+                throw new SceneAccessException(starfighter, this);
+            }
+            Starfighters.Add(starfighter);
+        }
+
+        /// <summary>
+        /// Removes a starfighter from the planet.
+        /// </summary>
+        /// <param name="starfighter">The starfighter to remove.</param>
+        private void RemoveStarfighter(Starfighter starfighter)
+        {
+            Starfighters.Remove(starfighter);
+        }
+
+        /// <summary>
         ///
         /// </summary>
         /// <returns></returns>
@@ -811,6 +827,9 @@ namespace Rebellion.Game
                 case Regiment regiment:
                     AddRegiment(regiment);
                     break;
+                case Starfighter starfighter:
+                    AddStarfighter(starfighter);
+                    break;
                 default:
                     throw new InvalidOperationException(
                         $"Cannot add {child.GetDisplayName()} to {this.GetDisplayName()}. "
@@ -842,10 +861,13 @@ namespace Rebellion.Game
                 case Regiment regiment:
                     RemoveRegiment(regiment);
                     break;
+                case Starfighter starfighter:
+                    RemoveStarfighter(starfighter);
+                    break;
                 default:
                     throw new InvalidOperationException(
                         $"Cannot remove {child.GetDisplayName()} from {this.GetDisplayName()}. "
-                            + $"Only fleets, officers, buildings, missions, and regiments are allowed."
+                            + $"Only fleets, officers, buildings, missions, regiments, and starfighters are allowed."
                     );
             }
         }

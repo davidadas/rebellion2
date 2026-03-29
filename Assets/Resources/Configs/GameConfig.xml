@@ -15,35 +15,267 @@
     <!-- Tick interval between AI decision cycles (default: 7) -->
     <TickInterval>7</TickInterval>
 
-    <!-- Minimum skill required for diplomacy missions (default: 60) -->
-    <DiplomacySkillThreshold>60</DiplomacySkillThreshold>
-
-    <!-- Target popularity cap for diplomacy missions (0.0-1.0, default: 0.8) -->
-    <DiplomacyTargetPopularityCap>0.8</DiplomacyTargetPopularityCap>
-
-    <!-- Minimum skill required for espionage missions (default: 30) -->
-    <EspionageSkillThreshold>30</EspionageSkillThreshold>
-
-    <!-- Minimum success probability for covert missions (0.0-1.0, default: 0.5) -->
-    <CovertMinSuccessProbability>0.5</CovertMinSuccessProbability>
-
-    <!-- Maximum simultaneous attack fronts (default: 3) -->
-    <MaxAttackFronts>3</MaxAttackFronts>
-
-    <!-- Ticks before AI can attack same system again (default: 100) -->
-    <BattleCooldownTicks>100</BattleCooldownTicks>
-
-    <!-- Distance divisor for proximity scoring (default: 100) -->
-    <ProximityDivisor>100</ProximityDivisor>
-
-    <!-- Weight factors for attack target scoring (sum to 1.0) -->
-    <WeightWeakness>0.30</WeightWeakness>
-    <WeightProximity>0.30</WeightProximity>
-    <WeightDeconfliction>0.25</WeightDeconfliction>
-    <WeightFreshness>0.15</WeightFreshness>
-
-    <!-- Popularity threshold for covert ops targeting (0.0-1.0, default: 0.3) -->
-    <CovertTargetPopularityThreshold>0.3</CovertTargetPopularityThreshold>
+    <!-- Mission dispatch tables (from original MSTB .DAT files)
+         Each table maps a score to a dispatch probability.
+         Score formula: (officer_skill - planet_state) + officer_leadership_rank
+         Lookup returns 0 = don't dispatch; >0 = dispatch mission -->
+    <MissionTables>
+      <!-- Diplomacy: score = (diplomacy_skill - popular_support) + leadership (DIPLMSTB_DAT) -->
+      <Diplomacy>
+        <Entry>
+          <Key>-39</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-29</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>-19</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>-9</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>70</Value>
+        </Entry>
+      </Diplomacy>
+      <!-- SubdueUprising: score = (combat_skill - popular_support) + leadership (SUBDMSTB_DAT) -->
+      <SubdueUprising>
+        <Entry>
+          <Key>-20</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-10</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </SubdueUprising>
+      <!-- Espionage: for future use (ESPIMSTB_DAT) -->
+      <Espionage>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Espionage>
+      <!-- InciteUprising: for future use (INCTMSTB_DAT) -->
+      <InciteUprising>
+        <Entry>
+          <Key>-20</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>-10</Key>
+          <Value>3</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>5</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </InciteUprising>
+      <!-- Rescue: for future use (RESCMSTB_DAT) -->
+      <Rescue>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Rescue>
+    </MissionTables>
   </AI>
 
   <!-- Movement System Configuration -->

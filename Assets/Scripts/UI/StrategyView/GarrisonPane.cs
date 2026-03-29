@@ -95,7 +95,7 @@ public sealed class GarrisonPane : MonoBehaviour
         if (theme == null)
             return;
 
-        var panel = theme?.PlanetWindowTheme?.GarrisonPanel;
+        GarrisonPanelTheme panel = theme?.PlanetWindowTheme?.GarrisonPanel;
 
         if (panel == null)
             return;

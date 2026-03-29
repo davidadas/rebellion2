@@ -14,31 +14,33 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class BlockadeSystemTests
     {
-        // ── Transition Tests ────────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_NewBlockade_DestroysInTransitDefenders()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var inTransitRegiment = new Regiment
+            Regiment inTransitRegiment = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
@@ -74,25 +76,29 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_NewBlockade_GarrisonedDefendersSurvive()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var garrisonedRegiment = new Regiment
+            Regiment garrisonedRegiment = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Garrison",
@@ -123,25 +129,29 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_AlreadyBlockaded_DoesNotTriggerStartAgain()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var regiment1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Regiment 1",
@@ -153,7 +163,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var regiment2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Regiment 2",
@@ -192,25 +202,29 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_BlockadeEnds_TriggersEnd()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var defenderFleet = new Fleet
+            Fleet defenderFleet = new Fleet
             {
                 InstanceID = "f2",
                 DisplayName = "Imperial Fleet",
@@ -242,25 +256,29 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_NotBlockaded_DoesNotTriggerEndAgain()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var defenderFleet = new Fleet
+            Fleet defenderFleet = new Fleet
             {
                 InstanceID = "f2",
                 DisplayName = "Imperial Fleet",
@@ -289,31 +307,33 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(planet.IsBlockaded());
         }
 
-        // ── Troop Destruction ───────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_BlockadeStart_DestroysOnlyInTransitDefendingRegiments()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var empireInTransit = new Regiment
+            Regiment empireInTransit = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
@@ -325,7 +345,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var allianceInTransit = new Regiment
+            Regiment allianceInTransit = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Rebel Troops",
@@ -363,25 +383,29 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_BlockadeStart_DestroysAllInTransitDefendingRegiments()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var regiment1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Regiment 1",
@@ -393,7 +417,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var regiment2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Regiment 2",
@@ -405,7 +429,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var regiment3 = new Regiment
+            Regiment regiment3 = new Regiment
             {
                 InstanceID = "r3",
                 DisplayName = "Regiment 3",
@@ -440,39 +464,43 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_BlockadeStart_GarrisonedDefendersSurvive()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var garrisoned1 = new Regiment
+            Regiment garrisoned1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Garrison 1",
                 OwnerInstanceID = "empire",
                 Movement = null,
             };
-            var garrisoned2 = new Regiment
+            Regiment garrisoned2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Garrison 2",
                 OwnerInstanceID = "empire",
                 Movement = null,
             };
-            var inTransit = new Regiment
+            Regiment inTransit = new Regiment
             {
                 InstanceID = "r3",
                 DisplayName = "In Transit",
@@ -503,44 +531,50 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r3"));
         }
 
-        // ── Multi-Planet ────────────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_MultiplePlanets_HandledIndependently()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system1 = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var system2 = new PlanetSystem { InstanceID = "s2", DisplayName = "Hoth System" };
-            var planet1 = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system1 = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            PlanetSystem system2 = new PlanetSystem
+            {
+                InstanceID = "s2",
+                DisplayName = "Hoth System",
+            };
+            Planet planet1 = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var planet2 = new Planet
+            Planet planet2 = new Planet
             {
                 InstanceID = "p2",
                 DisplayName = "Hoth",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var defenderFleet = new Fleet
+            Fleet defenderFleet = new Fleet
             {
                 InstanceID = "f2",
                 DisplayName = "Imperial Fleet",
                 OwnerInstanceID = "empire",
             };
-            var regiment1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Troops 1",
@@ -552,7 +586,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var regiment2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Troops 2",
@@ -588,38 +622,46 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_SimultaneousBlockades_AllHandled()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system1 = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var system2 = new PlanetSystem { InstanceID = "s2", DisplayName = "Hoth System" };
-            var planet1 = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system1 = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            PlanetSystem system2 = new PlanetSystem
+            {
+                InstanceID = "s2",
+                DisplayName = "Hoth System",
+            };
+            Planet planet1 = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var planet2 = new Planet
+            Planet planet2 = new Planet
             {
                 InstanceID = "p2",
                 DisplayName = "Hoth",
                 OwnerInstanceID = "empire",
             };
-            var fleet1 = new Fleet
+            Fleet fleet1 = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Fleet 1",
                 OwnerInstanceID = "alliance",
             };
-            var fleet2 = new Fleet
+            Fleet fleet2 = new Fleet
             {
                 InstanceID = "f2",
                 DisplayName = "Fleet 2",
                 OwnerInstanceID = "alliance",
             };
-            var regiment1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Troops 1",
@@ -631,7 +673,7 @@ namespace Rebellion.Tests.Systems
                     TicksElapsed = 5,
                 },
             };
-            var regiment2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Troops 2",
@@ -663,12 +705,10 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
 
-        // ── Edge Cases ──────────────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_NullGame_ThrowsException()
         {
-            var manager = new BlockadeSystem(new GameRoot());
+            BlockadeSystem manager = new BlockadeSystem(new GameRoot());
             Assert.Throws<InvalidOperationException>(() => manager.ProcessTick(null));
         }
 
@@ -676,31 +716,35 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_BlockadeEnds_DoesNotRestoreTroops()
         {
             // Arrange
-            var game = new GameRoot();
-            var manager = new BlockadeSystem(game);
+            GameRoot game = new GameRoot();
+            BlockadeSystem manager = new BlockadeSystem(game);
 
-            var empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            var alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
-            var system = new PlanetSystem { InstanceID = "s1", DisplayName = "Tatooine System" };
-            var planet = new Planet
+            Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "s1",
+                DisplayName = "Tatooine System",
+            };
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "empire",
             };
-            var hostileFleet = new Fleet
+            Fleet hostileFleet = new Fleet
             {
                 InstanceID = "f1",
                 DisplayName = "Rebel Fleet",
                 OwnerInstanceID = "alliance",
             };
-            var defenderFleet = new Fleet
+            Fleet defenderFleet = new Fleet
             {
                 InstanceID = "f2",
                 DisplayName = "Imperial Fleet",
                 OwnerInstanceID = "empire",
             };
-            var regiment = new Regiment
+            Regiment regiment = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
