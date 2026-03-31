@@ -1182,6 +1182,58 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("FLEET1", viewHoth.Fleets[0].InstanceID);
         }
 
+        // --- Snapshot fleet de-duplication ---
+
+        [Test]
+        public void BuildFactionView_LivePlanet_OrbingEnemyFleet_NotDuplicatedFromSnapshot()
+        {
+            // Empire fleet orbits Hoth (alliance-owned). Alliance takes a snapshot capturing it.
+            // Fleet remains orbiting — still present live.
+            // The fleet should appear exactly once in the faction view, not twice.
+            Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
+            game.AttachNode(empireFleet, hoth);
+
+            fogSystem.CaptureSnapshot(alliance, hoth, outerRimSystem, 10);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+
+            Assert.AreEqual(
+                1,
+                viewHoth.Fleets.Count,
+                "Orbiting enemy fleet already visible live should not be duplicated from snapshot"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_LivePlanet_SnapshotEnemyMission_NeverSurfaced()
+        {
+            // Even if a snapshot captured an enemy mission, and the planet is later live,
+            // enemy missions must never appear in the faction view.
+            Mission empireMission = CreateMission("M1", empire, coruscant);
+            game.AttachNode(empireMission, coruscant);
+
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                0,
+                viewCoruscant.Missions.Count,
+                "Enemy missions must never be surfaced"
+            );
+        }
+
         // --- Outer rim: support hidden in snapshots ---
 
         [Test]

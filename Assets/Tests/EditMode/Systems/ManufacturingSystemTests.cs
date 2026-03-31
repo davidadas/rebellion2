@@ -351,6 +351,44 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void AttachNode_Building_OnPlanetWithDifferentOwner_ThrowsSceneAccessException()
+        {
+            // Scene graph must reject a building whose owner doesn't match the planet's owner.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                AllowedOwnerInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => game.AttachNode(rebelBuilding, coruscant),
+                "Attaching a building to a planet owned by a different faction must throw SceneAccessException"
+            );
+        }
+
+        [Test]
+        public void Enqueue_BuildingOwnedByDifferentFaction_Throws()
+        {
+            // Enqueue internally calls game.AttachNode — ownership mismatch must propagate.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                AllowedOwnerInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => manager.Enqueue(coruscant, rebelBuilding, ignoreCost: true),
+                "Enqueueing a building owned by a different faction must throw SceneAccessException"
+            );
+        }
+
+        [Test]
         public void Enqueue_PlayerFaction_InsufficientFunds_Rejected()
         {
             // With default setup (no mines/refineries), faction has no materials

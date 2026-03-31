@@ -452,7 +452,7 @@ public abstract class Mission : ContainerNode
                 ParticipantInstanceIDs = GetAllParticipants()
                     .Select(p => p.GetInstanceID())
                     .ToList(),
-                ParticipantNames = MainParticipants
+                ParticipantNames = GetAllParticipants()
                     .Select(p => ((ISceneNode)p).GetDisplayName())
                     .ToList(),
                 Outcome = outcome,

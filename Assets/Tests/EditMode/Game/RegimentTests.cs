@@ -36,23 +36,23 @@ public class RegimentTests
     }
 
     [Test]
-    public void IsMovable_WhenInTransit_ReturnsTrue()
+    public void IsMovable_WhenInTransit_ReturnsFalse()
     {
         regiment.Movement = new MovementState();
 
         bool isMovable = regiment.IsMovable();
 
-        Assert.IsTrue(isMovable, "Regiment should be movable when in transit");
+        Assert.IsFalse(isMovable, "Regiment should not be movable when already in transit");
     }
 
     [Test]
-    public void IsMovable_WhenIdle_ReturnsFalse()
+    public void IsMovable_WhenIdle_ReturnsTrue()
     {
         regiment.Movement = null;
 
         bool isMovable = regiment.IsMovable();
 
-        Assert.IsFalse(isMovable, "Regiment should not be movable when idle");
+        Assert.IsTrue(isMovable, "Regiment should be movable when idle");
     }
 
     [Test]

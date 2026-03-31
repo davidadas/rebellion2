@@ -110,12 +110,11 @@ public class DiplomacyMission : Mission
         int newSupport = Math.Min(100, currentSupport + increment);
         game.SetPlanetPopularSupport(planet, OwnerInstanceID, newSupport);
 
-        // Ownership changes only when support crosses 60 and the planet isn't already ours
+        // Emit an ownership-change result when support crosses 60 and planet isn't already ours.
+        // MissionSystem will call OwnershipSystem.TransferPlanet to action the transfer.
         string previousOwner = planet.GetOwnerInstanceID();
         if (planet.GetPopularSupport(OwnerInstanceID) > 60 && previousOwner != OwnerInstanceID)
         {
-            game.ChangeUnitOwnership(planet, OwnerInstanceID);
-
             results.Add(
                 new PlanetOwnershipChangedResult
                 {

@@ -230,13 +230,20 @@ namespace Rebellion.Systems
                             masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
                         );
                         viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
-                        // Also surface enemy fleets and missions captured in a prior snapshot
-                        // (e.g. via espionage or prior occupation) — persists alongside live data.
+                        // Also surface enemy fleets captured in a prior snapshot
+                        // (e.g. via prior occupation) — persists alongside live data.
+                        // Enemy missions are never surfaced regardless of snapshot state.
                         if (planetSnapshot != null)
                         {
+                            HashSet<string> liveFleetIDs = new HashSet<string>(
+                                viewPlanet.Fleets.Select(f => f.InstanceID)
+                            );
                             viewPlanet.Fleets.AddRange(
                                 planetSnapshot
-                                    .Fleets.Where(f => f.GetOwnerInstanceID() != faction.InstanceID)
+                                    .Fleets.Where(f =>
+                                        f.GetOwnerInstanceID() != faction.InstanceID
+                                        && !liveFleetIDs.Contains(f.InstanceID)
+                                    )
                                     .Select(f => f.GetShallowCopy(CloneMode.Full))
                             );
                         }

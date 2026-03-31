@@ -183,6 +183,82 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_WhenDestinationRejectsUnit_DoesNotThrow()
+        {
+            // Destination ownership changes after scene setup (e.g. enemy captures the planet).
+            // RequestMove must not propagate the SceneAccessException — the unit stays at origin.
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            destination.OwnerInstanceID = "rebels";
+
+            Assert.DoesNotThrow(
+                () => movement.RequestMove(officer, destination),
+                "RequestMove must not throw when the destination rejects the unit"
+            );
+        }
+
+        [Test]
+        public void RequestMove_WhenDestinationRejectsUnit_UnitStaysAtOrigin()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            destination.OwnerInstanceID = "rebels";
+
+            try
+            {
+                movement.RequestMove(officer, destination);
+            }
+            catch
+            { /* ignored for this assertion */
+            }
+
+            Assert.AreEqual(
+                origin,
+                officer.GetParent(),
+                "Unit must remain at origin when destination rejects it"
+            );
+        }
+
+        [Test]
+        public void RequestMove_WhenDestinationRejectsUnit_MovementStateNotSet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            destination.OwnerInstanceID = "rebels";
+
+            try
+            {
+                movement.RequestMove(officer, destination);
+            }
+            catch
+            { /* ignored for this assertion */
+            }
+
+            Assert.IsNull(
+                officer.Movement,
+                "Movement state must not be set when the destination rejected the unit"
+            );
+        }
+
+        [Test]
         public void UpdateMovement_WhenNotInTransit_DoesNothing()
         {
             (

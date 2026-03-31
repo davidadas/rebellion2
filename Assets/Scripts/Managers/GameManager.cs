@@ -62,9 +62,13 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        OwnershipSystem ownershipSystem = new OwnershipSystem(game, movementManager);
-        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         manufacturingManager = new ManufacturingSystem(game);
+        OwnershipSystem ownershipSystem = new OwnershipSystem(
+            game,
+            movementManager,
+            manufacturingManager
+        );
+        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         combatManager = new CombatSystem(game, randomProvider);
         blockadeManager = new BlockadeSystem(game);
         deathStarManager = new DeathStarSystem(game);
@@ -105,9 +109,13 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        OwnershipSystem ownershipSystem = new OwnershipSystem(game, movementManager);
-        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         manufacturingManager = new ManufacturingSystem(game);
+        OwnershipSystem ownershipSystem = new OwnershipSystem(
+            game,
+            movementManager,
+            manufacturingManager
+        );
+        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         combatManager = new CombatSystem(game, randomProvider);
         blockadeManager = new BlockadeSystem(game);
         deathStarManager = new DeathStarSystem(game);

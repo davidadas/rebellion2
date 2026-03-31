@@ -91,6 +91,21 @@ namespace Rebellion.Systems
 
             results.AddRange(mission.Execute(game, provider));
 
+            foreach (GameResult result in results)
+            {
+                if (result is PlanetOwnershipChangedResult ownershipResult)
+                {
+                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(
+                        ownershipResult.PlanetInstanceID
+                    );
+                    Faction newOwner = game.GetFactionByOwnerInstanceID(
+                        ownershipResult.NewOwnerInstanceID
+                    );
+                    if (planet != null && newOwner != null)
+                        ownershipSystem.TransferPlanet(planet, newOwner);
+                }
+            }
+
             if (mission.CanContinue(game))
             {
                 BeginMission(mission, provider);

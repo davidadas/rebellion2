@@ -89,7 +89,17 @@ namespace Rebellion.Systems
 
             int transitTicks = CalculateTransitTicks(unit, originPlanet, destinationPlanet);
 
-            game.MoveNode((ISceneNode)unit, destination);
+            try
+            {
+                game.MoveNode((ISceneNode)unit, destination);
+            }
+            catch (SceneAccessException ex)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot move to {destination.GetDisplayName()}: {ex.Message}"
+                );
+                return;
+            }
 
             unit.Movement = new MovementState
             {
@@ -103,6 +113,21 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+        }
+
+        /// <summary>
+        /// Cancels an in-transit unit's movement, leaving it at its current parent.
+        /// Called by OwnershipSystem before evicting a unit that is mid-flight.
+        /// </summary>
+        public void CancelMovement(IMovable unit)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (unit.Movement == null)
+                return;
+
+            GameLogger.Log($"{unit.GetDisplayName()} movement cancelled.");
+            unit.Movement = null;
         }
 
         /// <summary>

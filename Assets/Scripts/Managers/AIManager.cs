@@ -533,7 +533,7 @@ public class AIManager
         if (candidates.Count == 0)
             return null;
 
-        return candidates[provider.NextInt(0, candidates.Count - 1)];
+        return candidates[provider.NextInt(0, candidates.Count)];
     }
 
     /// <summary>

@@ -55,7 +55,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(officer, planet);
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            OwnershipSystem ownership = new OwnershipSystem(game, movement);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
             return (game, planet, officer, movement, ownership);
         }
 
@@ -135,7 +139,11 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -270,7 +278,11 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            OwnershipSystem ownership = new OwnershipSystem(game, movement);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
@@ -306,6 +318,56 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(
                 mission.GetParent(),
                 "Mission should be detached from scene graph after completion"
+            );
+        }
+
+        [Test]
+        public void Execute_WithDecoyParticipant_ParticipantNamesCountMatchesParticipantInstanceIDsCount()
+        {
+            // Bug: ParticipantNames is populated from MainParticipants only,
+            // but ParticipantInstanceIDs uses GetAllParticipants() (main + decoy).
+            // After the fix both lists must have the same length.
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+
+            Officer decoy = new Officer
+            {
+                InstanceID = "o2",
+                DisplayName = "o2",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(officer);
+            mission.DecoyParticipants.Add(decoy);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionCompletedResult completedResult = results
+                .OfType<MissionCompletedResult>()
+                .First();
+
+            Assert.AreEqual(
+                completedResult.ParticipantInstanceIDs.Count,
+                completedResult.ParticipantNames.Count,
+                "ParticipantNames and ParticipantInstanceIDs must have the same count"
+            );
+            Assert.IsTrue(
+                completedResult.ParticipantInstanceIDs.Contains("o2"),
+                "Decoy instance ID must appear in ParticipantInstanceIDs"
+            );
+            Assert.IsTrue(
+                completedResult.ParticipantNames.Contains("o2"),
+                "Decoy must appear in ParticipantNames"
             );
         }
     }

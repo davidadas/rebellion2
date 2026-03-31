@@ -14,24 +14,32 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot game;
         private readonly MovementSystem movementSystem;
+        private readonly ManufacturingSystem manufacturingSystem;
 
-        public OwnershipSystem(GameRoot game, MovementSystem movementSystem)
+        public OwnershipSystem(
+            GameRoot game,
+            MovementSystem movementSystem,
+            ManufacturingSystem manufacturingSystem
+        )
         {
             this.game = game;
             this.movementSystem = movementSystem;
+            this.manufacturingSystem = manufacturingSystem;
         }
 
         /// <summary>
         /// Transfers a planet to a new owner.
-        /// Phase 1: Cancel competing diplomacy missions targeting this planet.
+        /// Phase 1: Cancel competing missions targeting this planet.
         /// Phase 2: Transfer buildings to the new owner.
-        /// Phase 3: Evict enemy units.
-        /// Phase 4: Change planet owner.
+        /// Phase 3: Clear manufacturing queues.
+        /// Phase 4: Evict all enemy units (including in-transit).
+        /// Phase 5: Change planet owner.
         /// </summary>
         public void TransferPlanet(Planet planet, Faction newOwner)
         {
             CancelCompetingMissions(planet, newOwner.InstanceID);
             TransferBuildings(planet, newOwner);
+            manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             EvictEnemyUnits(planet, newOwner.InstanceID);
             game.ChangeUnitOwnership(planet, newOwner.InstanceID);
         }
@@ -50,6 +58,9 @@ namespace Rebellion.Systems
             {
                 foreach (IMissionParticipant participant in mission.GetAllParticipants())
                 {
+                    if (!participant.IsMovable())
+                        movementSystem.CancelMovement(participant);
+
                     Planet fallback = FindNearestFactionPlanet(participant);
                     if (fallback != null)
                         movementSystem.RequestMove(participant, fallback);
@@ -70,15 +81,18 @@ namespace Rebellion.Systems
 
         private void EvictEnemyUnits(Planet planet, string newOwnerID)
         {
-            List<Fleet> enemyFleets = planet
-                .GetChildren<Fleet>(f => f.OwnerInstanceID != newOwnerID, recurse: false)
+            List<IMovable> enemies = planet
+                .GetChildren<IMovable>(m => m.GetOwnerInstanceID() != newOwnerID, recurse: false)
                 .ToList();
 
-            foreach (Fleet fleet in enemyFleets)
+            foreach (IMovable unit in enemies)
             {
-                Planet fallback = FindNearestFactionPlanet(fleet);
+                if (!unit.IsMovable())
+                    movementSystem.CancelMovement(unit);
+
+                Planet fallback = FindNearestFactionPlanet(unit);
                 if (fallback != null)
-                    movementSystem.RequestMove(fleet, fallback);
+                    movementSystem.RequestMove(unit, fallback);
             }
         }
 

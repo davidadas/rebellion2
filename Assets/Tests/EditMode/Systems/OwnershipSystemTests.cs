@@ -69,7 +69,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empirePlanet, system);
 
             movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
-            ownershipSystem = new OwnershipSystem(game, movementSystem);
+            ownershipSystem = new OwnershipSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game)
+            );
         }
 
         [Test]
@@ -196,6 +200,133 @@ namespace Rebellion.Tests.Systems
                 mission.GetParent(),
                 "Mission with CanceledOnOwnershipChange=false should survive"
             );
+        }
+
+        [Test]
+        public void TransferPlanet_EvictsEnemyOfficers()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, targetPlanet);
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.IsNotNull(officer.Movement, "Evicted officer should be in transit");
+            Assert.AreEqual(empirePlanet.InstanceID, officer.Movement.DestinationInstanceID);
+        }
+
+        [Test]
+        public void TransferPlanet_EvictsEnemyRegiments()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            targetPlanet.GroundSlots = 1;
+            Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
+            game.AttachNode(regiment, targetPlanet);
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.IsNotNull(regiment.Movement, "Evicted regiment should be in transit");
+            Assert.AreEqual(empirePlanet.InstanceID, regiment.Movement.DestinationInstanceID);
+        }
+
+        [Test]
+        public void TransferPlanet_EvictsInTransitFleet()
+        {
+            // Fleet already reparented to target (our immediate-reparent model) but mid-flight.
+            Fleet empireFleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(empireFleet, targetPlanet);
+            empireFleet.Movement = new MovementState
+            {
+                DestinationInstanceID = targetPlanet.InstanceID,
+                TransitTicks = 5,
+                TicksElapsed = 2,
+                OriginPosition = empirePlanet.GetPosition(),
+                CurrentPosition = empirePlanet.GetPosition(),
+            };
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.IsNotNull(empireFleet.Movement, "Evicted in-transit fleet should be redirected");
+            Assert.AreEqual(
+                empirePlanet.InstanceID,
+                empireFleet.Movement.DestinationInstanceID,
+                "In-transit fleet should be redirected to nearest friendly planet"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_EvictsInTransitOfficer()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, targetPlanet);
+            officer.Movement = new MovementState
+            {
+                DestinationInstanceID = targetPlanet.InstanceID,
+                TransitTicks = 5,
+                TicksElapsed = 2,
+                OriginPosition = empirePlanet.GetPosition(),
+                CurrentPosition = empirePlanet.GetPosition(),
+            };
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.IsNotNull(officer.Movement, "Evicted in-transit officer should be redirected");
+            Assert.AreEqual(
+                empirePlanet.InstanceID,
+                officer.Movement.DestinationInstanceID,
+                "In-transit officer should be redirected to nearest friendly planet"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_DoesNotChangeOwnerOfEvictedFleet()
+        {
+            Fleet empireFleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(empireFleet, targetPlanet);
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.AreEqual(
+                "empire",
+                empireFleet.GetOwnerInstanceID(),
+                "Evicted fleet must retain its original owner"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_DoesNotChangeOwnerOfEvictedOfficer()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, targetPlanet);
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.AreEqual(
+                "empire",
+                officer.GetOwnerInstanceID(),
+                "Evicted officer must retain its original owner"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_ClearsManufacturingQueues()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            targetPlanet.GroundSlots = 1;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
+            bool enqueued = manufacturing.Enqueue(targetPlanet, regiment, ignoreCost: true);
+            Assert.IsTrue(enqueued, "Setup: regiment should enqueue successfully");
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                targetPlanet.GetManufacturingQueue();
+            bool anyItems = queue.Values.Any(list => list.Count > 0);
+            Assert.IsFalse(anyItems, "Manufacturing queue must be empty after ownership transfer");
         }
     }
 }
