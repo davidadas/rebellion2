@@ -279,39 +279,6 @@ namespace Rebellion.Game
             return from.GetDistanceTo(to, config.DistanceDivisor, config.DistanceBase);
         }
 
-        /// <summary>
-        /// Returns the nearest planet matching the given predicate, measured from the origin node.
-        /// If origin is a Planet it is used directly; otherwise its nearest parent Planet is used.
-        /// Returns null if no matching planet is found or origin has no resolvable planet position.
-        /// The origin planet itself is always excluded from results.
-        /// </summary>
-        public Planet FindNearestPlanet(ISceneNode origin, Func<Planet, bool> predicate)
-        {
-            Planet originPlanet = origin as Planet ?? origin.GetParentOfType<Planet>();
-            if (originPlanet == null)
-                return null;
-
-            Planet best = null;
-            double bestDistance = double.MaxValue;
-
-            foreach (Planet planet in GetSceneNodesByType<Planet>())
-            {
-                if (planet == originPlanet)
-                    continue;
-
-                if (!predicate(planet))
-                    continue;
-
-                double distance = originPlanet.GetRawDistanceTo(planet);
-                if (distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    best = planet;
-                }
-            }
-
-            return best;
-        }
 
         /// <summary>
         /// Returns the galaxy map, the root node of the game.
