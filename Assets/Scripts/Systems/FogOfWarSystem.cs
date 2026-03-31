@@ -281,14 +281,6 @@ namespace Rebellion.Systems
                         // Unexplored — no visibility, no snapshot.
                     }
 
-                    // Own-faction missions are always visible regardless of fog state —
-                    // you always know about operations you dispatched.
-                    viewPlanet.Missions.AddRange(
-                        masterPlanet.Missions.Where(m =>
-                            m.GetOwnerInstanceID() == faction.InstanceID
-                        )
-                    );
-
                     viewSystem.Planets.Add(viewPlanet);
                 }
 
