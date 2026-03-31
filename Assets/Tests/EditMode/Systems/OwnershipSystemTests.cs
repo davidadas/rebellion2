@@ -328,5 +328,34 @@ namespace Rebellion.Tests.Systems
             bool anyItems = queue.Values.Any(list => list.Count > 0);
             Assert.IsFalse(anyItems, "Manufacturing queue must be empty after ownership transfer");
         }
+
+        [Test]
+        public void TransferPlanet_ClearsInProgressBuilding()
+        {
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            targetPlanet.GroundSlots = 1;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 100,
+            };
+            bool enqueued = manufacturing.Enqueue(targetPlanet, mine, ignoreCost: true);
+            Assert.IsTrue(enqueued, "Setup: building should enqueue successfully");
+            Assert.IsNotNull(mine.GetParent(), "Setup: building should be attached to planet");
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                targetPlanet.GetManufacturingQueue();
+            bool anyItems = queue.Values.Any(list => list.Count > 0);
+            Assert.IsFalse(anyItems, "In-progress building must be cleared from queue on transfer");
+            Assert.IsNull(mine.GetParent(), "In-progress building must be detached from planet on transfer");
+        }
     }
 }
