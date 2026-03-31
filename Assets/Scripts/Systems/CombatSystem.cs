@@ -703,10 +703,6 @@ namespace Rebellion.Systems
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 
-        // -----------------------------------------------------------------------
-        // Result types
-        // -----------------------------------------------------------------------
-
         /// <summary>
         /// Outcome of space combat auto-resolve between two fleets.
         /// Mirrors open-rebellion's SpaceCombatResult.

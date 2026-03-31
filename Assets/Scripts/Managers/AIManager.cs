@@ -58,10 +58,6 @@ public class AIManager
         UpdateOfficerMissions(faction, provider);
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 1: Uprising suppression
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Sends the best available leader to suppress each owned planet in uprising.
     /// </summary>
@@ -92,9 +88,7 @@ public class AIManager
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 2: Blockade relief
-    // -------------------------------------------------------------------------
+
 
     /// <summary>
     /// Routes the nearest idle fleet toward each blockaded owned planet.
@@ -130,9 +124,7 @@ public class AIManager
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 3: Economy (buildings)
-    // -------------------------------------------------------------------------
+
 
     /// <summary>
     /// Builds buildings in priority order: mines to match raw nodes, then
@@ -207,10 +199,6 @@ public class AIManager
         return true;
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 4: Capital ship production
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Builds capital ships at idle shipyards until the faction has one per owned planet.
     /// ManufacturingSystem creates the fleet container automatically on completion.
@@ -243,10 +231,6 @@ public class AIManager
             ownedShips++;
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Phase 5: Starfighter production
-    // -------------------------------------------------------------------------
 
     /// <summary>
     /// Fills fleets with starfighters from idle shipyards.
@@ -314,10 +298,6 @@ public class AIManager
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 6: Troop training
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Fills fleets with regiments from idle training facilities.
     /// </summary>
@@ -384,10 +364,6 @@ public class AIManager
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 3: Patrol fleet deployment
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Mirrors FUN_0050add0_adjust_for_fleets: ensures every colonized planet
     /// has a patrol fleet present or en route for this faction.
@@ -445,10 +421,6 @@ public class AIManager
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Phase 8: Fleet movement
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Moves idle battle fleets: defends a contested HQ if undefended.
     /// Patrol fleets are handled by DeployPatrolFleetsToSystems and excluded here.
@@ -482,10 +454,6 @@ public class AIManager
             }
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Phase 9: Officer missions
-    // -------------------------------------------------------------------------
 
     /// <summary>
     /// Dispatches available officers to missions.
@@ -585,10 +553,6 @@ public class AIManager
         return null;
     }
 
-    // -------------------------------------------------------------------------
-    // Building placement helpers (unchanged from original)
-    // -------------------------------------------------------------------------
-
     private Planet GetBestPlanetForBuilding(Planet source, Faction faction, Building building)
     {
         BuildingType buildingType = building.GetBuildingType();
@@ -645,10 +609,6 @@ public class AIManager
 
         return otherFacilityCount * 1000 - sameFacilityCount;
     }
-
-    // -------------------------------------------------------------------------
-    // Tech lookup helpers (unchanged from original)
-    // -------------------------------------------------------------------------
 
     private Technology GetHighestTierTechnology(
         Faction faction,
