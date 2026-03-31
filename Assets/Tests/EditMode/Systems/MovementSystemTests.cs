@@ -144,7 +144,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_WhenUnitAlreadyInTransit_Throws()
+        public void RequestMove_WhenUnitAlreadyInTransit_RedirectsFromCurrentPosition()
         {
             (
                 GameRoot game,
@@ -153,15 +153,18 @@ namespace Rebellion.Tests.Systems
                 Officer officer,
                 MovementSystem movement
             ) = BuildScene();
-            officer.Movement = new MovementState
-            {
-                DestinationInstanceID = destination.InstanceID,
-                TransitTicks = 5,
-                TicksElapsed = 0,
-            };
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                movement.RequestMove(officer, destination)
+            movement.RequestMove(officer, destination);
+
+            Point midPoint = new Point(50, 0);
+            officer.Movement.CurrentPosition = midPoint;
+
+            movement.RequestMove(officer, origin);
+
+            Assert.AreEqual(
+                midPoint,
+                officer.Movement.OriginPosition,
+                "Redirected unit must start its new journey from its current visual position"
             );
         }
 

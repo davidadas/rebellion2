@@ -58,9 +58,6 @@ namespace Rebellion.Systems
             {
                 foreach (IMissionParticipant participant in mission.GetAllParticipants())
                 {
-                    if (!participant.IsMovable())
-                        movementSystem.CancelMovement(participant);
-
                     Planet fallback = FindNearestFactionPlanet(participant);
                     if (fallback != null)
                         movementSystem.RequestMove(participant, fallback);
@@ -87,9 +84,6 @@ namespace Rebellion.Systems
 
             foreach (IMovable unit in enemies)
             {
-                if (!unit.IsMovable())
-                    movementSystem.CancelMovement(unit);
-
                 Planet fallback = FindNearestFactionPlanet(unit);
                 if (fallback != null)
                     movementSystem.RequestMove(unit, fallback);

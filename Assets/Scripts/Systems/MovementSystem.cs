@@ -61,13 +61,6 @@ namespace Rebellion.Systems
                 throw new ArgumentNullException(nameof(destination));
             }
 
-            if (!unit.IsMovable())
-            {
-                throw new InvalidOperationException(
-                    $"Unit {unit.GetDisplayName()} cannot be moved (IsMovable() returned false)."
-                );
-            }
-
             Planet destinationPlanet = destination is Planet planet
                 ? planet
                 : destination.GetParentOfType<Planet>();
@@ -87,7 +80,10 @@ namespace Rebellion.Systems
                 );
             }
 
-            int transitTicks = CalculateTransitTicks(unit, originPlanet, destinationPlanet);
+            // If the unit is mid-flight, start the new journey from its current visual position
+            // rather than the planet it is logically parented to.
+            Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
+            int transitTicks = CalculateTransitTicks(unit, originPosition, destinationPlanet);
 
             try
             {
@@ -106,8 +102,8 @@ namespace Rebellion.Systems
                 DestinationInstanceID = destination.GetInstanceID(),
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
-                OriginPosition = originPlanet.GetPosition(),
-                CurrentPosition = originPlanet.GetPosition(),
+                OriginPosition = originPosition,
+                CurrentPosition = originPosition,
             };
 
             GameLogger.Log(
@@ -116,27 +112,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Cancels an in-transit unit's movement, leaving it at its current parent.
-        /// Called by OwnershipSystem before evicting a unit that is mid-flight.
-        /// </summary>
-        public void CancelMovement(IMovable unit)
-        {
-            if (unit == null)
-                throw new ArgumentNullException(nameof(unit));
-            if (unit.Movement == null)
-                return;
-
-            GameLogger.Log($"{unit.GetDisplayName()} movement cancelled.");
-            unit.Movement = null;
-        }
-
-        /// <summary>
         /// Calculates transit time in ticks based on distance and hyperdrive rating.
         /// Result is clamped to MinTransitTicks.
         /// </summary>
-        private int CalculateTransitTicks(IMovable unit, Planet origin, Planet destination)
+        private int CalculateTransitTicks(IMovable unit, Point originPos, Planet destination)
         {
-            Point originPos = origin.GetPosition();
             Point destPos = destination.GetPosition();
             double dx = destPos.X - originPos.X;
             double dy = destPos.Y - originPos.Y;

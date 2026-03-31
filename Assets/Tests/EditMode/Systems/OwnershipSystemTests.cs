@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
@@ -276,6 +277,41 @@ namespace Rebellion.Tests.Systems
                 empirePlanet.InstanceID,
                 officer.Movement.DestinationInstanceID,
                 "In-transit officer should be redirected to nearest friendly planet"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_RedirectsInTransitOfficer_OriginIsCurrentPosition()
+        {
+            // Officer is mid-flight to targetPlanet. After the planet changes sides the officer
+            // should be redirected to the nearest empire planet, and the new journey must begin
+            // from the officer's current visual position — not from targetPlanet's coordinates.
+            game.ChangeUnitOwnership(targetPlanet, "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, targetPlanet);
+
+            Point midPoint = new Point(50, 0);
+            officer.Movement = new MovementState
+            {
+                DestinationInstanceID = targetPlanet.InstanceID,
+                TransitTicks = 10,
+                TicksElapsed = 5,
+                OriginPosition = empirePlanet.GetPosition(),
+                CurrentPosition = midPoint,
+            };
+
+            ownershipSystem.TransferPlanet(targetPlanet, rebels);
+
+            Assert.IsNotNull(officer.Movement, "Officer should be in transit after redirect");
+            Assert.AreEqual(
+                empirePlanet.InstanceID,
+                officer.Movement.DestinationInstanceID,
+                "Officer should head to nearest friendly planet"
+            );
+            Assert.AreEqual(
+                midPoint,
+                officer.Movement.OriginPosition,
+                "New journey must start from the officer's current visual position, not from the planet"
             );
         }
 
