@@ -5,7 +5,6 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
 
@@ -53,6 +52,12 @@ public abstract class Mission : ContainerNode
 
     public int MaxProgress { get; set; }
     public int CurrentProgress { get; set; }
+
+    /// <summary>
+    /// Whether this mission should be canceled when the target planet changes ownership.
+    /// Defaults to true. Override to false for missions that survive ownership changes.
+    /// </summary>
+    public virtual bool CanceledOnOwnershipChange => true;
 
     // Decoy Probability Variables
     // @TODO: Move these to a config file.
@@ -109,6 +114,7 @@ public abstract class Mission : ContainerNode
     {
         // Set mission fields.
         Name = name ?? throw new ArgumentNullException(nameof(name));
+        AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
         MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
@@ -128,26 +134,10 @@ public abstract class Mission : ContainerNode
         MaxTicks = maxTicks;
     }
 
-    public void Initiate(
-        GameRoot game,
-        MovementSystem movementManager,
-        IRandomNumberProvider provider
-    )
+    public void Initiate(IRandomNumberProvider provider)
     {
-        // Order each unit to move to the mission location.
-        foreach (IMissionParticipant participant in GetAllParticipants())
-        {
-            if (participant.GetParent() != this)
-            {
-                movementManager.RequestMove(participant, this);
-            }
-        }
-
-        // Set the mission progress to 0 and the max progress.
-        // Then, set the max progress to a random value between the min and max ticks.
         CurrentProgress = 0;
         MaxProgress = provider.NextInt(MinTicks, MaxTicks);
-
         HasInitiated = true;
     }
 
@@ -278,7 +268,7 @@ public abstract class Mission : ContainerNode
     /// </summary>
     /// <param name="defenseScore"></param>
     /// <returns>The calculated foil probability.</returns>
-    protected double GetFoilProbability(double defenseScore)
+    protected virtual double GetFoilProbability(double defenseScore)
     {
         // Check if the planet is owned by the mission owner.
         if (GetParent() is Planet planet)
@@ -457,8 +447,13 @@ public abstract class Mission : ContainerNode
             new MissionCompletedResult
             {
                 MissionInstanceID = InstanceID,
+                MissionName = Name,
+                TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
                 ParticipantInstanceIDs = GetAllParticipants()
                     .Select(p => p.GetInstanceID())
+                    .ToList(),
+                ParticipantNames = GetAllParticipants()
+                    .Select(p => ((ISceneNode)p).GetDisplayName())
                     .ToList(),
                 Outcome = outcome,
                 Tick = game.CurrentTick,
@@ -484,7 +479,6 @@ public abstract class Mission : ContainerNode
             return MainParticipants.Cast<ISceneNode>().Concat(DecoyParticipants.Cast<ISceneNode>());
         }
 
-        // Return an empty list.
         return new List<ISceneNode>();
     }
 
@@ -497,11 +491,15 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// No-op (missions cannot have children removed).
+    /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
     /// </summary>
     public override void RemoveChild(ISceneNode child)
     {
-        // No-op: Missions cannot have children removed after initialization.
+        if (child is IMissionParticipant participant)
+        {
+            MainParticipants.Remove(participant);
+            DecoyParticipants.Remove(participant);
+        }
     }
 
     public abstract bool CanContinue(GameRoot game);

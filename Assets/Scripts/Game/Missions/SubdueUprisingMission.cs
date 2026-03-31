@@ -91,6 +91,8 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Subdue uprising missions do not repeat.
     /// </summary>
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
     public override bool CanContinue(GameRoot game)
     {
         return false;

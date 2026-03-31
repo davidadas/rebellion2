@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
@@ -32,6 +33,7 @@ public class GameManager
     private UprisingSystem uprisingManager;
     private VictorySystem victoryManager;
     private IRandomNumberProvider randomProvider;
+    private CombatDecisionContext pendingCombatDecision;
     private float? tickInterval;
     private float tickTimer;
     private readonly Stopwatch stopwatch;
@@ -60,8 +62,13 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        missionManager = new MissionSystem(game, movementManager);
         manufacturingManager = new ManufacturingSystem(game);
+        OwnershipSystem ownershipSystem = new OwnershipSystem(
+            game,
+            movementManager,
+            manufacturingManager
+        );
+        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         combatManager = new CombatSystem(game, randomProvider);
         blockadeManager = new BlockadeSystem(game);
         deathStarManager = new DeathStarSystem(game);
@@ -102,8 +109,13 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        missionManager = new MissionSystem(game, movementManager);
         manufacturingManager = new ManufacturingSystem(game);
+        OwnershipSystem ownershipSystem = new OwnershipSystem(
+            game,
+            movementManager,
+            manufacturingManager
+        );
+        missionManager = new MissionSystem(game, movementManager, ownershipSystem);
         combatManager = new CombatSystem(game, randomProvider);
         blockadeManager = new BlockadeSystem(game);
         deathStarManager = new DeathStarSystem(game);
@@ -169,6 +181,22 @@ public class GameManager
     }
 
     /// <summary>
+    /// Resolves the pending combat encounter and resumes ticking.
+    /// Must be called by the UI after presenting the combat decision to the player.
+    /// </summary>
+    /// <param name="autoResolve">True to auto-resolve; false for manual resolution.</param>
+    public void ResolveCombat(bool autoResolve)
+    {
+        if (pendingCombatDecision == null)
+        {
+            throw new InvalidOperationException("No pending combat to resolve.");
+        }
+
+        combatManager.Resolve(game, pendingCombatDecision, autoResolve, randomProvider);
+        pendingCombatDecision = null;
+    }
+
+    /// <summary>
     /// Gets the fog of war system for building faction-specific galaxy views.
     /// </summary>
     /// <returns></returns>
@@ -182,6 +210,11 @@ public class GameManager
     /// </summary>
     public void Update()
     {
+        if (pendingCombatDecision != null)
+        {
+            return;
+        }
+
         if (tickInterval == null)
         {
             return;
@@ -216,13 +249,77 @@ public class GameManager
         manufacturingManager.ProcessTick(game);
 
         // 2. Movement: Updates positions before combat needs them
-        movementManager.ProcessTick(game);
+        movementManager.ProcessTick();
 
-        // 3. Combat: Resolves battles before fog reveals results
-        combatManager.ProcessTick(game);
+        // 3. Combat: Detect encounter — auto-resolve AI vs AI, freeze for player involvement
+        if (combatManager.TryStartCombat(game, out pendingCombatDecision))
+        {
+            Fleet attackerFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                pendingCombatDecision.AttackerFleetInstanceID
+            );
+            Fleet defenderFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                pendingCombatDecision.DefenderFleetInstanceID
+            );
+            Faction attacker = game.GetFactionByOwnerInstanceID(
+                attackerFleet?.GetOwnerInstanceID()
+            );
+            Faction defender = game.GetFactionByOwnerInstanceID(
+                defenderFleet?.GetOwnerInstanceID()
+            );
+
+            if (
+                attacker != null
+                && defender != null
+                && attacker.IsAIControlled()
+                && defender.IsAIControlled()
+            )
+            {
+                combatManager.Resolve(
+                    game,
+                    pendingCombatDecision,
+                    autoResolve: true,
+                    randomProvider
+                );
+                pendingCombatDecision = null;
+            }
+            else
+            {
+                return;
+            }
+        }
 
         // 4. Missions: Executes with current fog state
-        missionManager.ProcessTick(game, randomProvider);
+        List<GameResult> missionResults = missionManager.ProcessTick(game, randomProvider);
+        foreach (MissionCompletedResult result in missionResults.OfType<MissionCompletedResult>())
+        {
+            string agents = string.Join(", ", result.ParticipantNames);
+            string target = string.IsNullOrEmpty(result.TargetName)
+                ? ""
+                : $" at {result.TargetName}";
+            GameLogger.Log($"{result.MissionName} mission by {agents}{target}: {result.Outcome}");
+        }
+        foreach (
+            PlanetOwnershipChangedResult result in missionResults.OfType<PlanetOwnershipChangedResult>()
+        )
+        {
+            Planet changedPlanet = game.GetSceneNodeByInstanceID<Planet>(result.PlanetInstanceID);
+            PlanetSystem changedSystem = changedPlanet?.GetParentOfType<PlanetSystem>();
+            if (changedPlanet != null && changedSystem != null)
+            {
+                foreach (Faction faction in game.Factions)
+                {
+                    fogOfWarManager.CaptureSnapshot(
+                        faction,
+                        changedPlanet,
+                        changedSystem,
+                        game.CurrentTick
+                    );
+                }
+            }
+            GameLogger.Log(
+                $"Planet {result.PlanetInstanceID} ownership changed to {result.NewOwnerInstanceID}."
+            );
+        }
 
         // 6. Events: Triggers based on current world state
         eventManager.ProcessEvents(game.GetEventPool(), randomProvider);

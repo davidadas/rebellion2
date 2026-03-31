@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
@@ -96,7 +97,8 @@ namespace Rebellion.Tests.Systems
             bool result = manager.Enqueue(coruscant, mine, ignoreCost: true);
 
             Assert.IsTrue(result);
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.IsTrue(queue.ContainsKey(ManufacturingType.Building));
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
             Assert.AreEqual("MINE1", queue[ManufacturingType.Building][0].InstanceID);
@@ -137,7 +139,9 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, b2, ignoreCost: true);
             manager.Enqueue(coruscant, b3, ignoreCost: true);
 
-            var queue = coruscant.GetManufacturingQueue()[ManufacturingType.Building];
+            List<IManufacturable> queue = coruscant.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
             Assert.AreEqual(3, queue.Count);
             Assert.AreEqual("B1", queue[0].InstanceID);
             Assert.AreEqual("B2", queue[1].InstanceID);
@@ -184,7 +188,8 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, mine, ignoreCost: true);
             manager.ProcessTick(game);
 
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
         }
@@ -205,7 +210,7 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, mine, ignoreCost: true);
 
             // Building should be in the game's node registry
-            var retrievedBuilding = game.GetSceneNodeByInstanceID<Building>("MINE1");
+            Building retrievedBuilding = game.GetSceneNodeByInstanceID<Building>("MINE1");
             Assert.IsNotNull(retrievedBuilding);
             Assert.AreEqual("MINE1", retrievedBuilding.InstanceID);
         }
@@ -246,7 +251,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(result1);
             Assert.IsTrue(result2);
 
-            var queue = coruscant.GetManufacturingQueue()[ManufacturingType.Building];
+            List<IManufacturable> queue = coruscant.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
             Assert.AreEqual(2, queue.Count);
         }
 
@@ -336,10 +343,49 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, mine1, ignoreCost: true);
             manager.Enqueue(coruscant, mine2, ignoreCost: true);
 
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.AreEqual(2, queue[ManufacturingType.Building].Count);
             Assert.AreEqual("MINE1", queue[ManufacturingType.Building][0].InstanceID);
             Assert.AreEqual("MINE2", queue[ManufacturingType.Building][1].InstanceID);
+        }
+
+        [Test]
+        public void AttachNode_Building_OnPlanetWithDifferentOwner_ThrowsSceneAccessException()
+        {
+            // Scene graph must reject a building whose owner doesn't match the planet's owner.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                AllowedOwnerInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => game.AttachNode(rebelBuilding, coruscant),
+                "Attaching a building to a planet owned by a different faction must throw SceneAccessException"
+            );
+        }
+
+        [Test]
+        public void Enqueue_BuildingOwnedByDifferentFaction_Throws()
+        {
+            // Enqueue internally calls game.AttachNode — ownership mismatch must propagate.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                AllowedOwnerInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => manager.Enqueue(coruscant, rebelBuilding, ignoreCost: true),
+                "Enqueueing a building owned by a different faction must throw SceneAccessException"
+            );
         }
 
         [Test]
@@ -364,7 +410,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(result);
             // Queue should be empty since enqueue was rejected
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.IsFalse(
                 queue.ContainsKey(ManufacturingType.Building)
                     && queue[ManufacturingType.Building].Count > 0
@@ -392,7 +439,8 @@ namespace Rebellion.Tests.Systems
             bool result = manager.Enqueue(coruscant, expensive, ignoreCost: true);
 
             Assert.IsTrue(result); // Should succeed despite insufficient funds when ignoreCost=true
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
         }
 
@@ -598,7 +646,8 @@ namespace Rebellion.Tests.Systems
             // First item completes (1 >= 1), second should start
             manager.ProcessTick(game);
 
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
             Assert.AreEqual(ManufacturingStatus.Building, mine2.ManufacturingStatus);
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count); // Only mine2 remains
@@ -714,7 +763,9 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
 
             // Tick 2: mine2 should be active (not skipped)
-            var queueBefore = coruscant.GetManufacturingQueue()[ManufacturingType.Building];
+            List<IManufacturable> queueBefore = coruscant.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
             Assert.AreEqual(mine2, queueBefore[0]); // mine2 is now first
 
             manager.ProcessTick(game);
@@ -818,12 +869,14 @@ namespace Rebellion.Tests.Systems
             manager.ProcessTick(game);
 
             // Verify only one instance in scene graph
-            var allBuildings = game.GetSceneNodesByType<Building>();
-            var matchingBuildings = allBuildings.Where(b => b.InstanceID == "MINE1").ToList();
+            List<Building> allBuildings = game.GetSceneNodesByType<Building>();
+            List<Building> matchingBuildings = allBuildings
+                .Where(b => b.InstanceID == "MINE1")
+                .ToList();
             Assert.AreEqual(1, matchingBuildings.Count);
 
             // Verify only one instance in planet's building list
-            var planetBuildings = coruscant
+            List<Building> planetBuildings = coruscant
                 .GetAllBuildings()
                 .Where(b => b.InstanceID == "MINE1")
                 .ToList();
@@ -884,7 +937,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void GetManufacturingQueue_Empty_ReturnsEmptyDictionary()
         {
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
 
             Assert.IsNotNull(queue);
             // Empty queue may not have the key yet - check both cases
@@ -925,7 +979,8 @@ namespace Rebellion.Tests.Systems
             manager.Enqueue(coruscant, mine1, ignoreCost: true);
             manager.Enqueue(coruscant, mine2, ignoreCost: true);
 
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
 
             Assert.AreEqual(2, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(mine1, queue[ManufacturingType.Building][0]);
@@ -950,7 +1005,8 @@ namespace Rebellion.Tests.Systems
             bool result = manager.Enqueue(coruscant, free, ignoreCost: true);
             Assert.IsTrue(result);
 
-            var queue = coruscant.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                coruscant.GetManufacturingQueue();
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
 
             // Process one tick - zero cost should complete immediately
@@ -991,11 +1047,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RebuildQueues_EmptyGame_NoQueues()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1003,25 +1059,26 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(0, queue.Count, "Empty game should have no queues");
         }
 
         [Test]
         public void RebuildQueues_SinglePlanet_CorrectOrder()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1029,11 +1086,11 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var item1 = new Building
+            Building item1 = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1045,7 +1102,7 @@ namespace Rebellion.Tests.Systems
                 BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            var item2 = new Building
+            Building item2 = new Building
             {
                 InstanceID = "b2",
                 OwnerInstanceID = "empire",
@@ -1057,7 +1114,7 @@ namespace Rebellion.Tests.Systems
                 BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            var item3 = new Building
+            Building item3 = new Building
             {
                 InstanceID = "b3",
                 OwnerInstanceID = "empire",
@@ -1074,14 +1131,15 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(item2, planet);
             game.AttachNode(item3, planet);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(1, queue.Count, "Should have one manufacturing type");
             Assert.IsTrue(queue.ContainsKey(ManufacturingType.Building));
 
-            var items = queue[ManufacturingType.Building];
+            List<IManufacturable> items = queue[ManufacturingType.Building];
             Assert.AreEqual(3, items.Count, "Should have 3 items");
             Assert.AreEqual("b3", items[0].InstanceID, "Lowest progress first");
             Assert.AreEqual("b2", items[1].InstanceID, "Middle progress second");
@@ -1091,11 +1149,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RebuildQueues_MultiplePlanets_CorrectGrouping()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet1 = new Planet
+            Planet planet1 = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1103,7 +1161,7 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var planet2 = new Planet
+            Planet planet2 = new Planet
             {
                 InstanceID = "p2",
                 OwnerInstanceID = "empire",
@@ -1111,12 +1169,12 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet1, system);
             game.AttachNode(planet2, system);
 
-            var item1 = new Building
+            Building item1 = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1128,7 +1186,7 @@ namespace Rebellion.Tests.Systems
                 BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            var item2 = new Regiment
+            Regiment item2 = new Regiment
             {
                 InstanceID = "r1",
                 OwnerInstanceID = "empire",
@@ -1137,7 +1195,7 @@ namespace Rebellion.Tests.Systems
                 ManufacturingProgress = 0,
                 ConstructionCost = 50,
             };
-            var item3 = new Building
+            Building item3 = new Building
             {
                 InstanceID = "b2",
                 OwnerInstanceID = "empire",
@@ -1154,15 +1212,17 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(item2, planet1);
             game.AttachNode(item3, planet2);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue1 = planet1.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue1 =
+                planet1.GetManufacturingQueue();
             Assert.AreEqual(2, queue1.Count, "Planet 1 should have 2 types");
             Assert.AreEqual(1, queue1[ManufacturingType.Building].Count);
             Assert.AreEqual(1, queue1[ManufacturingType.Troop].Count);
 
-            var queue2 = planet2.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue2 =
+                planet2.GetManufacturingQueue();
             Assert.AreEqual(1, queue2.Count, "Planet 2 should have 1 type");
             Assert.AreEqual(1, queue2[ManufacturingType.Building].Count);
         }
@@ -1170,11 +1230,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RebuildQueues_CalledTwice_NoDuplication()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1182,11 +1242,11 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var item = new Building
+            Building item = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1200,11 +1260,12 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(item, planet);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(1, queue.Count);
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count, "No duplication");
         }
@@ -1212,11 +1273,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RebuildQueues_OnlyBuilding_IgnoresComplete()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1224,11 +1285,11 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var itemBuilding = new Building
+            Building itemBuilding = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1240,7 +1301,7 @@ namespace Rebellion.Tests.Systems
                 BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            var itemComplete = new Building
+            Building itemComplete = new Building
             {
                 InstanceID = "b2",
                 OwnerInstanceID = "empire",
@@ -1256,10 +1317,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(itemBuilding, planet);
             game.AttachNode(itemComplete, planet);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(1, queue.Count);
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count, "Only Building status");
             Assert.AreEqual("b1", queue[ManufacturingType.Building][0].InstanceID);
@@ -1268,11 +1330,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RebuildQueues_NoProducerPlanetID_SkipsItem()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1280,11 +1342,11 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var itemNoProducer = new Building
+            Building itemNoProducer = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1299,21 +1361,22 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(itemNoProducer, planet);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(0, queue.Count, "Should skip null ProducerPlanetID");
         }
 
         [Test]
         public void RebuildQueues_InvalidProducerPlanetID_SkipsItem()
         {
-            var config = new GameConfig();
-            var game = new GameRoot(config);
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
-            var planet = new Planet
+            Planet planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -1321,11 +1384,11 @@ namespace Rebellion.Tests.Systems
                 OrbitSlots = 10,
                 GroundSlots = 10,
             };
-            var system = new PlanetSystem { InstanceID = "sys1" };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            var itemOrphan = new Building
+            Building itemOrphan = new Building
             {
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
@@ -1340,10 +1403,11 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(itemOrphan, planet);
 
-            var manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game);
             manager.RebuildQueues();
 
-            var queue = planet.GetManufacturingQueue();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
             Assert.AreEqual(0, queue.Count, "Should skip invalid ProducerPlanetID");
         }
     }

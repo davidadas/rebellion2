@@ -625,6 +625,56 @@ public class PlanetTests
     }
 
     [Test]
+    public void AddStarfighter_ValidStarfighter_AddsToPlanet()
+    {
+        Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
+        planet.AddChild(starfighter);
+
+        Assert.Contains(
+            starfighter,
+            planet.Starfighters,
+            "Starfighter should be added to the planet."
+        );
+    }
+
+    [Test]
+    public void AddStarfighter_InvalidOwner_ThrowsException()
+    {
+        Starfighter starfighter = new Starfighter { OwnerInstanceID = "INVALID" };
+
+        Assert.Throws<SceneAccessException>(
+            () => planet.AddChild(starfighter),
+            "Adding a starfighter with a mismatched OwnerInstanceID should throw a SceneAccessException."
+        );
+    }
+
+    [Test]
+    public void RemoveStarfighter_ValidStarfighter_RemovesFromPlanet()
+    {
+        Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
+        planet.AddChild(starfighter);
+        planet.RemoveChild(starfighter);
+
+        Assert.IsFalse(
+            planet.Starfighters.Contains(starfighter),
+            "Starfighter should be removed from the planet."
+        );
+    }
+
+    [Test]
+    public void GetStarfighterCount_AfterAdding_ReturnsCorrectCount()
+    {
+        planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
+        planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
+
+        Assert.AreEqual(
+            2,
+            planet.GetStarfighterCount(),
+            "Should return correct starfighter count."
+        );
+    }
+
+    [Test]
     public void IsBlockaded_NoEnemyFleets_ReturnsFalse()
     {
         Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
@@ -706,25 +756,24 @@ public class PlanetTests
     }
 
     [Test]
-    public void BeginUprising_SetsOwnerAndFlag()
+    public void BeginUprising_SetsFlag()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             InstanceID = "p1",
             OwnerInstanceID = "empire",
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
-        planet.BeginUprising("rebels");
+        planet.BeginUprising();
 
-        Assert.AreEqual("rebels", planet.OwnerInstanceID);
         Assert.IsTrue(planet.IsInUprising);
     }
 
     [Test]
     public void EndUprising_ClearsFlag()
     {
-        var planet = new Planet { InstanceID = "p1", IsInUprising = true };
+        Planet planet = new Planet { InstanceID = "p1", IsInUprising = true };
 
         planet.EndUprising();
 
@@ -734,7 +783,7 @@ public class PlanetTests
     [Test]
     public void CalculateLoyalty_OwnerAt50_Returns0()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             OwnerInstanceID = "empire",
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
@@ -748,7 +797,7 @@ public class PlanetTests
     [Test]
     public void CalculateLoyalty_NoOwner_Returns0()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             OwnerInstanceID = null,
             PopularSupport = new Dictionary<string, int>(),
@@ -762,7 +811,7 @@ public class PlanetTests
     [Test]
     public void IsPopulated_NoSupport_ReturnsFalse()
     {
-        var planet = new Planet { PopularSupport = new Dictionary<string, int>() };
+        Planet planet = new Planet { PopularSupport = new Dictionary<string, int>() };
 
         bool populated = planet.IsPopulated();
 
@@ -772,7 +821,7 @@ public class PlanetTests
     [Test]
     public void IsPopulated_WithSupport_ReturnsTrue()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };

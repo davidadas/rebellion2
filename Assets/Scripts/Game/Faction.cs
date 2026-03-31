@@ -154,13 +154,18 @@ namespace Rebellion.Game
                 );
             }
 
-            if (!TechnologyLevels.TryGetValue(tech.GetManufacturingType(), out var techLevels))
+            if (
+                !TechnologyLevels.TryGetValue(
+                    tech.GetManufacturingType(),
+                    out SortedDictionary<int, List<Technology>> techLevels
+                )
+            )
             {
                 techLevels = new SortedDictionary<int, List<Technology>>();
                 TechnologyLevels[tech.GetManufacturingType()] = techLevels;
             }
 
-            if (!techLevels.TryGetValue(level, out var nodesAtLevel))
+            if (!techLevels.TryGetValue(level, out List<Technology> nodesAtLevel))
             {
                 nodesAtLevel = new List<Technology>();
                 techLevels[level] = nodesAtLevel;
@@ -179,7 +184,12 @@ namespace Rebellion.Game
         /// <returns>A list of researched technologies.</returns>
         public List<Technology> GetResearchedTechnologies(ManufacturingType manufacturingType)
         {
-            if (!TechnologyLevels.TryGetValue(manufacturingType, out var techLevels))
+            if (
+                !TechnologyLevels.TryGetValue(
+                    manufacturingType,
+                    out SortedDictionary<int, List<Technology>> techLevels
+                )
+            )
             {
                 return new List<Technology>();
             }
@@ -395,11 +405,7 @@ namespace Rebellion.Game
         /// <returns>A new detached Fleet.</returns>
         public Fleet CreateFleet(GameRoot game)
         {
-            Fleet fleet = new Fleet
-            {
-                DisplayName = $"Fleet {nextFleetNumber}",
-                OwnerInstanceID = this.InstanceID,
-            };
+            Fleet fleet = new Fleet(this.InstanceID, $"Fleet {nextFleetNumber}");
 
             nextFleetNumber++;
             return fleet;
@@ -420,7 +426,7 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="fromNode">The scene node to measure distance from.</param>
         /// <returns>The closest friendly planet, or null if no friendly planets are found.</returns>
-        public Planet GetNearestPlanetTo(ISceneNode fromNode)
+        public Planet GetNearestFriendlyPlanetTo(ISceneNode fromNode)
         {
             Planet sourcePlanet = fromNode.GetParentOfType<Planet>();
             if (sourcePlanet == null)

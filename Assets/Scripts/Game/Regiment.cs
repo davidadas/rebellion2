@@ -53,7 +53,7 @@ namespace Rebellion.Game
         /// <returns></returns>
         public bool IsMovable()
         {
-            return Movement != null;
+            return Movement == null;
         }
     }
 }

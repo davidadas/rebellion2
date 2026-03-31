@@ -34,7 +34,7 @@ namespace Rebellion.Game
 
         // Game State
         public int CurrentTick = 0;
-        public TickSpeed GameSpeed = TickSpeed.Paused;
+        public TickSpeed GameSpeed = TickSpeed.Medium;
 
         // Game Events
         public List<GameEvent> EventPool = new List<GameEvent>();
@@ -275,7 +275,7 @@ namespace Rebellion.Game
                 throw new InvalidOperationException("Destination planet is null.");
             }
 
-            var config = GetConfig().Planet;
+            GameConfig.PlanetConfig config = GetConfig().Planet;
             return from.GetDistanceTo(to, config.DistanceDivisor, config.DistanceBase);
         }
 
@@ -437,34 +437,28 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Retrieves all nodes of a specified type T, stopping further traversal if the type is found.
+        /// Retrieves all nodes of a specified type T, stopping further traversal of a branch when
+        /// type T is found. An optional predicate filters which matching nodes are included.
         /// </summary>
-        /// <typeparam name="T">The type of nodes to retrieve.</typeparam>
-        /// <returns>A list of nodes of type T.</returns>
-        public List<T> GetSceneNodesByType<T>()
+        public List<T> GetSceneNodesByType<T>(Func<T, bool> predicate = null)
+            where T : class
         {
             List<T> result = new List<T>();
 
-            // Recursively iterate through all the nodes.
             void Traverse(ISceneNode node)
             {
-                // If the current node is of type T, add it to the result list and stop traversing this branch.
                 if (node is T typedNode)
                 {
-                    result.Add(typedNode);
+                    if (predicate == null || predicate(typedNode))
+                        result.Add(typedNode);
                     return;
                 }
 
-                // Otherwise, continue traversing the children.
-                foreach (var child in node.GetChildren())
-                {
+                foreach (ISceneNode child in node.GetChildren())
                     Traverse(child);
-                }
             }
 
-            // Start traversal from the Galaxy node (root node).
             Traverse(Galaxy);
-
             return result;
         }
 
@@ -498,6 +492,7 @@ namespace Rebellion.Game
 
             DeregsiterOwnedUnit(node);
 
+            node.SetOwnerInstanceID(ownerInstanceId);
             faction.AddOwnedUnit(node);
         }
 

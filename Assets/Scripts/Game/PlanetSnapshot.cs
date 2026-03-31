@@ -54,6 +54,13 @@ namespace Rebellion.Game
         /// </summary>
         public List<Starfighter> Starfighters;
 
+        /// <summary>
+        /// Enemy missions captured at TickCaptured (e.g. revealed by espionage).
+        /// Persists in the view even when the planet is later observed live,
+        /// so the player can see both current units and previously-discovered missions.
+        /// </summary>
+        public List<Mission> Missions;
+
         public PlanetSnapshot()
         {
             PopularSupport = new Dictionary<string, int>();
@@ -62,6 +69,7 @@ namespace Rebellion.Game
             Regiments = new List<Regiment>();
             Buildings = new List<Building>();
             Starfighters = new List<Starfighter>();
+            Missions = new List<Mission>();
         }
     }
 }

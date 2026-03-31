@@ -30,7 +30,7 @@ namespace Rebellion.Util.Common
             if (table.Count == 0)
                 return 0;
 
-            var sortedKeys = table.Keys.OrderBy(k => k).ToList();
+            List<int> sortedKeys = table.Keys.OrderBy(k => k).ToList();
 
             // Value below all thresholds
             if (value < sortedKeys[0])

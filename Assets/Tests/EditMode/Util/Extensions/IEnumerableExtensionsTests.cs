@@ -11,7 +11,7 @@ public class IEnumerableExtensionsTests
     public void Shuffle_ReturnsCollectionWithSameCount()
     {
         List<int> numbers = Enumerable.Range(1, 10).ToList();
-        var shuffled = numbers.Shuffle();
+        IEnumerable<int> shuffled = numbers.Shuffle();
         Assert.AreEqual(
             numbers.Count,
             shuffled.Count(),
@@ -23,7 +23,7 @@ public class IEnumerableExtensionsTests
     public void Shuffle_ContainsAllOriginalElements()
     {
         List<string> items = new List<string> { "apple", "banana", "cherry" };
-        var shuffled = items.Shuffle();
+        IEnumerable<string> shuffled = items.Shuffle();
         CollectionAssert.AreEquivalent(
             items,
             shuffled,
@@ -35,7 +35,7 @@ public class IEnumerableExtensionsTests
     public void Shuffle_DoesNotModifyOriginalCollection()
     {
         List<int> numbers = Enumerable.Range(1, 10).ToList();
-        var shuffled = numbers.Shuffle();
+        IEnumerable<int> shuffled = numbers.Shuffle();
         CollectionAssert.AreEqual(
             Enumerable.Range(1, 10),
             numbers,
@@ -47,7 +47,7 @@ public class IEnumerableExtensionsTests
     public void Shuffle_ReturnsShuffledOrder()
     {
         List<int> numbers = Enumerable.Range(1, 100).ToList();
-        var shuffled = numbers.Shuffle();
+        IEnumerable<int> shuffled = numbers.Shuffle();
 
         bool orderChanged = !shuffled.SequenceEqual(numbers);
         Assert.IsTrue(
@@ -60,7 +60,7 @@ public class IEnumerableExtensionsTests
     public void Shuffle_OnEmptyCollection_ReturnsEmpty()
     {
         List<int> emptyList = new List<int>();
-        var shuffled = emptyList.Shuffle();
+        IEnumerable<int> shuffled = emptyList.Shuffle();
         Assert.IsEmpty(
             shuffled,
             "Shuffling an empty collection should return an empty collection."
@@ -81,7 +81,7 @@ public class IEnumerableExtensionsTests
     public void RandomElement_ReturnsAnElementFromCollection()
     {
         List<string> items = new List<string> { "apple", "banana", "cherry" };
-        var randomItem = items.RandomElement();
+        string randomItem = items.RandomElement();
         Assert.Contains(
             randomItem,
             items,
@@ -93,7 +93,7 @@ public class IEnumerableExtensionsTests
     public void RandomElement_FromSingleElementCollection_ReturnsThatElement()
     {
         List<int> singleItem = new List<int> { 42 };
-        var randomItem = singleItem.RandomElement();
+        int randomItem = singleItem.RandomElement();
         Assert.AreEqual(
             42,
             randomItem,

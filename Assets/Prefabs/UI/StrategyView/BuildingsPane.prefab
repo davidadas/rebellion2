@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 7224582893109070817}
   - component: {fileID: 7959686198381987727}
   - component: {fileID: 4016314236051042601}
+  - component: {fileID: 4900773171733960507}
   m_Layer: 0
   m_Name: IconButton-Shipyards
   m_TagString: Untagged
@@ -139,8 +140,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: 1dd4160e41a794095af94a663e28c85e, type: 3}
   selected: {fileID: 21300000, guid: 4a0b255eada77448a82df33e6c3e3afe, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &4900773171733960507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 42590554441006590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1 &1947058602593114243
 GameObject:
   m_ObjectHideFlags: 0
@@ -154,6 +184,7 @@ GameObject:
   - component: {fileID: 6697568070535815832}
   - component: {fileID: 4886088945294171648}
   - component: {fileID: 4793684075969080214}
+  - component: {fileID: 3055432983950105871}
   m_Layer: 0
   m_Name: IconButton-Production
   m_TagString: Untagged
@@ -280,8 +311,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: 69d518c1fd11e4eea8aa1aaedcca2afd, type: 3}
   selected: {fileID: 21300000, guid: 6bf81adce10fc457f9edcc468b3960b0, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &3055432983950105871
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1947058602593114243}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1 &3606035817321256624
 GameObject:
   m_ObjectHideFlags: 0
@@ -295,6 +355,7 @@ GameObject:
   - component: {fileID: 1658044451593498980}
   - component: {fileID: 4848628062734273766}
   - component: {fileID: 3738418293605783760}
+  - component: {fileID: 4781882190741474532}
   m_Layer: 0
   m_Name: IconButton-ConstructionYards
   m_TagString: Untagged
@@ -421,8 +482,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: d8eace1357efd4c3eb6e7080b5be1983, type: 3}
   selected: {fileID: 21300000, guid: fd0c5749ccf4e4d1793e3f05ad3b37b7, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &4781882190741474532
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3606035817321256624}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1 &3757265615555655249
 GameObject:
   m_ObjectHideFlags: 0
@@ -610,6 +700,7 @@ GameObject:
   - component: {fileID: 1997601018767372908}
   - component: {fileID: 9064743893296596242}
   - component: {fileID: 8673078493344212093}
+  - component: {fileID: 8901347984323183071}
   m_Layer: 0
   m_Name: IconButton-TrainingFacilities
   m_TagString: Untagged
@@ -736,8 +827,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: 751351894b94b4a30bbd1864181cf6fc, type: 3}
   selected: {fileID: 21300000, guid: 8889eddbe48534795b16618cebca2cc0, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &8901347984323183071
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5103902710969210854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1 &5183417007423128077
 GameObject:
   m_ObjectHideFlags: 0
@@ -1046,20 +1166,23 @@ MonoBehaviour:
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_enableWordWrapping: 1
+  m_TextWrappingMode: 1
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
+  m_EmojiFallbackSupport: 1
   m_parseCtrlCharacters: 1
   m_isOrthographic: 1
   m_isCullingEnabled: 0
@@ -1090,6 +1213,7 @@ GameObject:
   - component: {fileID: 7717231765524363586}
   - component: {fileID: 6360021418393960940}
   - component: {fileID: 4881724892463042440}
+  - component: {fileID: 9134090413572744675}
   m_Layer: 0
   m_Name: IconButton-Refineries
   m_TagString: Untagged
@@ -1216,8 +1340,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: 57d81da77ee8d4f168a12c93cfa41c16, type: 3}
   selected: {fileID: 21300000, guid: ac863575b9aa94374a011c5dc0ab1817, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &9134090413572744675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6954192831341159255}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1 &8832087708740201579
 GameObject:
   m_ObjectHideFlags: 0
@@ -1231,6 +1384,7 @@ GameObject:
   - component: {fileID: 4349498857916755276}
   - component: {fileID: 8211453806228440250}
   - component: {fileID: 5666154894105118134}
+  - component: {fileID: 4055049589909259085}
   m_Layer: 0
   m_Name: IconButton-Mines
   m_TagString: Untagged
@@ -1357,8 +1511,37 @@ MonoBehaviour:
   pressed: {fileID: 0}
   disabled: {fileID: 21300000, guid: 58c639c06f3a94dd49acae054a94b2ef, type: 3}
   selected: {fileID: 21300000, guid: a5b4ffa80bb5f4e61b0bbb5d9236270c, type: 3}
-  clickSound: {fileID: 0}
-  hoverSound: {fileID: 0}
+--- !u!114 &4055049589909259085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8832087708740201579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4295cdd888805458f964952da39e31ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIButton
+  OnHoverEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnHoverExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressDown:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPressUp:
+    m_PersistentCalls:
+      m_Calls: []
+  OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDoubleClick:
+    m_PersistentCalls:
+      m_Calls: []
+  doubleClickWindow: 0.3
 --- !u!1001 &1804437593181550690
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1367,6 +1550,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8779203093349847370}
     m_Modifications:
+    - target: {fileID: 194205208391073429, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
     - target: {fileID: 1789025855677438126, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -232.26
@@ -1455,6 +1642,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1919022597031969607, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 3779878289320521159, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7292194883541419753, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7370730357343758448, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
     - target: {fileID: 7799977024872163493, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_Name
       value: ProductionSection-TrainingFacilities
@@ -1488,6 +1691,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8779203093349847370}
     m_Modifications:
+    - target: {fileID: 194205208391073429, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
     - target: {fileID: 1789025855677438126, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -232.26
@@ -1575,6 +1782,22 @@ PrefabInstance:
     - target: {fileID: 1885227575660441444, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1919022597031969607, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 3779878289320521159, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7292194883541419753, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7370730357343758448, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
       objectReference: {fileID: 0}
     - target: {fileID: 7799977024872163493, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_Name
@@ -1835,6 +2058,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8779203093349847370}
     m_Modifications:
+    - target: {fileID: 194205208391073429, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
     - target: {fileID: 1789025855677438126, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: -232.26
@@ -1922,6 +2149,22 @@ PrefabInstance:
     - target: {fileID: 1885227575660441444, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1919022597031969607, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 3779878289320521159, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7292194883541419753, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
+    - target: {fileID: 7370730357343758448, guid: 14458bc8811644b37a10bd406a198280, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
       objectReference: {fileID: 0}
     - target: {fileID: 7799977024872163493, guid: 14458bc8811644b37a10bd406a198280, type: 3}
       propertyPath: m_Name

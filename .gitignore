@@ -1,3 +1,6 @@
+# Claude Code
+.claude/
+
 # Unity Files
 /[Ll]ibrary/
 /[Ll]ogs/
@@ -30,6 +33,7 @@ node_modules
 .vsconfig
 
 # Assets - local files not tracked in source control
+Assets/_Recovery/
 Assets/Resources/Art/
 Assets/Resources/Audio/
 Assets/Resources/Videos/
@@ -39,7 +43,6 @@ Assets/TextMesh Pro/
 **/*.sln
 **/*.slnx
 *.csproj
-!GameAssembly.csproj
 
 # Misc
 *.md

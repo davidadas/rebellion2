@@ -9,6 +9,8 @@ public class AbductionMission : Mission
 {
     public string TargetOfficerInstanceID { get; set; }
 
+    public override bool CanceledOnOwnershipChange => false;
+
     /// <summary>
     /// Default constructor used for deserialization.
     /// </summary>

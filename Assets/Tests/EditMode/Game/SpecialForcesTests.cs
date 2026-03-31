@@ -1,30 +1,11 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 
 [TestFixture]
 public class SpecialForcesTests
 {
-    private class TestMission : Mission
-    {
-        public TestMission()
-        {
-            MainParticipants = new List<IMissionParticipant>();
-            DecoyParticipants = new List<IMissionParticipant>();
-        }
-
-        protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
-
-        public override bool CanContinue(GameRoot game)
-        {
-            return true;
-        }
-    }
-
     private SpecialForces specialForces;
 
     [SetUp]
@@ -69,7 +50,7 @@ public class SpecialForcesTests
     [Test]
     public void IsOnMission_WhenAssignedToMission_ReturnsTrue()
     {
-        TestMission mission = new TestMission();
+        StubMission mission = new StubMission();
         specialForces.SetParent(mission);
 
         bool isOnMission = specialForces.IsOnMission();
@@ -114,7 +95,7 @@ public class SpecialForcesTests
     [Test]
     public void IsMovable_WhenOnMission_ReturnsFalse()
     {
-        TestMission mission = new TestMission();
+        StubMission mission = new StubMission();
         specialForces.Movement = new MovementState();
         specialForces.SetParent(mission);
 

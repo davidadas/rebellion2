@@ -87,7 +87,7 @@ internal class ResourceManagerImpl : IResourceManager
             throw new Exception($"Config not found at: {filePath}");
         }
 
-        var settings = new GameSerializerSettings { RootName = typeName };
+        GameSerializerSettings settings = new GameSerializerSettings { RootName = typeName };
 
         GameSerializer serializer = new GameSerializer(typeof(T), settings);
 
@@ -119,7 +119,7 @@ internal class ResourceManagerImpl : IResourceManager
             throw new Exception($"Game data not found at: {filePath}");
         }
 
-        var settings = new GameSerializerSettings { RootName = pluralizedType };
+        GameSerializerSettings settings = new GameSerializerSettings { RootName = pluralizedType };
 
         GameSerializer serializer = new GameSerializer(typeof(T[]), settings);
 

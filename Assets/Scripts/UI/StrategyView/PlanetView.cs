@@ -226,7 +226,7 @@ public sealed class PlanetView : MonoBehaviour
 
         for (int i = 0; i < sortedSupport.Count; i++)
         {
-            var entry = sortedSupport[i];
+            KeyValuePair<string, int> entry = sortedSupport[i];
 
             FactionTheme theme = uiContext.GetTheme(entry.Key);
             Color color = theme.GetPrimaryColor();

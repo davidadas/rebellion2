@@ -7,7 +7,7 @@ using Rebellion.Game;
 using Rebellion.SceneGraph;
 
 [TestFixture]
-public class GameTests
+public class GameRootTests
 {
     private GameRoot game;
     private GameSummary summary;
@@ -531,9 +531,9 @@ public class GameTests
     [Test]
     public void GetGameSpeed_ReturnsDefaultSpeed()
     {
-        // Verify default speed is Paused.
+        // Verify default speed is Medium.
         TickSpeed speed = game.GetGameSpeed();
-        Assert.AreEqual(TickSpeed.Paused, speed, "Default game speed should be Paused");
+        Assert.AreEqual(TickSpeed.Medium, speed, "Default game speed should be Medium");
     }
 
     [Test]
@@ -563,6 +563,11 @@ public class GameTests
         Assert.IsTrue(
             faction2.GetAllOwnedNodes().Contains(planet),
             "Faction2 should now own the planet"
+        );
+        Assert.AreEqual(
+            "FACTION2",
+            planet.OwnerInstanceID,
+            "Planet.OwnerInstanceID should reflect the new owner"
         );
     }
 

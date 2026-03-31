@@ -26,7 +26,7 @@ namespace Rebellion.Systems
         public void ProcessTick(IRandomNumberProvider provider)
         {
             // Get all planets in the game
-            var planets = game.GetSceneNodesByType<Rebellion.Game.Planet>();
+            List<Rebellion.Game.Planet> planets = game.GetSceneNodesByType<Rebellion.Game.Planet>();
 
             foreach (var planet in planets)
             {
@@ -43,7 +43,9 @@ namespace Rebellion.Systems
                 }
 
                 // Get the owning faction
-                var faction = game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+                Rebellion.Game.Faction faction = game.GetFactionByOwnerInstanceID(
+                    planet.OwnerInstanceID
+                );
                 if (faction == null)
                 {
                     continue;
@@ -58,7 +60,7 @@ namespace Rebellion.Systems
                 // Find the highest support from other factions
                 int maxOpposingSupport = 0;
                 string opposingFactionId = null;
-                foreach (var kvp in planet.PopularSupport)
+                foreach (KeyValuePair<string, int> kvp in planet.PopularSupport)
                 {
                     if (kvp.Key != planet.OwnerInstanceID && kvp.Value > maxOpposingSupport)
                     {
@@ -77,8 +79,8 @@ namespace Rebellion.Systems
                     double roll = provider.NextDouble();
                     if (roll < uprisingProbability)
                     {
-                        // Uprising begins - directly mutate planet state
-                        planet.BeginUprising(opposingFactionId);
+                        game.ChangeUnitOwnership(planet, opposingFactionId);
+                        planet.BeginUprising();
                     }
                 }
             }

@@ -144,11 +144,7 @@ namespace Rebellion.Generation
 
             if (fleet == null)
             {
-                fleet = new Fleet
-                {
-                    DisplayName = $"{planet.GetDisplayName()} Fleet",
-                    OwnerInstanceID = planet.OwnerInstanceID,
-                };
+                fleet = new Fleet(planet.OwnerInstanceID, $"{planet.GetDisplayName()} Fleet");
 
                 planet.AddChild(fleet);
             }

@@ -232,7 +232,6 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Initializes fog of war for all factions at game start.
-        /// CRITICAL: Core systems explored, Outer Rim black fog.
         /// </summary>
         /// <param name="game">The game instance to initialize fog of war for.</param>
         private void InitializeFogOfWar(GameRoot game)

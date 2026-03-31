@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -58,14 +57,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(tatooine, system);
         }
 
-        // ── Tier Advancement ────────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_AdvancesToTraining()
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(1, results.Count);
@@ -79,7 +76,7 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 150, ForceTier.Training);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Experienced, luke.ForceTier);
             Assert.AreEqual(2, results.Count);
@@ -92,7 +89,7 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 49, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Aware, luke.ForceTier);
             Assert.AreEqual(0, results.Count);
@@ -103,7 +100,7 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(1, results.Count);
@@ -115,7 +112,7 @@ namespace Rebellion.Tests.Systems
             // Palpatine starts at 150 XP from None
             Officer palpatine = CreateOfficer("PALPATINE", 100, 150, ForceTier.None);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Experienced, palpatine.ForceTier);
             Assert.AreEqual(2, results.Count);
@@ -126,11 +123,11 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoForceUser_NoEvents()
         {
-            Officer tarkin = CreateOfficer("TARKIN", 0, 0, ForceTier.None);
+            Officer palpatine = CreateOfficer("PALPATINE", 0, 0, ForceTier.None);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
-            Assert.AreEqual(ForceTier.None, tarkin.ForceTier);
+            Assert.AreEqual(ForceTier.None, palpatine.ForceTier);
             Assert.AreEqual(0, results.Count);
         }
 
@@ -140,14 +137,12 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
             Officer leia = CreateOfficer("LEIA", 100, 150, ForceTier.Training);
 
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(ForceTier.Experienced, leia.ForceTier);
             Assert.AreEqual(3, results.Count); // Luke: 1 TierAdvanced, Leia: 1 TierAdvanced + 1 TrainingComplete
         }
-
-        // ── Detection ────────────────────────────────────────────────────────────
 
         [Test]
         public void ProcessTick_DetectionTriggered()
@@ -155,7 +150,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             game.CurrentTick = 30; // Detection interval
 
-            MockRNG rng = new MockRNG(0.01); // Roll < 0.15 (DetectProbTraining)
+            FixedRNG rng = new FixedRNG(0.01); // Roll < 0.15 (DetectProbTraining)
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
@@ -168,7 +163,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             game.CurrentTick = 30;
 
-            MockRNG rng = new MockRNG(0.99); // Roll > 0.15
+            FixedRNG rng = new FixedRNG(0.99); // Roll > 0.15
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsFalse(luke.IsDiscoveredJedi);
@@ -182,7 +177,7 @@ namespace Rebellion.Tests.Systems
             luke.IsDiscoveredJedi = true;
             game.CurrentTick = 60; // Multiple intervals passed
 
-            MockRNG rng = new MockRNG(0.01); // Low roll
+            FixedRNG rng = new FixedRNG(0.01); // Low roll
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
@@ -194,7 +189,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             game.CurrentTick = 29; // One tick before interval
 
-            MockRNG rng = new MockRNG(0.01);
+            FixedRNG rng = new FixedRNG(0.01);
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsFalse(luke.IsDiscoveredJedi);
@@ -208,7 +203,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             // Roll 0.04 < 0.05 (DetectProbAware) → should detect
-            MockRNG rng = new MockRNG(0.04);
+            FixedRNG rng = new FixedRNG(0.04);
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
@@ -221,7 +216,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             // Roll 0.29 < 0.30 (DetectProbExperienced) → should detect
-            MockRNG rng = new MockRNG(0.29);
+            FixedRNG rng = new FixedRNG(0.29);
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsTrue(palpatine.IsDiscoveredJedi);
@@ -230,16 +225,14 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoneTier_NeverDetected()
         {
-            Officer tarkin = CreateOfficer("TARKIN", 0, 0, ForceTier.None);
+            Officer palpatine = CreateOfficer("PALPATINE", 0, 0, ForceTier.None);
             game.CurrentTick = 30;
 
-            MockRNG rng = new MockRNG(0.0); // Guaranteed roll
+            FixedRNG rng = new FixedRNG(0.0); // Guaranteed roll
             List<JediResult> results = manager.ProcessTick(game, rng);
 
-            Assert.IsFalse(tarkin.IsDiscoveredJedi);
+            Assert.IsFalse(palpatine.IsDiscoveredJedi);
         }
-
-        // ── Config Injection ─────────────────────────────────────────────────────
 
         [Test]
         public void ProcessTick_CustomConfig_UsesCustomThresholds()
@@ -248,12 +241,12 @@ namespace Rebellion.Tests.Systems
             game.Config.Jedi.XpToExperienced = 200;
 
             Officer luke = CreateOfficer("LUKE", 100, 99, ForceTier.Aware);
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Aware, luke.ForceTier); // Still Aware at 99 XP
 
             luke.ForceExperience = 100;
-            results = manager.ProcessTick(game, new MockRNG());
+            results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier); // Advances at 100 XP
         }
@@ -266,7 +259,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             game.CurrentTick = 30;
 
-            MockRNG rng = new MockRNG(0.01);
+            FixedRNG rng = new FixedRNG(0.01);
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsFalse(luke.IsDiscoveredJedi); // 30 % 50 != 0
@@ -285,18 +278,16 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             game.CurrentTick = 30;
 
-            MockRNG rng = new MockRNG(0.49); // Just below threshold
+            FixedRNG rng = new FixedRNG(0.49); // Just below threshold
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
         }
 
-        // ── Edge Cases ────────────────────────────────────────────────────────────
-
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
-            List<JediResult> results = manager.ProcessTick(game, new MockRNG());
+            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
 
             Assert.AreEqual(0, results.Count);
         }
@@ -307,15 +298,13 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
             game.CurrentTick = 30;
 
-            MockRNG rng = new MockRNG(0.01); // Low roll for detection
+            FixedRNG rng = new FixedRNG(0.01); // Low roll for detection
             List<JediResult> results = manager.ProcessTick(game, rng);
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.IsTrue(luke.IsDiscoveredJedi);
             Assert.AreEqual(2, results.Count); // TierAdvanced + JediDiscovered
         }
-
-        // ── Helpers ───────────────────────────────────────────────────────────────
 
         private Officer CreateOfficer(string id, int jediProb, int forceXP, ForceTier tier)
         {
@@ -331,20 +320,6 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(officer, tatooine);
             return officer;
-        }
-
-        private class MockRNG : IRandomNumberProvider
-        {
-            private double value;
-
-            public MockRNG(double value = 0.5)
-            {
-                this.value = value;
-            }
-
-            public double NextDouble() => value;
-
-            public int NextInt(int min, int max) => min;
         }
     }
 }

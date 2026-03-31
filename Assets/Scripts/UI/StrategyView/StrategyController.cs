@@ -86,7 +86,7 @@ public sealed class StrategyController : MonoBehaviour
 
     private void OnGameReady()
     {
-        gameManager.SetGameSpeed(TickSpeed.Paused);
+        gameManager.SetGameSpeed(TickSpeed.Fast);
 
         AudioManager.Instance.PlaySFX("Audio/SFX/StrategyView/sfx_strategyview_open");
         AudioManager.Instance.PlayPlaylistPaths(tracks, true);
@@ -121,6 +121,23 @@ public sealed class StrategyController : MonoBehaviour
             .BuildFactionView(gameManager.GetPlayerFaction());
 
         galaxyView.Initialize(updatedGalaxy, uiContext);
+        RefreshActivePanels(updatedGalaxy);
+    }
+
+    private void RefreshActivePanels(GalaxyMap updatedGalaxy)
+    {
+        foreach (PlanetSystemPanel panel in activePanels)
+        {
+            string systemId = panel.CurrentSystemInstanceID;
+            if (string.IsNullOrEmpty(systemId))
+                continue;
+
+            PlanetSystem updatedSystem = updatedGalaxy.PlanetSystems.Find(s =>
+                s.InstanceID == systemId
+            );
+            if (updatedSystem != null)
+                panel.Refresh(updatedSystem);
+        }
     }
 
     private void Update()

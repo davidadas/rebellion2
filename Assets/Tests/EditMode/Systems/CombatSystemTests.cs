@@ -15,30 +15,22 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class CombatSystemTests
     {
-        private class MockRNG : IRandomNumberProvider
+        /// <summary>
+        /// Runs a full combat cycle: detect then resolve (auto).
+        /// Returns true if combat was detected and resolved.
+        /// </summary>
+        private bool RunCombat(CombatSystem manager, GameRoot game, IRandomNumberProvider rng)
         {
-            private Queue<double> values;
-
-            public MockRNG(params double[] values)
+            if (manager.TryStartCombat(game, out CombatDecisionContext decision))
             {
-                this.values = new Queue<double>(values);
+                manager.Resolve(game, decision, autoResolve: true, rng);
+                return true;
             }
-
-            public double NextDouble()
-            {
-                return values.Count > 0 ? values.Dequeue() : 0.5;
-            }
-
-            public int NextInt(int min, int max)
-            {
-                return (int)(NextDouble() * (max - min)) + min;
-            }
+            return false;
         }
 
-        // ── Basic Combat Resolution ────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_TwoFactionFleets_ResolvesCombat()
+        public void Combat_TwoFactionFleets_ResolvesCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -54,11 +46,11 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Combat should occur - at least one fleet should take damage
             bool combatOccurred =
                 empireFleet.CapitalShips[0].HullStrength < 100
                 || allianceFleet.CapitalShips[0].HullStrength < 100;
@@ -66,7 +58,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_NoHostileFleets_NoCombat()
+        public void Combat_NoHostileFleets_NoCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -80,10 +72,12 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             int initialHull = fleet.CapitalShips[0].HullStrength;
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG());
+            QueueRNG rng = new QueueRNG();
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            bool detected = RunCombat(manager, game, rng);
 
+            Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
                 initialHull,
                 fleet.CapitalShips[0].HullStrength,
@@ -92,7 +86,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_SingleFactionMultipleFleets_NoCombat()
+        public void Combat_SingleFactionMultipleFleets_NoCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -106,18 +100,18 @@ namespace Rebellion.Tests.Systems
             Fleet fleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet fleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG());
+            QueueRNG rng = new QueueRNG();
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
             Assert.AreEqual(100, fleet1.CapitalShips[0].HullStrength);
             Assert.AreEqual(100, fleet2.CapitalShips[0].HullStrength);
         }
 
         [Test]
-        public void ProcessTick_MultipleAttackerFleets_OnlyFirstPairFights()
+        public void Combat_MultipleAttackerFleets_OnlyFirstPairFights()
         {
-            // Validates original behavior: only first fleet per faction fights
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -133,11 +127,11 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f3", "alliance", planet, 1, 100, 10);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Only first empire fleet should have fought
             Assert.Less(empireFleet1.CapitalShips[0].HullStrength, 100, "First fleet fights");
             Assert.AreEqual(
                 100,
@@ -146,10 +140,8 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // ── Winner Determination ────────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_AttackerDestroysDefender_AttackerWins()
+        public void Combat_AttackerDestroysDefender_AttackerWins()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -162,21 +154,20 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Strong attacker vs weak defender
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Defender should be destroyed and removed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
         }
 
         [Test]
-        public void ProcessTick_DefenderDestroysAttacker_DefenderWins()
+        public void Combat_DefenderDestroysAttacker_DefenderWins()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -189,21 +180,20 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Weak attacker vs strong defender
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 100);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Attacker should be destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
         }
 
         [Test]
-        public void ProcessTick_MutualDestruction_BothFleetsRemoved()
+        public void Combat_MutualDestruction_BothFleetsRemoved()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -216,9 +206,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Test that destroyed fleets are removed from the scene
-            // Due to first-strike advantage, attacker destroys defender first
-            // (destroyed ships can't return fire per REBEXE.EXE behavior)
             Fleet empireFleet = CreateFleet(
                 game,
                 "f1",
@@ -240,12 +227,11 @@ namespace Rebellion.Tests.Systems
                 shieldRechargeRate: 0
             );
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            // Run one tick - attacker should destroy defender
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // At least one fleet should be destroyed
             bool anyDestroyed =
                 game.GetSceneNodeByInstanceID<Fleet>("f1") == null
                 || game.GetSceneNodeByInstanceID<Fleet>("f2") == null;
@@ -255,10 +241,8 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // ── Damage Application ──────────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_ShipTakesDamage_HullStrengthReduced()
+        public void Combat_ShipTakesDamage_HullStrengthReduced()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -274,11 +258,11 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // At least one ship should take damage
             Assert.Less(
                 empireFleet.CapitalShips[0].HullStrength,
                 100,
@@ -287,7 +271,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ShipDestroyed_RemovedFromFleet()
+        public void Combat_ShipDestroyed_RemovedFromFleet()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -300,15 +284,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Strong attacker destroys weak ship
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Weak ship should be removed
             Assert.AreEqual(
                 0,
                 allianceFleet.CapitalShips.Count,
@@ -317,7 +300,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_FighterSquadronTakesLosses_SquadronSizeReduced()
+        public void Combat_FighterSquadronTakesLosses_SquadronSizeReduced()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -330,12 +313,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Create highly asymmetric fighter battle to guarantee losses
-            // Empire: many fighters (36), Alliance: few fighters (6)
-            // Fighter-vs-fighter losses = (enemy/(my+enemy)) * 0.3 * total * roll
-            // Alliance losses: (36/(36+6)) * 0.3 * 6 * 0.5 = 0.857 * 0.3 * 6 * 0.5 ≈ 0.77 → 0
-            // Empire losses: (6/(36+6)) * 0.3 * 36 * 0.5 = 0.143 * 0.3 * 36 * 0.5 ≈ 0.77 → 0
-            // Need even more asymmetry: 100 vs 10
             Fleet empireFleet = CreateFleetWithFighters(
                 game,
                 "f1",
@@ -357,16 +334,14 @@ namespace Rebellion.Tests.Systems
                 10
             );
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Alliance fighters should take heavy losses (or be destroyed)
-            // Empire fighters should take some losses
             Fleet allianceFleet2 = game.GetSceneNodeByInstanceID<Fleet>("f2");
             if (allianceFleet2 != null)
             {
-                // Alliance survived - check its fighters took losses
                 List<Starfighter> allFighters = allianceFleet2.GetStarfighters().ToList();
                 if (allFighters.Count > 0)
                 {
@@ -379,7 +354,6 @@ namespace Rebellion.Tests.Systems
                 }
             }
 
-            // Or Empire fighters took losses
             Fleet empFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
             Assert.IsNotNull(empFleet, "Empire fleet should still exist");
             List<Starfighter> empFighters = empFleet.GetStarfighters().ToList();
@@ -392,7 +366,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmptyFleet_RemovedFromScene()
+        public void Combat_EmptyFleet_RemovedFromScene()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -405,15 +379,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Strong attacker vs weak defender
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Destroyed fleet should be removed from scene graph
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"));
             bool foundFleet = false;
             foreach (Fleet fleet in planet.GetChildren<Fleet>(f => true, recurse: false))
@@ -427,12 +400,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(foundFleet, "Destroyed fleet should not be in planet's children");
         }
 
-        // ── 7-Phase Pipeline ────────────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_BothSidesZeroWeapons_NoDamage()
+        public void Combat_BothSidesZeroWeapons_NoDamage()
         {
-            // Validates anyArmed gate behavior
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -444,19 +414,17 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Create fleets with zero weapons (0 turbolasers, 0 ion, 0 laser)
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
 
-            // Override weapon stats to zero
             empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
             allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // No damage should occur
             Assert.AreEqual(
                 100,
                 empireFleet.CapitalShips[0].HullStrength,
@@ -470,7 +438,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_WeaponFire_DamagesTargets()
+        public void Combat_WeaponFire_DamagesTargets()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -486,17 +454,17 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Both sides should take damage
             Assert.Less(empireFleet.CapitalShips[0].HullStrength, 100);
             Assert.Less(allianceFleet.CapitalShips[0].HullStrength, 100);
         }
 
         [Test]
-        public void ProcessTick_ShieldAbsorption_ReducesDamage()
+        public void Combat_ShieldAbsorption_ReducesDamage()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -509,16 +477,16 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Fleet with high shields vs fleet with no shields
             Fleet shieldedFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet unshieldedFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
 
-            shieldedFleet.CapitalShips[0].ShieldRechargeRate = 15; // Max shields
-            unshieldedFleet.CapitalShips[0].ShieldRechargeRate = 0; // No shields
+            shieldedFleet.CapitalShips[0].ShieldRechargeRate = 15;
+            unshieldedFleet.CapitalShips[0].ShieldRechargeRate = 0;
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
             int shieldedDamage = 100 - shieldedFleet.CapitalShips[0].HullStrength;
             int unshieldedDamage = 100 - unshieldedFleet.CapitalShips[0].HullStrength;
@@ -527,7 +495,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_FightersAttackCapitalShips_DamageApplied()
+        public void Combat_FightersAttackCapitalShips_DamageApplied()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -540,7 +508,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Fleet with fighters vs fleet without (make target very durable)
             Fleet fighterFleet = CreateFleetWithFighters(
                 game,
                 "f1",
@@ -553,11 +520,11 @@ namespace Rebellion.Tests.Systems
             );
             Fleet targetFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 5);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
-            // Target should take damage from fighters (check if fleet still exists)
             Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
             Assert.IsNotNull(target, "Target fleet should still exist");
             Assert.Less(
@@ -567,10 +534,8 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // ── RNG & Variance ──────────────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_DamageVariance_Within20Percent()
+        public void Combat_DamageVariance_Within20Percent()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -586,30 +551,28 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
 
-            // Run combat with different RNG values
-            CombatSystem manager1 = new CombatSystem(game, new MockRNG(0.0, 0.0, 0.0, 0.0)); // Min variance
-            CombatSystem manager2 = new CombatSystem(game, new MockRNG(1.0, 1.0, 1.0, 1.0)); // Max variance
+            QueueRNG rng1 = new QueueRNG(0.0, 0.0, 0.0, 0.0);
+            QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
 
-            manager1.ProcessTick(game);
-
+            CombatSystem manager1 = new CombatSystem(game, rng1);
+            RunCombat(manager1, game, rng1);
             int damage1 = 100 - empireFleet.CapitalShips[0].HullStrength;
 
-            // Reset hull for second test
             empireFleet.CapitalShips[0].HullStrength = 100;
             allianceFleet.CapitalShips[0].HullStrength = 100;
+            empireFleet.IsInCombat = false;
+            allianceFleet.IsInCombat = false;
 
-            manager2.ProcessTick(game);
-
+            CombatSystem manager2 = new CombatSystem(game, rng2);
+            RunCombat(manager2, game, rng2);
             int damage2 = 100 - empireFleet.CapitalShips[0].HullStrength;
 
-            // Variance should be present
             Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
         }
 
         [Test]
-        public void ProcessTick_SameRNGSeed_SameOutcome()
+        public void Combat_SameRNGSeed_SameOutcome()
         {
-            // Validates deterministic combat
             GameRoot game1 = new GameRoot();
             GameRoot game2 = new GameRoot();
 
@@ -629,11 +592,11 @@ namespace Rebellion.Tests.Systems
                 CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
             }
 
-            CombatSystem manager1 = new CombatSystem(game1, new MockRNG(0.5, 0.5, 0.5, 0.5));
-            CombatSystem manager2 = new CombatSystem(game2, new MockRNG(0.5, 0.5, 0.5, 0.5));
+            QueueRNG rng1 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            QueueRNG rng2 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
 
-            manager1.ProcessTick(game1);
-            manager2.ProcessTick(game2);
+            RunCombat(new CombatSystem(game1, rng1), game1, rng1);
+            RunCombat(new CombatSystem(game2, rng2), game2, rng2);
 
             Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
@@ -646,7 +609,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DifferentRNGSeeds_DifferentOutcomes()
+        public void Combat_DifferentRNGSeeds_DifferentOutcomes()
         {
             GameRoot game1 = new GameRoot();
             GameRoot game2 = new GameRoot();
@@ -667,11 +630,11 @@ namespace Rebellion.Tests.Systems
                 CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
             }
 
-            CombatSystem manager1 = new CombatSystem(game1, new MockRNG(0.0, 0.0, 0.0, 0.0));
-            CombatSystem manager2 = new CombatSystem(game2, new MockRNG(1.0, 1.0, 1.0, 1.0));
+            QueueRNG rng1 = new QueueRNG(0.0, 0.0, 0.0, 0.0);
+            QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
 
-            manager1.ProcessTick(game1);
-            manager2.ProcessTick(game2);
+            RunCombat(new CombatSystem(game1, rng1), game1, rng1);
+            RunCombat(new CombatSystem(game2, rng2), game2, rng2);
 
             Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
@@ -683,19 +646,17 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // ── Edge Cases ──────────────────────────────────────────────────────
-
         [Test]
-        public void ProcessTick_NullGame_ThrowsException()
+        public void TryStartCombat_NullGame_ThrowsException()
         {
             GameRoot game = new GameRoot();
-            CombatSystem manager = new CombatSystem(game, new MockRNG());
+            CombatSystem manager = new CombatSystem(game, new QueueRNG());
 
-            Assert.Throws<System.NullReferenceException>(() => manager.ProcessTick(null));
+            Assert.Throws<System.NullReferenceException>(() => manager.TryStartCombat(null, out _));
         }
 
         [Test]
-        public void ProcessTick_EmptyFleets_NoCombat()
+        public void Combat_EmptyFleets_NoCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -708,21 +669,130 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Create empty fleets (no ships)
             Fleet empireFleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
             Fleet allianceFleet = new Fleet { InstanceID = "f2", OwnerInstanceID = "alliance" };
             game.AttachNode(empireFleet, planet);
             game.AttachNode(allianceFleet, planet);
 
-            CombatSystem manager = new CombatSystem(game, new MockRNG());
+            QueueRNG rng = new QueueRNG();
+            CombatSystem manager = new CombatSystem(game, rng);
 
-            // Should not crash
-            manager.ProcessTick(game);
+            RunCombat(manager, game, rng);
 
             Assert.Pass("Empty fleets should not cause combat");
         }
 
-        // ── Helper Methods ──────────────────────────────────────────────────
+        [Test]
+        public void TryStartCombat_HostileFleets_ReturnsTrueAndSetsContext()
+        {
+            GameRoot game = new GameRoot();
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+
+            CombatSystem manager = new CombatSystem(game, new QueueRNG());
+
+            bool detected = manager.TryStartCombat(game, out CombatDecisionContext decision);
+
+            Assert.IsTrue(detected);
+            Assert.IsNotNull(decision);
+            Assert.IsNotEmpty(decision.AttackerFleetInstanceID);
+            Assert.IsNotEmpty(decision.DefenderFleetInstanceID);
+        }
+
+        [Test]
+        public void TryStartCombat_SetsIsInCombatOnBothFleets()
+        {
+            GameRoot game = new GameRoot();
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+
+            CombatSystem manager = new CombatSystem(game, new QueueRNG());
+            manager.TryStartCombat(game, out _);
+
+            Assert.IsTrue(
+                empireFleet.IsInCombat || allianceFleet.IsInCombat,
+                "At least one fleet should be flagged IsInCombat"
+            );
+        }
+
+        [Test]
+        public void Resolve_ClearsIsInCombatOnSurvivingFleets()
+        {
+            GameRoot game = new GameRoot();
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            // Durable fleets so both survive
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 10000, 1);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
+
+            manager.TryStartCombat(game, out CombatDecisionContext decision);
+            manager.Resolve(game, decision, autoResolve: true, rng);
+
+            Assert.IsFalse(empireFleet.IsInCombat, "IsInCombat should be cleared after resolution");
+            Assert.IsFalse(
+                allianceFleet.IsInCombat,
+                "IsInCombat should be cleared after resolution"
+            );
+        }
+
+        [Test]
+        public void TryStartCombat_FleetsInCombat_NotDetectedAgain()
+        {
+            GameRoot game = new GameRoot();
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+
+            CombatSystem manager = new CombatSystem(game, new QueueRNG());
+
+            manager.TryStartCombat(game, out _);
+
+            // Should not detect again while IsInCombat is set
+            bool detectedAgain = manager.TryStartCombat(game, out CombatDecisionContext second);
+
+            Assert.IsFalse(detectedAgain, "Fleets already in combat should not be detected again");
+            Assert.IsNull(second);
+        }
 
         private Fleet CreateFleet(
             GameRoot game,

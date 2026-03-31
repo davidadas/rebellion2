@@ -9,19 +9,26 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Manages the lifecycle of missions each tick.
-    /// Creation and initiation of missions are delegated to MissionFactory.
+    /// Mission creation and scene graph attachment are delegated to MissionFactory.
+    /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
     public class MissionSystem
     {
         private readonly GameRoot game;
         private readonly MovementSystem movementManager;
+        private readonly OwnershipSystem ownershipSystem;
         private readonly MissionFactory missionFactory;
 
-        public MissionSystem(GameRoot game, MovementSystem movementManager)
+        public MissionSystem(
+            GameRoot game,
+            MovementSystem movementManager,
+            OwnershipSystem ownershipSystem
+        )
         {
             this.game = game;
             this.movementManager = movementManager;
-            this.missionFactory = new MissionFactory(game, movementManager);
+            this.ownershipSystem = ownershipSystem;
+            this.missionFactory = new MissionFactory(game);
         }
 
         /// <summary>
@@ -41,7 +48,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
             string ownerInstanceId = participant.OwnerInstanceID;
 
-            missionFactory.CreateAndInitiateMission(
+            Mission mission = missionFactory.CreateAndAttachMission(
                 missionType,
                 ownerInstanceId,
                 mainParticipants,
@@ -49,6 +56,8 @@ namespace Rebellion.Systems
                 target,
                 provider
             );
+
+            BeginMission(mission, provider);
         }
 
         /// <summary>
@@ -82,43 +91,83 @@ namespace Rebellion.Systems
 
             results.AddRange(mission.Execute(game, provider));
 
+            foreach (GameResult result in results)
+            {
+                if (result is PlanetOwnershipChangedResult ownershipResult)
+                {
+                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(
+                        ownershipResult.PlanetInstanceID
+                    );
+                    Faction newOwner = game.GetFactionByOwnerInstanceID(
+                        ownershipResult.NewOwnerInstanceID
+                    );
+                    if (planet != null && newOwner != null)
+                        ownershipSystem.TransferPlanet(planet, newOwner);
+                }
+            }
+
             if (mission.CanContinue(game))
             {
-                mission.Initiate(game, movementManager, provider);
+                BeginMission(mission, provider);
             }
             else
             {
+                Planet missionPlanet = mission.GetParent() as Planet;
                 Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
-                Planet nearestPlanet = faction.GetNearestPlanetTo(mission);
+                Planet nearestPlanet = faction.GetNearestFriendlyPlanetTo(mission);
                 if (nearestPlanet == null)
                 {
-                    Planet missionPlanet = mission.GetParent() as Planet;
                     if (missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
                         nearestPlanet = missionPlanet;
                 }
 
-                foreach (IMovable movable in mission.GetAllParticipants().Cast<IMovable>())
+                List<IMissionParticipant> allParticipants = mission.GetAllParticipants();
+
+                foreach (IMovable movable in allParticipants.Cast<IMovable>())
                 {
+                    ISceneNode participantNode = (ISceneNode)movable;
+
                     if (nearestPlanet != null)
                     {
+                        // RequestMove immediately reparents the participant to nearestPlanet,
+                        // which calls mission.RemoveChild and drains the participant lists.
+                        // DetachNode below will find no children to deregister.
                         movementManager.RequestMove(movable, nearestPlanet);
-
                         results.Add(
                             new CharacterMovedResult
                             {
-                                CharacterInstanceID = ((ISceneNode)movable).GetInstanceID(),
+                                CharacterInstanceID = participantNode.GetInstanceID(),
                                 FromLocationInstanceID = mission.InstanceID,
                                 ToLocationInstanceID = nearestPlanet.InstanceID,
                                 Tick = game.CurrentTick,
                             }
                         );
                     }
+                    // If nearestPlanet is null the faction has no planets; officer is lost.
                 }
 
                 game.DetachNode(mission);
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Sends all participants to the mission and starts its timer.
+        /// RequestMove immediately reparents each participant to the mission node
+        /// and marks them in transit for the physical journey.
+        /// </summary>
+        private void BeginMission(Mission mission, IRandomNumberProvider provider)
+        {
+            foreach (IMissionParticipant participant in mission.GetAllParticipants())
+            {
+                if (participant.GetParent() != mission)
+                {
+                    movementManager.RequestMove(participant, mission);
+                }
+            }
+
+            mission.Initiate(provider);
         }
     }
 }

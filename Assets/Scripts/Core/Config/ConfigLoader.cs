@@ -31,8 +31,8 @@ namespace Rebellion.Core.Configuration
 
             try
             {
-                var serializer = new GameSerializer(typeof(GameConfig));
-                using var reader = new StringReader(configAsset.text);
+                GameSerializer serializer = new GameSerializer(typeof(GameConfig));
+                using StringReader reader = new StringReader(configAsset.text);
                 GameConfig config = (GameConfig)serializer.Deserialize(reader);
                 config.Validate();
                 GameLogger.Log("GameConfig.xml loaded and validated successfully");
