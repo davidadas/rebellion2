@@ -281,6 +281,12 @@ namespace Rebellion.Systems
                         // Unexplored — no visibility, no snapshot.
                     }
 
+                    viewPlanet.Missions.AddRange(
+                        masterPlanet.Missions
+                            .Where(m => m.GetOwnerInstanceID() == faction.InstanceID)
+                            .Select(m => m.GetShallowCopy(CloneMode.Full))
+                    );
+
                     viewSystem.Planets.Add(viewPlanet);
                 }
 
