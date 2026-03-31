@@ -355,7 +355,10 @@ namespace Rebellion.Tests.Systems
                 targetPlanet.GetManufacturingQueue();
             bool anyItems = queue.Values.Any(list => list.Count > 0);
             Assert.IsFalse(anyItems, "In-progress building must be cleared from queue on transfer");
-            Assert.IsNull(mine.GetParent(), "In-progress building must be detached from planet on transfer");
+            Assert.IsNull(
+                mine.GetParent(),
+                "In-progress building must be detached from planet on transfer"
+            );
         }
     }
 }

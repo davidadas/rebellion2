@@ -279,7 +279,6 @@ namespace Rebellion.Game
             return from.GetDistanceTo(to, config.DistanceDivisor, config.DistanceBase);
         }
 
-
         /// <summary>
         /// Returns the galaxy map, the root node of the game.
         /// </summary>

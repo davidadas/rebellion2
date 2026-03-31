@@ -88,8 +88,6 @@ public class AIManager
         }
     }
 
-
-
     /// <summary>
     /// Routes the nearest idle fleet toward each blockaded owned planet.
     /// Tracks dispatched fleets so the same fleet isn't sent twice.
@@ -123,8 +121,6 @@ public class AIManager
             dispatched.Add(relief.GetInstanceID());
         }
     }
-
-
 
     /// <summary>
     /// Builds buildings in priority order: mines to match raw nodes, then

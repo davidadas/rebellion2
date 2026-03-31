@@ -282,8 +282,8 @@ namespace Rebellion.Systems
                     }
 
                     viewPlanet.Missions.AddRange(
-                        masterPlanet.Missions
-                            .Where(m => m.GetOwnerInstanceID() == faction.InstanceID)
+                        masterPlanet
+                            .Missions.Where(m => m.GetOwnerInstanceID() == faction.InstanceID)
                             .Select(m => m.GetShallowCopy(CloneMode.Full))
                     );
 
