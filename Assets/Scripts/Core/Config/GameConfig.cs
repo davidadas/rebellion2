@@ -20,6 +20,7 @@ public class GameConfig
     public MovementConfig Movement { get; set; } = new MovementConfig();
     public ProductionConfig Production { get; set; } = new ProductionConfig();
     public PlanetConfig Planet { get; set; } = new PlanetConfig();
+    public CombatConfig Combat { get; set; } = new CombatConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
@@ -187,6 +188,23 @@ public class GameConfig
 
         /// <summary>Maximum popular support value (default: 100)</summary>
         public int MaxPopularSupport { get; set; } = 100;
+    }
+
+    /// <summary>
+    /// Combat system configuration.
+    /// Controls fleet assault strength calculations and combat resolution.
+    /// Source: FUN_0055d120_scale_capital_ship_assault_fleet_strength
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class CombatConfig
+    {
+        /// <summary>
+        /// Personnel divisor for assault strength calculation (GENERAL_PARAM_1537).
+        /// Formula: assault_strength = (personnel / divisor + 1) * fleet_combat_value
+        /// Default: 10 (estimated from typical gameplay values)
+        /// </summary>
+        public int AssaultPersonnelDivisor { get; set; } = 10;
     }
 
     /// <summary>

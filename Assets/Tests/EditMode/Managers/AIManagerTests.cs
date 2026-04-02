@@ -434,5 +434,313 @@ namespace Rebellion.Tests.Managers
                 "AI should dispatch Rescue when a captured friendly officer is held at an enemy planet"
             );
         }
+
+        [Test]
+        public void CalculateFleetCombatValue_SumsCapitalShipsAndFighters()
+        {
+            // Original: FUN_004fc870_sum_fleet_unit_combat_value
+            // Sums capital ship combat values (via vtable 0x1dc) + fighter combat values
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+
+            Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(faction);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                AttackRating = 100,
+            };
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                AttackRating = 150,
+            };
+            game.AttachNode(ship1, fleet);
+            game.AttachNode(ship2, fleet);
+
+            Starfighter fighter1 = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                AttackRating = 20,
+            };
+            Starfighter fighter2 = new Starfighter
+            {
+                InstanceID = "sf2",
+                OwnerInstanceID = "empire",
+                AttackRating = 30,
+            };
+            game.AttachNode(fighter1, fleet);
+            game.AttachNode(fighter2, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            // Access via reflection since CalculateFleetCombatValue is private
+            var method = typeof(AIManager).GetMethod(
+                "CalculateFleetCombatValue",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            int combatValue = (int)method.Invoke(ai, new object[] { fleet });
+
+            // Expected: 100 + 150 + 20 + 30 = 300
+            Assert.AreEqual(
+                300,
+                combatValue,
+                "Fleet combat value should sum capital ship and starfighter attack ratings"
+            );
+        }
+
+        [Test]
+        public void CalculateFleetAssaultStrength_AppliesPersonnelModifier()
+        {
+            // Original: FUN_0055d120_scale_capital_ship_assault_fleet_strength
+            // Formula: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
+            GameConfig config = new GameConfig { Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 } };
+            GameRoot game = new GameRoot(config);
+
+            Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(faction);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                AttackRating = 100,
+            };
+            game.AttachNode(ship, fleet);
+
+            Officer commander = new Officer
+            {
+                InstanceID = "o1",
+                OwnerInstanceID = "empire",
+            };
+            commander.SetSkillValue(MissionParticipantSkill.Leadership, 50);
+            game.AttachNode(commander, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            var method = typeof(AIManager).GetMethod(
+                "CalculateFleetAssaultStrength",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            int assaultStrength = (int)method.Invoke(ai, new object[] { fleet });
+
+            // Expected: (50 / 10 + 1) * 100 = 6 * 100 = 600
+            Assert.AreEqual(
+                600,
+                assaultStrength,
+                "Assault strength should apply personnel modifier: (personnel/divisor + 1) * combat_value"
+            );
+        }
+
+        [Test]
+        public void CalculateFleetAssaultStrength_NoCommander_UsesBaseMultiplier()
+        {
+            // With no commander, personnel = 0, so formula becomes (0/10 + 1) * combat = 1 * combat
+            GameConfig config = new GameConfig { Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 } };
+            GameRoot game = new GameRoot(config);
+
+            Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(faction);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                AttackRating = 100,
+            };
+            game.AttachNode(ship, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            var method = typeof(AIManager).GetMethod(
+                "CalculateFleetAssaultStrength",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            int assaultStrength = (int)method.Invoke(ai, new object[] { fleet });
+
+            // Expected: (0 / 10 + 1) * 100 = 1 * 100 = 100
+            Assert.AreEqual(
+                100,
+                assaultStrength,
+                "Without commander, assault strength should equal base combat value (multiplier = 1)"
+            );
+        }
+
+        [Test]
+        public void CalculatePlanetDefenseStrength_SumsDefensiveBuildings()
+        {
+            // Original: FUN_0058c580_execute_capital_ship_assault_stage lines 84-88
+            // Sums defensive_core_value from defensive facilities
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+
+            Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(faction);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                GroundSlots = 5,
+                OrbitSlots = 5,
+            };
+            game.AttachNode(planet, system);
+
+            Building defense1 = new Building
+            {
+                InstanceID = "d1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Defense,
+                BuildingSlot = BuildingSlot.Ground,
+                DefenseRating = 50,
+            };
+            Building defense2 = new Building
+            {
+                InstanceID = "d2",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Defense,
+                BuildingSlot = BuildingSlot.Ground,
+                DefenseRating = 75,
+            };
+            Building mine = new Building
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                DefenseRating = 10,
+            };
+            game.AttachNode(defense1, planet);
+            game.AttachNode(defense2, planet);
+            game.AttachNode(mine, planet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            var method = typeof(AIManager).GetMethod(
+                "CalculatePlanetDefenseStrength",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            int defenseStrength = (int)method.Invoke(ai, new object[] { planet });
+
+            // Expected: 50 + 75 = 125 (mine doesn't count, only Defense type buildings)
+            Assert.AreEqual(
+                125,
+                defenseStrength,
+                "Defense strength should sum only defensive building ratings"
+            );
+        }
     }
 }

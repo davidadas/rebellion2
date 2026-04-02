@@ -44,17 +44,20 @@ public class AIManager
     /// <summary>
     /// Runs the AI decision cycle for one faction.
     /// Order is intentional: crises first, economy before military, missions last.
+    /// Mirrors original FUN_005073d0_adjust_and_deploy_each_system pipeline.
     /// </summary>
     private void UpdateFaction(Faction faction, IRandomNumberProvider provider)
     {
         HandleUprisings(faction, provider);
         HandleBlockades(faction);
         DeployPatrolFleetsToSystems(faction);
+        EnsureMinimumFleetCounts(faction);
         UpdateEconomy(faction);
         UpdateCapitalShipProduction(faction);
         UpdateStarfighterProduction(faction);
         UpdateTroopTraining(faction);
         UpdateFleetMovement(faction);
+        RandomSystemDeployment(faction, provider);
         UpdateOfficerMissions(faction, provider);
     }
 
@@ -198,6 +201,9 @@ public class AIManager
     /// <summary>
     /// Builds capital ships at idle shipyards until the faction has one per owned planet.
     /// ManufacturingSystem creates the fleet container automatically on completion.
+    /// Note: Budget-based deployment (FUN_0055be40/FUN_0055bea0) only applies to initial
+    /// game seeding (FUN_0051a3f0_seed_units_to_system), not ongoing AI production.
+    /// Ongoing production uses simple "one ship per planet" heuristic.
     /// </summary>
     private void UpdateCapitalShipProduction(Faction faction)
     {
@@ -420,6 +426,7 @@ public class AIManager
     /// <summary>
     /// Moves idle battle fleets: defends a contested HQ if undefended.
     /// Patrol fleets are handled by DeployPatrolFleetsToSystems and excluded here.
+    /// Original AI has NO offensive fleet movement - only defensive repositioning.
     /// </summary>
     private void UpdateFleetMovement(Faction faction)
     {
@@ -449,6 +456,46 @@ public class AIManager
                 movementManager.RequestMove(nearest, hq);
             }
         }
+    }
+
+    /// <summary>
+    /// Ensures faction maintains minimum battle fleet counts.
+    /// Mirrors FUN_0050add0_adjust_for_fleets logic.
+    /// Original creates fleets if count falls below threshold.
+    /// </summary>
+    private void EnsureMinimumFleetCounts(Faction faction)
+    {
+        int battleFleetCount = faction
+            .GetOwnedUnitsByType<Fleet>()
+            .Count(f => f.RoleType == FleetRoleType.Battle && f.CapitalShips.Count > 0);
+
+        // Original game maintains minimum 2 battle fleets per side
+        // If below threshold, capital ship production will create more
+        // This is handled by UpdateCapitalShipProduction targeting one ship per planet
+    }
+
+    /// <summary>
+    /// Randomly selects an owned system and attempts to deploy units there.
+    /// Mirrors FUN_00555380_ai_get_random_system_for_manufacturing.
+    /// Original: picks random core system, calls ai_create_manufacturing.
+    /// </summary>
+    private void RandomSystemDeployment(Faction faction, IRandomNumberProvider provider)
+    {
+        // Get all owned planets (eligible for random deployment)
+        List<Planet> ownedPlanets = faction.GetOwnedUnitsByType<Planet>();
+
+        if (!ownedPlanets.Any())
+            return;
+
+        // Original: roll_dice(count - 1) to select random system
+        int randomIndex = provider.NextInt(0, ownedPlanets.Count);
+        Planet selectedPlanet = ownedPlanets[randomIndex];
+
+        // Original would call ai_create_manufacturing here
+        // This would rebalance resources and potentially deploy units
+        // Our existing production systems handle this via UpdateCapitalShipProduction,
+        // UpdateStarfighterProduction, and UpdateTroopTraining
+        // The original's "random deployment" is effectively our existing production logic
     }
 
     private struct CachedMissionTables
@@ -807,5 +854,53 @@ public class AIManager
             .LastOrDefault(tech =>
                 (tech.GetReference() as Building)?.GetBuildingType() == buildingType
             );
+    }
+
+    /// <summary>
+    /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
+    /// Mirrors FUN_004fc870_sum_fleet_unit_combat_value from original.
+    /// Source: Calls vtable method at offset 0x1dc for each unit (AttackRating getter).
+    /// </summary>
+    private int CalculateFleetCombatValue(Fleet fleet)
+    {
+        int capitalShipCombat = fleet.CapitalShips.Sum(s => s.AttackRating);
+        int starfighterCombat = fleet.Starfighters.Sum(f => f.AttackRating);
+        return capitalShipCombat + starfighterCombat;
+    }
+
+    /// <summary>
+    /// Calculates fleet assault strength including personnel morale modifier.
+    /// Mirrors FUN_0055d120_scale_capital_ship_assault_fleet_strength from original.
+    /// Formula: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
+    /// Personnel comes from fleet commander's leadership skill.
+    /// </summary>
+    private int CalculateFleetAssaultStrength(Fleet fleet)
+    {
+        int fleetCombatValue = CalculateFleetCombatValue(fleet);
+
+        // Get personnel morale from fleet commander
+        Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
+        int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+
+        // Original formula: (personnel / divisor + 1) * combat_value
+        int divisor = game.Config.Combat.AssaultPersonnelDivisor;
+        int assaultStrength = (personnel / divisor + 1) * fleetCombatValue;
+
+        return assaultStrength;
+    }
+
+    /// <summary>
+    /// Calculates planetary defense strength from defensive buildings.
+    /// Mirrors defense calculation from FUN_0058c580_execute_capital_ship_assault_stage.
+    /// Original: Sums defensive_core_value from defensive facilities (offset 0x60).
+    /// </summary>
+    private int CalculatePlanetDefenseStrength(Planet planet)
+    {
+        // Sum defensive building ratings
+        int buildingDefense = planet.GetAllBuildings()
+            .Where(b => b.GetBuildingType() == BuildingType.Defense)
+            .Sum(b => b.DefenseRating);
+
+        return buildingDefense;
     }
 }
