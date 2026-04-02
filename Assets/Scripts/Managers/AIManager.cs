@@ -38,16 +38,6 @@ public class AIManager
     /// </summary>
     public void Update(IRandomNumberProvider provider)
     {
-        // TODO: Remove — temporary fleet count debug logging
-        foreach (Faction faction in game.Factions)
-        {
-            int fleetCount = faction.GetOwnedUnitsByType<Fleet>().Count;
-            int shipCount = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
-            GameLogger.Log(
-                $"[Fleet Count] {faction.GetDisplayName()}: {fleetCount} fleets, {shipCount} capital ships"
-            );
-        }
-
         foreach (Faction faction in game.Factions.Where(f => f.IsAIControlled()))
         {
             UpdateFaction(faction, provider);
@@ -225,26 +215,10 @@ public class AIManager
             typeof(CapitalShip)
         );
         if (tech == null)
-        {
-            // TODO: Remove — temporary debug
-            GameLogger.Debug(
-                $"[AI] {faction.GetDisplayName()}: No CapitalShip tech available. "
-                    + $"Ship techs: {faction.GetResearchedTechnologies(ManufacturingType.Ship).Count}, "
-                    + $"Research level: {faction.GetResearchLevel(ManufacturingType.Ship)}"
-            );
             return;
-        }
 
         int ownedShips = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
         int targetShips = faction.GetOwnedUnitsByType<Planet>().Count;
-
-        // TODO: Remove — temporary debug
-        GameLogger.Debug(
-            $"[AI] {faction.GetDisplayName()}: Ships {ownedShips}/{targetShips}, "
-                + $"idle shipyards: {faction.GetIdleFacilities(ManufacturingType.Ship).Count}, "
-                + $"materials: {game.GetRefinedMaterials(faction)}, "
-                + $"ship cost: {tech.GetReference().GetConstructionCost()}"
-        );
 
         foreach (Planet shipyard in faction.GetIdleFacilities(ManufacturingType.Ship))
         {
