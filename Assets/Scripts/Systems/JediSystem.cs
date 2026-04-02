@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Processes Jedi Force tier advancement and detection checks each tick.
@@ -27,9 +28,9 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Processes Force tier advancement and detection for all officers.
-        /// Effects are applied directly to officer state; returned results are for logging only.
+        /// Logs each event, applies effects directly to officer state, and returns all results.
         /// </summary>
-        public List<JediResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
+        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
         {
             List<JediResult> events = new List<JediResult>();
 
@@ -98,7 +99,14 @@ namespace Rebellion.Systems
                 }
             }
 
-            return events;
+            foreach (JediResult result in events)
+            {
+                GameLogger.Log(
+                    $"{result.Officer.GetDisplayName()} {result.EventType}: {result.NewTier}"
+                );
+            }
+
+            return new List<GameResult>(events);
         }
 
         private ForceTier TierForXP(int xp)

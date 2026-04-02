@@ -5,6 +5,7 @@ using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {
@@ -318,6 +319,154 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(
                 mission.GetParent(),
                 "Mission should be detached from scene graph after completion"
+            );
+        }
+
+        /// <summary>
+        /// Builds a scene with a rebels-owned planet, a rebels officer running DiplomacyMission,
+        /// and an empire officer running InciteUprisingMission. Both missions are advanced to
+        /// MaxProgress - 1 so a single UpdateMission call completes each one.
+        /// The InciteUprising table is seeded to guarantee success with StubRNG.
+        /// </summary>
+        private (
+            GameRoot game,
+            DiplomacyMission diplomacyMission,
+            InciteUprisingMission inciteMission,
+            MissionSystem missionSystem
+        ) BuildConcurrentMissionsScene()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(rebels);
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet rebelsPlanet = new Planet
+            {
+                InstanceID = "rebels_planet",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
+            };
+            game.AttachNode(rebelsPlanet, system);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "empire_planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 60 } },
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Officer rebelsOfficer = EntityFactory.CreateOfficer("rebels_o1", "rebels");
+            game.AttachNode(rebelsOfficer, rebelsPlanet);
+
+            Officer empireOfficer = EntityFactory.CreateOfficer("empire_o1", "empire");
+            game.AttachNode(empireOfficer, empirePlanet);
+
+            DiplomacyMission diplomacyMission = new DiplomacyMission(
+                "rebels",
+                rebelsPlanet,
+                new List<IMissionParticipant> { rebelsOfficer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(diplomacyMission, rebelsPlanet);
+
+            InciteUprisingMission inciteMission = new InciteUprisingMission(
+                "empire",
+                rebelsPlanet,
+                new List<IMissionParticipant> { empireOfficer },
+                new List<IMissionParticipant>(),
+                new ProbabilityTable(new Dictionary<int, int> { { -200, 100 } })
+            );
+            game.AttachNode(inciteMission, rebelsPlanet);
+
+            StubRNG rng = new StubRNG();
+            diplomacyMission.Initiate(rng);
+            inciteMission.Initiate(rng);
+
+            while (diplomacyMission.CurrentProgress < diplomacyMission.MaxProgress - 1)
+                diplomacyMission.IncrementProgress();
+            while (inciteMission.CurrentProgress < inciteMission.MaxProgress - 1)
+                inciteMission.IncrementProgress();
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+
+            return (game, diplomacyMission, inciteMission, missionSystem);
+        }
+
+        [Test]
+        public void UpdateMission_DiploBeforeIncite_DiploCanceledAfterUprisingFires()
+        {
+            // Diplo completes before incite on the same turn: it re-initiates because the
+            // uprising hasn't fired yet when its CanContinue is evaluated.
+            // Incite then fires, starting the uprising.
+            // On the following UpdateMission, the pre-tick IsCanceled guard cancels diplo.
+            (
+                GameRoot game,
+                DiplomacyMission diplomacyMission,
+                InciteUprisingMission inciteMission,
+                MissionSystem missionSystem
+            ) = BuildConcurrentMissionsScene();
+
+            StubRNG rng = new StubRNG();
+            missionSystem.UpdateMission(diplomacyMission, rng); // diplo completes, re-initiates
+            missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
+
+            // Diplo survived this turn (uprising fired after it ran), but is now re-initiated.
+            // The next UpdateMission triggers the IsCanceled pre-tick guard.
+            missionSystem.UpdateMission(diplomacyMission, rng);
+
+            Assert.AreEqual(
+                0,
+                game.GetSceneNodesByType<DiplomacyMission>().Count,
+                "DiplomacyMission should be canceled on the tick after the uprising fires"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
+        {
+            // Incite completes first: uprising fires before diplo gets its turn this turn.
+            // When UpdateMission runs for diplo, the IsCanceled pre-tick guard catches it
+            // immediately — diplo never executes.
+            (
+                GameRoot game,
+                DiplomacyMission diplomacyMission,
+                InciteUprisingMission inciteMission,
+                MissionSystem missionSystem
+            ) = BuildConcurrentMissionsScene();
+
+            StubRNG rng = new StubRNG();
+            missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
+            missionSystem.UpdateMission(diplomacyMission, rng); // pre-tick guard fires, diplo canceled
+
+            Assert.AreEqual(
+                0,
+                game.GetSceneNodesByType<DiplomacyMission>().Count,
+                "DiplomacyMission should be canceled immediately when uprising fires before its turn"
             );
         }
 

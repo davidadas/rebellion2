@@ -7,13 +7,10 @@ using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
-/// <summary>
-/// Represents a mission in the game.
-/// </summary>
 public abstract class Mission : ContainerNode
 {
-    // Mission Properties
     public string Name { get; set; }
     public string TargetInstanceID { get; set; }
 
@@ -22,27 +19,18 @@ public abstract class Mission : ContainerNode
 
     [PersistableIgnore]
     public List<IMissionParticipant> DecoyParticipants { get; set; }
+
     public MissionParticipantSkill ParticipantSkill { get; set; }
     public bool HasInitiated = false;
 
-    // Success Probability Variables
     [PersistableIgnore]
     public ProbabilityTable SuccessProbabilityTable { get; set; }
 
     [PersistableIgnore]
-    public double QuadraticCoefficient { get; set; }
+    public ProbabilityTable DecoyProbabilityTable { get; set; }
 
     [PersistableIgnore]
-    public double LinearCoefficient { get; set; }
-
-    [PersistableIgnore]
-    public double ConstantTerm { get; set; }
-
-    [PersistableIgnore]
-    public double MinSuccessProbability = 1;
-
-    [PersistableIgnore]
-    public double MaxSuccessProbability = 100;
+    public ProbabilityTable FoilProbabilityTable { get; set; }
 
     [PersistableIgnore]
     public int MinTicks = 1;
@@ -53,48 +41,31 @@ public abstract class Mission : ContainerNode
     public int MaxProgress { get; set; }
     public int CurrentProgress { get; set; }
 
+    public MissionParticipantSkill DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+
     /// <summary>
     /// Whether this mission should be canceled when the target planet changes ownership.
     /// Defaults to true. Override to false for missions that survive ownership changes.
     /// </summary>
     public virtual bool CanceledOnOwnershipChange => true;
 
-    // Decoy Probability Variables
-    // @TODO: Move these to a config file.
-    public double DecoyQuadraticCoefficient = 0.0012;
-    public double DecoyLinearCoefficient = 0.785;
-    public double DecoyConstantTerm = 60;
-    public MissionParticipantSkill DecoyParticipantSkill = MissionParticipantSkill.Espionage;
-
-    // Foil Probability Variables
-    // @TODO: Move these to a config file.
-    public double FoilQuadraticCoefficient = -0.001999;
-    public double FoilLinearCoefficient = 0.8879;
-    public double FoilConstantTerm = 84.61;
+    /// <summary>
+    /// Returns true if an external event has invalidated this mission and it should be
+    /// canceled before its next tick. Checked by MissionSystem as a pre-tick guard.
+    /// Base implementation cancels when any main participant is captured or killed.
+    /// Override and call base for missions with additional cancellation conditions.
+    /// </summary>
+    public virtual bool IsCanceled(GameRoot game) =>
+        MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
     /// <summary>
-    /// Default constructor used for deserialization.
+    /// Parameterless constructor for deserialization.
     /// </summary>
     protected Mission() { }
 
     /// <summary>
-    ///
+    /// Initializes a mission with all required parameters.
     /// </summary>
-    /// <param name="name"></param>
-    /// <param name="ownerInstanceId"></param>
-    /// <param name="targetInstanceId"></param>
-    /// <param name="mainParticipants"></param>
-    /// <param name="decoyParticipants"></param>
-    /// <param name="participantSkill"></param>
-    /// <param name="successProbabilityTable"></param>
-    /// <param name="quadraticCoefficient"></param>
-    /// <param name="linearCoefficient"></param>
-    /// <param name="constantTerm"></param>
-    /// <param name="minSuccessProbability"></param>
-    /// <param name="maxSuccessProbability"></param>
-    /// <param name="minTicks"></param>
-    /// <param name="maxTicks"></param>
-    /// <exception cref="ArgumentNullException"></exception>
     protected Mission(
         string name,
         string ownerInstanceId,
@@ -103,37 +74,39 @@ public abstract class Mission : ContainerNode
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
         ProbabilityTable successProbabilityTable,
-        double quadraticCoefficient,
-        double linearCoefficient,
-        double constantTerm,
-        double minSuccessProbability,
-        double maxSuccessProbability,
         int minTicks,
         int maxTicks
     )
     {
-        // Set mission fields.
         Name = name ?? throw new ArgumentNullException(nameof(name));
+        DisplayName = Name;
         AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
         MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
         DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
         ParticipantSkill = participantSkill;
-
-        // Set fields for success probability calculation.
-        SuccessProbabilityTable = successProbabilityTable;
-        QuadraticCoefficient = quadraticCoefficient;
-        LinearCoefficient = linearCoefficient;
-        ConstantTerm = constantTerm;
-        MinSuccessProbability = minSuccessProbability;
-        MaxSuccessProbability = maxSuccessProbability;
-
-        // Set fields for mission duration.
+        SuccessProbabilityTable =
+            successProbabilityTable ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
+        DecoyProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
+        FoilProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
         MinTicks = minTicks;
         MaxTicks = maxTicks;
     }
 
+    /// <summary>
+    /// Applies shared probability tables from config. Override to set mission-specific
+    /// tables and tick ranges; always call base first.
+    /// </summary>
+    public virtual void Configure(GameConfig.MissionProbabilityTablesConfig tables)
+    {
+        DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
+        FoilProbabilityTable = new ProbabilityTable(tables.Foil);
+    }
+
+    /// <summary>
+    /// Randomizes MaxProgress within [MinTicks, MaxTicks] and marks the mission as initiated.
+    /// </summary>
     public void Initiate(IRandomNumberProvider provider)
     {
         CurrentProgress = 0;
@@ -142,265 +115,154 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    ///
+    /// Returns the configured tick range as [MinTicks, MaxTicks].
     /// </summary>
-    /// <returns></returns>
-    public int[] GetTickRange()
-    {
-        return new int[] { MinTicks, MaxTicks };
-    }
+    public int[] GetTickRange() => new int[] { MinTicks, MaxTicks };
 
     /// <summary>
-    /// Increments the mission progress by 1.
+    /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.
     /// </summary>
-    /// <remarks>This is called each tick to increment the mission progress.</remarks>
+    public void SetExecutionTick(int tick) => MaxProgress = tick;
+
+    /// <summary>
+    /// Returns true when CurrentProgress has reached or exceeded MaxProgress.
+    /// </summary>
+    public bool IsComplete() => CurrentProgress >= MaxProgress;
+
+    /// <summary>
+    /// Returns all main and decoy participants as a single list.
+    /// </summary>
+    public List<IMissionParticipant> GetAllParticipants() =>
+        MainParticipants.Concat(DecoyParticipants).ToList();
+
+    /// <summary>
+    /// Increments progress by 1 unless all participants are in transit.
+    /// </summary>
     public void IncrementProgress()
     {
-        // Movement != null means unit is in transit
-        bool unitsAreAllInTransits = GetAllParticipants().All(unit => unit.Movement != null);
-
-        if (CurrentProgress < MaxProgress && !unitsAreAllInTransits)
-        {
+        List<IMissionParticipant> all = GetAllParticipants();
+        bool unitsAreAllInTransit = all.Count > 0 && all.All(u => u.Movement != null);
+        if (CurrentProgress < MaxProgress && !unitsAreAllInTransit)
             CurrentProgress++;
-        }
     }
 
     /// <summary>
-    ///
+    /// Looks up the base success probability for an agent using their skill score and the
+    /// success table. Override to use a different skill or scoring formula.
     /// </summary>
-    /// <param name="length"></param>
-    public void SetExecutionTick(int tick)
+    protected virtual double GetAgentProbability(IMissionParticipant agent)
     {
-        MaxProgress = tick;
+        int score = (int)agent.GetMissionSkillValue(ParticipantSkill);
+        return SuccessProbabilityTable.Lookup(score);
     }
 
     /// <summary>
-    ///
+    /// Calculates the probability that a decoy participant beats enemy detection.
+    /// Score is the decoy's espionage skill offset by 35% of the best enemy defender's espionage.
     /// </summary>
-    /// <returns></returns>
-    public bool IsComplete()
-    {
-        return CurrentProgress >= MaxProgress;
-    }
-
-    /// <summary>
-    ///
-    /// </summary>
-    /// <returns></returns>
-    public List<IMissionParticipant> GetAllParticipants()
-    {
-        return MainParticipants.Concat(DecoyParticipants).Cast<IMissionParticipant>().ToList();
-    }
-
-    /// <summary>
-    /// Calculates the success probability based on the agent's skill score.
-    /// </summary>
-    /// <param name="score"></param>
-    /// <param name="quadraticCoefficient"></param>
-    /// <param name="linearCoefficient"></param>
-    /// <param name="constantTerm"></param>
-    /// <returns></returns>
-    private double CalculateProbability(
-        double score,
-        double quadraticCoefficient,
-        double linearCoefficient,
-        double constantTerm
-    )
-    {
-        return (quadraticCoefficient * Math.Pow(score, 2))
-            + (linearCoefficient * score)
-            + constantTerm;
-    }
-
-    /// <summary>
-    /// Calculates the success probability based on the agent's skill score.
-    /// Uses MSTB table lookup first (when SuccessProbabilityTable is set),
-    /// falls back to quadratic formula otherwise.
-    /// </summary>
-    /// <param name="agent">The agent participating in the mission.</param>
-    /// <returns>The calculated success probability.</returns>
-    protected double GetAgentProbability(IMissionParticipant agent)
-    {
-        // Get the agent's skill score
-        int agentScore = (int)agent.GetMissionSkillValue(ParticipantSkill);
-
-        double agentProbability;
-
-        // Priority 1: MSTB table lookup (piecewise-linear interpolation)
-        if (SuccessProbabilityTable != null)
-        {
-            agentProbability = SuccessProbabilityTable.Lookup(agentScore);
-        }
-        // Priority 2: Quadratic fallback (rebellion2 Mission.cs coefficients)
-        else
-        {
-            agentProbability = CalculateProbability(
-                agentScore,
-                QuadraticCoefficient,
-                LinearCoefficient,
-                ConstantTerm
-            );
-        }
-
-        return Math.Max(MinSuccessProbability, Math.Min(agentProbability, MaxSuccessProbability));
-    }
-
-    /// <summary>
-    /// Calculates the decoy probability based on the decoy's skill score.
-    /// </summary>
-    /// <param name="decoy">The decoy participating in the mission.</param>
-    /// <returns>The calculated decoy probability.</returns>
     protected double GetDecoyProbability(IMissionParticipant decoy)
     {
-        // Get the agent's skill score and calculate the success probability.
-        double decoyScore = decoy.GetMissionSkillValue(DecoyParticipantSkill);
-
-        return CalculateProbability(
-            decoyScore,
-            DecoyQuadraticCoefficient,
-            DecoyLinearCoefficient,
-            DecoyConstantTerm
-        );
-    }
-
-    /// <summary>
-    /// Calculates the foil probability based on the defense score.
-    /// </summary>
-    /// <param name="defenseScore"></param>
-    /// <returns>The calculated foil probability.</returns>
-    protected virtual double GetFoilProbability(double defenseScore)
-    {
-        // Check if the planet is owned by the mission owner.
+        int bestDefenderEspionage = 0;
         if (GetParent() is Planet planet)
         {
-            // If the planet is not owned by the mission owner, the foil probability is 0.
-            if (planet.OwnerInstanceID == OwnerInstanceID)
+            foreach (Officer officer in planet.Officers)
             {
-                return 0;
+                if (officer.OwnerInstanceID != OwnerInstanceID && !officer.IsCaptured)
+                {
+                    int esp = officer.GetMissionSkillValue(MissionParticipantSkill.Espionage);
+                    if (esp > bestDefenderEspionage)
+                        bestDefenderEspionage = esp;
+                }
             }
         }
 
-        return CalculateProbability(
-            defenseScore,
-            FoilQuadraticCoefficient,
-            FoilLinearCoefficient,
-            FoilConstantTerm
-        );
+        int decoyEspionage = decoy.GetMissionSkillValue(DecoyParticipantSkill);
+        int score = decoyEspionage - (int)(bestDefenderEspionage * 0.35);
+        return DecoyProbabilityTable.Lookup(score);
     }
 
     /// <summary>
-    /// Returns the defense score of the planet.
-    /// This is the sum of the defense ratings of all regiments on the planet.
+    /// Returns the probability (0–100) that the mission is foiled by enemy forces.
+    /// Returns 0 for missions targeting the owner's own planets. Override to suppress foiling
+    /// entirely (return 0) or apply a custom formula.
     /// </summary>
-    /// <returns>The defense score of the planet.</returns>
+    protected virtual double GetFoilProbability(double defenseScore)
+    {
+        if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
+            return 0;
+
+        return FoilProbabilityTable.Lookup((int)defenseScore);
+    }
+
+    /// <summary>
+    /// Returns the sum of defense ratings of all enemy regiments on the target planet.
+    /// </summary>
     protected internal double GetDefenseScore()
     {
         Planet planet = GetParent() as Planet;
-        double defenseScore = 0;
+        if (planet == null)
+            return 0;
 
-        // Sum the defense ratings of all regiments on the planet.
+        double score = 0;
         foreach (ISceneNode child in planet.GetChildren())
         {
             if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
-            {
-                defenseScore += regiment.DefenseRating;
-            }
+                score += regiment.DefenseRating;
         }
-
-        return defenseScore;
+        return score;
     }
 
     /// <summary>
-    /// Calculates the total success probability of the mission.
+    /// Combines agent success probability and foil probability into a net success chance.
     /// </summary>
-    /// <param name="agentProbability">The probability of the agent's success.</param>
-    /// <param name="foilProbability">The probability of the mission being foiled.</param>
-    /// <returns>The total success probability of the mission.</returns>
-    protected double CalculateTotalSuccess(double agentProbability, double foilProbability)
-    {
-        agentProbability = agentProbability / 100.0;
-        foilProbability = foilProbability / 100.0;
-
-        // Calculate total success probability using the formula.
-        double totalSuccess = agentProbability * (1 - foilProbability);
-
-        // Convert back to percentage.
-        return totalSuccess * 100.0;
-    }
+    protected double CalculateTotalSuccess(double agentProbability, double foilProbability) =>
+        (agentProbability / 100.0) * (1 - foilProbability / 100.0) * 100.0;
 
     /// <summary>
-    /// Checks if the mission is successful.
+    /// Returns true if at least one main participant beats the combined success threshold.
     /// </summary>
-    /// <param name="provider">Random number provider for probability checks.</param>
-    /// <param name="foilProbability">The probability of the mission being foiled.</param>
-    /// <returns>True if the mission is successful, false otherwise.</returns>
     protected bool CheckMissionSuccess(IRandomNumberProvider provider, double foilProbability)
     {
         foreach (IMissionParticipant participant in MainParticipants)
         {
-            // Get the agent's skill score and calculate the success probability.
-            double agentProbability = GetAgentProbability(participant);
-
-            // Calculate the success probability.
-            double successProbability = CalculateTotalSuccess(agentProbability, foilProbability);
-
-            // Determine if the mission is successful.
-            bool isSuccessful = provider.NextDouble() * 100 <= successProbability;
-
-            // Only return true if the mission is successful.
-            if (isSuccessful)
-            {
+            double successProbability = CalculateTotalSuccess(
+                GetAgentProbability(participant),
+                foilProbability
+            );
+            if (provider.NextDouble() * 100 <= successProbability)
                 return true;
-            }
         }
-
         return false;
     }
 
     /// <summary>
-    /// Checks if the decoy is successful.
+    /// Returns true if at least one decoy participant beats the detection threshold.
+    /// A successful decoy zeroes out the foil probability for this execution.
     /// </summary>
-    /// <param name="provider">Random number provider for probability checks.</param>
-    /// <param name="foilProbability">The probability of the mission being foiled.</param>
-    /// <returns>True if the decoy is successful, false otherwise.</returns>
-    protected bool CheckDecoySuccessful(IRandomNumberProvider provider, double foilProbability)
+    protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
     {
         foreach (IMissionParticipant decoy in DecoyParticipants)
         {
-            double decoyProbability = GetDecoyProbability(decoy);
-
-            // Determine if the decoy is successful.
-            bool isSuccessful = provider.NextDouble() * 100 <= decoyProbability;
-
-            // Only return true if the decoy is successful.
-            if (isSuccessful)
-            {
+            if (provider.NextDouble() * 100 <= GetDecoyProbability(decoy))
                 return true;
-            }
         }
-
         return false;
     }
 
     /// <summary>
-    /// Checks if the mission is foiled.
+    /// Returns true if the foil roll falls within the foil probability, causing a Foiled outcome.
     /// </summary>
-    /// <param name="provider">Random number provider for probability checks.</param>
-    /// <param name="foilProbability">The probability of the mission being foiled.</param>
-    /// <returns>True if the mission is foiled, false otherwise.</returns>
-    protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability)
-    {
-        return provider.NextDouble() * 100 <= foilProbability;
-    }
+    protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability) =>
+        provider.NextDouble() * 100 <= foilProbability;
 
     /// <summary>
-    /// Improves the mission skill of all participants.
+    /// Increments the mission skill of every participant that has CanImproveMissionSkill set.
+    /// Called automatically by Execute on a successful outcome.
     /// </summary>
     protected void ImproveMissionParticipantsSkill()
     {
         foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
         {
-            // Check if the participant can improve their mission skill.
             if (participant.CanImproveMissionSkill)
             {
                 participant.SetMissionSkillValue(
@@ -423,14 +285,22 @@ public abstract class Mission : ContainerNode
         double defenseScore = GetDefenseScore();
         double foilProbability = GetFoilProbability(defenseScore);
 
-        if (
-            CheckMissionSuccess(provider, foilProbability)
-            || CheckDecoySuccessful(provider, foilProbability)
-        )
+        if (CheckDecoySuccessful(provider))
+            foilProbability = 0;
+
+        if (CheckMissionSuccess(provider, foilProbability))
         {
-            outcome = MissionOutcome.Success;
-            results.AddRange(OnSuccess(game));
-            ImproveMissionParticipantsSkill();
+            if (!IsTargetValid(game))
+            {
+                outcome = MissionOutcome.Failed;
+                results.AddRange(OnFailed(game));
+            }
+            else
+            {
+                outcome = MissionOutcome.Success;
+                results.AddRange(OnSuccess(game));
+                ImproveMissionParticipantsSkill();
+            }
         }
         else if (CheckMissionFoiled(provider, foilProbability))
         {
@@ -443,16 +313,23 @@ public abstract class Mission : ContainerNode
             results.AddRange(OnFailed(game));
         }
 
+        List<IMissionParticipant> allParticipants = GetAllParticipants();
+        string agents = string.Join(
+            ", ",
+            allParticipants.Select(p => ((ISceneNode)p).GetDisplayName())
+        );
+        string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
+        string targetStr = string.IsNullOrEmpty(targetName) ? "" : $" at {targetName}";
+        GameLogger.Log($"{Name} mission by {agents}{targetStr}: {outcome}");
+
         results.Add(
             new MissionCompletedResult
             {
                 MissionInstanceID = InstanceID,
                 MissionName = Name,
-                TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
-                ParticipantInstanceIDs = GetAllParticipants()
-                    .Select(p => p.GetInstanceID())
-                    .ToList(),
-                ParticipantNames = GetAllParticipants()
+                TargetName = targetName,
+                ParticipantInstanceIDs = allParticipants.Select(p => p.GetInstanceID()).ToList(),
+                ParticipantNames = allParticipants
                     .Select(p => ((ISceneNode)p).GetDisplayName())
                     .ToList(),
                 Outcome = outcome,
@@ -463,10 +340,44 @@ public abstract class Mission : ContainerNode
         return results;
     }
 
+    /// <summary>
+    /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
+    /// Call at the top of each mission constructor before mission-specific validation.
+    /// </summary>
+    /// <param name="missionName">Human-readable mission name used in the error message.</param>
+    /// <exception cref="ArgumentNullException">target is null.</exception>
+    /// <exception cref="InvalidOperationException">target is not a Planet.</exception>
+    protected static Planet RequirePlanetTarget(ISceneNode target, string missionName)
+    {
+        if (target == null)
+            throw new ArgumentNullException(nameof(target));
+        if (!(target is Planet planet))
+            throw new InvalidOperationException(
+                $"{missionName} target must be a planet. Got: {target.GetType().Name}"
+            );
+        return planet;
+    }
+
+    /// <summary>
+    /// Override to validate target state at execution time. Returning false routes a
+    /// successful dice roll to <see cref="MissionOutcome.Failed"/> without calling OnSuccess.
+    /// </summary>
+    protected virtual bool IsTargetValid(GameRoot game) => true;
+
+    /// <summary>
+    /// Override to apply effects and return results when the mission succeeds.
+    /// </summary>
     protected abstract List<GameResult> OnSuccess(GameRoot game);
 
+    /// <summary>
+    /// Override to apply effects when the mission is foiled by enemy forces.
+    /// Default returns no results.
+    /// </summary>
     protected virtual List<GameResult> OnFoiled(GameRoot game) => new List<GameResult>();
 
+    /// <summary>
+    /// Override to apply effects when the mission fails. Default returns no results.
+    /// </summary>
     protected virtual List<GameResult> OnFailed(GameRoot game) => new List<GameResult>();
 
     /// <summary>
@@ -475,20 +386,15 @@ public abstract class Mission : ContainerNode
     public override IEnumerable<ISceneNode> GetChildren()
     {
         if (HasInitiated)
-        {
             return MainParticipants.Cast<ISceneNode>().Concat(DecoyParticipants.Cast<ISceneNode>());
-        }
 
         return new List<ISceneNode>();
     }
 
     /// <summary>
-    /// No-op (missions cannot have children added).
+    /// No-op — missions cannot have children added after initialization.
     /// </summary>
-    public override void AddChild(ISceneNode child)
-    {
-        // No-op: Missions cannot have children added after initialization.
-    }
+    public override void AddChild(ISceneNode child) { }
 
     /// <summary>
     /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
@@ -502,5 +408,9 @@ public abstract class Mission : ContainerNode
         }
     }
 
+    /// <summary>
+    /// Return true to repeat the mission at the same target after completion;
+    /// return false to tear down and send participants home.
+    /// </summary>
     public abstract bool CanContinue(GameRoot game);
 }

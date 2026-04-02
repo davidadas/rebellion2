@@ -22,8 +22,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = ConfigLoader.LoadGameConfig();
             GameRoot game = new GameRoot(config);
 
-            Faction faction = new Faction { InstanceID = "empire" };
-            game.Factions.Add(faction);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -327,6 +327,146 @@ namespace Rebellion.Tests.Systems
             movement.UpdateMovement(officer);
 
             Assert.AreEqual(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_CapturedOfficer_IsNotMoved()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            officer.IsCaptured = true;
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(
+                origin,
+                officer.GetParent(),
+                "Captured officer must not be moved by its owning faction"
+            );
+        }
+
+        [Test]
+        public void RequestGroupMove_NonCapturedUnits_AllMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestGroupMove(
+                new System.Collections.Generic.List<IMovable> { officer, officer2 },
+                destination
+            );
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.AreEqual(destination, officer2.GetParent());
+        }
+
+        [Test]
+        public void RequestGroupMove_CapturedOfficer_WithEscortFromCaptor_BothMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestGroupMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
+            Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
+        }
+
+        [Test]
+        public void RequestGroupMove_CapturedOfficer_WithoutEscort_CapturedOfficerNotMoved()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestGroupMove(
+                new System.Collections.Generic.List<IMovable> { captive },
+                destination
+            );
+
+            Assert.AreEqual(
+                origin,
+                captive.GetParent(),
+                "Captive must not move without an escort from the capturing faction"
+            );
+        }
+
+        [Test]
+        public void RequestGroupMove_CapturedOfficer_EscortFromWrongFaction_CapturedOfficerNotMoved()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "other",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestGroupMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(
+                origin,
+                captive.GetParent(),
+                "Captive must not move when the escort is from a different faction than the captor"
+            );
         }
     }
 }

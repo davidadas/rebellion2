@@ -1,0 +1,223 @@
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Results;
+using Rebellion.Systems;
+
+namespace Rebellion.Tests.Game.Missions
+{
+    [TestFixture]
+    public class SubdueUprisingMissionTests
+    {
+        [Test]
+        public void OnSuccess_EndsUprising()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.BeginUprising();
+
+            SubdueUprisingMission mission = new SubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.IsFalse(
+                empPlanet.IsInUprising,
+                "SubdueUprising success should end uprising on planet"
+            );
+        }
+
+        [Test]
+        public void OnSuccess_ReturnsPlanetUprisingEndedResult()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.BeginUprising();
+
+            SubdueUprisingMission mission = new SubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsTrue(
+                results.OfType<PlanetUprisingEndedResult>().Any(),
+                "Should return PlanetUprisingEndedResult on success"
+            );
+        }
+
+        [Test]
+        public void OnSuccess_MissionCompletedResult_HasHumanReadableName()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.BeginUprising();
+
+            SubdueUprisingMission mission = new SubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                "Subdue Uprising",
+                completed.MissionName,
+                "MissionName in result should be the human-readable display name"
+            );
+        }
+
+        [Test]
+        public void IsCanceled_WhenUprisingEnded_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.BeginUprising();
+
+            SubdueUprisingMission mission = new SubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            empPlanet.EndUprising();
+
+            Assert.IsTrue(
+                mission.IsCanceled(game),
+                "Mission should be canceled when uprising ends before mission executes"
+            );
+        }
+
+        [Test]
+        public void OnSuccess_UprisingAlreadyEnded_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.BeginUprising();
+
+            SubdueUprisingMission mission = new SubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            empPlanet.EndUprising();
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when uprising ended before execution"
+            );
+        }
+
+        [Test]
+        public void Constructor_PlanetNotInUprising_Throws()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Assert.Throws<System.InvalidOperationException>(
+                () =>
+                    new SubdueUprisingMission(
+                        "empire",
+                        empPlanet,
+                        new List<IMissionParticipant> { officer },
+                        new List<IMissionParticipant>()
+                    ),
+                "Constructor should throw when target planet is not in uprising"
+            );
+        }
+
+        [Test]
+        public void Constructor_EnemyPlanetTarget_Throws()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.BeginUprising();
+
+            Assert.Throws<System.InvalidOperationException>(
+                () =>
+                    new SubdueUprisingMission(
+                        "empire",
+                        enemyPlanet,
+                        new List<IMissionParticipant> { officer },
+                        new List<IMissionParticipant>()
+                    ),
+                "Constructor should throw when target planet is owned by another faction"
+            );
+        }
+    }
+}

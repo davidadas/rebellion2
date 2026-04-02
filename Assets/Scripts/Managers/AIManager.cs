@@ -451,6 +451,30 @@ public class AIManager
         }
     }
 
+    private struct CachedMissionTables
+    {
+        public ProbabilityTable SubdueUprising;
+        public ProbabilityTable Diplomacy;
+        public ProbabilityTable InciteUprising;
+        public ProbabilityTable Espionage;
+        public ProbabilityTable Sabotage;
+        public ProbabilityTable Abduction;
+        public ProbabilityTable Assassination;
+        public ProbabilityTable Rescue;
+
+        public CachedMissionTables(GameConfig.AIMissionTablesConfig config)
+        {
+            SubdueUprising = new ProbabilityTable(config.SubdueUprising);
+            Diplomacy = new ProbabilityTable(config.Diplomacy);
+            InciteUprising = new ProbabilityTable(config.InciteUprising);
+            Espionage = new ProbabilityTable(config.Espionage);
+            Sabotage = new ProbabilityTable(config.Sabotage);
+            Abduction = new ProbabilityTable(config.Abduction);
+            Assassination = new ProbabilityTable(config.Assassination);
+            Rescue = new ProbabilityTable(config.Rescue);
+        }
+    }
+
     /// <summary>
     /// Dispatches available officers to missions.
     /// Mirrors the original: place character at random system, then evaluate via table lookup.
@@ -466,20 +490,55 @@ public class AIManager
             $"[AI] {faction.GetDisplayName()}: {available.Count} officers available for missions."
         );
 
+        if (!available.Any())
+            return;
+
+        CachedMissionTables tables = new CachedMissionTables(game.Config.AI.MissionTables);
+
         foreach (Officer officer in available)
         {
-            Planet target = FindMissionTarget(faction, provider);
-            if (target == null)
+            Planet friendlyTarget = FindMissionTarget(faction, provider);
+            if (friendlyTarget != null)
+            {
+                MissionType? missionType = SelectMissionType(
+                    faction,
+                    officer,
+                    friendlyTarget,
+                    tables
+                );
+                if (missionType != null)
+                {
+                    GameLogger.Log(
+                        $"Sending {officer.GetDisplayName()} on {missionType} mission to {friendlyTarget.GetDisplayName()}."
+                    );
+                    missionManager.InitiateMission(
+                        missionType.Value,
+                        officer,
+                        friendlyTarget,
+                        provider
+                    );
+                    continue;
+                }
+            }
+
+            Planet enemyTarget = FindEnemyMissionTarget(faction, provider);
+            if (enemyTarget == null)
                 continue;
 
-            MissionType? missionType = SelectMissionType(faction, officer, target);
-            if (missionType == null)
+            MissionType? enemyMissionType = SelectEnemyMissionType(
+                faction,
+                officer,
+                enemyTarget,
+                provider,
+                tables
+            );
+            if (enemyMissionType == null)
                 continue;
 
             GameLogger.Log(
-                $"Sending {officer.GetDisplayName()} on {missionType} mission to {target.GetDisplayName()}."
+                $"Sending {officer.GetDisplayName()} on {enemyMissionType} mission to {enemyTarget.GetDisplayName()}."
             );
-            missionManager.InitiateMission(missionType.Value, officer, target, provider);
+            missionManager.InitiateMission(enemyMissionType.Value, officer, enemyTarget, provider);
         }
     }
 
@@ -501,13 +560,137 @@ public class AIManager
     }
 
     /// <summary>
+    /// Picks a random colonized planet owned by an enemy faction.
+    /// </summary>
+    private Planet FindEnemyMissionTarget(Faction faction, IRandomNumberProvider provider)
+    {
+        string factionId = faction.GetInstanceID();
+        List<Planet> candidates = game.GetSceneNodesByType<Planet>(p =>
+            p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
+        );
+
+        if (candidates.Count == 0)
+            return null;
+
+        return candidates[provider.NextInt(0, candidates.Count)];
+    }
+
+    /// <summary>
+    /// Selects an enemy-targeted mission for the given officer at an enemy planet.
+    /// Formulas from original disassembly (MSTB .DAT files).
+    /// Priority: InciteUprising > Espionage > Sabotage > Abduction > Rescue
+    /// </summary>
+    private MissionType? SelectEnemyMissionType(
+        Faction faction,
+        Officer officer,
+        Planet target,
+        IRandomNumberProvider provider,
+        CachedMissionTables tables
+    )
+    {
+        string factionId = faction.GetInstanceID();
+        string owner = target.GetOwnerInstanceID();
+        int enemySupport = target.GetPopularSupport(owner);
+        int enemyStrength = target
+            .GetChildren()
+            .OfType<Regiment>()
+            .Where(r => r.GetOwnerInstanceID() == owner)
+            .Sum(r => r.DefenseRating);
+
+        // InciteUprising: enemy planet not already in uprising
+        // Score = (officer.espionage - enemy_popular_support) - enemy_regiment_strength
+        if (!target.IsInUprising)
+        {
+            int score =
+                officer.GetSkillValue(MissionParticipantSkill.Espionage)
+                - enemySupport
+                - enemyStrength;
+            if (tables.InciteUprising.Lookup(score) > 0)
+                return MissionType.InciteUprising;
+        }
+
+        // Espionage: any enemy planet
+        // Score = officer.espionage (direct lookup)
+        {
+            int score = officer.GetSkillValue(MissionParticipantSkill.Espionage);
+            if (tables.Espionage.Lookup(score) > 0)
+                return MissionType.Espionage;
+        }
+
+        // Sabotage: enemy planet with buildings
+        // Score = (attacker.espionage + defender.combat) / 2 (SBTGMSTB_DAT)
+        if (target.GetAllBuildings().Count > 0)
+        {
+            Officer defender = target
+                .GetChildren()
+                .OfType<Officer>()
+                .FirstOrDefault(o => o.GetOwnerInstanceID() == owner && !o.IsCaptured);
+            int defenderCombat = defender?.GetSkillValue(MissionParticipantSkill.Combat) ?? 0;
+            int score =
+                (officer.GetSkillValue(MissionParticipantSkill.Espionage) + defenderCombat) / 2;
+            if (tables.Sabotage.Lookup(score) > 0)
+                return MissionType.Sabotage;
+        }
+
+        // Abduction: enemy planet with an un-captured enemy officer
+        // Score = attacker.combat - target.combat (ABDCMSTB_DAT)
+        Officer abductTarget = target
+            .GetChildren()
+            .OfType<Officer>()
+            .FirstOrDefault(o => o.GetOwnerInstanceID() == owner && !o.IsCaptured);
+        if (abductTarget != null)
+        {
+            int score =
+                officer.GetSkillValue(MissionParticipantSkill.Combat)
+                - abductTarget.GetSkillValue(MissionParticipantSkill.Combat);
+            if (tables.Abduction.Lookup(score) > 0)
+                return MissionType.Abduction;
+        }
+
+        // Assassination: enemy planet with a live enemy officer
+        // Score = attacker.combat - target.combat (ASSNMSTB_DAT)
+        Officer assassinTarget = target
+            .GetChildren()
+            .OfType<Officer>()
+            .FirstOrDefault(o => o.GetOwnerInstanceID() == owner && !o.IsCaptured && !o.IsKilled);
+        if (assassinTarget != null)
+        {
+            int score =
+                officer.GetSkillValue(MissionParticipantSkill.Combat)
+                - assassinTarget.GetSkillValue(MissionParticipantSkill.Combat);
+            if (tables.Assassination.Lookup(score) > 0)
+                return MissionType.Assassination;
+        }
+
+        // Rescue: enemy planet holding one of our captured officers
+        // Score = captured_officer.combat (RESCMSTB_DAT)
+        Officer captive = target
+            .GetChildren()
+            .OfType<Officer>()
+            .FirstOrDefault(o => o.GetOwnerInstanceID() == factionId && o.IsCaptured);
+        if (captive != null)
+        {
+            int score = captive.GetSkillValue(MissionParticipantSkill.Combat);
+            if (tables.Rescue.Lookup(score) > 0)
+                return MissionType.Rescue;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Determines the best mission type for an officer at a given planet.
     /// Uses table lookups from AI.MissionTables (original MSTB .DAT files).
     /// Score formula: (officer_skill - popular_support) + leadership_rank
     /// Returns null if no viable mission exists at this planet.
     /// Priority: SubdueUprising > Diplomacy > Recruitment
     /// </summary>
-    private MissionType? SelectMissionType(Faction faction, Officer officer, Planet target)
+    private MissionType? SelectMissionType(
+        Faction faction,
+        Officer officer,
+        Planet target,
+        CachedMissionTables tables
+    )
     {
         string factionId = faction.GetInstanceID();
         string owner = target.GetOwnerInstanceID();
@@ -520,10 +703,7 @@ public class AIManager
         {
             int score =
                 officer.GetSkillValue(MissionParticipantSkill.Combat) - (int)popularSupport + rank;
-            ProbabilityTable table = new ProbabilityTable(
-                game.Config.AI.MissionTables.SubdueUprising
-            );
-            if (table.Lookup(score) > 0)
+            if (tables.SubdueUprising.Lookup(score) > 0)
                 return MissionType.SubdueUprising;
         }
 
@@ -537,8 +717,7 @@ public class AIManager
                 officer.GetSkillValue(MissionParticipantSkill.Diplomacy)
                 - (int)popularSupport
                 + rank;
-            ProbabilityTable table = new ProbabilityTable(game.Config.AI.MissionTables.Diplomacy);
-            if (table.Lookup(score) > 0)
+            if (tables.Diplomacy.Lookup(score) > 0)
                 return MissionType.Diplomacy;
         }
 

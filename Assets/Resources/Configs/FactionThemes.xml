@@ -138,6 +138,19 @@
           <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_garrisonpane_weapons_disabled_icon</DisabledImagePath>
         </Weapons>
       </GarrisonPanel>
+      <MissionsPane>
+        <MissionTabs>
+          <PrimaryParticipants>
+            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_primary_participants_rebel_icon</NormalImagePath>
+            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_primary_participants_rebel_selected_icon</SelectedImagePath>
+          </PrimaryParticipants>
+          <SecondaryParticipants>
+            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_rebel_icon</NormalImagePath>
+            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_rebel_selected_icon</SelectedImagePath>
+            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_rebel_disabled_icon</DisabledImagePath>
+          </SecondaryParticipants>
+        </MissionTabs>
+      </MissionsPane>
     </PlanetWindowTheme>
   </FactionTheme>
   <FactionTheme>
@@ -278,6 +291,19 @@
           <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_garrisonpane_weapons_disabled_icon</DisabledImagePath>
         </Weapons>
       </GarrisonPanel>
+      <MissionsPane>
+        <MissionTabs>
+          <PrimaryParticipants>
+            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_primary_participants_empire_icon</NormalImagePath>
+            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_primary_participants_empire_selected_icon</SelectedImagePath>
+          </PrimaryParticipants>
+          <SecondaryParticipants>
+            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_empire_icon</NormalImagePath>
+            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_empire_selected_icon</SelectedImagePath>
+            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_missionpane_secondary_participants_empire_disabled_icon</DisabledImagePath>
+          </SecondaryParticipants>
+        </MissionTabs>
+      </MissionsPane>
     </PlanetWindowTheme>
   </FactionTheme>
   <FactionTheme>

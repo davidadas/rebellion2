@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
@@ -80,12 +82,7 @@ public class StubMission : Mission
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
             MissionParticipantSkill.Diplomacy,
-            null,
-            quadraticCoefficient: 0,
-            linearCoefficient: 0,
-            constantTerm: 100,
-            minSuccessProbability: 100,
-            maxSuccessProbability: 100,
+            new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } }),
             minTicks: 1,
             maxTicks: 1
         ) { }
@@ -100,6 +97,70 @@ public class StubMission : Mission
 /// Each method returns an unattached entity — call game.AttachNode() as needed.
 /// Replaces duplicated factory methods in FogOfWarSystemTests.
 /// </summary>
+public static class MissionSceneBuilder
+{
+    public static (
+        GameRoot game,
+        Planet empPlanet,
+        Planet enemyPlanet,
+        Officer officer,
+        FogOfWarSystem fog
+    ) Build()
+    {
+        GameRoot game = new GameRoot(new GameConfig());
+
+        Faction empire = new Faction { InstanceID = "empire" };
+        Faction rebels = new Faction { InstanceID = "rebels" };
+        game.Factions.Add(empire);
+        game.Factions.Add(rebels);
+
+        PlanetSystem system = new PlanetSystem
+        {
+            InstanceID = "sys1",
+            PositionX = 0,
+            PositionY = 0,
+        };
+        game.AttachNode(system, game.Galaxy);
+
+        Planet empPlanet = new Planet
+        {
+            InstanceID = "emp_planet",
+            OwnerInstanceID = "empire",
+            IsColonized = true,
+            PositionX = 0,
+            PositionY = 0,
+            PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
+        };
+        game.AttachNode(empPlanet, system);
+
+        Planet enemyPlanet = new Planet
+        {
+            InstanceID = "enemy_planet",
+            OwnerInstanceID = "rebels",
+            IsColonized = true,
+            PositionX = 100,
+            PositionY = 0,
+            GroundSlots = 5,
+            OrbitSlots = 5,
+            PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
+        };
+        game.AttachNode(enemyPlanet, system);
+
+        Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+        game.AttachNode(officer, empPlanet);
+
+        FogOfWarSystem fog = new FogOfWarSystem(game);
+        return (game, empPlanet, enemyPlanet, officer, fog);
+    }
+
+    public static void RunToSuccess(Mission mission, GameRoot game)
+    {
+        while (!mission.IsComplete())
+            mission.IncrementProgress();
+        mission.Execute(game, new FixedRNG(0.0));
+    }
+}
+
 public static class EntityFactory
 {
     public static Officer CreateOfficer(string id, string factionId)

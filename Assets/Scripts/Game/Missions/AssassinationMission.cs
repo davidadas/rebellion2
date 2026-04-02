@@ -6,21 +6,23 @@ using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
-public class RecruitmentMission : Mission
+public class AssassinationMission : Mission
 {
     public string TargetOfficerInstanceID { get; set; }
 
-    public RecruitmentMission()
+    public override bool CanceledOnOwnershipChange => false;
+
+    public AssassinationMission()
         : base()
     {
-        Name = "Recruitment";
+        Name = "Assassination";
         DisplayName = Name;
-        ParticipantSkill = MissionParticipantSkill.Leadership;
+        ParticipantSkill = MissionParticipantSkill.Combat;
         MinTicks = 15;
         MaxTicks = 20;
     }
 
-    public RecruitmentMission(
+    public AssassinationMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
@@ -29,12 +31,12 @@ public class RecruitmentMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Recruitment",
+            "Assassination",
             ownerInstanceId,
-            target.GetInstanceID(),
+            RequirePlanetTarget(target, "Assassination").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
-            MissionParticipantSkill.Leadership,
+            MissionParticipantSkill.Combat,
             successProbabilityTable,
             minTicks: 15,
             maxTicks: 20
@@ -47,58 +49,53 @@ public class RecruitmentMission : Mission
     }
 
     /// <summary>
-    /// Returns false if the target officer no longer exists or has already joined this faction.
+    /// Returns false if the target officer has already been killed or has moved
+    /// away from the mission's planet before execution.
     /// </summary>
     protected override bool IsTargetValid(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return target != null && target.OwnerInstanceID != OwnerInstanceID;
+        return target != null
+            && !target.IsKilled
+            && target.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 
     /// <summary>
-    /// Transfers the target officer to this faction and moves them to the mission planet.
+    /// Marks the target officer as killed and removes them from the scene graph.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        Planet planet = GetParent() as Planet;
-        if (target == null || planet == null)
+        if (target == null)
             return new List<GameResult>();
-
-        target.OwnerInstanceID = OwnerInstanceID;
-        game.RemoveUnrecruitedOfficer(target);
-        game.AttachNode(target, planet);
+        target.IsKilled = true;
+        game.DetachNode(target);
 
         return new List<GameResult>
         {
-            new CharacterMovedResult
+            new CharacterKilledResult
             {
-                CharacterInstanceID = target.InstanceID,
-                FromLocationInstanceID = "UNRECRUITED_POOL",
-                ToLocationInstanceID = planet?.InstanceID,
+                CharacterInstanceID = TargetOfficerInstanceID,
+                KillingFactionInstanceID = OwnerInstanceID,
+                LocationInstanceID = (GetParent() as Planet)?.InstanceID,
                 Tick = game.CurrentTick,
             },
         };
     }
 
-    /// <summary>
-    /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
-    /// </summary>
-    protected override double GetFoilProbability(double defenseScore) => 0;
-
     public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Recruitment);
-        MinTicks = tables.TickRanges.Recruitment.Min;
-        MaxTicks = tables.TickRanges.Recruitment.Max;
+        SuccessProbabilityTable = new ProbabilityTable(tables.Assassination);
+        MinTicks = tables.TickRanges.Assassination.Min;
+        MaxTicks = tables.TickRanges.Assassination.Max;
     }
 
     /// <summary>
-    /// Returns true while there are still unrecruited officers available for this faction.
+    /// Assassination missions do not repeat — one attempt per mission.
     /// </summary>
     public override bool CanContinue(GameRoot game)
     {
-        return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;
+        return false;
     }
 }

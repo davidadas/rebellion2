@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Manages victory condition checking during each game tick.
@@ -23,28 +24,27 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Checks victory conditions for the current tick.
+        /// Checks victory conditions for the current tick and returns any triggered results.
         /// </summary>
-        /// <returns>VictoryResult if a victory condition is met, null otherwise.</returns>
-        public VictoryResult? CheckVictory()
+        public List<GameResult> ProcessTick()
         {
             // Grace period: don't check victory until the game has had time to develop
             if (game.CurrentTick < MIN_VICTORY_TICK)
-            {
-                return null;
-            }
+                return new List<GameResult>();
 
-            // Check HQ capture for each faction
             foreach (Faction faction in game.Factions)
             {
-                VictoryResult? outcome = CheckHQCapture(faction);
+                VictoryResult outcome = CheckHQCapture(faction);
                 if (outcome != null)
                 {
-                    return outcome;
+                    GameLogger.Log(
+                        $"Victory condition met: {outcome.Winner.GetDisplayName()} defeated {outcome.Loser.GetDisplayName()}."
+                    );
+                    return new List<GameResult> { outcome };
                 }
             }
 
-            return null;
+            return new List<GameResult>();
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace Rebellion.Systems
         /// HQ capture = planet ownership changed to enemy faction.
         /// For Conquest mode, also requires all main characters to be captured.
         /// </summary>
-        private VictoryResult? CheckHQCapture(Faction defender)
+        private VictoryResult CheckHQCapture(Faction defender)
         {
             // Get the defender's HQ planet via Faction.HQInstanceID
             string hqInstanceId = defender.GetHQInstanceID();

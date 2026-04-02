@@ -23,27 +23,7 @@ namespace Rebellion.Game
         public Dictionary<MissionParticipantSkill, int> Skills { get; set; }
         public bool CanImproveMissionSkill { get; }
 
-        /// <summary>
-        /// Called to set the value of a mission skill. Provides a default implementation
-        /// which sets the value of the skill.
-        /// </summary>
-        /// <param name="skill"></param>
-        /// <param name="value"></param>
-        public virtual void SetMissionSkillValue(MissionParticipantSkill skill, int value)
-        {
-            Skills[skill] = value;
-        }
-
-        /// <summary>
-        /// Called to get the value of a mission skill. Provides a default implementation
-        /// which returns the value of the skill.
-        /// </summary>
-        /// <param name="skill">The skill whose value to get.</param>
-        /// <returns>The value of the skill.</returns>
-        public int GetMissionSkillValue(MissionParticipantSkill skill)
-        {
-            return Skills[skill];
-        }
+        public void SetMissionSkillValue(MissionParticipantSkill skill, int value);
 
         /// <summary>
         /// Called to determine whether the participant is the main character of the game.
