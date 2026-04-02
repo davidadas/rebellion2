@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -16,6 +17,7 @@ public class AIManager
     private readonly MissionSystem missionManager;
     private readonly MovementSystem movementManager;
     private readonly ManufacturingSystem manufacturingManager;
+    private readonly AutomationIssueSystem issueSystem;
 
     public AIManager(
         GameRoot game,
@@ -28,6 +30,7 @@ public class AIManager
         this.missionManager = missionManager;
         this.movementManager = movementManager;
         this.manufacturingManager = manufacturingManager;
+        this.issueSystem = new AutomationIssueSystem(game);
     }
 
     /// <summary>
@@ -35,6 +38,16 @@ public class AIManager
     /// </summary>
     public void Update(IRandomNumberProvider provider)
     {
+        // TODO: Remove — temporary fleet count debug logging
+        foreach (Faction faction in game.Factions)
+        {
+            int fleetCount = faction.GetOwnedUnitsByType<Fleet>().Count;
+            int shipCount = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
+            GameLogger.Log(
+                $"[Fleet Count] {faction.GetDisplayName()}: {fleetCount} fleets, {shipCount} capital ships"
+            );
+        }
+
         foreach (Faction faction in game.Factions.Where(f => f.IsAIControlled()))
         {
             UpdateFaction(faction, provider);
@@ -44,20 +57,18 @@ public class AIManager
     /// <summary>
     /// Runs the AI decision cycle for one faction.
     /// Order is intentional: crises first, economy before military, missions last.
-    /// Mirrors original FUN_005073d0_adjust_and_deploy_each_system pipeline.
     /// </summary>
     private void UpdateFaction(Faction faction, IRandomNumberProvider provider)
     {
         HandleUprisings(faction, provider);
         HandleBlockades(faction);
         DeployPatrolFleetsToSystems(faction);
-        EnsureMinimumFleetCounts(faction);
         UpdateEconomy(faction);
         UpdateCapitalShipProduction(faction);
         UpdateStarfighterProduction(faction);
         UpdateTroopTraining(faction);
         UpdateFleetMovement(faction);
-        RandomSystemDeployment(faction, provider);
+        UpdateOffensiveFleetMovement(faction, provider);
         UpdateOfficerMissions(faction, provider);
     }
 
@@ -170,40 +181,41 @@ public class AIManager
         if (tech == null)
             return false;
 
-        IManufacturable item = tech.GetReferenceCopy();
-        item.SetOwnerInstanceID(faction.GetInstanceID());
-
-        if (game.GetRefinedMaterials(faction) < item.GetConstructionCost())
+        if (tech.GetReference() is not Building templateBuilding)
             return false;
 
-        List<Planet> idleYards = faction.GetIdleFacilities(ManufacturingType.Building);
-        if (!idleYards.Any())
+        if (game.GetRefinedMaterials(faction) < tech.GetReference().GetConstructionCost())
             return false;
 
-        if (item is not Building building)
+        // Find planets that have both an idle construction yard AND building slot capacity
+        BuildingSlot slot = templateBuilding.GetBuildingSlot();
+        List<Planet> candidates = faction
+            .GetIdleFacilities(ManufacturingType.Building)
+            .Where(p => p.GetBuildingSlotCapacity(slot) > 0)
+            .ToList();
+
+        if (!candidates.Any())
             return false;
 
-        Planet target = GetBestPlanetForBuilding(idleYards[0], faction, building);
+        // Pick the best candidate planet
+        Planet target = candidates
+            .OrderBy(p => CalculateBuildingPriority(p, buildingType))
+            .ThenByDescending(p => p.GetBuildingSlotCapacity(slot))
+            .FirstOrDefault();
+
         if (target == null)
             return false;
 
+        IManufacturable item = tech.GetReferenceCopy();
         item.SetOwnerInstanceID(faction.GetInstanceID());
-        if (item is IMovable movable)
-        {
-            movable.Movement ??= new MovementState();
-            movable.Movement.DestinationInstanceID = target.GetInstanceID();
-        }
 
-        manufacturingManager.Enqueue(idleYards[0], item, ignoreCost: false);
+        manufacturingManager.Enqueue(target, item, ignoreCost: false);
         return true;
     }
 
     /// <summary>
     /// Builds capital ships at idle shipyards until the faction has one per owned planet.
     /// ManufacturingSystem creates the fleet container automatically on completion.
-    /// Note: Budget-based deployment (FUN_0055be40/FUN_0055bea0) only applies to initial
-    /// game seeding (FUN_0051a3f0_seed_units_to_system), not ongoing AI production.
-    /// Ongoing production uses simple "one ship per planet" heuristic.
     /// </summary>
     private void UpdateCapitalShipProduction(Faction faction)
     {
@@ -213,10 +225,26 @@ public class AIManager
             typeof(CapitalShip)
         );
         if (tech == null)
+        {
+            // TODO: Remove — temporary debug
+            GameLogger.Debug(
+                $"[AI] {faction.GetDisplayName()}: No CapitalShip tech available. "
+                    + $"Ship techs: {faction.GetResearchedTechnologies(ManufacturingType.Ship).Count}, "
+                    + $"Research level: {faction.GetResearchLevel(ManufacturingType.Ship)}"
+            );
             return;
+        }
 
         int ownedShips = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
         int targetShips = faction.GetOwnedUnitsByType<Planet>().Count;
+
+        // TODO: Remove — temporary debug
+        GameLogger.Debug(
+            $"[AI] {faction.GetDisplayName()}: Ships {ownedShips}/{targetShips}, "
+                + $"idle shipyards: {faction.GetIdleFacilities(ManufacturingType.Ship).Count}, "
+                + $"materials: {game.GetRefinedMaterials(faction)}, "
+                + $"ship cost: {tech.GetReference().GetConstructionCost()}"
+        );
 
         foreach (Planet shipyard in faction.GetIdleFacilities(ManufacturingType.Ship))
         {
@@ -285,11 +313,7 @@ public class AIManager
                 IManufacturable item = starfighterTech.GetReferenceCopy();
                 item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                if (item is IMovable movable)
-                {
-                    movable.Movement ??= new MovementState();
-                    movable.Movement.DestinationInstanceID = fleet.GetInstanceID();
-                }
+                item.ManufacturingDestinationID = fleet.GetInstanceID();
 
                 manufacturingManager.Enqueue(shipyard, item, ignoreCost: false);
             }
@@ -351,11 +375,7 @@ public class AIManager
                 IManufacturable item = regimentTech.GetReferenceCopy();
                 item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                if (item is IMovable movable)
-                {
-                    movable.Movement ??= new MovementState();
-                    movable.Movement.DestinationInstanceID = fleet.GetInstanceID();
-                }
+                item.ManufacturingDestinationID = fleet.GetInstanceID();
 
                 manufacturingManager.Enqueue(trainingFacility, item, ignoreCost: false);
             }
@@ -367,9 +387,8 @@ public class AIManager
     }
 
     /// <summary>
-    /// Mirrors FUN_0050add0_adjust_for_fleets: ensures every colonized planet
-    /// has a patrol fleet present or en route for this faction.
-    /// Prefers idle battle fleets with no capital ships (lightweight scouts).
+    /// Ensures every colonized planet has a patrol fleet present or en route
+    /// for this faction. Prefers idle battle fleets with no capital ships (lightweight scouts).
     /// </summary>
     private void DeployPatrolFleetsToSystems(Faction faction)
     {
@@ -424,9 +443,8 @@ public class AIManager
     }
 
     /// <summary>
-    /// Moves idle battle fleets: defends a contested HQ if undefended.
+    /// Moves idle battle fleets to defend a contested HQ if undefended.
     /// Patrol fleets are handled by DeployPatrolFleetsToSystems and excluded here.
-    /// Original AI has NO offensive fleet movement - only defensive repositioning.
     /// </summary>
     private void UpdateFleetMovement(Faction faction)
     {
@@ -459,43 +477,62 @@ public class AIManager
     }
 
     /// <summary>
-    /// Ensures faction maintains minimum battle fleet counts.
-    /// Mirrors FUN_0050add0_adjust_for_fleets logic.
-    /// Original creates fleets if count falls below threshold.
+    /// Sends idle battle fleets to attack a random enemy planet.
+    /// Picks a random enemy planet (matching original random system selection),
+    /// then sends the strongest idle fleet if its assault strength exceeds the
+    /// planet's defense strength.
     /// </summary>
-    private void EnsureMinimumFleetCounts(Faction faction)
+    /// <param name="faction">The AI faction.</param>
+    /// <param name="provider">Random number provider.</param>
+    private void UpdateOffensiveFleetMovement(Faction faction, IRandomNumberProvider provider)
     {
-        int battleFleetCount = faction
+        string factionId = faction.InstanceID;
+
+        List<Fleet> idle = faction
             .GetOwnedUnitsByType<Fleet>()
-            .Count(f => f.RoleType == FleetRoleType.Battle && f.CapitalShips.Count > 0);
+            .Where(f =>
+                f.RoleType == FleetRoleType.Battle && f.IsMovable() && f.CapitalShips.Count > 0
+            )
+            .ToList();
 
-        // Original game maintains minimum 2 battle fleets per side
-        // If below threshold, capital ship production will create more
-        // This is handled by UpdateCapitalShipProduction targeting one ship per planet
-    }
-
-    /// <summary>
-    /// Randomly selects an owned system and attempts to deploy units there.
-    /// Mirrors FUN_00555380_ai_get_random_system_for_manufacturing.
-    /// Original: picks random core system, calls ai_create_manufacturing.
-    /// </summary>
-    private void RandomSystemDeployment(Faction faction, IRandomNumberProvider provider)
-    {
-        // Get all owned planets (eligible for random deployment)
-        List<Planet> ownedPlanets = faction.GetOwnedUnitsByType<Planet>();
-
-        if (!ownedPlanets.Any())
+        if (!idle.Any())
             return;
 
-        // Original: roll_dice(count - 1) to select random system
-        int randomIndex = provider.NextInt(0, ownedPlanets.Count);
-        Planet selectedPlanet = ownedPlanets[randomIndex];
+        // Pick a random enemy planet (matches original random system selection)
+        List<Planet> enemyPlanets = game.GetSceneNodesByType<Planet>(p =>
+            p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
+        );
 
-        // Original would call ai_create_manufacturing here
-        // This would rebalance resources and potentially deploy units
-        // Our existing production systems handle this via UpdateCapitalShipProduction,
-        // UpdateStarfighterProduction, and UpdateTroopTraining
-        // The original's "random deployment" is effectively our existing production logic
+        if (!enemyPlanets.Any())
+            return;
+
+        Planet target = enemyPlanets[provider.NextInt(0, enemyPlanets.Count)];
+
+        // Don't stack — skip if we already have a fleet there or en route
+        bool alreadyTargeted = faction
+            .GetOwnedUnitsByType<Fleet>()
+            .Any(f =>
+                f.GetParentOfType<Planet>() == target
+                || (
+                    f.Movement != null && f.Movement.DestinationInstanceID == target.GetInstanceID()
+                )
+            );
+
+        if (alreadyTargeted)
+            return;
+
+        // Pick strongest fleet and check if it can overwhelm the defenses
+        Fleet strongest = idle.OrderByDescending(f => CalculateFleetCombatValue(f)).First();
+        int assaultStrength = CalculateFleetAssaultStrength(strongest);
+        int defenseStrength = target.GetDefenseStrength();
+
+        if (assaultStrength > defenseStrength)
+        {
+            movementManager.RequestMove(strongest, target);
+            GameLogger.Log(
+                $"[AI] Sending fleet {strongest.GetDisplayName()} to attack {target.GetDisplayName()}"
+            );
+        }
     }
 
     private struct CachedMissionTables
@@ -523,8 +560,7 @@ public class AIManager
     }
 
     /// <summary>
-    /// Dispatches available officers to missions.
-    /// Mirrors the original: place character at random system, then evaluate via table lookup.
+    /// Dispatches available officers to missions via table lookup.
     /// </summary>
     private void UpdateOfficerMissions(Faction faction, IRandomNumberProvider provider)
     {
@@ -591,7 +627,6 @@ public class AIManager
 
     /// <summary>
     /// Picks a random colonized planet owned by this faction or neutral.
-    /// Mirrors original's randomly_place_character target selection.
     /// </summary>
     private Planet FindMissionTarget(Faction faction, IRandomNumberProvider provider)
     {
@@ -624,9 +659,13 @@ public class AIManager
 
     /// <summary>
     /// Selects an enemy-targeted mission for the given officer at an enemy planet.
-    /// Formulas from original disassembly (MSTB .DAT files).
     /// Priority: InciteUprising > Espionage > Sabotage > Abduction > Rescue
     /// </summary>
+    /// <param name="faction">The officer's faction.</param>
+    /// <param name="officer">The officer to assign.</param>
+    /// <param name="target">The enemy planet being targeted.</param>
+    /// <param name="provider">Random number provider for dice rolls.</param>
+    /// <param name="tables">Cached probability tables for mission dispatch.</param>
     private MissionType? SelectEnemyMissionType(
         Faction faction,
         Officer officer,
@@ -727,11 +766,14 @@ public class AIManager
 
     /// <summary>
     /// Determines the best mission type for an officer at a given planet.
-    /// Uses table lookups from AI.MissionTables (original MSTB .DAT files).
-    /// Score formula: (officer_skill - popular_support) + leadership_rank
+    /// Score formula: (officer_skill - popular_support) + leadership_rank.
     /// Returns null if no viable mission exists at this planet.
     /// Priority: SubdueUprising > Diplomacy > Recruitment
     /// </summary>
+    /// <param name="faction">The officer's faction.</param>
+    /// <param name="officer">The officer to assign.</param>
+    /// <param name="target">The friendly or neutral planet being targeted.</param>
+    /// <param name="tables">Cached probability tables for mission dispatch.</param>
     private MissionType? SelectMissionType(
         Faction faction,
         Officer officer,
@@ -858,22 +900,25 @@ public class AIManager
 
     /// <summary>
     /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
-    /// Mirrors FUN_004fc870_sum_fleet_unit_combat_value from original.
-    /// Source: Calls vtable method at offset 0x1dc for each unit (AttackRating getter).
     /// </summary>
+    /// <param name="fleet">The fleet to evaluate.</param>
     private int CalculateFleetCombatValue(Fleet fleet)
     {
-        int capitalShipCombat = fleet.CapitalShips.Sum(s => s.AttackRating);
-        int starfighterCombat = fleet.Starfighters.Sum(f => f.AttackRating);
+        int capitalShipCombat = fleet.CapitalShips.Sum(s =>
+            s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum())
+        );
+        int starfighterCombat = fleet
+            .GetStarfighters()
+            .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
         return capitalShipCombat + starfighterCombat;
     }
 
     /// <summary>
     /// Calculates fleet assault strength including personnel morale modifier.
-    /// Mirrors FUN_0055d120_scale_capital_ship_assault_fleet_strength from original.
-    /// Formula: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
+    /// Formula: (personnel / divisor + 1) * fleet_combat_value.
     /// Personnel comes from fleet commander's leadership skill.
     /// </summary>
+    /// <param name="fleet">The fleet to evaluate.</param>
     private int CalculateFleetAssaultStrength(Fleet fleet)
     {
         int fleetCombatValue = CalculateFleetCombatValue(fleet);
@@ -882,25 +927,9 @@ public class AIManager
         Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
         int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
 
-        // Original formula: (personnel / divisor + 1) * combat_value
         int divisor = game.Config.Combat.AssaultPersonnelDivisor;
         int assaultStrength = (personnel / divisor + 1) * fleetCombatValue;
 
         return assaultStrength;
-    }
-
-    /// <summary>
-    /// Calculates planetary defense strength from defensive buildings.
-    /// Mirrors defense calculation from FUN_0058c580_execute_capital_ship_assault_stage.
-    /// Original: Sums defensive_core_value from defensive facilities (offset 0x60).
-    /// </summary>
-    private int CalculatePlanetDefenseStrength(Planet planet)
-    {
-        // Sum defensive building ratings
-        int buildingDefense = planet.GetAllBuildings()
-            .Where(b => b.GetBuildingType() == BuildingType.Defense)
-            .Sum(b => b.DefenseRating);
-
-        return buildingDefense;
     }
 }

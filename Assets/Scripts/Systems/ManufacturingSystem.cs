@@ -52,11 +52,11 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            // Validate cost (unless AI is bypassing)
+            // Validate cost (unless caller is bypassing)
             if (!ignoreCost)
             {
                 int cost = item.GetConstructionCost();
-                int available = faction.GetTotalAvailableMaterialsRaw();
+                int available = game.GetRefinedMaterials(faction);
 
                 if (available < cost)
                 {
@@ -64,18 +64,32 @@ namespace Rebellion.Systems
                 }
             }
 
-            // Attach to scene graph (centralizes parent/child, registration, ownership)
+            // Attach to scene graph. Capital ships go into a fleet at the
+            // production planet; everything else attaches to the planet directly.
             if (item is ISceneNode node)
             {
-                game.AttachNode(node, planet);
+                if (item is CapitalShip capitalShip)
+                {
+                    Fleet fleet = FindOrCreateFleet(planet, faction);
+                    game.AttachNode(capitalShip, fleet);
+                }
+                else
+                {
+                    game.AttachNode(node, planet);
+                }
             }
 
             item.ManufacturingStatus = ManufacturingStatus.Building;
             item.ManufacturingProgress = 0;
             item.ProducerOwnerID = planet.GetOwnerInstanceID();
+            item.ProducerPlanetID = planet.GetInstanceID();
 
             // Add to queue (cost automatically counted via faction.GetTotalUnitCost)
             planet.AddToManufacturingQueue(item);
+
+            GameLogger.Log(
+                $"Enqueued {item.GetDisplayName()} for production at {planet.GetDisplayName()} (cost: {item.GetConstructionCost()})"
+            );
 
             return true;
         }
@@ -119,6 +133,32 @@ namespace Rebellion.Systems
 
                 // Calculate progress increment based on planet's production rate
                 int progressIncrement = planet.GetProductionRate(type);
+
+                // Apply blockade production penalty
+                if (planet.IsBlockaded())
+                {
+                    int hostileCapitalShips = planet
+                        .GetFleets()
+                        .Where(f =>
+                            f.GetOwnerInstanceID() != null
+                            && f.GetOwnerInstanceID() != planet.GetOwnerInstanceID()
+                        )
+                        .Sum(f => f.CapitalShips.Count);
+                    int hostileFighters = planet
+                        .GetAllStarfighters()
+                        .Count(s =>
+                            s.GetOwnerInstanceID() != null
+                            && s.GetOwnerInstanceID() != planet.GetOwnerInstanceID()
+                        );
+
+                    int modifier =
+                        100
+                        - hostileCapitalShips * game.Config.Production.BlockadeCapitalShipPenalty
+                        - hostileFighters * game.Config.Production.BlockadeFighterPenalty;
+                    modifier = Math.Max(0, modifier);
+
+                    progressIncrement = (progressIncrement * modifier) / 100;
+                }
 
                 // Process with overflow handling
                 while (progressIncrement > 0 && items.Count > 0)
@@ -173,63 +213,142 @@ namespace Rebellion.Systems
                 items.Remove(item);
             }
 
-            // Capital ships: create fleet and attach
-            if (item is CapitalShip capitalShip)
+            // Ship to destination if one was specified
+            if (item is IMovable movable && !string.IsNullOrEmpty(item.ManufacturingDestinationID))
             {
-                CompleteCapitalShipManufacturing(capitalShip, planet);
+                ISceneNode destination = game.GetSceneNodeByInstanceID<ISceneNode>(
+                    item.ManufacturingDestinationID
+                );
+
+                if (destination != null)
+                {
+                    // For capital ships, ship the fleet they're in
+                    IMovable unitToShip = item is CapitalShip cs
+                        ? (IMovable)(cs.GetParent() as Fleet ?? (ISceneNode)cs)
+                        : movable;
+
+                    ShipToDestination(unitToShip, planet, destination);
+                    return;
+                }
+            }
+
+            // No valid destination — default to production planet, scrap if rejected
+            if (item is ISceneNode orphanNode)
+            {
+                try
+                {
+                    if (orphanNode.GetParent() != planet)
+                    {
+                        if (orphanNode.GetParent() != null)
+                            game.MoveNode(orphanNode, planet);
+                        else
+                            game.AttachNode(orphanNode, planet);
+                    }
+
+                    if (item is IMovable idleMovable)
+                        idleMovable.Movement = null;
+
+                    GameLogger.Log(
+                        $"Completed manufacturing: {item.GetDisplayName()} at {planet.GetDisplayName()}"
+                    );
+                }
+                catch
+                {
+                    GameLogger.Warning(
+                        $"Scrapped {item.GetDisplayName()}: planet {planet.GetDisplayName()} cannot accept it"
+                    );
+                    if (orphanNode.GetParent() != null)
+                        game.DetachNode(orphanNode);
+                }
                 return;
             }
 
-            // All other items: already attached from Enqueue, ensure no movement state
-            if (item is IMovable movable)
-            {
-                movable.Movement = null;
-            }
-
-            GameLogger.Debug(
-                $"Completed manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
+            GameLogger.Log(
+                $"Completed manufacturing: {item.GetDisplayName()} at {planet.GetDisplayName()}"
             );
         }
 
         /// <summary>
-        /// Completes capital ship manufacturing by creating a fleet.
+        /// Finds an existing idle friendly fleet at the planet, or creates a new one.
         /// </summary>
-        private void CompleteCapitalShipManufacturing(CapitalShip capitalShip, Planet planet)
+        private Fleet FindOrCreateFleet(Planet planet, Faction faction)
         {
-            string ownerId = capitalShip.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerId))
-            {
-                GameLogger.Error(
-                    $"Cannot create fleet for {capitalShip.GetDisplayName()}: no owner set"
-                );
-                game.DetachNode(capitalShip);
-                return;
-            }
+            string ownerId = faction.GetInstanceID();
 
-            Faction faction = game.GetFactionByOwnerInstanceID(ownerId);
-            if (faction == null)
-            {
-                GameLogger.Error(
-                    $"Cannot create fleet for {capitalShip.GetDisplayName()}: faction not found"
-                );
-                game.DetachNode(capitalShip);
-                return;
-            }
+            Fleet existingFleet = planet
+                .GetFleets()
+                .FirstOrDefault(f => f.GetOwnerInstanceID() == ownerId && f.IsMovable());
 
-            // Create fleet (pure creation, no side effects)
+            if (existingFleet != null)
+                return existingFleet;
+
             Fleet fleet = faction.CreateFleet(game);
-
-            // Attach fleet to planet (new node)
             game.AttachNode(fleet, planet);
-
-            // Move capital ship from planet to fleet (existing node relocation)
-            game.MoveNode(capitalShip, fleet);
-
-            // New fleet starts at rest (no movement)
             fleet.Movement = null;
+            return fleet;
+        }
+
+        /// <summary>
+        /// Ships a completed unit to its destination by reparenting it and setting up
+        /// a MovementState for travel. If the destination is the same planet, no movement.
+        /// </summary>
+        private void ShipToDestination(IMovable unit, Planet originPlanet, ISceneNode destination)
+        {
+            Planet destinationPlanet = destination is Planet dp
+                ? dp
+                : destination.GetParentOfType<Planet>();
+
+            if (destinationPlanet == null || destinationPlanet == originPlanet)
+            {
+                unit.Movement = null;
+                return;
+            }
+
+            // Reparent to destination in scene graph
+            if (unit is ISceneNode node)
+            {
+                if (node.GetParent() != null)
+                    game.MoveNode(node, destination);
+                else
+                    game.AttachNode(node, destination);
+            }
+
+            // Calculate transit using same formula as MovementSystem
+            Point originPos = originPlanet.GetPosition();
+            Point destPos = destinationPlanet.GetPosition();
+            double dx = destPos.X - originPos.X;
+            double dy = destPos.Y - originPos.Y;
+            double distance = Math.Sqrt(dx * dx + dy * dy);
+
+            int hyperdrive = game.GetConfig().Movement.DefaultFighterHyperdrive;
+            if (unit is Fleet fleet && fleet.CapitalShips.Count > 0)
+            {
+                hyperdrive = fleet
+                    .CapitalShips.Select(s => s.Hyperdrive)
+                    .Where(h => h > 0)
+                    .DefaultIfEmpty(1)
+                    .Min();
+            }
+            else if (unit is CapitalShip capitalShip)
+            {
+                hyperdrive = Math.Max(capitalShip.Hyperdrive, 1);
+            }
+
+            int baseTicks = (int)
+                Math.Ceiling((distance * game.GetConfig().Movement.DistanceScale) / hyperdrive);
+            int transitTicks = Math.Max(baseTicks, game.GetConfig().Movement.MinTransitTicks);
+
+            unit.Movement = new MovementState
+            {
+                DestinationInstanceID = destination.GetInstanceID(),
+                TransitTicks = transitTicks,
+                TicksElapsed = 0,
+                OriginPosition = originPos,
+                CurrentPosition = originPos,
+            };
 
             GameLogger.Log(
-                $"Created fleet {fleet.GetDisplayName()} with capital ship {capitalShip.GetDisplayName()} at {planet.GetDisplayName()}"
+                $"{((ISceneNode)unit).GetDisplayName()} shipping to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
         }
 
@@ -283,7 +402,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            // Capital Ships → should never reach here (blocked in CompleteManufacturing)
+            // Capital Ships → should never reach here (attached to fleet at Enqueue time)
             if (item is CapitalShip)
             {
                 GameLogger.Error(

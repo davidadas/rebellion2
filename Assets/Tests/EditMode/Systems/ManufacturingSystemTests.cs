@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AdvancesProgress()
+        public void ProcessTick_SingleItem_AdvancesProgress()
         {
             Building mine = new Building
             {
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Completion_RemovesFromQueue()
+        public void ProcessTick_BuildingComplete_RemovesFromQueue()
         {
             Building mine = new Building
             {
@@ -195,7 +195,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_AttachesToSceneGraph()
+        public void Enqueue_ValidBuilding_AttachesToSceneGraph()
         {
             Building mine = new Building
             {
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_ItemAlreadyInBuildingState_Succeeds()
+        public void Enqueue_BuildingInBuildingState_Succeeds()
         {
             // Items can be enqueued while in Building state - the state just tracks
             // that they're under construction. Multiple items can be Building simultaneously.
@@ -258,7 +258,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_ItemAlreadyAttachedToDifferentParent_Throws()
+        public void Enqueue_AttachedToDifferentParent_ThrowsException()
         {
             // Create second planet
             Planet tatooine = new Planet
@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_SameInstanceTwice_ThrowsException()
+        public void Enqueue_DuplicateInstance_ThrowsException()
         {
             Building mine = new Building
             {
@@ -318,7 +318,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_DifferentInstancesSameType_BothAdded()
+        public void Enqueue_TwoInstancesSameType_BothAdded()
         {
             Building mine1 = new Building
             {
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void AttachNode_Building_OnPlanetWithDifferentOwner_ThrowsSceneAccessException()
+        public void AttachNode_DifferentOwner_ThrowsException()
         {
             // Scene graph must reject a building whose owner doesn't match the planet's owner.
             Building rebelBuilding = new Building
@@ -370,7 +370,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_BuildingOwnedByDifferentFaction_Throws()
+        public void Enqueue_DifferentFaction_ThrowsException()
         {
             // Enqueue internally calls game.AttachNode — ownership mismatch must propagate.
             Building rebelBuilding = new Building
@@ -389,7 +389,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_PlayerFaction_InsufficientFunds_Rejected()
+        public void Enqueue_InsufficientFunds_ReturnsFalse()
         {
             // With default setup (no mines/refineries), faction has no materials
             Building expensive = new Building
@@ -419,7 +419,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_IgnoreCost_BypassesFunds()
+        public void Enqueue_IgnoreCostFlag_BypassesFunds()
         {
             // With default setup, faction has no materials
             Building expensive = new Building
@@ -445,7 +445,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Completion_SetsStatusComplete()
+        public void ProcessTick_BuildingComplete_SetsStatusComplete()
         {
             Building mine = new Building
             {
@@ -468,7 +468,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Completion_RemainsAttachedToParent()
+        public void ProcessTick_BuildingComplete_RemainsAttachedToParent()
         {
             Building mine = new Building
             {
@@ -851,7 +851,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Completion_NoDuplicateNodes()
+        public void ProcessTick_BuildingComplete_NoDuplicateNodes()
         {
             Building mine = new Building
             {
@@ -884,7 +884,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Completion_BidirectionalParentChildValid()
+        public void ProcessTick_BuildingComplete_BidirectionalRelationshipValid()
         {
             Building mine = new Building
             {
@@ -907,7 +907,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_OwnerChangeDuringConstruction_OriginalProducerRetainsOwnership()
+        public void ProcessTick_OwnerChangeMidBuild_RetainsOriginalOwner()
         {
             Building mine = new Building
             {
@@ -935,7 +935,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetManufacturingQueue_Empty_ReturnsEmptyDictionary()
+        public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 coruscant.GetManufacturingQueue();
@@ -954,7 +954,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetManufacturingQueue_ReturnsCorrectState()
+        public void GetManufacturingQueue_TwoItems_ReturnsCorrectState()
         {
             Building mine1 = new Building
             {
@@ -988,7 +988,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_ZeroCostItem_BehaviorDefined()
+        public void Enqueue_ZeroCostItem_CompletesImmediately()
         {
             Building free = new Building
             {
@@ -1325,6 +1325,885 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue.Count);
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count, "Only Building status");
             Assert.AreEqual("b1", queue[ManufacturingType.Building][0].InstanceID);
+        }
+
+        private Planet BuildShipyardPlanet(GameRoot game, string planetId, string factionId)
+        {
+            PlanetSystem sys = new PlanetSystem
+            {
+                InstanceID = $"{planetId}_sys",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = planetId,
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+                NumRawResourceNodes = 100,
+            };
+            game.AttachNode(planet, sys);
+
+            Building shipyard = new Building
+            {
+                InstanceID = $"{planetId}_shipyard",
+                OwnerInstanceID = factionId,
+                BuildingType = BuildingType.Shipyard,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+
+            Building trainingFacility = new Building
+            {
+                InstanceID = $"{planetId}_training",
+                OwnerInstanceID = factionId,
+                BuildingType = BuildingType.TrainingFacility,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Troop,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(trainingFacility, planet);
+
+            return planet;
+        }
+
+        [Test]
+        public void EnqueueCapitalShip_ValidShip_AttachesToFleetAtPlanet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+
+            List<Fleet> fleets = planet.GetFleets();
+            Assert.AreEqual(1, fleets.Count, "Fleet should be created at enqueue.");
+            Assert.AreEqual(1, fleets[0].CapitalShips.Count, "Ship should be in fleet.");
+            Assert.AreEqual("cs1", fleets[0].CapitalShips[0].InstanceID);
+            Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
+
+            CapitalShip found = game.GetSceneNodeByInstanceID<CapitalShip>("cs1");
+            Assert.IsNotNull(found, "Ship should be in the scene graph during production.");
+        }
+
+        [Test]
+        public void EnqueueCapitalShip_ValidShip_RegistersFleetToFaction()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+
+            Assert.AreEqual(
+                1,
+                empire.GetOwnedUnitsByType<Fleet>().Count,
+                "Fleet should be registered to faction at enqueue."
+            );
+        }
+
+        [Test]
+        public void EnqueueCapitalShip_ExistingFleet_JoinsFleet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet existingFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(existingFleet, planet);
+            CapitalShip existingShip = new CapitalShip
+            {
+                InstanceID = "cs0",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+            };
+            game.AttachNode(existingShip, existingFleet);
+
+            CapitalShip newShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, newShip, ignoreCost: true);
+
+            List<Fleet> fleets = planet.GetFleets();
+            Assert.AreEqual(1, fleets.Count, "Should join existing fleet, not create a new one.");
+            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(ManufacturingStatus.Building, newShip.ManufacturingStatus);
+        }
+
+        [Test]
+        public void EnqueueCapitalShip_NoOwner_ThrowsException()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = null,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            Assert.Throws<SceneAccessException>(
+                () => mfg.Enqueue(planet, ship, ignoreCost: true),
+                "Enqueueing a capital ship with no owner should throw."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShipBuilding_RemainsInFleetWithProgress()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+            mfg.ProcessTick(game);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
+            Assert.Greater(ship.ManufacturingProgress, 0, "Progress should advance.");
+            Assert.IsTrue(
+                ship.GetParent() is Fleet,
+                "Ship should be in a fleet during production."
+            );
+
+            Fleet fleet = (Fleet)ship.GetParent();
+            Assert.AreEqual(planet, fleet.GetParent(), "Fleet should be at production planet.");
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShipComplete_RemovedFromQueue()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            bool inQueue = planet
+                .GetManufacturingQueue()
+                .Values.Any(list => list.Any(i => i.InstanceID == "cs1"));
+            Assert.IsFalse(inQueue, "Completed ship should be removed from queue.");
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShipComplete_SamePlanet_NoMovement()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Fleet fleet = ship.GetParent() as Fleet;
+            Assert.IsNotNull(fleet, "Ship should be in a fleet.");
+            Assert.IsNull(fleet.Movement, "No movement needed for same-planet destination.");
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShipComplete_DifferentPlanet_ShipsFleet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p2",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(originPlanet, ship, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+
+            Fleet fleet = ship.GetParent() as Fleet;
+            Assert.IsNotNull(fleet, "Ship should be in a fleet.");
+            Assert.IsNotNull(fleet.Movement, "Fleet should have movement state for shipping.");
+            Assert.AreEqual("p2", fleet.Movement.DestinationInstanceID);
+            Assert.Greater(fleet.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void EnqueueTwoCapitalShips_SamePlanet_JoinSameFleet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship1, ignoreCost: true);
+            mfg.Enqueue(planet, ship2, ignoreCost: true);
+
+            List<Fleet> fleets = planet.GetFleets();
+            Assert.AreEqual(1, fleets.Count, "Both ships should join the same fleet.");
+            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+        }
+
+        [Test]
+        public void ProcessTick_StarfighterComplete_ShipsToDestination()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destFleet, destPlanet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "f1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(originPlanet, fighter, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.IsNotNull(fighter.Movement, "Should have movement state for shipping.");
+            Assert.AreEqual("f1", fighter.Movement.DestinationInstanceID);
+            Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void ProcessTick_RegimentComplete_ShipsToDestination()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p2",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(originPlanet, regiment, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.IsNotNull(regiment.Movement, "Should have movement state for shipping.");
+            Assert.AreEqual("p2", regiment.Movement.DestinationInstanceID);
+            Assert.Greater(regiment.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void ProcessTick_RegimentComplete_SamePlanet_AttachedImmediately()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, regiment, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
+            Assert.AreEqual(
+                planet,
+                regiment.GetParent(),
+                "Regiment should be on the production planet."
+            );
+            Assert.IsNull(regiment.Movement, "No movement needed for same-planet destination.");
+            Assert.IsTrue(
+                planet.Regiments.Contains(regiment),
+                "Regiment should be in planet's regiment list."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_DestinationDestroyed_FallsBackToPlanet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destFleet, destPlanet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "f1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, fighter, ignoreCost: true);
+
+            // Destroy the destination fleet mid-production
+            game.DetachNode(destFleet);
+
+            // Tick until complete
+            for (int i = 0; i < 200; i++)
+                mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
+            Assert.AreEqual(planet, fighter.GetParent(), "Should fall back to production planet.");
+            Assert.IsNull(fighter.Movement, "Should have no movement state.");
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShipFleetDestroyed_Scrapped()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+                ManufacturingDestinationID = "p1",
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+
+            // Destroy the fleet the ship was placed in
+            Fleet fleet = planet.GetFleets()[0];
+            game.DetachNode(ship);
+            game.DetachNode(fleet);
+
+            // Tick until complete
+            for (int i = 0; i < 200; i++)
+                mfg.ProcessTick(game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+
+            // Capital ship can't go on a planet, so it should be scrapped (detached)
+            Assert.IsNull(
+                ship.GetParent(),
+                "Capital ship should be scrapped when planet cannot accept it."
+            );
+            CapitalShip found = game.GetSceneNodeByInstanceID<CapitalShip>("cs1");
+            Assert.IsNull(found, "Scrapped ship should not be in scene graph.");
+        }
+
+        [Test]
+        public void ProcessTick_Blockade_ReducesProductionRate()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            // Enqueue a building that costs 100
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+
+            // Add a construction facility
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planet);
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, mine, ignoreCost: true);
+
+            // Tick once without blockade to get baseline progress
+            mfg.ProcessTick(game);
+            int progressWithout = mine.ManufacturingProgress;
+
+            // Reset progress
+            mine.ManufacturingProgress = 0;
+
+            // Now add hostile fleet to create blockade (10 capital ships = 50% penalty)
+            Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
+            game.AttachNode(hostileFleet, planet);
+            for (int i = 0; i < 10; i++)
+            {
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = $"hs{i}",
+                    OwnerInstanceID = "rebels",
+                };
+                game.AttachNode(ship, hostileFleet);
+            }
+
+            // Tick with blockade
+            mfg.ProcessTick(game);
+            int progressWith = mine.ManufacturingProgress;
+
+            Assert.Greater(
+                progressWithout,
+                progressWith,
+                "Blockade should reduce production progress"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_HeavyBlockade_ZeroesProduction()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planet);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, mine, ignoreCost: true);
+
+            // 20 hostile capital ships = 100% penalty → 0 production
+            Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
+            game.AttachNode(hostileFleet, planet);
+            for (int i = 0; i < 20; i++)
+            {
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = $"hs{i}",
+                    OwnerInstanceID = "rebels",
+                };
+                game.AttachNode(ship, hostileFleet);
+            }
+
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(
+                0,
+                mine.ManufacturingProgress,
+                "Heavy blockade should completely stop production"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ThreeManufacturingTypes_AllAdvance()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            // BuildShipyardPlanet already adds a shipyard (Ship) and training facility (Troop).
+            // Add a construction yard for Building production.
+            Building constructionYard = new Building
+            {
+                InstanceID = "p1_construction",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planet);
+
+            // Enqueue one item per manufacturing type
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ConstructionCost = 50,
+                BaseBuildSpeed = 1,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 50,
+                BaseBuildSpeed = 1,
+            };
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 50,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, mine, ignoreCost: true);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+            mfg.Enqueue(planet, regiment, ignoreCost: true);
+
+            mfg.ProcessTick(game);
+
+            Assert.Greater(
+                mine.ManufacturingProgress,
+                0,
+                "Building should advance in parallel with ships and troops"
+            );
+            Assert.Greater(
+                ship.ManufacturingProgress,
+                0,
+                "Ship should advance in parallel with buildings and troops"
+            );
+            Assert.Greater(
+                regiment.ManufacturingProgress,
+                0,
+                "Troop should advance in parallel with buildings and ships"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_NoShipyard_ShipMakesNoProgress()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys, game.Galaxy);
+
+            // Planet with NO facilities at all
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+                NumRawResourceNodes = 100,
+            };
+            game.AttachNode(planet, sys);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 10,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, ship, ignoreCost: true);
+
+            // Tick many times — should never advance
+            for (int i = 0; i < 20; i++)
+                mfg.ProcessTick(game);
+
+            Assert.AreEqual(
+                0,
+                ship.ManufacturingProgress,
+                "Ship should make no progress without a shipyard"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_NoTrainingFacility_RegimentMakesNoProgress()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+            };
+            game.AttachNode(planet, sys);
+
+            // Add a shipyard but NOT a training facility
+            Building shipyard = new Building
+            {
+                InstanceID = "sy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Shipyard,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 10,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, regiment, ignoreCost: true);
+
+            for (int i = 0; i < 20; i++)
+                mfg.ProcessTick(game);
+
+            Assert.AreEqual(
+                0,
+                regiment.ManufacturingProgress,
+                "Regiment should make no progress without a training facility"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_NoConstructionYard_BuildingMakesNoProgress()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+            };
+            game.AttachNode(planet, sys);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ConstructionCost = 10,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, mine, ignoreCost: true);
+
+            for (int i = 0; i < 20; i++)
+                mfg.ProcessTick(game);
+
+            Assert.AreEqual(
+                0,
+                mine.ManufacturingProgress,
+                "Building should make no progress without a construction yard"
+            );
         }
 
         [Test]

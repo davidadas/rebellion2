@@ -21,6 +21,8 @@ public class GameConfig
     public ProductionConfig Production { get; set; } = new ProductionConfig();
     public PlanetConfig Planet { get; set; } = new PlanetConfig();
     public CombatConfig Combat { get; set; } = new CombatConfig();
+    public UprisingConfig Uprising { get; set; } = new UprisingConfig();
+    public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
@@ -100,8 +102,117 @@ public class GameConfig
         /// <summary>Ticks between AI decision cycles (default: 7)</summary>
         public int TickInterval { get; set; } = 7;
 
-        /// <summary>Mission dispatch probability tables (from original MSTB .DAT files)</summary>
+        /// <summary>Mission dispatch probability tables.</summary>
         public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
+
+        /// <summary>Garrison requirement parameters.</summary>
+        public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
+    }
+
+    /// <summary>
+    /// Garrison requirement configuration.
+    /// Controls how many troops a planet needs based on popular support.
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class GarrisonConfig
+    {
+        /// <summary>
+        /// Popular support threshold below which garrison troops are required.
+        /// </summary>
+        public int SupportThreshold { get; set; } = 60;
+
+        /// <summary>
+        /// Divisor for garrison calculation: ceil((threshold - support) / divisor).
+        /// </summary>
+        public int GarrisonDivisor { get; set; } = 10;
+
+        /// <summary>
+        /// Multiplier applied to garrison requirement during an uprising.
+        /// </summary>
+        public int UprisingMultiplier { get; set; } = 2;
+    }
+
+    /// <summary>
+    /// Uprising system configuration.
+    /// Controls dice rolls, table lookups, and garrison-based uprising resolution.
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class UprisingConfig
+    {
+        /// <summary>Dice roll range (random 0..N). Default: 10 (rolls 0-9).</summary>
+        public int DiceRange { get; set; } = 10;
+
+        /// <summary>Addend to each dice roll. Default: 1 (so rolls are 1-9).</summary>
+        public int DiceAddend { get; set; } = 1;
+
+        /// <summary>
+        /// UPRIS1 table: maps combined uprising score to result.
+        /// Score >= 10 -> 2, >= 6 -> 1, >= 1 -> 0.
+        /// </summary>
+        public Dictionary<int, int> Upris1Table { get; set; } =
+            new Dictionary<int, int>
+            {
+                { 1, 0 },
+                { 6, 1 },
+                { 10, 2 },
+            };
+
+        /// <summary>
+        /// UPRIS2 table: maps combined uprising score to severity.
+        /// Score >= 12 -> 5, >= 11 -> 4, >= 9 -> 3, >= 1 -> 0.
+        /// </summary>
+        public Dictionary<int, int> Upris2Table { get; set; } =
+            new Dictionary<int, int>
+            {
+                { 1, 0 },
+                { 9, 3 },
+                { 11, 4 },
+                { 12, 5 },
+            };
+    }
+
+    /// <summary>
+    /// Support shift configuration.
+    /// Controls periodic popular support recovery and hostile force penalties.
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class SupportShiftConfig
+    {
+        /// <summary>Support must be at or below this for shift to apply. Default: 40.</summary>
+        public int ShiftThreshold { get; set; } = 40;
+
+        /// <summary>Lower boundary of middle bracket. Default: 20.</summary>
+        public int LowBracketCeiling { get; set; } = 20;
+
+        /// <summary>Upper boundary of middle bracket. Default: 30.</summary>
+        public int MidBracketCeiling { get; set; } = 30;
+
+        /// <summary>Base shift for support 0-20. Default: 75.</summary>
+        public int LowBracketShift { get; set; } = 75;
+
+        /// <summary>Base shift for support 21-30. Default: 50.</summary>
+        public int MidBracketShift { get; set; } = 50;
+
+        /// <summary>Base shift for support 31-40. Default: 25.</summary>
+        public int HighBracketShift { get; set; } = 25;
+
+        /// <summary>Penalty per hostile fleet. Default: 10.</summary>
+        public int FleetPenalty { get; set; } = 10;
+
+        /// <summary>Penalty per hostile fighter squadron. Default: 5.</summary>
+        public int FighterPenalty { get; set; } = 5;
+
+        /// <summary>Penalty per (adjusted) hostile troop. Default: 2.</summary>
+        public int TroopPenalty { get; set; } = 2;
+
+        /// <summary>Support shift when blockading fleet matches popular support side. Default: 1.</summary>
+        public int BlockadeMatchShift { get; set; } = 1;
+
+        /// <summary>Support shift when blockading fleet opposes popular support side. Default: -1.</summary>
+        public int BlockadeOpposeShift { get; set; } = -1;
     }
 
     /// <summary>
@@ -170,6 +281,12 @@ public class GameConfig
     {
         /// <summary>Multiplier for raw to refined materials (default: 50)</summary>
         public int RefinementMultiplier { get; set; } = 50;
+
+        /// <summary>Production penalty per hostile capital ship during blockade (default: 5).</summary>
+        public int BlockadeCapitalShipPenalty { get; set; } = 5;
+
+        /// <summary>Production penalty per hostile fighter during blockade (default: 2).</summary>
+        public int BlockadeFighterPenalty { get; set; } = 2;
     }
 
     /// <summary>
@@ -193,18 +310,26 @@ public class GameConfig
     /// <summary>
     /// Combat system configuration.
     /// Controls fleet assault strength calculations and combat resolution.
-    /// Source: FUN_0055d120_scale_capital_ship_assault_fleet_strength
     /// </summary>
     [Serializable]
     [PersistableObject]
     public class CombatConfig
     {
         /// <summary>
-        /// Personnel divisor for assault strength calculation (GENERAL_PARAM_1537).
-        /// Formula: assault_strength = (personnel / divisor + 1) * fleet_combat_value
-        /// Default: 10 (estimated from typical gameplay values)
+        /// Personnel divisor for assault strength calculation.
+        /// Formula: assault_strength = (personnel / divisor + 1) * fleet_combat_value.
         /// </summary>
-        public int AssaultPersonnelDivisor { get; set; } = 10;
+        public int AssaultPersonnelDivisor { get; set; } = 40;
+
+        /// <summary>
+        /// Dice roll threshold for a planetary assault to succeed (roll must be below this).
+        /// </summary>
+        public int AssaultSuccessThreshold { get; set; } = 50;
+
+        /// <summary>
+        /// Upper bound of the dice roll range for planetary assault success checks.
+        /// </summary>
+        public int AssaultRollRange { get; set; } = 100;
     }
 
     /// <summary>

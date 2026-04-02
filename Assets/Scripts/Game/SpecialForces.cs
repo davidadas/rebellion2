@@ -21,6 +21,7 @@ namespace Rebellion.Game
         // Manufacturing Info
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public string ManufacturingDestinationID { get; set; }
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
