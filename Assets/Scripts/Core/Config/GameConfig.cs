@@ -119,14 +119,26 @@ public class GameConfig
         /// <summary>SubdueUprising dispatch table (SUBDMSTB_DAT). Score = (combat - popular_support) + rank</summary>
         public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Espionage dispatch table (ESPIMSTB_DAT) — for future use</summary>
+        /// <summary>Espionage dispatch table (ESPIMSTB_DAT). Score = officer.espionage</summary>
         public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>InciteUprising dispatch table (INCTMSTB_DAT) — for future use</summary>
+        /// <summary>InciteUprising dispatch table (INCTMSTB_DAT). Score = (espionage - enemy_support) - enemy_strength</summary>
         public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 
-        /// <summary>Rescue dispatch table (RESCMSTB_DAT) — for future use</summary>
+        /// <summary>Rescue dispatch table (RESCMSTB_DAT). Score = captured_officer.combat</summary>
         public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Sabotage dispatch table (SBTGMSTB_DAT). Score = (attacker.espionage + defender.combat) / 2</summary>
+        public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Abduction dispatch table (ABDCMSTB_DAT). Score = attacker.combat - target.combat</summary>
+        public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Assassination dispatch table (ASSNMSTB_DAT). Score = attacker.combat - target.combat</summary>
+        public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Recruitment dispatch table (RCRTMSTB_DAT). Score = officer.diplomacy</summary>
+        public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
     }
 
     /// <summary>
@@ -241,13 +253,48 @@ public class GameConfig
     {
         public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
+        public Dictionary<int, int> Decoy { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> DeathStarSabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
+        public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
+        public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
+    }
+
+    [Serializable]
+    [PersistableObject]
+    public class MissionTickConfig
+    {
+        public int Min { get; set; }
+        public int Max { get; set; }
+    }
+
+    [Serializable]
+    [PersistableObject]
+    public class MissionTickRangesConfig
+    {
+        public MissionTickConfig Abduction { get; set; } =
+            new MissionTickConfig { Min = 15, Max = 20 };
+        public MissionTickConfig Assassination { get; set; } =
+            new MissionTickConfig { Min = 15, Max = 20 };
+        public MissionTickConfig Diplomacy { get; set; } =
+            new MissionTickConfig { Min = 5, Max = 10 };
+        public MissionTickConfig Espionage { get; set; } =
+            new MissionTickConfig { Min = 10, Max = 20 };
+        public MissionTickConfig InciteUprising { get; set; } =
+            new MissionTickConfig { Min = 10, Max = 20 };
+        public MissionTickConfig Recruitment { get; set; } =
+            new MissionTickConfig { Min = 15, Max = 20 };
+        public MissionTickConfig Rescue { get; set; } =
+            new MissionTickConfig { Min = 10, Max = 20 };
+        public MissionTickConfig Sabotage { get; set; } =
+            new MissionTickConfig { Min = 10, Max = 15 };
+        public MissionTickConfig SubdueUprising { get; set; } =
+            new MissionTickConfig { Min = 10, Max = 15 };
     }
 }

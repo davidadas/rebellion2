@@ -19,16 +19,20 @@ namespace Rebellion.Systems
         private readonly OwnershipSystem ownershipSystem;
         private readonly MissionFactory missionFactory;
 
+        /// <summary>
+        /// Creates a MissionSystem wired to the given game, movement, and ownership systems.
+        /// </summary>
         public MissionSystem(
             GameRoot game,
             MovementSystem movementManager,
-            OwnershipSystem ownershipSystem
+            OwnershipSystem ownershipSystem,
+            FogOfWarSystem fogOfWar = null
         )
         {
             this.game = game;
             this.movementManager = movementManager;
             this.ownershipSystem = ownershipSystem;
-            this.missionFactory = new MissionFactory(game);
+            this.missionFactory = new MissionFactory(game, fogOfWar);
         }
 
         /// <summary>
@@ -84,6 +88,13 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
+            // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
+            if (mission.IsCanceled(game))
+            {
+                TearDownMission(mission, results);
+                return results;
+            }
+
             mission.IncrementProgress();
 
             if (!mission.IsComplete())
@@ -112,27 +123,43 @@ namespace Rebellion.Systems
             }
             else
             {
-                Planet missionPlanet = mission.GetParent() as Planet;
-                Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
-                Planet nearestPlanet = faction.GetNearestFriendlyPlanetTo(mission);
-                if (nearestPlanet == null)
+                TearDownMission(mission, results);
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Moves all participants to the nearest friendly planet and detaches the mission.
+        /// Called both when CanContinue returns false after completion and when IsCanceled
+        /// fires as a pre-tick guard.
+        /// </summary>
+        private void TearDownMission(Mission mission, List<GameResult> results)
+        {
+            Planet missionPlanet = mission.GetParent() as Planet;
+            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Planet nearestPlanet = faction.GetNearestFriendlyPlanetTo(mission);
+            if (nearestPlanet == null)
+            {
+                if (missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
+                    nearestPlanet = missionPlanet;
+            }
+
+            List<IMissionParticipant> allParticipants = mission.GetAllParticipants();
+
+            foreach (IMovable movable in allParticipants.Cast<IMovable>())
+            {
+                ISceneNode participantNode = (ISceneNode)movable;
+
+                if (nearestPlanet != null)
                 {
-                    if (missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
-                        nearestPlanet = missionPlanet;
-                }
-
-                List<IMissionParticipant> allParticipants = mission.GetAllParticipants();
-
-                foreach (IMovable movable in allParticipants.Cast<IMovable>())
-                {
-                    ISceneNode participantNode = (ISceneNode)movable;
-
-                    if (nearestPlanet != null)
+                    // RequestMove reparents the participant to nearestPlanet on success,
+                    // which calls mission.RemoveChild and drains the participant lists.
+                    // It silently returns (without reparenting) for captured officers or on
+                    // SceneAccessException. Check the parent to confirm the move succeeded.
+                    movementManager.RequestMove(movable, nearestPlanet);
+                    if (participantNode.GetParent() == nearestPlanet)
                     {
-                        // RequestMove immediately reparents the participant to nearestPlanet,
-                        // which calls mission.RemoveChild and drains the participant lists.
-                        // DetachNode below will find no children to deregister.
-                        movementManager.RequestMove(movable, nearestPlanet);
                         results.Add(
                             new CharacterMovedResult
                             {
@@ -143,13 +170,22 @@ namespace Rebellion.Systems
                             }
                         );
                     }
-                    // If nearestPlanet is null the faction has no planets; officer is lost.
+                    else if (missionPlanet != null)
+                    {
+                        // RequestMove was rejected; reparent to the mission planet so the
+                        // participant is not orphaned when DetachNode(mission) runs below.
+                        game.AttachNode(participantNode, missionPlanet);
+                    }
                 }
-
-                game.DetachNode(mission);
+                else if (missionPlanet != null)
+                {
+                    // No friendly planet; keep participant at the current planet rather than
+                    // losing them when the mission node is detached.
+                    game.AttachNode(participantNode, missionPlanet);
+                }
             }
 
-            return results;
+            game.DetachNode(mission);
         }
 
         /// <summary>

@@ -645,7 +645,7 @@ namespace Rebellion.Game
         /// <param name="officer">The officer to add.</param>
         private void AddOfficer(Officer officer)
         {
-            if (officer.GetOwnerInstanceID() != this.OwnerInstanceID)
+            if (!officer.IsCaptured && officer.GetOwnerInstanceID() != this.OwnerInstanceID)
             {
                 throw new SceneAccessException(officer, this);
             }

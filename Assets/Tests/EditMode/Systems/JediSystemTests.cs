@@ -62,7 +62,10 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(1, results.Count);
@@ -76,7 +79,10 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 150, ForceTier.Training);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Experienced, luke.ForceTier);
             Assert.AreEqual(2, results.Count);
@@ -89,7 +95,10 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 49, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Aware, luke.ForceTier);
             Assert.AreEqual(0, results.Count);
@@ -100,7 +109,10 @@ namespace Rebellion.Tests.Systems
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(1, results.Count);
@@ -112,7 +124,10 @@ namespace Rebellion.Tests.Systems
             // Palpatine starts at 150 XP from None
             Officer palpatine = CreateOfficer("PALPATINE", 100, 150, ForceTier.None);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Experienced, palpatine.ForceTier);
             Assert.AreEqual(2, results.Count);
@@ -125,7 +140,10 @@ namespace Rebellion.Tests.Systems
         {
             Officer palpatine = CreateOfficer("PALPATINE", 0, 0, ForceTier.None);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.None, palpatine.ForceTier);
             Assert.AreEqual(0, results.Count);
@@ -137,7 +155,10 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
             Officer leia = CreateOfficer("LEIA", 100, 150, ForceTier.Training);
 
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.AreEqual(ForceTier.Experienced, leia.ForceTier);
@@ -151,7 +172,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30; // Detection interval
 
             FixedRNG rng = new FixedRNG(0.01); // Roll < 0.15 (DetectProbTraining)
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
             Assert.IsTrue(results.Any(r => r.EventType == JediEventType.JediDiscovered));
@@ -164,7 +185,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             FixedRNG rng = new FixedRNG(0.99); // Roll > 0.15
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsFalse(luke.IsDiscoveredJedi);
             Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
@@ -178,7 +199,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 60; // Multiple intervals passed
 
             FixedRNG rng = new FixedRNG(0.01); // Low roll
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
         }
@@ -190,7 +211,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 29; // One tick before interval
 
             FixedRNG rng = new FixedRNG(0.01);
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsFalse(luke.IsDiscoveredJedi);
             Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
@@ -204,7 +225,7 @@ namespace Rebellion.Tests.Systems
 
             // Roll 0.04 < 0.05 (DetectProbAware) → should detect
             FixedRNG rng = new FixedRNG(0.04);
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
         }
@@ -217,7 +238,7 @@ namespace Rebellion.Tests.Systems
 
             // Roll 0.29 < 0.30 (DetectProbExperienced) → should detect
             FixedRNG rng = new FixedRNG(0.29);
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsTrue(palpatine.IsDiscoveredJedi);
         }
@@ -229,7 +250,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             FixedRNG rng = new FixedRNG(0.0); // Guaranteed roll
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsFalse(palpatine.IsDiscoveredJedi);
         }
@@ -241,12 +262,15 @@ namespace Rebellion.Tests.Systems
             game.Config.Jedi.XpToExperienced = 200;
 
             Officer luke = CreateOfficer("LUKE", 100, 99, ForceTier.Aware);
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(ForceTier.Aware, luke.ForceTier); // Still Aware at 99 XP
 
             luke.ForceExperience = 100;
-            results = manager.ProcessTick(game, new FixedRNG());
+            results = manager.ProcessTick(game, new FixedRNG()).OfType<JediResult>().ToList();
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier); // Advances at 100 XP
         }
@@ -260,12 +284,12 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             FixedRNG rng = new FixedRNG(0.01);
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsFalse(luke.IsDiscoveredJedi); // 30 % 50 != 0
 
             game.CurrentTick = 50;
-            results = manager.ProcessTick(game, rng);
+            results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsTrue(luke.IsDiscoveredJedi); // 50 % 50 == 0
         }
@@ -279,7 +303,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             FixedRNG rng = new FixedRNG(0.49); // Just below threshold
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.IsTrue(luke.IsDiscoveredJedi);
         }
@@ -287,7 +311,10 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
-            List<JediResult> results = manager.ProcessTick(game, new FixedRNG());
+            List<JediResult> results = manager
+                .ProcessTick(game, new FixedRNG())
+                .OfType<JediResult>()
+                .ToList();
 
             Assert.AreEqual(0, results.Count);
         }
@@ -299,7 +326,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 30;
 
             FixedRNG rng = new FixedRNG(0.01); // Low roll for detection
-            List<JediResult> results = manager.ProcessTick(game, rng);
+            List<JediResult> results = manager.ProcessTick(game, rng).OfType<JediResult>().ToList();
 
             Assert.AreEqual(ForceTier.Training, luke.ForceTier);
             Assert.IsTrue(luke.IsDiscoveredJedi);

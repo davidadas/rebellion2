@@ -1,28 +1,27 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
-public class AbductionMission : Mission
+public class RescueMission : Mission
 {
     public string TargetOfficerInstanceID { get; set; }
 
     public override bool CanceledOnOwnershipChange => false;
 
-    public AbductionMission()
+    public RescueMission()
         : base()
     {
-        Name = "Abduction";
+        Name = "Rescue";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 15;
+        MinTicks = 10;
         MaxTicks = 20;
     }
 
-    public AbductionMission(
+    public RescueMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
@@ -31,14 +30,14 @@ public class AbductionMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Abduction",
+            "Rescue",
             ownerInstanceId,
-            RequirePlanetTarget(target, "Abduction").GetInstanceID(),
+            RequirePlanetTarget(target, "Rescue").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
             successProbabilityTable,
-            minTicks: 15,
+            minTicks: 10,
             maxTicks: 20
         )
     {
@@ -49,34 +48,34 @@ public class AbductionMission : Mission
     }
 
     /// <summary>
-    /// Returns false if the target officer has already been captured or has moved
+    /// Returns false if the target officer is no longer captured or has moved
     /// away from the mission's planet before execution.
     /// </summary>
     protected override bool IsTargetValid(GameRoot game)
     {
-        Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return target != null
-            && !target.IsCaptured
-            && target.GetParentOfType<Planet>() == GetParent() as Planet;
+        Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+        return captive != null
+            && captive.IsCaptured
+            && captive.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 
     /// <summary>
-    /// Marks the target officer as captured and assigns the captor faction.
+    /// Clears the captured state and captor from the rescued officer.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)
             return new List<GameResult>();
-        target.IsCaptured = true;
-        target.CaptorInstanceID = OwnerInstanceID;
+        target.IsCaptured = false;
+        target.CaptorInstanceID = null;
 
         return new List<GameResult>
         {
-            new CharacterCapturedResult
+            new OfficerRescuedResult
             {
-                CharacterInstanceID = target.InstanceID,
-                CapturingFactionInstanceID = OwnerInstanceID,
+                OfficerInstanceID = target.InstanceID,
+                RescuingFactionInstanceID = OwnerInstanceID,
                 LocationInstanceID = (GetParent() as Planet)?.InstanceID,
                 Tick = game.CurrentTick,
             },
@@ -86,13 +85,13 @@ public class AbductionMission : Mission
     public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Abduction);
-        MinTicks = tables.TickRanges.Abduction.Min;
-        MaxTicks = tables.TickRanges.Abduction.Max;
+        SuccessProbabilityTable = new ProbabilityTable(tables.Rescue);
+        MinTicks = tables.TickRanges.Rescue.Min;
+        MaxTicks = tables.TickRanges.Rescue.Max;
     }
 
     /// <summary>
-    /// Abduction missions do not repeat — one attempt per mission.
+    /// Rescue missions do not repeat — one attempt per mission.
     /// </summary>
     public override bool CanContinue(GameRoot game)
     {

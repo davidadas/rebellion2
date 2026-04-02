@@ -52,15 +52,53 @@ namespace Rebellion.Systems
         public void RequestMove(IMovable unit, ISceneNode destination)
         {
             if (unit == null)
-            {
                 throw new ArgumentNullException(nameof(unit));
-            }
-
             if (destination == null)
-            {
                 throw new ArgumentNullException(nameof(destination));
+
+            if (unit is Officer capturedOfficer && capturedOfficer.IsCaptured)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
+                );
+                return;
             }
 
+            ExecuteMove(unit, destination);
+        }
+
+        public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
+        {
+            if (units == null)
+                throw new ArgumentNullException(nameof(units));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            foreach (IMovable unit in units)
+            {
+                if (unit is Officer o && o.IsCaptured)
+                {
+                    bool hasEscort = units.Any(u =>
+                        !ReferenceEquals(u, unit)
+                        && !(u is Officer uo && uo.IsCaptured)
+                        && u.GetOwnerInstanceID() == o.CaptorInstanceID
+                    );
+
+                    if (!hasEscort)
+                    {
+                        GameLogger.Warning(
+                            $"RequestGroupMove: {unit.GetDisplayName()} has no escort from capturing faction — excluded."
+                        );
+                        continue;
+                    }
+                }
+
+                ExecuteMove(unit, destination);
+            }
+        }
+
+        private void ExecuteMove(IMovable unit, ISceneNode destination)
+        {
             Planet destinationPlanet = destination is Planet planet
                 ? planet
                 : destination.GetParentOfType<Planet>();

@@ -507,6 +507,36 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BuildFactionView_LivePlanet_StaleSnapshotFriendlyFleet_NotShown()
+        {
+            // Fleet A is snapshotted at coruscant, then moves away.
+            // Fleet B (a different friendly fleet) arrives and makes the planet live.
+            // The view must show only Fleet B — the stale snapshot entry for Fleet A must not appear.
+            Fleet fleetA = CreateFleet("FLEET_A", alliance);
+            game.AttachNode(fleetA, coruscant);
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            hoth.OwnerInstanceID = alliance.InstanceID;
+            game.MoveNode(fleetA, hoth);
+
+            Fleet fleetB = CreateFleet("FLEET_B", alliance);
+            game.AttachNode(fleetB, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Only the live fleet should appear");
+            Assert.AreEqual(
+                "FLEET_B",
+                viewCoruscant.Fleets[0].InstanceID,
+                "Stale snapshot fleet must not bleed into live view"
+            );
+        }
+
+        [Test]
         public void BuildFactionView_VaderMovesWithoutObservation_StaleIntelPersists()
         {
             Officer vader = CreateOfficer("VADER", empire);
@@ -786,6 +816,96 @@ namespace Rebellion.Tests.Systems
                 "STORMTROOPERS",
                 viewPlanet.Regiments[0].InstanceID,
                 "Regiment InstanceID should be preserved"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnLivePlanet()
+        {
+            // Leia is captured on Coruscant. Alliance sends a fleet (real-time visibility).
+            // Captured friendly officers are always live data — must appear regardless.
+            Fleet allianceFleet = CreateFleet("FLEET1", alliance);
+            game.AttachNode(allianceFleet, coruscant);
+
+            Officer leia = CreateOfficer("LEIA", alliance);
+            leia.IsCaptured = true;
+            game.AttachNode(leia, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(
+                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                "Captured friendly officer must appear as live data on a visible planet"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnSnapshotPlanet()
+        {
+            // Leia is captured on Coruscant. Alliance has a snapshot but no current visibility.
+            // Captured friendly officers are always live data — must appear even via snapshot path.
+            Officer vader = CreateOfficer("VADER", empire);
+            game.AttachNode(vader, coruscant);
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            Officer leia = CreateOfficer("LEIA", alliance);
+            leia.IsCaptured = true;
+            game.AttachNode(leia, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(
+                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                "Captured friendly officer must appear as live data even when planet is only known via snapshot"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_CapturedFriendlyOfficer_VisibleOnUnexploredPlanet()
+        {
+            // Leia is captured on Coruscant. Alliance has never observed the planet.
+            // Captured friendly officers are always live data — must appear even on unexplored planets.
+            Officer leia = CreateOfficer("LEIA", alliance);
+            leia.IsCaptured = true;
+            game.AttachNode(leia, coruscant);
+
+            GalaxyMap view = fogSystem.BuildFactionView(alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(
+                viewCoruscant.Officers.Any(o => o.InstanceID == "LEIA"),
+                "Captured friendly officer must appear as live data even on a completely unexplored planet"
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_CapturedFriendlyOfficer_NotIncludedInSnapshot()
+        {
+            // Leia is captured on Coruscant. Snapshots must not include captured friendly officers
+            // because they are always surfaced as live data — snapshotting them would be redundant
+            // and could produce stale copies that conflict with live position.
+            Officer leia = CreateOfficer("LEIA", alliance);
+            leia.IsCaptured = true;
+            game.AttachNode(leia, coruscant);
+
+            fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
+
+            PlanetSnapshot snapshot = alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
+
+            Assert.IsFalse(
+                snapshot.Officers.Any(o => o.InstanceID == "LEIA"),
+                "Captured friendly officer must not be included in snapshots — they are live data"
             );
         }
 

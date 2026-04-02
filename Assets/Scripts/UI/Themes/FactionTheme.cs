@@ -63,6 +63,19 @@ public class PlanetOverlayTheme
 }
 
 [PersistableObject]
+public class MissionsPaneTheme
+{
+    public MissionTabsTheme MissionTabs { get; set; }
+}
+
+[PersistableObject]
+public class MissionTabsTheme
+{
+    public FleetTabIconSet PrimaryParticipants { get; set; }
+    public FleetTabIconSet SecondaryParticipants { get; set; }
+}
+
+[PersistableObject]
 public class PlanetWindowTheme
 {
     public BuildingsPaneTheme BuildingsPane { get; set; }
@@ -70,6 +83,8 @@ public class PlanetWindowTheme
     public FleetsPaneTheme FleetsPane { get; set; }
 
     public GarrisonPanelTheme GarrisonPanel { get; set; }
+
+    public MissionsPaneTheme MissionsPane { get; set; }
 }
 
 [PersistableObject]
@@ -203,6 +218,11 @@ public class FactionTheme
     public BuildingsPaneTheme GetBuildingsPaneTheme()
     {
         return PlanetWindowTheme?.BuildingsPane;
+    }
+
+    public MissionsPaneTheme GetMissionsPaneTheme()
+    {
+        return PlanetWindowTheme?.MissionsPane;
     }
 }
 

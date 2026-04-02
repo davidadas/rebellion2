@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -40,18 +41,82 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Resolves all AI-vs-AI combat encounters this tick in a single pass.
+        /// When a player-involved encounter is found, emits a PendingCombatResult and stops —
+        /// the caller is responsible for freezing the tick until the player resolves it.
+        /// </summary>
+        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
+        {
+            List<GameResult> results = new List<GameResult>();
+            HashSet<string> foughtThisTick = new HashSet<string>();
+
+            while (
+                TryStartCombatExcluding(game, foughtThisTick, out CombatDecisionContext decision)
+            )
+            {
+                Fleet attackerFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                    decision.AttackerFleetInstanceID
+                );
+                Fleet defenderFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                    decision.DefenderFleetInstanceID
+                );
+                Faction attacker = game.GetFactionByOwnerInstanceID(
+                    attackerFleet?.GetOwnerInstanceID()
+                );
+                Faction defender = game.GetFactionByOwnerInstanceID(
+                    defenderFleet?.GetOwnerInstanceID()
+                );
+
+                if (
+                    attacker != null
+                    && defender != null
+                    && attacker.IsAIControlled()
+                    && defender.IsAIControlled()
+                )
+                {
+                    Resolve(game, decision, autoResolve: true, rng);
+                    foughtThisTick.Add(decision.AttackerFleetInstanceID);
+                    foughtThisTick.Add(decision.DefenderFleetInstanceID);
+                }
+                else
+                {
+                    results.Add(
+                        new PendingCombatResult
+                        {
+                            AttackerFleetInstanceID = decision.AttackerFleetInstanceID,
+                            DefenderFleetInstanceID = decision.DefenderFleetInstanceID,
+                            Tick = game.CurrentTick,
+                        }
+                    );
+                    return results;
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
         /// Detects the first hostile fleet encounter this tick.
         /// If found, sets decision and returns true — the tick must stop immediately.
         /// The encounter is NOT resolved here; call Resolve() after player decision.
         /// </summary>
-        public bool TryStartCombat(GameRoot game, out CombatDecisionContext decision)
+        public bool TryStartCombat(GameRoot game, out CombatDecisionContext decision) =>
+            TryStartCombatExcluding(game, new HashSet<string>(), out decision);
+
+        /// <summary>
+        /// Detects the first hostile fleet encounter excluding any fleet IDs already resolved
+        /// this tick. Used by ProcessTick to prevent Draw outcomes from causing re-detection.
+        /// </summary>
+        private bool TryStartCombatExcluding(
+            GameRoot game,
+            HashSet<string> excludedIDs,
+            out CombatDecisionContext decision
+        )
         {
             decision = null;
 
-            if (!DetectFleetCollision(game, out Fleet attacker, out Fleet defender))
-            {
+            if (!DetectFleetCollision(game, excludedIDs, out Fleet attacker, out Fleet defender))
                 return false;
-            }
 
             attacker.IsInCombat = true;
             defender.IsInCombat = true;
@@ -96,10 +161,16 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Finds the first pair of hostile fleets occupying the same planet.
-        /// Skips fleets already engaged in a pending combat encounter.
+        /// Skips fleets already engaged in a pending combat encounter or already resolved
+        /// this tick (via excludedIDs).
         /// Faction groups are sorted by owner ID for deterministic selection.
         /// </summary>
-        private bool DetectFleetCollision(GameRoot game, out Fleet attacker, out Fleet defender)
+        private bool DetectFleetCollision(
+            GameRoot game,
+            HashSet<string> excludedIDs,
+            out Fleet attacker,
+            out Fleet defender
+        )
         {
             attacker = null;
             defender = null;
@@ -107,7 +178,10 @@ namespace Rebellion.Systems
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
                 List<Fleet> fleets = planet
-                    .GetChildren<Fleet>(f => !f.IsInCombat, recurse: false)
+                    .GetChildren<Fleet>(
+                        f => !f.IsInCombat && !excludedIDs.Contains(f.GetInstanceID()),
+                        recurse: false
+                    )
                     .ToList();
 
                 if (fleets.Count < 2)

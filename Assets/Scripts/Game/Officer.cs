@@ -44,6 +44,8 @@ namespace Rebellion.Game
         public bool IsMain { get; set; }
         public bool IsRecruitable { get; set; }
         public bool IsCaptured { get; set; }
+        public string CaptorInstanceID { get; set; }
+        public bool IsKilled { get; set; }
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
         public bool IsForceSensitive { get; set; }
@@ -120,6 +122,9 @@ namespace Rebellion.Game
                 { MissionParticipantSkill.Leadership, 0 },
             };
         public bool CanImproveMissionSkill => true;
+
+        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
+            Skills[skill] = value;
 
         /// <summary>
         /// Default constructor used for deserialization.

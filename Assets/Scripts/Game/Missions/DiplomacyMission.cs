@@ -8,20 +8,12 @@ using Rebellion.Util.Common;
 
 public class DiplomacyMission : Mission
 {
-    /// <summary>
-    /// Default constructor used for deserialization.
-    /// </summary>
     public DiplomacyMission()
         : base()
-    // @TODO: Move the success probability variables to configs.
     {
         Name = "Diplomacy";
+        DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
-        QuadraticCoefficient = 0.005558;
-        LinearCoefficient = 0.7656;
-        ConstantTerm = 20.15;
-        MinSuccessProbability = 1;
-        MaxSuccessProbability = 100;
         MinTicks = 5;
         MaxTicks = 10;
     }
@@ -36,57 +28,60 @@ public class DiplomacyMission : Mission
         : base(
             "Diplomacy",
             ownerInstanceId,
-            target.GetInstanceID(),
+            RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Diplomacy,
             successProbabilityTable,
-            quadraticCoefficient: 0.005558,
-            linearCoefficient: 0.7656,
-            constantTerm: 20.15,
-            minSuccessProbability: 1,
-            maxSuccessProbability: 100,
-            minTicks: 15,
-            maxTicks: 20
+            minTicks: 5,
+            maxTicks: 10
         )
     {
-        if (target == null)
-            throw new ArgumentNullException(nameof(target), "The target cannot be null.");
-
-        if (!(target is Planet))
-            throw new InvalidOperationException(
-                $"The target must be a planet. Target type: {target.GetType().Name}"
-            );
-
         Planet planet = (Planet)target;
 
         if (!planet.IsColonized)
             throw new InvalidOperationException(
-                $"The target planet '{planet.DisplayName}' cannot perform diplomacy. The planet is not colonized."
+                $"Diplomacy target planet '{planet.DisplayName}' is not colonized."
             );
 
         if (planet.GetPopularSupport(ownerInstanceId) == 100)
             throw new InvalidOperationException(
-                $"The target planet '{planet.DisplayName}' already has maximum popular support."
+                $"Diplomacy target planet '{planet.DisplayName}' already has maximum popular support."
             );
 
         string planetOwner = planet.GetOwnerInstanceID();
         if (planetOwner != null && planetOwner != ownerInstanceId)
             throw new InvalidOperationException(
-                $"The target planet '{planet.DisplayName}' is owned by another faction and cannot perform diplomacy."
+                $"Diplomacy target planet '{planet.DisplayName}' is owned by another faction."
             );
 
         if (planet.IsInUprising)
             throw new InvalidOperationException(
-                $"The target planet '{planet.DisplayName}' is in an uprising and cannot perform diplomacy."
+                $"Diplomacy target planet '{planet.DisplayName}' is in an uprising."
             );
     }
 
+    /// <summary>
+    /// Returns false if the planet's state makes further diplomacy invalid at execution time.
+    /// </summary>
+    protected override bool IsTargetValid(GameRoot game)
+    {
+        return GetParent() is Planet p
+            && p.IsColonized
+            && !p.IsInUprising
+            && (p.GetOwnerInstanceID() == null || p.GetOwnerInstanceID() == OwnerInstanceID)
+            && p.GetPopularSupport(OwnerInstanceID) < 100;
+    }
+
+    /// <summary>
+    /// Increments popular support and emits a PlanetOwnershipChangedResult when support
+    /// crosses 60 and the planet is not yet owned by this faction.
+    /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game)
     {
-        if (!(GetParent() is Planet planet))
+        Planet planet = GetParent() as Planet;
+        if (planet == null)
             return new List<GameResult>();
-
         List<GameResult> results = new List<GameResult>();
 
         int currentSupport = planet.GetPopularSupport(OwnerInstanceID);
@@ -115,6 +110,7 @@ public class DiplomacyMission : Mission
         string previousOwner = planet.GetOwnerInstanceID();
         if (planet.GetPopularSupport(OwnerInstanceID) > 60 && previousOwner != OwnerInstanceID)
         {
+            GameLogger.Log($"Planet {planet.InstanceID} ownership changed to {OwnerInstanceID}.");
             results.Add(
                 new PlanetOwnershipChangedResult
                 {
@@ -129,8 +125,30 @@ public class DiplomacyMission : Mission
         return results;
     }
 
+    /// <summary>
+    /// Diplomacy missions are never foiled — they target own or neutral planets.
+    /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
+    /// <summary>
+    /// Extends base cancellation to also cancel when the target planet enters uprising.
+    /// </summary>
+    public override bool IsCanceled(GameRoot game)
+    {
+        return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
+    }
+
+    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
+    {
+        base.Configure(tables);
+        SuccessProbabilityTable = new ProbabilityTable(tables.Diplomacy);
+        MinTicks = tables.TickRanges.Diplomacy.Min;
+        MaxTicks = tables.TickRanges.Diplomacy.Max;
+    }
+
+    /// <summary>
+    /// Returns true while the planet remains eligible for further diplomacy attempts.
+    /// </summary>
     public override bool CanContinue(GameRoot game)
     {
         if (GetParent() is Planet planet)
@@ -139,7 +157,8 @@ public class DiplomacyMission : Mission
                     planet.GetOwnerInstanceID() == GetOwnerInstanceID()
                     || planet.GetOwnerInstanceID() == null
                 )
-                && planet.GetPopularSupport(GetOwnerInstanceID()) < 100;
+                && planet.GetPopularSupport(GetOwnerInstanceID()) < 100
+                && !planet.IsInUprising;
         }
         return false;
     }

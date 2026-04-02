@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -128,6 +129,112 @@ namespace Rebellion.Tests.Game.Missions
                 "Support should still increment"
             );
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
+        }
+
+        [Test]
+        public void IsCanceled_WhenUprisingStarts_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+            planet.BeginUprising();
+
+            Assert.IsTrue(
+                mission.IsCanceled(game),
+                "Diplomacy mission should be canceled when target planet enters uprising"
+            );
+        }
+
+        [Test]
+        public void Constructor_PlanetNotColonized_Throws()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            planet.IsColonized = false;
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                new DiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_SupportAtMax_Throws()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 100);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                new DiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_PlanetOwnedByEnemy_Throws()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "rebels");
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                new DiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_PlanetInUprising_Throws()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
+            planet.BeginUprising();
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                new DiplomacyMission(
+                    "empire",
+                    planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>()
+                )
+            );
+        }
+
+        [Test]
+        public void OnSuccess_SupportReachesMaxBeforeExecution_ReturnsFailed()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planet);
+
+            DiplomacyMission mission = new DiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.Initiate(new StubRNG());
+
+            game.SetPlanetPopularSupport(planet, "empire", 100);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when support reaches 100 before execution"
+            );
         }
 
         [Test]

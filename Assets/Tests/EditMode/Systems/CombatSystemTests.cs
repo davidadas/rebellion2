@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -792,6 +793,84 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(detectedAgain, "Fleets already in combat should not be detected again");
             Assert.IsNull(second);
+        }
+
+        [Test]
+        public void ProcessTick_MultipleEncounters_AllAI_ResolvesAll()
+        {
+            GameRoot game = new GameRoot();
+            // No PlayerID = IsAIControlled() returns true
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            // Three planets, each with one empire fleet and one alliance fleet
+            for (int i = 1; i <= 3; i++)
+            {
+                PlanetSystem sys = new PlanetSystem { InstanceID = $"sys{i}" };
+                Planet planet = new Planet { InstanceID = $"p{i}" };
+                game.AttachNode(sys, game.Galaxy);
+                game.AttachNode(planet, sys);
+                CreateFleet(game, $"ef{i}", "empire", planet, 1, 1000, 20);
+                CreateFleet(game, $"af{i}", "alliance", planet, 1, 1000, 20);
+            }
+
+            // 2 RNG calls per engagement (one per side firing), 3 engagements = 6
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5, 0.5, 0.5);
+            CombatSystem manager = new CombatSystem(game, rng);
+
+            List<GameResult> results = manager.ProcessTick(game, rng);
+
+            Assert.IsFalse(
+                results.OfType<PendingCombatResult>().Any(),
+                "All AI encounters should auto-resolve with no pending decision"
+            );
+
+            for (int i = 1; i <= 3; i++)
+            {
+                Fleet ef = game.GetSceneNodeByInstanceID<Fleet>($"ef{i}");
+                Fleet af = game.GetSceneNodeByInstanceID<Fleet>($"af{i}");
+                Assert.IsNotNull(ef, $"Empire fleet at planet {i} should survive");
+                Assert.IsNotNull(af, $"Alliance fleet at planet {i} should survive");
+                Assert.Less(
+                    ef.CapitalShips[0].HullStrength,
+                    1000,
+                    $"Empire fleet at planet {i} should have taken damage"
+                );
+                Assert.Less(
+                    af.CapitalShips[0].HullStrength,
+                    1000,
+                    $"Alliance fleet at planet {i} should have taken damage"
+                );
+            }
+        }
+
+        [Test]
+        public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
+        {
+            GameRoot game = new GameRoot();
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(sys, game.Galaxy);
+            game.AttachNode(planet, sys);
+            CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+
+            QueueRNG rng = new QueueRNG();
+            CombatSystem manager = new CombatSystem(game, rng);
+
+            List<GameResult> results = manager.ProcessTick(game, rng);
+
+            Assert.IsTrue(
+                results.OfType<PendingCombatResult>().Any(),
+                "Player-involved encounter should emit a PendingCombatResult"
+            );
         }
 
         private Fleet CreateFleet(

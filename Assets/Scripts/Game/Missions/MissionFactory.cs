@@ -1,19 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 /// <summary>
-///
+/// Identifies the type of covert mission to create.
 /// </summary>
 public enum MissionType
 {
     Diplomacy,
     Recruitment,
     SubdueUprising,
+    Abduction,
+    Assassination,
+    Espionage,
+    Sabotage,
+    InciteUprising,
+    Rescue,
 }
 
 /// <summary>
@@ -22,10 +30,12 @@ public enum MissionType
 public class MissionFactory
 {
     private readonly GameRoot game;
+    private readonly FogOfWarSystem fogOfWar;
 
-    public MissionFactory(GameRoot game)
+    public MissionFactory(GameRoot game, FogOfWarSystem fogOfWar = null)
     {
         this.game = game;
+        this.fogOfWar = fogOfWar;
     }
 
     /// <summary>
@@ -45,32 +55,74 @@ public class MissionFactory
             ?.ProbabilityTables
             ?.Mission;
 
-        return missionType switch
+        Mission mission = missionType switch
         {
             MissionType.Diplomacy => new DiplomacyMission(
                 ownerInstanceId,
                 target,
                 mainParticipants,
-                decoyParticipants,
-                missionTables != null ? new ProbabilityTable(missionTables.Diplomacy) : null
+                decoyParticipants
             ),
             MissionType.Recruitment => new RecruitmentMission(
                 ownerInstanceId,
                 target,
                 mainParticipants,
                 decoyParticipants,
-                SelectRecruitmentTarget(ownerInstanceId, provider),
-                missionTables != null ? new ProbabilityTable(missionTables.Recruitment) : null
+                SelectRecruitmentTarget(ownerInstanceId, provider)
             ),
             MissionType.SubdueUprising => new SubdueUprisingMission(
                 ownerInstanceId,
                 target,
                 mainParticipants,
+                decoyParticipants
+            ),
+            MissionType.Abduction => new AbductionMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
                 decoyParticipants,
-                missionTables != null ? new ProbabilityTable(missionTables.SubdueUprising) : null
+                SelectAbductionTarget(ownerInstanceId, target, provider)
+            ),
+            MissionType.Assassination => new AssassinationMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                SelectAssassinationTarget(ownerInstanceId, target, provider)
+            ),
+            MissionType.Espionage => new EspionageMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                fogOfWar
+            ),
+            MissionType.Sabotage => new SabotageMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            ),
+            MissionType.InciteUprising => new InciteUprisingMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            ),
+            MissionType.Rescue => new RescueMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                SelectRescueTarget(ownerInstanceId, target, provider)
             ),
             _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
         };
+
+        if (missionTables != null)
+            mission.Configure(missionTables);
+
+        return mission;
     }
 
     /// <summary>
@@ -137,5 +189,60 @@ public class MissionFactory
         if (unrecruited.Count == 0 || provider == null)
             return null;
         return unrecruited.RandomElement(provider).InstanceID;
+    }
+
+    private string SelectAbductionTarget(
+        string ownerInstanceId,
+        ISceneNode target,
+        IRandomNumberProvider provider
+    )
+    {
+        if (!(target is Planet planet) || provider == null)
+            return null;
+        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
+            .Where(o =>
+                o.GetOwnerInstanceID() != ownerInstanceId
+                && o.GetParentOfType<Planet>() == planet
+                && !o.IsCaptured
+            )
+            .ToList();
+        return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
+    }
+
+    private string SelectAssassinationTarget(
+        string ownerInstanceId,
+        ISceneNode target,
+        IRandomNumberProvider provider
+    )
+    {
+        if (!(target is Planet planet) || provider == null)
+            return null;
+        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
+            .Where(o =>
+                o.GetOwnerInstanceID() != ownerInstanceId
+                && o.GetParentOfType<Planet>() == planet
+                && !o.IsCaptured
+                && !o.IsKilled
+            )
+            .ToList();
+        return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
+    }
+
+    private string SelectRescueTarget(
+        string ownerInstanceId,
+        ISceneNode target,
+        IRandomNumberProvider provider
+    )
+    {
+        if (!(target is Planet planet) || provider == null)
+            return null;
+        List<Officer> captured = game.GetSceneNodesByType<Officer>()
+            .Where(o =>
+                o.GetOwnerInstanceID() == ownerInstanceId
+                && o.IsCaptured
+                && o.GetParentOfType<Planet>() == planet
+            )
+            .ToList();
+        return captured.Count > 0 ? captured.RandomElement(provider).InstanceID : null;
     }
 }

@@ -14,6 +14,9 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot game;
 
+        /// <summary>
+        /// Creates a FogOfWarSystem for the given game instance.
+        /// </summary>
         public FogOfWarSystem(GameRoot game)
         {
             this.game = game;
@@ -52,6 +55,9 @@ namespace Rebellion.Systems
 
             foreach (Officer officer in planet.Officers)
             {
+                if (officer.IsCaptured && officer.OwnerInstanceID == faction.InstanceID)
+                    continue;
+
                 planetSnapshot.Officers.Add(CopyOfficer(officer));
                 InvalidateEntityFromOtherSnapshots(faction, officer.InstanceID, planet.InstanceID);
             }
@@ -172,115 +178,36 @@ namespace Rebellion.Systems
                 PlanetSystem viewSystem = masterSystem.GetShallowCopy(CloneMode.Full);
                 viewSystem.Planets = new List<Planet>();
 
-                bool hasSystemSnapshot = faction.Fog.Snapshots.TryGetValue(
+                faction.Fog.Snapshots.TryGetValue(
                     masterSystem.InstanceID,
                     out SystemSnapshot systemSnapshot
                 );
 
                 foreach (Planet masterPlanet in masterSystem.Planets)
                 {
-                    Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
-                    viewPlanet.Officers = new List<Officer>();
-                    viewPlanet.Fleets = new List<Fleet>();
-                    viewPlanet.Regiments = new List<Regiment>();
-                    viewPlanet.Buildings = new Dictionary<BuildingSlot, List<Building>>();
-                    viewPlanet.Starfighters = new List<Starfighter>();
-                    viewPlanet.Missions = new List<Mission>();
-                    viewPlanet.PopularSupport = new Dictionary<string, int>();
-
-                    bool isVisible = IsPlanetVisible(masterPlanet, faction);
+                    Planet viewPlanet = BlankPlanetView(masterPlanet);
 
                     PlanetSnapshot planetSnapshot = null;
-                    if (hasSystemSnapshot)
-                    {
-                        systemSnapshot.Planets.TryGetValue(
-                            masterPlanet.InstanceID,
-                            out planetSnapshot
-                        );
-                    }
+                    systemSnapshot?.Planets.TryGetValue(
+                        masterPlanet.InstanceID,
+                        out planetSnapshot
+                    );
 
-                    if (isVisible)
-                    {
-                        // Real-time.
-                        viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
-                        viewPlanet.PopularSupport = new Dictionary<string, int>(
-                            masterPlanet.PopularSupport
-                        );
-                        viewPlanet.Officers.AddRange(masterPlanet.Officers.Select(CopyOfficer));
-                        viewPlanet.Fleets.AddRange(
-                            masterPlanet
-                                .Fleets.Where(f =>
-                                    f.Movement == null || f.OwnerInstanceID == faction.InstanceID
-                                )
-                                .Select(f => f.GetShallowCopy(CloneMode.Full))
-                        );
-                        viewPlanet.Regiments.AddRange(
-                            masterPlanet.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
-                        );
-
-                        foreach (BuildingSlot slot in masterPlanet.Buildings.Keys)
-                        {
-                            viewPlanet.Buildings[slot] = masterPlanet
-                                .Buildings[slot]
-                                .Select(b => b.GetShallowCopy(CloneMode.Full))
-                                .ToList();
-                        }
-
-                        viewPlanet.Starfighters.AddRange(
-                            masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
-                        );
-                        viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
-                        // Also surface enemy fleets captured in a prior snapshot
-                        // (e.g. via prior occupation) — persists alongside live data.
-                        // Enemy missions are never surfaced regardless of snapshot state.
-                        if (planetSnapshot != null)
-                        {
-                            HashSet<string> liveFleetIDs = new HashSet<string>(
-                                viewPlanet.Fleets.Select(f => f.InstanceID)
-                            );
-                            viewPlanet.Fleets.AddRange(
-                                planetSnapshot
-                                    .Fleets.Where(f =>
-                                        f.GetOwnerInstanceID() != faction.InstanceID
-                                        && !liveFleetIDs.Contains(f.InstanceID)
-                                    )
-                                    .Select(f => f.GetShallowCopy(CloneMode.Full))
-                            );
-                        }
-                    }
+                    if (IsPlanetVisible(masterPlanet, faction))
+                        ApplyRealTimeView(viewPlanet, masterPlanet, faction, planetSnapshot);
                     else if (planetSnapshot != null)
-                    {
-                        // Snapshot.
-                        viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
-                        // Core system popular support is always visible regardless of fog.
-                        viewPlanet.PopularSupport =
-                            masterSystem.SystemType == PlanetSystemType.CoreSystem
-                                ? new Dictionary<string, int>(masterPlanet.PopularSupport)
-                                : new Dictionary<string, int>();
-                        viewPlanet.Officers.AddRange(planetSnapshot.Officers.Select(CopyOfficer));
-                        viewPlanet.Fleets.AddRange(
-                            planetSnapshot.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))
+                        ApplySnapshotView(
+                            viewPlanet,
+                            masterPlanet,
+                            masterSystem,
+                            faction,
+                            planetSnapshot
                         );
-                        viewPlanet.Regiments.AddRange(
-                            planetSnapshot.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
-                        );
-
-                        viewPlanet.Buildings[BuildingSlot.Ground] = planetSnapshot
-                            .Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
-                            .ToList();
-
-                        viewPlanet.Starfighters.AddRange(
-                            planetSnapshot.Starfighters.Select(s =>
-                                s.GetShallowCopy(CloneMode.Full)
-                            )
-                        );
-                        viewPlanet.NumRawResourceNodes = 0;
-                    }
                     else
-                    {
-                        // Unexplored — no visibility, no snapshot.
-                    }
+                        ApplyUnexploredView(viewPlanet, masterPlanet, faction);
 
+                    // Own missions are always visible regardless of fog state.
+                    // Enemy missions are never surfaced.
                     viewPlanet.Missions.AddRange(
                         masterPlanet
                             .Missions.Where(m => m.GetOwnerInstanceID() == faction.InstanceID)
@@ -294,6 +221,136 @@ namespace Rebellion.Systems
             }
 
             return factionView;
+        }
+
+        /// <summary>
+        /// Creates a planet view shell with all entity lists cleared, ready to be populated
+        /// by one of the three visibility branches.
+        /// </summary>
+        private Planet BlankPlanetView(Planet masterPlanet)
+        {
+            Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
+            viewPlanet.Officers = new List<Officer>();
+            viewPlanet.Fleets = new List<Fleet>();
+            viewPlanet.Regiments = new List<Regiment>();
+            viewPlanet.Buildings = new Dictionary<BuildingSlot, List<Building>>();
+            viewPlanet.Starfighters = new List<Starfighter>();
+            viewPlanet.Missions = new List<Mission>();
+            viewPlanet.PopularSupport = new Dictionary<string, int>();
+            return viewPlanet;
+        }
+
+        /// <summary>
+        /// Populates a view planet from live master state. The faction has direct visibility
+        /// (owns the planet or has a fleet present). Also merges any previously-snapshotted
+        /// enemy fleets that are not currently present in the live data.
+        /// </summary>
+        private void ApplyRealTimeView(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            Faction faction,
+            PlanetSnapshot planetSnapshot
+        )
+        {
+            viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
+            viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
+            viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
+
+            viewPlanet.Officers.AddRange(masterPlanet.Officers.Select(CopyOfficer));
+            viewPlanet.Fleets.AddRange(
+                masterPlanet
+                    .Fleets.Where(f =>
+                        f.Movement == null || f.OwnerInstanceID == faction.InstanceID
+                    )
+                    .Select(f => f.GetShallowCopy(CloneMode.Full))
+            );
+            viewPlanet.Regiments.AddRange(
+                masterPlanet.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
+            );
+            viewPlanet.Starfighters.AddRange(
+                masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
+            );
+
+            foreach (BuildingSlot slot in masterPlanet.Buildings.Keys)
+            {
+                viewPlanet.Buildings[slot] = masterPlanet
+                    .Buildings[slot]
+                    .Select(b => b.GetShallowCopy(CloneMode.Full))
+                    .ToList();
+            }
+
+            // Merge enemy fleets seen in a prior snapshot that are not present live
+            // (e.g. recorded during a prior occupation).
+            if (planetSnapshot != null)
+            {
+                HashSet<string> liveFleetIDs = new HashSet<string>(
+                    viewPlanet.Fleets.Select(f => f.InstanceID)
+                );
+                viewPlanet.Fleets.AddRange(
+                    planetSnapshot
+                        .Fleets.Where(f =>
+                            f.GetOwnerInstanceID() != faction.InstanceID
+                            && !liveFleetIDs.Contains(f.InstanceID)
+                        )
+                        .Select(f => f.GetShallowCopy(CloneMode.Full))
+                );
+            }
+        }
+
+        /// <summary>
+        /// Populates a view planet from the last known snapshot. The faction has no current
+        /// visibility but has previously observed this planet. Core system popular support
+        /// is always shown regardless of fog state. Captured friendly officers are always live.
+        /// </summary>
+        private void ApplySnapshotView(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            PlanetSystem masterSystem,
+            Faction faction,
+            PlanetSnapshot planetSnapshot
+        )
+        {
+            viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
+            viewPlanet.NumRawResourceNodes = 0;
+
+            // Core system popular support is always visible regardless of fog.
+            viewPlanet.PopularSupport =
+                masterSystem.SystemType == PlanetSystemType.CoreSystem
+                    ? new Dictionary<string, int>(masterPlanet.PopularSupport)
+                    : new Dictionary<string, int>();
+
+            viewPlanet.Officers.AddRange(planetSnapshot.Officers.Select(CopyOfficer));
+            // Captured friendly officers are always live data, even through fog.
+            viewPlanet.Officers.AddRange(
+                masterPlanet
+                    .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
+                    .Select(CopyOfficer)
+            );
+            viewPlanet.Fleets.AddRange(
+                planetSnapshot.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))
+            );
+            viewPlanet.Regiments.AddRange(
+                planetSnapshot.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
+            );
+            viewPlanet.Starfighters.AddRange(
+                planetSnapshot.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
+            );
+            viewPlanet.Buildings[BuildingSlot.Ground] = planetSnapshot
+                .Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Populates a view planet for a completely unexplored location. No ownership or
+        /// entity data is surfaced. Captured friendly officers are always live data regardless.
+        /// </summary>
+        private void ApplyUnexploredView(Planet viewPlanet, Planet masterPlanet, Faction faction)
+        {
+            viewPlanet.Officers.AddRange(
+                masterPlanet
+                    .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
+                    .Select(CopyOfficer)
+            );
         }
     }
 }
