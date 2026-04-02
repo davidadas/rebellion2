@@ -170,16 +170,20 @@ namespace Rebellion.Systems
                             }
                         );
                     }
-                    else if (missionPlanet != null
-                        && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID)
+                    else if (
+                        missionPlanet != null
+                        && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
+                    )
                     {
                         // RequestMove was rejected; reparent to the mission planet so the
                         // participant is not orphaned when DetachNode(mission) runs below.
                         game.AttachNode(participantNode, missionPlanet);
                     }
                 }
-                else if (missionPlanet != null
-                    && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID)
+                else if (
+                    missionPlanet != null
+                    && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
+                )
                 {
                     // No friendly planet; keep participant at the current planet rather than
                     // losing them when the mission node is detached.
