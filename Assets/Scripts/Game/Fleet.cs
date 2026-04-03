@@ -102,11 +102,27 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns all starfighters across the fleet.
+        /// Returns all starfighters across the fleet (both in capital ships and as transport passengers).
         /// </summary>
         public IEnumerable<Starfighter> GetStarfighters()
         {
             return CapitalShips.SelectMany(ship => ship.Starfighters);
+        }
+
+        /// <summary>
+        /// Returns the first capital ship with available starfighter capacity, or null if none.
+        /// </summary>
+        public CapitalShip FindShipForStarfighter()
+        {
+            return CapitalShips.FirstOrDefault(s => s.GetExcessStarfighterCapacity() > 0);
+        }
+
+        /// <summary>
+        /// Returns the first capital ship with available regiment capacity, or null if none.
+        /// </summary>
+        public CapitalShip FindShipForRegiment()
+        {
+            return CapitalShips.FirstOrDefault(s => s.GetExcessRegimentCapacity() > 0);
         }
 
         /// <summary>
@@ -158,9 +174,6 @@ namespace Rebellion.Game
             CapitalShips[0].AddOfficer(officer);
         }
 
-        /// <summary>
-        /// Adds a child node.
-        /// </summary>
         public override void AddChild(ISceneNode child)
         {
             if (child is CapitalShip capitalShip)
@@ -170,6 +183,24 @@ namespace Rebellion.Game
             else if (child is Officer officer)
             {
                 AddOfficer(officer);
+            }
+            else if (child is Starfighter starfighter)
+            {
+                CapitalShip target = FindShipForStarfighter();
+                if (target == null)
+                    throw new SceneAccessException(child, this);
+                target.AddStarfighter(starfighter);
+            }
+            else if (child is Regiment regiment)
+            {
+                CapitalShip target = FindShipForRegiment();
+                if (target == null)
+                    throw new SceneAccessException(child, this);
+                target.AddRegiment(regiment);
+            }
+            else
+            {
+                throw new SceneAccessException(child, this);
             }
         }
 
@@ -193,9 +224,6 @@ namespace Rebellion.Game
             return Movement == null;
         }
 
-        /// <summary>
-        /// Retrieves child nodes (capital ships only).
-        /// </summary>
         public override IEnumerable<ISceneNode> GetChildren()
         {
             return CapitalShips.Cast<ISceneNode>();

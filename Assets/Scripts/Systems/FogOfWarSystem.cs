@@ -263,7 +263,8 @@ namespace Rebellion.Systems
             viewPlanet.Fleets.AddRange(
                 masterPlanet
                     .Fleets.Where(f =>
-                        f.Movement == null || f.OwnerInstanceID == faction.InstanceID
+                        f.CapitalShips.Count > 0
+                        && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
                     )
                     .Select(f => f.GetShallowCopy(CloneMode.Full))
             );

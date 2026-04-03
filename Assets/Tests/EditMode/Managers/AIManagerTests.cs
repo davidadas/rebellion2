@@ -475,14 +475,15 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
+                StarfighterCapacity = 2,
             };
+            ship1.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             CapitalShip ship2 = new CapitalShip
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 150 } } },
             };
+            ship2.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 150 };
             game.AttachNode(ship1, fleet);
             game.AttachNode(ship2, fleet);
 
@@ -566,8 +567,8 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship, fleet);
 
             Officer commander = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
@@ -638,8 +639,8 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship, fleet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
@@ -880,8 +881,8 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100, 100, 100, 100 } } },
             };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100 };
             game.AttachNode(ship, fleet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
@@ -957,8 +958,8 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
+            ship1.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship1, existingFleet);
 
             // Second fleet idle at empire planet
@@ -973,8 +974,8 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
-                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
+            ship2.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship2, idleFleet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
@@ -1034,6 +1035,26 @@ namespace Rebellion.Tests.Managers
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(shipyard, planet);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(mine, planet);
+
+            Building refinery = new Building
+            {
+                InstanceID = "ref1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                BuildingSlot = BuildingSlot.Ground,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(refinery, planet);
 
             Fleet stationaryFleet = new Fleet
             {
@@ -1118,6 +1139,26 @@ namespace Rebellion.Tests.Managers
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(shipyard, planet);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(mine, planet);
+
+            Building refinery = new Building
+            {
+                InstanceID = "ref1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                BuildingSlot = BuildingSlot.Ground,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(refinery, planet);
 
             empire.AddTechnologyNode(
                 0,

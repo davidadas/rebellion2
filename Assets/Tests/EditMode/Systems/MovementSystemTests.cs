@@ -518,6 +518,8 @@ namespace Rebellion.Tests.Systems
             // Fleet starts at planet B
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(fleet, planetB);
+            CapitalShip fleetShip = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            game.AttachNode(fleetShip, fleet);
 
             // Officer at planet A moves toward the fleet
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");

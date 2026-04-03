@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 
@@ -44,7 +43,7 @@ namespace Rebellion.Systems
                 int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
 
                 // Check if garrison is insufficient
-                int garrisonRequired = IssueProvider.CalculateGarrisonRequirement(
+                int garrisonRequired = CalculateGarrisonRequirement(
                     planet,
                     faction,
                     game.Config.AI.Garrison
@@ -141,6 +140,44 @@ namespace Rebellion.Systems
             {
                 upris2Result = LookupTable(config.Upris2Table, combinedScore);
             }
+        }
+
+        /// <summary>
+        /// Calculates how many garrison troops a planet requires for the given faction.
+        /// Returns 0 when popular support is at or above the threshold.
+        /// Core worlds with a faction GarrisonEfficiency modifier receive a reduced requirement.
+        /// Planets in active uprisings apply the uprising multiplier.
+        /// </summary>
+        public static int CalculateGarrisonRequirement(
+            Planet planet,
+            Faction faction,
+            GameConfig.GarrisonConfig config
+        )
+        {
+            int popularSupport = planet.GetPopularSupport(faction.InstanceID);
+
+            if (popularSupport >= config.SupportThreshold)
+                return 0;
+
+            int garrison = (int)
+                Math.Ceiling(
+                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
+                );
+
+            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            if (
+                parentSystem != null
+                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                && faction.Modifiers.GarrisonEfficiency > 1
+            )
+            {
+                garrison /= faction.Modifiers.GarrisonEfficiency;
+            }
+
+            if (planet.IsInUprising)
+                garrison *= config.UprisingMultiplier;
+
+            return garrison;
         }
 
         /// <summary>

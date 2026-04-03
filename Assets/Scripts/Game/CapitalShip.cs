@@ -23,6 +23,7 @@ namespace Rebellion.Game
         // Manufacture Info
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
+        public string DestinationInstanceID { get; set; }
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }
         public int BaseBuildSpeed { get; set; }
@@ -116,6 +117,16 @@ namespace Rebellion.Game
         public int GetCurrentRegimentCount()
         {
             return Regiments.Count;
+        }
+
+        public int GetExcessStarfighterCapacity()
+        {
+            return StarfighterCapacity - Starfighters.Count;
+        }
+
+        public int GetExcessRegimentCapacity()
+        {
+            return RegimentCapacity - Regiments.Count;
         }
 
         /// <summary>

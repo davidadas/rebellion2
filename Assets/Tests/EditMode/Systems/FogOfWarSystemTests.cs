@@ -126,12 +126,14 @@ namespace Rebellion.Tests.Systems
         {
             Officer vader = CreateOfficer("VADER", empire);
             Fleet imperialFleet = CreateFleet("FLEET1", empire);
+            CapitalShip destroyer = new CapitalShip { InstanceID = "SD1", OwnerInstanceID = empire.InstanceID };
             Regiment stormtroopers = CreateRegiment("REG1", empire);
             Building starport = CreateBuilding("BLDG1", empire);
             Starfighter tieFighter = CreateStarfighter("TIE1", empire);
 
             game.AttachNode(vader, coruscant);
             game.AttachNode(imperialFleet, coruscant);
+            game.AttachNode(destroyer, imperialFleet);
             game.AttachNode(stormtroopers, coruscant);
             coruscant.Buildings[BuildingSlot.Ground].Add(starport);
             coruscant.Starfighters.Add(tieFighter);
@@ -514,6 +516,7 @@ namespace Rebellion.Tests.Systems
             // The view must show only Fleet B — the stale snapshot entry for Fleet A must not appear.
             Fleet fleetA = CreateFleet("FLEET_A", alliance);
             game.AttachNode(fleetA, coruscant);
+            game.AttachNode(new CapitalShip { InstanceID = "cs_a", OwnerInstanceID = alliance.InstanceID }, fleetA);
             fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
 
             hoth.OwnerInstanceID = alliance.InstanceID;
@@ -521,6 +524,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleetB = CreateFleet("FLEET_B", alliance);
             game.AttachNode(fleetB, coruscant);
+            game.AttachNode(new CapitalShip { InstanceID = "cs_b", OwnerInstanceID = alliance.InstanceID }, fleetB);
 
             GalaxyMap view = fogSystem.BuildFactionView(alliance);
 
@@ -743,9 +747,11 @@ namespace Rebellion.Tests.Systems
             Officer vader = CreateOfficer("VADER", empire);
             Officer tarkin = CreateOfficer("PALPATINE", empire);
             Fleet fleet = CreateFleet("FLEET1", empire);
+            CapitalShip destroyer = new CapitalShip { InstanceID = "SD1", OwnerInstanceID = empire.InstanceID };
             game.AttachNode(vader, coruscant);
             game.AttachNode(tarkin, coruscant);
             game.AttachNode(fleet, coruscant);
+            game.AttachNode(destroyer, fleet);
 
             fogSystem.CaptureSnapshot(alliance, coruscant, coreSystem, 10);
 
@@ -787,9 +793,11 @@ namespace Rebellion.Tests.Systems
         {
             Officer vader = CreateOfficer("VADER", empire);
             Fleet fleet = CreateFleet("DEATHSTAR", empire);
+            CapitalShip executor = new CapitalShip { InstanceID = "EX1", OwnerInstanceID = empire.InstanceID };
             Regiment regiment = CreateRegiment("STORMTROOPERS", empire);
             game.AttachNode(vader, coruscant);
             game.AttachNode(fleet, coruscant);
+            game.AttachNode(executor, fleet);
             game.AttachNode(regiment, coruscant);
 
             GalaxyMap view = fogSystem.BuildFactionView(empire);
@@ -1114,7 +1122,9 @@ namespace Rebellion.Tests.Systems
             // View should show live own data alongside the snapshot enemy fleet.
             // Enemy missions are never visible regardless of snapshot.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
+            CapitalShip destroyer = new CapitalShip { InstanceID = "SD1", OwnerInstanceID = empire.InstanceID };
             game.AttachNode(empireFleet, coruscant);
+            game.AttachNode(destroyer, empireFleet);
             Mission empireMission = CreateMission("M1", empire, coruscant);
             game.AttachNode(empireMission, coruscant);
 
@@ -1198,6 +1208,7 @@ namespace Rebellion.Tests.Systems
             // Planet should be live and fleet visible.
             Fleet allianceFleet = CreateFleet("FLEET1", alliance);
             game.AttachNode(allianceFleet, coruscant);
+            game.AttachNode(new CapitalShip { InstanceID = "cs1", OwnerInstanceID = alliance.InstanceID }, allianceFleet);
 
             GalaxyMap view = fogSystem.BuildFactionView(alliance);
 
@@ -1218,6 +1229,7 @@ namespace Rebellion.Tests.Systems
             // Alliance should see the enemy fleet in their live view.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
             game.AttachNode(empireFleet, hoth);
+            game.AttachNode(new CapitalShip { InstanceID = "cs1", OwnerInstanceID = empire.InstanceID }, empireFleet);
 
             GalaxyMap view = fogSystem.BuildFactionView(alliance);
 
@@ -1285,6 +1297,7 @@ namespace Rebellion.Tests.Systems
             // Alliance fleet is in transit to Hoth (alliance-owned). You should see your own fleet.
             Fleet allianceFleet = CreateFleet("FLEET1", alliance);
             game.AttachNode(allianceFleet, hoth);
+            game.AttachNode(new CapitalShip { InstanceID = "cs1", OwnerInstanceID = alliance.InstanceID }, allianceFleet);
             allianceFleet.Movement = new MovementState
             {
                 DestinationInstanceID = "HOTH",
@@ -1312,6 +1325,7 @@ namespace Rebellion.Tests.Systems
             // The fleet should appear exactly once in the faction view, not twice.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", empire);
             game.AttachNode(empireFleet, hoth);
+            game.AttachNode(new CapitalShip { InstanceID = "cs1", OwnerInstanceID = empire.InstanceID }, empireFleet);
 
             fogSystem.CaptureSnapshot(alliance, hoth, outerRimSystem, 10);
 
@@ -1382,14 +1396,14 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_EmptyFleet_ExcludedFromSnapshot()
         {
             // An empty fleet (no capital ships) should not appear in snapshots
-            Fleet emptyFleet = new Fleet { InstanceID = "empty_fleet", OwnerInstanceID = "EMPIRE" };
+            Fleet emptyFleet = new Fleet { InstanceID = "empty_fleet", OwnerInstanceID = empire.InstanceID };
             game.AttachNode(emptyFleet, coruscant);
 
             fogSystem.CaptureSnapshot(empire, coruscant, coreSystem, game.CurrentTick);
 
             GalaxyMap view = fogSystem.BuildFactionView(empire);
             Planet viewCoruscant = view
-                .PlanetSystems.First(s => s.InstanceID == "CORE")
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsFalse(
@@ -1401,17 +1415,17 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void CaptureSnapshot_FleetWithShips_IncludedInSnapshot()
         {
-            Fleet fleet = new Fleet { InstanceID = "armed_fleet", OwnerInstanceID = "EMPIRE" };
+            Fleet fleet = new Fleet { InstanceID = "armed_fleet", OwnerInstanceID = empire.InstanceID };
             game.AttachNode(fleet, coruscant);
 
-            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "EMPIRE" };
+            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = empire.InstanceID };
             game.AttachNode(ship, fleet);
 
             fogSystem.CaptureSnapshot(empire, coruscant, coreSystem, game.CurrentTick);
 
             GalaxyMap view = fogSystem.BuildFactionView(empire);
             Planet viewCoruscant = view
-                .PlanetSystems.First(s => s.InstanceID == "CORE")
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsTrue(

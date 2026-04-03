@@ -77,7 +77,17 @@ namespace Rebellion.Systems
                 return false;
 
             if (item is ISceneNode node)
-                game.AttachNode(node, destination);
+            {
+                if (item is CapitalShip capitalShip)
+                {
+                    game.AttachNode(capitalShip, destination);
+                }
+                else
+                {
+                    game.AttachNode(node, planet);
+                    item.DestinationInstanceID = destination.GetInstanceID();
+                }
+            }
 
             CommitToQueue(planet, item);
             return true;
@@ -237,8 +247,6 @@ namespace Rebellion.Systems
                 items.Remove(item);
             }
 
-            // Unit is already at its destination from Enqueue. Set up movement
-            // if the destination is a different planet from the production planet.
             if (item is IMovable movable)
             {
                 // For capital ships, the movable unit is the fleet they're in
@@ -248,23 +256,34 @@ namespace Rebellion.Systems
 
                 if (unitToShip != null)
                 {
-                    Planet destinationPlanet = ((ISceneNode)unitToShip).GetParentOfType<Planet>();
+                    ISceneNode destinationNode = ResolveDestination(item, unitToShip);
+
+                    Planet destinationPlanet =
+                        destinationNode as Planet
+                        ?? destinationNode?.GetParentOfType<Planet>();
+
                     if (destinationPlanet != null && destinationPlanet != planet)
                     {
                         try
                         {
-                            ShipToDestination(unitToShip, planet, destinationPlanet);
+                            ShipToDestination(unitToShip, planet, destinationNode);
                         }
                         catch (SceneAccessException)
                         {
-                            // Destination is no longer friendly - fall back to production planet
+                            if (
+                                planet.GetOwnerInstanceID()
+                                != ((ISceneNode)unitToShip).GetOwnerInstanceID()
+                            )
+                            {
+                                game.DetachNode((ISceneNode)unitToShip);
+                                return;
+                            }
                             try
                             {
                                 PlaceAtPlanet((ISceneNode)unitToShip, planet);
                             }
                             catch (SceneAccessException)
                             {
-                                // Production planet also rejected the unit - cancel
                                 game.DetachNode((ISceneNode)unitToShip);
                                 return;
                             }
@@ -283,6 +302,44 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Resolves the destination scene node for a completed item.
+        /// For items with an explicit DestinationInstanceID (fleet-targeted units),
+        /// finds the appropriate capital ship within that fleet.
+        /// Falls back to the unit's current parent otherwise.
+        /// </summary>
+        private ISceneNode ResolveDestination(IManufacturable item, IMovable unitToShip)
+        {
+            if (!string.IsNullOrEmpty(item.DestinationInstanceID))
+            {
+                Fleet fleet = game.GetSceneNodeByInstanceID<Fleet>(item.DestinationInstanceID);
+                if (fleet != null)
+                {
+                    if (unitToShip is Starfighter)
+                    {
+                        CapitalShip ship = fleet.FindShipForStarfighter();
+                        if (ship != null)
+                            return ship;
+                        HandlePlacementRejection((ISceneNode)unitToShip, ((ISceneNode)unitToShip).GetParentOfType<Planet>() ?? fleet.GetParentOfType<Planet>());
+                        return null;
+                    }
+                    if (unitToShip is Regiment)
+                    {
+                        CapitalShip ship = fleet.FindShipForRegiment();
+                        if (ship != null)
+                            return ship;
+                        HandlePlacementRejection((ISceneNode)unitToShip, ((ISceneNode)unitToShip).GetParentOfType<Planet>() ?? fleet.GetParentOfType<Planet>());
+                        return null;
+                    }
+                    // Officers and other units: first capital ship
+                    CapitalShip firstShip = fleet.CapitalShips.FirstOrDefault();
+                    if (firstShip != null)
+                        return firstShip;
+                }
+            }
+            return ((ISceneNode)unitToShip).GetParent();
+        }
+
+        /// <summary>
         /// Ships a completed unit to its destination by reparenting it and setting up
         /// a MovementState for travel. If the destination is the same planet, no movement.
         /// </summary>
@@ -296,6 +353,13 @@ namespace Rebellion.Systems
             {
                 unit.Movement = null;
                 return;
+            }
+
+            // Refuse to ship to enemy-controlled territory
+            string unitOwner = ((ISceneNode)unit).GetOwnerInstanceID();
+            if (destinationPlanet.GetOwnerInstanceID() != unitOwner)
+            {
+                throw new SceneAccessException((ISceneNode)unit, destinationPlanet);
             }
 
             // Reparent to destination in scene graph

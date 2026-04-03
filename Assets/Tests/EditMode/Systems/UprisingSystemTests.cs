@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI;
 using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
@@ -309,7 +308,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            int garrison = IssueProvider.CalculateGarrisonRequirement(
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 faction,
                 config.AI.Garrison
@@ -347,7 +346,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             // Base: ceil((60-20)/10) = 4. Halved: 4/2 = 2.
-            int garrison = IssueProvider.CalculateGarrisonRequirement(
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 empire,
                 config.AI.Garrison
@@ -385,7 +384,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             // Base: ceil((60-20)/10) = 4. Alliance: no halving.
-            int garrison = IssueProvider.CalculateGarrisonRequirement(
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 alliance,
                 config.AI.Garrison
@@ -423,7 +422,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             // Base: ceil((60-55)/10) = 1. Halved: 1/2 = 0 (integer division).
-            int garrison = IssueProvider.CalculateGarrisonRequirement(
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 empire,
                 config.AI.Garrison
@@ -498,18 +497,18 @@ namespace Rebellion.Tests.Systems
                 game.AttachNode(f, planet);
             }
 
-            // Add hostile fighters (loose on planet)
+            // Add hostile fighters (loose on planet — placed directly, bypassing ownership check)
             for (int i = 0; i < hostileFighters; i++)
             {
                 Starfighter sf = EntityFactory.CreateStarfighter($"hsf{i}", "rebels");
-                game.AttachNode(sf, planet);
+                planet.Starfighters.Add(sf);
             }
 
-            // Add hostile troops
+            // Add hostile troops (placed directly, bypassing ownership check)
             for (int i = 0; i < hostileTroops; i++)
             {
                 Regiment r = EntityFactory.CreateRegiment($"hr{i}", "rebels");
-                game.AttachNode(r, planet);
+                planet.Regiments.Add(r);
             }
 
             // Add friendly fleets
@@ -627,12 +626,13 @@ namespace Rebellion.Tests.Systems
         {
             // Core system, Support 15 → base 75. 5 hostile troops × TroopEffectiveness=2 = 10.
             // Penalty = 10 × 2 (troop penalty) = 20.
-            // Shift = 75 - 20 = 55.
+            // Shift = 75 - 20 = 55. (WeakSupportPenalty disabled so shift is not halved.)
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 hostileTroops: 5,
                 troopEffectiveness: 2,
-                isCoreSystem: true
+                isCoreSystem: true,
+                weakPenalty: SupportShiftCondition.Negative
             );
 
             system.ProcessTick();

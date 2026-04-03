@@ -405,13 +405,7 @@ public class AIManager
                 .GetOwnedUnitsByType<Fleet>()
                 .Any(f =>
                     f.RoleType == FleetRoleType.Patrol
-                    && (
-                        f.GetParentOfType<Planet>() == p
-                        || (
-                            f.Movement != null
-                            && f.Movement.DestinationInstanceID == p.GetInstanceID()
-                        )
-                    )
+                    && f.GetParentOfType<Planet>() == p
                 )
         );
 
@@ -917,7 +911,7 @@ public class AIManager
         int fleetCombatValue = CalculateFleetCombatValue(fleet);
 
         // Get personnel morale from fleet commander
-        Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
+        Officer commander = fleet.GetOfficers().FirstOrDefault();
         int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
 
         int divisor = game.Config.Combat.AssaultPersonnelDivisor;

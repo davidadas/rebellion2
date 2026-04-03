@@ -8,7 +8,6 @@ namespace Rebellion.Game
     /// These modifiers affect game mechanics for all players controlling this faction,
     /// not just AI behavior.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class FactionModifiers
     {

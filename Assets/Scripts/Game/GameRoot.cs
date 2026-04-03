@@ -391,6 +391,8 @@ namespace Rebellion.Game
         public T GetSceneNodeByInstanceID<T>(string instanceId)
             where T : class
         {
+            if (string.IsNullOrEmpty(instanceId))
+                return null;
             if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
             {
                 return node as T;

@@ -1736,6 +1736,13 @@ namespace Rebellion.Tests.Systems
             destPlanet.PositionY = 500;
             Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(destFleet, destPlanet);
+            CapitalShip destShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(destShip, destFleet);
 
             Starfighter fighter = new Starfighter
             {
@@ -1751,8 +1758,51 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.IsNotNull(fighter.Movement, "Should have movement state for shipping.");
-            Assert.AreEqual("f1", fighter.Movement.DestinationInstanceID);
+            Assert.AreEqual("cs1", fighter.Movement.DestinationInstanceID, "Should be shipping to the destination capital ship.");
             Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void ProcessTick_StarfighterComplete_RemainsInsideDestinationFleet()
+        {
+            // When a starfighter is enqueued into an existing fleet on a different planet,
+            // completing manufacturing must ship it to the fleet's capital ship.
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destFleet, destPlanet);
+            CapitalShip destShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(destShip, destFleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
+            mfg.ProcessTick(game);
+
+            Assert.AreEqual(
+                destShip,
+                fighter.GetParent(),
+                "Completed starfighter must be parented to the destination fleet's capital ship."
+            );
         }
 
         [Test]
@@ -1821,7 +1871,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DestinationDestroyed_UnitDeregistered()
+        public void ProcessTick_DestinationDestroyed_UnitRemainsAtProductionPlanet()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -1846,11 +1896,12 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(game);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
-            // Destroy the destination fleet mid-production — takes the unit with it
+            // Destroy the destination fleet mid-production — fighter stays at production planet
             game.DetachNode(destFleet);
 
             Starfighter found = game.GetSceneNodeByInstanceID<Starfighter>("sf1");
-            Assert.IsNull(found, "Unit should be deregistered when destination is destroyed.");
+            Assert.IsNotNull(found, "Fighter should remain registered at production planet.");
+            Assert.AreEqual(planet, found.GetParent(), "Fighter should still be at the production planet.");
         }
 
         [Test]
@@ -1922,10 +1973,11 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
             Assert.AreEqual(
-                destFleet,
+                planet,
                 fighter.GetParent(),
-                "Starfighter parent should be the destination fleet."
+                "Starfighter should remain at production planet during manufacturing."
             );
+            Assert.AreEqual("f1", fighter.DestinationInstanceID, "Destination fleet ID should be stored.");
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
         }
 
@@ -2022,7 +2074,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 BuildingSlot = BuildingSlot.Ground,
-                ProductionType = ManufacturingType.Building,
                 ConstructionCost = 100,
                 BaseBuildSpeed = 1,
             };
@@ -2163,7 +2214,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 BuildingSlot = BuildingSlot.Ground,
-                ProductionType = ManufacturingType.Building,
                 ConstructionCost = 50,
                 BaseBuildSpeed = 1,
             };

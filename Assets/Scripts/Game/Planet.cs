@@ -713,10 +713,9 @@ namespace Rebellion.Game
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)
         {
-            if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
-            {
+            if (OwnerInstanceID != null && regiment.OwnerInstanceID != OwnerInstanceID)
                 throw new SceneAccessException(regiment, this);
-            }
+
             Regiments.Add(regiment);
         }
 
@@ -735,10 +734,9 @@ namespace Rebellion.Game
         /// <param name="starfighter">The starfighter to add.</param>
         private void AddStarfighter(Starfighter starfighter)
         {
-            if (starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
-            {
+            if (OwnerInstanceID != null && starfighter.OwnerInstanceID != OwnerInstanceID)
                 throw new SceneAccessException(starfighter, this);
-            }
+
             Starfighters.Add(starfighter);
         }
 

@@ -12,7 +12,6 @@ using Rebellion.Util.Common;
 /// Player choices belong in GameSummary.
 /// New game setup belongs in GameGenerationRules.xml.
 /// </summary>
-[Serializable]
 [PersistableObject]
 public class GameConfig
 {
@@ -95,7 +94,6 @@ public class GameConfig
     /// AI system configuration.
     /// Controls AI decision-making and mission dispatch.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class AIConfig
     {
@@ -113,7 +111,6 @@ public class GameConfig
     /// Garrison requirement configuration.
     /// Controls how many troops a planet needs based on popular support.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class GarrisonConfig
     {
@@ -137,7 +134,6 @@ public class GameConfig
     /// Uprising system configuration.
     /// Controls dice rolls, table lookups, and garrison-based uprising resolution.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class UprisingConfig
     {
@@ -177,7 +173,6 @@ public class GameConfig
     /// Support shift configuration.
     /// Controls periodic popular support recovery and hostile force penalties.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class SupportShiftConfig
     {
@@ -221,7 +216,6 @@ public class GameConfig
     /// Score formula: (officer_skill - planet_state) + officer_leadership_rank
     /// Source: DIPLMSTB_DAT, SUBDMSTB_DAT, ESPIMSTB_DAT, INCTMSTB_DAT, RESCMSTB_DAT
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class AIMissionTablesConfig
     {
@@ -257,7 +251,6 @@ public class GameConfig
     /// Movement system configuration.
     /// Controls fleet transit time and hyperdrive calculations.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class MovementConfig
     {
@@ -275,7 +268,6 @@ public class GameConfig
     /// Production system configuration.
     /// Controls manufacturing and resource refinement.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class ProductionConfig
     {
@@ -293,7 +285,6 @@ public class GameConfig
     /// Planet mechanics configuration.
     /// Controls planet-specific calculations (distance formulas, popularity).
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class PlanetConfig
     {
@@ -311,7 +302,6 @@ public class GameConfig
     /// Combat system configuration.
     /// Controls fleet assault strength calculations and combat resolution.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class CombatConfig
     {
@@ -336,7 +326,6 @@ public class GameConfig
     /// Victory system configuration.
     /// Controls when victory conditions can trigger.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class VictoryConfig
     {
@@ -348,7 +337,6 @@ public class GameConfig
     /// Jedi / Force training system configuration.
     /// Controls Force tier advancement and detection mechanics.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class JediConfig
     {
@@ -375,7 +363,6 @@ public class GameConfig
     /// Probability tables configuration.
     /// All probability tables grouped by data type (not usage).
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class ProbabilityTablesConfig
     {
@@ -390,7 +377,6 @@ public class GameConfig
     /// <summary>
     /// Mission-specific probability tables.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class MissionProbabilityTablesConfig
     {
@@ -409,7 +395,6 @@ public class GameConfig
         public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
     }
 
-    [Serializable]
     [PersistableObject]
     public class MissionTickConfig
     {
@@ -417,7 +402,6 @@ public class GameConfig
         public int Max { get; set; }
     }
 
-    [Serializable]
     [PersistableObject]
     public class MissionTickRangesConfig
     {

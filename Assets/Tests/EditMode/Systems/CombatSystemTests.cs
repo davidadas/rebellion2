@@ -891,6 +891,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "p1",
                 OwnerInstanceID = "alliance",
                 IsColonized = true,
+                GroundSlots = 10,
                 PopularSupport = new Dictionary<string, int> { { "alliance", 50 } },
             };
             game.AttachNode(planet, sys);
