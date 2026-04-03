@@ -860,7 +860,7 @@
   </CapitalShip>
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_star_galleon_primary</DisplayImagePath>
+    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
     <TypeID>ALCS007</TypeID>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
