@@ -498,6 +498,41 @@
   <Production>
     <!-- Multiplier for raw materials to refined materials (default: 50) -->
     <RefinementMultiplier>50</RefinementMultiplier>
+
+    <!-- CSCRHT: Capital Ship Construction Rate Hit Table -->
+    <!-- Maps roll threshold to progress increment (original: 0->2, 16->3, 31->4, 41->5, 46->6) -->
+    <CapitalShipProgressTable>
+      <Entry>
+        <Key>0</Key>
+        <Value>2</Value>
+      </Entry>
+      <Entry>
+        <Key>16</Key>
+        <Value>3</Value>
+      </Entry>
+      <Entry>
+        <Key>31</Key>
+        <Value>4</Value>
+      </Entry>
+      <Entry>
+        <Key>41</Key>
+        <Value>5</Value>
+      </Entry>
+      <Entry>
+        <Key>46</Key>
+        <Value>6</Value>
+      </Entry>
+    </CapitalShipProgressTable>
+
+    <!-- CSCRHT roll parameters (original GENERAL_PARAM 2049-2051, all 50) -->
+    <CapitalShipProgressRollRange>50</CapitalShipProgressRollRange>
+    <CapitalShipSuccessThreshold>50</CapitalShipSuccessThreshold>
+    <CapitalShipSuccessRollRange>50</CapitalShipSuccessRollRange>
+
+    <!-- Popular support shift on manufacturing completion -->
+    <CapitalShipCompletionSupportShift>3</CapitalShipCompletionSupportShift>
+    <BuildingCompletionSupportShift>1</BuildingCompletionSupportShift>
+    <TroopCompletionSupportShift>1</TroopCompletionSupportShift>
   </Production>
 
   <!-- Planet Mechanics Configuration -->

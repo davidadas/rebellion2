@@ -279,6 +279,38 @@ public class GameConfig
 
         /// <summary>Production penalty per hostile fighter during blockade (default: 2).</summary>
         public int BlockadeFighterPenalty { get; set; } = 2;
+
+        /// <summary>
+        /// CSCRHT table: maps roll threshold to progress increment for capital ship production.
+        /// Original game values: 0->2, 16->3, 31->4, 41->5, 46->6.
+        /// </summary>
+        public Dictionary<int, int> CapitalShipProgressTable { get; set; } =
+            new Dictionary<int, int>
+            {
+                { 0, 2 },
+                { 16, 3 },
+                { 31, 4 },
+                { 41, 5 },
+                { 46, 6 },
+            };
+
+        /// <summary>Range for the CSCRHT progress roll (GENERAL_PARAM_2051, default: 50).</summary>
+        public int CapitalShipProgressRollRange { get; set; } = 50;
+
+        /// <summary>Threshold for the success check roll (GENERAL_PARAM_2050, default: 50).</summary>
+        public int CapitalShipSuccessThreshold { get; set; } = 50;
+
+        /// <summary>Range for the success check roll (GENERAL_PARAM_2049, default: 50).</summary>
+        public int CapitalShipSuccessRollRange { get; set; } = 50;
+
+        /// <summary>Popular support shift when a capital ship completes (default: 3).</summary>
+        public int CapitalShipCompletionSupportShift { get; set; } = 3;
+
+        /// <summary>Popular support shift when a building completes (default: 1).</summary>
+        public int BuildingCompletionSupportShift { get; set; } = 1;
+
+        /// <summary>Popular support shift when a troop completes (default: 1).</summary>
+        public int TroopCompletionSupportShift { get; set; } = 1;
     }
 
     /// <summary>

@@ -1087,7 +1087,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void UpdateCapitalShipProduction_NoFleetInSystem_CreatesNewFleetAtShipyard()
+        public void UpdateCapitalShipProduction_NoFleetInSystem_SkipsProduction()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -1171,19 +1171,9 @@ namespace Rebellion.Tests.Managers
 
             List<Fleet> fleets = empire.GetOwnedUnitsByType<Fleet>();
             Assert.AreEqual(
-                1,
+                0,
                 fleets.Count,
-                "AI should create one new fleet at the shipyard planet"
-            );
-            Assert.AreEqual(
-                1,
-                fleets[0].CapitalShips.Count,
-                "The new fleet should contain the queued capital ship"
-            );
-            Assert.AreEqual(
-                planet,
-                ((ISceneNode)fleets[0]).GetParent(),
-                "The new fleet should be parented to the shipyard planet"
+                "AI should not produce capital ships when no fleet exists in the system"
             );
         }
     }

@@ -166,7 +166,7 @@ public class GameManager
         GameLogger.Debug("Tick: " + game.CurrentTick);
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        manufacturingManager.ProcessTick(movementManager);
+        manufacturingManager.ProcessTick(movementManager, randomProvider);
 
         // 2. Movement: updates positions before combat needs them
         movementManager.ProcessTick();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -39,16 +40,15 @@ namespace Rebellion.Systems
             if (faction == null)
                 return false;
 
-            if (item is CapitalShip capitalShip)
+            if (item is CapitalShip)
             {
-                Fleet newFleet = faction.CreateFleet(game, new[] { capitalShip });
-                game.AttachNode(newFleet, destination);
-                newFleet.Movement = null;
+                GameLogger.Warning(
+                    "Capital ship production requires an existing fleet at the destination."
+                );
+                return false;
             }
-            else
-            {
-                game.AttachNode((ISceneNode)item, destination);
-            }
+
+            game.AttachNode((ISceneNode)item, destination);
 
             CommitToQueue(planet, item);
             return true;
@@ -120,17 +120,42 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Rolls capital ship construction progress using the CSCRHT table.
+        /// Step 1: Roll success check — if roll >= threshold, no progress this tick.
+        /// Step 2: On success, roll progress amount from the CSCRHT table.
+        /// Returns 0 if the success check fails, otherwise 2-6.
+        /// </summary>
+        private int RollCapitalShipProgress(IRandomNumberProvider provider)
+        {
+            GameConfig.ProductionConfig config = game.Config.Production;
+
+            // Success check: roll must be below threshold
+            int successRoll = provider.NextInt(0, config.CapitalShipSuccessRollRange);
+            if (successRoll >= config.CapitalShipSuccessThreshold)
+                return 0;
+
+            // Progress roll: look up in CSCRHT table
+            int progressRoll = provider.NextInt(0, config.CapitalShipProgressRollRange);
+            ProbabilityTable cscrht = new ProbabilityTable(config.CapitalShipProgressTable);
+            return cscrht.Lookup(progressRoll);
+        }
+
+        /// <summary>
         /// Processes manufacturing for the current tick.
         /// </summary>
-        public void ProcessTick(MovementSystem movementSystem)
+        public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
         {
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
-                ProcessPlanetManufacturing(planet, movementSystem);
+                ProcessPlanetManufacturing(planet, movementSystem, provider);
             }
         }
 
-        private void ProcessPlanetManufacturing(Planet planet, MovementSystem movementSystem)
+        private void ProcessPlanetManufacturing(
+            Planet planet,
+            MovementSystem movementSystem,
+            IRandomNumberProvider provider
+        )
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -185,24 +210,35 @@ namespace Rebellion.Systems
                     // Get the first item in queue (active item)
                     IManufacturable activeItem = items[0];
 
-                    // Calculate how much progress this item needs
+                    // Capital ships use probabilistic CSCRHT progression
+                    if (activeItem is CapitalShip)
+                    {
+                        int csProgress = RollCapitalShipProgress(provider);
+                        if (csProgress > 0)
+                            activeItem.IncrementManufacturingProgress(csProgress);
+
+                        if (activeItem.IsManufacturingComplete())
+                            CompleteManufacturing(planet, activeItem, type, movementSystem);
+
+                        // Capital ships consume the entire queue slot per tick
+                        break;
+                    }
+
+                    // Non-capital-ship items use linear progression
                     int requiredProgress = activeItem.GetConstructionCost();
                     int currentProgress = activeItem.ManufacturingProgress;
                     int remainingProgress = requiredProgress - currentProgress;
 
-                    // Apply progress
                     int appliedProgress = Math.Min(progressIncrement, remainingProgress);
                     activeItem.IncrementManufacturingProgress(appliedProgress);
                     progressIncrement -= appliedProgress;
 
-                    // Check if complete
                     if (activeItem.IsManufacturingComplete())
                     {
                         CompleteManufacturing(planet, activeItem, type, movementSystem);
                     }
                     else
                     {
-                        // Item not complete, stop processing this queue
                         break;
                     }
                 }
@@ -234,6 +270,9 @@ namespace Rebellion.Systems
                 CompleteBuilding(productionPlanet, building, movementSystem);
             else if (item is IMovable movable)
                 CompleteMovable(productionPlanet, movable, movementSystem);
+
+            // Apply popular support shift at the production planet
+            ApplyCompletionSupportShift(productionPlanet, item);
 
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
@@ -363,6 +402,36 @@ namespace Rebellion.Systems
             {
                 game.DetachNode(building);
             }
+        }
+
+        /// <summary>
+        /// Applies a popular support shift at the production planet when an item completes.
+        /// Matches the original game's behavior of boosting faction support on completion.
+        /// </summary>
+        private void ApplyCompletionSupportShift(Planet planet, IManufacturable item)
+        {
+            string ownerID = item.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerID))
+                return;
+
+            GameConfig.ProductionConfig config = game.Config.Production;
+            int shift = item switch
+            {
+                CapitalShip => config.CapitalShipCompletionSupportShift,
+                Building => config.BuildingCompletionSupportShift,
+                Regiment => config.TroopCompletionSupportShift,
+                _ => 0,
+            };
+
+            if (shift <= 0)
+                return;
+
+            int current = planet.GetPopularSupport(ownerID);
+            planet.SetPopularSupport(
+                ownerID,
+                current + shift,
+                game.Config.Planet.MaxPopularSupport
+            );
         }
 
         /// <summary>

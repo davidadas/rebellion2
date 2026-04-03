@@ -50,9 +50,9 @@ public class AIManager
         HandleUprisings(faction, provider);
         HandleBlockades(faction);
         UpdateEconomy(faction);
-        UpdateCapitalShipProduction(faction);
-        UpdateStarfighterProduction(faction);
-        UpdateTroopTraining(faction);
+        UpdateCapitalShipProduction(faction, provider);
+        UpdateStarfighterProduction(faction, provider);
+        UpdateTroopTraining(faction, provider);
         UpdateFleetMovement(faction);
         UpdateOffensiveFleetMovement(faction, provider);
         UpdateOfficerMissions(faction, provider);
@@ -200,10 +200,10 @@ public class AIManager
 
     /// <summary>
     /// Builds capital ships at idle shipyards until the faction has one per owned planet.
-    /// Each new ship is queued into a stationary friendly fleet already in the same system,
-    /// or a new fleet is created if none exists.
+    /// Shipyards are selected randomly (matching original game behavior).
+    /// Production is skipped at systems without an existing friendly fleet.
     /// </summary>
-    private void UpdateCapitalShipProduction(Faction faction)
+    private void UpdateCapitalShipProduction(Faction faction, IRandomNumberProvider provider)
     {
         Technology tech = GetHighestTierTechnology(
             faction,
@@ -216,30 +216,23 @@ public class AIManager
         int ownedShips = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
         int targetShips = faction.GetOwnedUnitsByType<Planet>().Count;
 
-        IEnumerable<Planet> shipyards = faction
-            .GetIdleFacilities(ManufacturingType.Ship)
-            .OrderByDescending(p => p.GetProductionRate(ManufacturingType.Ship));
+        List<Planet> shipyards = faction.GetIdleFacilities(ManufacturingType.Ship);
 
-        foreach (Planet shipyard in shipyards)
+        while (shipyards.Count > 0 && ownedShips < targetShips)
         {
-            if (ownedShips >= targetShips)
-                break;
+            int index = provider.NextInt(0, shipyards.Count);
+            Planet shipyard = shipyards[index];
+            shipyards.RemoveAt(index);
+
+            Fleet fleet = FindStationaryFleetInSystem(shipyard, faction);
+            if (fleet == null)
+                continue;
 
             IManufacturable item = tech.GetReferenceCopy();
             item.SetOwnerInstanceID(faction.GetInstanceID());
 
-            Fleet fleet = FindStationaryFleetInSystem(shipyard, faction);
-
-            if (fleet != null)
-            {
-                if (!manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
-                    continue;
-            }
-            else
-            {
-                if (!manufacturingManager.Enqueue(shipyard, item, shipyard, ignoreCost: false))
-                    continue;
-            }
+            if (!manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
+                continue;
 
             ownedShips++;
         }
@@ -259,8 +252,9 @@ public class AIManager
 
     /// <summary>
     /// Fills fleets with starfighters from idle shipyards.
+    /// Shipyards are selected randomly (matching original game behavior).
     /// </summary>
-    private void UpdateStarfighterProduction(Faction faction)
+    private void UpdateStarfighterProduction(Faction faction, IRandomNumberProvider provider)
     {
         List<Planet> idleShipyards = faction.GetIdleFacilities(ManufacturingType.Ship);
         if (!idleShipyards.Any())
@@ -278,8 +272,12 @@ public class AIManager
         if (game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
             return;
 
-        foreach (Planet shipyard in idleShipyards)
+        while (idleShipyards.Count > 0)
         {
+            int index = provider.NextInt(0, idleShipyards.Count);
+            Planet shipyard = idleShipyards[index];
+            idleShipyards.RemoveAt(index);
+
             AssignStarfightersToFleets(faction, shipyard, starfighterTech);
         }
     }
@@ -319,8 +317,9 @@ public class AIManager
 
     /// <summary>
     /// Fills fleets with regiments from idle training facilities.
+    /// Training facilities are selected randomly (matching original game behavior).
     /// </summary>
-    private void UpdateTroopTraining(Faction faction)
+    private void UpdateTroopTraining(Faction faction, IRandomNumberProvider provider)
     {
         List<Planet> idleTrainingFacilities = faction.GetIdleFacilities(ManufacturingType.Troop);
         if (!idleTrainingFacilities.Any())
@@ -338,8 +337,12 @@ public class AIManager
         if (game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
             return;
 
-        foreach (Planet trainingFacility in idleTrainingFacilities)
+        while (idleTrainingFacilities.Count > 0)
         {
+            int index = provider.NextInt(0, idleTrainingFacilities.Count);
+            Planet trainingFacility = idleTrainingFacilities[index];
+            idleTrainingFacilities.RemoveAt(index);
+
             AssignRegimentsToFleets(faction, trainingFacility, regimentTech);
         }
     }
