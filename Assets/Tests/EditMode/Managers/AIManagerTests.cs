@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Managers
@@ -438,8 +439,6 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void CalculateFleetCombatValue_SumsCapitalShipsAndFighters()
         {
-            // Original: FUN_004fc870_sum_fleet_unit_combat_value
-            // Sums capital ship combat values (via vtable 0x1dc) + fighter combat values
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
 
@@ -476,13 +475,13 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                AttackRating = 100,
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
             CapitalShip ship2 = new CapitalShip
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
-                AttackRating = 150,
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 150 } } },
             };
             game.AttachNode(ship1, fleet);
             game.AttachNode(ship2, fleet);
@@ -491,13 +490,13 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
-                AttackRating = 20,
+                LaserCannon = 20,
             };
             Starfighter fighter2 = new Starfighter
             {
                 InstanceID = "sf2",
                 OwnerInstanceID = "empire",
-                AttackRating = 30,
+                LaserCannon = 30,
             };
             game.AttachNode(fighter1, fleet);
             game.AttachNode(fighter2, fleet);
@@ -527,9 +526,11 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void CalculateFleetAssaultStrength_AppliesPersonnelModifier()
         {
-            // Original: FUN_0055d120_scale_capital_ship_assault_fleet_strength
-            // Formula: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
-            GameConfig config = new GameConfig { Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 } };
+            // Formula: (personnel / divisor + 1) * fleet_combat_value
+            GameConfig config = new GameConfig
+            {
+                Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 },
+            };
             GameRoot game = new GameRoot(config);
 
             Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
@@ -565,15 +566,11 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                AttackRating = 100,
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
             game.AttachNode(ship, fleet);
 
-            Officer commander = new Officer
-            {
-                InstanceID = "o1",
-                OwnerInstanceID = "empire",
-            };
+            Officer commander = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             commander.SetSkillValue(MissionParticipantSkill.Leadership, 50);
             game.AttachNode(commander, fleet);
 
@@ -602,7 +599,10 @@ namespace Rebellion.Tests.Managers
         public void CalculateFleetAssaultStrength_NoCommander_UsesBaseMultiplier()
         {
             // With no commander, personnel = 0, so formula becomes (0/10 + 1) * combat = 1 * combat
-            GameConfig config = new GameConfig { Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 } };
+            GameConfig config = new GameConfig
+            {
+                Combat = new GameConfig.CombatConfig { AssaultPersonnelDivisor = 10 },
+            };
             GameRoot game = new GameRoot(config);
 
             Faction faction = new Faction { InstanceID = "empire", PlayerID = null };
@@ -638,7 +638,7 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                AttackRating = 100,
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
             };
             game.AttachNode(ship, fleet);
 
@@ -666,8 +666,6 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void CalculatePlanetDefenseStrength_SumsDefensiveBuildings()
         {
-            // Original: FUN_0058c580_execute_capital_ship_assault_stage lines 84-88
-            // Sums defensive_core_value from defensive facilities
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
 
@@ -700,7 +698,7 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
                 BuildingSlot = BuildingSlot.Ground,
-                DefenseRating = 50,
+                WeaponStrength = 50,
             };
             Building defense2 = new Building
             {
@@ -708,7 +706,7 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
                 BuildingSlot = BuildingSlot.Ground,
-                DefenseRating = 75,
+                WeaponStrength = 75,
             };
             Building mine = new Building
             {
@@ -716,11 +714,80 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 BuildingSlot = BuildingSlot.Ground,
-                DefenseRating = 10,
+                WeaponStrength = 10,
             };
             game.AttachNode(defense1, planet);
             game.AttachNode(defense2, planet);
             game.AttachNode(mine, planet);
+
+            int defenseStrength = planet.GetDefenseStrength();
+
+            // Expected: 50 + 75 = 125 (mine doesn't count, only Defense type buildings)
+            Assert.AreEqual(
+                125,
+                defenseStrength,
+                "Defense strength should sum only defensive building ratings"
+            );
+        }
+
+        [Test]
+        public void BuildOneOf_PlanetAtCapacity_DoesNotThrow()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            // Planet with 1 ground slot, already full
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                GroundSlots = 1,
+                OrbitSlots = 1,
+                NumRawResourceNodes = 10,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(planet, system);
+
+            // Fill the ground slot with a construction yard
+            Building yard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Ground,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(yard, planet);
+
+            // Add a mine tech so the AI has something to try to build
+            empire.AddTechnologyNode(
+                0,
+                new Technology(
+                    new Building
+                    {
+                        InstanceID = "mine_template",
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Mine,
+                        BuildingSlot = BuildingSlot.Ground,
+                        ConstructionCost = 1,
+                    }
+                )
+            );
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
@@ -729,17 +796,365 @@ namespace Rebellion.Tests.Managers
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
 
-            var method = typeof(AIManager).GetMethod(
-                "CalculatePlanetDefenseStrength",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            // Should not throw — planet is full, AI should skip gracefully
+            Assert.DoesNotThrow(
+                () => ai.Update(new FixedRNG()),
+                "AI should not crash when all planets are at building capacity"
             );
-            int defenseStrength = (int)method.Invoke(ai, new object[] { planet });
+        }
 
-            // Expected: 50 + 75 = 125 (mine doesn't count, only Defense type buildings)
+        [Test]
+        public void FactionModifiers_GarrisonEfficiency_ClampsToMinOne()
+        {
+            FactionModifiers mods = new FactionModifiers { GarrisonEfficiency = 0 };
+            Assert.AreEqual(1, mods.GarrisonEfficiency, "GarrisonEfficiency should clamp to 1");
+
+            mods.GarrisonEfficiency = -5;
+            Assert.AreEqual(1, mods.GarrisonEfficiency, "Negative values should clamp to 1");
+        }
+
+        [Test]
+        public void FactionModifiers_UprisingResistance_ClampsToMinOne()
+        {
+            FactionModifiers mods = new FactionModifiers { UprisingResistance = 0 };
+            Assert.AreEqual(1, mods.UprisingResistance, "UprisingResistance should clamp to 1");
+        }
+
+        [Test]
+        public void FactionModifiers_TroopEffectiveness_ClampsToMinOne()
+        {
+            FactionModifiers mods = new FactionModifiers { TroopEffectiveness = 0 };
+            Assert.AreEqual(1, mods.TroopEffectiveness, "TroopEffectiveness should clamp to 1");
+        }
+
+        [Test]
+        public void UpdateOffensiveFleetMovement_SendsFleetToEnemyPlanet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, system);
+
+            // Give empire a strong fleet
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, empirePlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100, 100, 100, 100 } } },
+            };
+            game.AttachNode(ship, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            // Fleet should have been sent toward the enemy planet
+            Assert.IsNotNull(
+                fleet.Movement,
+                "AI should send idle battle fleet to attack enemy planet"
+            );
             Assert.AreEqual(
-                125,
-                defenseStrength,
-                "Defense strength should sum only defensive building ratings"
+                "p2",
+                fleet.Movement.DestinationInstanceID,
+                "Fleet destination should be the enemy planet"
+            );
+        }
+
+        [Test]
+        public void UpdateOffensiveFleetMovement_DoesNotStackFleets()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, system);
+
+            // First fleet already at rebel planet
+            Fleet existingFleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(existingFleet, rebelPlanet);
+            CapitalShip ship1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
+            };
+            game.AttachNode(ship1, existingFleet);
+
+            // Second fleet idle at empire planet
+            Fleet idleFleet = new Fleet
+            {
+                InstanceID = "f2",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(idleFleet, empirePlanet);
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                PrimaryWeapons = { { PrimaryWeaponType.Turbolaser, new[] { 100 } } },
+            };
+            game.AttachNode(ship2, idleFleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            // Second fleet should NOT be sent since first is already at target
+            Assert.IsNull(
+                idleFleet.Movement,
+                "AI should not stack fleets — skip targets with existing presence"
+            );
+        }
+
+        [Test]
+        public void UpdateCapitalShipProduction_StationaryFleetInSystem_UsesExistingFleet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+                NumRawResourceNodes = 1000,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(planet, system);
+
+            Building shipyard = new Building
+            {
+                InstanceID = "sy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Shipyard,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+
+            Fleet stationaryFleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+                Movement = null,
+            };
+            game.AttachNode(stationaryFleet, planet);
+
+            empire.AddTechnologyNode(
+                0,
+                new Technology(
+                    new CapitalShip
+                    {
+                        InstanceID = "ship_template",
+                        ConstructionCost = 1,
+                        BaseBuildSpeed = 1,
+                    }
+                )
+            );
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            Assert.AreEqual(
+                1,
+                stationaryFleet.CapitalShips.Count,
+                "AI should place new capital ship into the existing stationary fleet"
+            );
+            Assert.AreEqual(
+                1,
+                empire.GetOwnedUnitsByType<Fleet>().Count,
+                "AI should not create a new fleet when a stationary one already exists in the system"
+            );
+        }
+
+        [Test]
+        public void UpdateCapitalShipProduction_NoFleetInSystem_CreatesNewFleetAtShipyard()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                OrbitSlots = 10,
+                GroundSlots = 10,
+                NumRawResourceNodes = 1000,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(planet, system);
+
+            Building shipyard = new Building
+            {
+                InstanceID = "sy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Shipyard,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+
+            empire.AddTechnologyNode(
+                0,
+                new Technology(
+                    new CapitalShip
+                    {
+                        InstanceID = "ship_template",
+                        ConstructionCost = 1,
+                        BaseBuildSpeed = 1,
+                    }
+                )
+            );
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            List<Fleet> fleets = empire.GetOwnedUnitsByType<Fleet>();
+            Assert.AreEqual(
+                1,
+                fleets.Count,
+                "AI should create one new fleet at the shipyard planet"
+            );
+            Assert.AreEqual(
+                1,
+                fleets[0].CapitalShips.Count,
+                "The new fleet should contain the queued capital ship"
+            );
+            Assert.AreEqual(
+                planet,
+                ((ISceneNode)fleets[0]).GetParent(),
+                "The new fleet should be parented to the shipyard planet"
             );
         }
     }

@@ -199,13 +199,14 @@ public class AIManager
         IManufacturable item = tech.GetReferenceCopy();
         item.SetOwnerInstanceID(faction.GetInstanceID());
 
-        manufacturingManager.Enqueue(target, item, ignoreCost: false);
+        manufacturingManager.Enqueue(target, item, target, ignoreCost: false);
         return true;
     }
 
     /// <summary>
     /// Builds capital ships at idle shipyards until the faction has one per owned planet.
-    /// ManufacturingSystem creates the fleet container automatically on completion.
+    /// Each new ship is queued into a stationary friendly fleet already in the same system,
+    /// or a new fleet is created if none exists.
     /// </summary>
     private void UpdateCapitalShipProduction(Faction faction)
     {
@@ -220,7 +221,11 @@ public class AIManager
         int ownedShips = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
         int targetShips = faction.GetOwnedUnitsByType<Planet>().Count;
 
-        foreach (Planet shipyard in faction.GetIdleFacilities(ManufacturingType.Ship))
+        IEnumerable<Planet> shipyards = faction
+            .GetIdleFacilities(ManufacturingType.Ship)
+            .OrderByDescending(p => p.GetProductionRate(ManufacturingType.Ship));
+
+        foreach (Planet shipyard in shipyards)
         {
             if (ownedShips >= targetShips)
                 break;
@@ -228,12 +233,33 @@ public class AIManager
             IManufacturable item = tech.GetReferenceCopy();
             item.SetOwnerInstanceID(faction.GetInstanceID());
 
-            if (game.GetRefinedMaterials(faction) < item.GetConstructionCost())
-                continue;
+            Fleet fleet = FindStationaryFleetInSystem(shipyard, faction);
 
-            manufacturingManager.Enqueue(shipyard, item, ignoreCost: false);
+            if (fleet != null)
+            {
+                if (!manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
+                    continue;
+            }
+            else
+            {
+                if (!manufacturingManager.Enqueue(shipyard, item, shipyard, ignoreCost: false))
+                    continue;
+            }
+
             ownedShips++;
         }
+    }
+
+    private Fleet FindStationaryFleetInSystem(Planet planet, Faction faction)
+    {
+        PlanetSystem system = planet.GetParent() as PlanetSystem;
+        if (system == null)
+            return null;
+
+        string factionId = faction.GetInstanceID();
+        return system
+            .Planets.SelectMany(p => p.GetFleets())
+            .FirstOrDefault(f => f.GetOwnerInstanceID() == factionId && f.IsMovable());
     }
 
     /// <summary>
@@ -287,9 +313,7 @@ public class AIManager
                 IManufacturable item = starfighterTech.GetReferenceCopy();
                 item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                item.ManufacturingDestinationID = fleet.GetInstanceID();
-
-                manufacturingManager.Enqueue(shipyard, item, ignoreCost: false);
+                manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false);
             }
             else
             {
@@ -349,9 +373,7 @@ public class AIManager
                 IManufacturable item = regimentTech.GetReferenceCopy();
                 item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                item.ManufacturingDestinationID = fleet.GetInstanceID();
-
-                manufacturingManager.Enqueue(trainingFacility, item, ignoreCost: false);
+                manufacturingManager.Enqueue(trainingFacility, item, fleet, ignoreCost: false);
             }
             else
             {

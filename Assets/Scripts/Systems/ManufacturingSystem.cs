@@ -26,72 +26,97 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Attempts to enqueue an item for production.
-        /// AI factions should pass ignoreCost=true to bypass budget constraints.
-        /// Player factions use default (ignoreCost=false) for real economy validation.
+        /// Enqueues an item for production at <paramref name="planet"/>, delivering to
+        /// <paramref name="destination"/> on completion. Capital ships are placed in a new
+        /// fleet created at the destination planet.
         /// </summary>
-        /// <param name="planet">The planet where production will occur.</param>
-        /// <param name="item">The item to manufacture.</param>
-        /// <param name="ignoreCost">If true, bypasses cost validation (AI behavior).</param>
-        /// <returns>True if enqueued successfully, false if insufficient materials or invalid state.</returns>
-        public bool Enqueue(Planet planet, IManufacturable item, bool ignoreCost = false)
+        public bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Planet destination,
+            bool ignoreCost = false
+        )
         {
-            if (planet == null || item == null)
-            {
-                return false;
-            }
-
-            // Get faction that owns this planet
-            string ownerInstanceId = planet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerInstanceId))
-                return false;
-
-            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            Faction faction = GetValidatedFaction(planet, item, ignoreCost);
             if (faction == null)
-            {
                 return false;
-            }
 
-            // Validate cost (unless caller is bypassing)
-            if (!ignoreCost)
-            {
-                int cost = item.GetConstructionCost();
-                int available = game.GetRefinedMaterials(faction);
-
-                if (available < cost)
-                {
-                    return false; // Cannot afford
-                }
-            }
-
-            // Attach to scene graph. Capital ships go into a fleet at the
-            // production planet; everything else attaches to the planet directly.
             if (item is ISceneNode node)
             {
                 if (item is CapitalShip capitalShip)
                 {
-                    Fleet fleet = FindOrCreateFleet(planet, faction);
-                    game.AttachNode(capitalShip, fleet);
+                    Fleet newFleet = faction.CreateFleet(game);
+                    game.AttachNode(newFleet, destination);
+                    newFleet.Movement = null;
+                    game.AttachNode(capitalShip, newFleet);
                 }
                 else
                 {
-                    game.AttachNode(node, planet);
+                    game.AttachNode(node, destination);
                 }
             }
 
+            CommitToQueue(planet, item);
+            return true;
+        }
+
+        /// <summary>
+        /// Enqueues an item for production at <paramref name="planet"/>, placing it into
+        /// <paramref name="destination"/> fleet on completion. The caller is responsible for
+        /// selecting the target fleet.
+        /// </summary>
+        public bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Fleet destination,
+            bool ignoreCost = false
+        )
+        {
+            Faction faction = GetValidatedFaction(planet, item, ignoreCost);
+            if (faction == null)
+                return false;
+
+            if (item is ISceneNode node)
+                game.AttachNode(node, destination);
+
+            CommitToQueue(planet, item);
+            return true;
+        }
+
+        private Faction GetValidatedFaction(Planet planet, IManufacturable item, bool ignoreCost)
+        {
+            if (planet == null || item == null)
+                return null;
+
+            string ownerInstanceId = planet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return null;
+
+            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (faction == null)
+                return null;
+
+            if (!ignoreCost)
+            {
+                if (game.GetRefinedMaterials(faction) < item.GetConstructionCost())
+                    return null;
+            }
+
+            return faction;
+        }
+
+        private void CommitToQueue(Planet planet, IManufacturable item)
+        {
             item.ManufacturingStatus = ManufacturingStatus.Building;
             item.ManufacturingProgress = 0;
             item.ProducerOwnerID = planet.GetOwnerInstanceID();
             item.ProducerPlanetID = planet.GetInstanceID();
 
-            // Add to queue (cost automatically counted via faction.GetTotalUnitCost)
             planet.AddToManufacturingQueue(item);
 
             GameLogger.Log(
                 $"Enqueued {item.GetDisplayName()} for production at {planet.GetDisplayName()} (cost: {item.GetConstructionCost()})"
             );
-
-            return true;
         }
 
         /// <summary>
@@ -202,7 +227,6 @@ namespace Rebellion.Systems
             ManufacturingType type
         )
         {
-            // Update status
             item.ManufacturingStatus = ManufacturingStatus.Complete;
 
             // Remove from queue
@@ -213,79 +237,49 @@ namespace Rebellion.Systems
                 items.Remove(item);
             }
 
-            // Ship to destination if one was specified
-            if (item is IMovable movable && !string.IsNullOrEmpty(item.ManufacturingDestinationID))
+            // Unit is already at its destination from Enqueue. Set up movement
+            // if the destination is a different planet from the production planet.
+            if (item is IMovable movable)
             {
-                ISceneNode destination = game.GetSceneNodeByInstanceID<ISceneNode>(
-                    item.ManufacturingDestinationID
-                );
+                // For capital ships, the movable unit is the fleet they're in
+                IMovable unitToShip = item is CapitalShip cs
+                    ? (IMovable)(cs.GetParent() as Fleet)
+                    : movable;
 
-                if (destination != null)
+                if (unitToShip != null)
                 {
-                    // For capital ships, ship the fleet they're in
-                    IMovable unitToShip = item is CapitalShip cs
-                        ? (IMovable)(cs.GetParent() as Fleet ?? (ISceneNode)cs)
-                        : movable;
-
-                    ShipToDestination(unitToShip, planet, destination);
-                    return;
-                }
-            }
-
-            // No valid destination — default to production planet, scrap if rejected
-            if (item is ISceneNode orphanNode)
-            {
-                try
-                {
-                    if (orphanNode.GetParent() != planet)
+                    Planet destinationPlanet = ((ISceneNode)unitToShip).GetParentOfType<Planet>();
+                    if (destinationPlanet != null && destinationPlanet != planet)
                     {
-                        if (orphanNode.GetParent() != null)
-                            game.MoveNode(orphanNode, planet);
-                        else
-                            game.AttachNode(orphanNode, planet);
+                        try
+                        {
+                            ShipToDestination(unitToShip, planet, destinationPlanet);
+                        }
+                        catch (SceneAccessException)
+                        {
+                            // Destination is no longer friendly - fall back to production planet
+                            try
+                            {
+                                PlaceAtPlanet((ISceneNode)unitToShip, planet);
+                            }
+                            catch (SceneAccessException)
+                            {
+                                // Production planet also rejected the unit - cancel
+                                game.DetachNode((ISceneNode)unitToShip);
+                                return;
+                            }
+                        }
                     }
-
-                    if (item is IMovable idleMovable)
-                        idleMovable.Movement = null;
-
-                    GameLogger.Log(
-                        $"Completed manufacturing: {item.GetDisplayName()} at {planet.GetDisplayName()}"
-                    );
+                    else
+                    {
+                        unitToShip.Movement = null;
+                    }
                 }
-                catch
-                {
-                    GameLogger.Warning(
-                        $"Scrapped {item.GetDisplayName()}: planet {planet.GetDisplayName()} cannot accept it"
-                    );
-                    if (orphanNode.GetParent() != null)
-                        game.DetachNode(orphanNode);
-                }
-                return;
             }
 
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {planet.GetDisplayName()}"
             );
-        }
-
-        /// <summary>
-        /// Finds an existing idle friendly fleet at the planet, or creates a new one.
-        /// </summary>
-        private Fleet FindOrCreateFleet(Planet planet, Faction faction)
-        {
-            string ownerId = faction.GetInstanceID();
-
-            Fleet existingFleet = planet
-                .GetFleets()
-                .FirstOrDefault(f => f.GetOwnerInstanceID() == ownerId && f.IsMovable());
-
-            if (existingFleet != null)
-                return existingFleet;
-
-            Fleet fleet = faction.CreateFleet(game);
-            game.AttachNode(fleet, planet);
-            fleet.Movement = null;
-            return fleet;
         }
 
         /// <summary>

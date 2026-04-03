@@ -354,7 +354,12 @@ namespace Rebellion.Tests.Systems
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
-            bool enqueued = manufacturing.Enqueue(targetPlanet, regiment, ignoreCost: true);
+            bool enqueued = manufacturing.Enqueue(
+                targetPlanet,
+                regiment,
+                targetPlanet,
+                ignoreCost: true
+            );
             Assert.IsTrue(enqueued, "Setup: regiment should enqueue successfully");
 
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
@@ -381,7 +386,12 @@ namespace Rebellion.Tests.Systems
                 BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            bool enqueued = manufacturing.Enqueue(targetPlanet, mine, ignoreCost: true);
+            bool enqueued = manufacturing.Enqueue(
+                targetPlanet,
+                mine,
+                targetPlanet,
+                ignoreCost: true
+            );
             Assert.IsTrue(enqueued, "Setup: building should enqueue successfully");
             Assert.IsNotNull(mine.GetParent(), "Setup: building should be attached to planet");
 
