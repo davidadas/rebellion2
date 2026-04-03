@@ -47,7 +47,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -158,7 +157,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -170,7 +168,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -340,7 +337,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -352,7 +348,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "alliance",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -412,7 +407,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -424,7 +418,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -436,7 +429,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -507,7 +499,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -581,7 +572,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -593,7 +583,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p2",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -668,7 +657,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -680,7 +668,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p2",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },
@@ -751,7 +738,6 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 Movement = new MovementState
                 {
-                    DestinationInstanceID = "p1",
                     TransitTicks = 10,
                     TicksElapsed = 5,
                 },

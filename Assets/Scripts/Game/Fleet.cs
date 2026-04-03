@@ -109,18 +109,12 @@ namespace Rebellion.Game
             return CapitalShips.SelectMany(ship => ship.Starfighters);
         }
 
-        /// <summary>
-        /// Returns the first capital ship with available starfighter capacity, or null if none.
-        /// </summary>
-        public CapitalShip FindShipForStarfighter()
+        private CapitalShip FindShipForStarfighter()
         {
             return CapitalShips.FirstOrDefault(s => s.GetExcessStarfighterCapacity() > 0);
         }
 
-        /// <summary>
-        /// Returns the first capital ship with available regiment capacity, or null if none.
-        /// </summary>
-        public CapitalShip FindShipForRegiment()
+        private CapitalShip FindShipForRegiment()
         {
             return CapitalShips.FirstOrDefault(s => s.GetExcessRegimentCapacity() > 0);
         }

@@ -144,7 +144,6 @@ namespace Rebellion.Systems
 
             unit.Movement = new MovementState
             {
-                DestinationInstanceID = destination.GetInstanceID(),
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 OriginPosition = originPosition,
@@ -217,9 +216,7 @@ namespace Rebellion.Systems
                 );
             }
 
-            ISceneNode destination = game.GetSceneNodeByInstanceID<ISceneNode>(
-                movable.Movement.DestinationInstanceID
-            ) ?? (ISceneNode)movable.GetParent();
+            ISceneNode destination = (ISceneNode)movable.GetParent();
 
             movable.Movement.TicksElapsed++;
             movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
@@ -277,7 +274,6 @@ namespace Rebellion.Systems
                     int newTicks = CalculateTransitTicks(movable, currentPos, newDest);
                     movable.Movement = new MovementState
                     {
-                        DestinationInstanceID = movable.Movement.DestinationInstanceID,
                         TransitTicks = newTicks,
                         TicksElapsed = 0,
                         OriginPosition = currentPos,

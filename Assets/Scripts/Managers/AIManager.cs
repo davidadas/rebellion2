@@ -168,8 +168,7 @@ public class AIManager
         if (tech == null)
             return false;
 
-        if (tech.GetReference() is not Building templateBuilding)
-            return false;
+        Building templateBuilding = (Building)tech.GetReference();
 
         if (game.GetRefinedMaterials(faction) < tech.GetReference().GetConstructionCost())
             return false;
@@ -388,25 +387,20 @@ public class AIManager
         string factionId = faction.GetInstanceID();
 
         List<Fleet> idlePatrols = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f => f.RoleType == FleetRoleType.Patrol && f.IsMovable())
+            .GetFleetsByType(FleetRoleType.Patrol)
+            .Where(f => f.IsMovable())
             .ToList();
 
         List<Fleet> availableForPatrol = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f =>
-                f.RoleType == FleetRoleType.Battle && f.IsMovable() && f.CapitalShips.Count == 0
-            )
+            .GetFleetsByType(FleetRoleType.Battle)
+            .Where(f => f.IsMovable() && f.CapitalShips.Count == 0)
             .ToList();
 
         List<Planet> needsPatrol = game.GetSceneNodesByType<Planet>(p =>
             p.IsColonized
             && !faction
-                .GetOwnedUnitsByType<Fleet>()
-                .Any(f =>
-                    f.RoleType == FleetRoleType.Patrol
-                    && f.GetParentOfType<Planet>() == p
-                )
+                .GetFleetsByType(FleetRoleType.Patrol)
+                .Any(f => f.GetParentOfType<Planet>() == p)
         );
 
         foreach (Planet planet in needsPatrol)
@@ -436,10 +430,8 @@ public class AIManager
     private void UpdateFleetMovement(Faction faction)
     {
         List<Fleet> idle = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f =>
-                f.RoleType == FleetRoleType.Battle && f.IsMovable() && f.CapitalShips.Count > 0
-            )
+            .GetFleetsByType(FleetRoleType.Battle)
+            .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
             .ToList();
 
         if (!idle.Any())
@@ -476,10 +468,8 @@ public class AIManager
         string factionId = faction.InstanceID;
 
         List<Fleet> idle = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f =>
-                f.RoleType == FleetRoleType.Battle && f.IsMovable() && f.CapitalShips.Count > 0
-            )
+            .GetFleetsByType(FleetRoleType.Battle)
+            .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
             .ToList();
 
         if (!idle.Any())
@@ -498,12 +488,7 @@ public class AIManager
         // Don't stack — skip if we already have a fleet there or en route
         bool alreadyTargeted = faction
             .GetOwnedUnitsByType<Fleet>()
-            .Any(f =>
-                f.GetParentOfType<Planet>() == target
-                || (
-                    f.Movement != null && f.Movement.DestinationInstanceID == target.GetInstanceID()
-                )
-            );
+            .Any(f => f.GetParentOfType<Planet>() == target);
 
         if (alreadyTargeted)
             return;

@@ -246,51 +246,6 @@ namespace Rebellion.Systems
                     + $"Winner: {result.Winner}"
             );
 
-            // After space combat, the winner may assault or capture the planet
-            Fleet winner =
-                result.Winner == CombatSide.Attacker ? attacker
-                : result.Winner == CombatSide.Defender ? defender
-                : null;
-
-            if (
-                winner != null
-                && planet.GetOwnerInstanceID() != null
-                && planet.GetOwnerInstanceID() != winner.GetOwnerInstanceID()
-            )
-            {
-                string winnerFactionId = winner.GetOwnerInstanceID();
-
-                if (planet.GetDefenseStrength() > 0)
-                {
-                    // Planet has defenses — assault required
-                    List<Fleet> assaultFleets = planet
-                        .GetFleets()
-                        .Where(f => f.GetOwnerInstanceID() == winnerFactionId)
-                        .ToList();
-
-                    if (assaultFleets.Any())
-                    {
-                        PlanetaryAssaultResult assaultResult = ExecutePlanetaryAssault(
-                            assaultFleets,
-                            planet
-                        );
-
-                        if (assaultResult.Success && !assaultResult.OwnershipChanged)
-                        {
-                            // Defenses destroyed but ownership not yet transferred
-                            game.ChangeUnitOwnership(planet, winnerFactionId);
-                        }
-                    }
-                }
-                else
-                {
-                    // Undefended — auto-capture
-                    game.ChangeUnitOwnership(planet, winnerFactionId);
-                    GameLogger.Log(
-                        $"Undefended planet {planet.GetDisplayName()} captured by {winnerFactionId}"
-                    );
-                }
-            }
         }
 
         /// <summary>

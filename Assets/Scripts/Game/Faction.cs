@@ -113,6 +113,11 @@ namespace Rebellion.Game
             return ownedEntities[typeof(T)].Cast<T>().ToList();
         }
 
+        public List<Fleet> GetFleetsByType(FleetRoleType roleType)
+        {
+            return GetOwnedUnitsByType<Fleet>().Where(f => f.RoleType == roleType).ToList();
+        }
+
         /// <summary>
         /// Adds a unit to the faction's owned entities.
         /// </summary>

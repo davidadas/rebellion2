@@ -901,7 +901,7 @@ namespace Rebellion.Tests.Managers
             );
             Assert.AreEqual(
                 "p2",
-                fleet.Movement.DestinationInstanceID,
+                fleet.GetParentOfType<Planet>()?.InstanceID,
                 "Fleet destination should be the enemy planet"
             );
         }

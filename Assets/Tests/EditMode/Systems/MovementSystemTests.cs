@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
 
             Assert.IsNotNull(officer.Movement);
-            Assert.AreEqual(destination.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(destination, officer.GetParent());
         }
 
         [Test]

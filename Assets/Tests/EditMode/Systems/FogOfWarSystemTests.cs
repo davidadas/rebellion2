@@ -1251,7 +1251,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empireFleet, hoth);
             empireFleet.Movement = new MovementState
             {
-                DestinationInstanceID = "HOTH",
                 TransitTicks = 10,
                 TicksElapsed = 5,
             };
@@ -1278,7 +1277,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(allianceFleet, coruscant);
             allianceFleet.Movement = new MovementState
             {
-                DestinationInstanceID = "CORUSCANT",
                 TransitTicks = 10,
                 TicksElapsed = 3,
             };
@@ -1300,7 +1298,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(new CapitalShip { InstanceID = "cs1", OwnerInstanceID = alliance.InstanceID }, allianceFleet);
             allianceFleet.Movement = new MovementState
             {
-                DestinationInstanceID = "HOTH",
                 TransitTicks = 10,
                 TicksElapsed = 4,
             };

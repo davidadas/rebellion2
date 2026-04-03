@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Systems
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(empireFleet.Movement, "Evicted fleet should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, empireFleet.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, empireFleet.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Systems
                 officer.Movement,
                 "Participant should be in transit after mission canceled"
             );
-            Assert.AreEqual(empirePlanet.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, officer.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.Systems
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(officer.Movement, "Evicted officer should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, officer.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.Systems
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(regiment.Movement, "Evicted regiment should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, regiment.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, regiment.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -238,7 +238,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empireFleet, targetPlanet);
             empireFleet.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 5,
                 TicksElapsed = 2,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -249,8 +248,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(empireFleet.Movement, "Evicted in-transit fleet should be redirected");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                empireFleet.Movement.DestinationInstanceID,
+                empirePlanet,
+                empireFleet.GetParentOfType<Planet>(),
                 "In-transit fleet should be redirected to nearest friendly planet"
             );
         }
@@ -263,7 +262,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(officer, targetPlanet);
             officer.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 5,
                 TicksElapsed = 2,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -274,8 +272,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(officer.Movement, "Evicted in-transit officer should be redirected");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                officer.Movement.DestinationInstanceID,
+                empirePlanet,
+                officer.GetParentOfType<Planet>(),
                 "In-transit officer should be redirected to nearest friendly planet"
             );
         }
@@ -293,7 +291,6 @@ namespace Rebellion.Tests.Systems
             Point midPoint = new Point(50, 0);
             officer.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 10,
                 TicksElapsed = 5,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -304,8 +301,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(officer.Movement, "Officer should be in transit after redirect");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                officer.Movement.DestinationInstanceID,
+                empirePlanet,
+                officer.GetParentOfType<Planet>(),
                 "Officer should head to nearest friendly planet"
             );
             Assert.AreEqual(

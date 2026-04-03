@@ -41,19 +41,16 @@ namespace Rebellion.Systems
             if (faction == null)
                 return false;
 
-            if (item is ISceneNode node)
+            if (item is CapitalShip capitalShip)
             {
-                if (item is CapitalShip capitalShip)
-                {
-                    Fleet newFleet = faction.CreateFleet(game);
-                    game.AttachNode(newFleet, destination);
-                    newFleet.Movement = null;
-                    game.AttachNode(capitalShip, newFleet);
-                }
-                else
-                {
-                    game.AttachNode(node, destination);
-                }
+                Fleet newFleet = faction.CreateFleet(game);
+                game.AttachNode(newFleet, destination);
+                newFleet.Movement = null;
+                game.AttachNode(capitalShip, newFleet);
+            }
+            else
+            {
+                game.AttachNode((ISceneNode)item, destination);
             }
 
             CommitToQueue(planet, item);
@@ -76,17 +73,14 @@ namespace Rebellion.Systems
             if (faction == null)
                 return false;
 
-            if (item is ISceneNode node)
+            if (item is CapitalShip capitalShipFleet)
             {
-                if (item is CapitalShip capitalShip)
-                {
-                    game.AttachNode(capitalShip, destination);
-                }
-                else
-                {
-                    game.AttachNode(node, planet);
-                    item.DestinationInstanceID = destination.GetInstanceID();
-                }
+                game.AttachNode(capitalShipFleet, destination);
+            }
+            else
+            {
+                game.AttachNode((ISceneNode)item, planet);
+                item.DestinationInstanceID = destination.GetInstanceID();
             }
 
             CommitToQueue(planet, item);
@@ -313,28 +307,7 @@ namespace Rebellion.Systems
             {
                 Fleet fleet = game.GetSceneNodeByInstanceID<Fleet>(item.DestinationInstanceID);
                 if (fleet != null)
-                {
-                    if (unitToShip is Starfighter)
-                    {
-                        CapitalShip ship = fleet.FindShipForStarfighter();
-                        if (ship != null)
-                            return ship;
-                        HandlePlacementRejection((ISceneNode)unitToShip, ((ISceneNode)unitToShip).GetParentOfType<Planet>() ?? fleet.GetParentOfType<Planet>());
-                        return null;
-                    }
-                    if (unitToShip is Regiment)
-                    {
-                        CapitalShip ship = fleet.FindShipForRegiment();
-                        if (ship != null)
-                            return ship;
-                        HandlePlacementRejection((ISceneNode)unitToShip, ((ISceneNode)unitToShip).GetParentOfType<Planet>() ?? fleet.GetParentOfType<Planet>());
-                        return null;
-                    }
-                    // Officers and other units: first capital ship
-                    CapitalShip firstShip = fleet.CapitalShips.FirstOrDefault();
-                    if (firstShip != null)
-                        return firstShip;
-                }
+                    return fleet;
             }
             return ((ISceneNode)unitToShip).GetParent();
         }
@@ -363,13 +336,11 @@ namespace Rebellion.Systems
             }
 
             // Reparent to destination in scene graph
-            if (unit is ISceneNode node)
-            {
-                if (node.GetParent() != null)
-                    game.MoveNode(node, destination);
-                else
-                    game.AttachNode(node, destination);
-            }
+            ISceneNode unitNode = (ISceneNode)unit;
+            if (unitNode.GetParent() != null)
+                game.MoveNode(unitNode, destination);
+            else
+                game.AttachNode(unitNode, destination);
 
             // Calculate transit using same formula as MovementSystem
             Point originPos = originPlanet.GetPosition();
@@ -398,7 +369,6 @@ namespace Rebellion.Systems
 
             unit.Movement = new MovementState
             {
-                DestinationInstanceID = destination.GetInstanceID(),
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 OriginPosition = originPos,
@@ -652,11 +622,7 @@ namespace Rebellion.Systems
                 // Destroy all items in this queue
                 foreach (IManufacturable item in items.ToList())
                 {
-                    // Remove from scene graph using centralized global state management
-                    if (item is ISceneNode node)
-                    {
-                        game.DetachNode(node);
-                    }
+                    game.DetachNode((ISceneNode)item);
 
                     GameLogger.Debug(
                         $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()} due to ownership change"

@@ -1644,7 +1644,6 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = ship.GetParent() as Fleet;
             Assert.IsNotNull(fleet, "Ship should be in a fleet.");
             Assert.IsNotNull(fleet.Movement, "Fleet should have movement state for shipping.");
-            Assert.AreEqual("p2", fleet.Movement.DestinationInstanceID);
             Assert.Greater(fleet.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
@@ -1758,7 +1757,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.IsNotNull(fighter.Movement, "Should have movement state for shipping.");
-            Assert.AreEqual("cs1", fighter.Movement.DestinationInstanceID, "Should be shipping to the destination capital ship.");
             Assert.Greater(fighter.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
@@ -1799,9 +1797,9 @@ namespace Rebellion.Tests.Systems
             mfg.ProcessTick(game);
 
             Assert.AreEqual(
-                destShip,
+                destFleet,
                 fighter.GetParent(),
-                "Completed starfighter must be parented to the destination fleet's capital ship."
+                "Completed starfighter must be parented to the destination fleet."
             );
         }
 
@@ -1832,7 +1830,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.IsNotNull(regiment.Movement, "Should have movement state for shipping.");
-            Assert.AreEqual("p2", regiment.Movement.DestinationInstanceID);
             Assert.Greater(regiment.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
@@ -2052,7 +2049,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have movement state for shipping.");
-            Assert.AreEqual("p2", mine.Movement.DestinationInstanceID);
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
         }
 
