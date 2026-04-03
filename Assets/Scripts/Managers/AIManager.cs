@@ -212,12 +212,9 @@ public class AIManager
         if (tech == null)
             return;
 
-        int ownedShips = faction.GetOwnedUnitsByType<Fleet>().Sum(f => f.CapitalShips.Count);
-        int targetShips = faction.GetOwnedUnitsByType<Planet>().Count;
-
         List<Planet> shipyards = faction.GetIdleFacilities(ManufacturingType.Ship);
 
-        while (shipyards.Count > 0 && ownedShips < targetShips)
+        while (shipyards.Count > 0)
         {
             int index = provider.NextInt(0, shipyards.Count);
             Planet shipyard = shipyards[index];
@@ -232,8 +229,6 @@ public class AIManager
 
             if (!manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
                 continue;
-
-            ownedShips++;
         }
     }
 

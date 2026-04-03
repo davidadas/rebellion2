@@ -280,8 +280,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Completes a capital ship. If its destination fleet exists and is friendly, moves the
-        /// fleet from the production planet. Otherwise creates a new fleet at the production planet.
+        /// Completes a capital ship. If its destination fleet is stationary at the production
+        /// planet, the ship stays in that fleet. Otherwise, detaches the ship and places it
+        /// into an existing idle fleet at the production planet, or creates a new one.
         /// </summary>
         private void CompleteCapitalShip(
             Planet productionPlanet,
@@ -290,33 +291,44 @@ namespace Rebellion.Systems
         )
         {
             Fleet currentFleet = cs.GetParent() as Fleet;
-            bool fleetAlive =
+            bool fleetAtPlanet =
                 currentFleet != null
-                && game.GetSceneNodeByInstanceID<Fleet>(currentFleet.InstanceID) != null;
+                && game.GetSceneNodeByInstanceID<Fleet>(currentFleet.InstanceID) != null
+                && currentFleet.GetOwnerInstanceID() == cs.GetOwnerInstanceID()
+                && currentFleet.GetParentOfType<Planet>() == productionPlanet
+                && currentFleet.IsMovable();
 
-            if (fleetAlive && currentFleet.GetOwnerInstanceID() == cs.GetOwnerInstanceID())
+            if (fleetAtPlanet)
             {
-                movementSystem.RequestMove(
-                    currentFleet,
-                    (ISceneNode)currentFleet.GetParent(),
-                    productionPlanet
+                // Fleet is still here and idle — ship is already in it, nothing to do.
+                return;
+            }
+
+            // Detach from current fleet (which has moved away or been destroyed)
+            ISceneNode staleParent = cs.GetParent();
+            if (staleParent != null)
+            {
+                staleParent.RemoveChild(cs);
+                cs.SetParent(null);
+            }
+
+            Faction faction = game.GetFactionByOwnerInstanceID(cs.GetOwnerInstanceID());
+            if (faction == null)
+                return;
+
+            // Try to add to an existing idle fleet at the production planet
+            Fleet localFleet = productionPlanet
+                .GetFleets()
+                .FirstOrDefault(f =>
+                    f.GetOwnerInstanceID() == cs.GetOwnerInstanceID() && f.IsMovable()
                 );
+
+            if (localFleet != null)
+            {
+                game.AttachNode(cs, localFleet);
             }
             else
             {
-                // Destination fleet was destroyed or changed sides — create a new fleet
-                // at the production planet.
-                ISceneNode staleParent = cs.GetParent();
-                if (staleParent != null)
-                {
-                    staleParent.RemoveChild(cs);
-                    cs.SetParent(null);
-                }
-
-                Faction faction = game.GetFactionByOwnerInstanceID(cs.GetOwnerInstanceID());
-                if (faction == null)
-                    return;
-
                 Fleet newFleet = faction.CreateFleet(game, new[] { cs });
                 game.AttachNode(newFleet, productionPlanet);
             }
