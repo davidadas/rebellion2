@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -17,7 +16,6 @@ public class AIManager
     private readonly MissionSystem missionManager;
     private readonly MovementSystem movementManager;
     private readonly ManufacturingSystem manufacturingManager;
-    private readonly AutomationIssueSystem issueSystem;
 
     public AIManager(
         GameRoot game,
@@ -30,7 +28,6 @@ public class AIManager
         this.missionManager = missionManager;
         this.movementManager = movementManager;
         this.manufacturingManager = manufacturingManager;
-        this.issueSystem = new AutomationIssueSystem(game);
     }
 
     /// <summary>
