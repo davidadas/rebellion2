@@ -745,7 +745,7 @@ namespace Rebellion.Tests.Systems
             };
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);

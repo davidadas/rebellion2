@@ -409,14 +409,32 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Creates a new fleet with sequential naming (Fleet 1, Fleet 2, etc.).
-        /// Returns a detached fleet - caller must attach to scene graph via game.AttachNode().
+        /// Creates a new fleet with the given capital ships.
+        /// Returns a detached fleet — caller must attach to scene graph via game.AttachNode().
+        /// Capital ships must be detached (no parent) before passing in.
         /// </summary>
-        /// <param name="game">The game instance for generating InstanceID.</param>
-        /// <returns>A new detached Fleet.</returns>
-        public Fleet CreateFleet(GameRoot game)
+        public Fleet CreateFleet(
+            GameRoot game,
+            CapitalShip[] capitalShips,
+            FleetRoleType roleType = FleetRoleType.Battle
+        )
         {
+            if (capitalShips == null || capitalShips.Length == 0)
+                throw new ArgumentException("Fleet requires at least one capital ship.");
+
             Fleet fleet = new Fleet(this.InstanceID, $"Fleet {nextFleetNumber}");
+            fleet.RoleType = roleType;
+
+            foreach (CapitalShip ship in capitalShips)
+            {
+                if (ship.GetParent() != null)
+                    throw new InvalidOperationException(
+                        $"Capital ship {ship.GetDisplayName()} must be detached before adding to a new fleet."
+                    );
+
+                fleet.AddChild(ship);
+                ship.SetParent(fleet);
+            }
 
             nextFleetNumber++;
             return fleet;

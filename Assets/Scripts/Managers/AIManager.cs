@@ -49,7 +49,6 @@ public class AIManager
     {
         HandleUprisings(faction, provider);
         HandleBlockades(faction);
-        DeployPatrolFleetsToSystems(faction);
         UpdateEconomy(faction);
         UpdateCapitalShipProduction(faction);
         UpdateStarfighterProduction(faction);
@@ -379,58 +378,12 @@ public class AIManager
     }
 
     /// <summary>
-    /// Ensures every colonized planet has a patrol fleet present or en route
-    /// for this faction. Prefers idle battle fleets with no capital ships (lightweight scouts).
-    /// </summary>
-    private void DeployPatrolFleetsToSystems(Faction faction)
-    {
-        string factionId = faction.GetInstanceID();
-
-        List<Fleet> idlePatrols = faction
-            .GetFleetsByType(FleetRoleType.Patrol)
-            .Where(f => f.IsMovable())
-            .ToList();
-
-        List<Fleet> availableForPatrol = faction
-            .GetFleetsByType(FleetRoleType.Battle)
-            .Where(f => f.IsMovable() && f.CapitalShips.Count == 0)
-            .ToList();
-
-        List<Planet> needsPatrol = game.GetSceneNodesByType<Planet>(p =>
-            p.IsColonized
-            && !faction
-                .GetFleetsByType(FleetRoleType.Patrol)
-                .Any(f => f.GetParentOfType<Planet>() == p)
-        );
-
-        foreach (Planet planet in needsPatrol)
-        {
-            Fleet patrol = idlePatrols.FirstOrDefault();
-            if (patrol == null)
-            {
-                patrol = availableForPatrol.FirstOrDefault();
-                if (patrol == null)
-                    break;
-                patrol.RoleType = FleetRoleType.Patrol;
-                availableForPatrol.Remove(patrol);
-            }
-            else
-            {
-                idlePatrols.Remove(patrol);
-            }
-
-            movementManager.RequestMove(patrol, planet);
-        }
-    }
-
-    /// <summary>
     /// Moves idle battle fleets to defend a contested HQ if undefended.
-    /// Patrol fleets are handled by DeployPatrolFleetsToSystems and excluded here.
     /// </summary>
     private void UpdateFleetMovement(Faction faction)
     {
         List<Fleet> idle = faction
-            .GetFleetsByType(FleetRoleType.Battle)
+            .GetOwnedUnitsByType<Fleet>()
             .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
             .ToList();
 
@@ -468,7 +421,7 @@ public class AIManager
         string factionId = faction.InstanceID;
 
         List<Fleet> idle = faction
-            .GetFleetsByType(FleetRoleType.Battle)
+            .GetOwnedUnitsByType<Fleet>()
             .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
             .ToList();
 

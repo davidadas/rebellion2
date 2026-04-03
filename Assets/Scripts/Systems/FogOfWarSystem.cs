@@ -67,9 +67,6 @@ namespace Rebellion.Systems
                 if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
                     continue;
 
-                if (fleet.CapitalShips.Count == 0)
-                    continue;
-
                 planetSnapshot.Fleets.Add(fleet.GetShallowCopy(CloneMode.Full));
                 InvalidateEntityFromOtherSnapshots(faction, fleet.InstanceID, planet.InstanceID);
             }
@@ -263,8 +260,7 @@ namespace Rebellion.Systems
             viewPlanet.Fleets.AddRange(
                 masterPlanet
                     .Fleets.Where(f =>
-                        f.CapitalShips.Count > 0
-                        && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
+                        f.Movement == null || f.OwnerInstanceID == faction.InstanceID
                     )
                     .Select(f => f.GetShallowCopy(CloneMode.Full))
             );

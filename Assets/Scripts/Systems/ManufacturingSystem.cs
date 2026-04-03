@@ -14,15 +14,13 @@ namespace Rebellion.Systems
     public class ManufacturingSystem
     {
         private readonly GameRoot game;
-        private readonly MovementSystem movementSystem;
 
         /// <summary>
         /// Creates a new ManufacturingSystem.
         /// </summary>
-        public ManufacturingSystem(GameRoot game, MovementSystem movementSystem)
+        public ManufacturingSystem(GameRoot game)
         {
             this.game = game;
-            this.movementSystem = movementSystem;
         }
 
         /// <summary>
@@ -43,10 +41,9 @@ namespace Rebellion.Systems
 
             if (item is CapitalShip capitalShip)
             {
-                Fleet newFleet = faction.CreateFleet(game);
+                Fleet newFleet = faction.CreateFleet(game, new[] { capitalShip });
                 game.AttachNode(newFleet, destination);
                 newFleet.Movement = null;
-                game.AttachNode(capitalShip, newFleet);
             }
             else
             {
@@ -124,22 +121,16 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Processes manufacturing for the current tick.
-        /// Advances manufacturing progress on all planets.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public void ProcessTick(MovementSystem movementSystem)
         {
-            // Iterate all planets
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
-                ProcessPlanetManufacturing(planet);
+                ProcessPlanetManufacturing(planet, movementSystem);
             }
         }
 
-        /// <summary>
-        /// Processes manufacturing for a single planet.
-        /// </summary>
-        private void ProcessPlanetManufacturing(Planet planet)
+        private void ProcessPlanetManufacturing(Planet planet, MovementSystem movementSystem)
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -207,8 +198,7 @@ namespace Rebellion.Systems
                     // Check if complete
                     if (activeItem.IsManufacturingComplete())
                     {
-                        CompleteManufacturing(planet, activeItem, type);
-                        // Continue with overflow progress to next item
+                        CompleteManufacturing(planet, activeItem, type, movementSystem);
                     }
                     else
                     {
@@ -220,54 +210,63 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Completes manufacturing of an item.
-        /// Handles destination recovery when the destination was destroyed or changed sides.
+        /// Completes manufacturing of an item. Marks it complete, removes from queue,
+        /// and delivers to the intended destination via MovementSystem.
+        /// If the destination no longer exists or changed sides, falls back gracefully.
         /// </summary>
         private void CompleteManufacturing(
-            Planet planet,
+            Planet productionPlanet,
             IManufacturable item,
-            ManufacturingType type
+            ManufacturingType type,
+            MovementSystem movementSystem
         )
         {
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                planet.GetManufacturingQueue();
-            queue.TryGetValue(type, out List<IManufacturable> items);
-
-            if (item is Building building)
-            {
-                CompleteBuildingWithRedirect(planet, building, items);
-                return;
-            }
-
             item.ManufacturingStatus = ManufacturingStatus.Complete;
-            items?.Remove(item);
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                productionPlanet.GetManufacturingQueue();
+            if (queue.TryGetValue(type, out List<IManufacturable> items))
+                items.Remove(item);
 
             if (item is CapitalShip cs)
-                CompleteCapitalShip(planet, cs);
+                CompleteCapitalShip(productionPlanet, cs, movementSystem);
+            else if (item is Building building)
+                CompleteBuilding(productionPlanet, building, movementSystem);
             else if (item is IMovable movable)
-                CompleteMovableWithRedirect(planet, movable);
+                CompleteMovable(productionPlanet, movable, movementSystem);
 
             GameLogger.Log(
-                $"Completed manufacturing: {item.GetDisplayName()} at {planet.GetDisplayName()}"
+                $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
             );
         }
 
         /// <summary>
-        /// Completes a capital ship. If its destination fleet was destroyed, creates a rescue fleet
-        /// at the production planet and re-registers the capital ship and all its cargo.
+        /// Completes a capital ship. If its destination fleet exists and is friendly, moves the
+        /// fleet from the production planet. Otherwise creates a new fleet at the production planet.
         /// </summary>
-        private void CompleteCapitalShip(Planet productionPlanet, CapitalShip cs)
+        private void CompleteCapitalShip(
+            Planet productionPlanet,
+            CapitalShip cs,
+            MovementSystem movementSystem
+        )
         {
             Fleet currentFleet = cs.GetParent() as Fleet;
             bool fleetAlive =
                 currentFleet != null
                 && game.GetSceneNodeByInstanceID<Fleet>(currentFleet.InstanceID) != null;
 
-            if (!fleetAlive)
+            if (fleetAlive && currentFleet.GetOwnerInstanceID() == cs.GetOwnerInstanceID())
             {
-                // Destination fleet was destroyed — rescue the capital ship at the production planet.
-                // Children's parent pointers are not cleared by DetachNode, so we must clean up manually
-                // before re-attaching to avoid the AttachNode "already has a parent" guard.
+                movementSystem.RequestMove(
+                    currentFleet,
+                    (ISceneNode)currentFleet.GetParent(),
+                    productionPlanet
+                );
+            }
+            else
+            {
+                // Destination fleet was destroyed or changed sides — create a new fleet
+                // at the production planet.
                 ISceneNode staleParent = cs.GetParent();
                 if (staleParent != null)
                 {
@@ -279,60 +278,27 @@ namespace Rebellion.Systems
                 if (faction == null)
                     return;
 
-                Fleet rescueFleet = faction.CreateFleet(game);
-                game.AttachNode(rescueFleet, productionPlanet);
-
-                // Bypass game.AttachNode to avoid duplicating faction owned-units registration
-                // (cs and its children were never removed from faction owned-units when the fleet died).
-                rescueFleet.AddChild(cs);
-                cs.SetParent(rescueFleet);
-                cs.Traverse(game.AddSceneNodeByInstanceID);
-
-                GameLogger.Log(
-                    $"{cs.GetDisplayName()} rescued to new fleet at {productionPlanet.GetDisplayName()}"
-                );
-            }
-            else
-            {
-                movementSystem.RequestMove(
-                    currentFleet,
-                    (ISceneNode)currentFleet.GetParent(),
-                    productionPlanet
-                );
+                Fleet newFleet = faction.CreateFleet(game, new[] { cs });
+                game.AttachNode(newFleet, productionPlanet);
             }
         }
 
         /// <summary>
-        /// Completes a non-capital-ship movable (starfighter, regiment, special forces).
-        /// If the destination's planet changed sides, redirects the unit to the production planet.
-        /// If the production planet cannot accept the unit, the unit is cancelled.
+        /// Completes a movable item (starfighter, regiment). If the destination planet is still
+        /// friendly, sends via MovementSystem. Otherwise redirects to production planet.
         /// </summary>
-        private void CompleteMovableWithRedirect(Planet productionPlanet, IMovable movable)
+        private void CompleteMovable(
+            Planet productionPlanet,
+            IMovable movable,
+            MovementSystem movementSystem
+        )
         {
             Planet currentPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
             bool destFriendly =
                 currentPlanet != null
                 && currentPlanet.GetOwnerInstanceID() == movable.GetOwnerInstanceID();
 
-            if (!destFriendly)
-            {
-                try
-                {
-                    game.MoveNode((ISceneNode)movable, productionPlanet);
-                    movable.Movement = null;
-                    GameLogger.Log(
-                        $"{((ISceneNode)movable).GetDisplayName()} redirected to {productionPlanet.GetDisplayName()} — destination changed sides."
-                    );
-                }
-                catch (Exception)
-                {
-                    game.DetachNode((ISceneNode)movable);
-                    GameLogger.Log(
-                        $"{((ISceneNode)movable).GetDisplayName()} cancelled — destination changed sides and production planet cannot accept it."
-                    );
-                }
-            }
-            else
+            if (destFriendly)
             {
                 movementSystem.RequestMove(
                     movable,
@@ -340,17 +306,28 @@ namespace Rebellion.Systems
                     productionPlanet
                 );
             }
+            else
+            {
+                try
+                {
+                    game.MoveNode((ISceneNode)movable, productionPlanet);
+                    movable.Movement = null;
+                }
+                catch (SceneAccessException)
+                {
+                    game.DetachNode((ISceneNode)movable);
+                }
+            }
         }
 
         /// <summary>
-        /// Completes a building. If its destination planet changed sides, performs a batch check:
-        /// all buildings of the same slot type in the queue are redirected to the production planet
-        /// if it has sufficient capacity, or all are cancelled if it does not.
+        /// Completes a building. If the destination planet is still friendly, sends via
+        /// MovementSystem. Otherwise redirects to production planet if capacity allows.
         /// </summary>
-        private void CompleteBuildingWithRedirect(
+        private void CompleteBuilding(
             Planet productionPlanet,
             Building building,
-            List<IManufacturable> items
+            MovementSystem movementSystem
         )
         {
             Planet destPlanet = building.GetParentOfType<Planet>();
@@ -358,65 +335,34 @@ namespace Rebellion.Systems
                 destPlanet != null
                 && destPlanet.GetOwnerInstanceID() == building.GetOwnerInstanceID();
 
-            if (!destFriendly)
+            if (destFriendly)
             {
-                BuildingSlot slot = building.GetBuildingSlot();
-
-                // Collect the entire batch (this building + same-slot siblings still in queue).
-                List<Building> batch = new List<Building> { building };
-                if (items != null)
-                    batch.AddRange(
-                        items.OfType<Building>().Where(b => b.GetBuildingSlot() == slot)
-                    );
-
-                // Remove all from queue before acting.
-                foreach (Building b in batch)
-                    items?.Remove(b);
-
-                bool hasCapacity = productionPlanet.GetBuildingSlotCapacity(slot) >= batch.Count;
-
-                foreach (Building b in batch)
-                {
-                    if (hasCapacity)
-                    {
-                        b.ManufacturingStatus = ManufacturingStatus.Complete;
-                        try
-                        {
-                            game.MoveNode(b, productionPlanet);
-                        }
-                        catch (Exception)
-                        {
-                            // MoveNode may have left b detached if its rollback also failed.
-                            if (((ISceneNode)b).GetParent() != null)
-                                game.DetachNode(b);
-                        }
-                    }
-                    else
-                    {
-                        game.DetachNode(b);
-                    }
-                }
-
-                GameLogger.Log(
-                    hasCapacity
-                        ? $"Redirected {batch.Count} building(s) to {productionPlanet.GetDisplayName()} — destination changed sides."
-                        : $"Cancelled {batch.Count} building(s) — destination changed sides and production planet is at capacity."
+                movementSystem.RequestMove(
+                    (IMovable)building,
+                    (ISceneNode)building.GetParent(),
+                    productionPlanet
                 );
                 return;
             }
 
-            // Normal completion: destination is still friendly.
-            building.ManufacturingStatus = ManufacturingStatus.Complete;
-            items?.Remove(building);
-            movementSystem.RequestMove(
-                (IMovable)building,
-                (ISceneNode)building.GetParent(),
-                productionPlanet
-            );
-
-            GameLogger.Log(
-                $"Completed manufacturing: {building.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
-            );
+            // Destination changed sides — try to redirect to production planet.
+            BuildingSlot slot = building.GetBuildingSlot();
+            if (productionPlanet.GetBuildingSlotCapacity(slot) > 0)
+            {
+                try
+                {
+                    game.MoveNode(building, productionPlanet);
+                }
+                catch (SceneAccessException)
+                {
+                    if (((ISceneNode)building).GetParent() != null)
+                        game.DetachNode(building);
+                }
+            }
+            else
+            {
+                game.DetachNode(building);
+            }
         }
 
         /// <summary>

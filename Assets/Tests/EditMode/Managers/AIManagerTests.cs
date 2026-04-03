@@ -77,10 +77,10 @@ namespace Rebellion.Tests.Managers
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game, movement)
+                new ManufacturingSystem(game)
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
 
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
             return (game, planet, officer, ai);
@@ -166,10 +166,10 @@ namespace Rebellion.Tests.Managers
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game, movement)
+                new ManufacturingSystem(game)
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
 
             ai.Update(new LastIndexRNG());
@@ -259,10 +259,10 @@ namespace Rebellion.Tests.Managers
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game, movement)
+                new ManufacturingSystem(game)
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
 
             return (game, empPlanet, enemyPlanet, officer, ai);
@@ -565,7 +565,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -633,7 +633,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -780,7 +780,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -875,7 +875,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -968,7 +968,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -1067,7 +1067,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
@@ -1162,7 +1162,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movement);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);

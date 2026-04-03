@@ -53,6 +53,7 @@ public class GameManager
         stopwatch = new Stopwatch();
 
         InitializeSystems();
+        RebuildDerivedState();
         RehydrateMissions();
         SetGameSpeed(game.GetGameSpeed());
     }
@@ -67,6 +68,7 @@ public class GameManager
 
         game = newGame;
         InitializeSystems();
+        RebuildDerivedState();
         RehydrateMissions();
         tickTimer = 0f;
         stopwatch.Restart();
@@ -164,7 +166,7 @@ public class GameManager
         GameLogger.Debug("Tick: " + game.CurrentTick);
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        manufacturingManager.ProcessTick(game);
+        manufacturingManager.ProcessTick(movementManager);
 
         // 2. Movement: updates positions before combat needs them
         movementManager.ProcessTick();
@@ -255,7 +257,7 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        manufacturingManager = new ManufacturingSystem(game, movementManager);
+        manufacturingManager = new ManufacturingSystem(game);
         OwnershipSystem ownershipSystem = new OwnershipSystem(
             game,
             movementManager,
@@ -272,6 +274,18 @@ public class GameManager
         uprisingManager = new UprisingSystem(game);
         victoryManager = new VictorySystem(game);
         aiManager = new AIManager(game, missionManager, movementManager, manufacturingManager);
+    }
+
+    /// <summary>
+    /// Rebuilds derived state that is not persisted (tech levels, manufacturing queues).
+    /// Called after system initialization on both new games and loaded saves.
+    /// </summary>
+    private void RebuildDerivedState()
+    {
+        foreach (Faction faction in game.GetFactions())
+            faction.RebuildTechnologyLevels(game);
+
+        manufacturingManager.RebuildQueues();
     }
 
     /// <summary>

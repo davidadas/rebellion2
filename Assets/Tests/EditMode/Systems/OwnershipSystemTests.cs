@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Systems
             ownershipSystem = new OwnershipSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game, movementSystem)
+                new ManufacturingSystem(game)
             );
         }
 
@@ -349,7 +349,7 @@ namespace Rebellion.Tests.Systems
             game.ChangeUnitOwnership(targetPlanet, "empire");
             targetPlanet.GroundSlots = 1;
 
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movementSystem);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
             bool enqueued = manufacturing.Enqueue(
                 targetPlanet,
@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Systems
             game.ChangeUnitOwnership(targetPlanet, "empire");
             targetPlanet.GroundSlots = 1;
 
-            ManufacturingSystem manufacturing = new ManufacturingSystem(game, movementSystem);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             Building mine = new Building
             {
                 InstanceID = "mine1",

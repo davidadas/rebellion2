@@ -331,7 +331,9 @@ namespace Rebellion.Game
                 );
             }
 
-            node.GetParent().RemoveChild(node);
+            ISceneNode parent = node.GetParent();
+
+            parent.RemoveChild(node);
             node.SetParent(null);
 
             // Deregister the node from the faction's list of owned units.
@@ -339,6 +341,12 @@ namespace Rebellion.Game
 
             // Deregister the node and its children.
             node.Traverse(RemoveSceneNodeByInstanceID);
+
+            // If removing a capital ship left a fleet empty, detach the fleet too.
+            if (node is CapitalShip && parent is Fleet fleet && fleet.CapitalShips.Count == 0)
+            {
+                DetachNode(fleet);
+            }
         }
 
         /// <summary>

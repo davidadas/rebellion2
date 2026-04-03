@@ -174,6 +174,12 @@ namespace Rebellion.Game
             {
                 AddCapitalShip(capitalShip);
             }
+            else if (CapitalShips.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot add {child.GetDisplayName()} to fleet with no capital ships."
+                );
+            }
             else if (child is Officer officer)
             {
                 AddOfficer(officer);
