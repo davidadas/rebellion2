@@ -45,7 +45,9 @@ namespace Rebellion.Game
         {
             IManufacturable clonedManufacturable = Manufacturable.GetDeepCopy();
 
-            clonedManufacturable.SetManufacturingStatus(ManufacturingStatus.Building);
+            // Set directly on the property to bypass the Complete→Building guard,
+            // which is meant for live game objects, not freshly cloned templates.
+            clonedManufacturable.ManufacturingStatus = ManufacturingStatus.Building;
             if (clonedManufacturable is IMovable movable)
             {
                 // New manufactured items start at rest (no movement)
