@@ -819,7 +819,7 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in attackingFleets)
             {
                 // All fleets at enemy planets are considered assault-ready
-                int fleetCombatValue = CalculateFleetCombatValue(fleet);
+                int fleetCombatValue = fleet.GetCombatValue();
                 int assaultStrength = CalculateFleetAssaultStrength(fleet, fleetCombatValue);
                 totalAssaultStrength += assaultStrength;
             }
@@ -866,21 +866,6 @@ namespace Rebellion.Systems
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Calculates fleet combat value by summing capital ship and starfighter attack ratings.
-        /// </summary>
-        /// <param name="fleet">The fleet to evaluate.</param>
-        private int CalculateFleetCombatValue(Fleet fleet)
-        {
-            int capitalShipCombat = fleet.CapitalShips.Sum(s =>
-                s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum())
-            );
-            int starfighterCombat = fleet
-                .GetStarfighters()
-                .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
-            return capitalShipCombat + starfighterCombat;
         }
 
         /// <summary>

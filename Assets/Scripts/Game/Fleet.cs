@@ -210,6 +210,19 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
+        /// </summary>
+        public int GetCombatValue()
+        {
+            int capitalShipCombat = CapitalShips.Sum(s =>
+                s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum())
+            );
+            int starfighterCombat = GetStarfighters()
+                .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
+            return capitalShipCombat + starfighterCombat;
+        }
+
+        /// <summary>
         /// Determines if the fleet can move.
         /// </summary>
         public bool IsMovable()

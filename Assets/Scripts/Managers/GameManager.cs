@@ -255,7 +255,7 @@ public class GameManager
         eventManager = new GameEventSystem(game);
         fogOfWarManager = new FogOfWarSystem(game);
         movementManager = new MovementSystem(game, fogOfWarManager);
-        manufacturingManager = new ManufacturingSystem(game);
+        manufacturingManager = new ManufacturingSystem(game, movementManager);
         OwnershipSystem ownershipSystem = new OwnershipSystem(
             game,
             movementManager,

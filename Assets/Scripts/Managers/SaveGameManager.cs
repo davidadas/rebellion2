@@ -151,7 +151,9 @@ public class SaveGameManager
         }
 
         // Rebuild manufacturing queues from serialized state
-        ManufacturingSystem manufacturingSystem = new ManufacturingSystem(game);
+        FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
+        MovementSystem movementSystem = new MovementSystem(game, fogOfWar);
+        ManufacturingSystem manufacturingSystem = new ManufacturingSystem(game, movementSystem);
         manufacturingSystem.RebuildQueues();
 
         return game;

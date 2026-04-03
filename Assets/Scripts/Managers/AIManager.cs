@@ -494,7 +494,7 @@ public class AIManager
             return;
 
         // Pick strongest fleet and check if it can overwhelm the defenses
-        Fleet strongest = idle.OrderByDescending(f => CalculateFleetCombatValue(f)).First();
+        Fleet strongest = idle.OrderByDescending(f => f.GetCombatValue()).First();
         int assaultStrength = CalculateFleetAssaultStrength(strongest);
         int defenseStrength = target.GetDefenseStrength();
 
@@ -871,21 +871,6 @@ public class AIManager
     }
 
     /// <summary>
-    /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
-    /// </summary>
-    /// <param name="fleet">The fleet to evaluate.</param>
-    private int CalculateFleetCombatValue(Fleet fleet)
-    {
-        int capitalShipCombat = fleet.CapitalShips.Sum(s =>
-            s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum())
-        );
-        int starfighterCombat = fleet
-            .GetStarfighters()
-            .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
-        return capitalShipCombat + starfighterCombat;
-    }
-
-    /// <summary>
     /// Calculates fleet assault strength including personnel morale modifier.
     /// Formula: (personnel / divisor + 1) * fleet_combat_value.
     /// Personnel comes from fleet commander's leadership skill.
@@ -893,7 +878,7 @@ public class AIManager
     /// <param name="fleet">The fleet to evaluate.</param>
     private int CalculateFleetAssaultStrength(Fleet fleet)
     {
-        int fleetCombatValue = CalculateFleetCombatValue(fleet);
+        int fleetCombatValue = fleet.GetCombatValue();
 
         // Get personnel morale from fleet commander
         Officer commander = fleet.GetOfficers().FirstOrDefault();

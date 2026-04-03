@@ -59,7 +59,7 @@ namespace Rebellion.Tests.Systems
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game, movement)
             );
             return (game, planet, officer, movement, ownership);
         }
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Systems
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game, movement)
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
 
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Systems
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game, movement)
             );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -410,7 +410,7 @@ namespace Rebellion.Tests.Systems
             OwnershipSystem ownership = new OwnershipSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game, movement)
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
 

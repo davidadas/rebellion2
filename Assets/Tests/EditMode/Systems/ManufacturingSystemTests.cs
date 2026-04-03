@@ -14,6 +14,7 @@ namespace Rebellion.Tests.Systems
     {
         private GameRoot game;
         private ManufacturingSystem manager;
+        private MovementSystem movement;
         private Faction empire;
         private Planet coruscant;
         private Building shipyard;
@@ -66,7 +67,8 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(shipyard, coruscant);
 
-            manager = new ManufacturingSystem(game);
+            movement = new MovementSystem(game, new FogOfWarSystem(game));
+            manager = new ManufacturingSystem(game, movement);
         }
 
         [Test]
@@ -74,7 +76,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = ConfigLoader.LoadGameConfig();
             GameRoot emptyGame = new GameRoot(config);
-            ManufacturingSystem emptyManager = new ManufacturingSystem(emptyGame);
+            ManufacturingSystem emptyManager = new ManufacturingSystem(emptyGame, new MovementSystem(emptyGame, new FogOfWarSystem(emptyGame)));
 
             emptyManager.ProcessTick(emptyGame);
 
@@ -1063,7 +1065,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -1131,7 +1133,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(item2, planet);
             game.AttachNode(item3, planet);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -1212,7 +1214,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(item2, planet1);
             game.AttachNode(item3, planet2);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue1 =
@@ -1260,7 +1262,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(item, planet);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
             manager.RebuildQueues();
 
@@ -1317,7 +1319,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(itemBuilding, planet);
             game.AttachNode(itemComplete, planet);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -1394,7 +1396,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
 
             List<Fleet> fleets = planet.GetFleets();
@@ -1424,7 +1426,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -1461,7 +1463,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, newShip, existingFleet, ignoreCost: true);
 
             List<Fleet> fleets = planet.GetFleets();
@@ -1490,7 +1492,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, newShip, planet, ignoreCost: true);
 
             List<Fleet> fleets = planet.GetFleets();
@@ -1520,7 +1522,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             Assert.Throws<SceneAccessException>(
                 () => mfg.Enqueue(planet, ship, planet, ignoreCost: true),
                 "Enqueueing a capital ship with no owner should throw."
@@ -1544,7 +1546,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
             mfg.ProcessTick(game);
             mfg.ProcessTick(game);
@@ -1577,7 +1579,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1605,7 +1607,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1635,7 +1637,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(originPlanet, ship, destPlanet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1671,7 +1673,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship1, planet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, planet, ignoreCost: true);
 
@@ -1712,7 +1714,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship1, targetFleet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, targetFleet, ignoreCost: true);
 
@@ -1751,7 +1753,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1792,14 +1794,14 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
             mfg.ProcessTick(game);
 
             Assert.AreEqual(
-                destFleet,
+                destShip,
                 fighter.GetParent(),
-                "Completed starfighter must be parented to the destination fleet."
+                "Completed starfighter must be parented to the destination capital ship."
             );
         }
 
@@ -1824,7 +1826,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(originPlanet, regiment, destPlanet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1850,7 +1852,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -1868,7 +1870,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DestinationDestroyed_UnitRemainsAtProductionPlanet()
+        public void ProcessTick_DestinationDestroyed_UnitIsAlsoDestroyed()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -1881,6 +1883,13 @@ namespace Rebellion.Tests.Systems
             destPlanet.PositionY = 500;
             Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(destFleet, destPlanet);
+            CapitalShip destShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(destShip, destFleet);
 
             Starfighter fighter = new Starfighter
             {
@@ -1890,15 +1899,14 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
-            // Destroy the destination fleet mid-production — fighter stays at production planet
+            // Destroy the destination fleet mid-production — fighter is a child so it is deregistered too
             game.DetachNode(destFleet);
 
             Starfighter found = game.GetSceneNodeByInstanceID<Starfighter>("sf1");
-            Assert.IsNotNull(found, "Fighter should remain registered at production planet.");
-            Assert.AreEqual(planet, found.GetParent(), "Fighter should still be at the production planet.");
+            Assert.IsNull(found, "Fighter should be deregistered when its destination fleet is destroyed.");
         }
 
         [Test]
@@ -1934,7 +1942,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, mine, destPlanet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -1957,6 +1965,13 @@ namespace Rebellion.Tests.Systems
             Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
             Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(destFleet, destPlanet);
+            CapitalShip destShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(destShip, destFleet);
 
             Starfighter fighter = new Starfighter
             {
@@ -1966,15 +1981,14 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
             Assert.AreEqual(
-                planet,
+                destShip,
                 fighter.GetParent(),
-                "Starfighter should remain at production planet during manufacturing."
+                "Starfighter should be immediately attached to the destination capital ship."
             );
-            Assert.AreEqual("f1", fighter.DestinationInstanceID, "Destination fleet ID should be stored.");
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
         }
 
@@ -1997,7 +2011,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, regiment, destPlanet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -2043,7 +2057,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(originPlanet, mine, destPlanet, ignoreCost: true);
             mfg.ProcessTick(game);
 
@@ -2087,7 +2101,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(constructionYard, planet);
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             // Tick once without blockade to get baseline progress
@@ -2155,7 +2169,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             // 20 hostile capital ships = 100% penalty → 0 production
@@ -2228,7 +2242,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
@@ -2290,7 +2304,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
 
             // Tick many times — should never advance
@@ -2353,7 +2367,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
 
             for (int i = 0; i < 20; i++)
@@ -2405,7 +2419,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             for (int i = 0; i < 20; i++)
@@ -2452,7 +2466,7 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(itemNoProducer, planet);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -2494,7 +2508,7 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(itemOrphan, planet);
 
-            ManufacturingSystem manager = new ManufacturingSystem(game);
+            ManufacturingSystem manager = new ManufacturingSystem(game, movement);
             manager.RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -2503,19 +2517,71 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_StarfighterComplete_DestinationChangedOwner_RedirectsToProductionPlanet()
+        public void ProcessTick_CapitalShipComplete_DestinationFleetDestroyed_CreatesNewFleetAtProductionPlanet()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
-            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+            Planet productionPlanet = BuildShipyardPlanet(game, "p1", "empire");
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+
+            CapitalShip cs = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+            mfg.Enqueue(productionPlanet, cs, destPlanet, ignoreCost: true);
+
+            Fleet originalFleet = cs.GetParentOfType<Fleet>();
+            Assert.IsNotNull(originalFleet, "CS should be in a new fleet at destPlanet after enqueue.");
+
+            // Destroy the fleet mid-production.
+            game.DetachNode(originalFleet);
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<CapitalShip>("cs1"),
+                "CS should be deregistered when its fleet is destroyed."
+            );
+
+            // One tick completes manufacturing and triggers the rescue.
+            mfg.ProcessTick(game);
+
+            CapitalShip rescued = game.GetSceneNodeByInstanceID<CapitalShip>("cs1");
+            Assert.IsNotNull(rescued, "CS should be re-registered after rescue.");
+            Assert.AreEqual(ManufacturingStatus.Complete, rescued.ManufacturingStatus);
+
+            Fleet rescueFleet = rescued.GetParentOfType<Fleet>();
+            Assert.IsNotNull(rescueFleet, "CS should be in a fleet after rescue.");
+            Assert.AreEqual(
+                productionPlanet,
+                rescueFleet.GetParent(),
+                "Rescue fleet should be at the production planet."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_StarfighterComplete_DestinationChangedSides_RedirectsToProductionPlanet()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet productionPlanet = BuildShipyardPlanet(game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
-            destPlanet.PositionX = 500;
-            destPlanet.PositionY = 500;
             Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(destFleet, destPlanet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(carrier, destFleet);
 
             Starfighter fighter = new Starfighter
             {
@@ -2525,37 +2591,42 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
-            mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+            mfg.Enqueue(productionPlanet, fighter, destFleet, ignoreCost: true);
 
-            // Destination captured mid-production
+            // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
             mfg.ProcessTick(game);
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.AreEqual(
-                originPlanet,
+                productionPlanet,
                 fighter.GetParent(),
-                "Unit should fall back to production planet."
+                "Fighter should be redirected to production planet when destination changed sides."
             );
-            Assert.IsNull(fighter.Movement, "No movement when redirected to production planet.");
+            Assert.IsNull(fighter.Movement, "No transit state when already placed at production planet.");
         }
 
         [Test]
-        public void ProcessTick_RegimentComplete_DestinationChangedOwner_RedirectsToProductionPlanet()
+        public void ProcessTick_RegimentComplete_DestinationChangedSides_RedirectsToProductionPlanet()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
-            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+            Planet productionPlanet = BuildShipyardPlanet(game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
-            destPlanet.PositionX = 500;
-            destPlanet.PositionY = 500;
             Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(destFleet, destPlanet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                RegimentCapacity = 2,
+            };
+            game.AttachNode(carrier, destFleet);
 
             Regiment regiment = new Regiment
             {
@@ -2565,57 +2636,235 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
-            mfg.Enqueue(originPlanet, regiment, destFleet, ignoreCost: true);
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+            mfg.Enqueue(productionPlanet, regiment, destFleet, ignoreCost: true);
 
-            // Destination captured mid-production
+            // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
             mfg.ProcessTick(game);
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
-                originPlanet,
+                productionPlanet,
                 regiment.GetParent(),
-                "Unit should fall back to production planet."
+                "Regiment should be redirected to production planet when destination changed sides."
             );
-            Assert.IsNull(regiment.Movement, "No movement when redirected to production planet.");
+            Assert.IsNull(regiment.Movement, "No transit state when already placed at production planet.");
         }
 
         [Test]
-        public void ProcessTick_UnitComplete_BothPlanetsChangedOwner_CancelsUnit()
+        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetHasCapacity_RedirectsAll()
         {
+            // 3 mines queued from production planet A to destination planet B.
+            // B changes sides. A has enough ground slots for all 3.
+            // Expected: all 3 mines redirect to A and are marked complete.
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
-            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
 
-            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
-            destPlanet.PositionX = 500;
-            destPlanet.PositionY = 500;
-            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
-            game.AttachNode(destFleet, destPlanet);
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
 
-            Starfighter fighter = new Starfighter
+            // Production planet A: GroundSlots = 5 (1 used by training → 4 available for 3 mines).
+            Planet planetA = new Planet
             {
-                InstanceID = "sf1",
+                InstanceID = "pA",
                 OwnerInstanceID = "empire",
+                IsColonized = true,
+                GroundSlots = 5,
+                OrbitSlots = 5,
+                PositionX = 0,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetA, sys);
+
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 3,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planetA);
+
+            // Destination planet B: plenty of ground slots.
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                GroundSlots = 10,
+                OrbitSlots = 10,
+                PositionX = 100,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetB, sys);
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+
+            Building mine1 = new Building
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+            Building mine2 = new Building
+            {
+                InstanceID = "m2",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+            Building mine3 = new Building
+            {
+                InstanceID = "m3",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 1,
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
-            mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
+            mfg.Enqueue(planetA, mine1, planetB, ignoreCost: true);
+            mfg.Enqueue(planetA, mine2, planetB, ignoreCost: true);
+            mfg.Enqueue(planetA, mine3, planetB, ignoreCost: true);
 
-            // Both planets captured mid-production
-            destPlanet.OwnerInstanceID = "rebels";
-            originPlanet.OwnerInstanceID = "rebels";
+            // Destination captured before mines complete.
+            planetB.OwnerInstanceID = "rebels";
 
             mfg.ProcessTick(game);
 
-            Starfighter found = game.GetSceneNodeByInstanceID<Starfighter>("sf1");
-            Assert.IsNull(found, "Unit should be removed when no friendly planet can accept it.");
+            Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
+            Assert.AreEqual(planetA, mine1.GetParent(), "Mine 1 should redirect to production planet.");
+            Assert.AreEqual(planetA, mine2.GetParent(), "Mine 2 should redirect to production planet.");
+            Assert.AreEqual(planetA, mine3.GetParent(), "Mine 3 should redirect to production planet.");
         }
+
+        [Test]
+        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetNoCapacity_CancelsAll()
+        {
+            // 3 mines queued from production planet A to destination planet B.
+            // B changes sides. A has only 1 available ground slot (not enough for all 3).
+            // Expected: all 3 mines are cancelled.
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
+
+            // Production planet A: GroundSlots = 2 (0 currently occupied → 2 available, < 3 mines).
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                GroundSlots = 2,
+                OrbitSlots = 5,
+                PositionX = 0,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetA, sys);
+
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                BuildingSlot = BuildingSlot.Orbit,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 3,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planetA);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                GroundSlots = 10,
+                OrbitSlots = 10,
+                PositionX = 100,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetB, sys);
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, movement);
+
+            Building mine1 = new Building
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+            Building mine2 = new Building
+            {
+                InstanceID = "m2",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+            Building mine3 = new Building
+            {
+                InstanceID = "m3",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                BuildingSlot = BuildingSlot.Ground,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            mfg.Enqueue(planetA, mine1, planetB, ignoreCost: true);
+            mfg.Enqueue(planetA, mine2, planetB, ignoreCost: true);
+            mfg.Enqueue(planetA, mine3, planetB, ignoreCost: true);
+
+            // Destination captured before mines complete.
+            planetB.OwnerInstanceID = "rebels";
+
+            mfg.ProcessTick(game);
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("m1"),
+                "Mine 1 should be cancelled when production planet has no capacity."
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("m2"),
+                "Mine 2 should be cancelled when production planet has no capacity."
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("m3"),
+                "Mine 3 should be cancelled when production planet has no capacity."
+            );
+        }
+
     }
 }

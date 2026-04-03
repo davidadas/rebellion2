@@ -64,7 +64,58 @@ namespace Rebellion.Systems
                 return;
             }
 
+            if (unit is IManufacturable m && m.ManufacturingStatus == ManufacturingStatus.Building)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
+                );
+                return;
+            }
+
             ExecuteMove(unit, destination);
+        }
+
+        /// <summary>
+        /// Sets up a movement state for a unit that is already at its destination in the scene
+        /// graph but needs to visually travel from a known origin (e.g. its production planet).
+        /// No reparenting occurs — the unit is already logically placed.
+        /// </summary>
+        public void RequestMove(IMovable unit, ISceneNode destination, Planet origin)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            if (origin == null)
+                throw new ArgumentNullException(nameof(origin));
+
+            Planet destinationPlanet = destination is Planet p
+                ? p
+                : destination.GetParentOfType<Planet>();
+
+            if (destinationPlanet == null)
+                throw new InvalidOperationException(
+                    $"Destination {destination.GetDisplayName()} is not at a planet location."
+                );
+
+            if (destinationPlanet == origin)
+            {
+                unit.Movement = null;
+                return;
+            }
+
+            int transitTicks = CalculateTransitTicks(unit, origin.GetPosition(), destinationPlanet);
+            unit.Movement = new MovementState
+            {
+                TransitTicks = transitTicks,
+                TicksElapsed = 0,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            GameLogger.Log(
+                $"{unit.GetDisplayName()} departing {origin.GetDisplayName()} for {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
+            );
         }
 
         public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
