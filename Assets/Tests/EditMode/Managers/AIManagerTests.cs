@@ -817,7 +817,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void UpdateOffensiveFleetMovement_SendsFleetToEnemyPlanet()
+        public void EvaluateFleetDeployment_SendsFleetToEnemyPlanet()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -895,7 +895,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void UpdateOffensiveFleetMovement_DoesNotStackFleets()
+        public void EvaluateFleetDeployment_DoesNotStackFleets()
         {
             GameConfig config = new GameConfig();
             GameRoot game = new GameRoot(config);
@@ -979,6 +979,400 @@ namespace Rebellion.Tests.Managers
             Assert.IsNull(
                 idleFleet.Movement,
                 "AI should not stack fleets — skip targets with existing presence"
+            );
+        }
+
+        [Test]
+        public void EvaluateFleetDeployment_ProbabilisticGate_BlocksDeployment()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, system);
+
+            // Give empire a fleet with modest combat value (50)
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, empirePlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+            };
+            // Combat value = 50 (one arc with 50). Assault = (0/40+1)*50 = 50
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 50 };
+            game.AttachNode(ship, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            // LastIndexRNG returns max-1 from NextInt. Gate bounds (20, 80):
+            // roll = NextInt(20, 81) = 80. Net strength = 50. 80 >= 50, gate blocks.
+            ai.Update(new LastIndexRNG());
+
+            Assert.IsNull(
+                fleet.Movement,
+                "Probabilistic gate should block deployment when roll >= net strength"
+            );
+        }
+
+        [Test]
+        public void EvaluateFleetDeployment_DeploysMultipleFleets()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, system);
+
+            // Give rebels a strong defending fleet so one empire fleet isn't enough
+            Fleet rebelFleet = new Fleet
+            {
+                InstanceID = "rf1",
+                OwnerInstanceID = "rebels",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(rebelFleet, rebelPlanet);
+            CapitalShip rebelShip = new CapitalShip
+            {
+                InstanceID = "rcs1",
+                OwnerInstanceID = "rebels",
+            };
+            rebelShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
+            game.AttachNode(rebelShip, rebelFleet);
+
+            // Empire fleet 1: combat value 200
+            Fleet fleet1 = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet1, empirePlanet);
+            CapitalShip ship1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+            };
+            ship1.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
+            game.AttachNode(ship1, fleet1);
+
+            // Empire fleet 2: combat value 200
+            Fleet fleet2 = new Fleet
+            {
+                InstanceID = "f2",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet2, empirePlanet);
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+            };
+            ship2.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
+            game.AttachNode(ship2, fleet2);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            // FixedRNG: roll = 20. Defense = 200 (rebel fleet). Both empire fleets = 400 total.
+            // Net strength = 200. 20 < 200, gate passes.
+            // Deploy fleet1 (200 assault), 200 is not > 200, deploy fleet2 too.
+            ai.Update(new FixedRNG());
+
+            Assert.IsNotNull(fleet1.Movement, "First fleet should be deployed");
+            Assert.IsNotNull(fleet2.Movement, "Second fleet should be deployed for sufficient strength");
+        }
+
+        [Test]
+        public void EvaluateFleetDeployment_PrioritizesNearestEnemy()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem sys1 = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys1, game.Galaxy);
+
+            PlanetSystem sys2 = new PlanetSystem
+            {
+                InstanceID = "sys2",
+                PositionX = 50,
+                PositionY = 0,
+            };
+            game.AttachNode(sys2, game.Galaxy);
+
+            PlanetSystem sys3 = new PlanetSystem
+            {
+                InstanceID = "sys3",
+                PositionX = 200,
+                PositionY = 0,
+            };
+            game.AttachNode(sys3, game.Galaxy);
+
+            // Empire planet in sys1
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet, sys1);
+
+            // Near rebel planet in sys2
+            Planet nearRebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 50,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(nearRebelPlanet, sys2);
+
+            // Far rebel planet in sys3
+            Planet farRebelPlanet = new Planet
+            {
+                InstanceID = "p3",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(farRebelPlanet, sys3);
+
+            // Empire fleet at sys1
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(fleet, empirePlanet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+            };
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100 };
+            game.AttachNode(ship, fleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            Assert.IsNotNull(fleet.Movement, "Fleet should be deployed");
+            Assert.AreEqual(
+                "p2",
+                fleet.GetParentOfType<Planet>()?.InstanceID,
+                "Fleet should target the nearest enemy planet"
+            );
+        }
+
+        [Test]
+        public void EvaluateFleetDeployment_DefendsContestedHQ()
+        {
+            GameConfig config = new GameConfig();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem sys1 = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sys1, game.Galaxy);
+
+            PlanetSystem sys2 = new PlanetSystem
+            {
+                InstanceID = "sys2",
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(sys2, game.Galaxy);
+
+            // Empire HQ planet — contested by rebel fleet
+            Planet hqPlanet = new Planet
+            {
+                InstanceID = "hq",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                IsHeadquarters = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(hqPlanet, sys1);
+            empire.HQInstanceID = "hq";
+
+            // Rebel fleet contesting HQ
+            Fleet rebelFleet = new Fleet
+            {
+                InstanceID = "rf1",
+                OwnerInstanceID = "rebels",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(rebelFleet, hqPlanet);
+            CapitalShip rebelShip = new CapitalShip
+            {
+                InstanceID = "rcs1",
+                OwnerInstanceID = "rebels",
+            };
+            rebelShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 10 };
+            game.AttachNode(rebelShip, rebelFleet);
+
+            // Undefended rebel planet farther away
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, sys2);
+
+            // Empire fleet in sys2 (farther from HQ, closer to rebel planet)
+            Planet empirePlanet2 = new Planet
+            {
+                InstanceID = "p3",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 100 } },
+            };
+            game.AttachNode(empirePlanet2, sys2);
+
+            Fleet empireFleet = new Fleet
+            {
+                InstanceID = "f1",
+                OwnerInstanceID = "empire",
+                RoleType = FleetRoleType.Battle,
+            };
+            game.AttachNode(empireFleet, empirePlanet2);
+            CapitalShip empireShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+            };
+            empireShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100 };
+            game.AttachNode(empireShip, empireFleet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            AIManager ai = new AIManager(game, missionSystem, movement, manufacturing);
+
+            ai.Update(new FixedRNG());
+
+            Assert.IsNotNull(empireFleet.Movement, "Fleet should be deployed");
+            Assert.AreEqual(
+                "hq",
+                empireFleet.GetParentOfType<Planet>()?.InstanceID,
+                "Fleet should defend contested HQ before attacking other targets"
             );
         }
 

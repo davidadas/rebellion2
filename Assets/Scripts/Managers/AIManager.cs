@@ -53,8 +53,7 @@ public class AIManager
         UpdateCapitalShipProduction(faction, provider);
         UpdateStarfighterProduction(faction, provider);
         UpdateTroopTraining(faction, provider);
-        UpdateFleetMovement(faction);
-        UpdateOffensiveFleetMovement(faction, provider);
+        EvaluateFleetDeployment(faction, provider);
         UpdateOfficerMissions(faction, provider);
     }
 
@@ -381,85 +380,139 @@ public class AIManager
     }
 
     /// <summary>
-    /// Moves idle battle fleets to defend a contested HQ if undefended.
+    /// Per-system fleet evaluation pipeline matching the original game's behavior.
+    /// For each system where the faction has idle battle fleets:
+    ///   1. Accumulate total assault strength of idle fleets at the system.
+    ///   2. Find reachable enemy planets, sorted by distance (nearest first).
+    ///      Prioritize defending own HQ if contested.
+    ///   3. Apply probabilistic deployment gate.
+    ///   4. Deploy fleets proportionally to net strength surplus.
     /// </summary>
-    private void UpdateFleetMovement(Faction faction)
-    {
-        List<Fleet> idle = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
-            .ToList();
-
-        if (!idle.Any())
-            return;
-
-        Planet hq = game.GetSceneNodeByInstanceID<Planet>(faction.GetHQInstanceID());
-        if (hq != null && hq.IsContested())
-        {
-            bool alreadyDefended = faction
-                .GetOwnedUnitsByType<Fleet>()
-                .Any(f => !f.IsMovable() && f.GetParentOfType<Planet>() == hq);
-
-            if (!alreadyDefended)
-            {
-                Fleet nearest = idle.OrderBy(f =>
-                        f.GetParentOfType<Planet>()?.GetRawDistanceTo(hq) ?? double.MaxValue
-                    )
-                    .First();
-                movementManager.RequestMove(nearest, hq);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Sends idle battle fleets to attack a random enemy planet.
-    /// Picks a random enemy planet (matching original random system selection),
-    /// then sends the strongest idle fleet if its assault strength exceeds the
-    /// planet's defense strength.
-    /// </summary>
-    /// <param name="faction">The AI faction.</param>
-    /// <param name="provider">Random number provider.</param>
-    private void UpdateOffensiveFleetMovement(Faction faction, IRandomNumberProvider provider)
+    private void EvaluateFleetDeployment(Faction faction, IRandomNumberProvider provider)
     {
         string factionId = faction.InstanceID;
+        HashSet<string> dispatched = new HashSet<string>();
 
-        List<Fleet> idle = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Where(f => f.IsMovable() && f.CapitalShips.Count > 0)
-            .ToList();
+        // HQ defense priority
+        Planet hqPlanet = game.GetSceneNodeByInstanceID<Planet>(faction.GetHQInstanceID());
+        bool hqNeedsRelief =
+            hqPlanet != null
+            && hqPlanet.IsContested()
+            && !faction
+                .GetOwnedUnitsByType<Fleet>()
+                .Any(f => f.GetParentOfType<Planet>() == hqPlanet);
 
-        if (!idle.Any())
-            return;
-
-        // Pick a random enemy planet (matches original random system selection)
-        List<Planet> enemyPlanets = game.GetSceneNodesByType<Planet>(p =>
+        // Enemy planets (cached once per evaluation)
+        List<Planet> allEnemyPlanets = game.GetSceneNodesByType<Planet>(p =>
             p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
         );
 
-        if (!enemyPlanets.Any())
+        if (!allEnemyPlanets.Any() && !hqNeedsRelief)
             return;
 
-        Planet target = enemyPlanets[provider.NextInt(0, enemyPlanets.Count)];
+        int gateLow = game.Config.AI.DeploymentGateLow;
+        int gateHigh = game.Config.AI.DeploymentGateHigh;
 
-        // Don't stack — skip if we already have a fleet there or en route
-        bool alreadyTargeted = faction
-            .GetOwnedUnitsByType<Fleet>()
-            .Any(f => f.GetParentOfType<Planet>() == target);
-
-        if (alreadyTargeted)
-            return;
-
-        // Pick strongest fleet and check if it can overwhelm the defenses
-        Fleet strongest = idle.OrderByDescending(f => f.GetCombatValue()).First();
-        int assaultStrength = CalculateFleetAssaultStrength(strongest);
-        int defenseStrength = target.GetDefenseStrength();
-
-        if (assaultStrength > defenseStrength)
+        foreach (PlanetSystem system in game.GetGalaxyMap().PlanetSystems)
         {
-            movementManager.RequestMove(strongest, target);
-            GameLogger.Log(
-                $"[AI] Sending fleet {strongest.GetDisplayName()} to attack {target.GetDisplayName()}"
-            );
+            // Collect idle battle fleets at this system
+            List<Fleet> idleFleets = system
+                .Planets.SelectMany(p => p.GetFleets())
+                .Where(f =>
+                    f.GetOwnerInstanceID() == factionId
+                    && f.IsMovable()
+                    && f.CapitalShips.Count > 0
+                    && !dispatched.Contains(f.GetInstanceID())
+                )
+                .ToList();
+
+            if (idleFleets.Count == 0)
+                continue;
+
+            // Build sorted target list: HQ first if contested, then nearest enemies
+            List<Planet> targets = new List<Planet>();
+
+            if (hqNeedsRelief)
+                targets.Add(hqPlanet);
+
+            int sysX = system.PositionX;
+            int sysY = system.PositionY;
+            List<Planet> sortedEnemies = allEnemyPlanets
+                .Where(p =>
+                    !faction
+                        .GetOwnedUnitsByType<Fleet>()
+                        .Any(f => f.GetParentOfType<Planet>() == p)
+                )
+                .OrderBy(p =>
+                {
+                    int dx = sysX - p.PositionX;
+                    int dy = sysY - p.PositionY;
+                    return dx * dx + dy * dy;
+                })
+                .ToList();
+
+            targets.AddRange(sortedEnemies);
+
+            if (targets.Count == 0)
+                continue;
+
+            // Per-target deployment loop
+            List<Fleet> remainingFleets = new List<Fleet>(idleFleets);
+
+            foreach (Planet target in targets)
+            {
+                if (remainingFleets.Count == 0)
+                    break;
+
+                // Calculate target defense: buildings + hostile fleets
+                int targetDefense = target.GetDefenseStrength();
+                targetDefense += target
+                    .GetFleets()
+                    .Where(f =>
+                        f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != factionId
+                    )
+                    .Sum(f => f.GetCombatValue());
+
+                // Calculate available assault from remaining fleets
+                int availableAssault = remainingFleets.Sum(f =>
+                    CalculateFleetAssaultStrength(f)
+                );
+                int netStrength = availableAssault - targetDefense;
+
+                if (netStrength <= 0)
+                    continue;
+
+                // Probabilistic gate: roll must be below net strength to proceed
+                int roll = provider.NextInt(gateLow, gateHigh + 1);
+                if (roll >= netStrength)
+                    continue;
+
+                // Deploy fleets strongest-first until deployed strength exceeds defense
+                remainingFleets.Sort(
+                    (a, b) =>
+                        CalculateFleetAssaultStrength(b)
+                            .CompareTo(CalculateFleetAssaultStrength(a))
+                );
+
+                int deployedStrength = 0;
+                foreach (Fleet fleet in remainingFleets.ToList())
+                {
+                    if (deployedStrength > targetDefense)
+                        break;
+
+                    movementManager.RequestMove(fleet, target);
+                    dispatched.Add(fleet.GetInstanceID());
+                    deployedStrength += CalculateFleetAssaultStrength(fleet);
+                    remainingFleets.Remove(fleet);
+
+                    GameLogger.Log(
+                        $"[AI] Deploying {fleet.GetDisplayName()} from {system.GetDisplayName()} to {target.GetDisplayName()}"
+                    );
+                }
+
+                if (target == hqPlanet)
+                    hqNeedsRelief = false;
+            }
         }
     }
 

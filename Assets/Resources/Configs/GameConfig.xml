@@ -480,6 +480,11 @@
         </Entry>
       </Recruitment>
     </MissionTables>
+
+    <!-- Fleet deployment probability gate bounds (PARAM_1538, PARAM_1539) -->
+    <!-- AI rolls random(low, high); deploys only if roll < net_strength_ratio -->
+    <DeploymentGateLow>20</DeploymentGateLow>
+    <DeploymentGateHigh>80</DeploymentGateHigh>
   </AI>
 
   <!-- Movement System Configuration -->

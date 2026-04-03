@@ -105,6 +105,12 @@ public class GameConfig
 
         /// <summary>Garrison requirement parameters.</summary>
         public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
+
+        /// <summary>Lower bound for fleet deployment probability gate (PARAM_1538).</summary>
+        public int DeploymentGateLow { get; set; } = 20;
+
+        /// <summary>Upper bound for fleet deployment probability gate (PARAM_1539).</summary>
+        public int DeploymentGateHigh { get; set; } = 80;
     }
 
     /// <summary>
