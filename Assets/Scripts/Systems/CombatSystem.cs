@@ -698,7 +698,6 @@ namespace Rebellion.Systems
         private void ApplyCombatResult(SpaceCombatResult result)
         {
             // Apply ship damage - group by fleet, then process each fleet's damage in reverse index order
-            // Ships are stored in fleet.CapitalShips list, not attached as scene graph children
             foreach (
                 IGrouping<Fleet, ShipDamageEvent> fleetGroup in result.ShipDamage.GroupBy(d =>
                     d.Fleet
@@ -715,7 +714,7 @@ namespace Rebellion.Systems
                         // Remove destroyed ships from fleet list
                         if (damage.HullAfter <= 0)
                         {
-                            damage.Fleet.CapitalShips.RemoveAt(damage.ShipIndex);
+                            game.DetachNode(ship);
                             GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                         }
                     }
@@ -738,17 +737,10 @@ namespace Rebellion.Systems
                         Starfighter fighter = fighters[loss.FighterIndex];
                         fighter.SquadronSize = loss.SquadsAfter;
 
-                        // Remove depleted squadrons from parent ship's list
+                        // Remove depleted squadrons
                         if (loss.SquadsAfter <= 0)
                         {
-                            foreach (CapitalShip ship in loss.Fleet.CapitalShips)
-                            {
-                                if (ship.Starfighters.Contains(fighter))
-                                {
-                                    ship.Starfighters.Remove(fighter);
-                                    break;
-                                }
-                            }
+                            game.DetachNode(fighter);
                             GameLogger.Log(
                                 $"Fighter squadron destroyed: {fighter.GetDisplayName()}"
                             );
