@@ -57,7 +57,7 @@ namespace Rebellion.Game.Results
 
     public class OfficerRescuedResult : GameResult
     {
-        public string OfficerInstanceID { get; set; }
+        public string CharacterInstanceID { get; set; }
         public string RescuingFactionInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
     }
@@ -96,8 +96,8 @@ namespace Rebellion.Game.Results
 
     public class CombatResolvedResult : GameResult
     {
-        public List<string> WinningFactionIDs { get; set; } = new List<string>();
-        public List<string> LosingFactionIDs { get; set; } = new List<string>();
+        public List<string> WinningFactionInstanceIDs { get; set; } = new List<string>();
+        public List<string> LosingFactionInstanceIDs { get; set; } = new List<string>();
         public string PlanetInstanceID { get; set; }
     }
 
@@ -123,6 +123,18 @@ namespace Rebellion.Game.Results
         public Officer Officer { get; set; }
         public ForceTier OldTier { get; set; }
         public ForceTier NewTier { get; set; }
+    }
+
+    public class PlanetaryAssaultResult : GameResult
+    {
+        public string PlanetInstanceID { get; set; }
+        public string AttackingFactionInstanceID { get; set; }
+        public int AssaultStrength { get; set; }
+        public int DefenseStrength { get; set; }
+        public bool Success { get; set; }
+        public List<string> DestroyedBuildingInstanceIDs { get; set; } = new List<string>();
+        public bool OwnershipChanged { get; set; }
+        public string NewOwnerInstanceID { get; set; }
     }
 
     public class VictoryResult : GameResult

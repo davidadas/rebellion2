@@ -21,7 +21,6 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Designates whether this fleet is a battle fleet or a patrol/presence fleet.
-        /// Mirrors the original game's fleet subtype (class 0x8, subtype 4 = Patrol).
         /// Battle fleets engage in combat and defend key systems.
         /// Patrol fleets provide system presence but are not sent on attack missions.
         /// </summary>

@@ -29,6 +29,7 @@ public class GameManager
     private ResearchSystem researchManager;
     private JediSystem jediManager;
     private BetrayalSystem betrayalManager;
+    private SupportShiftSystem supportShiftManager;
     private UprisingSystem uprisingManager;
     private VictorySystem victoryManager;
     private IRandomNumberProvider randomProvider;
@@ -185,22 +186,25 @@ public class GameManager
         // 7. Blockade: checks fleet presence after AI decisions
         blockadeManager.ProcessTick(game);
 
-        // 8. Uprising: flips control based on popular support
+        // 8. Support shift: adjusts popular support based on hostile forces
+        supportShiftManager.ProcessTick();
+
+        // 9. Uprising: checks garrison vs. support, rolls dice for uprising
         uprisingManager.ProcessTick(randomProvider);
 
-        // 9. Betrayal: loyalty checks after uprising
+        // 10. Betrayal: loyalty checks after uprising
         betrayalManager.ProcessTick(game);
 
-        // 10. Death Star: construction countdown and planet destruction
+        // 11. Death Star: construction countdown and planet destruction
         deathStarManager.ProcessTick(game);
 
-        // 11. Research: applies tech upgrades
+        // 12. Research: applies tech upgrades
         researchManager.ProcessTick(game);
 
-        // 12. Jedi: advances Force tiers
+        // 13. Jedi: advances Force tiers
         ProcessResults(jediManager.ProcessTick(game, randomProvider));
 
-        // 13. Victory: terminal check last
+        // 14. Victory: terminal check last
         ProcessResults(victoryManager.ProcessTick());
     }
 
@@ -264,6 +268,7 @@ public class GameManager
         researchManager = new ResearchSystem(game);
         jediManager = new JediSystem(game);
         betrayalManager = new BetrayalSystem(game);
+        supportShiftManager = new SupportShiftSystem(game);
         uprisingManager = new UprisingSystem(game);
         victoryManager = new VictorySystem(game);
         aiManager = new AIManager(game, missionManager, movementManager, manufacturingManager);

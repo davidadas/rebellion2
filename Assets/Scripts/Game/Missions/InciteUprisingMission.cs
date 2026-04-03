@@ -53,7 +53,6 @@ public class InciteUprisingMission : Mission
 
     /// <summary>
     /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
-    /// Matches original INCTMSTB formula: param1 - param2 - param3.
     /// </summary>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {

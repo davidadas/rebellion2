@@ -149,10 +149,15 @@ public sealed class StrategyController : MonoBehaviour
         gameManager.Update();
         int currentTick = gameManager.GetCurrentTick();
 
-        // Refresh galaxy view if game tick advanced (visibility may have changed)
+        // Refresh galaxy view and open panels if game tick advanced
         if (currentTick != previousTick)
         {
             RefreshGalaxyView();
+
+            foreach (PlanetPanel panel in activePlanetPanels)
+            {
+                panel.Refresh();
+            }
         }
 
         UpdateHUDValues();

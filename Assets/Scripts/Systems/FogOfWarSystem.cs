@@ -67,6 +67,9 @@ namespace Rebellion.Systems
                 if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
                     continue;
 
+                if (fleet.CapitalShips.Count == 0)
+                    continue;
+
                 planetSnapshot.Fleets.Add(fleet.GetShallowCopy(CloneMode.Full));
                 InvalidateEntityFromOtherSnapshots(faction, fleet.InstanceID, planet.InstanceID);
             }

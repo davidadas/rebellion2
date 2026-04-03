@@ -1,13 +1,15 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Manages planetary uprisings based on popular support.
-    /// Processes loyalty thresholds and fires uprising events.
+    /// Manages planetary uprisings based on garrison strength vs. popular support.
+    /// Uses dual dice rolls and table lookups matching the original uprising resolution.
     /// </summary>
     public class UprisingSystem
     {
@@ -19,71 +21,168 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Processes uprising logic for all planets during a tick.
-        /// Directly mutates planet state when uprisings begin.
+        /// Processes uprising checks for all owned, populated planets.
         /// </summary>
-        /// <param name="provider">Random number provider for probability rolls.</param>
+        /// <param name="provider">Random number provider for dice rolls.</param>
         public void ProcessTick(IRandomNumberProvider provider)
         {
-            // Get all planets in the game
-            List<Rebellion.Game.Planet> planets = game.GetSceneNodesByType<Rebellion.Game.Planet>();
+            List<Planet> planets = game.GetSceneNodesByType<Planet>();
 
-            foreach (var planet in planets)
+            foreach (Planet planet in planets)
             {
-                // Skip planets without an owner
                 if (string.IsNullOrEmpty(planet.OwnerInstanceID))
-                {
                     continue;
-                }
 
-                // Skip planets already in uprising
                 if (planet.IsInUprising)
-                {
                     continue;
-                }
 
-                // Get the owning faction
-                Rebellion.Game.Faction faction = game.GetFactionByOwnerInstanceID(
-                    planet.OwnerInstanceID
-                );
+                Faction faction = game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
                 if (faction == null)
-                {
                     continue;
-                }
 
-                // Calculate loyalty based on popular support
-                int ownerSupport = planet.PopularSupport.GetValueOrDefault(
-                    planet.OwnerInstanceID,
-                    0
+                int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
+                int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+
+                // Check if garrison is insufficient
+                int garrisonRequired = IssueProvider.CalculateGarrisonRequirement(
+                    planet,
+                    faction,
+                    game.Config.AI.Garrison
                 );
 
-                // Find the highest support from other factions
-                int maxOpposingSupport = 0;
-                string opposingFactionId = null;
-                foreach (KeyValuePair<string, int> kvp in planet.PopularSupport)
+                int garrisonSurplus = troopCount - garrisonRequired;
+                if (garrisonSurplus >= 0)
+                    continue;
+
+                // Garrison insufficient — resolve uprising via dice rolls and tables
+                int upris1Result;
+                int upris2Result;
+                ResolveUprisingTableResults(
+                    planet,
+                    faction,
+                    ownerSupport,
+                    troopCount,
+                    provider,
+                    out upris1Result,
+                    out upris2Result
+                );
+
+                // UPRIS1 result > 0 means uprising triggers
+                if (upris1Result > 0)
                 {
-                    if (kvp.Key != planet.OwnerInstanceID && kvp.Value > maxOpposingSupport)
+                    // Find strongest opposing faction
+                    string opposingFactionId = null;
+                    int maxOpposingSupport = 0;
+                    foreach (KeyValuePair<string, int> kvp in planet.PopularSupport)
                     {
-                        maxOpposingSupport = kvp.Value;
-                        opposingFactionId = kvp.Key;
+                        if (kvp.Key != planet.OwnerInstanceID && kvp.Value > maxOpposingSupport)
+                        {
+                            maxOpposingSupport = kvp.Value;
+                            opposingFactionId = kvp.Key;
+                        }
                     }
-                }
 
-                // If opposing support is higher than owner support, uprising may occur
-                if (maxOpposingSupport > ownerSupport)
-                {
-                    // Simple probability model: higher difference = higher probability
-                    int supportDifference = maxOpposingSupport - ownerSupport;
-                    double uprisingProbability = supportDifference / 100.0; // Scale to 0-1
-
-                    double roll = provider.NextDouble();
-                    if (roll < uprisingProbability)
+                    if (opposingFactionId != null)
                     {
                         game.ChangeUnitOwnership(planet, opposingFactionId);
                         planet.BeginUprising();
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves uprising using dual dice rolls and UPRIS1/UPRIS2 table lookups.
+        /// Combined score = dice + (garrison_threshold - troop_multiplier * troops).
+        /// </summary>
+        private void ResolveUprisingTableResults(
+            Planet planet,
+            Faction faction,
+            int supportForController,
+            int controllerTroopCount,
+            IRandomNumberProvider provider,
+            out int upris1Result,
+            out int upris2Result
+        )
+        {
+            upris1Result = 0;
+            upris2Result = 0;
+
+            GameConfig.UprisingConfig config = game.Config.Uprising;
+
+            // Two independent dice rolls: each is random(0..range-1) + addend
+            int rollA = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
+            int rollB = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
+
+            // Troop effectiveness multiplier — only on core systems (matches original)
+            int troopMultiplier = 1;
+            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            if (
+                parentSystem != null
+                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                && faction.Modifiers.UprisingResistance > 1
+            )
+            {
+                troopMultiplier = faction.Modifiers.UprisingResistance;
+            }
+
+            // Garrison threshold (how many troops we need)
+            int threshold = CalculateUprisingThreshold(supportForController);
+
+            // Combined uprising score
+            int combinedScore =
+                rollA + rollB + (threshold - troopMultiplier * controllerTroopCount);
+
+            // Look up UPRIS1 table
+            upris1Result = LookupTable(config.Upris1Table, combinedScore);
+
+            // Only look up UPRIS2 if UPRIS1 produced a result
+            if (upris1Result > 0)
+            {
+                upris2Result = LookupTable(config.Upris2Table, combinedScore);
+            }
+        }
+
+        /// <summary>
+        /// Calculates the uprising threshold: ceil((60 - support) / 10) when support &lt; 60.
+        /// </summary>
+        private int CalculateUprisingThreshold(int supportForController)
+        {
+            GameConfig.GarrisonConfig config = game.Config.AI.Garrison;
+
+            if (supportForController >= config.SupportThreshold)
+                return 0;
+
+            return (int)
+                Math.Ceiling(
+                    (config.SupportThreshold - supportForController)
+                        / (double)config.GarrisonDivisor
+                );
+        }
+
+        /// <summary>
+        /// Looks up a value from an uprising table. Finds the highest threshold
+        /// that the score meets or exceeds, and returns the associated value.
+        /// </summary>
+        private static int LookupTable(Dictionary<int, int> table, int score)
+        {
+            int result = 0;
+            foreach (KeyValuePair<int, int> entry in table.OrderBy(e => e.Key))
+            {
+                if (score >= entry.Key)
+                    result = entry.Value;
+                else
+                    break;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Counts friendly regiment troops at a planet.
+        /// </summary>
+        private static int CountFriendlyTroops(Planet planet, string factionId)
+        {
+            return planet.GetAllRegiments().Count(r => r.GetOwnerInstanceID() == factionId);
         }
     }
 }

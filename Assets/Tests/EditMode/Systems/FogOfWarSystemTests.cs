@@ -1377,5 +1377,47 @@ namespace Rebellion.Tests.Systems
                 "Popular support on outer rim snapshots should be hidden"
             );
         }
+
+        [Test]
+        public void CaptureSnapshot_EmptyFleet_ExcludedFromSnapshot()
+        {
+            // An empty fleet (no capital ships) should not appear in snapshots
+            Fleet emptyFleet = new Fleet { InstanceID = "empty_fleet", OwnerInstanceID = "EMPIRE" };
+            game.AttachNode(emptyFleet, coruscant);
+
+            fogSystem.CaptureSnapshot(empire, coruscant, coreSystem, game.CurrentTick);
+
+            GalaxyMap view = fogSystem.BuildFactionView(empire);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORE")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsFalse(
+                viewCoruscant.Fleets.Any(f => f.InstanceID == "empty_fleet"),
+                "Empty fleet should not appear in snapshot"
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_FleetWithShips_IncludedInSnapshot()
+        {
+            Fleet fleet = new Fleet { InstanceID = "armed_fleet", OwnerInstanceID = "EMPIRE" };
+            game.AttachNode(fleet, coruscant);
+
+            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "EMPIRE" };
+            game.AttachNode(ship, fleet);
+
+            fogSystem.CaptureSnapshot(empire, coruscant, coreSystem, game.CurrentTick);
+
+            GalaxyMap view = fogSystem.BuildFactionView(empire);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORE")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsTrue(
+                viewCoruscant.Fleets.Any(f => f.InstanceID == "armed_fleet"),
+                "Fleet with capital ships should appear in snapshot"
+            );
+        }
     }
 }

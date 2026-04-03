@@ -97,6 +97,27 @@ public class StubMission : Mission
 /// Each method returns an unattached entity — call game.AttachNode() as needed.
 /// Replaces duplicated factory methods in FogOfWarSystemTests.
 /// </summary>
+/// <summary>
+/// Returns queued int values for NextInt, queued double values for NextDouble.
+/// Falls back to 0 when queues are exhausted.
+/// </summary>
+public class SequenceRNG : IRandomNumberProvider
+{
+    private readonly Queue<int> ints;
+    private readonly Queue<double> doubles;
+
+    public SequenceRNG(int[] intValues = null, double[] doubleValues = null)
+    {
+        ints = new Queue<int>(intValues ?? new int[0]);
+        doubles = new Queue<double>(doubleValues ?? new double[0]);
+    }
+
+    public double NextDouble() => doubles.Count > 0 ? doubles.Dequeue() : 0.0;
+
+    public int NextInt(int min, int max) =>
+        ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, ints.Dequeue())) : min;
+}
+
 public static class MissionSceneBuilder
 {
     public static (

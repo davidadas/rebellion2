@@ -468,5 +468,83 @@ namespace Rebellion.Tests.Systems
                 "Captive must not move when the escort is from a different faction than the captor"
             );
         }
+
+        [Test]
+        public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameRoot game = new GameRoot(config);
+
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, system);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(planetB, system);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 500,
+                PositionY = 500,
+            };
+            game.AttachNode(planetC, system);
+
+            // Fleet starts at planet B
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetB);
+
+            // Officer at planet A moves toward the fleet
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planetA);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(officer, fleet);
+
+            int transitTicks = officer.Movement.TransitTicks;
+
+            // Tick until one tick before arrival
+            for (int i = 0; i < transitTicks - 1; i++)
+                movement.ProcessTick();
+
+            Assert.IsNotNull(officer.Movement, "Officer should still be in transit.");
+
+            // Fleet moves to planet C the tick before officer would arrive
+            movement.RequestMove(fleet, planetC);
+
+            // Tick once more — officer would have arrived at old position
+            movement.ProcessTick();
+
+            // Officer should still be en route because the fleet moved
+            Assert.IsNotNull(
+                officer.Movement,
+                "Officer should still be en route after fleet moved away."
+            );
+        }
     }
 }

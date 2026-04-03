@@ -36,6 +36,12 @@ namespace Rebellion.Game
         public string PlayerID { get; set; }
 
         /// <summary>
+        /// Faction-specific gameplay modifiers.
+        /// Affects game mechanics regardless of whether faction is player or AI controlled.
+        /// </summary>
+        public FactionModifiers Modifiers { get; set; } = new FactionModifiers();
+
+        /// <summary>
         /// Fog of war state - snapshots and entity tracking.
         /// </summary>
         public FogState Fog { get; set; } = new FogState();

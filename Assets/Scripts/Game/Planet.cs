@@ -536,6 +536,16 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Calculates total defense strength from defensive buildings.
+        /// </summary>
+        public int GetDefenseStrength()
+        {
+            return GetAllBuildings()
+                .Where(b => b.GetBuildingType() == BuildingType.Defense)
+                .Sum(b => b.WeaponStrength);
+        }
+
+        /// <summary>
         /// Gets the count of buildings of a specific type.
         /// </summary>
         /// <param name="buildingType">The type of building.</param>

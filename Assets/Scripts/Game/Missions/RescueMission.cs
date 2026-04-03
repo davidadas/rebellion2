@@ -74,7 +74,7 @@ public class RescueMission : Mission
         {
             new OfficerRescuedResult
             {
-                OfficerInstanceID = target.InstanceID,
+                CharacterInstanceID = target.InstanceID,
                 RescuingFactionInstanceID = OwnerInstanceID,
                 LocationInstanceID = (GetParent() as Planet)?.InstanceID,
                 Tick = game.CurrentTick,

@@ -245,6 +245,52 @@ namespace Rebellion.Systems
                     + $"{attacker.GetDisplayName()} vs {defender.GetDisplayName()} — "
                     + $"Winner: {result.Winner}"
             );
+
+            // After space combat, the winner may assault or capture the planet
+            Fleet winner =
+                result.Winner == CombatSide.Attacker ? attacker
+                : result.Winner == CombatSide.Defender ? defender
+                : null;
+
+            if (
+                winner != null
+                && planet.GetOwnerInstanceID() != null
+                && planet.GetOwnerInstanceID() != winner.GetOwnerInstanceID()
+            )
+            {
+                string winnerFactionId = winner.GetOwnerInstanceID();
+
+                if (planet.GetDefenseStrength() > 0)
+                {
+                    // Planet has defenses — assault required
+                    List<Fleet> assaultFleets = planet
+                        .GetFleets()
+                        .Where(f => f.GetOwnerInstanceID() == winnerFactionId)
+                        .ToList();
+
+                    if (assaultFleets.Any())
+                    {
+                        PlanetaryAssaultResult assaultResult = ExecutePlanetaryAssault(
+                            assaultFleets,
+                            planet
+                        );
+
+                        if (assaultResult.Success && !assaultResult.OwnershipChanged)
+                        {
+                            // Defenses destroyed but ownership not yet transferred
+                            game.ChangeUnitOwnership(planet, winnerFactionId);
+                        }
+                    }
+                }
+                else
+                {
+                    // Undefended — auto-capture
+                    game.ChangeUnitOwnership(planet, winnerFactionId);
+                    GameLogger.Log(
+                        $"Undefended planet {planet.GetDisplayName()} captured by {winnerFactionId}"
+                    );
+                }
+            }
         }
 
         /// <summary>
@@ -365,8 +411,8 @@ namespace Rebellion.Systems
                     HullMax = ship.HullStrength,
                     // Initial shield nibble: clamped to 4-bit range (0-15)
                     ShieldNibble = Math.Min(ship.ShieldRechargeRate, 15),
-                    // Weapon nibble starts at max allocation (0x0f = 15)
-                    WeaponNibble = 0x0f,
+                    // Weapon nibble starts at max allocation (15)
+                    WeaponNibble = 15,
                     Alive = true,
                 };
                 ships.Add(snap);
@@ -439,7 +485,7 @@ namespace Rebellion.Systems
                 targets[idx].HullCurrent = Math.Max(targets[idx].HullCurrent - hullDamage, 0);
                 if (targets[idx].HullCurrent == 0)
                 {
-                    targets[idx].Alive = false; // alive_flag at +0xac bit0 cleared
+                    targets[idx].Alive = false;
                 }
             }
         }
@@ -778,21 +824,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes planetary assault by hostile fleet(s) against a defending planet.
-        /// Mirrors FUN_0058c580_execute_capital_ship_assault_stage from original.
-        ///
-        /// Original logic:
-        /// 1. Find fleets with "assault ready" flag (bit 6 of offset 0x58)
-        /// 2. Sum assault strength: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
-        /// 3. Sum defense strength from defensive buildings (offset 0x60)
-        /// 4. Check if assault > defense
-        /// 5. Roll dice: success if roll < threshold
-        /// 6. Execute capital strikes destroying defensive buildings
-        /// 7. Transfer planet ownership if defenses eliminated
+        /// Executes a planetary assault against a defending planet.
         /// </summary>
-        /// <param name="attackingFleets">Fleets performing the assault (same faction)</param>
-        /// <param name="defendingPlanet">Planet being assaulted</param>
-        /// <returns>Assault result with building damage and ownership changes</returns>
+        /// <param name="attackingFleets">Fleets performing the assault.</param>
+        /// <param name="defendingPlanet">Planet being assaulted.</param>
+        /// <returns>The result of the assault.</returns>
         public PlanetaryAssaultResult ExecutePlanetaryAssault(
             List<Fleet> attackingFleets,
             Planet defendingPlanet
@@ -800,7 +836,7 @@ namespace Rebellion.Systems
         {
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
-                Planet = defendingPlanet,
+                PlanetInstanceID = defendingPlanet.GetInstanceID(),
                 Tick = game.CurrentTick,
             };
 
@@ -821,15 +857,13 @@ namespace Rebellion.Systems
                 return result;
             }
 
-            result.AttackingFactionID = attackerFactionID;
+            result.AttackingFactionInstanceID = attackerFactionID;
 
             // Phase 1: Calculate total assault strength from all fleets
-            // Original: Lines 43-74 in FUN_0058c580
             int totalAssaultStrength = 0;
             foreach (Fleet fleet in attackingFleets)
             {
-                // Original checks bit 6 of offset 0x58 for "assault ready" flag
-                // For now, all fleets at enemy planets are considered assault-ready
+                // All fleets at enemy planets are considered assault-ready
                 int fleetCombatValue = CalculateFleetCombatValue(fleet);
                 int assaultStrength = CalculateFleetAssaultStrength(fleet, fleetCombatValue);
                 totalAssaultStrength += assaultStrength;
@@ -838,13 +872,10 @@ namespace Rebellion.Systems
             result.AssaultStrength = totalAssaultStrength;
 
             // Phase 2: Calculate total defense strength from defensive buildings
-            // Original: Lines 79-90 in FUN_0058c580
-            // Sums FUN_0051fd40_get_attached_defensive_core_value (offset 0x60)
-            int totalDefenseStrength = CalculatePlanetDefenseStrength(defendingPlanet);
+            int totalDefenseStrength = defendingPlanet.GetDefenseStrength();
             result.DefenseStrength = totalDefenseStrength;
 
             // Phase 3: Determine if assault can proceed
-            // Original: Lines 92-97
             if (totalAssaultStrength <= totalDefenseStrength)
             {
                 result.Success = false;
@@ -854,32 +885,24 @@ namespace Rebellion.Systems
             int excessAssaultStrength = totalAssaultStrength - totalDefenseStrength;
 
             // Phase 4: Dice roll for success
-            // Original: Lines 95-97
-            // iVar1 = *(int *)(system + 0x24);
-            // iVar4 = FUN_0053c9f0_roll_dice(*(int *)(system + 0x20) + iVar1 - 1);
-            // if (iVar4 < iVar1) { assault succeeds }
-            int baseThreshold = 50; // Estimated from typical gameplay
-            int rollRange = 100;
-            int roll = provider.NextInt(0, rollRange);
+            int threshold = game.Config.Combat.AssaultSuccessThreshold;
+            int rollRange = game.Config.Combat.AssaultRollRange - 1 + threshold;
+            int roll = provider.NextInt(0, rollRange + 1);
 
-            if (roll >= baseThreshold)
+            if (roll >= threshold)
             {
                 result.Success = false;
                 return result;
             }
 
             // Phase 5: Execute capital strikes on defensive buildings
-            // Original: Lines 99-152
             result.Success = true;
             ExecuteCapitalStrikes(defendingPlanet, excessAssaultStrength, result);
 
             // Phase 6: Transfer ownership if all defenses destroyed
-            if (totalDefenseStrength > 0 && result.DestroyedBuildings.Count > 0)
+            if (totalDefenseStrength > 0 && result.DestroyedBuildingInstanceIDs.Count > 0)
             {
-                int remainingDefense = defendingPlanet
-                    .GetAllBuildings()
-                    .Where(b => b.GetBuildingType() == BuildingType.Defense)
-                    .Sum(b => b.DefenseRating);
+                int remainingDefense = defendingPlanet.GetDefenseStrength();
 
                 if (remainingDefense == 0)
                 {
@@ -892,20 +915,25 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Calculates fleet combat value by summing capital ship and starfighter attack ratings.
-        /// Mirrors FUN_004fc870_sum_fleet_unit_combat_value from original.
         /// </summary>
+        /// <param name="fleet">The fleet to evaluate.</param>
         private int CalculateFleetCombatValue(Fleet fleet)
         {
-            int capitalShipCombat = fleet.CapitalShips.Sum(s => s.AttackRating);
-            int starfighterCombat = fleet.GetStarfighters().Sum(f => f.AttackRating);
+            int capitalShipCombat = fleet.CapitalShips.Sum(s =>
+                s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum())
+            );
+            int starfighterCombat = fleet
+                .GetStarfighters()
+                .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
             return capitalShipCombat + starfighterCombat;
         }
 
         /// <summary>
         /// Calculates fleet assault strength with personnel modifier.
-        /// Mirrors FUN_0055d120_scale_capital_ship_assault_fleet_strength from original.
-        /// Formula: (personnel / GENERAL_PARAM_1537 + 1) * fleet_combat_value
+        /// Formula: (personnel / divisor + 1) * fleet_combat_value.
         /// </summary>
+        /// <param name="fleet">The fleet to evaluate.</param>
+        /// <param name="fleetCombatValue">Pre-calculated combat value of the fleet.</param>
         private int CalculateFleetAssaultStrength(Fleet fleet, int fleetCombatValue)
         {
             Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
@@ -916,23 +944,12 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates planetary defense strength from defensive buildings.
-        /// Mirrors defense calculation from FUN_0058c580 lines 84-88.
-        /// Original: Sums defensive_core_value (offset 0x60) from defensive facilities.
-        /// </summary>
-        private int CalculatePlanetDefenseStrength(Planet planet)
-        {
-            return planet
-                .GetAllBuildings()
-                .Where(b => b.GetBuildingType() == BuildingType.Defense)
-                .Sum(b => b.DefenseRating);
-        }
-
-        /// <summary>
         /// Executes capital strikes against defensive buildings.
-        /// Original: FUN_0058c580 lines 99-152
         /// Each point of excess assault strength destroys one defensive structure.
         /// </summary>
+        /// <param name="planet">The planet under assault.</param>
+        /// <param name="excessAssaultStrength">Assault strength exceeding defense.</param>
+        /// <param name="result">Result object to record destroyed buildings.</param>
         private void ExecuteCapitalStrikes(
             Planet planet,
             int excessAssaultStrength,
@@ -953,7 +970,7 @@ namespace Rebellion.Systems
                     break;
 
                 // Each strike destroys one building
-                result.DestroyedBuildings.Add(building);
+                result.DestroyedBuildingInstanceIDs.Add(building.GetInstanceID());
                 game.DetachNode(building);
                 strikesRemaining--;
 
@@ -967,6 +984,9 @@ namespace Rebellion.Systems
         /// Transfers planet ownership to the attacking faction.
         /// Resets popular support and marks the planet as captured.
         /// </summary>
+        /// <param name="planet">The planet changing hands.</param>
+        /// <param name="newOwnerID">The faction taking ownership.</param>
+        /// <param name="result">Result object to record the ownership change.</param>
         private void TransferPlanetOwnership(
             Planet planet,
             string newOwnerID,
@@ -974,13 +994,10 @@ namespace Rebellion.Systems
         )
         {
             string oldOwnerID = planet.GetOwnerInstanceID();
-            planet.SetOwnerInstanceID(newOwnerID);
-
-            // Reset popular support to neutral/low for new owner
-            planet.SetPopularSupport(newOwnerID, game.Config.Planet.MaxPopularSupport / 2);
+            game.ChangeUnitOwnership(planet, newOwnerID);
 
             result.OwnershipChanged = true;
-            result.NewOwnerID = newOwnerID;
+            result.NewOwnerInstanceID = newOwnerID;
 
             GameLogger.Log(
                 $"Planet {planet.GetDisplayName()} captured! {oldOwnerID} -> {newOwnerID}"
@@ -1058,22 +1075,5 @@ namespace Rebellion.Systems
             public int WeaponNibble;
             public bool Alive;
         }
-    }
-
-    /// <summary>
-    /// Outcome of planetary assault by fleets against a planet.
-    /// Records assault/defense strength, destroyed buildings, and ownership changes.
-    /// </summary>
-    public class PlanetaryAssaultResult
-    {
-        public Planet Planet { get; set; }
-        public string AttackingFactionID { get; set; }
-        public int AssaultStrength { get; set; }
-        public int DefenseStrength { get; set; }
-        public bool Success { get; set; }
-        public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
-        public bool OwnershipChanged { get; set; }
-        public string NewOwnerID { get; set; }
-        public int Tick { get; set; }
     }
 }

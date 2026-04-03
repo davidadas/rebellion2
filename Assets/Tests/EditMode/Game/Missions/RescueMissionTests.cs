@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Game.Missions
                 .OfType<OfficerRescuedResult>()
                 .FirstOrDefault();
             Assert.IsNotNull(rescueResult, "Should return OfficerRescuedResult on success");
-            Assert.AreEqual("captive", rescueResult.OfficerInstanceID);
+            Assert.AreEqual("captive", rescueResult.CharacterInstanceID);
         }
 
         [Test]
