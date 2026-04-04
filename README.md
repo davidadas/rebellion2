@@ -29,20 +29,18 @@ The game's art, audio, and video assets are **not included** in this repository.
 
 > **Note:** The game will not run without these assets.
 
-### Running Tests & Linting
-Tests are run via Unity's built-in test runner. From the command line:
+### Building, Testing & Linting
+All commands are available via `build.sh`:
 
 ```bash
-# Lint (Roslynator static analysis)
-./lint.sh
-
-# Run EditMode tests
-"C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe" \
-  -runTests -testPlatform EditMode \
-  -projectPath . \
-  -testResults TestResults.xml \
-  -batchmode -nographics
+./build.sh lint    # Run Roslynator static analysis
+./build.sh test    # Run EditMode tests via Unity
+./build.sh build   # Build standalone player
+./build.sh clean   # Remove build artifacts
+./build.sh all     # Run lint + test
 ```
+
+The Unity editor path defaults to `C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe`. Override it with the `UNITY` environment variable if your installation differs.
 
 > **Note:** If `dotnet build` fails with a missing .NET Framework 4.7.1 reference assemblies error, ensure the Developer Pack is installed and update `FrameworkPathOverride` in `Directory.Build.props` to match your local installation path.
 
