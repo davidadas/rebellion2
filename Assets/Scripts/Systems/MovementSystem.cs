@@ -118,6 +118,103 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Dispatches a newly completed manufactured item from its production planet to wherever
+        /// it was pre-placed during enqueue. MovementSystem owns all routing decisions:
+        /// capital ships travel with their fleet, other units set up transit from the origin,
+        /// and orphaned or redirected items are placed at the nearest valid location.
+        /// </summary>
+        /// <param name="unit">The completed unit to dispatch.</param>
+        /// <param name="origin">The planet where the unit was manufactured.</param>
+        public void DispatchFromOrigin(IMovable unit, Planet origin)
+        {
+            if (unit is CapitalShip cs)
+            {
+                DispatchCapitalShip(cs, origin);
+                return;
+            }
+
+            // Non-capital units are pre-attached to their destination during Enqueue.
+            // If that destination is still friendly, start the visual transit from origin.
+            // If not, redirect to the production planet (or scrap if that also fails).
+            Planet destPlanet = ((ISceneNode)unit).GetParentOfType<Planet>();
+            bool destFriendly =
+                destPlanet != null && destPlanet.GetOwnerInstanceID() == unit.GetOwnerInstanceID();
+
+            if (destFriendly)
+            {
+                RequestMove(unit, ((ISceneNode)unit).GetParent(), origin);
+            }
+            else
+            {
+                try
+                {
+                    game.MoveNode((ISceneNode)unit, origin);
+                }
+                catch
+                {
+                    // MoveNode may leave the node parentless if its rollback reattachment also
+                    // fails (e.g. destination changed faction ownership mid-production).
+                    // Only detach if the node still has a parent.
+                    if (((ISceneNode)unit).GetParent() != null)
+                        game.DetachNode((ISceneNode)unit);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Dispatches a completed capital ship. The ship remains in its pre-assigned fleet;
+        /// the fleet is given a shipping movement from origin. If the fleet is gone or changed
+        /// sides, the ship is placed in an existing or newly created fleet at origin.
+        /// </summary>
+        private void DispatchCapitalShip(CapitalShip cs, Planet origin)
+        {
+            Fleet fleet = ((ISceneNode)cs).GetParent() as Fleet;
+            bool fleetValid =
+                fleet != null
+                && ((ISceneNode)fleet).GetParent() != null
+                && fleet.GetOwnerInstanceID() == cs.GetOwnerInstanceID();
+
+            if (!fleetValid)
+            {
+                if (((ISceneNode)cs).GetParent() != null)
+                    game.DetachNode(cs);
+                AttachToOrCreateFleet(cs, origin);
+                return;
+            }
+
+            // Fleet is valid — ship stays in it. If fleet is elsewhere, ship it from origin.
+            Planet fleetPlanet = ((ISceneNode)fleet).GetParentOfType<Planet>();
+            if (fleetPlanet != origin && fleet.IsMovable())
+                RequestMove(fleet, ((ISceneNode)fleet).GetParent(), origin);
+        }
+
+        /// <summary>
+        /// Attaches a capital ship to an existing idle friendly fleet at the given planet,
+        /// or creates a new battle fleet there if none exists.
+        /// </summary>
+        private void AttachToOrCreateFleet(CapitalShip cs, Planet planet)
+        {
+            Fleet localFleet = planet
+                .GetFleets()
+                .FirstOrDefault(f =>
+                    f.GetOwnerInstanceID() == cs.GetOwnerInstanceID() && f.IsMovable()
+                );
+
+            if (localFleet != null)
+            {
+                game.AttachNode(cs, localFleet);
+                return;
+            }
+
+            Faction faction = game.GetFactionByOwnerInstanceID(cs.GetOwnerInstanceID());
+            if (faction == null)
+                return;
+
+            Fleet newFleet = faction.CreateFleet(game, new[] { cs }, FleetRoleType.Battle);
+            game.AttachNode(newFleet, planet);
+        }
+
         public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
         {
             if (units == null)

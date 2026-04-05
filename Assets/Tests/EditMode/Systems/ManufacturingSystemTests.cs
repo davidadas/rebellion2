@@ -2600,7 +2600,8 @@ namespace Rebellion.Tests.Systems
             // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
-            mfg.ProcessTick(movement, provider);
+            MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
+            mfg.ProcessTick(localMovement, provider);
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.AreEqual(
@@ -2648,7 +2649,8 @@ namespace Rebellion.Tests.Systems
             // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
-            mfg.ProcessTick(movement, provider);
+            MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
+            mfg.ProcessTick(localMovement, provider);
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
