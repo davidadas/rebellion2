@@ -1600,8 +1600,8 @@ namespace Rebellion.Tests.Systems
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
             mfg.ProcessTick(movement, provider);
 
-            Assert.IsNotNull(fleet, "Ship should be in a fleet.");
-            Assert.IsNull(fleet.Movement, "No movement needed for same-planet destination.");
+            Assert.IsNotNull(ship.GetParentOfType<Fleet>(), "Ship should be in a fleet.");
+            Assert.IsNull(ship.Movement, "No movement needed for same-planet destination.");
         }
 
         [Test]
@@ -1640,8 +1640,9 @@ namespace Rebellion.Tests.Systems
             mfg.ProcessTick(movement, provider);
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
-            Assert.IsNotNull(fleet.Movement, "Fleet should have movement state for shipping.");
-            Assert.Greater(fleet.Movement.TransitTicks, 0, "Should have travel time.");
+            Assert.IsNotNull(ship.Movement, "Ship should have movement state for transit.");
+            Assert.Greater(ship.Movement.TransitTicks, 0, "Should have travel time.");
+            Assert.IsNull(fleet.Movement, "Fleet should not move — the ship travels to it.");
         }
 
         [Test]
@@ -2512,7 +2513,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipComplete_DestinationFleetDestroyed_CreatesNewFleetAtProductionPlanet()
+        public void ProcessTick_CapitalShipComplete_DestinationFleetDestroyed_ShipIsLost()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -2553,16 +2554,9 @@ namespace Rebellion.Tests.Systems
             MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
             mfg.ProcessTick(localMovement, provider);
 
-            CapitalShip rescued = game.GetSceneNodeByInstanceID<CapitalShip>("cs1");
-            Assert.IsNotNull(rescued, "CS should be re-registered after rescue.");
-            Assert.AreEqual(ManufacturingStatus.Complete, rescued.ManufacturingStatus);
-
-            Fleet rescueFleet = rescued.GetParentOfType<Fleet>();
-            Assert.IsNotNull(rescueFleet, "CS should be in a fleet after rescue.");
-            Assert.AreEqual(
-                productionPlanet,
-                rescueFleet.GetParent(),
-                "Rescue fleet should be at the production planet."
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<CapitalShip>("cs1"),
+                "Ship should be lost when its destination fleet was destroyed before completion."
             );
         }
 

@@ -25,6 +25,19 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Processes manufacturing for the current tick.
+        /// </summary>
+        /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
+        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
+        public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
+        {
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            {
+                ProcessPlanetManufacturing(planet, movementSystem, provider);
+            }
+        }
+        
+        /// <summary>
         /// Enqueues an item for production at <paramref name="planet"/>, delivering to
         /// <paramref name="destination"/> on completion. Capital ships are placed in a new
         /// fleet created at the destination planet.
@@ -135,19 +148,6 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"Enqueued {item.GetDisplayName()} for production at {planet.GetDisplayName()} (cost: {item.GetConstructionCost()})"
             );
-        }
-
-        /// <summary>
-        /// Processes manufacturing for the current tick.
-        /// </summary>
-        /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
-        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
-        public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
-        {
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
-            {
-                ProcessPlanetManufacturing(planet, movementSystem, provider);
-            }
         }
 
         /// <summary>
@@ -285,7 +285,9 @@ namespace Rebellion.Systems
         )
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
-            movementSystem.DispatchFromOrigin((IMovable)item, productionPlanet);
+            ISceneNode dest = ((ISceneNode)item).GetParent();
+            if (dest != null)
+                movementSystem.RequestMove((IMovable)item, dest, productionPlanet);
             ApplyCompletionSupportShift(productionPlanet, item);
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
