@@ -1646,6 +1646,55 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_CapitalShipComplete_DestinationChangedSides_ShipStaysAtFleet()
+        {
+            // Ship queued into fleet at destPlanet. destPlanet captured mid-production.
+            // Planet doesn't accept CapitalShips directly, so HandleArrivalRejection finds
+            // no valid fallback — ship stays in fleet, no transit state.
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet originPlanet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Planet destPlanet = BuildShipyardPlanet(game, "p2", "empire");
+            destPlanet.PositionX = 500;
+            destPlanet.PositionY = 500;
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, destPlanet);
+            CapitalShip anchor = new CapitalShip
+            {
+                InstanceID = "cs0",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+            };
+            game.AttachNode(anchor, fleet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
+
+            destPlanet.OwnerInstanceID = "rebels";
+
+            MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
+            mfg.ProcessTick(localMovement, provider);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
+            Assert.IsNull(ship.Movement, "No transit — no valid friendly planet accepts a capital ship directly.");
+            Assert.AreEqual(fleet, ship.GetParentOfType<Fleet>(), "Ship stays in its assigned fleet.");
+        }
+
+        [Test]
         public void EnqueueTwoCapitalShips_SameFleet_BothJoin()
         {
             GameConfig config = TestConfig.Create();
@@ -2062,6 +2111,160 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have movement state for shipping.");
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_DestinationChangedSides_RedirectsToProductionPlanet()
+        {
+            // Mine queued from planetA to planetB. planetB captured before completion.
+            // planetA has capacity — mine should redirect there and be in transit.
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 0,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetA, sys);
+
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planetA);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 500,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetB, sys);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
+
+            planetB.OwnerInstanceID = "rebels";
+
+            MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
+            mfg.ProcessTick(localMovement, provider);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(planetA, mine.GetParent(), "Mine should redirect to production planet.");
+            Assert.IsNotNull(mine.Movement, "Mine should be in visual transit to production planet.");
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_DestinationChangedSides_NoCapacityAnywhere_StaysAtHostile()
+        {
+            // Mine queued from full planetA to planetB. planetB captured before completion.
+            // planetA has no remaining capacity — mine stays at hostile planetB.
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 2,
+                PositionX = 0,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetA, sys);
+
+            // Fill planetA to capacity.
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planetA);
+            Building filler = new Building
+            {
+                InstanceID = "fill1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(filler, planetA);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 500,
+                PositionY = 0,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planetB, sys);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
+
+            planetB.OwnerInstanceID = "rebels";
+
+            MovementSystem localMovement = new MovementSystem(game, new FogOfWarSystem(game));
+            mfg.ProcessTick(localMovement, provider);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Building>("mine1"),
+                "Mine should remain in the scene — not destroyed."
+            );
+            Assert.IsNull(mine.Movement, "No transit state when no valid planet found.");
         }
 
         [Test]
