@@ -147,18 +147,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                try
-                {
-                    game.MoveNode((ISceneNode)unit, origin);
-                }
-                catch
-                {
-                    // MoveNode may leave the node parentless if its rollback reattachment also
-                    // fails (e.g. destination changed faction ownership mid-production).
-                    // Only detach if the node still has a parent.
-                    if (((ISceneNode)unit).GetParent() != null)
-                        game.DetachNode((ISceneNode)unit);
-                }
+                HandleArrivalRejection(unit, destPlanet);
             }
         }
 
@@ -516,7 +505,11 @@ namespace Rebellion.Systems
 
             Planet fallback = FindNearestFactionPlanet(ownerID, movable.GetPosition());
 
-            if (fallback != null && fallback != rejectedDestination)
+            if (
+                fallback != null
+                && fallback != rejectedDestination
+                && fallback.CanAcceptChild((ISceneNode)movable)
+            )
             {
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"

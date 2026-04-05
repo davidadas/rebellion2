@@ -210,7 +210,9 @@ namespace Rebellion.Systems
                     progressIncrement = (progressIncrement * modifier) / 100;
                 }
 
-                DistributeProgress(planet, items, type, progressIncrement, movementSystem, provider);
+                List<IManufacturable> completed = DistributeProgress(items, progressIncrement, provider);
+                foreach (IManufacturable item in completed)
+                    CompleteManufacturing(planet, item, movementSystem);
             }
         }
 
@@ -218,22 +220,20 @@ namespace Rebellion.Systems
         /// Distributes a production progress increment across the queue for one manufacturing type.
         /// Surplus progress from a completed item carries over to the next item in the queue.
         /// Capital ships consume the entire tick slot and do not overflow.
+        /// Returns the list of items that completed this tick; the caller is responsible for
+        /// calling CompleteManufacturing on each.
         /// </summary>
-        /// <param name="planet">The planet whose queue is being processed.</param>
         /// <param name="items">The ordered list of items in this type's queue.</param>
-        /// <param name="type">The manufacturing type being processed.</param>
         /// <param name="progressIncrement">Total progress available this tick.</param>
-        /// <param name="movementSystem">Used to dispatch completed items.</param>
         /// <param name="provider">Random number provider for capital ship rolls.</param>
-        private void DistributeProgress(
-            Planet planet,
+        private List<IManufacturable> DistributeProgress(
             List<IManufacturable> items,
-            ManufacturingType type,
             int progressIncrement,
-            MovementSystem movementSystem,
             IRandomNumberProvider provider
         )
         {
+            List<IManufacturable> completed = new List<IManufacturable>();
+
             while (progressIncrement > 0 && items.Count > 0)
             {
                 IManufacturable activeItem = items[0];
@@ -246,7 +246,10 @@ namespace Rebellion.Systems
                         activeItem.IncrementManufacturingProgress(csProgress);
 
                     if (activeItem.IsManufacturingComplete())
-                        CompleteManufacturing(planet, activeItem, type, movementSystem);
+                    {
+                        items.RemoveAt(0);
+                        completed.Add(activeItem);
+                    }
 
                     // Capital ships consume the entire queue slot per tick
                     break;
@@ -260,192 +263,33 @@ namespace Rebellion.Systems
                 progressIncrement -= appliedProgress;
 
                 if (activeItem.IsManufacturingComplete())
-                    CompleteManufacturing(planet, activeItem, type, movementSystem);
+                {
+                    items.RemoveAt(0);
+                    completed.Add(activeItem);
+                }
                 else
                     break;
             }
+
+            return completed;
         }
 
         /// <summary>
-        /// Completes manufacturing of an item. Marks it complete, removes from queue,
-        /// and delivers to the intended destination via MovementSystem.
-        /// If the destination no longer exists or changed sides, falls back gracefully.
+        /// Completes manufacturing of an item. Marks it complete and hands it off to
+        /// MovementSystem to route from the production planet to its destination.
         /// </summary>
         private void CompleteManufacturing(
             Planet productionPlanet,
             IManufacturable item,
-            ManufacturingType type,
             MovementSystem movementSystem
         )
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                productionPlanet.GetManufacturingQueue();
-            if (queue.TryGetValue(type, out List<IManufacturable> items))
-                items.Remove(item);
-
-            if (item is CapitalShip cs)
-                CompleteCapitalShip(productionPlanet, cs, movementSystem);
-            else if (item is Building building)
-                CompleteBuilding(productionPlanet, building, movementSystem);
-            else if (item is IMovable movable)
-                CompleteMovable(productionPlanet, movable, movementSystem);
-
-            // Apply popular support shift at the production planet
+            movementSystem.DispatchFromOrigin((IMovable)item, productionPlanet);
             ApplyCompletionSupportShift(productionPlanet, item);
-
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
             );
-        }
-
-        /// <summary>
-        /// Completes a capital ship. The ship stays in its destination fleet.
-        /// If the fleet is at the production planet, nothing else happens.
-        /// If the fleet is elsewhere, a shipping movement is set up so the fleet
-        /// visually travels from the production planet to its current location.
-        /// If the fleet no longer exists, the ship is placed in a local fleet.
-        /// </summary>
-        private void CompleteCapitalShip(
-            Planet productionPlanet,
-            CapitalShip cs,
-            MovementSystem movementSystem
-        )
-        {
-            Fleet currentFleet = cs.GetParent() as Fleet;
-            bool fleetExists =
-                currentFleet != null
-                && game.GetSceneNodeByInstanceID<Fleet>(currentFleet.InstanceID) != null
-                && currentFleet.GetOwnerInstanceID() == cs.GetOwnerInstanceID();
-
-            if (fleetExists)
-            {
-                Planet fleetPlanet = currentFleet.GetParentOfType<Planet>();
-                if (fleetPlanet == productionPlanet)
-                {
-                    // Fleet is at production planet — ship is already in it, nothing to do.
-                    return;
-                }
-
-                // Fleet is elsewhere — ship stays in fleet, set up shipping movement.
-                if (currentFleet.IsMovable())
-                {
-                    movementSystem.RequestMove(
-                        currentFleet,
-                        currentFleet.GetParent(),
-                        productionPlanet
-                    );
-                }
-                return;
-            }
-
-            // Fleet no longer exists or changed ownership — place in a local fleet.
-            if (cs.GetParent() != null)
-            {
-                game.DetachNode(cs);
-            }
-
-            Faction faction = game.GetFactionByOwnerInstanceID(cs.GetOwnerInstanceID());
-            if (faction == null)
-                return;
-
-            Fleet localFleet = productionPlanet
-                .GetFleets()
-                .FirstOrDefault(f =>
-                    f.GetOwnerInstanceID() == cs.GetOwnerInstanceID() && f.IsMovable()
-                );
-
-            if (localFleet != null)
-            {
-                game.AttachNode(cs, localFleet);
-            }
-            else
-            {
-                Fleet newFleet = faction.CreateFleet(game, new[] { cs }, FleetRoleType.Battle);
-                game.AttachNode(newFleet, productionPlanet);
-            }
-        }
-
-        /// <summary>
-        /// Completes a movable item (starfighter, regiment). If the destination planet is still
-        /// friendly, sends via MovementSystem. Otherwise redirects to production planet.
-        /// </summary>
-        private void CompleteMovable(
-            Planet productionPlanet,
-            IMovable movable,
-            MovementSystem movementSystem
-        )
-        {
-            Planet currentPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
-            bool destFriendly =
-                currentPlanet != null
-                && currentPlanet.GetOwnerInstanceID() == movable.GetOwnerInstanceID();
-
-            if (destFriendly)
-            {
-                movementSystem.RequestMove(
-                    movable,
-                    ((ISceneNode)movable).GetParent(),
-                    productionPlanet
-                );
-            }
-            else
-            {
-                try
-                {
-                    game.MoveNode((ISceneNode)movable, productionPlanet);
-                    movable.Movement = null;
-                }
-                catch (SceneAccessException)
-                {
-                    game.DetachNode((ISceneNode)movable);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Completes a building. If the destination planet is still friendly, sends via
-        /// MovementSystem. Otherwise redirects to production planet if capacity allows.
-        /// </summary>
-        private void CompleteBuilding(
-            Planet productionPlanet,
-            Building building,
-            MovementSystem movementSystem
-        )
-        {
-            Planet destPlanet = building.GetParentOfType<Planet>();
-            bool destFriendly =
-                destPlanet != null
-                && destPlanet.GetOwnerInstanceID() == building.GetOwnerInstanceID();
-
-            if (destFriendly)
-            {
-                movementSystem.RequestMove(
-                    (IMovable)building,
-                    (ISceneNode)building.GetParent(),
-                    productionPlanet
-                );
-                return;
-            }
-
-            // Destination changed sides — try to redirect to production planet.
-            if (productionPlanet.GetAvailableEnergy() > 0)
-            {
-                try
-                {
-                    game.MoveNode(building, productionPlanet);
-                }
-                catch (SceneAccessException)
-                {
-                    if (((ISceneNode)building).GetParent() != null)
-                        game.DetachNode(building);
-                }
-            }
-            else
-            {
-                game.DetachNode(building);
-            }
         }
 
         /// <summary>

@@ -2609,9 +2609,9 @@ namespace Rebellion.Tests.Systems
                 fighter.GetParent(),
                 "Fighter should be redirected to production planet when destination changed sides."
             );
-            Assert.IsNull(
+            Assert.IsNotNull(
                 fighter.Movement,
-                "No transit state when already placed at production planet."
+                "Fighter should be in visual transit toward production planet."
             );
         }
 
@@ -2658,9 +2658,9 @@ namespace Rebellion.Tests.Systems
                 regiment.GetParent(),
                 "Regiment should be redirected to production planet when destination changed sides."
             );
-            Assert.IsNull(
+            Assert.IsNotNull(
                 regiment.Movement,
-                "No transit state when already placed at production planet."
+                "Regiment should be in visual transit toward production planet."
             );
         }
 
@@ -2781,11 +2781,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetNoCapacity_CancelsAll()
+        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetNoCapacity_StaysAtCurrentLocation()
         {
             // 3 mines queued from production planet A to destination planet B.
-            // B changes sides. A has only 1 available ground slot (not enough for all 3).
-            // Expected: all 3 mines are cancelled.
+            // B changes sides. A has no capacity for redirected mines.
+            // Expected: MovementSystem cannot find a valid placement; mines remain in the scene
+            // at their current location (planetB) rather than being destroyed.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
@@ -2893,17 +2894,20 @@ namespace Rebellion.Tests.Systems
 
             mfg.ProcessTick(localMovement, provider);
 
-            Assert.IsNull(
+            Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
+            Assert.IsNotNull(
                 game.GetSceneNodeByInstanceID<Building>("m1"),
-                "Mine 1 should be cancelled when production planet has no capacity."
+                "Mine 1 should remain in the scene when no valid placement is found."
             );
-            Assert.IsNull(
+            Assert.IsNotNull(
                 game.GetSceneNodeByInstanceID<Building>("m2"),
-                "Mine 2 should be cancelled when production planet has no capacity."
+                "Mine 2 should remain in the scene when no valid placement is found."
             );
-            Assert.IsNull(
+            Assert.IsNotNull(
                 game.GetSceneNodeByInstanceID<Building>("m3"),
-                "Mine 3 should be cancelled when production planet has no capacity."
+                "Mine 3 should remain in the scene when no valid placement is found."
             );
         }
     }
