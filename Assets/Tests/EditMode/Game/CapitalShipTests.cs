@@ -87,9 +87,35 @@ public class CapitalShipTests
     [Test]
     public void AddOfficer_InvalidOwner_ThrowsException()
     {
-        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
         Assert.Throws<SceneAccessException>(() => capitalShip.AddOfficer(officer));
+    }
+
+    [Test]
+    public void AddOfficer_CapturedEnemy_AddsOfficer()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
+
+        capitalShip.AddOfficer(officer);
+
+        Assert.Contains(officer, capitalShip.Officers);
+    }
+
+    [Test]
+    public void CanAcceptChild_CapturedEnemyOfficer_ReturnsTrue()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
+
+        Assert.IsTrue(capitalShip.CanAcceptChild(officer));
+    }
+
+    [Test]
+    public void CanAcceptChild_UncapturedEnemyOfficer_ReturnsFalse()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
+
+        Assert.IsFalse(capitalShip.CanAcceptChild(officer));
     }
 
     [Test]

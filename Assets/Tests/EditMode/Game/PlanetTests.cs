@@ -52,12 +52,22 @@ public class PlanetTests
     [Test]
     public void AddOfficer_InvalidOwner_ThrowsException()
     {
-        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
         Assert.Throws<SceneAccessException>(
             () => planet.AddChild(officer),
             "Adding an officer with a mismatched OwnerInstanceID should throw a SceneAccessException."
         );
+    }
+
+    [Test]
+    public void AddOfficer_CapturedEnemy_AddsToOfficers()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
+
+        planet.AddChild(officer);
+
+        Assert.Contains(officer, planet.Officers, "Captured enemy officer should be accepted.");
     }
 
     [Test]
