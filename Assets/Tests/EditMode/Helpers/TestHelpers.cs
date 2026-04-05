@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.IO;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
@@ -97,6 +99,68 @@ public class StubMission : Mission
 /// Each method returns an unattached entity — call game.AttachNode() as needed.
 /// Replaces duplicated factory methods in FogOfWarSystemTests.
 /// </summary>
+/// <summary>
+/// Returns queued int values for NextInt, queued double values for NextDouble.
+/// Falls back to 0 when queues are exhausted.
+/// </summary>
+/// <summary>
+/// Cycles through int values 0, 1, 2, ... wrapping at the range.
+/// Useful for tests that need variety (e.g., different ship types per shipyard).
+/// </summary>
+public class CyclingRNG : IRandomNumberProvider
+{
+    private int counter;
+
+    public double NextDouble() => 0.5;
+
+    public int NextInt(int min, int max)
+    {
+        int range = max - min;
+        if (range <= 0)
+            return min;
+        int value = min + (counter % range);
+        counter++;
+        return value;
+    }
+}
+
+public class SequenceRNG : IRandomNumberProvider
+{
+    private readonly Queue<int> ints;
+    private readonly Queue<double> doubles;
+
+    public SequenceRNG(int[] intValues = null, double[] doubleValues = null)
+    {
+        ints = new Queue<int>(intValues ?? new int[0]);
+        doubles = new Queue<double>(doubleValues ?? new double[0]);
+    }
+
+    public double NextDouble() => doubles.Count > 0 ? doubles.Dequeue() : 0.0;
+
+    public int NextInt(int min, int max) =>
+        ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, ints.Dequeue())) : min;
+}
+
+public static class TestConfig
+{
+    private static readonly string ConfigPath = Path.Combine(
+        UnityEngine.Application.dataPath,
+        "Resources",
+        "Configs",
+        "GameConfig.xml"
+    );
+
+    public static GameConfig Create()
+    {
+        string xml = File.ReadAllText(ConfigPath);
+        GameSerializer serializer = new GameSerializer(typeof(GameConfig));
+        using StringReader reader = new StringReader(xml);
+        GameConfig config = (GameConfig)serializer.Deserialize(reader);
+        config.Validate();
+        return config;
+    }
+}
+
 public static class MissionSceneBuilder
 {
     public static (
@@ -107,7 +171,7 @@ public static class MissionSceneBuilder
         FogOfWarSystem fog
     ) Build()
     {
-        GameRoot game = new GameRoot(new GameConfig());
+        GameRoot game = new GameRoot(TestConfig.Create());
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };
@@ -140,8 +204,7 @@ public static class MissionSceneBuilder
             IsColonized = true,
             PositionX = 100,
             PositionY = 0,
-            GroundSlots = 5,
-            OrbitSlots = 5,
+            EnergyCapacity = 5,
             PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
         };
         game.AttachNode(enemyPlanet, system);

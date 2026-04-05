@@ -214,6 +214,11 @@ public sealed class FleetsPane : MonoBehaviour
         return ResourceManager.Instance.GetSprite(path);
     }
 
+    public void Refresh()
+    {
+        Render();
+    }
+
     private void Render()
     {
         fleetsGrid.Clear();

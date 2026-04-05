@@ -1,9 +1,20 @@
 #!/bin/bash
 set -e
 
-UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
+
+# Detect platform and set defaults
+case "$(uname -s)" in
+    Darwin)
+        UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/MacOS/Unity}"
+        FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
+        ;;
+    *)
+        UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
+        FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
+        ;;
+esac
 
 usage() {
     echo "Usage: ./build.sh [command]"
@@ -17,12 +28,31 @@ usage() {
     exit 1
 }
 
+ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
+
 do_lint() {
-    echo "=== GameAssembly ==="
-    dotnet build GameAssembly.csproj -verbosity:normal
-    echo ""
-    echo "=== EditMode ==="
-    dotnet build EditMode.csproj -verbosity:normal
+    local extra_args=()
+    if [ -n "$FRAMEWORK_PATH" ]; then
+        extra_args+=("-p:FrameworkPathOverride=$FRAMEWORK_PATH")
+    fi
+
+    # Full compilation check — only runs locally where Unity has generated the project files.
+    # In CI the Unity test runner already proves compilation, so this is skipped.
+    if [ -f GameAssembly.csproj ]; then
+        echo "=== GameAssembly ==="
+        dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
+        echo ""
+        echo "=== EditMode ==="
+        dotnet build EditMode.csproj -verbosity:normal "${extra_args[@]}"
+        echo ""
+    fi
+
+    # Roslynator uses a committed portable project file so it works in CI without Unity.
+    echo "=== Roslynator ==="
+    roslynator analyze GameAssembly.Lint.csproj \
+        --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
+        --supported-diagnostics RCS1213 \
+        --severity-level warning
     echo ""
     echo "Lint complete."
 }

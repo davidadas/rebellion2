@@ -65,6 +65,12 @@ namespace Rebellion.Game
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
+        public int RefinedMaterialProgress { get; set; }
+        public int ProductionCapacity { get; set; }
+        public int ProductionCapacityUsed { get; set; }
+        public int KdyPool { get; set; }
+        public int LnrPool { get; set; }
+
         // Movement Info
         public MovementState Movement { get; set; }
 
@@ -83,39 +89,57 @@ namespace Rebellion.Game
         public CapitalShip() { }
 
         /// <summary>
-        ///
+        /// Returns the maximum number of starfighters this ship can carry.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The starfighter capacity of this ship.</returns>
         public int GetStarfighterCapacity()
         {
             return StarfighterCapacity;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of starfighters currently assigned to this ship.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of starfighters currently on board.</returns>
         public int GetCurrentStarfighterCount()
         {
             return Starfighters.Count;
         }
 
         /// <summary>
-        ///
+        /// Returns the maximum number of regiments this ship can carry.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The regiment capacity of this ship.</returns>
         public int GetRegimentCapacity()
         {
             return RegimentCapacity;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of regiments currently assigned to this ship.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of regiments currently on board.</returns>
         public int GetCurrentRegimentCount()
         {
             return Regiments.Count;
+        }
+
+        /// <summary>
+        /// Returns the number of additional starfighters this ship can carry.
+        /// </summary>
+        /// <returns>Remaining starfighter berths (capacity minus current count). Zero if full.</returns>
+        public int GetExcessStarfighterCapacity()
+        {
+            return StarfighterCapacity - Starfighters.Count;
+        }
+
+        /// <summary>
+        /// Returns the number of additional regiments this ship can carry.
+        /// </summary>
+        /// <returns>Remaining regiment berths (capacity minus current count). Zero if full.</returns>
+        public int GetExcessRegimentCapacity()
+        {
+            return RegimentCapacity - Regiments.Count;
         }
 
         /// <summary>

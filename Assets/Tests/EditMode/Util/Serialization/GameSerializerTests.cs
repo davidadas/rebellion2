@@ -39,8 +39,6 @@ public class SimpleItem : ITestItem
     [PersistableIgnore]
     public string IgnoredPublicVariable { get; set; }
 
-    private string PrivateVariable { get; set; }
-
     public SimpleItem() { }
 }
 

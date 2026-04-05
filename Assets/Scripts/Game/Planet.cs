@@ -16,9 +16,8 @@ namespace Rebellion.Game
     {
         // Planet Properties
         public bool IsColonized { get; set; }
-        public int OrbitSlots { get; set; }
-        public int GroundSlots { get; set; }
         public int NumRawResourceNodes { get; set; }
+        public int EnergyCapacity { get; set; }
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
@@ -30,9 +29,6 @@ namespace Rebellion.Game
         public bool IsDestroyed { get; set; }
         public bool IsHeadquarters { get; set; }
 
-        /// <summary>
-        /// True if this planet data is real-time (fleet present or owned).
-        /// False if this is a snapshot from fog of war.
         // Popular Support
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
 
@@ -42,14 +38,7 @@ namespace Rebellion.Game
         public List<Regiment> Regiments = new List<Regiment>();
         public List<Starfighter> Starfighters = new List<Starfighter>();
         public List<Mission> Missions = new List<Mission>();
-        public Dictionary<BuildingSlot, List<Building>> Buildings = new Dictionary<
-            BuildingSlot,
-            List<Building>
-        >()
-        {
-            { BuildingSlot.Ground, new List<Building>() },
-            { BuildingSlot.Orbit, new List<Building>() },
-        };
+        public List<Building> Buildings = new List<Building>();
 
         // Manufacturing Status
         [PersistableIgnore]
@@ -133,6 +122,31 @@ namespace Rebellion.Game
         public void EndUprising()
         {
             IsInUprising = false;
+        }
+
+        /// <summary>
+        /// Gets the total energy capacity for this planet.
+        /// Each facility uses 1 energy; this caps how many facilities can exist.
+        /// </summary>
+        public int GetEnergyCapacity()
+        {
+            return EnergyCapacity;
+        }
+
+        /// <summary>
+        /// Gets the number of energy units currently consumed by facilities on this planet.
+        /// </summary>
+        public int GetEnergyUsed()
+        {
+            return Buildings.Count;
+        }
+
+        /// <summary>
+        /// Gets the remaining energy available for new facilities.
+        /// </summary>
+        public int GetAvailableEnergy()
+        {
+            return Math.Max(0, EnergyCapacity - GetEnergyUsed());
         }
 
         /// <summary>
@@ -361,8 +375,10 @@ namespace Rebellion.Game
         private double GetCombinedProductionRate(ManufacturingType manufacturingType)
         {
             return Buildings
-                .Values.SelectMany(buildingList => buildingList)
-                .Where(building => building.GetProductionType() == manufacturingType)
+                .Where(building =>
+                    building.GetProductionType() == manufacturingType
+                    && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                )
                 .Sum(building => 1.0 / building.GetProcessRate());
         }
 
@@ -449,15 +465,16 @@ namespace Rebellion.Game
                 return 0;
             }
 
-            return Buildings
-                .Values.SelectMany(buildingList => buildingList)
-                .Count(building => building.GetProductionType() == type);
+            return Buildings.Count(building =>
+                building.GetProductionType() == type
+                && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+            );
         }
 
         /// <summary>
-        ///
+        /// Records that the given faction has visited this planet.
         /// </summary>
-        /// <param name="factionInstanceId"></param>
+        /// <param name="factionInstanceId">The instance ID of the visiting faction.</param>
         public void AddVisitor(string factionInstanceId)
         {
             if (!VisitingFactionIDs.Contains(factionInstanceId))
@@ -467,10 +484,10 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns true if the given faction has visited this planet.
         /// </summary>
-        /// <param name="factionInstanceId"></param>
-        /// <returns></returns>
+        /// <param name="factionInstanceId">The instance ID of the faction to check.</param>
+        /// <returns>True if the faction has visited; otherwise false.</returns>
         public bool WasVisitedBy(string factionInstanceId)
         {
             return VisitingFactionIDs.Contains(factionInstanceId);
@@ -504,22 +521,12 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets the buildings in a specific slot.
+        /// Gets all buildings on the planet.
         /// </summary>
-        /// <param name="slot">The building slot.</param>
         /// <returns>A list of buildings.</returns>
-        public List<Building> GetBuildings(BuildingSlot slot)
-        {
-            return Buildings[slot].ToList();
-        }
-
-        /// <summary>
-        /// Gets all buildings on the planet, regardless of slot.
-        /// </summary>
-        /// <returns></returns>
         public List<Building> GetAllBuildings()
         {
-            return Buildings.Values.SelectMany(buildingList => buildingList).ToList();
+            return Buildings.ToList();
         }
 
         /// <summary>
@@ -530,9 +537,46 @@ namespace Rebellion.Game
         public List<Building> GetBuildings(ManufacturingType productionType)
         {
             return Buildings
-                .Values.SelectMany(buildingList => buildingList)
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Calculates the production modifier applied when this planet is under blockade.
+        /// Returns a value from 0 to 100, where 100 means no reduction and 0 means fully
+        /// suppressed. Each hostile capital ship and starfighter reduces the modifier by the
+        /// supplied penalty values.
+        /// </summary>
+        /// <param name="capitalShipPenalty">Reduction per hostile capital ship.</param>
+        /// <param name="fighterPenalty">Reduction per hostile starfighter.</param>
+        /// <returns>A production modifier percentage in the range [0, 100].</returns>
+        public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
+        {
+            string ownerId = GetOwnerInstanceID();
+
+            int hostileCapitalShips = Fleets
+                .Where(f => f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != ownerId)
+                .Sum(f => f.CapitalShips.Count);
+
+            int hostileFighters = Starfighters.Count(s =>
+                s.GetOwnerInstanceID() != null && s.GetOwnerInstanceID() != ownerId
+            );
+
+            int modifier = 100 - hostileCapitalShips * capitalShipPenalty - hostileFighters * fighterPenalty;
+            return Math.Max(0, modifier);
+        }
+
+        /// <summary>
+        /// Calculates total defense strength from defensive buildings.
+        /// </summary>
+        public int GetDefenseStrength()
+        {
+            return GetAllBuildings()
+                .Where(b =>
+                    b.GetBuildingType() == BuildingType.Defense
+                    && b.GetManufacturingStatus() == ManufacturingStatus.Complete
+                )
+                .Sum(b => b.WeaponStrength);
         }
 
         /// <summary>
@@ -546,29 +590,14 @@ namespace Rebellion.Game
             bool includeUnderConstruction = true
         )
         {
-            return Buildings
-                .Values.SelectMany(buildingList => buildingList)
-                .Count(building =>
-                {
-                    return (
-                            includeUnderConstruction
-                            || building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                        )
-                        && building.GetBuildingType() == buildingType;
-                });
-        }
-
-        /// <summary>
-        /// Gets the number of available slots for a specific building slot type.
-        /// </summary>
-        /// <param name="slot">The building slot (Ground or Orbit).</param>
-        /// <returns>The number of available slots for the specified building slot type.</returns>
-        public int GetBuildingSlotCapacity(BuildingSlot slot)
-        {
-            int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
-            int usedSlots = Buildings[slot].Count;
-
-            return maxSlots - usedSlots;
+            return Buildings.Count(building =>
+            {
+                return (
+                        includeUnderConstruction
+                        || building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    )
+                    && building.GetBuildingType() == buildingType;
+            });
         }
 
         /// <summary>
@@ -579,8 +608,7 @@ namespace Rebellion.Game
         private void AddBuilding(Building building)
         {
             ValidateBuilding(building);
-            BuildingSlot slot = building.GetBuildingSlot();
-            Buildings[slot].Add(building);
+            Buildings.Add(building);
         }
 
         /// <summary>
@@ -603,12 +631,8 @@ namespace Rebellion.Game
                 throw new SceneAccessException(building, this);
             }
 
-            // Check if the planet is at capacity.
-            BuildingSlot slot = building.GetBuildingSlot();
-            if (
-                (slot == BuildingSlot.Ground && Buildings[slot].Count == GroundSlots)
-                || (slot == BuildingSlot.Orbit && Buildings[slot].Count == OrbitSlots)
-            )
+            // Check if the planet is at energy capacity.
+            if (GetAvailableEnergy() <= 0)
             {
                 throw new InvalidOperationException(
                     $"Cannot add {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is at capacity."
@@ -622,21 +646,7 @@ namespace Rebellion.Game
         /// <param name="building">The building to remove.</param>
         private void RemoveBuilding(Building building)
         {
-            BuildingSlot slot = building.GetBuildingSlot();
-            Buildings[slot].Remove(building);
-        }
-
-        /// <summary>
-        /// Gets the available slots for a specific building slot.
-        /// </summary>
-        /// <param name="slot">The building slot.</param>
-        /// <returns>The number of available slots.</returns>
-        public int GetAvailableSlots(BuildingSlot slot)
-        {
-            int numUsedSlots = Buildings[slot]
-                .Count(building => building.GetBuildingSlot() == slot);
-            int maxSlots = slot == BuildingSlot.Ground ? GroundSlots : OrbitSlots;
-            return maxSlots - numUsedSlots;
+            Buildings.Remove(building);
         }
 
         /// <summary>
@@ -664,16 +674,16 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets the missions on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>All missions currently active on this planet.</returns>
         public List<Mission> GetMissions()
         {
             return Missions;
         }
 
         /// <summary>
-        ///
+        /// Returns the owner instance IDs of all factions with active missions on this planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A list of faction instance IDs.</returns>
         public List<string> GetMissionFactionInstanceIDs()
         {
             return Missions.Select(mission => mission.GetOwnerInstanceID()).ToList();
@@ -704,9 +714,8 @@ namespace Rebellion.Game
         private void AddRegiment(Regiment regiment)
         {
             if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
-            {
                 throw new SceneAccessException(regiment, this);
-            }
+
             Regiments.Add(regiment);
         }
 
@@ -726,9 +735,8 @@ namespace Rebellion.Game
         private void AddStarfighter(Starfighter starfighter)
         {
             if (starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
-            {
                 throw new SceneAccessException(starfighter, this);
-            }
+
             Starfighters.Add(starfighter);
         }
 
@@ -742,63 +750,63 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns true if any regiments, officers, or starfighters are present on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if any garrison units are present; otherwise false.</returns>
         public bool HasGarrison()
         {
             return Regiments.Count > 0 || Officers.Count > 0 || Starfighters.Count > 0;
         }
 
         /// <summary>
-        ///
+        /// Returns all officers on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A list of officers currently on this planet.</returns>
         public List<Officer> GetAllOfficers()
         {
             return Officers.ToList();
         }
 
         /// <summary>
-        ///
+        /// Returns all starfighters on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A list of starfighters currently on this planet.</returns>
         public List<Starfighter> GetAllStarfighters()
         {
             return Starfighters.ToList();
         }
 
         /// <summary>
-        ///
+        /// Returns all regiments on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A list of regiments currently on this planet.</returns>
         public List<Regiment> GetAllRegiments()
         {
             return Regiments.ToList();
         }
 
         /// <summary>
-        ///
+        /// Returns the number of officers on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of officers currently on this planet.</returns>
         public int GetOfficerCount()
         {
             return Officers.Count;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of starfighters on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of starfighters currently on this planet.</returns>
         public int GetStarfighterCount()
         {
             return Starfighters.Count;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of regiments on the planet.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of regiments currently on this planet.</returns>
         public int GetRegimentCount()
         {
             return Regiments.Count;
@@ -878,17 +886,13 @@ namespace Rebellion.Game
         /// <returns>An enumerable of child nodes.</returns>
         public override IEnumerable<ISceneNode> GetChildren()
         {
-            IEnumerable<ISceneNode> buildings = Buildings
-                .Values.SelectMany(buildingList => buildingList)
-                .Cast<ISceneNode>();
-
             return Fleets
                 .Cast<ISceneNode>()
                 .Concat(Officers)
                 .Concat(Missions)
                 .Concat(Regiments)
                 .Concat(Starfighters)
-                .Concat(buildings);
+                .Concat(Buildings);
         }
     }
 }

@@ -11,6 +11,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>44</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>33</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -82,6 +83,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>10</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>10</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -153,6 +155,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>34</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>30</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -224,6 +227,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>26</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>24</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -295,6 +299,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>68</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>44</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -366,6 +371,7 @@
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>112</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>71</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -435,11 +441,12 @@
   <CapitalShip>
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_alliance_dreadnaught_primary</DisplayImagePath>
+    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>44</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>33</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -511,6 +518,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>30</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>30</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -582,6 +590,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>10</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>12</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -653,6 +662,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>24</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>22</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -719,11 +729,12 @@
   <CapitalShip>
     <TypeID>ALCS005</TypeID>
     <DisplayName>Alliance Escourt Carrier</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_alliance_escort_carrier_primary</DisplayImagePath>
+    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>32</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>29</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -795,6 +806,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>14</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>23</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
@@ -860,12 +872,13 @@
   </CapitalShip>
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_star_galleon_primary</DisplayImagePath>
+    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
     <TypeID>ALCS007</TypeID>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>34</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>35</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>1</RequiredResearchLevel>
@@ -937,6 +950,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>92</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
     <MaintenanceCost>70</MaintenanceCost>
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <RequiredResearchLevel>2</RequiredResearchLevel>

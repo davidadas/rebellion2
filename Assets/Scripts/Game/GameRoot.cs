@@ -331,7 +331,9 @@ namespace Rebellion.Game
                 );
             }
 
-            node.GetParent().RemoveChild(node);
+            ISceneNode parent = node.GetParent();
+
+            parent.RemoveChild(node);
             node.SetParent(null);
 
             // Deregister the node from the faction's list of owned units.
@@ -391,6 +393,8 @@ namespace Rebellion.Game
         public T GetSceneNodeByInstanceID<T>(string instanceId)
             where T : class
         {
+            if (string.IsNullOrEmpty(instanceId))
+                return null;
             if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
             {
                 return node as T;

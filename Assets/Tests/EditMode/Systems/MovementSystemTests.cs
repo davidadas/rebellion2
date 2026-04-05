@@ -2,6 +2,7 @@ using System.Drawing;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Game;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -107,7 +108,7 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
 
             Assert.IsNotNull(officer.Movement);
-            Assert.AreEqual(destination.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(destination, officer.GetParent());
         }
 
         [Test]
@@ -467,6 +468,394 @@ namespace Rebellion.Tests.Systems
                 captive.GetParent(),
                 "Captive must not move when the escort is from a different faction than the captor"
             );
+        }
+
+        [Test]
+        public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameRoot game = new GameRoot(config);
+
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, system);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(planetB, system);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 500,
+                PositionY = 500,
+            };
+            game.AttachNode(planetC, system);
+
+            // Fleet starts at planet B
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetB);
+            CapitalShip fleetShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(fleetShip, fleet);
+
+            // Officer at planet A moves toward the fleet
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, planetA);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(officer, fleet);
+
+            int transitTicks = officer.Movement.TransitTicks;
+
+            // Tick until one tick before arrival
+            for (int i = 0; i < transitTicks - 1; i++)
+                movement.ProcessTick();
+
+            Assert.IsNotNull(officer.Movement, "Officer should still be in transit.");
+
+            // Fleet moves to planet C the tick before officer would arrive
+            movement.RequestMove(fleet, planetC);
+
+            // Tick once more — officer would have arrived at old position
+            movement.ProcessTick();
+
+            // Officer should still be en route because the fleet moved
+            Assert.IsNotNull(
+                officer.Movement,
+                "Officer should still be en route after fleet moved away."
+            );
+        }
+
+        private (
+            GameRoot game,
+            MovementSystem movement,
+            Fleet fleet,
+            CapitalShip cs1,
+            CapitalShip cs2,
+            Starfighter sf,
+            Regiment reg,
+            Officer officer,
+            Planet planetA,
+            Planet planetB,
+            Planet planetC,
+            int fleetTransit,
+            int cs2Transit
+        ) BuildFleetWithInTransitChildrenScene()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, system);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, system);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            game.AttachNode(planetC, system);
+
+            // Fleet at A with CS1 carrying a starfighter, regiment, and officer.
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetA);
+
+            CapitalShip cs1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                StarfighterCapacity = 2,
+                RegimentCapacity = 2,
+            };
+            game.AttachNode(cs1, fleet);
+
+            Starfighter sf = new Starfighter { InstanceID = "sf1", OwnerInstanceID = "empire" };
+            game.AttachNode(sf, cs1);
+
+            Regiment reg = new Regiment { InstanceID = "reg1", OwnerInstanceID = "empire" };
+            game.AttachNode(reg, cs1);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, cs1);
+
+            // CS2 at planet C will move to the fleet.
+            Fleet sourceFleet = EntityFactory.CreateFleet("f2", "empire");
+            game.AttachNode(sourceFleet, planetC);
+            CapitalShip cs2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(cs2, sourceFleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+
+            // Fleet moves A → B (MinTransitTicks, since A and B are very close).
+            movement.RequestMove(fleet, planetB);
+            int fleetTransit = fleet.Movement.TransitTicks;
+
+            // CS2 moves from C toward fleet (now at B; C is farther from B than A is, so transit > fleetTransit).
+            movement.RequestMove(cs2, fleet);
+            int cs2Transit = cs2.Movement.TransitTicks;
+
+            return (
+                game,
+                movement,
+                fleet,
+                cs1,
+                cs2,
+                sf,
+                reg,
+                officer,
+                planetA,
+                planetB,
+                planetC,
+                fleetTransit,
+                cs2Transit
+            );
+        }
+
+        [Test]
+        public void UpdateMovement_InTransitFleetWithInTransitChildren_FleetArrivesBeforeChildren()
+        {
+            var scene = BuildFleetWithInTransitChildrenScene();
+
+            Assert.Greater(
+                scene.cs2Transit,
+                scene.fleetTransit,
+                "CS2 must have a longer transit than the fleet for this test to be meaningful."
+            );
+
+            // Advance until the fleet arrives.
+            for (int i = 0; i < scene.fleetTransit; i++)
+                scene.movement.ProcessTick();
+
+            Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
+            Assert.AreEqual(scene.planetB, scene.fleet.GetParent(), "Fleet should be at planet B.");
+            Assert.IsNotNull(
+                scene.cs2.Movement,
+                "CS2 should still be in transit while fleet has arrived."
+            );
+
+            // Verify fleet children are intact.
+            Assert.AreEqual(
+                scene.fleet,
+                scene.cs1.GetParent(),
+                "CS1 should still be in the fleet."
+            );
+            Assert.AreEqual(scene.cs1, scene.sf.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.cs1, scene.reg.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.cs1, scene.officer.GetParent());
+        }
+
+        [Test]
+        public void UpdateMovement_InTransitFleetWithInTransitChildren_ChildrenArriveAfterFleet()
+        {
+            var scene = BuildFleetWithInTransitChildrenScene();
+
+            Assert.Greater(
+                scene.cs2Transit,
+                scene.fleetTransit,
+                "CS2 must have a longer transit than the fleet for this test to be meaningful."
+            );
+
+            // Advance until CS2 also arrives (covers fleet arrival + remaining ticks).
+            for (int i = 0; i < scene.cs2Transit; i++)
+                scene.movement.ProcessTick();
+
+            Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
+            Assert.IsNull(scene.cs2.Movement, "CS2 should have arrived.");
+            Assert.AreEqual(scene.fleet, scene.cs2.GetParent(), "CS2 should be in the fleet.");
+            Assert.AreEqual(
+                scene.planetB,
+                scene.fleet.GetParent(),
+                "Fleet should still be at planet B."
+            );
+        }
+
+        [Test]
+        public void RequestMove_UnitUnderConstruction_IsNotMoved()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(otherPlanet, system);
+
+            Fleet destFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destFleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+            };
+            game.AttachNode(carrier, destFleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
+
+            Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
+            ISceneNode originalParent = fighter.GetParent();
+
+            // Attempting to move a unit under construction should be rejected.
+            movement.RequestMove(fighter, otherPlanet);
+
+            Assert.AreEqual(
+                originalParent,
+                fighter.GetParent(),
+                "Fighter should not move while under construction."
+            );
+            Assert.IsNull(
+                fighter.Movement,
+                "Fighter should have no movement state while under construction."
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipToFleet_LandsAtFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, system);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, system);
+
+            CapitalShip cs = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            game.AttachNode(sourceFleet, planetA);
+            game.AttachNode(cs, sourceFleet);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planetB);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(cs, fleet);
+
+            // Tick until transit completes.
+            int transit = cs.Movement.TransitTicks;
+            for (int i = 0; i < transit; i++)
+                movement.ProcessTick();
+
+            Assert.IsNull(cs.Movement, "Capital ship should have no movement state after arrival.");
+            Assert.AreEqual(
+                fleet,
+                cs.GetParent(),
+                "Capital ship should be in the destination fleet."
+            );
+            Assert.AreEqual(planetB, fleet.GetParent(), "Fleet should still be at planet B.");
         }
     }
 }

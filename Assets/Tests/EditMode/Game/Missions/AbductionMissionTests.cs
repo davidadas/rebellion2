@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Game.Missions
                 .OfType<CharacterCapturedResult>()
                 .FirstOrDefault();
             Assert.IsNotNull(captured, "Should return CharacterCapturedResult on success");
-            Assert.AreEqual("target", captured.CharacterInstanceID);
+            Assert.AreEqual("target", captured.OfficerInstanceID);
         }
 
         [Test]

@@ -10,6 +10,7 @@ namespace Rebellion.Game
 {
     public enum FleetRoleType
     {
+        None,
         Battle,
         Patrol,
     }
@@ -21,11 +22,10 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Designates whether this fleet is a battle fleet or a patrol/presence fleet.
-        /// Mirrors the original game's fleet subtype (class 0x8, subtype 4 = Patrol).
         /// Battle fleets engage in combat and defend key systems.
         /// Patrol fleets provide system presence but are not sent on attack missions.
         /// </summary>
-        public FleetRoleType RoleType { get; set; } = FleetRoleType.Battle;
+        public FleetRoleType RoleType { get; set; } = FleetRoleType.None;
 
         /// <summary>
         /// True while this fleet is engaged in a pending combat encounter.
@@ -103,11 +103,21 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns all starfighters across the fleet.
+        /// Returns all starfighters across the fleet (both in capital ships and as transport passengers).
         /// </summary>
         public IEnumerable<Starfighter> GetStarfighters()
         {
             return CapitalShips.SelectMany(ship => ship.Starfighters);
+        }
+
+        public CapitalShip FindShipForStarfighter()
+        {
+            return CapitalShips.FirstOrDefault(s => s.GetExcessStarfighterCapacity() > 0);
+        }
+
+        public CapitalShip FindShipForRegiment()
+        {
+            return CapitalShips.FirstOrDefault(s => s.GetExcessRegimentCapacity() > 0);
         }
 
         /// <summary>
@@ -139,38 +149,15 @@ namespace Rebellion.Game
             CapitalShips.Add(capitalShip);
         }
 
-        /// <summary>
-        /// Adds an officer to the fleet (default to first ship).
-        /// </summary>
-        private void AddOfficer(Officer officer)
-        {
-            if (this.OwnerInstanceID != officer.OwnerInstanceID)
-            {
-                throw new SceneAccessException(officer, this);
-            }
-
-            if (CapitalShips.Count == 0)
-            {
-                throw new InvalidOperationException(
-                    "Cannot add officer to fleet with no capital ships."
-                );
-            }
-
-            CapitalShips[0].AddOfficer(officer);
-        }
-
-        /// <summary>
-        /// Adds a child node.
-        /// </summary>
         public override void AddChild(ISceneNode child)
         {
             if (child is CapitalShip capitalShip)
             {
                 AddCapitalShip(capitalShip);
             }
-            else if (child is Officer officer)
+            else
             {
-                AddOfficer(officer);
+                throw new SceneAccessException(child, this);
             }
         }
 
@@ -186,6 +173,20 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
+        /// </summary>
+        public int GetCombatValue()
+        {
+            int capitalShipCombat = CapitalShips
+                .Where(s => s.ManufacturingStatus == ManufacturingStatus.Complete)
+                .Sum(s => s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum()));
+            int starfighterCombat = GetStarfighters()
+                .Where(f => f.ManufacturingStatus == ManufacturingStatus.Complete)
+                .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
+            return capitalShipCombat + starfighterCombat;
+        }
+
+        /// <summary>
         /// Determines if the fleet can move.
         /// </summary>
         public bool IsMovable()
@@ -194,9 +195,6 @@ namespace Rebellion.Game
             return Movement == null;
         }
 
-        /// <summary>
-        /// Retrieves child nodes (capital ships only).
-        /// </summary>
         public override IEnumerable<ISceneNode> GetChildren()
         {
             return CapitalShips.Cast<ISceneNode>();

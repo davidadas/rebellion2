@@ -45,12 +45,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -156,24 +151,14 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Regiment 1",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Regiment 2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -338,24 +323,14 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment allianceInTransit = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Rebel Troops",
                 OwnerInstanceID = "alliance",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -410,36 +385,21 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Regiment 1",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Regiment 2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment regiment3 = new Regiment
             {
                 InstanceID = "r3",
                 DisplayName = "Regiment 3",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -505,12 +465,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r3",
                 DisplayName = "In Transit",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -579,24 +534,14 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Troops 1",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Troops 2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p2",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -666,24 +611,14 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Troops 1",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
             Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Troops 2",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p2",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);
@@ -749,12 +684,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
                 OwnerInstanceID = "empire",
-                Movement = new MovementState
-                {
-                    DestinationInstanceID = "p1",
-                    TransitTicks = 10,
-                    TicksElapsed = 5,
-                },
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
             };
 
             game.Factions.Add(empire);

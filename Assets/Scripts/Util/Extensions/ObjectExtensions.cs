@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
 
@@ -246,10 +247,7 @@ namespace Rebellion.Util.Extensions
 
             foreach (FieldInfo field in GetAllFields(type))
             {
-                if (
-                    mode == CloneMode.Normal
-                    && Attribute.IsDefined(field, typeof(CloneIgnoreAttribute))
-                )
+                if (mode == CloneMode.Normal && IsCloneIgnored(field, type))
                 {
                     SetDefaultFieldValue(result, field);
                     continue;
@@ -326,6 +324,34 @@ namespace Rebellion.Util.Extensions
                     continue;
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks whether a field should be ignored during cloning.
+        /// Handles both directly-attributed fields and compiler-generated backing fields
+        /// whose associated auto-property has [CloneIgnore].
+        /// </summary>
+        private static bool IsCloneIgnored(FieldInfo field, Type declaringType)
+        {
+            if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute)))
+                return true;
+
+            // Check if this is a compiler-generated backing field for an auto-property
+            if (!Attribute.IsDefined(field, typeof(CompilerGeneratedAttribute)))
+                return false;
+
+            // Backing fields follow the pattern: <PropertyName>k__BackingField
+            string fieldName = field.Name;
+            if (!fieldName.StartsWith("<") || !fieldName.EndsWith(">k__BackingField"))
+                return false;
+
+            string propertyName = fieldName.Substring(1, fieldName.IndexOf('>') - 1);
+            PropertyInfo property = declaringType.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+
+            return property != null && Attribute.IsDefined(property, typeof(CloneIgnoreAttribute));
         }
 
         /// <summary>

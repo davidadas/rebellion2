@@ -12,7 +12,6 @@
     <BuildingType>ConstructionFacility</BuildingType>
     <DisplayName>Construction Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_construction_yard</DisplayImagePath>
-    <BuildingSlot>Ground</BuildingSlot>
     <ProductionType>Building</ProductionType>
     <ConstructionCost>10</ConstructionCost>
     <MaintenanceCost>10</MaintenanceCost>
@@ -30,7 +29,6 @@
     <DisplayName>Training Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_training_facility</DisplayImagePath>
     <ProductionType>Troop</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>10</ConstructionCost>
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>3</Bombardment>
@@ -47,7 +45,6 @@
     <DisplayName>Orbital Shipyard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_ship_yard</DisplayImagePath>
     <ProductionType>Ship</ProductionType>
-    <BuildingSlot>Orbit</BuildingSlot>
     <ConstructionCost>20</ConstructionCost>
     <MaintenanceCost>13</MaintenanceCost>
     <Bombardment>2</Bombardment>
@@ -64,7 +61,6 @@
     <DisplayName>Mining Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_mine</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>20</ConstructionCost>
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>5</Bombardment>
@@ -81,7 +77,6 @@
     <DisplayName>Refinery</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_refinery</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>20</ConstructionCost>
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>2</Bombardment>
@@ -98,7 +93,6 @@
     <DisplayName>Advanced Training Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_advanced_training_facility</DisplayImagePath>
     <ProductionType>Troop</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>10</ConstructionCost>
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>4</Bombardment>
@@ -115,7 +109,6 @@
     <DisplayName>Advanced Orbital Shipyard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_advanced_ship_yard</DisplayImagePath>
     <ProductionType>Ship</ProductionType>
-    <BuildingSlot>Orbit</BuildingSlot>
     <ConstructionCost>20</ConstructionCost>
     <MaintenanceCost>20</MaintenanceCost>
     <Bombardment>2</Bombardment>
@@ -134,13 +127,14 @@
     <BuildingType>Weapon</BuildingType>
     <DisplayName>LNR Series I</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_lnr_series_1</DisplayImagePath>
-    <BuildingSlot>Ground</BuildingSlot>
     <ProductionType>None</ProductionType>
     <ConstructionCost>7</ConstructionCost>
     <MaintenanceCost>7</MaintenanceCost>
     <Bombardment>4</Bombardment>
     <WeaponPower>800</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
+    <DefenseFacilityClass>LNR</DefenseFacilityClass>
+    <ProductionModifier>42</ProductionModifier>
     <RequiredResearchLevel>0</RequiredResearchLevel>
   </Building>
   <Building>
@@ -151,13 +145,14 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>GenCore Level I</DisplayName>
-    <BuildingSlot>Ground</BuildingSlot>
+    <DisplayImagePath>Art/UI/Units/ent_building_gencore_level_1</DisplayImagePath>
     <ProductionType>None</ProductionType>
     <ConstructionCost>12</ConstructionCost>
     <MaintenanceCost>12</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>40</ShieldStrength>
+    <DefenseFacilityClass>Shield</DefenseFacilityClass>
     <RequiredResearchLevel>0</RequiredResearchLevel>
   </Building>
   <Building>
@@ -168,13 +163,15 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>Weapon</BuildingType>
     <DisplayName>KDY-150</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_building_kdy_150</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>4</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
     <Bombardment>5</Bombardment>
     <WeaponPower>2000</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
+    <DefenseFacilityClass>KDY</DefenseFacilityClass>
+    <ProductionModifier>42</ProductionModifier>
     <RequiredResearchLevel>0</RequiredResearchLevel>
   </Building>
   <Building>
@@ -185,13 +182,14 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>Death Star Shield</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_building_death_star_shield</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>25</ConstructionCost>
     <MaintenanceCost>20</MaintenanceCost>
     <Bombardment>1</Bombardment>
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
+    <DefenseFacilityClass>DeathStarShield</DefenseFacilityClass>
     <RequiredResearchLevel>3</RequiredResearchLevel>
   </Building>
   <Building>
@@ -202,13 +200,15 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>Weapon</BuildingType>
     <DisplayName>LNR Series II</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_building_lnr_series_2</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>10</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <WeaponPower>5000</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
+    <DefenseFacilityClass>LNR</DefenseFacilityClass>
+    <ProductionModifier>42</ProductionModifier>
     <RequiredResearchLevel>4</RequiredResearchLevel>
   </Building>
   <Building>
@@ -219,13 +219,14 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>GenCore Level II</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_building_gencore_level_2</DisplayImagePath>
     <ProductionType>None</ProductionType>
-    <BuildingSlot>Ground</BuildingSlot>
     <ConstructionCost>20</ConstructionCost>
     <MaintenanceCost>7</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>80</ShieldStrength>
+    <DefenseFacilityClass>Shield</DefenseFacilityClass>
     <RequiredResearchLevel>6</RequiredResearchLevel>
   </Building>
 </Buildings>

@@ -6,6 +6,7 @@
   <Regiment>
     <TypeID>REEM001</TypeID>
     <DisplayName>Imperial Fleet Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_empire_imperial_fleet_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -20,6 +21,7 @@
   <Regiment>
     <TypeID>REEM002</TypeID>
     <DisplayName>Imperial Army Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_empire_imperial_army_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -34,6 +36,7 @@
   <Regiment>
     <TypeID>REEM003</TypeID>
     <DisplayName>Stormtrooper Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_empire_stormtrooper_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -48,6 +51,7 @@
   <Regiment>
     <TypeID>REEM004</TypeID>
     <DisplayName>War Droid Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_empire_war_droid_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -62,6 +66,7 @@
   <Regiment>
     <TypeID>REEM005</TypeID>
     <DisplayName>Dark Trooper Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_empire_dark_trooper_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -79,6 +84,7 @@
   <Regiment>
     <TypeID>REAL001</TypeID>
     <DisplayName>Alliance Fleet Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_alliance_fleet_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -93,6 +99,7 @@
   <Regiment>
     <TypeID>REAL002</TypeID>
     <DisplayName>Alliance Army Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_alliance_army_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -107,6 +114,7 @@
   <Regiment>
     <TypeID>REAL003</TypeID>
     <DisplayName>Sullustan Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_sullustan_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -121,6 +129,7 @@
   <Regiment>
     <TypeID>REAL004</TypeID>
     <DisplayName>Mon Calamari regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_mon_calamari_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -135,6 +144,7 @@
   <Regiment>
     <TypeID>REAL005</TypeID>
     <DisplayName>Wookie Regiment</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_wookiee_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>

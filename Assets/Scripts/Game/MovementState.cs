@@ -14,11 +14,6 @@ namespace Rebellion.Game
     public class MovementState
     {
         /// <summary>
-        /// InstanceID of the destination node (Planet, Fleet, etc.).
-        /// </summary>
-        public string DestinationInstanceID { get; set; }
-
-        /// <summary>
         /// Total ticks required to complete transit from origin to destination.
         /// Calculated based on distance and hyperdrive rating.
         /// </summary>

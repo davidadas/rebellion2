@@ -168,6 +168,11 @@ public sealed class BuildingsPane : MonoBehaviour
             sectionNameText.text = tab.GetDisplayText();
     }
 
+    public void Refresh()
+    {
+        Render();
+    }
+
     private void Render()
     {
         buildingsGrid.Clear();

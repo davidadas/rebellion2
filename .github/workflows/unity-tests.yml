@@ -1,6 +1,6 @@
 name: Unity Editmode Test
 
-on: 
+on:
   push:
     branches:
       - master
@@ -18,11 +18,9 @@ jobs:
       pull-requests: write
 
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Cache
       - uses: actions/cache@v4
         with:
           path: Library
@@ -30,7 +28,6 @@ jobs:
           restore-keys: |
             Library-
 
-      # Run Unity Tests
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
@@ -45,19 +42,19 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
 
-      # Run Roslynator analyzer
-      - name: Run code analyzers
+      - name: Install Roslynator CLI
         run: |
-          dotnet build GameAssembly.csproj -p:TreatWarningsAsErrors=false -verbosity:normal
-        continue-on-error: true
+          dotnet tool install -g roslynator.dotnet.cli
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
-      # Discard Unity package resolution changes
+      - name: Lint
+        run: bash build.sh lint
+
       - name: Reset package files
         run: |
           git checkout -- Packages/manifest.json Packages/packages-lock.json 2>/dev/null || true
           sudo rm -rf artifacts || true
 
-      # Build the Unity project
       - name: Build project
         uses: game-ci/unity-builder@v4
         env:

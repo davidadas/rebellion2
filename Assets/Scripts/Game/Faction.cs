@@ -36,6 +36,12 @@ namespace Rebellion.Game
         public string PlayerID { get; set; }
 
         /// <summary>
+        /// Faction-specific gameplay modifiers.
+        /// Affects game mechanics regardless of whether faction is player or AI controlled.
+        /// </summary>
+        public FactionModifiers Modifiers { get; set; } = new FactionModifiers();
+
+        /// <summary>
         /// Fog of war state - snapshots and entity tracking.
         /// </summary>
         public FogState Fog { get; set; } = new FogState();
@@ -105,6 +111,11 @@ namespace Rebellion.Game
             where T : ISceneNode
         {
             return ownedEntities[typeof(T)].Cast<T>().ToList();
+        }
+
+        public List<Fleet> GetFleetsByType(FleetRoleType roleType)
+        {
+            return GetOwnedUnitsByType<Fleet>().Where(f => f.RoleType == roleType).ToList();
         }
 
         /// <summary>
@@ -204,9 +215,9 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns the research level for each manufacturing type.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A dictionary mapping manufacturing type to its current research level.</returns>
         public Dictionary<ManufacturingType, int> GetResearchLevels()
         {
             return ManufacturingResearchLevels;
@@ -242,6 +253,21 @@ namespace Rebellion.Game
             List<Planet> planets = GetOwnedUnitsByType<Planet>();
             return planets.Sum(selector);
         }
+
+        /// <summary>
+        /// Gets the total energy capacity across all owned planets.
+        /// </summary>
+        public int GetTotalEnergyCapacity() => SumPlanetaryResources(p => p.GetEnergyCapacity());
+
+        /// <summary>
+        /// Gets the total energy used by facilities across all owned planets.
+        /// </summary>
+        public int GetTotalEnergyUsed() => SumPlanetaryResources(p => p.GetEnergyUsed());
+
+        /// <summary>
+        /// Gets the total available energy across all owned planets.
+        /// </summary>
+        public int GetTotalAvailableEnergy() => SumPlanetaryResources(p => p.GetAvailableEnergy());
 
         /// <summary>
         /// Gets the total number of raw resource nodes across all owned planets.
@@ -359,9 +385,10 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns the total maintenance cost of all completed units and construction cost of all
+        /// units currently being built.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The summed cost across all owned manufacturable entities.</returns>
         public int GetTotalUnitCost()
         {
             return ownedEntities
@@ -398,24 +425,42 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Creates a new fleet with sequential naming (Fleet 1, Fleet 2, etc.).
-        /// Returns a detached fleet - caller must attach to scene graph via game.AttachNode().
+        /// Creates a new fleet with the given capital ships.
+        /// Returns a detached fleet — caller must attach to scene graph via game.AttachNode().
+        /// Capital ships must be detached (no parent) before passing in.
         /// </summary>
-        /// <param name="game">The game instance for generating InstanceID.</param>
-        /// <returns>A new detached Fleet.</returns>
-        public Fleet CreateFleet(GameRoot game)
+        public Fleet CreateFleet(
+            GameRoot game,
+            CapitalShip[] capitalShips = null,
+            FleetRoleType roleType = FleetRoleType.None
+        )
         {
             Fleet fleet = new Fleet(this.InstanceID, $"Fleet {nextFleetNumber}");
+            fleet.RoleType = roleType;
+
+            if (capitalShips != null)
+            {
+                foreach (CapitalShip ship in capitalShips)
+                {
+                    if (ship.GetParent() != null)
+                        throw new InvalidOperationException(
+                            $"Capital ship {ship.GetDisplayName()} must be detached before adding to a new fleet."
+                        );
+
+                    fleet.AddChild(ship);
+                    ship.SetParent(fleet);
+                }
+            }
 
             nextFleetNumber++;
             return fleet;
         }
 
         /// <summary>
-        /// Returns a list of available officers for the faction.
+        /// Returns all officers owned by this faction that are not currently in transit.
         /// </summary>
-        /// <param name="faction"></param>
-        /// <returns></returns>
+        /// <param name="faction">Unused — reserved for future filtering by faction relationship.</param>
+        /// <returns>A list of movable officers belonging to this faction.</returns>
         public List<Officer> GetAvailableOfficers(Faction faction)
         {
             return GetOwnedUnitsByType<Officer>().FindAll(o => o.IsMovable());
@@ -462,60 +507,20 @@ namespace Rebellion.Game
         /// ensuring that balance changes and new content are reflected in loaded saves.
         /// </summary>
         /// <param name="game">The game instance containing current entity definitions.</param>
-        public void RebuildTechnologyLevels(GameRoot game)
+        public void LoadTechnologyLevels(IManufacturable[] templates)
         {
             TechnologyLevels.Clear();
 
-            // Rebuild Ship technologies
-            List<CapitalShip> shipClasses = game.GetSceneNodesByType<CapitalShip>();
-            foreach (CapitalShip shipClass in shipClasses)
+            foreach (IManufacturable template in templates)
             {
-                // Skip instances (owned units), only process class templates
-                if (shipClass.GetOwnerInstanceID() != null)
+                if (!template.AllowedOwnerInstanceIDs.Contains(InstanceID))
                     continue;
 
-                int requiredLevel = shipClass.RequiredResearchLevel;
-                int currentLevel = ManufacturingResearchLevels[ManufacturingType.Ship];
+                int requiredLevel = template.GetRequiredResearchLevel();
+                int currentLevel = ManufacturingResearchLevels[template.GetManufacturingType()];
 
                 if (currentLevel >= requiredLevel)
-                {
-                    Technology tech = new Technology(shipClass);
-                    AddTechnologyNode(requiredLevel, tech);
-                }
-            }
-
-            // Rebuild Troop technologies
-            List<Regiment> troopClasses = game.GetSceneNodesByType<Regiment>();
-            foreach (Regiment troopClass in troopClasses)
-            {
-                if (troopClass.GetOwnerInstanceID() != null)
-                    continue;
-
-                int requiredLevel = troopClass.RequiredResearchLevel;
-                int currentLevel = ManufacturingResearchLevels[ManufacturingType.Troop];
-
-                if (currentLevel >= requiredLevel)
-                {
-                    Technology tech = new Technology(troopClass);
-                    AddTechnologyNode(requiredLevel, tech);
-                }
-            }
-
-            // Rebuild Building technologies
-            List<Building> buildingClasses = game.GetSceneNodesByType<Building>();
-            foreach (Building buildingClass in buildingClasses)
-            {
-                if (buildingClass.GetOwnerInstanceID() != null)
-                    continue;
-
-                int requiredLevel = buildingClass.RequiredResearchLevel;
-                int currentLevel = ManufacturingResearchLevels[ManufacturingType.Building];
-
-                if (currentLevel >= requiredLevel)
-                {
-                    Technology tech = new Technology(buildingClass);
-                    AddTechnologyNode(requiredLevel, tech);
-                }
+                    AddTechnologyNode(requiredLevel, new Technology(template));
             }
         }
     }

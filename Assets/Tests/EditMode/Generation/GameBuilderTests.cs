@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Core.Configuration;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
@@ -167,6 +169,90 @@ public class GameBuilderTests
                     );
                 }
             }
+        }
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_TechnologiesSurviveRebuild(GameRoot game)
+    {
+        IResourceManager resourceManager = ResourceManager.Instance;
+        IManufacturable[] templates = resourceManager
+            .GetGameData<Building>()
+            .Cast<IManufacturable>()
+            .Concat(resourceManager.GetGameData<CapitalShip>())
+            .Concat(resourceManager.GetGameData<Starfighter>())
+            .Concat(resourceManager.GetGameData<Regiment>())
+            .ToArray();
+
+        foreach (Faction faction in game.Factions)
+        {
+            // Capture tech state before rebuild
+            int techCountBefore = faction
+                .TechnologyLevels.Values.SelectMany(level =>
+                    level.Values.SelectMany(techs => techs)
+                )
+                .Count();
+
+            Assert.Greater(
+                techCountBefore,
+                0,
+                $"Faction {faction.GetDisplayName()} should have technologies before rebuild."
+            );
+
+            // Simulate what GameManager.RebuildDerivedState does
+            faction.LoadTechnologyLevels(templates);
+
+            int techCountAfter = faction
+                .TechnologyLevels.Values.SelectMany(level =>
+                    level.Values.SelectMany(techs => techs)
+                )
+                .Count();
+
+            Assert.Greater(
+                techCountAfter,
+                0,
+                $"Faction {faction.GetDisplayName()} should still have technologies after LoadTechnologyLevels."
+            );
+
+            Assert.AreEqual(
+                techCountBefore,
+                techCountAfter,
+                $"Faction {faction.GetDisplayName()} should have the same number of technologies after rebuild."
+            );
+        }
+    }
+
+    [Test, TestCaseSource(nameof(GameTestCases))]
+    public void BuildGame_RebuildTechnologies_IncludesAllManufacturingTypes(GameRoot game)
+    {
+        IResourceManager resourceManager = ResourceManager.Instance;
+        IManufacturable[] templates = resourceManager
+            .GetGameData<Building>()
+            .Cast<IManufacturable>()
+            .Concat(resourceManager.GetGameData<CapitalShip>())
+            .Concat(resourceManager.GetGameData<Starfighter>())
+            .Concat(resourceManager.GetGameData<Regiment>())
+            .ToArray();
+
+        foreach (Faction faction in game.Factions)
+        {
+            // Rebuild to test the rebuild path specifically
+            faction.LoadTechnologyLevels(templates);
+
+            Assert.IsTrue(
+                faction.GetResearchedTechnologies(ManufacturingType.Ship).Count > 0,
+                $"Faction {faction.GetDisplayName()} should have Ship technologies after rebuild."
+            );
+
+            Assert.IsTrue(
+                faction.GetResearchedTechnologies(ManufacturingType.Building).Count > 0,
+                $"Faction {faction.GetDisplayName()} should have Building technologies after rebuild."
+            );
+
+            Assert.IsTrue(
+                faction.GetResearchedTechnologies(ManufacturingType.Troop).Count > 0,
+                $"Faction {faction.GetDisplayName()} should have Troop technologies after rebuild."
+            );
         }
     }
 
@@ -370,6 +456,14 @@ public class GameBuilderTests
     [Test, TestCaseSource(nameof(GameTestCases))]
     public void BuildGame_FogOfWar_OuterRimPlanetsStartUnexplored(GameRoot game)
     {
+        GameGenerationRules rules = ResourceManager.Instance.GetConfig<GameGenerationRules>();
+        var visibilityOverrides = new HashSet<(string planetId, string factionId)>(
+            rules.GalaxyClassification.FactionSetups
+                .SelectMany(fs => fs.StartingPlanets ?? new List<StartingPlanet>())
+                .Where(sp => !string.IsNullOrEmpty(sp.PlanetInstanceID) && sp.VisibleToFactionIDs != null)
+                .SelectMany(sp => sp.VisibleToFactionIDs.Select(fid => (sp.PlanetInstanceID, fid)))
+        );
+
         foreach (
             PlanetSystem system in game.Galaxy.PlanetSystems.Where(s =>
                 s.SystemType == PlanetSystemType.OuterRim
@@ -382,7 +476,10 @@ public class GameBuilderTests
                 {
                     bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                     if (isOwner)
-                        continue; // owner always sees their own planet live
+                        continue;
+
+                    if (visibilityOverrides.Contains((planet.InstanceID, faction.InstanceID)))
+                        continue;
 
                     bool hasSnapshot =
                         faction.Fog.Snapshots.TryGetValue(system.InstanceID, out SystemSnapshot ss)

@@ -8,15 +8,6 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Represents the possible slots where a building can be placed.
-    /// </summary>
-    public enum BuildingSlot
-    {
-        Ground,
-        Orbit,
-    }
-
-    /// <summary>
     /// Represents the different types of buildings available in the game.
     /// </summary>
     public enum BuildingType
@@ -32,6 +23,19 @@ namespace Rebellion.Game
     }
 
     /// <summary>
+    /// Classifies defensive facilities by their original type ID for AI production logic.
+    /// Maps to original deffac.json types: KDY=0x22, LNR=0x23, Shield=0x24, DeathStarShield=0x25.
+    /// </summary>
+    public enum DefenseFacilityClass
+    {
+        None,
+        KDY,
+        LNR,
+        Shield,
+        DeathStarShield,
+    }
+
+    /// <summary>
     /// Represents a building in the game, implementing both IManufacturable and IMovable interfaces.
     /// </summary>
     public class Building : LeafNode, IManufacturable, IMovable
@@ -44,12 +48,13 @@ namespace Rebellion.Game
 
         // Building Info
         public BuildingType BuildingType { get; set; }
-        public BuildingSlot BuildingSlot { get; set; }
         public int ProcessRate { get; set; }
         public int Bombardment { get; set; }
         public int WeaponStrength { get; set; }
         public int ShieldStrength { get; set; }
         public int WeaponPower { get; set; }
+        public DefenseFacilityClass DefenseFacilityClass { get; set; }
+        public int ProductionModifier { get; set; }
 
         // Manufacturing Info
         public string ProducerOwnerID { get; set; }
@@ -65,15 +70,6 @@ namespace Rebellion.Game
         /// Default constructor for the Building class.
         /// </summary>
         public Building() { }
-
-        /// <summary>
-        /// Returns the building's slot type.
-        /// </summary>
-        /// <returns>The building's slot type.</returns>
-        public BuildingSlot GetBuildingSlot()
-        {
-            return BuildingSlot;
-        }
 
         /// <summary>
         /// Returns the building's type.

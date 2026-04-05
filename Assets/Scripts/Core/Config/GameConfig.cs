@@ -12,14 +12,17 @@ using Rebellion.Util.Common;
 /// Player choices belong in GameSummary.
 /// New game setup belongs in GameGenerationRules.xml.
 /// </summary>
-[Serializable]
 [PersistableObject]
 public class GameConfig
 {
     public AIConfig AI { get; set; } = new AIConfig();
     public MovementConfig Movement { get; set; } = new MovementConfig();
     public ProductionConfig Production { get; set; } = new ProductionConfig();
+    public ResourceRebalanceConfig ResourceRebalance { get; set; } = new ResourceRebalanceConfig();
     public PlanetConfig Planet { get; set; } = new PlanetConfig();
+    public CombatConfig Combat { get; set; } = new CombatConfig();
+    public UprisingConfig Uprising { get; set; } = new UprisingConfig();
+    public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
@@ -92,15 +95,161 @@ public class GameConfig
     /// AI system configuration.
     /// Controls AI decision-making and mission dispatch.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class AIConfig
     {
-        /// <summary>Ticks between AI decision cycles (default: 7)</summary>
-        public int TickInterval { get; set; } = 7;
+        /// <summary>Ticks between AI decision cycles.</summary>
+        public int TickInterval { get; set; }
 
-        /// <summary>Mission dispatch probability tables (from original MSTB .DAT files)</summary>
+        /// <summary>Mission dispatch probability tables.</summary>
         public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
+
+        /// <summary>Garrison requirement parameters.</summary>
+        public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
+
+        /// <summary>Lower bound for fleet deployment probability gate (PARAM_1538).</summary>
+        public int DeploymentGateLow { get; set; }
+
+        /// <summary>Upper bound for fleet deployment probability gate (PARAM_1539).</summary>
+        public int DeploymentGateHigh { get; set; }
+
+        /// <summary>Capital ship production pipeline parameters.</summary>
+        public CapitalShipProductionConfig CapitalShipProduction { get; set; } =
+            new CapitalShipProductionConfig();
+    }
+
+    /// <summary>
+    /// AI capital ship production pipeline configuration.
+    /// Controls KDY/LNR facility contribution scaling and strike target evaluation.
+    /// Source: GNPRTB params 1537, and strike evaluation constants from disassembly.
+    /// </summary>
+    [PersistableObject]
+    public class CapitalShipProductionConfig
+    {
+        /// <summary>
+        /// Personnel skill divisor for facility production contribution.
+        /// Formula: (personnel_skill / divisor + 1) * facility_production_modifier.
+        /// Source: GNPR param 1537 (same value as Combat.AssaultPersonnelDivisor).
+        /// </summary>
+        public int FacilityPersonnelDivisor { get; set; }
+
+        /// <summary>
+        /// Low threshold for strike target evaluation.
+        /// Planets with energy below this are not considered strike targets.
+        /// </summary>
+        public int StrikeThresholdLow { get; set; }
+
+        /// <summary>
+        /// High threshold for strike target evaluation.
+        /// Planets with energy at or above this are prioritized as strike targets.
+        /// </summary>
+        public int StrikeThresholdHigh { get; set; }
+
+        /// <summary>
+        /// Energy resistance value for strike evaluation on unallocated energy planets.
+        /// </summary>
+        public int EnergyStrikeResistance { get; set; }
+
+        /// <summary>
+        /// Energy resistance value for strike evaluation on planets with allocated energy.
+        /// </summary>
+        public int AllocatedEnergyStrikeResistance { get; set; }
+
+        /// <summary>
+        /// Support shift applied to PRODUCING faction's own popular support (Death Star only).
+        /// GENERAL_PARAM_7705 = -20 (negative = military disruption at construction site).
+        /// Only applied when enableFinalizePackage is set (Death Star found in setup stage).
+        /// Original: FUN_00558860 (get_orbital_strike_selected_side_support_shift).
+        /// </summary>
+        public int OrbitalStrikeSupportShift { get; set; }
+    }
+
+    /// <summary>
+    /// Garrison requirement configuration.
+    /// Controls how many troops a planet needs based on popular support.
+    /// </summary>
+    [PersistableObject]
+    public class GarrisonConfig
+    {
+        /// <summary>
+        /// Popular support threshold below which garrison troops are required.
+        /// </summary>
+        public int SupportThreshold { get; set; }
+
+        /// <summary>
+        /// Divisor for garrison calculation: ceil((threshold - support) / divisor).
+        /// </summary>
+        public int GarrisonDivisor { get; set; }
+
+        /// <summary>
+        /// Multiplier applied to garrison requirement during an uprising.
+        /// </summary>
+        public int UprisingMultiplier { get; set; }
+    }
+
+    /// <summary>
+    /// Uprising system configuration.
+    /// Controls dice rolls, table lookups, and garrison-based uprising resolution.
+    /// </summary>
+    [PersistableObject]
+    public class UprisingConfig
+    {
+        /// <summary>Dice roll range (random 0..N).</summary>
+        public int DiceRange { get; set; }
+
+        /// <summary>Addend to each dice roll.</summary>
+        public int DiceAddend { get; set; }
+
+        /// <summary>
+        /// UPRIS1 table: maps combined uprising score to result.
+        /// </summary>
+        public Dictionary<int, int> Upris1Table { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>
+        /// UPRIS2 table: maps combined uprising score to severity.
+        /// </summary>
+        public Dictionary<int, int> Upris2Table { get; set; } = new Dictionary<int, int>();
+    }
+
+    /// <summary>
+    /// Support shift configuration.
+    /// Controls periodic popular support recovery and hostile force penalties.
+    /// </summary>
+    [PersistableObject]
+    public class SupportShiftConfig
+    {
+        /// <summary>Support must be at or below this for shift to apply.</summary>
+        public int ShiftThreshold { get; set; }
+
+        /// <summary>Lower boundary of middle bracket.</summary>
+        public int LowBracketCeiling { get; set; }
+
+        /// <summary>Upper boundary of middle bracket.</summary>
+        public int MidBracketCeiling { get; set; }
+
+        /// <summary>Base shift for support in low bracket.</summary>
+        public int LowBracketShift { get; set; }
+
+        /// <summary>Base shift for support in mid bracket.</summary>
+        public int MidBracketShift { get; set; }
+
+        /// <summary>Base shift for support in high bracket.</summary>
+        public int HighBracketShift { get; set; }
+
+        /// <summary>Penalty per hostile fleet.</summary>
+        public int FleetPenalty { get; set; }
+
+        /// <summary>Penalty per hostile fighter squadron.</summary>
+        public int FighterPenalty { get; set; }
+
+        /// <summary>Penalty per (adjusted) hostile troop.</summary>
+        public int TroopPenalty { get; set; }
+
+        /// <summary>Support shift when blockading fleet matches popular support side.</summary>
+        public int BlockadeMatchShift { get; set; }
+
+        /// <summary>Support shift when blockading fleet opposes popular support side.</summary>
+        public int BlockadeOpposeShift { get; set; }
     }
 
     /// <summary>
@@ -109,7 +258,6 @@ public class GameConfig
     /// Score formula: (officer_skill - planet_state) + officer_leadership_rank
     /// Source: DIPLMSTB_DAT, SUBDMSTB_DAT, ESPIMSTB_DAT, INCTMSTB_DAT, RESCMSTB_DAT
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class AIMissionTablesConfig
     {
@@ -145,94 +293,167 @@ public class GameConfig
     /// Movement system configuration.
     /// Controls fleet transit time and hyperdrive calculations.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class MovementConfig
     {
-        /// <summary>Distance scaling factor for transit time (default: 2)</summary>
-        public int DistanceScale { get; set; } = 2;
+        /// <summary>Distance scaling factor for transit time.</summary>
+        public int DistanceScale { get; set; }
 
-        /// <summary>Minimum transit ticks regardless of distance (default: 10)</summary>
-        public int MinTransitTicks { get; set; } = 10;
+        /// <summary>Minimum transit ticks regardless of distance.</summary>
+        public int MinTransitTicks { get; set; }
 
-        /// <summary>Default hyperdrive rating for fighters/troops (default: 60)</summary>
-        public int DefaultFighterHyperdrive { get; set; } = 60;
+        /// <summary>Default hyperdrive rating for fighters/troops.</summary>
+        public int DefaultFighterHyperdrive { get; set; }
     }
 
     /// <summary>
     /// Production system configuration.
     /// Controls manufacturing and resource refinement.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class ProductionConfig
     {
-        /// <summary>Multiplier for raw to refined materials (default: 50)</summary>
-        public int RefinementMultiplier { get; set; } = 50;
+        /// <summary>Multiplier for raw to refined materials.</summary>
+        public int RefinementMultiplier { get; set; }
+
+        /// <summary>Production penalty per hostile capital ship during blockade.</summary>
+        public int BlockadeCapitalShipPenalty { get; set; }
+
+        /// <summary>Production penalty per hostile fighter during blockade.</summary>
+        public int BlockadeFighterPenalty { get; set; }
+
+        /// <summary>
+        /// CSCRHT table: maps roll threshold to progress increment for capital ship production.
+        /// </summary>
+        public Dictionary<int, int> CapitalShipProgressTable { get; set; } =
+            new Dictionary<int, int>();
+
+        /// <summary>Range for the CSCRHT progress roll (GENERAL_PARAM_2051).</summary>
+        public int CapitalShipProgressRollRange { get; set; }
+
+        /// <summary>Threshold for the success check roll (GENERAL_PARAM_2050).</summary>
+        public int CapitalShipSuccessThreshold { get; set; }
+
+        /// <summary>Range for the success check roll (GENERAL_PARAM_2049).</summary>
+        public int CapitalShipSuccessRollRange { get; set; }
+
+        /// <summary>Popular support shift when a capital ship completes.</summary>
+        public int CapitalShipCompletionSupportShift { get; set; }
+
+        /// <summary>Popular support shift when a building completes.</summary>
+        public int BuildingCompletionSupportShift { get; set; }
+
+        /// <summary>Popular support shift when a troop completes.</summary>
+        public int TroopCompletionSupportShift { get; set; }
     }
 
     /// <summary>
     /// Planet mechanics configuration.
     /// Controls planet-specific calculations (distance formulas, popularity).
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class PlanetConfig
     {
-        /// <summary>Distance divisor for planet formulas (default: 5)</summary>
-        public int DistanceDivisor { get; set; } = 5;
+        /// <summary>Distance divisor for planet formulas.</summary>
+        public int DistanceDivisor { get; set; }
 
-        /// <summary>Base value for distance calculations (default: 100)</summary>
-        public int DistanceBase { get; set; } = 100;
+        /// <summary>Base value for distance calculations.</summary>
+        public int DistanceBase { get; set; }
 
-        /// <summary>Maximum popular support value (default: 100)</summary>
-        public int MaxPopularSupport { get; set; } = 100;
+        /// <summary>Maximum popular support value.</summary>
+        public int MaxPopularSupport { get; set; }
+    }
+
+    /// <summary>
+    /// Combat system configuration.
+    /// Controls fleet assault strength calculations and combat resolution.
+    /// </summary>
+    [PersistableObject]
+    public class CombatConfig
+    {
+        /// <summary>
+        /// Personnel divisor for assault strength calculation.
+        /// Formula: assault_strength = (personnel / divisor + 1) * fleet_combat_value.
+        /// </summary>
+        public int AssaultPersonnelDivisor { get; set; }
+
+        /// <summary>
+        /// Dice roll threshold for a planetary assault to succeed (roll must be below this).
+        /// </summary>
+        public int AssaultSuccessThreshold { get; set; }
+
+        /// <summary>
+        /// Upper bound of the dice roll range for planetary assault success checks.
+        /// </summary>
+        public int AssaultRollRange { get; set; }
+
+        /// <summary>
+        /// Low threshold for bombardment strike resistance check.
+        /// Strike hits if target resistance is less than random(Low, High).
+        /// Source: GENERAL_PARAM 1538.
+        /// </summary>
+        public int BombardmentStrikeThresholdLow { get; set; }
+
+        /// <summary>
+        /// High threshold for bombardment strike resistance check.
+        /// Source: GENERAL_PARAM 1539.
+        /// </summary>
+        public int BombardmentStrikeThresholdHigh { get; set; }
+
+        /// <summary>
+        /// Resistance value for the system energy bombardment lane.
+        /// Source: GENERAL_PARAM 1540.
+        /// </summary>
+        public int BombardmentEnergyResistance { get; set; }
+
+        /// <summary>
+        /// Minimum number of Shield-class defense facilities required to block bombardment.
+        /// Source: FUN_00506e80 shield gate check.
+        /// </summary>
+        public int BombardmentShieldBlockThreshold { get; set; }
     }
 
     /// <summary>
     /// Victory system configuration.
     /// Controls when victory conditions can trigger.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class VictoryConfig
     {
         /// <summary>Minimum tick before victory can trigger (default: 200)</summary>
-        public int MinVictoryTick { get; set; } = 200;
+        public int MinVictoryTick { get; set; }
     }
 
     /// <summary>
     /// Jedi / Force training system configuration.
     /// Controls Force tier advancement and detection mechanics.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class JediConfig
     {
         /// <summary>XP required to advance from Aware to Training tier (default: 50)</summary>
-        public int XpToTraining { get; set; } = 50;
+        public int XpToTraining { get; set; }
 
-        /// <summary>XP required to advance from Training to Experienced tier (default: 150)</summary>
-        public int XpToExperienced { get; set; } = 150;
+        /// <summary>XP required to advance from Training to Experienced tier.</summary>
+        public int XpToExperienced { get; set; }
 
-        /// <summary>Ticks between Jedi detection checks (default: 30)</summary>
-        public int DetectionCheckInterval { get; set; } = 30;
+        /// <summary>Ticks between Jedi detection checks.</summary>
+        public int DetectionCheckInterval { get; set; }
 
-        /// <summary>Detection probability per check for Aware tier (default: 0.05 = 5%)</summary>
-        public double DetectProbAware { get; set; } = 0.05;
+        /// <summary>Detection probability per check for Aware tier.</summary>
+        public double DetectProbAware { get; set; }
 
-        /// <summary>Detection probability per check for Training tier (default: 0.15 = 15%)</summary>
-        public double DetectProbTraining { get; set; } = 0.15;
+        /// <summary>Detection probability per check for Training tier.</summary>
+        public double DetectProbTraining { get; set; }
 
-        /// <summary>Detection probability per check for Experienced tier (default: 0.30 = 30%)</summary>
-        public double DetectProbExperienced { get; set; } = 0.30;
+        /// <summary>Detection probability per check for Experienced tier.</summary>
+        public double DetectProbExperienced { get; set; }
     }
 
     /// <summary>
     /// Probability tables configuration.
     /// All probability tables grouped by data type (not usage).
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class ProbabilityTablesConfig
     {
@@ -247,7 +468,6 @@ public class GameConfig
     /// <summary>
     /// Mission-specific probability tables.
     /// </summary>
-    [Serializable]
     [PersistableObject]
     public class MissionProbabilityTablesConfig
     {
@@ -266,7 +486,6 @@ public class GameConfig
         public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
     }
 
-    [Serializable]
     [PersistableObject]
     public class MissionTickConfig
     {
@@ -274,27 +493,47 @@ public class GameConfig
         public int Max { get; set; }
     }
 
-    [Serializable]
     [PersistableObject]
     public class MissionTickRangesConfig
     {
-        public MissionTickConfig Abduction { get; set; } =
-            new MissionTickConfig { Min = 15, Max = 20 };
-        public MissionTickConfig Assassination { get; set; } =
-            new MissionTickConfig { Min = 15, Max = 20 };
-        public MissionTickConfig Diplomacy { get; set; } =
-            new MissionTickConfig { Min = 5, Max = 10 };
-        public MissionTickConfig Espionage { get; set; } =
-            new MissionTickConfig { Min = 10, Max = 20 };
-        public MissionTickConfig InciteUprising { get; set; } =
-            new MissionTickConfig { Min = 10, Max = 20 };
-        public MissionTickConfig Recruitment { get; set; } =
-            new MissionTickConfig { Min = 15, Max = 20 };
-        public MissionTickConfig Rescue { get; set; } =
-            new MissionTickConfig { Min = 10, Max = 20 };
-        public MissionTickConfig Sabotage { get; set; } =
-            new MissionTickConfig { Min = 10, Max = 15 };
-        public MissionTickConfig SubdueUprising { get; set; } =
-            new MissionTickConfig { Min = 10, Max = 15 };
+        public MissionTickConfig Abduction { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Assassination { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Diplomacy { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Espionage { get; set; } = new MissionTickConfig();
+        public MissionTickConfig InciteUprising { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Recruitment { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Rescue { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
+        public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
+    }
+
+    /// <summary>
+    /// Resource rebalance configuration.
+    /// Controls periodic resource decay, facility suspension, and resource random walk.
+    /// Source: GENERAL_PARAM 7712-7720.
+    /// </summary>
+    [PersistableObject]
+    public class ResourceRebalanceConfig
+    {
+        /// <summary>Probability multiplier for per-unit resource decay (PARAM_7715). Default: 5.</summary>
+        public int DecayMultiplier { get; set; }
+
+        /// <summary>Base delay for rebalance timer in ticks (PARAM_7717).</summary>
+        public int RebalanceTimerBase { get; set; }
+
+        /// <summary>Random spread added to rebalance timer (PARAM_7718). Range: 0..spread-1.</summary>
+        public int RebalanceTimerSpread { get; set; }
+
+        /// <summary>Base delay for resource walk timer in ticks (PARAM_7719).</summary>
+        public int ResourceWalkTimerBase { get; set; }
+
+        /// <summary>Random spread for resource walk timer (PARAM_7720).</summary>
+        public int ResourceWalkTimerSpread { get; set; }
+
+        /// <summary>Maximum energy value per planet (PARAM_7714).</summary>
+        public int MaxEnergy { get; set; }
+
+        /// <summary>Maximum raw materials value per planet (PARAM_7712).</summary>
+        public int MaxRawMaterials { get; set; }
     }
 }

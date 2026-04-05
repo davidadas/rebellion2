@@ -64,7 +64,58 @@ namespace Rebellion.Systems
                 return;
             }
 
+            if (unit is IManufacturable m && m.ManufacturingStatus == ManufacturingStatus.Building)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
+                );
+                return;
+            }
+
             ExecuteMove(unit, destination);
+        }
+
+        /// <summary>
+        /// Sets up a movement state for a unit that is already at its destination in the scene
+        /// graph but needs to visually travel from a known origin (e.g. its production planet).
+        /// No reparenting occurs — the unit is already logically placed.
+        /// </summary>
+        public void RequestMove(IMovable unit, ISceneNode destination, Planet origin)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            if (origin == null)
+                throw new ArgumentNullException(nameof(origin));
+
+            Planet destinationPlanet = destination is Planet p
+                ? p
+                : destination.GetParentOfType<Planet>();
+
+            if (destinationPlanet == null)
+                throw new InvalidOperationException(
+                    $"Destination {destination.GetDisplayName()} is not at a planet location."
+                );
+
+            if (destinationPlanet == origin)
+            {
+                unit.Movement = null;
+                return;
+            }
+
+            int transitTicks = CalculateTransitTicks(unit, origin.GetPosition(), destinationPlanet);
+            unit.Movement = new MovementState
+            {
+                TransitTicks = transitTicks,
+                TicksElapsed = 0,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            GameLogger.Log(
+                $"{unit.GetDisplayName()} departing {origin.GetDisplayName()} for {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
+            );
         }
 
         public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
@@ -99,6 +150,20 @@ namespace Rebellion.Systems
 
         private void ExecuteMove(IMovable unit, ISceneNode destination)
         {
+            // Fleet only accepts CapitalShips directly. Resolve other unit types
+            // to an appropriate CapitalShip within the destination fleet.
+            if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
+            {
+                destination = ResolveFleetTarget(unit, targetFleet);
+                if (destination == null)
+                {
+                    GameLogger.Warning(
+                        $"RequestMove rejected: no capacity in {targetFleet.GetDisplayName()} for {unit.GetDisplayName()}"
+                    );
+                    return;
+                }
+            }
+
             Planet destinationPlanet = destination is Planet planet
                 ? planet
                 : destination.GetParentOfType<Planet>();
@@ -123,6 +188,13 @@ namespace Rebellion.Systems
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
             int transitTicks = CalculateTransitTicks(unit, originPosition, destinationPlanet);
 
+            ISceneNode currentParent = ((ISceneNode)unit).GetParent();
+            if (currentParent == destination)
+            {
+                unit.Movement = null;
+                return;
+            }
+
             try
             {
                 game.MoveNode((ISceneNode)unit, destination);
@@ -137,7 +209,6 @@ namespace Rebellion.Systems
 
             unit.Movement = new MovementState
             {
-                DestinationInstanceID = destination.GetInstanceID(),
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
                 OriginPosition = originPosition,
@@ -147,6 +218,20 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+        }
+
+        /// <summary>
+        /// Resolves a Fleet destination to the appropriate CapitalShip for non-fleet units.
+        /// </summary>
+        private ISceneNode ResolveFleetTarget(IMovable unit, Fleet fleet)
+        {
+            if (unit is Starfighter)
+                return fleet.FindShipForStarfighter();
+            if (unit is Regiment)
+                return fleet.FindShipForRegiment();
+            if (unit is Officer && fleet.CapitalShips.Count > 0)
+                return fleet.CapitalShips[0];
+            return null;
         }
 
         /// <summary>
@@ -202,33 +287,15 @@ namespace Rebellion.Systems
             if (ShouldSkipMovement(movable))
                 return;
 
-            if (string.IsNullOrWhiteSpace(movable.Movement?.DestinationInstanceID))
-            {
-                throw new InvalidOperationException(
-                    $"Unit {movable.GetDisplayName()} is in transit but has no destination. "
-                        + "Movement must be requested via RequestMove()."
-                );
-            }
-
-            ISceneNode destination = game.GetSceneNodeByInstanceID<ISceneNode>(
-                movable.Movement.DestinationInstanceID
-            );
-            if (destination == null)
-            {
-                throw new InvalidOperationException(
-                    $"Unit {movable.GetDisplayName()} destination {movable.Movement.DestinationInstanceID} not found."
-                );
-            }
-
-            Planet destinationPlanet = destination is Planet planet
-                ? planet
-                : destination.GetParentOfType<Planet>();
+            Planet destinationPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
             if (destinationPlanet == null)
             {
                 throw new InvalidOperationException(
-                    $"Destination {destination.GetDisplayName()} is not at a planet location."
+                    $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
                 );
             }
+
+            ISceneNode destination = (ISceneNode)movable.GetParent();
 
             movable.Movement.TicksElapsed++;
             movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
@@ -277,6 +344,28 @@ namespace Rebellion.Systems
             Planet destinationPlanet
         )
         {
+            // Check if the destination (or its parent fleet) is still in transit.
+            // If so, recalculate the route to chase the moving target.
+            Fleet movingFleet = destination is Fleet f ? f
+                : (destination is CapitalShip cs ? cs.GetParent() as Fleet : null);
+            if (movingFleet != null && movingFleet.Movement != null)
+            {
+                Planet newDest = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
+                if (newDest != null)
+                {
+                    Point currentPos = movable.Movement.CurrentPosition;
+                    int newTicks = CalculateTransitTicks(movable, currentPos, newDest);
+                    movable.Movement = new MovementState
+                    {
+                        TransitTicks = newTicks,
+                        TicksElapsed = 0,
+                        OriginPosition = currentPos,
+                        CurrentPosition = currentPos,
+                    };
+                }
+                return;
+            }
+
             try
             {
                 game.MoveNode(movable, destination);

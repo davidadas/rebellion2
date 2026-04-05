@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Portable project file for Roslynator static analysis in CI.
+    Does not depend on Unity-generated files or Unity being installed.
+    Excludes the small set of files that directly reference Unity runtime types.
+    Unity tests in the CI pipeline prove compilation; this file is for lint only.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>GameAssembly</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <!-- CS8019: unnecessary using directive (stray Unity/Drawing usings in game files) -->
+    <!-- CS0234/CS0246: unresolved namespace from those usings -->
+    <NoWarn>0169;0649;1701;1702;8019;0234;0246</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!--
+      Include all game source files. Exclude only the files that directly call into
+      Unity runtime APIs (MonoBehaviour subclasses, UnityEngine.Debug, Resources, etc.).
+      The UI layer is fully excluded — RCS1213 is already suppressed there via .editorconfig.
+    -->
+    <Compile Include="Assets/Scripts/**/*.cs"
+             Exclude="Assets/Scripts/UI/**/*.cs;
+                      Assets/Scripts/Core/AppBootstrap.cs;
+                      Assets/Scripts/Managers/AudioManager.cs;
+                      Assets/Scripts/Managers/ResourceManager.cs;
+                      Assets/Scripts/Util/Common/GameLogger.cs" />
+  </ItemGroup>
+</Project>

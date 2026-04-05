@@ -43,6 +43,7 @@ Assets/TextMesh Pro/
 **/*.sln
 **/*.slnx
 *.csproj
+!GameAssembly.Lint.csproj
 
 # Misc
 *.md

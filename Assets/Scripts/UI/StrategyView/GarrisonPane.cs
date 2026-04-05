@@ -198,6 +198,11 @@ public sealed class GarrisonPane : MonoBehaviour
         return "";
     }
 
+    public void Refresh()
+    {
+        Render();
+    }
+
     private void Render()
     {
         garrisonGrid.Clear();

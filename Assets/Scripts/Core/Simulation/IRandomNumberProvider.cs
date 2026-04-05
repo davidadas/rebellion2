@@ -5,9 +5,6 @@ namespace Rebellion.Core.Simulation
     /// <summary>
     /// Provides random number generation for simulation systems.
     /// Allows deterministic testing via fixed sequences.
-    ///
-    /// NOTE: This is a DESIGNED interface for testability, NOT verified
-    /// against the original game's RNG usage patterns.
     /// </summary>
     public interface IRandomNumberProvider
     {

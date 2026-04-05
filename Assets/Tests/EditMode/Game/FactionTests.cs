@@ -366,14 +366,12 @@ public class FactionTests
     {
         planet1.NumRawResourceNodes = 25;
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 20; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -382,14 +380,12 @@ public class FactionTests
 
         planet2.NumRawResourceNodes = 35;
         planet2.IsColonized = true;
-        planet2.GroundSlots = 50;
-        planet2.OrbitSlots = 50;
+        planet2.EnergyCapacity = 50;
         for (int i = 0; i < 30; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -409,14 +405,12 @@ public class FactionTests
     {
         planet1.NumRawResourceNodes = 25;
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 20; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -425,14 +419,12 @@ public class FactionTests
 
         planet2.NumRawResourceNodes = 35;
         planet2.IsColonized = true;
-        planet2.GroundSlots = 50;
-        planet2.OrbitSlots = 50;
+        planet2.EnergyCapacity = 50;
         for (int i = 0; i < 30; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -453,14 +445,12 @@ public class FactionTests
     public void GetTotalRawRefinementCapacity_ReturnsSumAcrossPlanets()
     {
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 5; i++)
         {
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -468,14 +458,12 @@ public class FactionTests
         }
 
         planet2.IsColonized = true;
-        planet2.GroundSlots = 50;
-        planet2.OrbitSlots = 50;
+        planet2.EnergyCapacity = 50;
         for (int i = 0; i < 10; i++)
         {
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -494,14 +482,12 @@ public class FactionTests
     public void GetTotalAvailableRefinementCapacity_ReturnsSumAcrossPlanets()
     {
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 5; i++)
         {
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -509,14 +495,12 @@ public class FactionTests
         }
 
         planet2.IsColonized = true;
-        planet2.GroundSlots = 50;
-        planet2.OrbitSlots = 50;
+        planet2.EnergyCapacity = 50;
         for (int i = 0; i < 10; i++)
         {
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -538,14 +522,12 @@ public class FactionTests
     {
         planet1.NumRawResourceNodes = 10;
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -556,7 +538,6 @@ public class FactionTests
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -576,14 +557,12 @@ public class FactionTests
     {
         planet1.NumRawResourceNodes = 10;
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -594,7 +573,6 @@ public class FactionTests
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -614,14 +592,12 @@ public class FactionTests
     {
         planet1.NumRawResourceNodes = 10;
         planet1.IsColonized = true;
-        planet1.GroundSlots = 50;
-        planet1.OrbitSlots = 50;
+        planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -632,7 +608,6 @@ public class FactionTests
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -641,14 +616,12 @@ public class FactionTests
 
         planet2.NumRawResourceNodes = 15;
         planet2.IsColonized = true;
-        planet2.GroundSlots = 50;
-        planet2.OrbitSlots = 50;
+        planet2.EnergyCapacity = 50;
         for (int i = 0; i < 12; i++)
         {
             Building mine = new Building
             {
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -659,7 +632,6 @@ public class FactionTests
             Building refinery = new Building
             {
                 BuildingType = BuildingType.Refinery,
-                BuildingSlot = BuildingSlot.Ground,
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -683,8 +655,7 @@ public class FactionTests
         Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION1" };
 
         planet1.IsColonized = true;
-        planet1.GroundSlots = 10;
-        planet1.OrbitSlots = 10;
+        planet1.EnergyCapacity = 10;
 
         Building testBuilding = new Building
         {
@@ -720,18 +691,16 @@ public class FactionTests
     public void GetIdleFacilities_ReturnsOnlyPlanetsWithIdleFacilities()
     {
         planet1.IsColonized = true;
-        planet1.GroundSlots = 5;
-        planet1.OrbitSlots = 3;
+        planet1.EnergyCapacity = 5;
         planet2.IsColonized = true;
-        planet2.GroundSlots = 5;
-        planet2.OrbitSlots = 3;
+        planet2.EnergyCapacity = 5;
 
         // Add a shipyard to planet1 (idle facility)
         Building shipyard = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FACTION1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         planet1.AddChild(shipyard);
 
@@ -754,17 +723,14 @@ public class FactionTests
     public void GetIdleFacilities_WithNoIdleFacilities_ReturnsEmptyList()
     {
         planet1.IsColonized = true;
-        planet1.GroundSlots = 5;
-        planet1.OrbitSlots = 3;
+        planet1.EnergyCapacity = 5;
         planet2.IsColonized = true;
-        planet2.GroundSlots = 5;
-        planet2.OrbitSlots = 3;
+        planet2.EnergyCapacity = 5;
 
         // Add buildings with different production types (Ship, Troop) but not Building type
         Building shipyard = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FACTION1",
         };
         planet1.AddChild(shipyard);
@@ -772,7 +738,6 @@ public class FactionTests
         Building trainingFacility = new Building
         {
             ProductionType = ManufacturingType.Troop,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FACTION1",
         };
         planet2.AddChild(trainingFacility);
