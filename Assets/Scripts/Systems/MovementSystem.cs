@@ -49,7 +49,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target destination (Planet or other container).</param>
-        public void RequestMove(IMovable unit, ISceneNode destination)
+        public bool RequestMove(IMovable unit, ISceneNode destination)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -61,7 +61,7 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
                 );
-                return;
+                return false;
             }
 
             if (unit is IManufacturable m && m.ManufacturingStatus == ManufacturingStatus.Building)
@@ -69,10 +69,10 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
                 );
-                return;
+                return false;
             }
 
-            ExecuteMove(unit, destination);
+            return ExecuteMove(unit, destination);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace Rebellion.Systems
         /// graph but needs to visually travel from a known origin (e.g. its production planet).
         /// No reparenting occurs — the unit is already logically placed.
         /// </summary>
-        public void RequestMove(IMovable unit, ISceneNode destination, Planet origin)
+        public bool RequestMove(IMovable unit, ISceneNode destination, Planet origin)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -101,7 +101,7 @@ namespace Rebellion.Systems
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
-                return;
+                return true;
             }
 
             int transitTicks = CalculateTransitTicks(unit, origin.GetPosition(), destinationPlanet);
@@ -116,6 +116,7 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} departing {origin.GetDisplayName()} for {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            return true;
         }
 
         /// <summary>
@@ -234,7 +235,7 @@ namespace Rebellion.Systems
             }
         }
 
-        private void ExecuteMove(IMovable unit, ISceneNode destination)
+        private bool ExecuteMove(IMovable unit, ISceneNode destination)
         {
             // Fleet only accepts CapitalShips directly. Resolve other unit types
             // to an appropriate CapitalShip within the destination fleet.
@@ -246,7 +247,7 @@ namespace Rebellion.Systems
                     GameLogger.Warning(
                         $"RequestMove rejected: no capacity in {targetFleet.GetDisplayName()} for {unit.GetDisplayName()}"
                     );
-                    return;
+                    return false;
                 }
             }
 
@@ -278,20 +279,18 @@ namespace Rebellion.Systems
             if (currentParent == destination)
             {
                 unit.Movement = null;
-                return;
+                return true;
             }
 
-            try
-            {
-                game.MoveNode((ISceneNode)unit, destination);
-            }
-            catch (SceneAccessException ex)
+            if (!destination.CanAcceptChild((ISceneNode)unit))
             {
                 GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} cannot move to {destination.GetDisplayName()}: {ex.Message}"
+                    $"RequestMove rejected: {destination.GetDisplayName()} cannot accept {unit.GetDisplayName()}"
                 );
-                return;
+                return false;
             }
+
+            game.MoveNode((ISceneNode)unit, destination);
 
             unit.Movement = new MovementState
             {
@@ -304,6 +303,7 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            return true;
         }
 
         /// <summary>
@@ -505,16 +505,11 @@ namespace Rebellion.Systems
 
             Planet fallback = FindNearestFactionPlanet(ownerID, movable.GetPosition());
 
-            if (
-                fallback != null
-                && fallback != rejectedDestination
-                && fallback.CanAcceptChild((ISceneNode)movable)
-            )
+            if (fallback != null && fallback != rejectedDestination && RequestMove(movable, fallback))
             {
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
                 );
-                RequestMove(movable, fallback);
             }
             else
             {
