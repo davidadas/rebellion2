@@ -706,6 +706,7 @@ namespace Rebellion.Tests.Managers
                 StarfighterCapacity = 0,
                 RegimentCapacity = 0,
                 HullStrength = 999,
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 PrimaryWeapons = new Dictionary<PrimaryWeaponType, int[]>
                 {
                     {

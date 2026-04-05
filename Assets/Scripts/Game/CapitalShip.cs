@@ -189,6 +189,23 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns true if this ship can accept the child: Starfighters and Regiments require spare
+        /// capacity; Officers must share the ship's owner.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if AddChild would succeed; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child)
+        {
+            if (child is Starfighter)
+                return GetExcessStarfighterCapacity() > 0;
+            if (child is Regiment)
+                return GetExcessRegimentCapacity() > 0;
+            if (child is Officer officer)
+                return officer.GetOwnerInstanceID() == GetOwnerInstanceID();
+            return false;
+        }
+
+        /// <summary>
         /// Adds a child to the capital ship.
         /// </summary>
         /// <param name="child">The child to add</param>

@@ -361,9 +361,9 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_DifferentFaction_ThrowsException()
+        public void Enqueue_DifferentFaction_ReturnsFalse()
         {
-            // Enqueue internally calls game.AttachNode — ownership mismatch must propagate.
+            // CanAcceptChild rejects the building before AttachNode is called.
             Building rebelBuilding = new Building
             {
                 InstanceID = "REBEL_BUILDING",
@@ -372,10 +372,8 @@ namespace Rebellion.Tests.Systems
                 AllowedOwnerInstanceIDs = new List<string> { "REBELS" },
             };
 
-            Assert.Throws<SceneAccessException>(
-                () => manager.Enqueue(coruscant, rebelBuilding, coruscant, ignoreCost: true),
-                "Enqueueing a building owned by a different faction must throw SceneAccessException"
-            );
+            bool result = manager.Enqueue(coruscant, rebelBuilding, coruscant, ignoreCost: true);
+            Assert.IsFalse(result, "Enqueueing a building owned by a different faction must return false");
         }
 
         [Test]

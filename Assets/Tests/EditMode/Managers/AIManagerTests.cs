@@ -484,9 +484,15 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship1.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
-            CapitalShip ship2 = new CapitalShip { InstanceID = "cs2", OwnerInstanceID = "empire" };
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship2.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 150 };
             game.AttachNode(ship1, fleet);
             game.AttachNode(ship2, fleet);
@@ -496,12 +502,14 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
                 LaserCannon = 20,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Starfighter fighter2 = new Starfighter
             {
                 InstanceID = "sf2",
                 OwnerInstanceID = "empire",
                 LaserCannon = 30,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fighter1, ship1);
             game.AttachNode(fighter2, ship1);
@@ -553,7 +561,12 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(fleet, planet);
 
-            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship, fleet);
 
@@ -619,7 +632,12 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(fleet, planet);
 
-            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
             game.AttachNode(ship, fleet);
 
@@ -678,6 +696,7 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
                 WeaponStrength = 50,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Building defense2 = new Building
             {
@@ -685,6 +704,7 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
                 WeaponStrength = 75,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Building mine = new Building
             {
@@ -692,6 +712,7 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 WeaponStrength = 10,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(defense1, planet);
             game.AttachNode(defense2, planet);
@@ -850,7 +871,12 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(fleet, empirePlanet);
 
-            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100 };
             game.AttachNode(ship, fleet);
 
@@ -1078,6 +1104,7 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "rcs1",
                 OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             rebelShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
             game.AttachNode(rebelShip, rebelFleet);
@@ -1090,7 +1117,12 @@ namespace Rebellion.Tests.Managers
                 RoleType = FleetRoleType.Battle,
             };
             game.AttachNode(fleet1, empirePlanet);
-            CapitalShip ship1 = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            CapitalShip ship1 = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship1.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
             game.AttachNode(ship1, fleet1);
 
@@ -1102,7 +1134,12 @@ namespace Rebellion.Tests.Managers
                 RoleType = FleetRoleType.Battle,
             };
             game.AttachNode(fleet2, empirePlanet);
-            CapitalShip ship2 = new CapitalShip { InstanceID = "cs2", OwnerInstanceID = "empire" };
+            CapitalShip ship2 = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship2.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100 };
             game.AttachNode(ship2, fleet2);
 
@@ -1203,7 +1240,12 @@ namespace Rebellion.Tests.Managers
                 RoleType = FleetRoleType.Battle,
             };
             game.AttachNode(fleet, empirePlanet);
-            CapitalShip ship = new CapitalShip { InstanceID = "cs1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100 };
             game.AttachNode(ship, fleet);
 

@@ -149,6 +149,14 @@ namespace Rebellion.Game
             CapitalShips.Add(capitalShip);
         }
 
+        /// <summary>
+        /// Returns true if the child is a CapitalShip owned by the same faction as this fleet.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if child is a same-faction CapitalShip; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child) =>
+            child is CapitalShip cs && cs.GetOwnerInstanceID() == GetOwnerInstanceID();
+
         public override void AddChild(ISceneNode child)
         {
             if (child is CapitalShip capitalShip)

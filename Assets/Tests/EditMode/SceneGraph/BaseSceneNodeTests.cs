@@ -12,6 +12,8 @@ public class BaseSceneNodeTests
     {
         private readonly List<ISceneNode> children = new List<ISceneNode>();
 
+        public override bool CanAcceptChild(ISceneNode child) => true;
+
         public override void AddChild(ISceneNode child)
         {
             children.Add(child);

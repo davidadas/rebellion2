@@ -68,6 +68,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns true if the child is a Planet.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if child is a Planet; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child) => child is Planet;
+
+        /// <summary>
         /// Adds a planet to the planet system.
         /// </summary>
         /// <param name="child">The planet to add.</param>

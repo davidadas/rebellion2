@@ -148,6 +148,13 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
+        /// Returns true if this node can accept the given child.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if AddChild would succeed; false otherwise.</returns>
+        public abstract bool CanAcceptChild(ISceneNode child);
+
+        /// <summary>
         /// Called when the scene node is added to the game world.
         /// </summary>
         /// <param name="child">The scene node to add.</param>

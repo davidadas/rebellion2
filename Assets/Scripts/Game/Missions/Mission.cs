@@ -392,6 +392,13 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
+    /// Missions cannot have children added after initialization.
+    /// </summary>
+    /// <param name="child">The candidate child node.</param>
+    /// <returns>Always false.</returns>
+    public override bool CanAcceptChild(ISceneNode child) => false;
+
+    /// <summary>
     /// No-op — missions cannot have children added after initialization.
     /// </summary>
     public override void AddChild(ISceneNode child) { }

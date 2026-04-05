@@ -48,6 +48,9 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            if (!destination.CanAcceptChild((ISceneNode)item))
+                return false;
+
             game.AttachNode((ISceneNode)item, destination);
 
             CommitToQueue(planet, item);
@@ -70,33 +73,29 @@ namespace Rebellion.Systems
             if (faction == null)
                 return false;
 
-            try
+            ISceneNode parent = destination;
+
+            // Fleet only accepts CapitalShips directly. Route other unit types
+            // to an appropriate CapitalShip within the destination fleet.
+            if (item is Starfighter)
             {
-                ISceneNode parent = destination;
-
-                // Fleet only accepts CapitalShips directly. Route other unit types
-                // to an appropriate CapitalShip within the destination fleet.
-                if (item is Starfighter)
-                {
-                    CapitalShip target = destination.FindShipForStarfighter();
-                    if (target == null)
-                        return false;
-                    parent = target;
-                }
-                else if (item is Regiment)
-                {
-                    CapitalShip target = destination.FindShipForRegiment();
-                    if (target == null)
-                        return false;
-                    parent = target;
-                }
-
-                game.AttachNode((ISceneNode)item, parent);
+                CapitalShip target = destination.FindShipForStarfighter();
+                if (target == null)
+                    return false;
+                parent = target;
             }
-            catch (SceneAccessException)
+            else if (item is Regiment)
             {
+                CapitalShip target = destination.FindShipForRegiment();
+                if (target == null)
+                    return false;
+                parent = target;
+            }
+
+            if (!parent.CanAcceptChild((ISceneNode)item))
                 return false;
-            }
+
+            game.AttachNode((ISceneNode)item, parent);
 
             CommitToQueue(planet, item);
             return true;
