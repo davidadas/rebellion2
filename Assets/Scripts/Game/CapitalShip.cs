@@ -181,7 +181,7 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
         public void AddOfficer(Officer officer)
         {
-            if (this.OwnerInstanceID != officer.OwnerInstanceID)
+            if (!officer.IsCaptured && this.OwnerInstanceID != officer.OwnerInstanceID)
             {
                 throw new SceneAccessException(officer, this);
             }
@@ -190,7 +190,7 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns true if this ship can accept the child: Starfighters and Regiments require spare
-        /// capacity; Officers must share the ship's owner.
+        /// capacity; Officers must share the ship's owner or be captured.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -201,7 +201,7 @@ namespace Rebellion.Game
             if (child is Regiment)
                 return GetExcessRegimentCapacity() > 0;
             if (child is Officer officer)
-                return officer.GetOwnerInstanceID() == GetOwnerInstanceID();
+                return officer.IsCaptured || officer.GetOwnerInstanceID() == GetOwnerInstanceID();
             return false;
         }
 
