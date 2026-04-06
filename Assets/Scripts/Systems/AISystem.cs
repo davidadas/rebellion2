@@ -849,7 +849,7 @@ namespace Rebellion.Systems
             double popularSupport = target.GetPopularSupport(factionId);
             int rank = officer.GetSkillValue(MissionParticipantSkill.Leadership);
 
-            // SubdueUprising: owned planet in uprising
+            // SubdueUprising: owned planet in uprising (crisis — always first)
             // Score = (combat_skill - popular_support) + rank
             if (target.IsInUprising && owner == factionId)
             {
@@ -859,16 +859,25 @@ namespace Rebellion.Systems
                     return MissionType.SubdueUprising;
             }
 
+            // Research: if the officer's best research skill exceeds their diplomacy,
+            // prioritize research over diplomacy to avoid wasting research-focused officers
+            int bestResearchSkill = GetBestResearchSkill(officer);
+            int diplomacySkill = officer.GetSkillValue(MissionParticipantSkill.Diplomacy);
+
+            if (bestResearchSkill > diplomacySkill && owner == factionId)
+            {
+                MissionType? researchMission = SelectResearchMissionType(officer, target);
+                if (researchMission != null)
+                    return researchMission;
+            }
+
             // Diplomacy: owned or neutral planet with room for support growth
             if (
                 (owner == null || owner == factionId)
                 && popularSupport < game.Config.Planet.MaxPopularSupport
             )
             {
-                int score =
-                    officer.GetSkillValue(MissionParticipantSkill.Diplomacy)
-                    - (int)popularSupport
-                    + rank;
+                int score = diplomacySkill - (int)popularSupport + rank;
                 if (tables.Diplomacy.Lookup(score) > 0)
                     return MissionType.Diplomacy;
             }
@@ -877,8 +886,9 @@ namespace Rebellion.Systems
             if (owner == factionId && game.GetUnrecruitedOfficers(factionId).Any())
                 return MissionType.Recruitment;
 
-            // Research: owned planet with idle facilities matching officer's research skill
-            if (owner == factionId)
+            // Research: fallback for officers whose best skill isn't research
+            // but who can still contribute if nothing else matched
+            if (bestResearchSkill <= diplomacySkill && owner == factionId)
             {
                 MissionType? researchMission = SelectResearchMissionType(officer, target);
                 if (researchMission != null)
@@ -925,6 +935,21 @@ namespace Rebellion.Systems
                 ManufacturingType.Troop => MissionType.TroopTrainingResearch,
                 _ => null,
             };
+        }
+
+        /// <summary>
+        /// Returns the officer's highest research skill across all manufacturing types.
+        /// </summary>
+        private static int GetBestResearchSkill(Officer officer)
+        {
+            int best = 0;
+            foreach (ManufacturingType type in ResearchableTypes)
+            {
+                int skill = officer.GetResearchSkill(type);
+                if (skill > best)
+                    best = skill;
+            }
+            return best;
         }
 
         private static readonly ManufacturingType[] ResearchableTypes = new[]

@@ -214,7 +214,7 @@ public class GameManager
         deathStarManager.ProcessTick(game);
 
         // 12. Research: applies tech upgrades
-        ProcessResults(researchManager.ProcessTick(game, randomProvider));
+        ProcessResults(researchManager.ProcessTick(game));
 
         // 13. Jedi: advances Force tiers
         ProcessResults(jediManager.ProcessTick(game, randomProvider));

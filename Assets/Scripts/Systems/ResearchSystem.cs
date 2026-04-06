@@ -17,9 +17,8 @@ namespace Rebellion.Systems
         /// Processes research for the current tick across all factions.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for skill rolls.</param>
         /// <returns>Any results produced during this tick (e.g. level advancements).</returns>
-        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider provider)
+        public List<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
             GameConfig config = game.GetConfig();
@@ -29,7 +28,6 @@ namespace Rebellion.Systems
             foreach (Faction faction in factions)
             {
                 AccumulateIdleFacilityCapacity(faction);
-                AccumulateOfficerResearch(faction, researchConfig, provider);
                 CheckLevelAdvancement(faction, researchConfig, game, results);
             }
 
@@ -52,58 +50,6 @@ namespace Rebellion.Systems
                     if (idleCount > 0)
                     {
                         faction.ResearchCapacity[type] += idleCount;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Idle officers at planets with matching facilities roll against their research skill.
-        /// On success, awards capacity points and increments the officer's skill.
-        /// </summary>
-        /// <param name="faction">The faction whose officers to process.</param>
-        /// <param name="config">Research configuration (points, dice range).</param>
-        /// <param name="provider">Random number provider for skill rolls.</param>
-        private void AccumulateOfficerResearch(
-            Faction faction,
-            GameConfig.ResearchConfig config,
-            IRandomNumberProvider provider
-        )
-        {
-            List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
-
-            foreach (Planet planet in planets)
-            {
-                foreach (Officer officer in planet.GetAllOfficers())
-                {
-                    // Officer must belong to this faction, be idle, and not in transit
-                    if (officer.OwnerInstanceID != faction.InstanceID)
-                        continue;
-                    if (officer.IsOnMission() || officer.Movement != null)
-                        continue;
-                    if (officer.IsCaptured || officer.IsKilled)
-                        continue;
-
-                    foreach (ManufacturingType type in ResearchableTypes)
-                    {
-                        int skill = officer.GetResearchSkill(type);
-                        if (skill <= 0)
-                            continue;
-
-                        // Must have at least one idle facility of this type on the planet
-                        if (planet.GetIdleManufacturingFacilities(type) <= 0)
-                            continue;
-
-                        // Roll success: random 1-100 <= officer's research skill
-                        int roll = provider.NextInt(1, 101);
-                        if (roll <= skill)
-                        {
-                            int points =
-                                config.BaseResearchPoints
-                                + provider.NextInt(0, config.ResearchDiceRange + 1);
-                            faction.ResearchCapacity[type] += points;
-                            officer.IncrementResearchSkill(type);
-                        }
                     }
                 }
             }

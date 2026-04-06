@@ -69,24 +69,7 @@ namespace Rebellion.Tests.Systems
             };
         }
 
-        private Officer CreateResearchOfficer(
-            string id,
-            int shipSkill = 0,
-            int troopSkill = 0,
-            int facilitySkill = 0
-        )
-        {
-            return new Officer
-            {
-                InstanceID = id,
-                OwnerInstanceID = "FNALL1",
-                ShipResearch = shipSkill,
-                TroopResearch = troopSkill,
-                FacilityResearch = facilitySkill,
-            };
-        }
-
-        // --- Phase 1: Passive capacity from idle facilities ---
+        // --- Passive capacity from idle facilities ---
 
         [Test]
         public void ProcessTick_IdleShipyard_AddsCapacity()
@@ -95,7 +78,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(shipyard, planet);
 
             int before = faction.ResearchCapacity[ManufacturingType.Ship];
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
             int after = faction.ResearchCapacity[ManufacturingType.Ship];
 
             Assert.AreEqual(1, after - before, "One idle shipyard should add 1 capacity per tick");
@@ -108,7 +91,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateShipyard("SY2"), planet);
             game.AttachNode(CreateShipyard("SY3"), planet);
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.99 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(3, faction.ResearchCapacity[ManufacturingType.Ship]);
         }
@@ -128,7 +111,7 @@ namespace Rebellion.Tests.Systems
             };
             planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 0,
@@ -144,7 +127,7 @@ namespace Rebellion.Tests.Systems
             shipyard.ManufacturingStatus = ManufacturingStatus.Building;
             game.AttachNode(shipyard, planet);
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 0,
@@ -160,7 +143,7 @@ namespace Rebellion.Tests.Systems
             shipyard.Movement = new MovementState();
             game.AttachNode(shipyard, planet);
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 0,
@@ -172,124 +155,14 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Building]);
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Troop]);
         }
 
-        // --- Phase 2: Officer research contributions ---
-
-        [Test]
-        public void ProcessTick_OfficerSuccessfulRoll_AddsPoints()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 100); // 100 = always succeeds
-            game.AttachNode(officer, planet);
-
-            // NextInt(1,101) needs to return <= 100 for success, NextInt(0,11) for dice roll
-            // FixedRandomProvider: NextInt uses NextDouble * (max-min) + min
-            // For roll: NextDouble * 100 + 1 <= 100 → any value works with skill 100
-            // For dice: NextDouble * 11 + 0 → we want a known bonus
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0, 0.0 }));
-
-            // With skill 100: roll = 0*100+1 = 1 <= 100 → success
-            // Points = BaseResearchPoints(5) + dice(0*11+0 = 0) = 5
-            // Plus 1 from idle facility = 6 total
-            Assert.AreEqual(6, faction.ResearchCapacity[ManufacturingType.Ship]);
-        }
-
-        [Test]
-        public void ProcessTick_OfficerFailedRoll_NoPoints()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 10);
-            game.AttachNode(officer, planet);
-
-            // Roll: 0.99 * 100 + 1 = 100 > 10 → fail
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.99 }));
-
-            // Only the idle facility capacity (1), no officer contribution
-            Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
-        }
-
-        [Test]
-        public void ProcessTick_OfficerSuccess_SkillIncrements()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 100);
-            game.AttachNode(officer, planet);
-
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0, 0.0 }));
-
-            Assert.AreEqual(
-                101,
-                officer.ShipResearch,
-                "Research skill should increment by 1 on success"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_OfficerOnMission_DoesNotContribute()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 100);
-
-            // Put officer on a mission instead of directly on the planet
-            StubMission mission = new StubMission();
-            officer.SetParent(mission);
-
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0 }));
-
-            // Only idle facility capacity, no officer contribution
-            Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
-        }
-
-        [Test]
-        public void ProcessTick_OfficerInTransit_DoesNotContribute()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 100);
-            officer.Movement = new MovementState();
-            game.AttachNode(officer, planet);
-
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0 }));
-
-            Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
-        }
-
-        [Test]
-        public void ProcessTick_OfficerNoMatchingFacility_DoesNotContribute()
-        {
-            // Troop facility on planet, but officer has ship research skill
-            game.AttachNode(CreateTrainingFacility("TF1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 100);
-            game.AttachNode(officer, planet);
-
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0 }));
-
-            Assert.AreEqual(
-                0,
-                faction.ResearchCapacity[ManufacturingType.Ship],
-                "No ship facility means no ship research from officer"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_OfficerZeroSkill_DoesNotRoll()
-        {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            Officer officer = CreateResearchOfficer("OFF1", shipSkill: 0);
-            game.AttachNode(officer, planet);
-
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.0 }));
-
-            // Only idle facility, officer with 0 skill is skipped
-            Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
-        }
-
-        // --- Phase 3: Level advancement ---
+        // --- Level advancement ---
 
         [Test]
         public void ProcessTick_CapacityMeetsThreshold_AdvancesLevel()
@@ -297,7 +170,7 @@ namespace Rebellion.Tests.Systems
             // Level 0 → 1 costs 100 capacity
             faction.ResearchCapacity[ManufacturingType.Ship] = 100;
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(1, faction.GetResearchLevel(ManufacturingType.Ship));
             Assert.AreEqual(
@@ -312,10 +185,7 @@ namespace Rebellion.Tests.Systems
         {
             faction.ResearchCapacity[ManufacturingType.Ship] = 100;
 
-            List<GameResult> results = system.ProcessTick(
-                game,
-                new FixedRandomProvider(new[] { 0.5 })
-            );
+            List<GameResult> results = system.ProcessTick(game);
 
             ResearchLevelAdvancedResult result = results
                 .OfType<ResearchLevelAdvancedResult>()
@@ -331,7 +201,7 @@ namespace Rebellion.Tests.Systems
         {
             faction.ResearchCapacity[ManufacturingType.Ship] = 130;
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(1, faction.GetResearchLevel(ManufacturingType.Ship));
             Assert.AreEqual(
@@ -346,7 +216,7 @@ namespace Rebellion.Tests.Systems
         {
             faction.ResearchCapacity[ManufacturingType.Ship] = 50;
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(0, faction.GetResearchLevel(ManufacturingType.Ship));
             Assert.AreEqual(50, faction.ResearchCapacity[ManufacturingType.Ship]);
@@ -359,7 +229,7 @@ namespace Rebellion.Tests.Systems
             faction.SetResearchLevel(ManufacturingType.Ship, 5);
             faction.ResearchCapacity[ManufacturingType.Ship] = 9999;
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(
                 5,
@@ -376,7 +246,7 @@ namespace Rebellion.Tests.Systems
             // Run 100 ticks with just the idle facility (+1 per tick = 100 total → level 1)
             for (int i = 0; i < 100; i++)
             {
-                system.ProcessTick(game, new FixedRandomProvider(new[] { 0.99 }));
+                system.ProcessTick(game);
             }
 
             Assert.AreEqual(
@@ -418,7 +288,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empSy2, empirePlanet);
             game.AttachNode(empSy3, empirePlanet);
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.99 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
             Assert.AreEqual(3, empire.ResearchCapacity[ManufacturingType.Ship]);
@@ -465,7 +335,7 @@ namespace Rebellion.Tests.Systems
             int cost = config.Research.LevelCosts[1];
             faction.ResearchCapacity[type] = cost;
 
-            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+            system.ProcessTick(game);
 
             Assert.AreEqual(1, faction.GetResearchLevel(type));
 
