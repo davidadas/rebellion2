@@ -15,13 +15,15 @@ public class BuildingTests
             ConstructionCost = 100,
             MaintenanceCost = 50,
             BaseBuildSpeed = 10,
-            RequiredResearchLevel = 3,
+            ResearchOrder = 3,
+            ResearchDifficulty = 24,
         };
 
         Assert.AreEqual(100, building.ConstructionCost);
         Assert.AreEqual(50, building.MaintenanceCost);
         Assert.AreEqual(10, building.BaseBuildSpeed);
-        Assert.AreEqual(3, building.RequiredResearchLevel);
+        Assert.AreEqual(3, building.ResearchOrder);
+        Assert.AreEqual(24, building.ResearchDifficulty);
     }
 
     [Test]
@@ -194,7 +196,8 @@ public class BuildingTests
             ConstructionCost = 100,
             MaintenanceCost = 50,
             BaseBuildSpeed = 10,
-            RequiredResearchLevel = 3,
+            ResearchOrder = 3,
+            ResearchDifficulty = 24,
             BuildingType = BuildingType.Mine,
             ProcessRate = 20,
             Bombardment = 5,
@@ -213,7 +216,8 @@ public class BuildingTests
         Assert.AreEqual(building.ConstructionCost, deserializedBuilding.ConstructionCost);
         Assert.AreEqual(building.MaintenanceCost, deserializedBuilding.MaintenanceCost);
         Assert.AreEqual(building.BaseBuildSpeed, deserializedBuilding.BaseBuildSpeed);
-        Assert.AreEqual(building.RequiredResearchLevel, deserializedBuilding.RequiredResearchLevel);
+        Assert.AreEqual(building.ResearchOrder, deserializedBuilding.ResearchOrder);
+        Assert.AreEqual(building.ResearchDifficulty, deserializedBuilding.ResearchDifficulty);
         Assert.AreEqual(building.BuildingType, deserializedBuilding.BuildingType);
         Assert.AreEqual(building.ProcessRate, deserializedBuilding.ProcessRate);
         Assert.AreEqual(building.Bombardment, deserializedBuilding.Bombardment);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -10,11 +11,9 @@ public class SubdueUprisingMission : Mission
     public SubdueUprisingMission()
         : base()
     {
-        Name = "Subdue Uprising";
-        DisplayName = Name;
+        ConfigKey = "SubdueUprising";
+        DisplayName = "Subdue Uprising";
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        MinTicks = 10;
-        MaxTicks = 15;
     }
 
     public SubdueUprisingMission(
@@ -25,17 +24,16 @@ public class SubdueUprisingMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Subdue Uprising",
+            "SubdueUprising",
             ownerInstanceId,
             RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 15
+            successProbabilityTable
         )
     {
+        DisplayName = "Subdue Uprising";
         Planet planet = (Planet)target;
 
         if (!planet.IsInUprising)
@@ -68,7 +66,10 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Ends the uprising on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)
@@ -90,14 +91,6 @@ public class SubdueUprisingMission : Mission
     /// Subdue Uprising missions are never foiled — they target own planets.
     /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.SubdueUprising);
-        MinTicks = tables.TickRanges.SubdueUprising.Min;
-        MaxTicks = tables.TickRanges.SubdueUprising.Max;
-    }
 
     /// <summary>
     /// Subdue Uprising missions do not repeat — one attempt per mission.

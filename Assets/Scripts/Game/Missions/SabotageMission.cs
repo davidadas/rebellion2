@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class SabotageMission : Mission
 {
@@ -11,11 +14,9 @@ public class SabotageMission : Mission
     public SabotageMission()
         : base()
     {
-        Name = "Sabotage";
-        DisplayName = Name;
+        ConfigKey = "Sabotage";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 10;
-        MaxTicks = 15;
     }
 
     public SabotageMission(
@@ -32,9 +33,7 @@ public class SabotageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 15
+            successProbabilityTable
         ) { }
 
     /// <summary>
@@ -48,7 +47,10 @@ public class SabotageMission : Mission
     /// <summary>
     /// Destroys the first building on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         List<Building> buildings = planet.GetAllBuildings();
@@ -67,12 +69,22 @@ public class SabotageMission : Mission
         };
     }
 
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
+    /// <summary>
+    /// Sabotage awards both Combat +1 and Espionage +1 on success.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill()
     {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Sabotage);
-        MinTicks = tables.TickRanges.Sabotage.Min;
-        MaxTicks = tables.TickRanges.Sabotage.Max;
+        base.ImproveMissionParticipantsSkill();
+        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+        {
+            if (participant.CanImproveMissionSkill)
+            {
+                participant.SetMissionSkillValue(
+                    MissionParticipantSkill.Espionage,
+                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
+                );
+            }
+        }
     }
 
     /// <summary>

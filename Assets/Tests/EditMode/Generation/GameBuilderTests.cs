@@ -134,40 +134,20 @@ public class GameBuilderTests
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
-    public void BuildGame_SetsFactionTechnologies(GameRoot game)
+    public void BuildGame_SetsFactionResearchQueues(GameRoot game)
     {
         foreach (Faction faction in game.Factions)
         {
-            // Ensure the faction has technology levels.
-            Assert.IsNotEmpty(faction.TechnologyLevels, "Faction should have technology levels.");
+            Assert.IsNotEmpty(faction.ResearchQueue, "Faction should have research queues.");
 
-            // Ensure the faction has at least one technology level for each manufacturing type.
             foreach (
-                KeyValuePair<
-                    ManufacturingType,
-                    SortedDictionary<int, List<Technology>>
-                > manufacturingTypeTechLevels in faction.TechnologyLevels
+                KeyValuePair<ManufacturingType, List<Technology>> entry in faction.ResearchQueue
             )
             {
-                ManufacturingType manufacturingType = manufacturingTypeTechLevels.Key;
-                SortedDictionary<int, List<Technology>> techLevels =
-                    manufacturingTypeTechLevels.Value;
-
                 Assert.IsNotEmpty(
-                    techLevels,
-                    $"Faction should have technology levels for {manufacturingType}."
+                    entry.Value,
+                    $"Faction should have technologies in {entry.Key} research queue."
                 );
-
-                foreach (KeyValuePair<int, List<Technology>> levelTechnologies in techLevels)
-                {
-                    int level = levelTechnologies.Key;
-                    List<Technology> technologies = levelTechnologies.Value;
-
-                    Assert.IsNotEmpty(
-                        technologies,
-                        $"Faction should have at least one technology for {manufacturingType} at level {level}."
-                    );
-                }
             }
         }
     }
@@ -186,11 +166,8 @@ public class GameBuilderTests
 
         foreach (Faction faction in game.Factions)
         {
-            // Capture tech state before rebuild
-            int techCountBefore = faction
-                .TechnologyLevels.Values.SelectMany(level =>
-                    level.Values.SelectMany(techs => techs)
-                )
+            int techCountBefore = faction.ResearchQueue.Values
+                .SelectMany(q => q)
                 .Count();
 
             Assert.Greater(
@@ -199,19 +176,16 @@ public class GameBuilderTests
                 $"Faction {faction.GetDisplayName()} should have technologies before rebuild."
             );
 
-            // Simulate what GameManager.RebuildDerivedState does
-            faction.LoadTechnologyLevels(templates);
+            faction.RebuildResearchQueues(templates);
 
-            int techCountAfter = faction
-                .TechnologyLevels.Values.SelectMany(level =>
-                    level.Values.SelectMany(techs => techs)
-                )
+            int techCountAfter = faction.ResearchQueue.Values
+                .SelectMany(q => q)
                 .Count();
 
             Assert.Greater(
                 techCountAfter,
                 0,
-                $"Faction {faction.GetDisplayName()} should still have technologies after LoadTechnologyLevels."
+                $"Faction {faction.GetDisplayName()} should still have technologies after RebuildResearchQueues."
             );
 
             Assert.AreEqual(
@@ -236,21 +210,20 @@ public class GameBuilderTests
 
         foreach (Faction faction in game.Factions)
         {
-            // Rebuild to test the rebuild path specifically
-            faction.LoadTechnologyLevels(templates);
+            faction.RebuildResearchQueues(templates);
 
             Assert.IsTrue(
-                faction.GetResearchedTechnologies(ManufacturingType.Ship).Count > 0,
+                faction.GetUnlockedTechnologies(ManufacturingType.Ship).Count > 0,
                 $"Faction {faction.GetDisplayName()} should have Ship technologies after rebuild."
             );
 
             Assert.IsTrue(
-                faction.GetResearchedTechnologies(ManufacturingType.Building).Count > 0,
+                faction.GetUnlockedTechnologies(ManufacturingType.Building).Count > 0,
                 $"Faction {faction.GetDisplayName()} should have Building technologies after rebuild."
             );
 
             Assert.IsTrue(
-                faction.GetResearchedTechnologies(ManufacturingType.Troop).Count > 0,
+                faction.GetUnlockedTechnologies(ManufacturingType.Troop).Count > 0,
                 $"Faction {faction.GetDisplayName()} should have Troop technologies after rebuild."
             );
         }

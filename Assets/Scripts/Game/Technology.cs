@@ -68,12 +68,19 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the required research level of the referenced manufacturable.
+        /// Returns the research order of the referenced manufacturable.
         /// </summary>
-        /// <returns>The required research level of the referenced manufacturable.</returns>
-        public int GetRequiredResearchLevel()
+        public int GetResearchOrder()
         {
-            return Manufacturable.GetRequiredResearchLevel();
+            return Manufacturable.GetResearchOrder();
+        }
+
+        /// <summary>
+        /// Returns the research difficulty of the referenced manufacturable.
+        /// </summary>
+        public int GetResearchDifficulty()
+        {
+            return Manufacturable.GetResearchDifficulty();
         }
     }
 }

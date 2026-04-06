@@ -77,8 +77,8 @@ namespace Rebellion.Generation
                 _randomProvider
             );
 
-            // Phase 3: Set faction research levels
-            SetFactionResearchLevels(factions);
+            // Phase 3: Set faction starting research
+            SetFactionStartingResearch(factions);
 
             // Phase 4: Facility seeding
             FacilitySeeder facilitySeeder = new FacilitySeeder();
@@ -139,14 +139,14 @@ namespace Rebellion.Generation
             return allSystems.Where(s => (int)s.Visibility <= galaxySize).ToArray();
         }
 
-        private void SetFactionResearchLevels(Faction[] factions)
+        private void SetFactionStartingResearch(Faction[] factions)
         {
-            int researchLevel = _summary.StartingResearchLevel;
+            int startingOrder = _summary.StartingResearchLevel;
             foreach (Faction faction in factions)
             {
-                faction.SetResearchLevel(ManufacturingType.Building, researchLevel);
-                faction.SetResearchLevel(ManufacturingType.Ship, researchLevel);
-                faction.SetResearchLevel(ManufacturingType.Troop, researchLevel);
+                faction.SetHighestUnlockedOrder(ManufacturingType.Building, startingOrder);
+                faction.SetHighestUnlockedOrder(ManufacturingType.Ship, startingOrder);
+                faction.SetHighestUnlockedOrder(ManufacturingType.Troop, startingOrder);
             }
         }
 
@@ -167,16 +167,7 @@ namespace Rebellion.Generation
 
             foreach (Faction faction in factions)
             {
-                foreach (IManufacturable manufacturable in allTech)
-                {
-                    if (!manufacturable.AllowedOwnerInstanceIDs.Contains(faction.InstanceID))
-                        continue;
-
-                    faction.AddTechnologyNode(
-                        manufacturable.GetRequiredResearchLevel(),
-                        new Technology(manufacturable)
-                    );
-                }
+                faction.RebuildResearchQueues(allTech);
             }
         }
 

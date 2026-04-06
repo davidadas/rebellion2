@@ -149,6 +149,39 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns the research skill value for the given manufacturing type.
+        /// </summary>
+        public int GetResearchSkill(ManufacturingType type)
+        {
+            return type switch
+            {
+                ManufacturingType.Ship => ShipResearch,
+                ManufacturingType.Building => FacilityResearch,
+                ManufacturingType.Troop => TroopResearch,
+                _ => 0,
+            };
+        }
+
+        /// <summary>
+        /// Increments the research skill for the given manufacturing type by the specified amount.
+        /// </summary>
+        public void IncrementResearchSkill(ManufacturingType type, int amount = 1)
+        {
+            switch (type)
+            {
+                case ManufacturingType.Ship:
+                    ShipResearch += amount;
+                    break;
+                case ManufacturingType.Building:
+                    FacilityResearch += amount;
+                    break;
+                case ManufacturingType.Troop:
+                    TroopResearch += amount;
+                    break;
+            }
+        }
+
+        /// <summary>
         /// Returns whether the officer is currently assigned to a mission.
         /// </summary>
         /// <returns>True if the officer's parent is a <see cref="Mission"/>; otherwise, false.</returns>

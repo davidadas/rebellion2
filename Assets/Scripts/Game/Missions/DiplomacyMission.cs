@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -10,11 +11,9 @@ public class DiplomacyMission : Mission
     public DiplomacyMission()
         : base()
     {
-        Name = "Diplomacy";
-        DisplayName = Name;
+        ConfigKey = "Diplomacy";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
-        MinTicks = 5;
-        MaxTicks = 10;
     }
 
     public DiplomacyMission(
@@ -31,9 +30,7 @@ public class DiplomacyMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Diplomacy,
-            successProbabilityTable,
-            minTicks: 5,
-            maxTicks: 10
+            successProbabilityTable
         )
     {
         Planet planet = (Planet)target;
@@ -76,7 +73,10 @@ public class DiplomacyMission : Mission
     /// Increments popular support and emits a PlanetOwnershipChangedResult when support
     /// crosses 60 and the planet is not yet owned by this faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)
@@ -135,14 +135,6 @@ public class DiplomacyMission : Mission
     public override bool IsCanceled(GameRoot game)
     {
         return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Diplomacy);
-        MinTicks = tables.TickRanges.Diplomacy.Min;
-        MaxTicks = tables.TickRanges.Diplomacy.Max;
     }
 
     /// <summary>

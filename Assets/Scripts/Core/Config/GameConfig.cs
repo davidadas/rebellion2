@@ -24,6 +24,7 @@ public class GameConfig
     public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
+    public ResearchConfig Research { get; set; } = new ResearchConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
 
     /// <summary>
@@ -86,6 +87,20 @@ public class GameConfig
         {
             throw new InvalidOperationException(
                 "GameConfig.Victory.MinVictoryTick cannot be negative"
+            );
+        }
+
+        // Research validation
+        if (Research.BaseResearchPoints <= 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Research.BaseResearchPoints must be positive"
+            );
+        }
+        if (Research.ResearchDiceRange < 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Research.ResearchDiceRange cannot be negative"
             );
         }
     }
@@ -450,6 +465,22 @@ public class GameConfig
     }
 
     /// <summary>
+    /// Research system configuration.
+    /// Controls technology advancement rates and officer research mechanics.
+    /// Parameters derived from original GENERAL_PARAM_6171 and GENERAL_PARAM_6172.
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class ResearchConfig
+    {
+        /// <summary>Base research points awarded per successful research mission (GENERAL_PARAM_6171).</summary>
+        public int BaseResearchPoints { get; set; }
+
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172).</summary>
+        public int ResearchDiceRange { get; set; }
+    }
+
+    /// <summary>
     /// Probability tables configuration.
     /// All probability tables grouped by data type (not usage).
     /// </summary>
@@ -483,13 +514,37 @@ public class GameConfig
         public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
         public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
+
+        /// <summary>
+        /// Returns the success probability table for the given mission config key, or null.
+        /// </summary>
+        public Dictionary<int, int> GetSuccessTable(string key)
+        {
+            return key switch
+            {
+                "Abduction" => Abduction,
+                "Assassination" => Assassination,
+                "Diplomacy" => Diplomacy,
+                "DeathStarSabotage" => DeathStarSabotage,
+                "Espionage" => Espionage,
+                "InciteUprising" => InciteUprising,
+                "Recruitment" => Recruitment,
+                "Rescue" => Rescue,
+                "Sabotage" => Sabotage,
+                "SubdueUprising" => SubdueUprising,
+                _ => null,
+            };
+        }
     }
 
     [PersistableObject]
     public class MissionTickConfig
     {
-        public int Min { get; set; }
-        public int Max { get; set; }
+        /// <summary>Guaranteed minimum ticks before mission executes.</summary>
+        public int Base { get; set; }
+
+        /// <summary>Random spread added to base: total = Base + random(0, Spread) inclusive.</summary>
+        public int Spread { get; set; }
     }
 
     [PersistableObject]
@@ -504,6 +559,28 @@ public class GameConfig
         public MissionTickConfig Rescue { get; set; } = new MissionTickConfig();
         public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
         public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Research { get; set; } = new MissionTickConfig();
+
+        /// <summary>
+        /// Returns the tick config for the given mission config key, or null.
+        /// </summary>
+        public MissionTickConfig GetTickConfig(string key)
+        {
+            return key switch
+            {
+                "Abduction" => Abduction,
+                "Assassination" => Assassination,
+                "Diplomacy" => Diplomacy,
+                "Espionage" => Espionage,
+                "InciteUprising" => InciteUprising,
+                "Recruitment" => Recruitment,
+                "Rescue" => Rescue,
+                "Sabotage" => Sabotage,
+                "SubdueUprising" => SubdueUprising,
+                "Research" => Research,
+                _ => null,
+            };
+        }
     }
 
     /// <summary>

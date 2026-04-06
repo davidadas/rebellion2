@@ -16,7 +16,8 @@ public class RegimentTests
             ConstructionCost = 100,
             MaintenanceCost = 10,
             BaseBuildSpeed = 5,
-            RequiredResearchLevel = 1,
+            ResearchOrder = 1,
+            ResearchDifficulty = 12,
             AttackRating = 50,
             DefenseRating = 40,
             DetectionRating = 20,
@@ -87,9 +88,14 @@ public class RegimentTests
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            _regiment.RequiredResearchLevel,
-            deserialized.RequiredResearchLevel,
-            "RequiredResearchLevel should be correctly deserialized."
+            _regiment.ResearchOrder,
+            deserialized.ResearchOrder,
+            "ResearchOrder should be correctly deserialized."
+        );
+        Assert.AreEqual(
+            _regiment.ResearchDifficulty,
+            deserialized.ResearchDifficulty,
+            "ResearchDifficulty should be correctly deserialized."
         );
         Assert.AreEqual(
             _regiment.AttackRating,

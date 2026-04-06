@@ -18,7 +18,8 @@ public class SpecialForcesTests
             ConstructionCost = 300,
             MaintenanceCost = 25,
             BaseBuildSpeed = 10,
-            RequiredResearchLevel = 3,
+            ResearchOrder = 3,
+            ResearchDifficulty = 60,
             Movement = null,
             ManufacturingStatus = ManufacturingStatus.Building,
             ManufacturingProgress = 0,
@@ -182,11 +183,12 @@ public class SpecialForcesTests
     }
 
     [Test]
-    public void RequiredResearchLevel_WhenSet_ReturnsCorrectValue()
+    public void ResearchOrder_WhenSet_ReturnsCorrectValue()
     {
-        SpecialForces newSpecialForces = new SpecialForces { RequiredResearchLevel = 5 };
+        SpecialForces newSpecialForces = new SpecialForces { ResearchOrder = 5, ResearchDifficulty = 50 };
 
-        Assert.AreEqual(5, newSpecialForces.RequiredResearchLevel);
+        Assert.AreEqual(5, newSpecialForces.ResearchOrder);
+        Assert.AreEqual(50, newSpecialForces.ResearchDifficulty);
     }
 
     [Test]
@@ -289,9 +291,14 @@ public class SpecialForcesTests
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            _specialForces.RequiredResearchLevel,
-            deserialized.RequiredResearchLevel,
-            "RequiredResearchLevel should be correctly deserialized."
+            _specialForces.ResearchOrder,
+            deserialized.ResearchOrder,
+            "ResearchOrder should be correctly deserialized."
+        );
+        Assert.AreEqual(
+            _specialForces.ResearchDifficulty,
+            deserialized.ResearchDifficulty,
+            "ResearchDifficulty should be correctly deserialized."
         );
         Assert.AreEqual(
             _specialForces.Movement,

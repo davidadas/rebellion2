@@ -16,7 +16,8 @@
     <DefenseRating>3</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REEM002</TypeID>
@@ -31,7 +32,8 @@
     <DefenseRating>5</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REEM003</TypeID>
@@ -46,7 +48,8 @@
     <DefenseRating>6</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>25</DetectionRating>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REEM004</TypeID>
@@ -61,7 +64,8 @@
     <DefenseRating>2</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>5</DetectionRating>
-    <RequiredResearchLevel>1</RequiredResearchLevel>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>46</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REEM005</TypeID>
@@ -76,7 +80,8 @@
     <DefenseRating>8</DefenseRating>
     <BombardmentDefense>6</BombardmentDefense>
     <DetectionRating>30</DetectionRating>
-    <RequiredResearchLevel>2</RequiredResearchLevel>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>66</ResearchDifficulty>
   </Regiment>
   <!--   **************************************************  -->
   <!--   ******************** ALLIANCE ********************  -->
@@ -94,7 +99,8 @@
     <DefenseRating>3</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REAL002</TypeID>
@@ -109,7 +115,8 @@
     <DefenseRating>5</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REAL003</TypeID>
@@ -124,7 +131,8 @@
     <DefenseRating>4</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>35</DetectionRating>
-    <RequiredResearchLevel>1</RequiredResearchLevel>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>12</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REAL004</TypeID>
@@ -139,7 +147,8 @@
     <DefenseRating>8</DefenseRating>
     <BombardmentDefense>9</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <RequiredResearchLevel>2</RequiredResearchLevel>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
   </Regiment>
   <Regiment>
     <TypeID>REAL005</TypeID>
@@ -154,6 +163,7 @@
     <DefenseRating>4</DefenseRating>
     <BombardmentDefense>4</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <RequiredResearchLevel>3</RequiredResearchLevel>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>60</ResearchDifficulty>
   </Regiment>
 </Regiments>

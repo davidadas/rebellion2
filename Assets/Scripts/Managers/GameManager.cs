@@ -213,7 +213,7 @@ public class GameManager
         _deathStarManager.ProcessTick();
 
         // 12. Research: applies tech upgrades
-        _researchManager.ProcessTick();
+        ProcessResults(_researchManager.ProcessTick(_game));
 
         // 13. Jedi: advances Force tiers
         ProcessResults(_jediManager.ProcessTick(_randomProvider));
@@ -242,7 +242,7 @@ public class GameManager
         _combatManager = new CombatSystem(_game, _randomProvider);
         _blockadeManager = new BlockadeSystem(_game);
         _deathStarManager = new DeathStarSystem(_game);
-        _researchManager = new ResearchSystem(_game);
+        _researchManager = new ResearchSystem();
         _jediManager = new JediSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
         _supportShiftManager = new SupportShiftSystem(_game);
@@ -266,7 +266,7 @@ public class GameManager
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())
-            faction.LoadTechnologyLevels(templates);
+            faction.RebuildResearchQueues(templates);
 
         _manufacturingManager.RebuildQueues();
     }

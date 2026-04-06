@@ -461,6 +461,7 @@ namespace Rebellion.Game
             return Buildings.Count(building =>
                 building.GetProductionType() == type
                 && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && building.Movement == null
             );
         }
 

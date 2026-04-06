@@ -25,7 +25,8 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFEM02</TypeID>
@@ -49,14 +50,15 @@
     <LaserRange>12</LaserRange>
     <IonRange>12</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <RequiredResearchLevel>1</RequiredResearchLevel>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>8</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFEM03</TypeID>
     <DisplayName>TIE Interceptor Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
-      <String>FNALL1</String>
+      <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>3</ConstructionCost>
     <MaintenanceCost>3</MaintenanceCost>
@@ -73,7 +75,8 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <RequiredResearchLevel>3</RequiredResearchLevel>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFEM04</TypeID>
@@ -97,7 +100,8 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>10</TorpedoRange>
-    <RequiredResearchLevel>8</RequiredResearchLevel>
+    <ResearchOrder>8</ResearchOrder>
+    <ResearchDifficulty>50</ResearchDifficulty>
   </Starfighter>
   <!--   **************************************************  -->
   <!--   ******************** ALLIANCE ********************  -->
@@ -124,7 +128,8 @@
     <LaserRange>12</LaserRange>
     <IonRange>12</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFAL02</TypeID>
@@ -136,19 +141,20 @@
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
     <SquadronSize>12</SquadronSize>
-    <DetectionRating>12</DetectionRating>
-    <Bombardment>2</Bombardment>
+    <DetectionRating>15</DetectionRating>
+    <Bombardment>1</Bombardment>
     <ShieldStrength>5</ShieldStrength>
     <Hyperdrive>60</Hyperdrive>
     <SublightSpeed>8</SublightSpeed>
-    <Agility>4</Agility>
-    <LaserCannon>5</LaserCannon>
-    <IonCannon>3</IonCannon>
-    <Torpedoes>8</Torpedoes>
+    <Agility>5</Agility>
+    <LaserCannon>8</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>4</Torpedoes>
     <LaserRange>12</LaserRange>
-    <IonRange>12</IonRange>
+    <IonRange>0</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFAL03</TypeID>
@@ -172,7 +178,8 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <RequiredResearchLevel>3</RequiredResearchLevel>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
   </Starfighter>
   <Starfighter>
     <TypeID>SFAL04</TypeID>
@@ -196,6 +203,7 @@
     <LaserRange>20</LaserRange>
     <IonRange>18</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <RequiredResearchLevel>5</RequiredResearchLevel>
+    <ResearchOrder>5</ResearchOrder>
+    <ResearchDifficulty>50</ResearchDifficulty>
   </Starfighter>
 </Starfighters>

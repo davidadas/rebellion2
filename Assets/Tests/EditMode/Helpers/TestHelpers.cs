@@ -84,12 +84,17 @@ public class StubMission : Mission
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
             MissionParticipantSkill.Diplomacy,
-            new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } }),
-            minTicks: 1,
-            maxTicks: 1
-        ) { }
+            new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } })
+        )
+    {
+        BaseTicks = 1;
+        SpreadTicks = 0;
+    }
 
-    protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    ) => new List<GameResult>();
 
     public override bool CanContinue(GameRoot game) => false;
 }

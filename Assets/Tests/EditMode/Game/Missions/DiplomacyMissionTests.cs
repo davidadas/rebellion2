@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
@@ -59,7 +60,7 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -80,7 +81,7 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             PlanetOwnershipChangedResult ownershipResult = results
                 .OfType<PlanetOwnershipChangedResult>()
@@ -102,7 +103,7 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game });
+                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -121,7 +122,7 @@ namespace Rebellion.Tests.Game.Missions
                 "OnSuccess",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
-            onSuccess.Invoke(mission, new object[] { game });
+            onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.AreEqual(
                 62,
@@ -260,6 +261,35 @@ namespace Rebellion.Tests.Game.Missions
                 mission.CanContinue(game),
                 "Mission should continue when support is below 100"
             );
+        }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = "Diplomacy",
+                DisplayName = "Diplomacy",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Diplomacy,
+                HasInitiated = true,
+                MaxProgress = 12,
+                CurrentProgress = 3,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            DiplomacyMission deserialized = SerializationHelper.Deserialize<DiplomacyMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
+            Assert.AreEqual("Diplomacy", deserialized.ConfigKey);
+            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(12, deserialized.MaxProgress);
+            Assert.AreEqual(3, deserialized.CurrentProgress);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -13,11 +14,9 @@ public class InciteUprisingMission : Mission
     public InciteUprisingMission()
         : base()
     {
-        Name = "Incite Uprising";
-        DisplayName = Name;
+        ConfigKey = "InciteUprising";
+        DisplayName = "Incite Uprising";
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        MinTicks = 10;
-        MaxTicks = 20;
     }
 
     public InciteUprisingMission(
@@ -28,17 +27,16 @@ public class InciteUprisingMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Incite Uprising",
+            "InciteUprising",
             ownerInstanceId,
             RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 20
+            successProbabilityTable
         )
     {
+        DisplayName = "Incite Uprising";
         Planet planet = (Planet)target;
 
         if (planet.GetOwnerInstanceID() == ownerInstanceId)
@@ -94,7 +92,10 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Starts an uprising on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         planet.BeginUprising();
@@ -108,14 +109,6 @@ public class InciteUprisingMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.InciteUprising);
-        MinTicks = tables.TickRanges.InciteUprising.Min;
-        MaxTicks = tables.TickRanges.InciteUprising.Max;
     }
 
     /// <summary>

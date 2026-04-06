@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -15,11 +16,9 @@ public class EspionageMission : Mission
     public EspionageMission()
         : base()
     {
-        Name = "Espionage";
-        DisplayName = Name;
+        ConfigKey = "Espionage";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        MinTicks = 10;
-        MaxTicks = 20;
     }
 
     public EspionageMission(
@@ -37,9 +36,7 @@ public class EspionageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 20
+            successProbabilityTable
         )
     {
         Planet planet = (Planet)target;
@@ -63,7 +60,10 @@ public class EspionageMission : Mission
     /// <summary>
     /// Captures a fog-of-war snapshot of the target planet for the owning faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
 
@@ -76,14 +76,6 @@ public class EspionageMission : Mission
         }
 
         return new List<GameResult>();
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Espionage);
-        MinTicks = tables.TickRanges.Espionage.Min;
-        MaxTicks = tables.TickRanges.Espionage.Max;
     }
 
     /// <summary>

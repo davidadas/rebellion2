@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -12,11 +13,9 @@ public class RecruitmentMission : Mission
     public RecruitmentMission()
         : base()
     {
-        Name = "Recruitment";
-        DisplayName = Name;
+        ConfigKey = "Recruitment";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        MinTicks = 15;
-        MaxTicks = 20;
     }
 
     public RecruitmentMission(
@@ -34,9 +33,7 @@ public class RecruitmentMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable,
-            minTicks: 15,
-            maxTicks: 20
+            successProbabilityTable
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -57,7 +54,10 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         Planet planet = GetParent() as Planet;
@@ -84,14 +84,6 @@ public class RecruitmentMission : Mission
     /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
     /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Recruitment);
-        MinTicks = tables.TickRanges.Recruitment.Min;
-        MaxTicks = tables.TickRanges.Recruitment.Max;
-    }
 
     /// <summary>
     /// Returns true while there are still unrecruited officers available for this faction.

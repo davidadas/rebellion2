@@ -11,7 +11,7 @@ using Rebellion.Util.Extensions;
 
 public abstract class Mission : ContainerNode
 {
-    public string Name { get; set; }
+    public string ConfigKey { get; set; }
     public string TargetInstanceID { get; set; }
 
     [PersistableIgnore]
@@ -33,10 +33,10 @@ public abstract class Mission : ContainerNode
     public ProbabilityTable FoilProbabilityTable { get; set; }
 
     [PersistableIgnore]
-    public int MinTicks = 1;
+    public int BaseTicks;
 
     [PersistableIgnore]
-    public int MaxTicks = 10;
+    public int SpreadTicks;
 
     public int MaxProgress { get; set; }
     public int CurrentProgress { get; set; }
@@ -67,19 +67,17 @@ public abstract class Mission : ContainerNode
     /// Initializes a mission with all required parameters.
     /// </summary>
     protected Mission(
-        string name,
+        string configKey,
         string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
-        ProbabilityTable successProbabilityTable,
-        int minTicks,
-        int maxTicks
+        ProbabilityTable successProbabilityTable
     )
     {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        DisplayName = Name;
+        ConfigKey = configKey ?? throw new ArgumentNullException(nameof(configKey));
+        DisplayName = configKey;
         AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
@@ -90,34 +88,44 @@ public abstract class Mission : ContainerNode
             successProbabilityTable ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
         DecoyProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
         FoilProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
-        MinTicks = minTicks;
-        MaxTicks = maxTicks;
     }
 
     /// <summary>
-    /// Applies shared probability tables from config. Override to set mission-specific
-    /// tables and tick ranges; always call base first.
+    /// Applies probability tables and tick ranges from config, keyed by ConfigKey.
     /// </summary>
     public virtual void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
         FoilProbabilityTable = new ProbabilityTable(tables.Foil);
+
+        Dictionary<int, int> successTable = tables.GetSuccessTable(ConfigKey);
+        if (successTable != null)
+            SuccessProbabilityTable = new ProbabilityTable(successTable);
+
+        GameConfig.MissionTickConfig tickConfig = tables.TickRanges.GetTickConfig(ConfigKey);
+        if (tickConfig != null)
+        {
+            BaseTicks = tickConfig.Base;
+            SpreadTicks = tickConfig.Spread;
+        }
     }
 
     /// <summary>
-    /// Randomizes MaxProgress within [MinTicks, MaxTicks] and marks the mission as initiated.
+    /// Randomizes MaxProgress as BaseTicks + random(0..SpreadTicks) inclusive.
+    /// Matches original: base_delay + roll_dice(spread).
     /// </summary>
     public void Initiate(IRandomNumberProvider provider)
     {
         CurrentProgress = 0;
-        MaxProgress = provider.NextInt(MinTicks, MaxTicks);
+        MaxProgress = BaseTicks + provider.NextInt(0, SpreadTicks + 1);
         HasInitiated = true;
     }
 
     /// <summary>
-    /// Returns the configured tick range as [MinTicks, MaxTicks].
+    /// Returns the configured tick values as [BaseTicks, SpreadTicks].
+    /// Actual duration is BaseTicks + random(0, SpreadTicks) inclusive.
     /// </summary>
-    public int[] GetTickRange() => new int[] { MinTicks, MaxTicks };
+    public int[] GetTickRange() => new int[] { BaseTicks, SpreadTicks };
 
     /// <summary>
     /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.
@@ -259,7 +267,7 @@ public abstract class Mission : ContainerNode
     /// Increments the mission skill of every participant that has CanImproveMissionSkill set.
     /// Called automatically by Execute on a successful outcome.
     /// </summary>
-    protected void ImproveMissionParticipantsSkill()
+    protected virtual void ImproveMissionParticipantsSkill()
     {
         foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
         {
@@ -293,24 +301,24 @@ public abstract class Mission : ContainerNode
             if (!IsTargetValid(game))
             {
                 outcome = MissionOutcome.Failed;
-                results.AddRange(OnFailed(game));
+                results.AddRange(OnFailed(game, provider));
             }
             else
             {
                 outcome = MissionOutcome.Success;
-                results.AddRange(OnSuccess(game));
+                results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
             }
         }
         else if (CheckMissionFoiled(provider, foilProbability))
         {
             outcome = MissionOutcome.Foiled;
-            results.AddRange(OnFoiled(game));
+            results.AddRange(OnFoiled(game, provider));
         }
         else
         {
             outcome = MissionOutcome.Failed;
-            results.AddRange(OnFailed(game));
+            results.AddRange(OnFailed(game, provider));
         }
 
         List<IMissionParticipant> allParticipants = GetAllParticipants();
@@ -320,13 +328,13 @@ public abstract class Mission : ContainerNode
         );
         string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
         string targetStr = string.IsNullOrEmpty(targetName) ? "" : $" at {targetName}";
-        GameLogger.Log($"{Name} mission by {agents}{targetStr}: {outcome}");
+        GameLogger.Log($"{DisplayName} mission by {agents}{targetStr}: {outcome}");
 
         results.Add(
             new MissionCompletedResult
             {
                 MissionInstanceID = InstanceID,
-                MissionName = Name,
+                MissionName = DisplayName,
                 TargetName = targetName,
                 ParticipantInstanceIDs = allParticipants.ConvertAll(p => p.GetInstanceID()),
                 ParticipantNames = allParticipants.ConvertAll(p => ((ISceneNode)p).GetDisplayName()),
@@ -365,18 +373,20 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.
     /// </summary>
-    protected abstract List<GameResult> OnSuccess(GameRoot game);
+    protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
 
     /// <summary>
     /// Override to apply effects when the mission is foiled by enemy forces.
     /// Default returns no results.
     /// </summary>
-    protected virtual List<GameResult> OnFoiled(GameRoot game) => new List<GameResult>();
+    protected virtual List<GameResult> OnFoiled(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.
     /// </summary>
-    protected virtual List<GameResult> OnFailed(GameRoot game) => new List<GameResult>();
+    protected virtual List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     /// <summary>
     /// Returns all mission participants as children of the mission.

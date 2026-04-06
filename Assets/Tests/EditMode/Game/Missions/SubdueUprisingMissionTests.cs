@@ -219,5 +219,34 @@ namespace Rebellion.Tests.Game.Missions
                 "Constructor should throw when target planet is owned by another faction"
             );
         }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            SubdueUprisingMission mission = new SubdueUprisingMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = "SubdueUprising",
+                DisplayName = "Subdue Uprising",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Diplomacy,
+                HasInitiated = true,
+                MaxProgress = 3,
+                CurrentProgress = 2,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            SubdueUprisingMission deserialized =
+                SerializationHelper.Deserialize<SubdueUprisingMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("SubdueUprising", deserialized.ConfigKey);
+            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(3, deserialized.MaxProgress);
+            Assert.AreEqual(2, deserialized.CurrentProgress);
+        }
     }
 }

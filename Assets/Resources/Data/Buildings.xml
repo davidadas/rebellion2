@@ -17,7 +17,8 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <ProcessRate>4</ProcessRate>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA02</TypeID>
@@ -33,7 +34,8 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <ProcessRate>4</ProcessRate>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA03</TypeID>
@@ -49,7 +51,8 @@
     <MaintenanceCost>13</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>4</ProcessRate>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA04</TypeID>
@@ -65,7 +68,8 @@
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>5</Bombardment>
     <ProcessRate>5</ProcessRate>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA05</TypeID>
@@ -81,7 +85,8 @@
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>5</ProcessRate>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA06</TypeID>
@@ -97,7 +102,8 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>4</Bombardment>
     <ProcessRate>2</ProcessRate>
-    <RequiredResearchLevel>1</RequiredResearchLevel>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDFA07</TypeID>
@@ -113,7 +119,25 @@
     <MaintenanceCost>20</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>2</ProcessRate>
-    <RequiredResearchLevel>5</RequiredResearchLevel>
+    <ResearchOrder>5</ResearchOrder>
+    <ResearchDifficulty>60</ResearchDifficulty>
+  </Building>
+  <Building>
+    <TypeID>BDFA08</TypeID>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <BuildingType>ConstructionFacility</BuildingType>
+    <DisplayName>Advanced Construction Yard</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_building_advanced_construction_yard</DisplayImagePath>
+    <ProductionType>Building</ProductionType>
+    <ConstructionCost>10</ConstructionCost>
+    <MaintenanceCost>10</MaintenanceCost>
+    <Bombardment>4</Bombardment>
+    <ProcessRate>2</ProcessRate>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
   <!--   **************************************************  -->
   <!--   ******************** DEFENSES ********************  -->
@@ -135,7 +159,8 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>LNR</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDDF02</TypeID>
@@ -153,7 +178,8 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>40</ShieldStrength>
     <DefenseFacilityClass>Shield</DefenseFacilityClass>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDDF03</TypeID>
@@ -172,7 +198,8 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>KDY</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDDF04</TypeID>
@@ -190,7 +217,8 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>DeathStarShield</DefenseFacilityClass>
-    <RequiredResearchLevel>3</RequiredResearchLevel>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDDF05</TypeID>
@@ -209,7 +237,8 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>LNR</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
-    <RequiredResearchLevel>4</RequiredResearchLevel>
+    <ResearchOrder>4</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
   <Building>
     <TypeID>BDDF06</TypeID>
@@ -227,6 +256,7 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>80</ShieldStrength>
     <DefenseFacilityClass>Shield</DefenseFacilityClass>
-    <RequiredResearchLevel>6</RequiredResearchLevel>
+    <ResearchOrder>6</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
 </Buildings>

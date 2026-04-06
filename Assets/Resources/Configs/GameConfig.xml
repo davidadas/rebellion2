@@ -711,6 +711,17 @@
     <DetectProbExperienced>0.30</DetectProbExperienced>
   </Jedi>
 
+  <!-- Research System Configuration -->
+  <!-- Controls technology advancement from idle facilities and officer research missions.
+       Per-unit unlock costs are defined by ResearchDifficulty in the unit data XMLs. -->
+  <Research>
+    <!-- Base research points per successful research mission (GENERAL_PARAM_6171) -->
+    <BaseResearchPoints>1</BaseResearchPoints>
+
+    <!-- Random bonus range: award random(0, DiceRange) extra points (GENERAL_PARAM_6172) -->
+    <ResearchDiceRange>6</ResearchDiceRange>
+  </Research>
+
   <!-- Probability Tables -->
   <!-- All probability tables live together, grouped by data type not usage -->
   <ProbabilityTables>
@@ -1298,44 +1309,48 @@
         </Entry>
       </Decoy>
 
-      <!-- Tick ranges: min/max ticks for each mission type -->
+      <!-- Tick ranges: Base + random(0, Spread) inclusive. Source: MISSNSD.json -->
       <TickRanges>
         <Abduction>
-          <Min>15</Min>
-          <Max>20</Max>
+          <Base>1</Base>
+          <Spread>2</Spread>
         </Abduction>
         <Assassination>
-          <Min>15</Min>
-          <Max>20</Max>
+          <Base>1</Base>
+          <Spread>1</Spread>
         </Assassination>
         <Diplomacy>
-          <Min>5</Min>
-          <Max>10</Max>
+          <Base>5</Base>
+          <Spread>10</Spread>
         </Diplomacy>
         <Espionage>
-          <Min>10</Min>
-          <Max>20</Max>
+          <Base>1</Base>
+          <Spread>20</Spread>
         </Espionage>
         <InciteUprising>
-          <Min>10</Min>
-          <Max>20</Max>
+          <Base>2</Base>
+          <Spread>10</Spread>
         </InciteUprising>
         <Recruitment>
-          <Min>15</Min>
-          <Max>20</Max>
+          <Base>5</Base>
+          <Spread>20</Spread>
         </Recruitment>
         <Rescue>
-          <Min>10</Min>
-          <Max>20</Max>
+          <Base>1</Base>
+          <Spread>6</Spread>
         </Rescue>
         <Sabotage>
-          <Min>10</Min>
-          <Max>15</Max>
+          <Base>1</Base>
+          <Spread>2</Spread>
         </Sabotage>
         <SubdueUprising>
-          <Min>10</Min>
-          <Max>15</Max>
+          <Base>2</Base>
+          <Spread>10</Spread>
         </SubdueUprising>
+        <Research>
+          <Base>10</Base>
+          <Spread>10</Spread>
+        </Research>
       </TickRanges>
 
       <!-- Foil: regiment defense score (derived from original FoilQuadratic: -0.001999x²+0.8879x+84.61) -->

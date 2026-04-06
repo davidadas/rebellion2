@@ -298,5 +298,33 @@ namespace Rebellion.Tests.Game.Missions
                 )
             );
         }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            RescueMission mission = new RescueMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = "Rescue",
+                DisplayName = "Rescue",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Espionage,
+                TargetOfficerInstanceID = "OFFICER3",
+                HasInitiated = true,
+                MaxProgress = 8,
+                CurrentProgress = 8,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            RescueMission deserialized = SerializationHelper.Deserialize<RescueMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("Rescue", deserialized.ConfigKey);
+            Assert.AreEqual("OFFICER3", deserialized.TargetOfficerInstanceID);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(8, deserialized.MaxProgress);
+            Assert.AreEqual(8, deserialized.CurrentProgress);
+        }
     }
 }

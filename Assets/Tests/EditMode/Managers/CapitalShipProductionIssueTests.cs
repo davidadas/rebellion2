@@ -641,9 +641,7 @@ namespace Rebellion.Tests.Managers
                 RegimentCapacity = 0,
             };
 
-            testEmpire.AddTechnologyNode(0, new Technology(dreadnaught));
-            testEmpire.AddTechnologyNode(0, new Technology(galleon));
-            testEmpire.AddTechnologyNode(0, new Technology(carrack));
+            testEmpire.RebuildResearchQueues(new IManufacturable[] { dreadnaught, galleon, carrack });
 
             // Run AI manufacturing
             FogOfWarSystem fog = new FogOfWarSystem(testGame);

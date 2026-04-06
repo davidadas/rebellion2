@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -14,11 +15,9 @@ public class AbductionMission : Mission
     public AbductionMission()
         : base()
     {
-        Name = "Abduction";
-        DisplayName = Name;
+        ConfigKey = "Abduction";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 15;
-        MaxTicks = 20;
     }
 
     public AbductionMission(
@@ -36,9 +35,7 @@ public class AbductionMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable,
-            minTicks: 15,
-            maxTicks: 20
+            successProbabilityTable
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -61,7 +58,10 @@ public class AbductionMission : Mission
     /// <summary>
     /// Marks the target officer as captured and assigns the captor faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)
@@ -79,14 +79,6 @@ public class AbductionMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Abduction);
-        MinTicks = tables.TickRanges.Abduction.Min;
-        MaxTicks = tables.TickRanges.Abduction.Max;
     }
 
     /// <summary>

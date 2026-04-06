@@ -14,7 +14,8 @@
     <ConstructionCost>1</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>1</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
@@ -33,7 +34,8 @@
     <ConstructionCost>2</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>2</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
@@ -52,7 +54,8 @@
     <ConstructionCost>2</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>2</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>40</Espionage>
@@ -71,7 +74,8 @@
     <ConstructionCost>1</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>1</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>70</Espionage>
@@ -93,7 +97,8 @@
     <ConstructionCost>1</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>1</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>30</Espionage>
@@ -112,7 +117,8 @@
     <ConstructionCost>1</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>1</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
@@ -131,7 +137,8 @@
     <ConstructionCost>2</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>2</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
@@ -150,7 +157,8 @@
     <ConstructionCost>2</ConstructionCost>
     <MaintenanceCost>1</MaintenanceCost>
     <BaseBuildSpeed>2</BaseBuildSpeed>
-    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
