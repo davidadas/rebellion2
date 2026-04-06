@@ -51,8 +51,7 @@ public class AbductionMission : Mission
     protected override bool IsTargetValid(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return target != null
-            && !target.IsCaptured
+        return target?.IsCaptured == false
             && target.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 

@@ -51,8 +51,7 @@ public class RescueMission : Mission
     protected override bool IsTargetValid(GameRoot game)
     {
         Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return captive != null
-            && captive.IsCaptured
+        return captive?.IsCaptured == true
             && captive.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 

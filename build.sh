@@ -5,7 +5,7 @@ PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
 
 # Roslynator needs DOTNET_ROOT to find the SDK
-if [ -z "$DOTNET_ROOT" ]; then
+if [ -z "$DOTNET_ROOT" ] && command -v dotnet >/dev/null 2>&1; then
     sdk_base="$(dotnet --info 2>/dev/null | sed -n 's/.*Base Path:[[:space:]]*//p' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     if [ -n "$sdk_base" ]; then
         export DOTNET_ROOT="$(dirname "$(dirname "$sdk_base")")"
@@ -36,11 +36,12 @@ usage() {
     echo "Usage: ./build.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  lint    Run Roslynator static analysis"
-    echo "  test    Run EditMode tests via Unity"
-    echo "  build   Build standalone player"
-    echo "  clean   Remove build artifacts"
-    echo "  all     Run lint + test"
+    echo "  lint      Run Roslynator static analysis"
+    echo "  test      Run EditMode tests via Unity"
+    echo "  coverage  Run EditMode tests with code coverage report"
+    echo "  build     Build standalone player"
+    echo "  clean     Remove build artifacts"
+    echo "  all       Run lint + test"
     exit 1
 }
 
@@ -64,11 +65,16 @@ do_lint() {
     fi
 
     # Roslynator uses a committed portable project file so it works in CI without Unity.
+    # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
     roslynator analyze GameAssembly.Lint.csproj \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
-        --supported-diagnostics RCS1213 \
-        --severity-level warning
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level warning || true
+    roslynator analyze GameAssembly.Lint.csproj \
+        --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level error
     echo ""
     echo "Lint complete."
 }
@@ -82,6 +88,21 @@ do_test() {
         -batchmode \
         -nographics
     echo "Test results written to $TEST_RESULTS"
+}
+
+do_coverage() {
+    local coverage_dir="${COVERAGE_DIR:-Coverage}"
+    "$UNITY" \
+        -runTests \
+        -testPlatform EditMode \
+        -projectPath "$PROJECT_PATH" \
+        -testResults "$TEST_RESULTS" \
+        -batchmode \
+        -nographics \
+        -enableCodeCoverage \
+        -coverageResultsPath "$coverage_dir" \
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+    echo "Coverage report written to $coverage_dir/Report/index.html"
 }
 
 do_build() {
@@ -102,11 +123,12 @@ do_clean() {
 }
 
 case "${1:-}" in
-    lint)  do_lint ;;
-    test)  do_test ;;
-    build) do_build ;;
-    clean) do_clean ;;
-    all)   do_lint; do_test ;;
-    "")    do_lint; do_test ;;
-    *)     usage ;;
+    lint)     do_lint ;;
+    test)     do_test ;;
+    coverage) do_coverage ;;
+    build)    do_build ;;
+    clean)    do_clean ;;
+    all)      do_lint; do_test ;;
+    "")       do_lint; do_test ;;
+    *)        usage ;;
 esac

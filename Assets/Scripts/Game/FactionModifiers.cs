@@ -11,9 +11,9 @@ namespace Rebellion.Game
     [PersistableObject]
     public class FactionModifiers
     {
-        private int garrisonEfficiency = 1;
-        private int troopEffectiveness = 1;
-        private int uprisingResistance = 1;
+        private int _garrisonEfficiency = 1;
+        private int _troopEffectiveness = 1;
+        private int _uprisingResistance = 1;
 
         /// <summary>
         /// Garrison requirement divisor on core systems.
@@ -23,8 +23,8 @@ namespace Rebellion.Game
         /// </summary>
         public int GarrisonEfficiency
         {
-            get => garrisonEfficiency;
-            set => garrisonEfficiency = Math.Max(1, value);
+            get => _garrisonEfficiency;
+            set => _garrisonEfficiency = Math.Max(1, value);
         }
 
         /// <summary>
@@ -35,8 +35,8 @@ namespace Rebellion.Game
         /// </summary>
         public int TroopEffectiveness
         {
-            get => troopEffectiveness;
-            set => troopEffectiveness = Math.Max(1, value);
+            get => _troopEffectiveness;
+            set => _troopEffectiveness = Math.Max(1, value);
         }
 
         /// <summary>
@@ -47,8 +47,8 @@ namespace Rebellion.Game
         /// </summary>
         public int UprisingResistance
         {
-            get => uprisingResistance;
-            set => uprisingResistance = Math.Max(1, value);
+            get => _uprisingResistance;
+            set => _uprisingResistance = Math.Max(1, value);
         }
 
         /// <summary>

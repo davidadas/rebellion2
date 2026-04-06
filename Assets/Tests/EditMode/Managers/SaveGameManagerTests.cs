@@ -7,16 +7,16 @@ using UnityEngine;
 [TestFixture]
 public class SaveGameManagerTests
 {
-    private string saveFileName = "SaveGameManagerTest";
+    private string _saveFileName = "SaveGameManagerTest";
 
     // Empty factions list - tests that need factions create them locally
-    private List<Faction> factions = new List<Faction>();
+    private List<Faction> _factions = new List<Faction>();
 
     [TearDown]
     public void Teardown()
     {
         // Cleanup code after each test.
-        string filePath = SaveGameManager.Instance.GetSaveFilePath(saveFileName);
+        string filePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
         if (File.Exists(filePath))
         {
             File.Delete(filePath);
@@ -40,13 +40,13 @@ public class SaveGameManagerTests
         GameRoot game = new GameRoot
         {
             Summary = summary,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
 
         // Check if the file was created.
-        string filePath = SaveGameManager.Instance.GetSaveFilePath(saveFileName);
+        string filePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
         bool fileExists = File.Exists(filePath);
         Assert.IsTrue(fileExists, "Save file was not created.");
     }
@@ -66,10 +66,10 @@ public class SaveGameManagerTests
         // Save the game to disk.
         GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
         string serializedShit = SerializationHelper.Serialize(game);
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
 
         // Load the game from file.
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         // Assert that the loaded game's summary matches the original summary.
         Assert.AreEqual(
@@ -144,10 +144,10 @@ public class SaveGameManagerTests
         game.AttachNode(officer, capitalShip);
 
         // Save the game to disk.
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
 
         // Load the game from file.
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         // // Verify the scene graph is reconstituted.
         PlanetSystem loadedPlanetSystem = loadedGame.Galaxy.PlanetSystems[0];
@@ -179,12 +179,12 @@ public class SaveGameManagerTests
             Summary = summary,
             CurrentTick = 150,
             GameSpeed = TickSpeed.Fast,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(150, loadedGame.CurrentTick);
         Assert.AreEqual(TickSpeed.Fast, loadedGame.GameSpeed);
@@ -209,12 +209,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             EventPool = new List<GameEvent> { event1, event2 },
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(2, loadedGame.EventPool.Count);
         Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
@@ -237,12 +237,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             CompletedEventIDs = new HashSet<string> { "EVENT1", "EVENT2", "EVENT3" },
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(3, loadedGame.CompletedEventIDs.Count);
         Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT1"));
@@ -276,8 +276,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(1, loadedGame.Factions.Count);
         Assert.AreEqual("FNALL1", loadedGame.Factions[0].InstanceID);
@@ -308,12 +308,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             Metadata = metadata,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.IsNotNull(loadedGame.Metadata);
         Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
@@ -342,12 +342,12 @@ public class SaveGameManagerTests
         GameRoot game = new GameRoot
         {
             Summary = summary,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(GameSize.Large, loadedGame.Summary.GalaxySize);
         Assert.AreEqual(GameDifficulty.Hard, loadedGame.Summary.Difficulty);
@@ -382,8 +382,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.IsNotNull(loadedGame.Factions);
         Assert.AreEqual(0, loadedGame.Factions.Count);
@@ -417,12 +417,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             EventPool = events,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(10, loadedGame.EventPool.Count);
         for (int i = 0; i < 10; i++)
@@ -454,12 +454,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             CompletedEventIDs = completedEvents,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(50, loadedGame.CompletedEventIDs.Count);
         for (int i = 0; i < 50; i++)
@@ -494,12 +494,12 @@ public class SaveGameManagerTests
             {
                 Summary = summary,
                 GameSpeed = speed,
-                Factions = factions,
+                Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
             Assert.AreEqual(speed, loadedGame.GameSpeed, $"GameSpeed {speed} was not preserved");
         }
@@ -521,12 +521,12 @@ public class SaveGameManagerTests
         {
             Summary = summary,
             CurrentTick = 999999,
-            Factions = factions,
+            Factions = _factions,
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Assert.AreEqual(999999, loadedGame.CurrentTick);
     }
@@ -574,8 +574,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
         Assert.IsNotNull(loadedAlliance);
@@ -619,8 +619,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
         Assert.IsNotNull(loadedAlliance);
@@ -667,8 +667,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
         PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SYS1"].Planets["PLANET1"];
@@ -732,8 +732,8 @@ public class SaveGameManagerTests
             Galaxy = new GalaxyMap(),
         };
 
-        SaveGameManager.Instance.SaveGameData(game, saveFileName);
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(saveFileName);
+        SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
         Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
 

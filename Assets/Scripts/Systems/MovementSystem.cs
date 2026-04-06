@@ -16,8 +16,8 @@ namespace Rebellion.Systems
     /// </summary>
     public class MovementSystem
     {
-        private readonly GameRoot game;
-        private readonly FogOfWarSystem fogOfWar;
+        private readonly GameRoot _game;
+        private readonly FogOfWarSystem _fogOfWar;
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
@@ -26,8 +26,8 @@ namespace Rebellion.Systems
         /// <param name="fogOfWar">The fog of war system for capturing snapshots on arrival.</param>
         public MovementSystem(GameRoot game, FogOfWarSystem fogOfWar)
         {
-            this.game = game;
-            this.fogOfWar = fogOfWar;
+            _game = game;
+            _fogOfWar = fogOfWar;
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick()
         {
-            game.GetGalaxyMap()
+            _game.GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IMovable movable)
@@ -189,11 +189,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// 
+        /// Returns the interpolated screen position of a unit between its origin and its destination planet.
         /// </summary>
         /// <param name="movable"></param>
         /// <param name="destinationPlanet"></param>
-        /// <returns></returns>
+        /// <returns>The interpolated position.</returns>
         private Point CalculateInterpolatedPosition(IMovable movable, Planet destinationPlanet)
         {
             float progress = movable.Movement.Progress();
@@ -219,7 +219,7 @@ namespace Rebellion.Systems
             // If the destination fleet is still in transit, chase it.
             Fleet movingFleet = destination is Fleet f ? f
                 : (destination is CapitalShip cs ? cs.GetParent() as Fleet : null);
-            if (movingFleet != null && movingFleet.Movement != null)
+            if (movingFleet?.Movement != null)
             {
                 Planet newDest = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
                 if (newDest != null)
@@ -241,7 +241,7 @@ namespace Rebellion.Systems
             {
                 if (movable is Building)
                 {
-                    game.DetachNode((ISceneNode)movable);
+                    _game.DetachNode((ISceneNode)movable);
                     GameLogger.Log(
                         $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
                     );
@@ -255,20 +255,20 @@ namespace Rebellion.Systems
 
             try
             {
-                game.MoveNode(movable, destination);
+                _game.MoveNode(movable, destination);
                 movable.Movement = null;
                 GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
 
-                if (movable is Fleet fleet && fogOfWar != null)
+                if (movable is Fleet fleet && _fogOfWar != null)
                 {
-                    Faction faction = game.Factions.FirstOrDefault(f =>
+                    Faction faction = _game.Factions.FirstOrDefault(f =>
                         f.InstanceID == fleet.OwnerInstanceID
                     );
-                    if (faction != null && fogOfWar.IsPlanetVisible(destinationPlanet, faction))
+                    if (faction != null && _fogOfWar.IsPlanetVisible(destinationPlanet, faction))
                     {
                         PlanetSystem system = destinationPlanet.GetParentOfType<PlanetSystem>();
                         if (system != null)
-                            fogOfWar.CaptureSnapshot(faction, destinationPlanet, system, game.CurrentTick);
+                            _fogOfWar.CaptureSnapshot(faction, destinationPlanet, system, _game.CurrentTick);
                     }
                 }
             }
@@ -313,14 +313,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// 
+        /// Returns the nearest planet owned by the specified faction to the given position.
         /// </summary>
         /// <param name="factionOwnerID"></param>
         /// <param name="fromPosition"></param>
-        /// <returns></returns>
+        /// <returns>The nearest faction-owned planet, or null if none exists.</returns>
         private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
         {
-            return game.GetSceneNodesByType<Planet>()
+            return _game.GetSceneNodesByType<Planet>()
                 .Where(p => p.GetOwnerInstanceID() == factionOwnerID)
                 .OrderBy(p =>
                 {
@@ -385,7 +385,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            game.MoveNode((ISceneNode)unit, destination);
+            _game.MoveNode((ISceneNode)unit, destination);
 
             unit.Movement = new MovementState
             {
@@ -425,7 +425,7 @@ namespace Rebellion.Systems
             double dy = destPos.Y - originPos.Y;
             double distance = Math.Sqrt(dx * dx + dy * dy);
 
-            int slowestHyperdrive = game.GetConfig().Movement.DefaultFighterHyperdrive;
+            int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
             int speedBonus = 0;
 
             if (unit is Fleet fleet)
@@ -442,7 +442,7 @@ namespace Rebellion.Systems
 
                 IEnumerable<Officer> officers = fleet.GetOfficers();
                 if (officers.Any())
-                    speedBonus = officers.Select(o => Math.Max(o.HyperdriveModifier, 0)).Max();
+                    speedBonus = officers.Max(o => Math.Max(o.HyperdriveModifier, 0));
             }
             else if (unit is CapitalShip capitalShip)
             {
@@ -450,10 +450,10 @@ namespace Rebellion.Systems
             }
 
             int baseTicks = (int)Math.Ceiling(
-                (distance * game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
+                (distance * _game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
             );
 
-            return Math.Max(baseTicks - speedBonus, game.GetConfig().Movement.MinTransitTicks);
+            return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
         }
     }
 }

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Xml.Serialization;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
@@ -37,18 +34,18 @@ public abstract class GameConditional : BaseGameEntity
     }
 
     /// <summary>
-    ///
+    /// Returns the conditional value string.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The conditional value.</returns>
     public string GetConditionalValue()
     {
         return ConditionalValue;
     }
 
     /// <summary>
-    ///
+    /// Returns the conditional type string.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The conditional type.</returns>
     public string GetConditionalType()
     {
         return ConditionalType;

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game;
 using Rebellion.Systems;
 
 namespace Rebellion.Game.Results

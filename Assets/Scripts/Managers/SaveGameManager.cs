@@ -7,7 +7,7 @@ using Rebellion.Util.Serialization;
 using UnityEngine;
 
 /// <summary>
-///
+/// Represents a discovered save file paired with its deserialized metadata.
 /// </summary>
 public sealed class SaveGameEntry
 {
@@ -62,9 +62,9 @@ public class SaveGameManager
     }
 
     /// <summary>
-    ///
+    /// Returns all valid save files in the save directory, sorted newest first.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A read-only list of save game entries.</returns>
     public IReadOnlyList<SaveGameEntry> GetSavedGames()
     {
         string saveDirectory = GetSaveDirectoryPath();

@@ -157,7 +157,7 @@ namespace Rebellion.Generation
         /// <returns>A WeightedTable that maps rolls to facility TypeIDs.</returns>
         private WeightedTable<string> BuildTable(List<WeightedFacilityEntry> entries)
         {
-            List<(int, string)> tableEntries = entries.Select(e => (e.CumulativeWeight, e.TypeID)).ToList();
+            List<(int, string)> tableEntries = entries.ConvertAll(e => (e.CumulativeWeight, e.TypeID));
             return new WeightedTable<string>(tableEntries);
         }
     }

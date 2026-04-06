@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game
@@ -16,7 +14,7 @@ namespace Rebellion.Game
     {
         public MessageType Type;
         public string Text;
-        public bool Read = false;
+        public bool Read;
 
         /// <summary>
         /// Default constructor used for deserialization.

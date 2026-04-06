@@ -11,11 +11,11 @@ namespace Rebellion.Systems
     /// </summary>
     public class SupportShiftSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public SupportShiftSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick()
         {
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 if (string.IsNullOrEmpty(planet.OwnerInstanceID))
                     continue;
@@ -31,7 +31,7 @@ namespace Rebellion.Systems
                 if (!planet.IsColonized)
                     continue;
 
-                Faction faction = game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+                Faction faction = _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
                 if (faction == null)
                     continue;
 
@@ -46,7 +46,7 @@ namespace Rebellion.Systems
                 int currentSupport = planet.GetPopularSupport(faction.InstanceID);
                 int newSupport = Math.Max(
                     0,
-                    Math.Min(game.Config.Planet.MaxPopularSupport, currentSupport + shift)
+                    Math.Min(_game.Config.Planet.MaxPopularSupport, currentSupport + shift)
                 );
 
                 if (newSupport != currentSupport)
@@ -54,7 +54,7 @@ namespace Rebellion.Systems
                     planet.SetPopularSupport(
                         faction.InstanceID,
                         newSupport,
-                        game.Config.Planet.MaxPopularSupport
+                        _game.Config.Planet.MaxPopularSupport
                     );
                 }
             }
@@ -69,7 +69,7 @@ namespace Rebellion.Systems
         /// </summary>
         private int CalculateSupportShift(Planet planet, Faction faction)
         {
-            GameConfig.SupportShiftConfig config = game.Config.SupportShift;
+            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
             string factionId = faction.InstanceID;
             int support = planet.GetPopularSupport(factionId);
 

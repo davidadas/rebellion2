@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Util.Attributes;
 
 namespace Rebellion.Game

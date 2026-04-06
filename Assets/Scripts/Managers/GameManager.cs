@@ -6,7 +6,6 @@ using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -16,48 +15,48 @@ using Rebellion.Util.Common;
 /// </summary>
 public class GameManager
 {
-    private GameRoot game;
-    private AISystem aiSystem;
-    private GameEventSystem eventManager;
-    private MissionSystem missionManager;
-    private MovementSystem movementManager;
-    private ManufacturingSystem manufacturingManager;
-    private MaintenanceSystem maintenanceManager;
-    private ResourceRebalanceSystem resourceRebalanceManager;
-    private CombatSystem combatManager;
-    private FogOfWarSystem fogOfWarManager;
-    private BlockadeSystem blockadeManager;
-    private DeathStarSystem deathStarManager;
-    private ResearchSystem researchManager;
-    private JediSystem jediManager;
-    private BetrayalSystem betrayalManager;
-    private SupportShiftSystem supportShiftManager;
-    private UprisingSystem uprisingManager;
-    private VictorySystem victoryManager;
-    private IRandomNumberProvider randomProvider;
-    private CombatDecisionContext pendingCombatDecision;
-    private float? tickInterval;
-    private float tickTimer;
-    private readonly Stopwatch stopwatch;
+    private GameRoot _game;
+    private AISystem _aiSystem;
+    private GameEventSystem _eventManager;
+    private MissionSystem _missionManager;
+    private MovementSystem _movementManager;
+    private ManufacturingSystem _manufacturingManager;
+    private MaintenanceSystem _maintenanceManager;
+    private ResourceRebalanceSystem _resourceRebalanceManager;
+    private CombatSystem _combatManager;
+    private FogOfWarSystem _fogOfWarManager;
+    private BlockadeSystem _blockadeManager;
+    private DeathStarSystem _deathStarManager;
+    private ResearchSystem _researchManager;
+    private JediSystem _jediManager;
+    private BetrayalSystem _betrayalManager;
+    private SupportShiftSystem _supportShiftManager;
+    private UprisingSystem _uprisingManager;
+    private VictorySystem _victoryManager;
+    private IRandomNumberProvider _randomProvider;
+    private CombatDecisionContext _pendingCombatDecision;
+    private float? _tickInterval;
+    private float _tickTimer;
+    private readonly Stopwatch _stopwatch;
 
     /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     public GameManager(GameRoot game)
     {
-        this.game = game;
+        _game = game;
 
-        if (game.Config == null)
-            game.SetConfig(ConfigLoader.LoadGameConfig());
+        if (_game.Config == null)
+            _game.SetConfig(ConfigLoader.LoadGameConfig());
 
         // TODO: Make seed configurable from game settings
-        randomProvider = new SystemRandomProvider(0);
-        stopwatch = new Stopwatch();
+        _randomProvider = new SystemRandomProvider(0);
+        _stopwatch = new Stopwatch();
 
         InitializeSystems();
         RebuildDerivedState();
         RehydrateMissions();
-        SetGameSpeed(game.GetGameSpeed());
+        SetGameSpeed(_game.GetGameSpeed());
     }
 
     /// <summary>
@@ -68,66 +67,66 @@ public class GameManager
         if (newGame == null)
             throw new InvalidOperationException("Cannot replace game with null.");
 
-        game = newGame;
+        _game = newGame;
 
-        if (game.Config == null)
-            game.SetConfig(ConfigLoader.LoadGameConfig());
+        if (_game.Config == null)
+            _game.SetConfig(ConfigLoader.LoadGameConfig());
 
         InitializeSystems();
         RebuildDerivedState();
         RehydrateMissions();
-        tickTimer = 0f;
-        stopwatch.Restart();
-        SetGameSpeed(game.GetGameSpeed());
+        _tickTimer = 0f;
+        _stopwatch.Restart();
+        SetGameSpeed(_game.GetGameSpeed());
     }
 
     /// <summary>
     /// Returns the current game instance.
     /// </summary>
-    public GameRoot GetGame() => game;
+    public GameRoot GetGame() => _game;
 
     /// <summary>
     /// Returns the current tick count.
     /// </summary>
-    public int GetCurrentTick() => game.CurrentTick;
+    public int GetCurrentTick() => _game.CurrentTick;
 
     /// <summary>
     /// Returns the player-controlled faction.
     /// </summary>
     /// <returns>The faction whose PlayerID is set.</returns>
-    public Faction GetPlayerFaction() => game.GetPlayerFaction();
+    public Faction GetPlayerFaction() => _game.GetPlayerFaction();
 
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
-    public FogOfWarSystem GetFogOfWarSystem() => fogOfWarManager;
+    public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
     /// </summary>
     public void SetGameSpeed(TickSpeed speed)
     {
-        game.SetGameSpeed(speed);
+        _game.SetGameSpeed(speed);
 
         switch (speed)
         {
             case TickSpeed.Fast:
-                tickInterval = 1f;
+                _tickInterval = 1f;
                 break;
             case TickSpeed.Medium:
-                tickInterval = 10f;
+                _tickInterval = 10f;
                 break;
             case TickSpeed.Slow:
-                tickInterval = 60f;
+                _tickInterval = 60f;
                 break;
             case TickSpeed.Paused:
-                stopwatch.Stop();
-                tickInterval = null;
+                _stopwatch.Stop();
+                _tickInterval = null;
                 break;
         }
 
-        if (tickInterval != null)
-            stopwatch.Start();
+        if (_tickInterval != null)
+            _stopwatch.Start();
     }
 
     /// <summary>
@@ -136,16 +135,16 @@ public class GameManager
     /// </summary>
     public void Update()
     {
-        if (pendingCombatDecision != null || tickInterval == null)
+        if (_pendingCombatDecision != null || _tickInterval == null)
             return;
 
-        float deltaTime = (float)stopwatch.Elapsed.TotalSeconds;
-        stopwatch.Restart();
-        tickTimer += deltaTime;
+        float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
+        _stopwatch.Restart();
+        _tickTimer += deltaTime;
 
-        if (tickTimer >= tickInterval)
+        if (_tickTimer >= _tickInterval)
         {
-            tickTimer = 0f;
+            _tickTimer = 0f;
             ProcessTick();
         }
     }
@@ -156,11 +155,11 @@ public class GameManager
     /// </summary>
     public void ResolveCombat(bool autoResolve)
     {
-        if (pendingCombatDecision == null)
+        if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
-        combatManager.Resolve(game, pendingCombatDecision, autoResolve, randomProvider);
-        pendingCombatDecision = null;
+        _combatManager.Resolve(_game, _pendingCombatDecision, autoResolve, _randomProvider);
+        _pendingCombatDecision = null;
     }
 
     /// <summary>
@@ -169,58 +168,58 @@ public class GameManager
     /// </summary>
     private void ProcessTick()
     {
-        game.CurrentTick++;
-        GameLogger.Debug("Tick: " + game.CurrentTick);
+        _game.CurrentTick++;
+        GameLogger.Debug("Tick: " + _game.CurrentTick);
 
         // 0. Resource rebalance: timer-based decay, facility suspension, resource walk
-        resourceRebalanceManager.ProcessTick(randomProvider);
+        _resourceRebalanceManager.ProcessTick(_randomProvider);
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        manufacturingManager.ProcessTick(movementManager, randomProvider);
+        _manufacturingManager.ProcessTick(_movementManager, _randomProvider);
 
         // 1b. Maintenance: scrap units if maintenance cost exceeds capacity
-        maintenanceManager.ProcessTick(randomProvider);
+        _maintenanceManager.ProcessTick(_randomProvider);
 
         // 2. Movement: updates positions before combat needs them
-        movementManager.ProcessTick();
+        _movementManager.ProcessTick();
 
         // 3. Combat: auto-resolves AI encounters; freezes tick if player is involved
-        ProcessResults(combatManager.ProcessTick(game, randomProvider));
-        if (pendingCombatDecision != null)
+        ProcessResults(_combatManager.ProcessTick(_game, _randomProvider));
+        if (_pendingCombatDecision != null)
             return;
 
         // 4. Missions: executes with current fog state
-        ProcessResults(missionManager.ProcessTick(game, randomProvider));
+        ProcessResults(_missionManager.ProcessTick(_game, _randomProvider));
 
         // 5. Events: triggers based on current world state
-        eventManager.ProcessEvents(game.GetEventPool(), randomProvider);
+        _eventManager.ProcessEvents(_game.GetEventPool(), _randomProvider);
 
         // 6. AI: observes fog/combat/events, directly mutates manager states
-        aiSystem.ProcessTick();
+        _aiSystem.ProcessTick();
 
         // 7. Blockade: checks fleet presence after AI decisions
-        blockadeManager.ProcessTick(game);
+        _blockadeManager.ProcessTick();
 
         // 8. Support shift: adjusts popular support based on hostile forces
-        supportShiftManager.ProcessTick();
+        _supportShiftManager.ProcessTick();
 
         // 9. Uprising: checks garrison vs. support, rolls dice for uprising
-        uprisingManager.ProcessTick(randomProvider);
+        _uprisingManager.ProcessTick(_randomProvider);
 
         // 10. Betrayal: loyalty checks after uprising
-        betrayalManager.ProcessTick(game);
+        _betrayalManager.ProcessTick();
 
         // 11. Death Star: construction countdown and planet destruction
-        deathStarManager.ProcessTick(game);
+        _deathStarManager.ProcessTick();
 
         // 12. Research: applies tech upgrades
-        ProcessResults(researchManager.ProcessTick(game));
+        ProcessResults(_researchManager.ProcessTick(_game));
 
         // 13. Jedi: advances Force tiers
-        ProcessResults(jediManager.ProcessTick(game, randomProvider));
+        ProcessResults(_jediManager.ProcessTick(_randomProvider));
 
         // 14. Victory: terminal check last
-        ProcessResults(victoryManager.ProcessTick());
+        ProcessResults(_victoryManager.ProcessTick());
     }
 
     /// <summary>
@@ -228,28 +227,28 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        eventManager = new GameEventSystem(game);
-        fogOfWarManager = new FogOfWarSystem(game);
-        movementManager = new MovementSystem(game, fogOfWarManager);
-        manufacturingManager = new ManufacturingSystem(game);
-        maintenanceManager = new MaintenanceSystem(game);
-        resourceRebalanceManager = new ResourceRebalanceSystem(game, randomProvider);
+        _eventManager = new GameEventSystem(_game);
+        _fogOfWarManager = new FogOfWarSystem(_game);
+        _movementManager = new MovementSystem(_game, _fogOfWarManager);
+        _manufacturingManager = new ManufacturingSystem(_game);
+        _maintenanceManager = new MaintenanceSystem(_game);
+        _resourceRebalanceManager = new ResourceRebalanceSystem(_game, _randomProvider);
         OwnershipSystem ownershipSystem = new OwnershipSystem(
-            game,
-            movementManager,
-            manufacturingManager
+            _game,
+            _movementManager,
+            _manufacturingManager
         );
-        missionManager = new MissionSystem(game, movementManager, ownershipSystem, fogOfWarManager);
-        combatManager = new CombatSystem(game, randomProvider);
-        blockadeManager = new BlockadeSystem(game);
-        deathStarManager = new DeathStarSystem(game);
-        researchManager = new ResearchSystem();
-        jediManager = new JediSystem(game);
-        betrayalManager = new BetrayalSystem(game);
-        supportShiftManager = new SupportShiftSystem(game);
-        uprisingManager = new UprisingSystem(game);
-        victoryManager = new VictorySystem(game);
-        aiSystem = new AISystem(game, missionManager, movementManager, manufacturingManager, randomProvider);
+        _missionManager = new MissionSystem(_game, _movementManager, ownershipSystem, _fogOfWarManager);
+        _combatManager = new CombatSystem(_game, _randomProvider);
+        _blockadeManager = new BlockadeSystem(_game);
+        _deathStarManager = new DeathStarSystem(_game);
+        _researchManager = new ResearchSystem();
+        _jediManager = new JediSystem(_game);
+        _betrayalManager = new BetrayalSystem(_game);
+        _supportShiftManager = new SupportShiftSystem(_game);
+        _uprisingManager = new UprisingSystem(_game);
+        _victoryManager = new VictorySystem(_game);
+        _aiSystem = new AISystem(_game, _missionManager, _movementManager, _manufacturingManager, _randomProvider);
     }
 
     /// <summary>
@@ -266,10 +265,10 @@ public class GameManager
             .Concat(resourceManager.GetGameData<Regiment>())
             .ToArray();
 
-        foreach (Faction faction in game.GetFactions())
+        foreach (Faction faction in _game.GetFactions())
             faction.RebuildResearchQueues(templates);
 
-        manufacturingManager.RebuildQueues();
+        _manufacturingManager.RebuildQueues();
     }
 
     /// <summary>
@@ -278,13 +277,13 @@ public class GameManager
     /// </summary>
     private void RehydrateMissions()
     {
-        GameConfig.MissionProbabilityTablesConfig missionTables = game.Config
+        GameConfig.MissionProbabilityTablesConfig missionTables = _game.Config
             ?.ProbabilityTables
             ?.Mission;
         if (missionTables == null)
             return;
 
-        foreach (Mission mission in game.GetSceneNodesByType<Mission>())
+        foreach (Mission mission in _game.GetSceneNodesByType<Mission>())
             mission.Configure(missionTables);
     }
 
@@ -301,7 +300,7 @@ public class GameManager
 
         foreach (PendingCombatResult result in results.OfType<PendingCombatResult>())
         {
-            pendingCombatDecision = new CombatDecisionContext
+            _pendingCombatDecision = new CombatDecisionContext
             {
                 AttackerFleetInstanceID = result.AttackerFleetInstanceID,
                 DefenderFleetInstanceID = result.DefenderFleetInstanceID,
@@ -312,16 +311,16 @@ public class GameManager
             PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
         )
         {
-            Planet changedPlanet = game.GetSceneNodeByInstanceID<Planet>(result.PlanetInstanceID);
+            Planet changedPlanet = _game.GetSceneNodeByInstanceID<Planet>(result.PlanetInstanceID);
             PlanetSystem changedSystem = changedPlanet?.GetParentOfType<PlanetSystem>();
             if (changedPlanet != null && changedSystem != null)
             {
-                foreach (Faction faction in game.Factions)
-                    fogOfWarManager.CaptureSnapshot(
+                foreach (Faction faction in _game.Factions)
+                    _fogOfWarManager.CaptureSnapshot(
                         faction,
                         changedPlanet,
                         changedSystem,
-                        game.CurrentTick
+                        _game.CurrentTick
                     );
             }
         }

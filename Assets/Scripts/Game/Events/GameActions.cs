@@ -11,7 +11,7 @@ public class RandomOutcomeAction : GameAction
     public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
     [PersistableIgnore]
-    private IRandomNumberProvider provider;
+    private IRandomNumberProvider _provider;
 
     public RandomOutcomeAction()
         : base() { }
@@ -19,17 +19,17 @@ public class RandomOutcomeAction : GameAction
     public RandomOutcomeAction(IRandomNumberProvider provider)
         : base()
     {
-        this.provider = provider;
+        _provider = provider;
     }
 
     public void SetRandomProvider(IRandomNumberProvider provider)
     {
-        this.provider = provider;
+        _provider = provider;
     }
 
     public override List<GameResult> Execute(GameRoot game)
     {
-        if (provider == null)
+        if (_provider == null)
         {
             throw new InvalidOperationException(
                 "RandomProvider must be set before Execute is called. Call SetRandomProvider() after deserialization."
@@ -38,9 +38,9 @@ public class RandomOutcomeAction : GameAction
 
         double probability = Convert.ToDouble(this.GetActionValue());
 
-        if (provider.NextDouble() < probability)
+        if (_provider.NextDouble() < probability)
         {
-            return Actions[provider.NextInt(0, Actions.Count)].Execute(game);
+            return Actions[_provider.NextInt(0, Actions.Count)].Execute(game);
         }
 
         return new List<GameResult>();
@@ -77,21 +77,21 @@ public class TriggerEventAction : GameAction
     public string EventInstanceID { get; set; }
 
     [PersistableIgnore]
-    private IRandomNumberProvider provider;
+    private IRandomNumberProvider _provider;
 
     public TriggerEventAction()
         : base() { }
 
     public void SetRandomProvider(IRandomNumberProvider provider)
     {
-        this.provider = provider;
+        _provider = provider;
     }
 
     public override List<GameResult> Execute(GameRoot game)
     {
         GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
         IRandomNumberProvider eventProvider =
-            provider ?? new SystemRandomProvider(new Random().Next());
+            _provider ?? new SystemRandomProvider(new Random().Next());
         return gameEvent.Execute(game, eventProvider);
     }
 }

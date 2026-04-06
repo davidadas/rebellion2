@@ -5,7 +5,6 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Manages unit and facility production during each game tick.
@@ -14,14 +13,14 @@ namespace Rebellion.Systems
 {
     public class ManufacturingSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         /// <summary>
         /// Creates a new ManufacturingSystem.
         /// </summary>
         public ManufacturingSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -31,7 +30,7 @@ namespace Rebellion.Systems
         /// <param name="provider">Random number provider for capital ship progress rolls.</param>
         public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
         {
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 ProcessPlanetManufacturing(planet, movementSystem, provider);
             }
@@ -64,7 +63,7 @@ namespace Rebellion.Systems
             if (!destination.CanAcceptChild((ISceneNode)item))
                 return false;
 
-            game.AttachNode((ISceneNode)item, destination);
+            _game.AttachNode((ISceneNode)item, destination);
 
             CommitToQueue(planet, item);
             return true;
@@ -108,7 +107,7 @@ namespace Rebellion.Systems
             if (!parent.CanAcceptChild((ISceneNode)item))
                 return false;
 
-            game.AttachNode((ISceneNode)item, parent);
+            _game.AttachNode((ISceneNode)item, parent);
 
             CommitToQueue(planet, item);
             return true;
@@ -123,13 +122,13 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return null;
 
-            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
             if (faction == null)
                 return null;
 
             if (!ignoreCost)
             {
-                if (game.GetRefinedMaterials(faction) < item.GetConstructionCost())
+                if (_game.GetRefinedMaterials(faction) < item.GetConstructionCost())
                     return null;
             }
 
@@ -159,7 +158,7 @@ namespace Rebellion.Systems
         /// <returns>Progress to apply this tick, or 0 if the success check fails.</returns>
         private int RollCapitalShipProgress(IRandomNumberProvider provider)
         {
-            GameConfig.ProductionConfig config = game.Config.Production;
+            GameConfig.ProductionConfig config = _game.Config.Production;
 
             // Success check: roll must be below threshold
             int successRoll = provider.NextInt(0, config.CapitalShipSuccessRollRange);
@@ -203,8 +202,8 @@ namespace Rebellion.Systems
                 if (planet.IsBlockaded())
                 {
                     int modifier = planet.GetBlockadeModifier(
-                        game.Config.Production.BlockadeCapitalShipPenalty,
-                        game.Config.Production.BlockadeFighterPenalty
+                        _game.Config.Production.BlockadeCapitalShipPenalty,
+                        _game.Config.Production.BlockadeFighterPenalty
                     );
                     // modifier is a percentage (0–100); divide by 100 to scale progressIncrement
                     progressIncrement = (progressIncrement * modifier) / 100;
@@ -304,7 +303,7 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(ownerID))
                 return;
 
-            GameConfig.ProductionConfig config = game.Config.Production;
+            GameConfig.ProductionConfig config = _game.Config.Production;
             int shift = item switch
             {
                 CapitalShip => config.CapitalShipCompletionSupportShift,
@@ -320,7 +319,7 @@ namespace Rebellion.Systems
             planet.SetPopularSupport(
                 ownerID,
                 current + shift,
-                game.Config.Planet.MaxPopularSupport
+                _game.Config.Planet.MaxPopularSupport
             );
         }
 
@@ -361,16 +360,15 @@ namespace Rebellion.Systems
                     Fleet parentFleet =
                         item is CapitalShip ? ((ISceneNode)item).GetParent() as Fleet : null;
 
-                    game.DetachNode((ISceneNode)item);
+                    _game.DetachNode((ISceneNode)item);
 
                     // Clean up empty fleet after cancelling last capital ship.
                     if (
-                        parentFleet != null
-                        && parentFleet.CapitalShips.Count == 0
+                        parentFleet?.CapitalShips.Count == 0
                         && parentFleet.GetParent() != null
                     )
                     {
-                        game.DetachNode(parentFleet);
+                        _game.DetachNode(parentFleet);
                     }
 
                     GameLogger.Debug(
@@ -393,7 +391,7 @@ namespace Rebellion.Systems
         public void RebuildQueues()
         {
             // First, clear all existing queues
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
@@ -404,7 +402,7 @@ namespace Rebellion.Systems
             }
 
             // Scan all scene nodes for manufacturable items in Building status
-            game.GetGalaxyMap()
+            _game.GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IManufacturable manufacturable)
@@ -422,7 +420,7 @@ namespace Rebellion.Systems
                         }
 
                         // Find the producer planet
-                        Planet producerPlanet = game.GetSceneNodeByInstanceID<Planet>(
+                        Planet producerPlanet = _game.GetSceneNodeByInstanceID<Planet>(
                             manufacturable.ProducerPlanetID
                         );
                         if (producerPlanet == null)
@@ -436,7 +434,7 @@ namespace Rebellion.Systems
                 });
 
             // Sort each queue by manufacturing progress (lowest progress first)
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();

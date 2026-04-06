@@ -21,25 +21,25 @@ namespace Rebellion.Systems
     /// </summary>
     public class ResourceRebalanceSystem
     {
-        private readonly GameRoot game;
-        private readonly Dictionary<string, int> nextRebalanceTick = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> nextResourceWalkTick =
+        private readonly GameRoot _game;
+        private readonly Dictionary<string, int> _nextRebalanceTick = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _nextResourceWalkTick =
             new Dictionary<string, int>();
 
         public ResourceRebalanceSystem(GameRoot game, IRandomNumberProvider provider)
         {
-            this.game = game;
+            _game = game;
 
             // Arm initial timers for each faction
-            GameConfig.ResourceRebalanceConfig config = game.GetConfig().ResourceRebalance;
-            foreach (Faction faction in game.GetFactions())
+            GameConfig.ResourceRebalanceConfig config = _game.GetConfig().ResourceRebalance;
+            foreach (Faction faction in _game.GetFactions())
             {
-                nextRebalanceTick[faction.InstanceID] =
-                    game.CurrentTick
+                _nextRebalanceTick[faction.InstanceID] =
+                    _game.CurrentTick
                     + config.RebalanceTimerBase
                     + provider.NextInt(0, config.RebalanceTimerSpread);
-                nextResourceWalkTick[faction.InstanceID] =
-                    game.CurrentTick
+                _nextResourceWalkTick[faction.InstanceID] =
+                    _game.CurrentTick
                     + config.ResourceWalkTimerBase
                     + provider.NextInt(0, config.ResourceWalkTimerSpread);
             }
@@ -50,34 +50,34 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick(IRandomNumberProvider provider)
         {
-            GameConfig.ResourceRebalanceConfig config = game.GetConfig().ResourceRebalance;
+            GameConfig.ResourceRebalanceConfig config = _game.GetConfig().ResourceRebalance;
 
-            foreach (Faction faction in game.GetFactions())
+            foreach (Faction faction in _game.GetFactions())
             {
                 string fid = faction.InstanceID;
 
                 // Rebalance timer
                 if (
-                    nextRebalanceTick.TryGetValue(fid, out int rebalTick)
-                    && game.CurrentTick >= rebalTick
+                    _nextRebalanceTick.TryGetValue(fid, out int rebalTick)
+                    && _game.CurrentTick >= rebalTick
                 )
                 {
                     RebalanceRandomPlanet(faction, config, provider);
-                    nextRebalanceTick[fid] =
-                        game.CurrentTick
+                    _nextRebalanceTick[fid] =
+                        _game.CurrentTick
                         + config.RebalanceTimerBase
                         + provider.NextInt(0, config.RebalanceTimerSpread);
                 }
 
                 // Resource walk timer
                 if (
-                    nextResourceWalkTick.TryGetValue(fid, out int walkTick)
-                    && game.CurrentTick >= walkTick
+                    _nextResourceWalkTick.TryGetValue(fid, out int walkTick)
+                    && _game.CurrentTick >= walkTick
                 )
                 {
                     ResourceWalkRandomPlanet(faction, config, provider);
-                    nextResourceWalkTick[fid] =
-                        game.CurrentTick
+                    _nextResourceWalkTick[fid] =
+                        _game.CurrentTick
                         + config.ResourceWalkTimerBase
                         + provider.NextInt(0, config.ResourceWalkTimerSpread);
                 }

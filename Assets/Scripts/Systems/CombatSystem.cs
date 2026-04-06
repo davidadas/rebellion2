@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -33,8 +32,8 @@ namespace Rebellion.Systems
     /// </summary>
     public class CombatSystem
     {
-        private readonly GameRoot game;
-        private readonly IRandomNumberProvider provider;
+        private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
 
         /// <summary>
         /// Creates a new CombatSystem.
@@ -43,8 +42,8 @@ namespace Rebellion.Systems
         /// <param name="provider">Random number provider for combat resolution.</param>
         public CombatSystem(GameRoot game, IRandomNumberProvider provider)
         {
-            this.game = game;
-            this.provider = provider;
+            _game = game;
+            _provider = provider;
         }
 
 
@@ -283,9 +282,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Placeholder for manual/interactive combat resolution.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="decision">The combat decision context.</param>
-        private void RunManualCombat(GameRoot game, CombatDecisionContext decision)
+        private void RunManualCombat(GameRoot _, CombatDecisionContext __)
         {
             // TODO: Implement manual combat resolution
         }
@@ -798,7 +795,7 @@ namespace Rebellion.Systems
 
                     if (damage.HullAfter <= 0)
                     {
-                        game.DetachNode(ship);
+                        _game.DetachNode(ship);
                         GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                     }
                 }
@@ -827,7 +824,7 @@ namespace Rebellion.Systems
 
                     if (loss.SquadsAfter <= 0)
                     {
-                        game.DetachNode(fighter);
+                        _game.DetachNode(fighter);
                         GameLogger.Log(
                             $"Fighter squadron destroyed: {fighter.GetDisplayName()}"
                         );
@@ -842,7 +839,7 @@ namespace Rebellion.Systems
         /// <param name="fleet">The empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
-            game.DetachNode(fleet);
+            _game.DetachNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 
@@ -863,10 +860,10 @@ namespace Rebellion.Systems
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
                 PlanetInstanceID = defendingPlanet.GetInstanceID(),
-                Tick = game.CurrentTick,
+                Tick = _game.CurrentTick,
             };
 
-            if (attackingFleets == null || !attackingFleets.Any())
+            if (attackingFleets?.Any() != true)
             {
                 result.Success = false;
                 return result;
@@ -907,9 +904,9 @@ namespace Rebellion.Systems
             int excessAssaultStrength = totalAssaultStrength - totalDefenseStrength;
 
             // Phase 4: Dice roll for success
-            int threshold = game.Config.Combat.AssaultSuccessThreshold;
-            int rollRange = game.Config.Combat.AssaultRollRange - 1 + threshold;
-            int roll = provider.NextInt(0, rollRange + 1);
+            int threshold = _game.Config.Combat.AssaultSuccessThreshold;
+            int rollRange = _game.Config.Combat.AssaultRollRange - 1 + threshold;
+            int roll = _provider.NextInt(0, rollRange + 1);
 
             if (roll >= threshold)
             {
@@ -943,7 +940,7 @@ namespace Rebellion.Systems
         {
             Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
             int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
-            int divisor = game.Config.Combat.AssaultPersonnelDivisor;
+            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
             return (personnel / divisor + 1) * fleetCombatValue;
         }
 
@@ -963,7 +960,7 @@ namespace Rebellion.Systems
             List<Building> defensiveBuildings = planet
                 .GetAllBuildings()
                 .Where(b => b.GetBuildingType() == BuildingType.Defense)
-                .OrderBy(b => provider.NextDouble())
+                .OrderBy(_ => _provider.NextDouble())
                 .ToList();
 
             int strikesRemaining = excessAssaultStrength;
@@ -973,7 +970,7 @@ namespace Rebellion.Systems
                     break;
 
                 result.DestroyedBuildingInstanceIDs.Add(building.GetInstanceID());
-                game.DetachNode(building);
+                _game.DetachNode(building);
                 strikesRemaining--;
 
                 GameLogger.Log(
@@ -995,7 +992,7 @@ namespace Rebellion.Systems
         )
         {
             string oldOwnerID = planet.GetOwnerInstanceID();
-            game.ChangeUnitOwnership(planet, newOwnerID);
+            _game.ChangeUnitOwnership(planet, newOwnerID);
 
             result.OwnershipChanged = true;
             result.NewOwnerInstanceID = newOwnerID;
@@ -1022,10 +1019,10 @@ namespace Rebellion.Systems
             BombardmentResult result = new BombardmentResult
             {
                 PlanetInstanceID = targetPlanet.GetInstanceID(),
-                Tick = game.CurrentTick,
+                Tick = _game.CurrentTick,
             };
 
-            if (attackingFleets == null || !attackingFleets.Any())
+            if (attackingFleets?.Any() != true)
                 return result;
 
             string attackerFactionID = attackingFleets[0].GetOwnerInstanceID();
@@ -1083,7 +1080,7 @@ namespace Rebellion.Systems
                     b.DefenseFacilityClass == DefenseFacilityClass.Shield
                     || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
                 );
-            return shieldCount >= game.Config.Combat.BombardmentShieldBlockThreshold;
+            return shieldCount >= _game.Config.Combat.BombardmentShieldBlockThreshold;
         }
 
         /// <summary>
@@ -1094,7 +1091,7 @@ namespace Rebellion.Systems
         /// <returns>Total bombardment strength.</returns>
         private int CalculateBombardmentStrength(List<Fleet> fleets)
         {
-            int divisor = game.Config.Combat.AssaultPersonnelDivisor;
+            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
             int strength = 0;
 
             foreach (Fleet fleet in fleets)
@@ -1142,9 +1139,9 @@ namespace Rebellion.Systems
             BombardmentResult result
         )
         {
-            int thresholdLow = game.Config.Combat.BombardmentStrikeThresholdLow;
-            int thresholdHigh = game.Config.Combat.BombardmentStrikeThresholdHigh;
-            int energyResistance = game.Config.Combat.BombardmentEnergyResistance;
+            int thresholdLow = _game.Config.Combat.BombardmentStrikeThresholdLow;
+            int thresholdHigh = _game.Config.Combat.BombardmentStrikeThresholdHigh;
+            int energyResistance = _game.Config.Combat.BombardmentEnergyResistance;
 
             for (int i = 0; i < netStrikes; i++)
             {
@@ -1152,10 +1149,10 @@ namespace Rebellion.Systems
                 if (lanes.Count == 0)
                     break;
 
-                int laneIndex = provider.NextInt(0, lanes.Count);
+                int laneIndex = _provider.NextInt(0, lanes.Count);
                 BombardmentLane lane = lanes[laneIndex];
 
-                int roll = provider.NextInt(thresholdLow, thresholdHigh + 1);
+                int roll = _provider.NextInt(thresholdLow, thresholdHigh + 1);
                 if (lane.Resistance >= roll)
                     continue;
 
@@ -1175,11 +1172,11 @@ namespace Rebellion.Systems
             BombardmentResult result
         )
         {
-            int supportShift = game.Config.AI.CapitalShipProduction.OrbitalStrikeSupportShift;
+            int supportShift = _game.Config.AI.CapitalShipProduction.OrbitalStrikeSupportShift;
             if (result.Strikes.Count > 0 && supportShift != 0)
             {
                 int currentSupport = planet.GetPopularSupport(attackerFactionID);
-                int maxSupport = game.Config.Planet.MaxPopularSupport;
+                int maxSupport = _game.Config.Planet.MaxPopularSupport;
                 int newSupport = Math.Max(0, currentSupport + supportShift);
                 planet.SetPopularSupport(attackerFactionID, newSupport, maxSupport);
                 result.PopularSupportShift = supportShift;
@@ -1281,7 +1278,7 @@ namespace Rebellion.Systems
                         strike.TargetInstanceID = target.GetInstanceID();
                         strike.TargetName = target.GetDisplayName();
                         result.DestroyedRegimentInstanceIDs.Add(target.GetInstanceID());
-                        game.DetachNode(target);
+                        _game.DetachNode(target);
                     }
                     break;
                 }
@@ -1294,7 +1291,7 @@ namespace Rebellion.Systems
                         strike.TargetInstanceID = target.GetInstanceID();
                         strike.TargetName = target.GetDisplayName();
                         result.DestroyedStarfighterInstanceIDs.Add(target.GetInstanceID());
-                        game.DetachNode(target);
+                        _game.DetachNode(target);
                     }
                     break;
                 }
@@ -1317,7 +1314,7 @@ namespace Rebellion.Systems
                         strike.TargetInstanceID = target.GetInstanceID();
                         strike.TargetName = target.GetDisplayName();
                         result.DestroyedBuildingInstanceIDs.Add(target.GetInstanceID());
-                        game.DetachNode(target);
+                        _game.DetachNode(target);
                     }
                     break;
                 }

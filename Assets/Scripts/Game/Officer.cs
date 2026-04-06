@@ -1,15 +1,11 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game
 {
     /// <summary>
-    ///
+    /// Defines the command rank levels an officer can hold.
     /// </summary>
     public enum OfficerRank
     {
@@ -132,21 +128,21 @@ namespace Rebellion.Game
         public Officer() { }
 
         /// <summary>
-        ///
+        /// Returns the officer's current value for the specified mission skill.
         /// </summary>
         /// <param name="skill"></param>
-        /// <returns></returns>
+        /// <returns>The skill value.</returns>
         public int GetSkillValue(MissionParticipantSkill skill)
         {
             return Skills[skill];
         }
 
         /// <summary>
-        ///
+        /// Sets the officer's value for the specified mission skill.
         /// </summary>
         /// <param name="skill"></param>
         /// <param name="value"></param>
-        /// <returns></returns>
+        /// <returns>The new skill value.</returns>
         public int SetSkillValue(MissionParticipantSkill skill, int value)
         {
             return Skills[skill] = value;
@@ -186,18 +182,18 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns whether the officer is currently assigned to a mission.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the officer's parent is a <see cref="Mission"/>; otherwise, false.</returns>
         public bool IsOnMission()
         {
             return GetParent() is Mission;
         }
 
         /// <summary>
-        ///
+        /// Returns whether the officer can be ordered to move.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the officer has no active movement state and is not on an incomplete mission; otherwise, false.</returns>
         public bool IsMovable()
         {
             if (GetParent() is Mission mission)

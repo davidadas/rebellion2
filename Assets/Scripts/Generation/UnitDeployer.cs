@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -58,7 +57,7 @@ namespace Rebellion.Generation
                 .Where(p => p.InstanceID != null)
                 .ToDictionary(p => p.InstanceID);
 
-            DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory, rng);
+            DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory);
             DeployFixedGarrisons(config.FixedGarrisons, planetMap, classification, factory);
             DeployFixedFleets(config.FixedFleets, planetMap, factory, factions, rng);
             DeployBudgetUnits(systems, factions, config.FactionBudgets, factory, gameConfig, rng,
@@ -73,13 +72,11 @@ namespace Rebellion.Generation
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
         /// <param name="gcConfig">Galaxy classification config with per-faction garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
-        /// <param name="rng">Random number provider.</param>
         private void DeployUprisingPreventionGarrisons(
             PlanetSystem[] systems,
             UnitDeploymentSection config,
             GalaxyClassificationSection gcConfig,
-            UnitFactory factory,
-            IRandomNumberProvider rng
+            UnitFactory factory
         )
         {
             Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
@@ -198,7 +195,7 @@ namespace Rebellion.Generation
                     continue;
 
                 Faction faction = factions.First(f => f.InstanceID == fleetConfig.FactionID);
-                Fleet fleet = faction.CreateFleet(null, capitalShips.ToArray(), FleetRoleType.Battle);
+                Fleet fleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
                 planet.AddChild(fleet);
 
                 CapitalShip cargoShip = capitalShips[0];
@@ -263,7 +260,7 @@ namespace Rebellion.Generation
                     continue;
 
                 WeightedTable<List<UnitEntry>> unitTable = new WeightedTable<List<UnitEntry>>(
-                    budget.UnitTable.Select(e => (e.CumulativeWeight, e.Units)).ToList(),
+                    budget.UnitTable.ConvertAll(e => (e.CumulativeWeight, e.Units)),
                     rollMin: 1,
                     rollMax: 101,
                     fallbackToLast: true
@@ -294,7 +291,6 @@ namespace Rebellion.Generation
         /// <param name="systems">All planet systems (for maintenance capacity calculation).</param>
         /// <param name="faction">The faction to calculate budget for.</param>
         /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="factory">Unit factory (unused directly, reserved for cost queries).</param>
         /// <param name="gameConfig">Game config for the refinement multiplier.</param>
         /// <param name="galaxySize">Galaxy size index for budget level lookup.</param>
         /// <param name="difficulty">Difficulty index for budget level lookup.</param>
@@ -304,7 +300,7 @@ namespace Rebellion.Generation
             PlanetSystem[] systems,
             Faction faction,
             FactionBudget budget,
-            UnitFactory factory,
+            UnitFactory _,
             GameConfig gameConfig,
             int galaxySize,
             int difficulty,
@@ -399,7 +395,7 @@ namespace Rebellion.Generation
                 }
                 else
                 {
-                    Fleet newFleet = faction.CreateFleet(null, shipsForFleet.ToArray(), FleetRoleType.Battle);
+                    Fleet newFleet = faction.CreateFleet(shipsForFleet.ToArray(), FleetRoleType.Battle);
                     planet.AddChild(newFleet);
                 }
             }
@@ -467,9 +463,9 @@ namespace Rebellion.Generation
         /// </summary>
         private class UnitFactory
         {
-            private readonly Dictionary<string, Regiment> regimentMap;
-            private readonly Dictionary<string, Starfighter> fighterMap;
-            private readonly Dictionary<string, CapitalShip> shipMap;
+            private readonly Dictionary<string, Regiment> _regimentMap;
+            private readonly Dictionary<string, Starfighter> _fighterMap;
+            private readonly Dictionary<string, CapitalShip> _shipMap;
 
             public UnitFactory(
                 Regiment[] regiments,
@@ -477,9 +473,9 @@ namespace Rebellion.Generation
                 CapitalShip[] ships
             )
             {
-                regimentMap = regiments.GroupBy(r => r.TypeID).ToDictionary(g => g.Key, g => g.First());
-                fighterMap = fighters.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
-                shipMap = ships.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
+                _regimentMap = regiments.GroupBy(r => r.TypeID).ToDictionary(g => g.Key, g => g.First());
+                _fighterMap = fighters.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
+                _shipMap = ships.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
             }
 
             /// <summary>
@@ -490,7 +486,7 @@ namespace Rebellion.Generation
             /// <returns>The created unit, or null if the TypeID was not found in any template map.</returns>
             public ISceneNode Create(string typeID, string ownerID)
             {
-                if (shipMap.TryGetValue(typeID, out CapitalShip shipTemplate))
+                if (_shipMap.TryGetValue(typeID, out CapitalShip shipTemplate))
                 {
                     CapitalShip ship = shipTemplate.GetDeepCopy();
                     ship.SetOwnerInstanceID(ownerID);
@@ -499,7 +495,7 @@ namespace Rebellion.Generation
                     return ship;
                 }
 
-                if (regimentMap.TryGetValue(typeID, out Regiment regTemplate))
+                if (_regimentMap.TryGetValue(typeID, out Regiment regTemplate))
                 {
                     Regiment reg = regTemplate.GetDeepCopy();
                     reg.SetOwnerInstanceID(ownerID);
@@ -508,7 +504,7 @@ namespace Rebellion.Generation
                     return reg;
                 }
 
-                if (fighterMap.TryGetValue(typeID, out Starfighter sfTemplate))
+                if (_fighterMap.TryGetValue(typeID, out Starfighter sfTemplate))
                 {
                     Starfighter sf = sfTemplate.GetDeepCopy();
                     sf.SetOwnerInstanceID(ownerID);
@@ -527,11 +523,11 @@ namespace Rebellion.Generation
             /// <returns>The maintenance cost, or 1 if the TypeID was not found.</returns>
             public int GetMaintenanceCost(string typeID)
             {
-                if (shipMap.TryGetValue(typeID, out CapitalShip ship))
+                if (_shipMap.TryGetValue(typeID, out CapitalShip ship))
                     return ship.MaintenanceCost;
-                if (regimentMap.TryGetValue(typeID, out Regiment reg))
+                if (_regimentMap.TryGetValue(typeID, out Regiment reg))
                     return reg.MaintenanceCost;
-                if (fighterMap.TryGetValue(typeID, out Starfighter sf))
+                if (_fighterMap.TryGetValue(typeID, out Starfighter sf))
                     return sf.MaintenanceCost;
                 return 1;
             }

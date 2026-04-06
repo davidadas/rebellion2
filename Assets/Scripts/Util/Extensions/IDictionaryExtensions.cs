@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace Rebellion.Util.Extensions
@@ -6,13 +5,13 @@ namespace Rebellion.Util.Extensions
     public static class IDictionaryExtensions
     {
         /// <summary>
-        ///
+        /// Returns the value for the given key, inserting the provided default value first if the key is absent.
         /// </summary>
         /// <typeparam name="TKey"></typeparam>
         /// <typeparam name="TValue"></typeparam>
         /// <param name="source"></param>
         /// <param name="key"></param>
-        /// <returns></returns>
+        /// <returns>The existing or newly inserted value.</returns>
         public static TValue GetOrAddValue<TKey, TValue>(
             this IDictionary<TKey, TValue> source,
             TKey key,

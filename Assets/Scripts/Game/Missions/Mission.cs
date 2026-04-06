@@ -21,8 +21,7 @@ public abstract class Mission : ContainerNode
     public List<IMissionParticipant> DecoyParticipants { get; set; }
 
     public MissionParticipantSkill ParticipantSkill { get; set; }
-
-    public bool HasInitiated = false;
+    public bool HasInitiated;
 
     [PersistableIgnore]
     public ProbabilityTable SuccessProbabilityTable { get; set; }
@@ -337,10 +336,8 @@ public abstract class Mission : ContainerNode
                 MissionInstanceID = InstanceID,
                 MissionName = DisplayName,
                 TargetName = targetName,
-                ParticipantInstanceIDs = allParticipants.Select(p => p.GetInstanceID()).ToList(),
-                ParticipantNames = allParticipants
-                    .Select(p => ((ISceneNode)p).GetDisplayName())
-                    .ToList(),
+                ParticipantInstanceIDs = allParticipants.ConvertAll(p => p.GetInstanceID()),
+                ParticipantNames = allParticipants.ConvertAll(p => ((ISceneNode)p).GetDisplayName()),
                 Outcome = outcome,
                 Tick = game.CurrentTick,
             }

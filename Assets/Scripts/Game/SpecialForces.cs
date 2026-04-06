@@ -1,9 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game
 {
@@ -45,16 +42,16 @@ namespace Rebellion.Game
         public SpecialForces() { }
 
         /// <summary>
-        ///
+        /// Returns the manufacturing type for this unit.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The manufacturing type.</returns>
         public ManufacturingType GetManufacturingType()
         {
             return ManufacturingType.Troop;
         }
 
         /// <summary>
-        ///
+        /// Always throws because special forces units do not support setting mission skills.
         /// </summary>
         /// <param name="skill"></param>
         /// <param name="value"></param>
@@ -65,18 +62,18 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        ///
+        /// Returns whether the special forces unit can be ordered to move.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the unit has an active movement state and is not on a mission; otherwise, false.</returns>
         public bool IsMovable()
         {
             return Movement != null && !IsOnMission();
         }
 
         /// <summary>
-        ///
+        /// Returns whether the special forces unit is currently assigned to a mission.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the unit's parent is a <see cref="Mission"/>; otherwise, false.</returns>
         public bool IsOnMission()
         {
             return GetParent() is Mission;

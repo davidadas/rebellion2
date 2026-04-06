@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Util.Attributes;
 
 namespace Rebellion.SceneGraph
@@ -126,7 +125,7 @@ namespace Rebellion.SceneGraph
         /// <summary>
         /// Sets the owner Instance ID. If the ID is not in the allowed list, throws an exception.
         /// </summary>
-        /// <param name="value">The owner Instance ID to set.</param>
+        /// <param name="ownerInstanceId">The owner Instance ID to set.</param>
         /// <exception cref="InvalidOperationException">Thrown when the owner Instance ID is invalid.</exception>
         public void SetOwnerInstanceID(string ownerInstanceId)
         {

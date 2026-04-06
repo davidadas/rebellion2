@@ -41,6 +41,45 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
+          enableCodeCoverage: true
+          coverageOptions: "generateAdditionalMetrics;assemblyFilters:+GameAssembly"
+
+      - name: Check coverage threshold
+        run: |
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET, glob, sys
+
+          THRESHOLD = 50.0
+
+          files = glob.glob("artifacts/**/TestCoverageResults_*.xml", recursive=True)
+          if not files:
+              print("No coverage XML found — skipping threshold check")
+              sys.exit(0)
+
+          total_covered = 0
+          total_coverable = 0
+          for path in files:
+              root = ET.parse(path).getroot()
+              summary = root.find("Summary")
+              if summary is None:
+                  print(f"No top-level Summary found in {path} — skipping file")
+                  continue
+              total_covered   += int(summary.get("visitedSequencePoints", 0))
+              total_coverable += int(summary.get("numSequencePoints", 0))
+
+          if total_coverable == 0:
+              print("No coverable lines found — skipping threshold check")
+              sys.exit(0)
+
+          pct = total_covered / total_coverable * 100
+          print(f"Line coverage: {pct:.1f}% ({total_covered}/{total_coverable})")
+
+          if pct < THRESHOLD:
+              print(f"FAIL: coverage {pct:.1f}% is below threshold {THRESHOLD}%")
+              sys.exit(1)
+
+          print(f"OK: coverage {pct:.1f}% meets threshold {THRESHOLD}%")
+          EOF
 
       - name: Install Roslynator CLI
         run: |

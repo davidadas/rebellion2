@@ -67,40 +67,40 @@ public class BaseSceneNodeTests
 
     private class MockSceneNodeB : MockSceneNode { }
 
-    private MockSceneNode rootNode;
-    private MockSceneNode childNode1;
-    private MockSceneNode childNode2;
-    private MockSceneNodeA nodeA;
-    private MockSceneNodeB nodeB;
+    private MockSceneNode _rootNode;
+    private MockSceneNode _childNode1;
+    private MockSceneNode _childNode2;
+    private MockSceneNodeA _nodeA;
+    private MockSceneNodeB _nodeB;
 
     [SetUp]
     public void Setup()
     {
-        rootNode = new MockSceneNode
+        _rootNode = new MockSceneNode
         {
             DisplayName = "RootNode",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        childNode1 = new MockSceneNode
+        _childNode1 = new MockSceneNode
         {
             DisplayName = "ChildNode1",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        childNode2 = new MockSceneNode
+        _childNode2 = new MockSceneNode
         {
             DisplayName = "ChildNode2",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeA = new MockSceneNodeA
+        _nodeA = new MockSceneNodeA
         {
             DisplayName = "NodeA",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeB = new MockSceneNodeB
+        _nodeB = new MockSceneNodeB
         {
             DisplayName = "NodeB",
             InstanceID = Guid.NewGuid().ToString(),
@@ -110,21 +110,21 @@ public class BaseSceneNodeTests
     [Test]
     public void SetParent_ValidParent_UpdatesParentReferences()
     {
-        rootNode.AddChild(childNode1);
-        childNode1.SetParent(rootNode);
+        _rootNode.AddChild(_childNode1);
+        _childNode1.SetParent(_rootNode);
 
-        Assert.AreEqual(rootNode, childNode1.GetParent());
-        Assert.AreEqual(childNode1, rootNode.GetChildren().First());
+        Assert.AreEqual(_rootNode, _childNode1.GetParent());
+        Assert.AreEqual(_childNode1, _rootNode.GetChildren().First());
     }
 
     [Test]
     public void GetParentOfType_ValidType_ReturnsCorrectParent()
     {
-        childNode1.SetParent(nodeB);
-        MockSceneNode result = childNode1.GetParentOfType<MockSceneNodeB>();
+        _childNode1.SetParent(_nodeB);
+        MockSceneNode result = _childNode1.GetParentOfType<MockSceneNodeB>();
 
         Assert.IsTrue(
-            ReferenceEquals(nodeB, result),
+            ReferenceEquals(_nodeB, result),
             "The parent node returned is not the same instance as expected."
         );
     }
@@ -132,14 +132,14 @@ public class BaseSceneNodeTests
     [Test]
     public void GetParentOfType_CyclicGraphWithDifferentMockTypes_ThrowsInvalidOperationException()
     {
-        rootNode.SetParent(childNode1);
-        childNode1.SetParent(rootNode);
+        _rootNode.SetParent(_childNode1);
+        _childNode1.SetParent(_rootNode);
 
-        Assert.AreEqual(rootNode, childNode1.GetParent(), "NodeB's parent should be NodeA.");
-        Assert.AreEqual(childNode1, rootNode.GetParent(), "NodeA's parent should be NodeB.");
+        Assert.AreEqual(_rootNode, _childNode1.GetParent(), "NodeB's parent should be NodeA.");
+        Assert.AreEqual(_childNode1, _rootNode.GetParent(), "NodeA's parent should be NodeB.");
 
         Assert.Throws<InvalidOperationException>(
-            () => childNode1.GetParentOfType<MockSceneNodeA>(),
+            () => _childNode1.GetParentOfType<MockSceneNodeA>(),
             "Cycle detection did not throw an exception as expected."
         );
     }
@@ -147,19 +147,19 @@ public class BaseSceneNodeTests
     [Test]
     public void SetOwnerInstanceID_AllowedID_SetsSuccessfully()
     {
-        childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
+        _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
 
-        Assert.DoesNotThrow(() => childNode1.SetOwnerInstanceID("Owner1"));
-        Assert.AreEqual("Owner1", childNode1.OwnerInstanceID);
+        Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("Owner1"));
+        Assert.AreEqual("Owner1", _childNode1.OwnerInstanceID);
     }
 
     [Test]
     public void SetOwnerInstanceID_DisallowedID_ThrowsInvalidOperationException()
     {
-        childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
+        _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-            childNode1.SetOwnerInstanceID("InvalidOwner")
+            _childNode1.SetOwnerInstanceID("InvalidOwner")
         );
         Assert.That(ex.Message, Does.Contain("Invalid OwnerInstanceID"));
     }
@@ -167,29 +167,29 @@ public class BaseSceneNodeTests
     [Test]
     public void GetChildren_WithPredicateAndType_ReturnsMatchingChildren()
     {
-        childNode1.OwnerInstanceID = "Owner1";
-        childNode2.OwnerInstanceID = "Owner2";
+        _childNode1.OwnerInstanceID = "Owner1";
+        _childNode2.OwnerInstanceID = "Owner2";
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
-        IEnumerable<MockSceneNode> matchingChildren = rootNode.GetChildren<MockSceneNode>(
+        IEnumerable<MockSceneNode> matchingChildren = _rootNode.GetChildren<MockSceneNode>(
             child => child.OwnerInstanceID == "Owner1",
             false
         );
 
         Assert.AreEqual(1, matchingChildren.Count());
-        Assert.AreEqual(childNode1, matchingChildren.First());
+        Assert.AreEqual(_childNode1, matchingChildren.First());
     }
 
     [Test]
     public void Traverse_HierarchicalNodes_VisitsAllNodes()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         Assert.AreEqual(3, visitedNodes.Count); // rootNode + childNode1 + childNode2
     }
@@ -197,20 +197,20 @@ public class BaseSceneNodeTests
     [Test]
     public void SetParent_ChangesParent_UpdatesLastParent()
     {
-        childNode1.SetParent(rootNode);
-        childNode1.SetParent(null);
+        _childNode1.SetParent(_rootNode);
+        _childNode1.SetParent(null);
 
-        Assert.AreEqual(rootNode, childNode1.GetLastParent());
-        Assert.IsNull(childNode1.GetParent());
+        Assert.AreEqual(_rootNode, _childNode1.GetLastParent());
+        Assert.IsNull(_childNode1.GetParent());
     }
 
     [Test]
     public void GetOwnerInstanceID_WhenSet_ReturnsCorrectValue()
     {
         string testOwnerId = "TestOwner123";
-        childNode1.OwnerInstanceID = testOwnerId;
+        _childNode1.OwnerInstanceID = testOwnerId;
 
-        string result = childNode1.GetOwnerInstanceID();
+        string result = _childNode1.GetOwnerInstanceID();
 
         Assert.AreEqual(testOwnerId, result);
     }
@@ -218,7 +218,7 @@ public class BaseSceneNodeTests
     [Test]
     public void GetOwnerInstanceID_WhenNotSet_ReturnsNull()
     {
-        string result = childNode1.GetOwnerInstanceID();
+        string result = _childNode1.GetOwnerInstanceID();
 
         Assert.IsNull(result);
     }
@@ -238,16 +238,16 @@ public class BaseSceneNodeTests
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(grandchild1);
-        childNode2.AddChild(grandchild2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(grandchild1);
+        _childNode2.AddChild(grandchild2);
 
-        IEnumerable<MockSceneNode> allDescendants = rootNode.GetChildren<MockSceneNode>(null, true);
+        IEnumerable<MockSceneNode> allDescendants = _rootNode.GetChildren<MockSceneNode>(null, true);
 
         Assert.AreEqual(4, allDescendants.Count());
-        Assert.IsTrue(allDescendants.Contains(childNode1));
-        Assert.IsTrue(allDescendants.Contains(childNode2));
+        Assert.IsTrue(allDescendants.Contains(_childNode1));
+        Assert.IsTrue(allDescendants.Contains(_childNode2));
         Assert.IsTrue(allDescendants.Contains(grandchild1));
         Assert.IsTrue(allDescendants.Contains(grandchild2));
     }
@@ -269,43 +269,43 @@ public class BaseSceneNodeTests
             OwnerInstanceID = "Owner2",
         };
 
-        childNode1.OwnerInstanceID = "Owner1";
-        childNode2.OwnerInstanceID = "Owner2";
+        _childNode1.OwnerInstanceID = "Owner1";
+        _childNode2.OwnerInstanceID = "Owner2";
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(grandchild1);
-        childNode2.AddChild(grandchild2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(grandchild1);
+        _childNode2.AddChild(grandchild2);
 
-        IEnumerable<MockSceneNode> matchingDescendants = rootNode.GetChildren<MockSceneNode>(
+        IEnumerable<MockSceneNode> matchingDescendants = _rootNode.GetChildren<MockSceneNode>(
             child => child.OwnerInstanceID == "Owner1",
             true
         );
 
         Assert.AreEqual(2, matchingDescendants.Count());
-        Assert.IsTrue(matchingDescendants.Contains(childNode1));
+        Assert.IsTrue(matchingDescendants.Contains(_childNode1));
         Assert.IsTrue(matchingDescendants.Contains(grandchild1));
     }
 
     [Test]
     public void GetChildren_NonGeneric_ReturnsAllDirectChildren()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        rootNode.AddChild(nodeA);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _rootNode.AddChild(_nodeA);
 
-        IEnumerable<ISceneNode> children = rootNode.GetChildren();
+        IEnumerable<ISceneNode> children = _rootNode.GetChildren();
 
         Assert.AreEqual(3, children.Count());
-        Assert.IsTrue(children.Contains(childNode1));
-        Assert.IsTrue(children.Contains(childNode2));
-        Assert.IsTrue(children.Contains(nodeA));
+        Assert.IsTrue(children.Contains(_childNode1));
+        Assert.IsTrue(children.Contains(_childNode2));
+        Assert.IsTrue(children.Contains(_nodeA));
     }
 
     [Test]
     public void GetChildren_NonGeneric_WhenNoChildren_ReturnsEmptyCollection()
     {
-        IEnumerable<ISceneNode> children = rootNode.GetChildren();
+        IEnumerable<ISceneNode> children = _rootNode.GetChildren();
 
         Assert.AreEqual(0, children.Count());
     }
@@ -313,83 +313,83 @@ public class BaseSceneNodeTests
     [Test]
     public void SetOwnerInstanceID_NullAllowedOwnerInstanceIDs_AcceptsAnyValue()
     {
-        childNode1.AllowedOwnerInstanceIDs = null;
+        _childNode1.AllowedOwnerInstanceIDs = null;
 
-        Assert.DoesNotThrow(() => childNode1.SetOwnerInstanceID("AnyOwner"));
-        Assert.AreEqual("AnyOwner", childNode1.OwnerInstanceID);
+        Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
+        Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
     }
 
     [Test]
     public void SetOwnerInstanceID_EmptyAllowedOwnerInstanceIDs_AcceptsAnyValue()
     {
-        childNode1.AllowedOwnerInstanceIDs = new List<string>();
+        _childNode1.AllowedOwnerInstanceIDs = new List<string>();
 
-        Assert.DoesNotThrow(() => childNode1.SetOwnerInstanceID("AnyOwner"));
-        Assert.AreEqual("AnyOwner", childNode1.OwnerInstanceID);
+        Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID("AnyOwner"));
+        Assert.AreEqual("AnyOwner", _childNode1.OwnerInstanceID);
     }
 
     [Test]
     public void SetOwnerInstanceID_NullValueWithAllowedList_SetsSuccessfully()
     {
-        childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
+        _childNode1.AllowedOwnerInstanceIDs = new List<string> { "Owner1", "Owner2" };
 
-        Assert.DoesNotThrow(() => childNode1.SetOwnerInstanceID(null));
-        Assert.IsNull(childNode1.OwnerInstanceID);
+        Assert.DoesNotThrow(() => _childNode1.SetOwnerInstanceID(null));
+        Assert.IsNull(_childNode1.OwnerInstanceID);
     }
 
     [Test]
     public void SetParent_SameParentTwice_DoesNotChangePrevious()
     {
-        rootNode.AddChild(childNode1);
-        childNode1.SetParent(rootNode);
+        _rootNode.AddChild(_childNode1);
+        _childNode1.SetParent(_rootNode);
 
-        ISceneNode lastParentBefore = childNode1.GetLastParent();
-        string lastParentInstanceIDBefore = childNode1.LastParentInstanceID;
+        ISceneNode lastParentBefore = _childNode1.GetLastParent();
+        string lastParentInstanceIDBefore = _childNode1.LastParentInstanceID;
 
-        childNode1.SetParent(rootNode);
+        _childNode1.SetParent(_rootNode);
 
-        Assert.AreEqual(rootNode, childNode1.GetParent());
-        Assert.AreEqual(lastParentBefore, childNode1.GetLastParent());
-        Assert.AreEqual(lastParentInstanceIDBefore, childNode1.LastParentInstanceID);
+        Assert.AreEqual(_rootNode, _childNode1.GetParent());
+        Assert.AreEqual(lastParentBefore, _childNode1.GetLastParent());
+        Assert.AreEqual(lastParentInstanceIDBefore, _childNode1.LastParentInstanceID);
     }
 
     [Test]
     public void ParentInstanceID_WhenParentSet_MatchesParentInstanceID()
     {
-        childNode1.SetParent(rootNode);
+        _childNode1.SetParent(_rootNode);
 
-        Assert.AreEqual(rootNode.InstanceID, childNode1.ParentInstanceID);
+        Assert.AreEqual(_rootNode.InstanceID, _childNode1.ParentInstanceID);
     }
 
     [Test]
     public void ParentInstanceID_WhenParentNull_ReturnsNull()
     {
-        childNode1.SetParent(null);
+        _childNode1.SetParent(null);
 
-        Assert.IsNull(childNode1.ParentInstanceID);
+        Assert.IsNull(_childNode1.ParentInstanceID);
     }
 
     [Test]
     public void LastParentInstanceID_AfterParentChange_MatchesPreviousParentInstanceID()
     {
-        string originalRootID = rootNode.InstanceID;
+        string originalRootID = _rootNode.InstanceID;
 
-        childNode1.SetParent(rootNode);
-        childNode1.SetParent(childNode2);
+        _childNode1.SetParent(_rootNode);
+        _childNode1.SetParent(_childNode2);
 
-        Assert.AreEqual(originalRootID, childNode1.LastParentInstanceID);
-        Assert.AreEqual(childNode2.InstanceID, childNode1.ParentInstanceID);
+        Assert.AreEqual(originalRootID, _childNode1.LastParentInstanceID);
+        Assert.AreEqual(_childNode2.InstanceID, _childNode1.ParentInstanceID);
     }
 
     [Test]
     public void LastParentInstanceID_WhenParentSetToNull_MatchesPreviousParentInstanceID()
     {
-        string originalRootID = rootNode.InstanceID;
+        string originalRootID = _rootNode.InstanceID;
 
-        childNode1.SetParent(rootNode);
-        childNode1.SetParent(null);
+        _childNode1.SetParent(_rootNode);
+        _childNode1.SetParent(null);
 
-        Assert.AreEqual(originalRootID, childNode1.LastParentInstanceID);
-        Assert.IsNull(childNode1.ParentInstanceID);
+        Assert.AreEqual(originalRootID, _childNode1.LastParentInstanceID);
+        Assert.IsNull(_childNode1.ParentInstanceID);
     }
 }

@@ -6,48 +6,48 @@ using Rebellion.SceneGraph;
 [TestFixture]
 public class GalaxyMapTests
 {
-    private GalaxyMap galaxyMap;
-    private PlanetSystem planetSystem1;
-    private PlanetSystem planetSystem2;
+    private GalaxyMap _galaxyMap;
+    private PlanetSystem _planetSystem1;
+    private PlanetSystem _planetSystem2;
 
     [SetUp]
     public void SetUp()
     {
-        galaxyMap = new GalaxyMap { InstanceID = "GALAXY1" };
+        _galaxyMap = new GalaxyMap { InstanceID = "GALAXY1" };
 
-        planetSystem1 = new PlanetSystem { InstanceID = "SYSTEM1" };
+        _planetSystem1 = new PlanetSystem { InstanceID = "SYSTEM1" };
 
-        planetSystem2 = new PlanetSystem { InstanceID = "SYSTEM2" };
+        _planetSystem2 = new PlanetSystem { InstanceID = "SYSTEM2" };
     }
 
     [Test]
     public void AddChild_WithPlanetSystem_AddsPlanetSystem()
     {
-        galaxyMap.AddChild(planetSystem1);
+        _galaxyMap.AddChild(_planetSystem1);
 
-        Assert.Contains(planetSystem1, galaxyMap.PlanetSystems);
+        Assert.Contains(_planetSystem1, _galaxyMap.PlanetSystems);
     }
 
     [Test]
     public void RemoveChild_RemovesPlanetSystem()
     {
-        galaxyMap.AddChild(planetSystem1);
+        _galaxyMap.AddChild(_planetSystem1);
 
-        galaxyMap.RemoveChild(planetSystem1);
+        _galaxyMap.RemoveChild(_planetSystem1);
 
-        Assert.IsFalse(galaxyMap.PlanetSystems.Contains(planetSystem1));
+        Assert.IsFalse(_galaxyMap.PlanetSystems.Contains(_planetSystem1));
     }
 
     [Test]
     public void GetChildren_ReturnsAllPlanetSystems()
     {
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem2);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem2);
 
-        IEnumerable<ISceneNode> children = galaxyMap.GetChildren();
+        IEnumerable<ISceneNode> children = _galaxyMap.GetChildren();
 
         CollectionAssert.AreEquivalent(
-            new ISceneNode[] { planetSystem1, planetSystem2 },
+            new ISceneNode[] { _planetSystem1, _planetSystem2 },
             children,
             "GalaxyMap should return correct children."
         );
@@ -56,19 +56,19 @@ public class GalaxyMapTests
     [Test]
     public void SerializeAndDeserialize_MaintainsState()
     {
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem2);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem2);
 
-        string serialized = SerializationHelper.Serialize(galaxyMap);
+        string serialized = SerializationHelper.Serialize(_galaxyMap);
         GalaxyMap deserialized = SerializationHelper.Deserialize<GalaxyMap>(serialized);
 
         Assert.AreEqual(
-            galaxyMap.InstanceID,
+            _galaxyMap.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            galaxyMap.PlanetSystems.Count,
+            _galaxyMap.PlanetSystems.Count,
             deserialized.PlanetSystems.Count,
             "PlanetSystems count should be correctly deserialized."
         );
@@ -87,51 +87,51 @@ public class GalaxyMapTests
     {
         PlanetSystem planetSystem3 = new PlanetSystem { InstanceID = "SYSTEM3" };
 
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem2);
-        galaxyMap.AddChild(planetSystem3);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem2);
+        _galaxyMap.AddChild(planetSystem3);
 
-        Assert.AreEqual(3, galaxyMap.PlanetSystems.Count);
-        Assert.Contains(planetSystem1, galaxyMap.PlanetSystems);
-        Assert.Contains(planetSystem2, galaxyMap.PlanetSystems);
-        Assert.Contains(planetSystem3, galaxyMap.PlanetSystems);
+        Assert.AreEqual(3, _galaxyMap.PlanetSystems.Count);
+        Assert.Contains(_planetSystem1, _galaxyMap.PlanetSystems);
+        Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
+        Assert.Contains(planetSystem3, _galaxyMap.PlanetSystems);
     }
 
     [Test]
     public void RemoveChild_WithMultiplePlanetSystems_RemovesCorrectSystems()
     {
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem2);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem2);
 
-        galaxyMap.RemoveChild(planetSystem1);
+        _galaxyMap.RemoveChild(_planetSystem1);
 
-        Assert.AreEqual(1, galaxyMap.PlanetSystems.Count);
-        Assert.IsFalse(galaxyMap.PlanetSystems.Contains(planetSystem1));
-        Assert.Contains(planetSystem2, galaxyMap.PlanetSystems);
+        Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
+        Assert.IsFalse(_galaxyMap.PlanetSystems.Contains(_planetSystem1));
+        Assert.Contains(_planetSystem2, _galaxyMap.PlanetSystems);
     }
 
     [Test]
     public void RemoveChild_RemovingAllSystems_ResultsInEmptyList()
     {
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem2);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem2);
 
-        galaxyMap.RemoveChild(planetSystem1);
-        galaxyMap.RemoveChild(planetSystem2);
+        _galaxyMap.RemoveChild(_planetSystem1);
+        _galaxyMap.RemoveChild(_planetSystem2);
 
-        Assert.AreEqual(0, galaxyMap.PlanetSystems.Count);
+        Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
     }
 
     [Test]
     public void AddChild_WithNullPlanetSystem_DoesNotThrowException()
     {
-        Assert.DoesNotThrow(() => galaxyMap.AddChild(null));
+        Assert.DoesNotThrow(() => _galaxyMap.AddChild(null));
     }
 
     [Test]
     public void RemoveChild_WithNullPlanetSystem_DoesNotThrowException()
     {
-        Assert.DoesNotThrow(() => galaxyMap.RemoveChild(null));
+        Assert.DoesNotThrow(() => _galaxyMap.RemoveChild(null));
     }
 
     [Test]
@@ -139,9 +139,9 @@ public class GalaxyMapTests
     {
         ISceneNode nonPlanetSystem = new GalaxyMap { InstanceID = "NOT_A_PLANET_SYSTEM" };
 
-        galaxyMap.AddChild(nonPlanetSystem);
+        _galaxyMap.AddChild(nonPlanetSystem);
 
-        Assert.AreEqual(0, galaxyMap.PlanetSystems.Count);
+        Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
     }
 
     [Test]
@@ -156,37 +156,37 @@ public class GalaxyMapTests
     [Test]
     public void PlanetSystems_AfterAddingAndRemoving_MaintainsCorrectCount()
     {
-        Assert.AreEqual(0, galaxyMap.PlanetSystems.Count);
+        Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
 
-        galaxyMap.AddChild(planetSystem1);
-        Assert.AreEqual(1, galaxyMap.PlanetSystems.Count);
+        _galaxyMap.AddChild(_planetSystem1);
+        Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
 
-        galaxyMap.AddChild(planetSystem2);
-        Assert.AreEqual(2, galaxyMap.PlanetSystems.Count);
+        _galaxyMap.AddChild(_planetSystem2);
+        Assert.AreEqual(2, _galaxyMap.PlanetSystems.Count);
 
-        galaxyMap.RemoveChild(planetSystem1);
-        Assert.AreEqual(1, galaxyMap.PlanetSystems.Count);
+        _galaxyMap.RemoveChild(_planetSystem1);
+        Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
 
-        galaxyMap.RemoveChild(planetSystem2);
-        Assert.AreEqual(0, galaxyMap.PlanetSystems.Count);
+        _galaxyMap.RemoveChild(_planetSystem2);
+        Assert.AreEqual(0, _galaxyMap.PlanetSystems.Count);
     }
 
     [Test]
     public void AddChild_WithSamePlanetSystemTwice_AddsItTwice()
     {
-        galaxyMap.AddChild(planetSystem1);
-        galaxyMap.AddChild(planetSystem1);
+        _galaxyMap.AddChild(_planetSystem1);
+        _galaxyMap.AddChild(_planetSystem1);
 
-        Assert.AreEqual(2, galaxyMap.PlanetSystems.Count);
+        Assert.AreEqual(2, _galaxyMap.PlanetSystems.Count);
     }
 
     [Test]
     public void RemoveChild_WithSystemNotInList_DoesNotChangeCount()
     {
-        galaxyMap.AddChild(planetSystem1);
+        _galaxyMap.AddChild(_planetSystem1);
 
-        galaxyMap.RemoveChild(planetSystem2);
+        _galaxyMap.RemoveChild(_planetSystem2);
 
-        Assert.AreEqual(1, galaxyMap.PlanetSystems.Count);
+        Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
     }
 }

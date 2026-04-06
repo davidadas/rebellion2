@@ -5,12 +5,12 @@ using Rebellion.Util.Extensions;
 [TestFixture]
 public class StarfighterTests
 {
-    private Starfighter starfighter;
+    private Starfighter _starfighter;
 
     [SetUp]
     public void SetUp()
     {
-        starfighter = new Starfighter
+        _starfighter = new Starfighter
         {
             InstanceID = "STARFIGHTER1",
             OwnerInstanceID = "FACTION1",
@@ -42,7 +42,7 @@ public class StarfighterTests
     [Test]
     public void GetManufacturingType_ReturnsShip()
     {
-        ManufacturingType type = starfighter.GetManufacturingType();
+        ManufacturingType type = _starfighter.GetManufacturingType();
 
         Assert.AreEqual(ManufacturingType.Ship, type, "Starfighter should be of type Ship");
     }
@@ -50,9 +50,9 @@ public class StarfighterTests
     [Test]
     public void IsMovable_WhenInTransit_ReturnsTrue()
     {
-        starfighter.Movement = new MovementState();
+        _starfighter.Movement = new MovementState();
 
-        bool isMovable = starfighter.IsMovable();
+        bool isMovable = _starfighter.IsMovable();
 
         Assert.IsTrue(isMovable, "Starfighter should be movable when in transit");
     }
@@ -60,9 +60,9 @@ public class StarfighterTests
     [Test]
     public void IsMovable_WhenIdle_ReturnsFalse()
     {
-        starfighter.Movement = null;
+        _starfighter.Movement = null;
 
-        bool isMovable = starfighter.IsMovable();
+        bool isMovable = _starfighter.IsMovable();
 
         Assert.IsFalse(isMovable, "Starfighter should not be movable when idle");
     }
@@ -71,11 +71,11 @@ public class StarfighterTests
     [Test]
     public void LaserCannon_SetAndGet_StoresCorrectValue()
     {
-        starfighter.LaserCannon = 25;
+        _starfighter.LaserCannon = 25;
 
         Assert.AreEqual(
             25,
-            starfighter.LaserCannon,
+            _starfighter.LaserCannon,
             "LaserCannon should store and return the correct value"
         );
     }
@@ -83,11 +83,11 @@ public class StarfighterTests
     [Test]
     public void IonCannon_SetAndGet_StoresCorrectValue()
     {
-        starfighter.IonCannon = 18;
+        _starfighter.IonCannon = 18;
 
         Assert.AreEqual(
             18,
-            starfighter.IonCannon,
+            _starfighter.IonCannon,
             "IonCannon should store and return the correct value"
         );
     }
@@ -95,11 +95,11 @@ public class StarfighterTests
     [Test]
     public void Torpedoes_SetAndGet_StoresCorrectValue()
     {
-        starfighter.Torpedoes = 12;
+        _starfighter.Torpedoes = 12;
 
         Assert.AreEqual(
             12,
-            starfighter.Torpedoes,
+            _starfighter.Torpedoes,
             "Torpedoes should store and return the correct value"
         );
     }
@@ -107,11 +107,11 @@ public class StarfighterTests
     [Test]
     public void LaserRange_SetAndGet_StoresCorrectValue()
     {
-        starfighter.LaserRange = 7;
+        _starfighter.LaserRange = 7;
 
         Assert.AreEqual(
             7,
-            starfighter.LaserRange,
+            _starfighter.LaserRange,
             "LaserRange should store and return the correct value"
         );
     }
@@ -119,11 +119,11 @@ public class StarfighterTests
     [Test]
     public void IonRange_SetAndGet_StoresCorrectValue()
     {
-        starfighter.IonRange = 6;
+        _starfighter.IonRange = 6;
 
         Assert.AreEqual(
             6,
-            starfighter.IonRange,
+            _starfighter.IonRange,
             "IonRange should store and return the correct value"
         );
     }
@@ -131,11 +131,11 @@ public class StarfighterTests
     [Test]
     public void TorpedoRange_SetAndGet_StoresCorrectValue()
     {
-        starfighter.TorpedoRange = 8;
+        _starfighter.TorpedoRange = 8;
 
         Assert.AreEqual(
             8,
-            starfighter.TorpedoRange,
+            _starfighter.TorpedoRange,
             "TorpedoRange should store and return the correct value"
         );
     }
@@ -144,11 +144,11 @@ public class StarfighterTests
     [Test]
     public void SquadronSize_SetAndGet_StoresCorrectValue()
     {
-        starfighter.SquadronSize = 24;
+        _starfighter.SquadronSize = 24;
 
         Assert.AreEqual(
             24,
-            starfighter.SquadronSize,
+            _starfighter.SquadronSize,
             "SquadronSize should store and return the correct value"
         );
     }
@@ -165,11 +165,11 @@ public class StarfighterTests
     [Test]
     public void DetectionRating_SetAndGet_StoresCorrectValue()
     {
-        starfighter.DetectionRating = 75;
+        _starfighter.DetectionRating = 75;
 
         Assert.AreEqual(
             75,
-            starfighter.DetectionRating,
+            _starfighter.DetectionRating,
             "DetectionRating should store and return the correct value"
         );
     }
@@ -185,11 +185,11 @@ public class StarfighterTests
     [Test]
     public void Bombardment_SetAndGet_StoresCorrectValue()
     {
-        starfighter.Bombardment = 45;
+        _starfighter.Bombardment = 45;
 
         Assert.AreEqual(
             45,
-            starfighter.Bombardment,
+            _starfighter.Bombardment,
             "Bombardment should store and return the correct value"
         );
     }
@@ -206,11 +206,11 @@ public class StarfighterTests
     [Test]
     public void Hyperdrive_SetAndGet_StoresCorrectValue()
     {
-        starfighter.Hyperdrive = 5;
+        _starfighter.Hyperdrive = 5;
 
         Assert.AreEqual(
             5,
-            starfighter.Hyperdrive,
+            _starfighter.Hyperdrive,
             "Hyperdrive should store and return the correct value"
         );
     }
@@ -226,11 +226,11 @@ public class StarfighterTests
     [Test]
     public void SublightSpeed_SetAndGet_StoresCorrectValue()
     {
-        starfighter.SublightSpeed = 95;
+        _starfighter.SublightSpeed = 95;
 
         Assert.AreEqual(
             95,
-            starfighter.SublightSpeed,
+            _starfighter.SublightSpeed,
             "SublightSpeed should store and return the correct value"
         );
     }
@@ -246,11 +246,11 @@ public class StarfighterTests
     [Test]
     public void Agility_SetAndGet_StoresCorrectValue()
     {
-        starfighter.Agility = 85;
+        _starfighter.Agility = 85;
 
         Assert.AreEqual(
             85,
-            starfighter.Agility,
+            _starfighter.Agility,
             "Agility should store and return the correct value"
         );
     }
@@ -267,11 +267,11 @@ public class StarfighterTests
     [Test]
     public void ShieldStrength_SetAndGet_StoresCorrectValue()
     {
-        starfighter.ShieldStrength = 60;
+        _starfighter.ShieldStrength = 60;
 
         Assert.AreEqual(
             60,
-            starfighter.ShieldStrength,
+            _starfighter.ShieldStrength,
             "ShieldStrength should store and return the correct value"
         );
     }
@@ -288,11 +288,11 @@ public class StarfighterTests
     [Test]
     public void ManufacturingProgress_SetAndGet_StoresCorrectValue()
     {
-        starfighter.ManufacturingProgress = 150;
+        _starfighter.ManufacturingProgress = 150;
 
         Assert.AreEqual(
             150,
-            starfighter.ManufacturingProgress,
+            _starfighter.ManufacturingProgress,
             "ManufacturingProgress should store and return the correct value"
         );
     }
@@ -312,12 +312,12 @@ public class StarfighterTests
     [Test]
     public void ManufacturingProgress_Increment_UpdatesCorrectly()
     {
-        starfighter.ManufacturingProgress = 50;
-        starfighter.ManufacturingProgress += 25;
+        _starfighter.ManufacturingProgress = 50;
+        _starfighter.ManufacturingProgress += 25;
 
         Assert.AreEqual(
             75,
-            starfighter.ManufacturingProgress,
+            _starfighter.ManufacturingProgress,
             "ManufacturingProgress should increment correctly"
         );
     }
@@ -325,11 +325,11 @@ public class StarfighterTests
     [Test]
     public void ManufacturingStatus_SetToCompleted_StoresCorrectValue()
     {
-        starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+        _starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
 
         Assert.AreEqual(
             ManufacturingStatus.Complete,
-            starfighter.ManufacturingStatus,
+            _starfighter.ManufacturingStatus,
             "ManufacturingStatus should be set to Completed"
         );
     }
@@ -367,11 +367,11 @@ public class StarfighterTests
     [Test]
     public void ProducerOwnerID_SetAndGet_StoresCorrectValue()
     {
-        starfighter.ProducerOwnerID = "PRODUCER123";
+        _starfighter.ProducerOwnerID = "PRODUCER123";
 
         Assert.AreEqual(
             "PRODUCER123",
-            starfighter.ProducerOwnerID,
+            _starfighter.ProducerOwnerID,
             "ProducerOwnerID should store and return the correct value"
         );
     }
@@ -387,11 +387,11 @@ public class StarfighterTests
     [Test]
     public void ProducerOwnerID_SetToNull_StoresNull()
     {
-        starfighter.ProducerOwnerID = "PRODUCER123";
-        starfighter.ProducerOwnerID = null;
+        _starfighter.ProducerOwnerID = "PRODUCER123";
+        _starfighter.ProducerOwnerID = null;
 
         Assert.IsNull(
-            starfighter.ProducerOwnerID,
+            _starfighter.ProducerOwnerID,
             "ProducerOwnerID should be able to be set to null"
         );
     }
@@ -399,136 +399,136 @@ public class StarfighterTests
     [Test]
     public void SerializeAndDeserialize_MaintainsState()
     {
-        string serialized = SerializationHelper.Serialize(starfighter);
+        string serialized = SerializationHelper.Serialize(_starfighter);
         Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
         Assert.AreEqual(
-            starfighter.InstanceID,
+            _starfighter.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.OwnerInstanceID,
+            _starfighter.OwnerInstanceID,
             deserialized.OwnerInstanceID,
             "OwnerInstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ConstructionCost,
+            _starfighter.ConstructionCost,
             deserialized.ConstructionCost,
             "ConstructionCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.MaintenanceCost,
+            _starfighter.MaintenanceCost,
             deserialized.MaintenanceCost,
             "MaintenanceCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.BaseBuildSpeed,
+            _starfighter.BaseBuildSpeed,
             deserialized.BaseBuildSpeed,
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ResearchOrder,
+            _starfighter.ResearchOrder,
             deserialized.ResearchOrder,
             "ResearchOrder should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ResearchDifficulty,
+            _starfighter.ResearchDifficulty,
             deserialized.ResearchDifficulty,
             "ResearchDifficulty should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.SquadronSize,
+            _starfighter.SquadronSize,
             deserialized.SquadronSize,
             "SquadronSize should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.DetectionRating,
+            _starfighter.DetectionRating,
             deserialized.DetectionRating,
             "DetectionRating should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.Bombardment,
+            _starfighter.Bombardment,
             deserialized.Bombardment,
             "Bombardment should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ShieldStrength,
+            _starfighter.ShieldStrength,
             deserialized.ShieldStrength,
             "ShieldStrength should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.Hyperdrive,
+            _starfighter.Hyperdrive,
             deserialized.Hyperdrive,
             "Hyperdrive should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.SublightSpeed,
+            _starfighter.SublightSpeed,
             deserialized.SublightSpeed,
             "SublightSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.Agility,
+            _starfighter.Agility,
             deserialized.Agility,
             "Agility should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.LaserCannon,
+            _starfighter.LaserCannon,
             deserialized.LaserCannon,
             "LaserCannon should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.IonCannon,
+            _starfighter.IonCannon,
             deserialized.IonCannon,
             "IonCannon should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.Torpedoes,
+            _starfighter.Torpedoes,
             deserialized.Torpedoes,
             "Torpedoes should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.LaserRange,
+            _starfighter.LaserRange,
             deserialized.LaserRange,
             "LaserRange should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.IonRange,
+            _starfighter.IonRange,
             deserialized.IonRange,
             "IonRange should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.TorpedoRange,
+            _starfighter.TorpedoRange,
             deserialized.TorpedoRange,
             "TorpedoRange should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.Movement,
+            _starfighter.Movement,
             deserialized.Movement,
             "MovementStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ManufacturingStatus,
+            _starfighter.ManufacturingStatus,
             deserialized.ManufacturingStatus,
             "ManufacturingStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ManufacturingProgress,
+            _starfighter.ManufacturingProgress,
             deserialized.ManufacturingProgress,
             "ManufacturingProgress should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.ProducerOwnerID,
+            _starfighter.ProducerOwnerID,
             deserialized.ProducerOwnerID,
             "ProducerOwnerID should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.GetPosition().X,
+            _starfighter.GetPosition().X,
             deserialized.GetPosition().X,
             "PositionX should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.GetPosition().Y,
+            _starfighter.GetPosition().Y,
             deserialized.GetPosition().Y,
             "PositionY should be correctly deserialized."
         );

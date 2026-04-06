@@ -7,14 +7,14 @@ using Rebellion.SceneGraph;
 [TestFixture]
 public class PlanetSystemTests
 {
-    private PlanetSystem planetSystem;
-    private Planet planet1;
-    private Planet planet2;
+    private PlanetSystem _planetSystem;
+    private Planet _planet1;
+    private Planet _planet2;
 
     [SetUp]
     public void SetUp()
     {
-        planetSystem = new PlanetSystem
+        _planetSystem = new PlanetSystem
         {
             InstanceID = "SYSTEM1",
             Visibility = GameSize.Medium,
@@ -22,39 +22,39 @@ public class PlanetSystemTests
             Importance = PlanetSystemImportance.High,
         };
 
-        planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
+        _planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
 
-        planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
+        _planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
     }
 
     [Test]
     public void AddChild_WithPlanet_AddsPlanet()
     {
-        planetSystem.AddChild(planet1);
+        _planetSystem.AddChild(_planet1);
 
-        Assert.Contains(planet1, planetSystem.Planets);
+        Assert.Contains(_planet1, _planetSystem.Planets);
     }
 
     [Test]
     public void RemoveChild_RemovesPlanet()
     {
-        planetSystem.AddChild(planet1);
+        _planetSystem.AddChild(_planet1);
 
-        planetSystem.RemoveChild(planet1);
+        _planetSystem.RemoveChild(_planet1);
 
-        Assert.IsFalse(planetSystem.Planets.Contains(planet1));
+        Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
     }
 
     [Test]
     public void GetChildren_ReturnsAllPlanets()
     {
-        planetSystem.AddChild(planet1);
-        planetSystem.AddChild(planet2);
+        _planetSystem.AddChild(_planet1);
+        _planetSystem.AddChild(_planet2);
 
-        IEnumerable<ISceneNode> children = planetSystem.GetChildren();
+        IEnumerable<ISceneNode> children = _planetSystem.GetChildren();
 
         CollectionAssert.AreEquivalent(
-            new ISceneNode[] { planet1, planet2 },
+            new ISceneNode[] { _planet1, _planet2 },
             children,
             "PlanetSystem should return correct children."
         );
@@ -63,44 +63,44 @@ public class PlanetSystemTests
     [Test]
     public void SerializeAndDeserialize_MaintainsState()
     {
-        planetSystem.AddChild(planet1);
-        planetSystem.AddChild(planet2);
+        _planetSystem.AddChild(_planet1);
+        _planetSystem.AddChild(_planet2);
 
-        string serialized = SerializationHelper.Serialize(planetSystem);
+        string serialized = SerializationHelper.Serialize(_planetSystem);
         PlanetSystem deserialized = SerializationHelper.Deserialize<PlanetSystem>(serialized);
 
         Assert.AreEqual(
-            planetSystem.InstanceID,
+            _planetSystem.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.GetPosition().X,
+            _planetSystem.GetPosition().X,
             deserialized.GetPosition().X,
             "PositionX should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.GetPosition().Y,
+            _planetSystem.GetPosition().Y,
             deserialized.GetPosition().Y,
             "PositionY should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.Visibility,
+            _planetSystem.Visibility,
             deserialized.Visibility,
             "Visibility should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.SystemType,
+            _planetSystem.SystemType,
             deserialized.SystemType,
             "SystemType should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.Importance,
+            _planetSystem.Importance,
             deserialized.Importance,
             "Importance should be correctly deserialized."
         );
         Assert.AreEqual(
-            planetSystem.Planets.Count,
+            _planetSystem.Planets.Count,
             deserialized.Planets.Count,
             "Planets count should be correctly deserialized."
         );
@@ -109,65 +109,65 @@ public class PlanetSystemTests
     [Test]
     public void SystemType_SetToCoreSystem_ReturnsCoreSystem()
     {
-        planetSystem.SystemType = PlanetSystemType.CoreSystem;
+        _planetSystem.SystemType = PlanetSystemType.CoreSystem;
 
-        Assert.AreEqual(PlanetSystemType.CoreSystem, planetSystem.SystemType);
+        Assert.AreEqual(PlanetSystemType.CoreSystem, _planetSystem.SystemType);
     }
 
     [Test]
     public void SystemType_SetToOuterRim_ReturnsOuterRim()
     {
-        planetSystem.SystemType = PlanetSystemType.OuterRim;
+        _planetSystem.SystemType = PlanetSystemType.OuterRim;
 
-        Assert.AreEqual(PlanetSystemType.OuterRim, planetSystem.SystemType);
+        Assert.AreEqual(PlanetSystemType.OuterRim, _planetSystem.SystemType);
     }
 
     [Test]
     public void Visibility_SetToSmall_ReturnsSmall()
     {
-        planetSystem.Visibility = GameSize.Small;
+        _planetSystem.Visibility = GameSize.Small;
 
-        Assert.AreEqual(GameSize.Small, planetSystem.Visibility);
+        Assert.AreEqual(GameSize.Small, _planetSystem.Visibility);
     }
 
     [Test]
     public void Visibility_SetToMedium_ReturnsMedium()
     {
-        planetSystem.Visibility = GameSize.Medium;
+        _planetSystem.Visibility = GameSize.Medium;
 
-        Assert.AreEqual(GameSize.Medium, planetSystem.Visibility);
+        Assert.AreEqual(GameSize.Medium, _planetSystem.Visibility);
     }
 
     [Test]
     public void Visibility_SetToLarge_ReturnsLarge()
     {
-        planetSystem.Visibility = GameSize.Large;
+        _planetSystem.Visibility = GameSize.Large;
 
-        Assert.AreEqual(GameSize.Large, planetSystem.Visibility);
+        Assert.AreEqual(GameSize.Large, _planetSystem.Visibility);
     }
 
     [Test]
     public void Importance_SetToLow_ReturnsLow()
     {
-        planetSystem.Importance = PlanetSystemImportance.Low;
+        _planetSystem.Importance = PlanetSystemImportance.Low;
 
-        Assert.AreEqual(PlanetSystemImportance.Low, planetSystem.Importance);
+        Assert.AreEqual(PlanetSystemImportance.Low, _planetSystem.Importance);
     }
 
     [Test]
     public void Importance_SetToMedium_ReturnsMedium()
     {
-        planetSystem.Importance = PlanetSystemImportance.Medium;
+        _planetSystem.Importance = PlanetSystemImportance.Medium;
 
-        Assert.AreEqual(PlanetSystemImportance.Medium, planetSystem.Importance);
+        Assert.AreEqual(PlanetSystemImportance.Medium, _planetSystem.Importance);
     }
 
     [Test]
     public void Importance_SetToHigh_ReturnsHigh()
     {
-        planetSystem.Importance = PlanetSystemImportance.High;
+        _planetSystem.Importance = PlanetSystemImportance.High;
 
-        Assert.AreEqual(PlanetSystemImportance.High, planetSystem.Importance);
+        Assert.AreEqual(PlanetSystemImportance.High, _planetSystem.Importance);
     }
 
     [Test]
@@ -176,44 +176,44 @@ public class PlanetSystemTests
         Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION2" };
         Planet planet4 = new Planet { InstanceID = "PLANET4", OwnerInstanceID = "FACTION2" };
 
-        planetSystem.AddChild(planet1);
-        planetSystem.AddChild(planet2);
-        planetSystem.AddChild(planet3);
-        planetSystem.AddChild(planet4);
+        _planetSystem.AddChild(_planet1);
+        _planetSystem.AddChild(_planet2);
+        _planetSystem.AddChild(planet3);
+        _planetSystem.AddChild(planet4);
 
-        Assert.AreEqual(4, planetSystem.Planets.Count);
-        Assert.Contains(planet1, planetSystem.Planets);
-        Assert.Contains(planet2, planetSystem.Planets);
-        Assert.Contains(planet3, planetSystem.Planets);
-        Assert.Contains(planet4, planetSystem.Planets);
+        Assert.AreEqual(4, _planetSystem.Planets.Count);
+        Assert.Contains(_planet1, _planetSystem.Planets);
+        Assert.Contains(_planet2, _planetSystem.Planets);
+        Assert.Contains(planet3, _planetSystem.Planets);
+        Assert.Contains(planet4, _planetSystem.Planets);
     }
 
     [Test]
     public void AddChild_SamePlanetTwice_AddsPlanetTwice()
     {
-        planetSystem.AddChild(planet1);
-        planetSystem.AddChild(planet1);
+        _planetSystem.AddChild(_planet1);
+        _planetSystem.AddChild(_planet1);
 
-        Assert.AreEqual(2, planetSystem.Planets.Count);
+        Assert.AreEqual(2, _planetSystem.Planets.Count);
     }
 
     [Test]
     public void RemoveChild_FromMultiplePlanets_RemovesOnlySpecifiedPlanet()
     {
-        planetSystem.AddChild(planet1);
-        planetSystem.AddChild(planet2);
+        _planetSystem.AddChild(_planet1);
+        _planetSystem.AddChild(_planet2);
 
-        planetSystem.RemoveChild(planet1);
+        _planetSystem.RemoveChild(_planet1);
 
-        Assert.AreEqual(1, planetSystem.Planets.Count);
-        Assert.IsFalse(planetSystem.Planets.Contains(planet1));
-        Assert.IsTrue(planetSystem.Planets.Contains(planet2));
+        Assert.AreEqual(1, _planetSystem.Planets.Count);
+        Assert.IsFalse(_planetSystem.Planets.Contains(_planet1));
+        Assert.IsTrue(_planetSystem.Planets.Contains(_planet2));
     }
 
     [Test]
     public void GetPosition_WithZeroCoordinates_ReturnsZeroPoint()
     {
-        Point position = planetSystem.GetPosition();
+        Point position = _planetSystem.GetPosition();
 
         Assert.AreEqual(0, position.X);
         Assert.AreEqual(0, position.Y);

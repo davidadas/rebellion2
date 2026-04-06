@@ -4,12 +4,12 @@ using Rebellion.Game;
 [TestFixture]
 public class RegimentTests
 {
-    private Regiment regiment;
+    private Regiment _regiment;
 
     [SetUp]
     public void SetUp()
     {
-        regiment = new Regiment
+        _regiment = new Regiment
         {
             InstanceID = "REGIMENT1",
             OwnerInstanceID = "FACTION1",
@@ -31,7 +31,7 @@ public class RegimentTests
     [Test]
     public void GetManufacturingType_ReturnsTroop()
     {
-        ManufacturingType type = regiment.GetManufacturingType();
+        ManufacturingType type = _regiment.GetManufacturingType();
 
         Assert.AreEqual(ManufacturingType.Troop, type, "Regiment should be of type Troop");
     }
@@ -39,9 +39,9 @@ public class RegimentTests
     [Test]
     public void IsMovable_WhenInTransit_ReturnsFalse()
     {
-        regiment.Movement = new MovementState();
+        _regiment.Movement = new MovementState();
 
-        bool isMovable = regiment.IsMovable();
+        bool isMovable = _regiment.IsMovable();
 
         Assert.IsFalse(isMovable, "Regiment should not be movable when already in transit");
     }
@@ -49,9 +49,9 @@ public class RegimentTests
     [Test]
     public void IsMovable_WhenIdle_ReturnsTrue()
     {
-        regiment.Movement = null;
+        _regiment.Movement = null;
 
-        bool isMovable = regiment.IsMovable();
+        bool isMovable = _regiment.IsMovable();
 
         Assert.IsTrue(isMovable, "Regiment should be movable when idle");
     }
@@ -59,76 +59,76 @@ public class RegimentTests
     [Test]
     public void SerializeAndDeserialize_MaintainsState()
     {
-        string serialized = SerializationHelper.Serialize(regiment);
+        string serialized = SerializationHelper.Serialize(_regiment);
         Regiment deserialized = SerializationHelper.Deserialize<Regiment>(serialized);
 
         Assert.AreEqual(
-            regiment.InstanceID,
+            _regiment.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.OwnerInstanceID,
+            _regiment.OwnerInstanceID,
             deserialized.OwnerInstanceID,
             "OwnerInstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.ConstructionCost,
+            _regiment.ConstructionCost,
             deserialized.ConstructionCost,
             "ConstructionCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.MaintenanceCost,
+            _regiment.MaintenanceCost,
             deserialized.MaintenanceCost,
             "MaintenanceCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.BaseBuildSpeed,
+            _regiment.BaseBuildSpeed,
             deserialized.BaseBuildSpeed,
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.ResearchOrder,
+            _regiment.ResearchOrder,
             deserialized.ResearchOrder,
             "ResearchOrder should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.ResearchDifficulty,
+            _regiment.ResearchDifficulty,
             deserialized.ResearchDifficulty,
             "ResearchDifficulty should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.AttackRating,
+            _regiment.AttackRating,
             deserialized.AttackRating,
             "AttackRating should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.DefenseRating,
+            _regiment.DefenseRating,
             deserialized.DefenseRating,
             "DefenseRating should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.DetectionRating,
+            _regiment.DetectionRating,
             deserialized.DetectionRating,
             "DetectionRating should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.BombardmentDefense,
+            _regiment.BombardmentDefense,
             deserialized.BombardmentDefense,
             "BombardmentDefense should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.Movement,
+            _regiment.Movement,
             deserialized.Movement,
             "MovementStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.ManufacturingStatus,
+            _regiment.ManufacturingStatus,
             deserialized.ManufacturingStatus,
             "ManufacturingStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            regiment.ManufacturingProgress,
+            _regiment.ManufacturingProgress,
             deserialized.ManufacturingProgress,
             "ManufacturingProgress should be correctly deserialized."
         );
@@ -137,27 +137,27 @@ public class RegimentTests
     [Test]
     public void AttackRating_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.AttackRating = 75;
+        _regiment.AttackRating = 75;
 
-        Assert.AreEqual(75, regiment.AttackRating, "AttackRating should return the set value");
+        Assert.AreEqual(75, _regiment.AttackRating, "AttackRating should return the set value");
     }
 
     [Test]
     public void DefenseRating_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.DefenseRating = 60;
+        _regiment.DefenseRating = 60;
 
-        Assert.AreEqual(60, regiment.DefenseRating, "DefenseRating should return the set value");
+        Assert.AreEqual(60, _regiment.DefenseRating, "DefenseRating should return the set value");
     }
 
     [Test]
     public void DetectionRating_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.DetectionRating = 35;
+        _regiment.DetectionRating = 35;
 
         Assert.AreEqual(
             35,
-            regiment.DetectionRating,
+            _regiment.DetectionRating,
             "DetectionRating should return the set value"
         );
     }
@@ -165,11 +165,11 @@ public class RegimentTests
     [Test]
     public void BombardmentDefense_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.BombardmentDefense = 45;
+        _regiment.BombardmentDefense = 45;
 
         Assert.AreEqual(
             45,
-            regiment.BombardmentDefense,
+            _regiment.BombardmentDefense,
             "BombardmentDefense should return the set value"
         );
     }
@@ -189,12 +189,12 @@ public class RegimentTests
     [Test]
     public void ManufacturingProgress_Increment_IncreasesValue()
     {
-        regiment.ManufacturingProgress = 10;
-        regiment.ManufacturingProgress += 5;
+        _regiment.ManufacturingProgress = 10;
+        _regiment.ManufacturingProgress += 5;
 
         Assert.AreEqual(
             15,
-            regiment.ManufacturingProgress,
+            _regiment.ManufacturingProgress,
             "ManufacturingProgress should increment correctly"
         );
     }
@@ -202,11 +202,11 @@ public class RegimentTests
     [Test]
     public void ManufacturingProgress_SetToConstructionCost_CompletesBuilding()
     {
-        regiment.ManufacturingProgress = regiment.ConstructionCost;
+        _regiment.ManufacturingProgress = _regiment.ConstructionCost;
 
         Assert.AreEqual(
-            regiment.ConstructionCost,
-            regiment.ManufacturingProgress,
+            _regiment.ConstructionCost,
+            _regiment.ManufacturingProgress,
             "ManufacturingProgress should equal ConstructionCost when complete"
         );
     }
@@ -226,11 +226,11 @@ public class RegimentTests
     [Test]
     public void ManufacturingStatus_TransitionToBuilt_UpdatesStatus()
     {
-        regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+        _regiment.ManufacturingStatus = ManufacturingStatus.Complete;
 
         Assert.AreEqual(
             ManufacturingStatus.Complete,
-            regiment.ManufacturingStatus,
+            _regiment.ManufacturingStatus,
             "ManufacturingStatus should transition to Built"
         );
     }
@@ -238,12 +238,12 @@ public class RegimentTests
     [Test]
     public void ManufacturingStatus_TransitionFromBuildingToBuilt_IsValid()
     {
-        regiment.ManufacturingStatus = ManufacturingStatus.Building;
-        regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+        _regiment.ManufacturingStatus = ManufacturingStatus.Building;
+        _regiment.ManufacturingStatus = ManufacturingStatus.Complete;
 
         Assert.AreEqual(
             ManufacturingStatus.Complete,
-            regiment.ManufacturingStatus,
+            _regiment.ManufacturingStatus,
             "Should transition from Building to Built"
         );
     }
@@ -251,11 +251,11 @@ public class RegimentTests
     [Test]
     public void ProducerOwnerID_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.ProducerOwnerID = "FACTORY1";
+        _regiment.ProducerOwnerID = "FACTORY1";
 
         Assert.AreEqual(
             "FACTORY1",
-            regiment.ProducerOwnerID,
+            _regiment.ProducerOwnerID,
             "ProducerOwnerID should return the set value"
         );
     }
@@ -263,12 +263,12 @@ public class RegimentTests
     [Test]
     public void ProducerOwnerID_DifferentFromOwner_CanBeSet()
     {
-        regiment.OwnerInstanceID = "FACTION1";
-        regiment.ProducerOwnerID = "PLANET1";
+        _regiment.OwnerInstanceID = "FACTION1";
+        _regiment.ProducerOwnerID = "PLANET1";
 
         Assert.AreNotEqual(
-            regiment.OwnerInstanceID,
-            regiment.ProducerOwnerID,
+            _regiment.OwnerInstanceID,
+            _regiment.ProducerOwnerID,
             "ProducerOwnerID can be different from OwnerInstanceID"
         );
     }
@@ -276,11 +276,11 @@ public class RegimentTests
     [Test]
     public void DisplayName_SetAndGet_ReturnsExpectedValue()
     {
-        regiment.DisplayName = "Elite Infantry";
+        _regiment.DisplayName = "Elite Infantry";
 
         Assert.AreEqual(
             "Elite Infantry",
-            regiment.DisplayName,
+            _regiment.DisplayName,
             "DisplayName should return the set value"
         );
     }
@@ -288,10 +288,10 @@ public class RegimentTests
     [Test]
     public void DisplayName_InheritsFromLeafNode_IsAvailable()
     {
-        regiment.DisplayName = "Test Regiment";
+        _regiment.DisplayName = "Test Regiment";
 
         Assert.IsNotNull(
-            regiment.DisplayName,
+            _regiment.DisplayName,
             "DisplayName property should be available from LeafNode"
         );
     }
