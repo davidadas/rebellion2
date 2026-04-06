@@ -5,7 +5,7 @@ PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
 
 # Roslynator needs DOTNET_ROOT to find the SDK
-if [ -z "$DOTNET_ROOT" ]; then
+if [ -z "$DOTNET_ROOT" ] && command -v dotnet >/dev/null 2>&1; then
     sdk_base="$(dotnet --info 2>/dev/null | sed -n 's/.*Base Path:[[:space:]]*//p' | tr -d '[:space:]')"
     if [ -n "$sdk_base" ]; then
         export DOTNET_ROOT="$(dirname "$(dirname "$sdk_base")")"

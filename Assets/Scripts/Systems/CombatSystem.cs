@@ -282,9 +282,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Placeholder for manual/interactive combat resolution.
         /// </summary>
-        /// <param name="_game">The game instance.</param>
-        /// <param name="_decision">The combat decision context.</param>
-        private void RunManualCombat(GameRoot _game, CombatDecisionContext _decision)
+        private void RunManualCombat(GameRoot _, CombatDecisionContext __)
         {
             // TODO: Implement manual combat resolution
         }

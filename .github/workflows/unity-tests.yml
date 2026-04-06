@@ -60,9 +60,12 @@ jobs:
           total_coverable = 0
           for path in files:
               root = ET.parse(path).getroot()
-              for summary in root.iter("Summary"):
-                  total_covered   += int(summary.get("visitedSequencePoints", 0))
-                  total_coverable += int(summary.get("numSequencePoints", 0))
+              summary = root.find("Summary")
+              if summary is None:
+                  print(f"No top-level Summary found in {path} — skipping file")
+                  continue
+              total_covered   += int(summary.get("visitedSequencePoints", 0))
+              total_coverable += int(summary.get("numSequencePoints", 0))
 
           if total_coverable == 0:
               print("No coverable lines found — skipping threshold check")

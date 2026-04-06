@@ -216,7 +216,7 @@ public class GameManager
         _researchManager.ProcessTick();
 
         // 13. Jedi: advances Force tiers
-        ProcessResults(_jediManager.ProcessTick(_game, _randomProvider));
+        ProcessResults(_jediManager.ProcessTick(_randomProvider));
 
         // 14. Victory: terminal check last
         ProcessResults(_victoryManager.ProcessTick());
