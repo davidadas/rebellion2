@@ -1,41 +1,161 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <SpecialForces>
+  <!--   **************************************************  -->
+  <!--   ******************** ALLIANCE ********************  -->
+  <!--   **************************************************  -->
+  <!-- specfc.json id=1, resid=9536, mission_id=1 -->
   <SpecialForce>
-    <TypeID>OFAL021</TypeID>
-    <InstanceID>PAGE</InstanceID>
-    <DisplayName>Page</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_page</DisplayImagePath>
+    <TypeID>SPAL001</TypeID>
+    <DisplayName>Guerrillas</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_guerrillas_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>55</Espionage>
+      <Combat>20</Combat>
+      <Leadership>50</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=2, resid=9537, mission_id=2 -->
+  <SpecialForce>
+    <TypeID>SPAL002</TypeID>
+    <DisplayName>Infiltrators</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_infiltrators_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>60</Espionage>
+      <Combat>55</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=3, resid=9538, mission_id=4 -->
+  <SpecialForce>
+    <TypeID>SPAL003</TypeID>
+    <DisplayName>Longprobe Y-wing Recon Team</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_longprobe_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>40</Espionage>
+      <Combat>30</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=4, resid=9539, mission_id=8 -->
+  <SpecialForce>
+    <TypeID>SPAL004</TypeID>
+    <DisplayName>Bothan Spies</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_bothan_spies_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>70</Espionage>
+      <Combat>0</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!--   **************************************************  -->
+  <!--   ********************* EMPIRE *********************  -->
+  <!--   **************************************************  -->
+  <!-- specfc.json id=5, resid=9600, mission_id=256 -->
+  <SpecialForce>
+    <TypeID>SPEM001</TypeID>
+    <DisplayName>Imperial Probe Droid</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_probe_droid_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
-    <ConstructionCost>7</ConstructionCost>
-    <MaintenanceCost>5</MaintenanceCost>
-    <Skills>
-      <Entry>
-        <Key>Diplomacy</Key>
-        <Value>0</Value>
-      </Entry>
-      <Entry>
-        <Key>Espionage</Key>
-        <Value>0</Value>
-      </Entry>
-      <Entry>
-        <Key>Combat</Key>
-        <Value>0</Value>
-      </Entry>
-      <Entry>
-        <Key>Leadership</Key>
-        <Value>0</Value>
-      </Entry>
-    </Skills>
-    <Loyalty>100</Loyalty>
-    <DiplomacyVariance>30</DiplomacyVariance>
-    <EspionageVariance>20</EspionageVariance>
-    <CombatVariance>30</CombatVariance>
-    <LeadershipVariance>20</LeadershipVariance>
-    <LoyaltyVariance>0</LoyaltyVariance>
-    <CanBetray>false</CanBetray>
-    <IsTraitor>false</IsTraitor>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
     <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>30</Espionage>
+      <Combat>10</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=6, resid=9601, mission_id=512 -->
+  <SpecialForce>
+    <TypeID>SPEM002</TypeID>
+    <DisplayName>Imperial Espionage Droid</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_espionage_droid_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>60</Espionage>
+      <Combat>5</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=7, resid=9602, mission_id=1024 -->
+  <SpecialForce>
+    <TypeID>SPEM003</TypeID>
+    <DisplayName>Imperial Commandos</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_commandos_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>55</Espionage>
+      <Combat>55</Combat>
+      <Leadership>50</Leadership>
+    </Skills>
+  </SpecialForce>
+  <!-- specfc.json id=8, resid=9603, mission_id=2048 -->
+  <SpecialForce>
+    <TypeID>SPEM004</TypeID>
+    <DisplayName>Noghri Death Commandos</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_noghri_primary</DisplayImagePath>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <RequiredResearchLevel>0</RequiredResearchLevel>
+    <Skills>
+      <Diplomacy>0</Diplomacy>
+      <Espionage>55</Espionage>
+      <Combat>70</Combat>
+      <Leadership>0</Leadership>
+    </Skills>
   </SpecialForce>
 </SpecialForces>

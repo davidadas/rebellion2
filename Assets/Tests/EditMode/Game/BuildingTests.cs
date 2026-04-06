@@ -33,14 +33,6 @@ public class BuildingTests
     }
 
     [Test]
-    public void GetBuildingSlot_ValidSlot_ReturnsCorrectSlot()
-    {
-        Building building = new Building { BuildingSlot = BuildingSlot.Orbit };
-
-        Assert.AreEqual(BuildingSlot.Orbit, building.GetBuildingSlot());
-    }
-
-    [Test]
     public void SetManufacturingStatus_ValidStatus_UpdatesSuccessfully()
     {
         Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
@@ -204,7 +196,6 @@ public class BuildingTests
             BaseBuildSpeed = 10,
             RequiredResearchLevel = 3,
             BuildingType = BuildingType.Mine,
-            BuildingSlot = BuildingSlot.Ground,
             ProcessRate = 20,
             Bombardment = 5,
             WeaponStrength = 10,
@@ -224,7 +215,6 @@ public class BuildingTests
         Assert.AreEqual(building.BaseBuildSpeed, deserializedBuilding.BaseBuildSpeed);
         Assert.AreEqual(building.RequiredResearchLevel, deserializedBuilding.RequiredResearchLevel);
         Assert.AreEqual(building.BuildingType, deserializedBuilding.BuildingType);
-        Assert.AreEqual(building.BuildingSlot, deserializedBuilding.BuildingSlot);
         Assert.AreEqual(building.ProcessRate, deserializedBuilding.ProcessRate);
         Assert.AreEqual(building.Bombardment, deserializedBuilding.Bombardment);
         Assert.AreEqual(building.WeaponStrength, deserializedBuilding.WeaponStrength);

@@ -75,7 +75,7 @@ public class AbductionMission : Mission
         {
             new CharacterCapturedResult
             {
-                CharacterInstanceID = target.InstanceID,
+                OfficerInstanceID = target.InstanceID,
                 CapturingFactionInstanceID = OwnerInstanceID,
                 LocationInstanceID = (GetParent() as Planet)?.InstanceID,
                 Tick = game.CurrentTick,

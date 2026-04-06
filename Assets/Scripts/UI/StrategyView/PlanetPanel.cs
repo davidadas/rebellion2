@@ -132,6 +132,17 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
         return this.planet == planet && this.currentView == view;
     }
 
+    public void Refresh()
+    {
+        if (!isInitialized)
+            return;
+
+        Render();
+        garrisonPane.Refresh();
+        fleetsPane.Refresh();
+        buildingsPane.Refresh();
+    }
+
     private void OnCloseClicked()
     {
         OnClosed?.Invoke(this);

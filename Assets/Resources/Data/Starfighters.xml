@@ -6,6 +6,7 @@
   <Starfighter>
     <TypeID>SFEM01</TypeID>
     <DisplayName>TIE Fighter Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -29,6 +30,7 @@
   <Starfighter>
     <TypeID>SFEM02</TypeID>
     <DisplayName>TIE Bomber Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -52,6 +54,7 @@
   <Starfighter>
     <TypeID>SFEM03</TypeID>
     <DisplayName>TIE Interceptor Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -75,6 +78,7 @@
   <Starfighter>
     <TypeID>SFEM04</TypeID>
     <DisplayName>TIE Defender Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -101,6 +105,7 @@
   <Starfighter>
     <TypeID>SFAL01</TypeID>
     <DisplayName>Y-Wing Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -124,6 +129,7 @@
   <Starfighter>
     <TypeID>SFAL02</TypeID>
     <DisplayName>X-Wing Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -150,6 +156,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <DisplayName>A-Wing Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_primary</DisplayImagePath>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
     <SquadronSize>12</SquadronSize>
@@ -173,6 +180,7 @@
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <DisplayName>B-Wing Squadron</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_primary</DisplayImagePath>
     <ConstructionCost>7</ConstructionCost>
     <MaintenanceCost>8</MaintenanceCost>
     <SquadronSize>12</SquadronSize>

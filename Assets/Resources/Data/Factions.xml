@@ -3,11 +3,25 @@
   <Faction>
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
-    <HQInstanceID>YAVIN</HQInstanceID>
+    <HQInstanceID></HQInstanceID>
+<Modifiers>
+      <GarrisonEfficiency>1</GarrisonEfficiency>
+      <TroopEffectiveness>1</TroopEffectiveness>
+      <UprisingResistance>1</UprisingResistance>
+      <InvertSupportShift>false</InvertSupportShift>
+      <WeakSupportPenaltyTrigger>Positive</WeakSupportPenaltyTrigger>
+    </Modifiers>
   </Faction>
   <Faction>
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID>CORUSCANT</HQInstanceID>
+    <Modifiers>
+      <GarrisonEfficiency>2</GarrisonEfficiency>
+      <TroopEffectiveness>2</TroopEffectiveness>
+      <UprisingResistance>2</UprisingResistance>
+      <InvertSupportShift>true</InvertSupportShift>
+      <WeakSupportPenaltyTrigger>Negative</WeakSupportPenaltyTrigger>
+    </Modifiers>
   </Faction>
 </Factions>

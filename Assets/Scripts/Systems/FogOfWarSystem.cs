@@ -64,6 +64,8 @@ namespace Rebellion.Systems
 
             foreach (Fleet fleet in planet.Fleets)
             {
+                if (fleet.CapitalShips.Count == 0)
+                    continue;
                 if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
                     continue;
 
@@ -77,17 +79,14 @@ namespace Rebellion.Systems
                 InvalidateEntityFromOtherSnapshots(faction, regiment.InstanceID, planet.InstanceID);
             }
 
-            foreach (List<Building> buildingList in planet.Buildings.Values)
+            foreach (Building building in planet.Buildings)
             {
-                foreach (Building building in buildingList)
-                {
-                    planetSnapshot.Buildings.Add(building.GetShallowCopy(CloneMode.Full));
-                    InvalidateEntityFromOtherSnapshots(
-                        faction,
-                        building.InstanceID,
-                        planet.InstanceID
-                    );
-                }
+                planetSnapshot.Buildings.Add(building.GetShallowCopy(CloneMode.Full));
+                InvalidateEntityFromOtherSnapshots(
+                    faction,
+                    building.InstanceID,
+                    planet.InstanceID
+                );
             }
 
             foreach (Starfighter starfighter in planet.Starfighters)
@@ -233,7 +232,7 @@ namespace Rebellion.Systems
             viewPlanet.Officers = new List<Officer>();
             viewPlanet.Fleets = new List<Fleet>();
             viewPlanet.Regiments = new List<Regiment>();
-            viewPlanet.Buildings = new Dictionary<BuildingSlot, List<Building>>();
+            viewPlanet.Buildings = new List<Building>();
             viewPlanet.Starfighters = new List<Starfighter>();
             viewPlanet.Missions = new List<Mission>();
             viewPlanet.PopularSupport = new Dictionary<string, int>();
@@ -260,7 +259,8 @@ namespace Rebellion.Systems
             viewPlanet.Fleets.AddRange(
                 masterPlanet
                     .Fleets.Where(f =>
-                        f.Movement == null || f.OwnerInstanceID == faction.InstanceID
+                        f.CapitalShips.Count > 0
+                        && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
                     )
                     .Select(f => f.GetShallowCopy(CloneMode.Full))
             );
@@ -271,13 +271,9 @@ namespace Rebellion.Systems
                 masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
             );
 
-            foreach (BuildingSlot slot in masterPlanet.Buildings.Keys)
-            {
-                viewPlanet.Buildings[slot] = masterPlanet
-                    .Buildings[slot]
-                    .Select(b => b.GetShallowCopy(CloneMode.Full))
-                    .ToList();
-            }
+            viewPlanet.Buildings.AddRange(
+                masterPlanet.Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
+            );
 
             // Merge enemy fleets seen in a prior snapshot that are not present live
             // (e.g. recorded during a prior occupation).
@@ -335,9 +331,9 @@ namespace Rebellion.Systems
             viewPlanet.Starfighters.AddRange(
                 planetSnapshot.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
             );
-            viewPlanet.Buildings[BuildingSlot.Ground] = planetSnapshot
-                .Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
-                .ToList();
+            viewPlanet.Buildings.AddRange(
+                planetSnapshot.Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
+            );
         }
 
         /// <summary>

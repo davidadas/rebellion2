@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Systems
         [SetUp]
         public void SetUp()
         {
-            game = new GameRoot(new GameConfig());
+            game = new GameRoot(TestConfig.Create());
 
             rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_TransfersBuildings_ToNewOwner()
         {
             game.ChangeUnitOwnership(targetPlanet, "empire");
-            targetPlanet.GroundSlots = 1;
+            targetPlanet.EnergyCapacity = 1;
 
             Building building = new Building
             {
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Systems
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(empireFleet.Movement, "Evicted fleet should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, empireFleet.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, empireFleet.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Systems
                 officer.Movement,
                 "Participant should be in transit after mission canceled"
             );
-            Assert.AreEqual(empirePlanet.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, officer.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -213,21 +213,22 @@ namespace Rebellion.Tests.Systems
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(officer.Movement, "Evicted officer should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, officer.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, officer.GetParentOfType<Planet>());
         }
 
         [Test]
         public void TransferPlanet_EvictsEnemyRegiments()
         {
             game.ChangeUnitOwnership(targetPlanet, "empire");
-            targetPlanet.GroundSlots = 1;
+            targetPlanet.EnergyCapacity = 1;
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, targetPlanet);
 
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
 
             Assert.IsNotNull(regiment.Movement, "Evicted regiment should be in transit");
-            Assert.AreEqual(empirePlanet.InstanceID, regiment.Movement.DestinationInstanceID);
+            Assert.AreEqual(empirePlanet, regiment.GetParentOfType<Planet>());
         }
 
         [Test]
@@ -238,7 +239,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empireFleet, targetPlanet);
             empireFleet.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 5,
                 TicksElapsed = 2,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -249,8 +249,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(empireFleet.Movement, "Evicted in-transit fleet should be redirected");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                empireFleet.Movement.DestinationInstanceID,
+                empirePlanet,
+                empireFleet.GetParentOfType<Planet>(),
                 "In-transit fleet should be redirected to nearest friendly planet"
             );
         }
@@ -263,7 +263,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(officer, targetPlanet);
             officer.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 5,
                 TicksElapsed = 2,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -274,8 +273,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(officer.Movement, "Evicted in-transit officer should be redirected");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                officer.Movement.DestinationInstanceID,
+                empirePlanet,
+                officer.GetParentOfType<Planet>(),
                 "In-transit officer should be redirected to nearest friendly planet"
             );
         }
@@ -293,7 +292,6 @@ namespace Rebellion.Tests.Systems
             Point midPoint = new Point(50, 0);
             officer.Movement = new MovementState
             {
-                DestinationInstanceID = targetPlanet.InstanceID,
                 TransitTicks = 10,
                 TicksElapsed = 5,
                 OriginPosition = empirePlanet.GetPosition(),
@@ -304,8 +302,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(officer.Movement, "Officer should be in transit after redirect");
             Assert.AreEqual(
-                empirePlanet.InstanceID,
-                officer.Movement.DestinationInstanceID,
+                empirePlanet,
+                officer.GetParentOfType<Planet>(),
                 "Officer should head to nearest friendly planet"
             );
             Assert.AreEqual(
@@ -350,11 +348,16 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_ClearsManufacturingQueues()
         {
             game.ChangeUnitOwnership(targetPlanet, "empire");
-            targetPlanet.GroundSlots = 1;
+            targetPlanet.EnergyCapacity = 1;
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
-            bool enqueued = manufacturing.Enqueue(targetPlanet, regiment, ignoreCost: true);
+            bool enqueued = manufacturing.Enqueue(
+                targetPlanet,
+                regiment,
+                targetPlanet,
+                ignoreCost: true
+            );
             Assert.IsTrue(enqueued, "Setup: regiment should enqueue successfully");
 
             ownershipSystem.TransferPlanet(targetPlanet, rebels);
@@ -369,7 +372,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_ClearsInProgressBuilding()
         {
             game.ChangeUnitOwnership(targetPlanet, "empire");
-            targetPlanet.GroundSlots = 1;
+            targetPlanet.EnergyCapacity = 1;
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             Building mine = new Building
@@ -378,10 +381,14 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
                 ConstructionCost = 100,
             };
-            bool enqueued = manufacturing.Enqueue(targetPlanet, mine, ignoreCost: true);
+            bool enqueued = manufacturing.Enqueue(
+                targetPlanet,
+                mine,
+                targetPlanet,
+                ignoreCost: true
+            );
             Assert.IsTrue(enqueued, "Setup: building should enqueue successfully");
             Assert.IsNotNull(mine.GetParent(), "Setup: building should be attached to planet");
 

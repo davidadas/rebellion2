@@ -73,7 +73,7 @@ public class RecruitmentMission : Mission
         {
             new CharacterMovedResult
             {
-                CharacterInstanceID = target.InstanceID,
+                OfficerInstanceID = target.InstanceID,
                 FromLocationInstanceID = "UNRECRUITED_POOL",
                 ToLocationInstanceID = planet?.InstanceID,
                 Tick = game.CurrentTick,

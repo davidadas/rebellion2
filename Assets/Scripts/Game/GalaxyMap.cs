@@ -21,6 +21,13 @@ namespace Rebellion.Game
         public GalaxyMap() { }
 
         /// <summary>
+        /// Returns true if the child is a PlanetSystem.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if child is a PlanetSystem; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child) => child is PlanetSystem;
+
+        /// <summary>
         /// Adds a child to the node.
         /// </summary>
         /// <param name="child">The child node to add.</param>

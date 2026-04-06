@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Systems
             OwnershipSystem ownership
         ) BuildScene(bool factionOwnsPlanet)
         {
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction faction = new Faction { InstanceID = "empire" };
             game.Factions.Add(faction);
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Systems
                 .OfType<CharacterMovedResult>()
                 .ToList();
             Assert.AreEqual(1, moveResults.Count, "Should emit one CharacterMovedResult");
-            Assert.AreEqual("o1", moveResults[0].CharacterInstanceID);
+            Assert.AreEqual("o1", moveResults[0].OfficerInstanceID);
             Assert.AreEqual(planet.InstanceID, moveResults[0].ToLocationInstanceID);
         }
 
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Systems
             // Faction owns no planets and mission planet is unowned — no valid destination,
             // movement skipped. Officer is not attached to the scene graph so the planet
             // ownership check is never triggered during setup.
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.Systems
         {
             // Regression: neutral planet (null owner) must not be used as reparent target —
             // AddOfficer rejects officers whose faction doesn't match the planet owner.
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -335,7 +335,7 @@ namespace Rebellion.Tests.Systems
             MissionSystem missionSystem
         ) BuildConcurrentMissionsScene()
         {
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
 
             Faction rebels = new Faction { InstanceID = "rebels" };

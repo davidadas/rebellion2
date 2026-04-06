@@ -5,7 +5,12 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class SceneException : System.Exception
     {
-        public SceneException(string text)
-            : base(text) { }
+        protected SceneException() { }
+
+        protected SceneException(string message)
+            : base(message) { }
+
+        protected SceneException(string message, System.Exception inner)
+            : base(message, inner) { }
     }
 }

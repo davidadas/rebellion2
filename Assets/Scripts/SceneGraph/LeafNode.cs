@@ -21,6 +21,13 @@ namespace Rebellion.SceneGraph
         protected LeafNode() { }
 
         /// <summary>
+        /// Leaf nodes cannot have children.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>Always false.</returns>
+        public override bool CanAcceptChild(ISceneNode child) => false;
+
+        /// <summary>
         /// Adds a child to the node. For leaf nodes, this operation does nothing.
         /// </summary>
         /// <param name="child">The child node to add.</param>

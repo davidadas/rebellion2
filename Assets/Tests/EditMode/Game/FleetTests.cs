@@ -318,29 +318,9 @@ public class FleetTests
     }
 
     [Test]
-    public void AddChild_WithOfficer_AddsToFirstCapitalShip()
+    public void AddChild_WithOfficer_ThrowsSceneAccessException()
     {
         Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
-
-        fleet.AddChild(capitalShip1);
-        fleet.AddChild(capitalShip2);
-        fleet.AddChild(officer);
-
-        Assert.Contains(
-            officer,
-            capitalShip1.Officers,
-            "Officer should be added to first capital ship"
-        );
-        Assert.IsFalse(
-            capitalShip2.Officers.Contains(officer),
-            "Officer should not be added to second capital ship"
-        );
-    }
-
-    [Test]
-    public void AddChild_WithOfficerAndInvalidOwner_ThrowsException()
-    {
-        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
 
         fleet.AddChild(capitalShip1);
 
@@ -348,28 +328,22 @@ public class FleetTests
     }
 
     [Test]
-    public void AddChild_WithOfficerAndNoCapitalShips_ThrowsException()
+    public void AddChild_WithStarfighter_ThrowsSceneAccessException()
     {
-        Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
+        Starfighter sf = new Starfighter { OwnerInstanceID = "FACTION1" };
 
-        Assert.Throws<InvalidOperationException>(() => fleet.AddChild(officer));
+        fleet.AddChild(capitalShip1);
+
+        Assert.Throws<SceneAccessException>(() => fleet.AddChild(sf));
     }
 
     [Test]
-    public void GetChildren_WithOfficers_ReturnsOnlyCapitalShips()
+    public void AddChild_WithRegiment_ThrowsSceneAccessException()
     {
-        Officer officer = new Officer { OwnerInstanceID = "FACTION1" };
+        Regiment reg = new Regiment { OwnerInstanceID = "FACTION1" };
 
         fleet.AddChild(capitalShip1);
-        fleet.AddChild(capitalShip2);
-        fleet.AddChild(officer);
 
-        IEnumerable<ISceneNode> children = fleet.GetChildren();
-
-        CollectionAssert.AreEquivalent(
-            new ISceneNode[] { capitalShip1, capitalShip2 },
-            children,
-            "GetChildren should return only capital ships, not officers"
-        );
+        Assert.Throws<SceneAccessException>(() => fleet.AddChild(reg));
     }
 }

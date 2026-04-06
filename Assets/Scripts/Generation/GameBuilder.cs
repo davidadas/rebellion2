@@ -1,183 +1,155 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Generation
 {
     /// <summary>
-    /// Builds the game by generating the galaxy map and populating it with units and factions.
+    /// Builds the game using a multi-phase pipeline that faithfully reproduces
+    /// the original Star Wars: Rebellion generation system.
+    ///
+    /// Pipeline phases:
+    /// 0. Load templates, filter systems by galaxy size
+    /// 1. GalaxyClassifier: classify planets into 5 faction buckets
+    /// 2. SystemConfigurator: set energy, raw materials, colonization, support
+    /// 3. Set faction research levels, HQ flags
+    /// 4. FacilitySeeder: place buildings using weighted probability tables
+    /// 5. UnitDeployer: fixed garrisons, fleets, and budget-based deployment
+    /// 6. OfficerGenerator: select and deploy officers (existing, kept as-is)
+    /// 7. BalancePass: post-placement support adjustments
+    /// 8. Technology tree setup + fog of war init
     /// </summary>
     public sealed class GameBuilder
     {
         private readonly GameSummary summary;
-        private readonly PlanetSystemGenerator planetSystemGenerator;
-        private readonly FactionGenerator factionGenerator;
-        private readonly OfficerGenerator officerGenerator;
-        private readonly BuildingGenerator buildingGenerator;
-        private readonly CapitalShipGenerator capitalShipGenerator;
-        private readonly StarfighterGenerator starfighterGenerator;
-        private readonly RegimentGenerator regimentGenerator;
-        private readonly GameEventGenerator gameEventGenerator;
+        private readonly IResourceManager resourceManager;
+        private readonly IRandomNumberProvider randomProvider;
 
-        /// <summary>
-        /// Initializes a new instance of the GameBuilder class.
-        /// </summary>
-        /// <param name="summary">The summary of the game to be built.</param>
         public GameBuilder(GameSummary summary)
         {
             this.summary = summary;
-            IResourceManager resourceManager = ResourceManager.Instance;
-            IRandomNumberProvider randomProvider = new SystemRandomProvider(Environment.TickCount);
-
-            planetSystemGenerator = new PlanetSystemGenerator(
-                summary,
-                resourceManager,
-                randomProvider
-            );
-            factionGenerator = new FactionGenerator(summary, resourceManager, randomProvider);
-            officerGenerator = new OfficerGenerator(summary, resourceManager, randomProvider);
-            buildingGenerator = new BuildingGenerator(summary, resourceManager, randomProvider);
-            capitalShipGenerator = new CapitalShipGenerator(
-                summary,
-                resourceManager,
-                randomProvider
-            );
-            starfighterGenerator = new StarfighterGenerator(
-                summary,
-                resourceManager,
-                randomProvider
-            );
-            regimentGenerator = new RegimentGenerator(summary, resourceManager, randomProvider);
-            gameEventGenerator = new GameEventGenerator(summary, resourceManager, randomProvider);
+            this.resourceManager = ResourceManager.Instance;
+            this.randomProvider = new SystemRandomProvider(Environment.TickCount);
         }
 
-        /// <summary>
-        /// Builds the game by generating all necessary components.
-        /// </summary>
-        /// <returns>The fully constructed game.</returns>
         public GameRoot BuildGame()
         {
-            PlanetSystem[] galaxyMap = GenerateGalaxyMap();
-            Faction[] factions = GenerateFactions(galaxyMap);
+            GameConfig gameConfig = ConfigLoader.LoadGameConfig();
+            GameGenerationRules rules = resourceManager.GetConfig<GameGenerationRules>();
 
-            Building[] buildings = GenerateBuildings(galaxyMap);
-            CapitalShip[] capitalShips = GenerateCapitalShips(galaxyMap);
-            Starfighter[] starfighters = GenerateStarfighters(galaxyMap);
-            Regiment[] regiments = GenerateRegiments(galaxyMap);
+            // Phase 0: Load templates and filter systems by galaxy size
+            PlanetSystem[] allSystems = resourceManager.GetGameData<PlanetSystem>();
+            PlanetSystem[] systems = FilterSystemsByGalaxySize(allSystems);
+            Faction[] factions = resourceManager.GetGameData<Faction>();
+            Building[] buildingTemplates = resourceManager.GetGameData<Building>();
+            CapitalShip[] shipTemplates = resourceManager.GetGameData<CapitalShip>();
+            Starfighter[] fighterTemplates = resourceManager.GetGameData<Starfighter>();
+            Regiment[] regimentTemplates = resourceManager.GetGameData<Regiment>();
+            GameEvent[] gameEvents = resourceManager.GetGameData<GameEvent>();
 
-            IUnitGenerationResults<Officer> officerResults = GenerateOfficers(galaxyMap);
-            Officer[] unrecruitedOfficers = GetUnrecruitedOfficers(officerResults);
+            // Phase 1: Galaxy classification
+            GalaxyClassifier classifier = new GalaxyClassifier();
+            GalaxyClassificationResult classification = classifier.Classify(
+                systems,
+                factions,
+                summary,
+                rules,
+                randomProvider
+            );
 
-            GameEvent[] gameEvents = GenerateGameEvents(galaxyMap);
+            // Ensure StartingFactionIDs is populated
+            if (summary.StartingFactionIDs == null || summary.StartingFactionIDs.Length == 0)
+            {
+                summary.StartingFactionIDs = factions.Select(f => f.InstanceID).ToArray();
+            }
 
-            SetupFactionTechnologies(factions, buildings, capitalShips, starfighters, regiments);
+            // Phase 2: System configuration (energy, raw materials, colonization, support)
+            SystemConfigurator configurator = new SystemConfigurator();
+            configurator.Configure(
+                systems,
+                classification,
+                rules,
+                summary.StartingFactionIDs,
+                randomProvider
+            );
 
-            return CreateGame(galaxyMap, factions, gameEvents, unrecruitedOfficers);
+            // Phase 3: Set faction research levels
+            SetFactionResearchLevels(factions);
+
+            // Phase 4: Facility seeding
+            FacilitySeeder facilitySeeder = new FacilitySeeder();
+            List<Building> deployedBuildings = facilitySeeder.Seed(
+                systems,
+                buildingTemplates,
+                rules,
+                randomProvider
+            );
+
+            // Phase 5: Unit deployment
+            UnitDeployer unitDeployer = new UnitDeployer();
+            unitDeployer.Deploy(
+                systems,
+                factions,
+                regimentTemplates,
+                fighterTemplates,
+                shipTemplates,
+                rules,
+                classification,
+                gameConfig,
+                randomProvider,
+                (int)summary.GalaxySize,
+                (int)summary.Difficulty,
+                summary.PlayerFactionID
+            );
+
+            // Phase 6: Officers
+            OfficerGenerator officerGenerator = new OfficerGenerator();
+            OfficerGenerator.OfficerResults officerResults = officerGenerator.Deploy(
+                systems,
+                rules,
+                summary,
+                randomProvider
+            );
+            Officer[] unrecruitedOfficers = officerResults.Unrecruited;
+
+            // Phase 7: Balance pass
+            BalancePass balancePass = new BalancePass();
+            balancePass.Apply(systems, factions);
+
+            // Phase 8: Technology tree setup
+            SetupFactionTechnologies(
+                factions,
+                buildingTemplates,
+                shipTemplates,
+                fighterTemplates,
+                regimentTemplates
+            );
+
+            // Create the game
+            return CreateGame(systems, factions, gameEvents, unrecruitedOfficers, gameConfig);
         }
 
-        /// <summary>
-        /// Generates the galaxy map.
-        /// </summary>
-        /// <returns>An array of PlanetSystem objects representing the galaxy map.</returns>
-        private PlanetSystem[] GenerateGalaxyMap()
+        private PlanetSystem[] FilterSystemsByGalaxySize(PlanetSystem[] allSystems)
         {
-            return planetSystemGenerator.GenerateUnits().SelectedUnits;
+            int galaxySize = (int)summary.GalaxySize;
+            return allSystems.Where(s => (int)s.Visibility <= galaxySize).ToArray();
         }
 
-        /// <summary>
-        /// Generates factions for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of Faction objects.</returns>
-        private Faction[] GenerateFactions(PlanetSystem[] galaxyMap)
+        private void SetFactionResearchLevels(Faction[] factions)
         {
-            return factionGenerator.GenerateUnits(galaxyMap).UnitPool;
+            int researchLevel = summary.StartingResearchLevel;
+            foreach (Faction faction in factions)
+            {
+                faction.SetResearchLevel(ManufacturingType.Building, researchLevel);
+                faction.SetResearchLevel(ManufacturingType.Ship, researchLevel);
+                faction.SetResearchLevel(ManufacturingType.Troop, researchLevel);
+            }
         }
 
-        /// <summary>
-        /// Generates buildings for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of Building objects.</returns>
-        private Building[] GenerateBuildings(PlanetSystem[] galaxyMap)
-        {
-            return buildingGenerator.GenerateUnits(galaxyMap).UnitPool;
-        }
-
-        /// <summary>
-        /// Generates capital ships for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of CapitalShip objects.</returns>
-        private CapitalShip[] GenerateCapitalShips(PlanetSystem[] galaxyMap)
-        {
-            return capitalShipGenerator.GenerateUnits(galaxyMap).UnitPool;
-        }
-
-        /// <summary>
-        /// Generates starfighters for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of Starfighter objects.</returns>
-        private Starfighter[] GenerateStarfighters(PlanetSystem[] galaxyMap)
-        {
-            return starfighterGenerator.GenerateUnits(galaxyMap).UnitPool;
-        }
-
-        /// <summary>
-        /// Generates regiments for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of Regiment objects.</returns>
-        private Regiment[] GenerateRegiments(PlanetSystem[] galaxyMap)
-        {
-            return regimentGenerator.GenerateUnits(galaxyMap).UnitPool;
-        }
-
-        /// <summary>
-        /// Generates officers for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>The results of officer generation, including both selected and unselected officers.</returns>
-        private IUnitGenerationResults<Officer> GenerateOfficers(PlanetSystem[] galaxyMap)
-        {
-            return officerGenerator.GenerateUnits(galaxyMap);
-        }
-
-        /// <summary>
-        /// Retrieves the list of unrecruited officers.
-        /// </summary>
-        /// <param name="officerResults">The results of officer generation.</param>
-        /// <returns>An array of Officer objects representing unrecruited officers.</returns>
-        private Officer[] GetUnrecruitedOfficers(IUnitGenerationResults<Officer> officerResults)
-        {
-            return officerResults.UnitPool.Except(officerResults.SelectedUnits).ToArray();
-        }
-
-        /// <summary>
-        /// Generates game events for the game.
-        /// </summary>
-        /// <param name="galaxyMap">The galaxy map to use for generation.</param>
-        /// <returns>An array of GameEvent objects.</returns>
-        private GameEvent[] GenerateGameEvents(PlanetSystem[] galaxyMap)
-        {
-            return gameEventGenerator.GenerateUnits(galaxyMap).UnitPool;
-        }
-
-        /// <summary>
-        /// Sets up the technology trees for all factions.
-        /// </summary>
-        /// <param name="factions">The array of factions.</param>
-        /// <param name="buildings">The array of buildings.</param>
-        /// <param name="capitalShips">The array of capital ships.</param>
-        /// <param name="starfighters">The array of starfighters.</param>
-        /// <param name="regiments">The array of regiments.</param>
         private void SetupFactionTechnologies(
             Faction[] factions,
             Building[] buildings,
@@ -186,57 +158,52 @@ namespace Rebellion.Generation
             Regiment[] regiments
         )
         {
-            Dictionary<string, Faction> factionMap = factions.ToDictionary(faction =>
-                faction.InstanceID
-            );
-            IManufacturable[] combinedTechnologies = buildings
+            IManufacturable[] allTech = buildings
                 .Cast<IManufacturable>()
                 .Concat(capitalShips)
                 .Concat(starfighters)
                 .Concat(regiments)
                 .ToArray();
 
-            SetTechnologyLevels(factionMap, combinedTechnologies);
-        }
-
-        /// <summary>
-        /// Sets the technology tree for the factions in the game.
-        /// </summary>
-        /// <param name="factionMap">The map of factions in the game.</param>
-        /// <param name="combinedTechnologies">The combined technologies in the game.</param>
-        private void SetTechnologyLevels(
-            Dictionary<string, Faction> factionMap,
-            IManufacturable[] combinedTechnologies
-        )
-        {
-            foreach (Faction faction in factionMap.Values)
+            foreach (Faction faction in factions)
             {
-                foreach (IManufacturable manufacturable in combinedTechnologies)
+                foreach (IManufacturable manufacturable in allTech)
                 {
-                    Technology reference = new Technology(manufacturable);
-                    foreach (
-                        string allowedOwnerInstanceID in manufacturable.AllowedOwnerInstanceIDs
-                    )
-                    {
-                        if (allowedOwnerInstanceID == faction.InstanceID)
-                        {
-                            faction.AddTechnologyNode(
-                                manufacturable.GetRequiredResearchLevel(),
-                                reference
-                            );
-                        }
-                    }
+                    if (!manufacturable.AllowedOwnerInstanceIDs.Contains(faction.InstanceID))
+                        continue;
+
+                    faction.AddTechnologyNode(
+                        manufacturable.GetRequiredResearchLevel(),
+                        new Technology(manufacturable)
+                    );
                 }
             }
         }
 
-        /// <summary>
-        /// Initializes fog of war for all factions at game start.
-        /// </summary>
-        /// <param name="game">The game instance to initialize fog of war for.</param>
         private void InitializeFogOfWar(GameRoot game)
         {
+            GameGenerationRules rules = resourceManager.GetConfig<GameGenerationRules>();
             FogOfWarSystem fogSystem = new FogOfWarSystem(game);
+
+            // Build set of (planetID, factionID) visibility overrides from config
+            HashSet<(string planetId, string viewerFactionId)> visibilityOverrides = new HashSet<(string planetId, string viewerFactionId)>();
+            foreach (FactionSetup factionSetup in rules.GalaxyClassification.FactionSetups)
+            {
+                if (factionSetup.StartingPlanets == null)
+                    continue;
+                foreach (StartingPlanet sp in factionSetup.StartingPlanets)
+                {
+                    if (
+                        string.IsNullOrEmpty(sp.PlanetInstanceID)
+                        || sp.VisibleToFactionIDs == null
+                    )
+                        continue;
+                    foreach (string viewerId in sp.VisibleToFactionIDs)
+                    {
+                        visibilityOverrides.Add((sp.PlanetInstanceID, viewerId));
+                    }
+                }
+            }
 
             foreach (PlanetSystem system in game.Galaxy.PlanetSystems)
             {
@@ -244,41 +211,34 @@ namespace Rebellion.Generation
                 {
                     if (system.SystemType == PlanetSystemType.CoreSystem)
                     {
-                        // CRITICAL: Core systems are always explored at game start.
                         foreach (Planet planet in system.Planets)
                         {
                             bool isOwnPlanet = planet.OwnerInstanceID == faction.InstanceID;
-
                             if (!isOwnPlanet)
                             {
-                                // Enemy or neutral planet: capture initial snapshot.
                                 fogSystem.CaptureSnapshot(faction, planet, system, currentTick: 0);
                             }
-                            // else: own planet, no snapshot needed (always RealTime).
                         }
                     }
-                    else if (system.SystemType == PlanetSystemType.OuterRim)
+
+                    // Apply config-driven visibility overrides (e.g. Empire sees Yavin at start)
+                    foreach (Planet planet in system.Planets)
                     {
-                        // CRITICAL: Outer rim systems start UNEXPLORED.
-                        // No snapshots created until first visit.
+                        if (visibilityOverrides.Contains((planet.InstanceID, faction.InstanceID)))
+                        {
+                            fogSystem.CaptureSnapshot(faction, planet, system, currentTick: 0);
+                        }
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Creates and returns the final Game object.
-        /// </summary>
-        /// <param name="galaxyMap">The generated galaxy map.</param>
-        /// <param name="factions">The generated factions.</param>
-        /// <param name="gameEvents">The generated game events.</param>
-        /// <param name="unrecruitedOfficers">The list of unrecruited officers.</param>
-        /// <returns>A fully initialized Game object.</returns>
         private GameRoot CreateGame(
             PlanetSystem[] galaxyMap,
             Faction[] factions,
             GameEvent[] gameEvents,
-            Officer[] unrecruitedOfficers
+            Officer[] unrecruitedOfficers,
+            GameConfig gameConfig
         )
         {
             GalaxyMap galaxy = new GalaxyMap { PlanetSystems = galaxyMap.ToList() };
@@ -291,8 +251,8 @@ namespace Rebellion.Generation
                 Galaxy = galaxy,
                 UnrecruitedOfficers = unrecruitedOfficers.ToList(),
             };
+            game.SetConfig(gameConfig);
 
-            // Initialize fog of war snapshots AFTER all entities are placed
             InitializeFogOfWar(game);
 
             return game;

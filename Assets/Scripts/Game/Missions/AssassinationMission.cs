@@ -75,7 +75,7 @@ public class AssassinationMission : Mission
         {
             new CharacterKilledResult
             {
-                CharacterInstanceID = TargetOfficerInstanceID,
+                OfficerInstanceID = TargetOfficerInstanceID,
                 KillingFactionInstanceID = OwnerInstanceID,
                 LocationInstanceID = (GetParent() as Planet)?.InstanceID,
                 Tick = game.CurrentTick,

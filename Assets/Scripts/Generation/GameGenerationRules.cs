@@ -11,123 +11,35 @@ namespace Rebellion.Generation
     public class GameGenerationRules
     {
         /// <summary>
-        /// Rules related to planet generation, including starting planets,
-        /// resource allocation ranges, and colonization behavior.
-        /// </summary>
-        public PlanetSection Planets;
-
-        /// <summary>
         /// Rules related to officer generation, including initial officer counts.
         /// </summary>
         public OfficerSection Officers;
 
         /// <summary>
-        /// Rules related to starting building generation and frequencies.
+        /// Galaxy classification rules: faction bucket percentages per difficulty.
         /// </summary>
-        public BuildingSection Buildings;
+        public GalaxyClassificationSection GalaxyClassification;
 
         /// <summary>
-        /// Rules related to initial capital ship placement.
+        /// Planet resource dice formulas (energy, raw materials) per system type.
         /// </summary>
-        public CapitalShipSection CapitalShips;
+        public SystemResourcesSection SystemResources;
+
+        /// <summary>
+        /// Popular support formulas per faction bucket.
+        /// </summary>
+        public SystemSupportSection SystemSupport;
+
+        /// <summary>
+        /// Facility seeding: weighted tables and mine probability multipliers.
+        /// </summary>
+        public FacilityGenerationSection FacilityGeneration;
+
+        /// <summary>
+        /// Unit deployment: fixed garrisons, fleets, and budget-based deployment.
+        /// </summary>
+        public UnitDeploymentSection UnitDeployment;
     }
-
-    #region PLANETS
-
-    /// <summary>
-    /// Planet generation rules.
-    /// Matches the JSON structure where InitialColonizationRate lives under Planets.
-    /// </summary>
-    [PersistableObject]
-    public class PlanetSection
-    {
-        /// <summary>
-        /// Resource allocation ranges by availability level (Limited, Normal, Abundant),
-        /// then by system type (CoreSystem, OuterRim).
-        /// </summary>
-        public ResourceAvailabilityProfile ResourceAvailability;
-
-        /// <summary>
-        /// Number of initial planets per faction (or per ruleset, depending on generator usage),
-        /// keyed by galaxy size.
-        /// </summary>
-        public PlanetSizeProfile NumInitialPlanets;
-
-        /// <summary>
-        /// Chance that a non-core planet starts colonized.
-        /// Core systems are typically forced colonized by generator logic.
-        /// </summary>
-        public double InitialColonizationRate;
-    }
-
-    /// <summary>
-    /// Contains resource allocation profiles for each availability setting.
-    /// </summary>
-    [PersistableObject]
-    public class ResourceAvailabilityProfile
-    {
-        /// <summary>
-        /// Limited resources profile.
-        /// </summary>
-        public ResourceSystemProfile Limited;
-
-        /// <summary>
-        /// Normal resources profile.
-        /// </summary>
-        public ResourceSystemProfile Normal;
-
-        /// <summary>
-        /// Abundant resources profile.
-        /// </summary>
-        public ResourceSystemProfile Abundant;
-    }
-
-    /// <summary>
-    /// Resource allocation ranges per system type.
-    /// </summary>
-    [PersistableObject]
-    public class ResourceSystemProfile
-    {
-        /// <summary>
-        /// Ranges used when the planet is in a CoreSystem.
-        /// </summary>
-        public ResourceRanges CoreSystem;
-
-        /// <summary>
-        /// Ranges used when the planet is in the OuterRim.
-        /// </summary>
-        public ResourceRanges OuterRim;
-    }
-
-    /// <summary>
-    /// Resource-related ranges used when generating planet values.
-    /// </summary>
-    [PersistableObject]
-    public class ResourceRanges
-    {
-        /// <summary>
-        /// Inclusive min/max range for number of ground building slots.
-        /// </summary>
-        public IntRange GroundSlotRange;
-
-        /// <summary>
-        /// Inclusive min/max range for number of orbit building slots.
-        /// </summary>
-        public IntRange OrbitSlotRange;
-
-        /// <summary>
-        /// Inclusive min/max range for energy value (if used by your planet model).
-        /// This exists because the original JSON includes EnergyRange under Limited/CoreSystem, etc.
-        /// </summary>
-        public IntRange EnergyRange;
-
-        /// <summary>
-        /// Inclusive min/max range for number of raw resource nodes.
-        /// </summary>
-        public IntRange ResourceRange;
-    }
-
-    #endregion
 
     #region OFFICERS
 
@@ -145,97 +57,216 @@ namespace Rebellion.Generation
 
     #endregion
 
-    #region BUILDINGS
+    #region GALAXY CLASSIFICATION
 
-    /// <summary>
-    /// Building generation rules.
-    /// </summary>
     [PersistableObject]
-    public class BuildingSection
+    public class GalaxyClassificationSection
     {
         /// <summary>
-        /// Starting building options and their frequencies.
-        /// This replaces the old parallel arrays TypeIDs[] + Frequency[].
+        /// Per-faction setup: starting planets, garrison troop types, etc.
         /// </summary>
-        public List<InitialBuildingEntry> InitialBuildings;
+        public List<FactionSetup> FactionSetups;
+
+        /// <summary>
+        /// Bucket percentages keyed by difficulty profile name (e.g. "Easy_Alliance").
+        /// </summary>
+        public List<DifficultyProfile> Profiles;
     }
 
-    /// <summary>
-    /// Represents one building type and how frequently it is selected.
-    /// </summary>
     [PersistableObject]
-    public class InitialBuildingEntry
+    public class FactionSetup
     {
-        /// <summary>
-        /// The building type ID.
-        /// </summary>
-        public string TypeID;
+        public string FactionID;
+        public string GarrisonTroopTypeID;
+        public List<StartingPlanet> StartingPlanets;
+    }
+
+    [PersistableObject]
+    public class StartingPlanet
+    {
+        public string PlanetInstanceID;
+        public bool IsHeadquarters;
+        public int Loyalty = 100;
+        public bool PickFromRim;
+        public List<string> VisibleToFactionIDs;
+    }
+
+    [PersistableObject]
+    public class DifficultyProfile
+    {
+        public string Name;
 
         /// <summary>
-        /// The selection probability for this building type.
+        /// Which faction the player chose. Null or empty means any (fallback).
+        /// Original SDPRTB param 7680/7681 values vary by player faction.
         /// </summary>
-        public double Frequency;
+        public string PlayerFactionID;
+
+        /// <summary>
+        /// Difficulty level: 0=Easy, 1=Medium, 2=Hard. -1 means any (fallback).
+        /// </summary>
+        public int Difficulty = -1;
+
+        /// <summary>
+        /// Per-faction bucket size percentages.
+        /// </summary>
+        public List<FactionBucketConfig> FactionBuckets;
+    }
+
+    [PersistableObject]
+    public class FactionBucketConfig
+    {
+        public string FactionID;
+        public int StrongPct;
+        public int WeakPct;
     }
 
     #endregion
 
-    #region CAPITAL SHIPS
+    #region SYSTEM RESOURCES
 
-    /// <summary>
-    /// Capital ship generation rules.
-    /// </summary>
     [PersistableObject]
-    public class CapitalShipSection
+    public class SystemResourcesSection
     {
-        /// <summary>
-        /// Initial capital ship placements keyed by galaxy size.
-        /// </summary>
-        public CapitalShipGalaxyProfile InitialCapitalShips;
+        public DiceFormula CoreEnergy;
+        public DiceFormula RimEnergy;
+        public DiceFormula CoreRawMaterials;
+        public DiceFormula RimRawMaterials;
+        public int EnergyMin;
+        public int EnergyMax;
+        public int RawMaterialsMin;
+        public int RawMaterialsMax;
+        public int RimColonizationPct;
     }
 
-    /// <summary>
-    /// Holds initial capital ship options for each galaxy size.
-    /// </summary>
     [PersistableObject]
-    public class CapitalShipGalaxyProfile
+    public class DiceFormula
     {
-        /// <summary>
-        /// Capital ship options for a Small galaxy.
-        /// </summary>
-        public List<InitialCapitalShipOption> Small;
-
-        /// <summary>
-        /// Capital ship options for a Medium galaxy.
-        /// </summary>
-        public List<InitialCapitalShipOption> Medium;
-
-        /// <summary>
-        /// Capital ship options for a Large galaxy.
-        /// </summary>
-        public List<InitialCapitalShipOption> Large;
+        public int Base;
+        public int Random1;
+        public int Random2;
     }
 
-    /// <summary>
-    /// Represents one initial capital ship placement.
-    /// </summary>
-    [PersistableObject]
-    public class InitialCapitalShipOption
-    {
-        /// <summary>
-        /// The owning faction instance ID.
-        /// </summary>
-        public string OwnerInstanceID;
+    #endregion
 
-        /// <summary>
-        /// The capital ship type ID.
-        /// </summary>
+    #region SYSTEM SUPPORT
+
+    [PersistableObject]
+    public class SystemSupportSection
+    {
+        public SupportFormula Strong;
+        public SupportFormula Weak;
+        public SupportFormula Neutral;
+        public int RimSupportRandom;
+    }
+
+    [PersistableObject]
+    public class SupportFormula
+    {
+        public int Base;
+        public int Random;
+    }
+
+    #endregion
+
+    #region FACILITY GENERATION
+
+    [PersistableObject]
+    public class FacilityGenerationSection
+    {
+        public int CoreMineMultiplier;
+        public int RimMineMultiplier;
+        public string MineTypeID;
+        public List<WeightedFacilityEntry> CoreFacilityTable;
+        public List<WeightedFacilityEntry> RimFacilityTable;
+        public List<HQFacilityLoadout> HQLoadouts;
+    }
+
+    [PersistableObject]
+    public class WeightedFacilityEntry
+    {
+        public int CumulativeWeight;
         public string TypeID;
+    }
+
+    [PersistableObject]
+    public class HQFacilityLoadout
+    {
+        public string PlanetInstanceID;
+        public List<string> FacilityTypeIDs;
+    }
+
+    #endregion
+
+    #region UNIT DEPLOYMENT
+
+    [PersistableObject]
+    public class UnitDeploymentSection
+    {
+        public int UprisingPreventionThreshold;
+        public List<FixedGarrison> FixedGarrisons;
+        public List<FixedFleet> FixedFleets;
+        public List<FactionBudget> FactionBudgets;
+    }
+
+    [PersistableObject]
+    public class FixedGarrison
+    {
+        public string PlanetInstanceID;
+        public string FactionID;
+        public List<UnitEntry> Units;
+    }
+
+    [PersistableObject]
+    public class FixedFleet
+    {
+        public string PlanetInstanceID;
+        public string FactionID;
+        public int SpawnChancePct;
+        public List<UnitEntry> Ships;
+        public List<UnitEntry> Cargo;
+    }
+
+    [PersistableObject]
+    public class UnitEntry
+    {
+        public string TypeID;
+        public int Count;
+    }
+
+    [PersistableObject]
+    public class FactionBudget
+    {
+        public string FactionID;
+        public List<BudgetLevel> BudgetLevels;
+        public List<WeightedUnitEntry> UnitTable;
+    }
+
+    [PersistableObject]
+    public class BudgetLevel
+    {
+        public int GalaxySize;
 
         /// <summary>
-        /// Optional initial parent instance ID (example: HQ planet instance ID).
-        /// If null or empty, generator logic can place it randomly among owned planets.
+        /// Difficulty level: 0=Easy, 1=Medium, 2=Hard. -1 means any difficulty (fallback).
+        /// From SDPRTB params 5168-5170: Easy gives equal budgets, Medium/Hard give
+        /// the AI faction a higher budget than the player faction.
         /// </summary>
-        public string InitialParentInstanceID;
+        public int Difficulty = -1;
+
+        /// <summary>
+        /// If true, this entry applies when the faction is AI-controlled.
+        /// If false, applies when the faction is the player's faction (or on Easy where both are equal).
+        /// </summary>
+        public bool IsAI;
+        public int Percentage;
+    }
+
+    [PersistableObject]
+    public class WeightedUnitEntry
+    {
+        public int CumulativeWeight;
+        public List<UnitEntry> Units;
     }
 
     #endregion

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -19,85 +19,164 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates a new ManufacturingSystem.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         public ManufacturingSystem(GameRoot game)
         {
             this.game = game;
         }
 
         /// <summary>
-        /// Attempts to enqueue an item for production.
-        /// AI factions should pass ignoreCost=true to bypass budget constraints.
-        /// Player factions use default (ignoreCost=false) for real economy validation.
+        /// Processes manufacturing for the current tick.
         /// </summary>
-        /// <param name="planet">The planet where production will occur.</param>
-        /// <param name="item">The item to manufacture.</param>
-        /// <param name="ignoreCost">If true, bypasses cost validation (AI behavior).</param>
-        /// <returns>True if enqueued successfully, false if insufficient materials or invalid state.</returns>
-        public bool Enqueue(Planet planet, IManufacturable item, bool ignoreCost = false)
+        /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
+        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
+        public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
         {
-            if (planet == null || item == null)
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
-                return false;
+                ProcessPlanetManufacturing(planet, movementSystem, provider);
             }
-
-            // Get faction that owns this planet
-            string ownerInstanceId = planet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerInstanceId))
-                return false;
-
-            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
+        }
+        
+        /// <summary>
+        /// Enqueues an item for production at <paramref name="planet"/>, delivering to
+        /// <paramref name="destination"/> on completion. Capital ships are placed in a new
+        /// fleet created at the destination planet.
+        /// </summary>
+        public bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Planet destination,
+            bool ignoreCost = false
+        )
+        {
+            Faction faction = GetValidatedFaction(planet, item, ignoreCost);
             if (faction == null)
+                return false;
+
+            if (item is CapitalShip)
             {
+                GameLogger.Warning(
+                    "Capital ship production requires an existing fleet at the destination."
+                );
                 return false;
             }
 
-            // Validate cost (unless AI is bypassing)
-            if (!ignoreCost)
-            {
-                int cost = item.GetConstructionCost();
-                int available = faction.GetTotalAvailableMaterialsRaw();
+            if (!destination.CanAcceptChild((ISceneNode)item))
+                return false;
 
-                if (available < cost)
-                {
-                    return false; // Cannot afford
-                }
-            }
+            game.AttachNode((ISceneNode)item, destination);
 
-            // Attach to scene graph (centralizes parent/child, registration, ownership)
-            if (item is ISceneNode node)
-            {
-                game.AttachNode(node, planet);
-            }
-
-            item.ManufacturingStatus = ManufacturingStatus.Building;
-            item.ManufacturingProgress = 0;
-            item.ProducerOwnerID = planet.GetOwnerInstanceID();
-
-            // Add to queue (cost automatically counted via faction.GetTotalUnitCost)
-            planet.AddToManufacturingQueue(item);
-
+            CommitToQueue(planet, item);
             return true;
         }
 
         /// <summary>
-        /// Processes manufacturing for the current tick.
-        /// Advances manufacturing progress on all planets.
+        /// Enqueues an item for production at <paramref name="planet"/>, placing it into
+        /// <paramref name="destination"/> fleet on completion. The caller is responsible for
+        /// selecting the target fleet.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Fleet destination,
+            bool ignoreCost = false
+        )
         {
-            // Iterate all planets
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            Faction faction = GetValidatedFaction(planet, item, ignoreCost);
+            if (faction == null)
+                return false;
+
+            ISceneNode parent = destination;
+
+            // Fleet only accepts CapitalShips directly. Route other unit types
+            // to an appropriate CapitalShip within the destination fleet.
+            if (item is Starfighter)
             {
-                ProcessPlanetManufacturing(planet);
+                CapitalShip target = destination.FindShipForStarfighter();
+                if (target == null)
+                    return false;
+                parent = target;
             }
+            else if (item is Regiment)
+            {
+                CapitalShip target = destination.FindShipForRegiment();
+                if (target == null)
+                    return false;
+                parent = target;
+            }
+
+            if (!parent.CanAcceptChild((ISceneNode)item))
+                return false;
+
+            game.AttachNode((ISceneNode)item, parent);
+
+            CommitToQueue(planet, item);
+            return true;
+        }
+
+        private Faction GetValidatedFaction(Planet planet, IManufacturable item, bool ignoreCost)
+        {
+            if (planet == null || item == null)
+                return null;
+
+            string ownerInstanceId = planet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return null;
+
+            Faction faction = game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (faction == null)
+                return null;
+
+            if (!ignoreCost)
+            {
+                if (game.GetRefinedMaterials(faction) < item.GetConstructionCost())
+                    return null;
+            }
+
+            return faction;
+        }
+
+        private void CommitToQueue(Planet planet, IManufacturable item)
+        {
+            item.ManufacturingStatus = ManufacturingStatus.Building;
+            item.ManufacturingProgress = 0;
+            item.ProducerOwnerID = planet.GetOwnerInstanceID();
+            item.ProducerPlanetID = planet.GetInstanceID();
+
+            planet.AddToManufacturingQueue(item);
+
+            GameLogger.Log(
+                $"Enqueued {item.GetDisplayName()} for production at {planet.GetDisplayName()} (cost: {item.GetConstructionCost()})"
+            );
         }
 
         /// <summary>
-        /// Processes manufacturing for a single planet.
+        /// Determines how much manufacturing progress a capital ship makes this tick using the
+        /// CSCRHT table. Performs a success roll first; returns 0 if it fails. On success,
+        /// returns the progress amount from the table.
         /// </summary>
-        private void ProcessPlanetManufacturing(Planet planet)
+        /// <param name="provider">Random number provider for the rolls.</param>
+        /// <returns>Progress to apply this tick, or 0 if the success check fails.</returns>
+        private int RollCapitalShipProgress(IRandomNumberProvider provider)
+        {
+            GameConfig.ProductionConfig config = game.Config.Production;
+
+            // Success check: roll must be below threshold
+            int successRoll = provider.NextInt(0, config.CapitalShipSuccessRollRange);
+            if (successRoll >= config.CapitalShipSuccessThreshold)
+                return 0;
+
+            // Progress roll: look up in CSCRHT table
+            int progressRoll = provider.NextInt(0, config.CapitalShipProgressRollRange);
+            ProbabilityTable cscrht = new ProbabilityTable(config.CapitalShipProgressTable);
+            return cscrht.Lookup(progressRoll);
+        }
+
+        private void ProcessPlanetManufacturing(
+            Planet planet,
+            MovementSystem movementSystem,
+            IRandomNumberProvider provider
+        )
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -120,326 +199,129 @@ namespace Rebellion.Systems
                 // Calculate progress increment based on planet's production rate
                 int progressIncrement = planet.GetProductionRate(type);
 
-                // Process with overflow handling
-                while (progressIncrement > 0 && items.Count > 0)
+                // Apply blockade production penalty
+                if (planet.IsBlockaded())
                 {
-                    // Get the first item in queue (active item)
-                    IManufacturable activeItem = items[0];
-
-                    // Calculate how much progress this item needs
-                    int requiredProgress = activeItem.GetConstructionCost();
-                    int currentProgress = activeItem.ManufacturingProgress;
-                    int remainingProgress = requiredProgress - currentProgress;
-
-                    // Apply progress
-                    int appliedProgress = Math.Min(progressIncrement, remainingProgress);
-                    activeItem.IncrementManufacturingProgress(appliedProgress);
-                    progressIncrement -= appliedProgress;
-
-                    // Check if complete
-                    if (activeItem.IsManufacturingComplete())
-                    {
-                        CompleteManufacturing(planet, activeItem, type);
-                        // Continue with overflow progress to next item
-                    }
-                    else
-                    {
-                        // Item not complete, stop processing this queue
-                        break;
-                    }
+                    int modifier = planet.GetBlockadeModifier(
+                        game.Config.Production.BlockadeCapitalShipPenalty,
+                        game.Config.Production.BlockadeFighterPenalty
+                    );
+                    // modifier is a percentage (0–100); divide by 100 to scale progressIncrement
+                    progressIncrement = (progressIncrement * modifier) / 100;
                 }
+
+                List<IManufacturable> completed = DistributeProgress(items, progressIncrement, provider);
+                foreach (IManufacturable item in completed)
+                    CompleteManufacturing(planet, item, movementSystem);
             }
         }
 
         /// <summary>
-        /// Completes manufacturing of an item.
-        /// Item is already attached to planet from Enqueue - just updates status.
-        /// Capital ships get special handling (create fleet).
+        /// Distributes a production progress increment across the queue for one manufacturing type.
+        /// Surplus progress from a completed item carries over to the next item in the queue.
+        /// Capital ships consume the entire tick slot and do not overflow.
+        /// Returns the list of items that completed this tick; the caller is responsible for
+        /// calling CompleteManufacturing on each.
         /// </summary>
-        private void CompleteManufacturing(
-            Planet planet,
-            IManufacturable item,
-            ManufacturingType type
+        /// <param name="items">The ordered list of items in this type's queue.</param>
+        /// <param name="progressIncrement">Total progress available this tick.</param>
+        /// <param name="provider">Random number provider for capital ship rolls.</param>
+        private List<IManufacturable> DistributeProgress(
+            List<IManufacturable> items,
+            int progressIncrement,
+            IRandomNumberProvider provider
         )
         {
-            // Update status
-            item.ManufacturingStatus = ManufacturingStatus.Complete;
+            List<IManufacturable> completed = new List<IManufacturable>();
 
-            // Remove from queue
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                planet.GetManufacturingQueue();
-            if (queue.TryGetValue(type, out List<IManufacturable> items))
+            while (progressIncrement > 0 && items.Count > 0)
             {
-                items.Remove(item);
-            }
+                IManufacturable activeItem = items[0];
 
-            // Capital ships: create fleet and attach
-            if (item is CapitalShip capitalShip)
-            {
-                CompleteCapitalShipManufacturing(capitalShip, planet);
-                return;
-            }
-
-            // All other items: already attached from Enqueue, ensure no movement state
-            if (item is IMovable movable)
-            {
-                movable.Movement = null;
-            }
-
-            GameLogger.Debug(
-                $"Completed manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
-            );
-        }
-
-        /// <summary>
-        /// Completes capital ship manufacturing by creating a fleet.
-        /// </summary>
-        private void CompleteCapitalShipManufacturing(CapitalShip capitalShip, Planet planet)
-        {
-            string ownerId = capitalShip.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerId))
-            {
-                GameLogger.Error(
-                    $"Cannot create fleet for {capitalShip.GetDisplayName()}: no owner set"
-                );
-                game.DetachNode(capitalShip);
-                return;
-            }
-
-            Faction faction = game.GetFactionByOwnerInstanceID(ownerId);
-            if (faction == null)
-            {
-                GameLogger.Error(
-                    $"Cannot create fleet for {capitalShip.GetDisplayName()}: faction not found"
-                );
-                game.DetachNode(capitalShip);
-                return;
-            }
-
-            // Create fleet (pure creation, no side effects)
-            Fleet fleet = faction.CreateFleet(game);
-
-            // Attach fleet to planet (new node)
-            game.AttachNode(fleet, planet);
-
-            // Move capital ship from planet to fleet (existing node relocation)
-            game.MoveNode(capitalShip, fleet);
-
-            // New fleet starts at rest (no movement)
-            fleet.Movement = null;
-
-            GameLogger.Log(
-                $"Created fleet {fleet.GetDisplayName()} with capital ship {capitalShip.GetDisplayName()} at {planet.GetDisplayName()}"
-            );
-        }
-
-        /// <summary>
-        /// Places node at planet using centralized graph operations.
-        /// Uses MoveNode for existing nodes, AttachNode for new nodes.
-        /// May throw SceneAccessException if ownership validation fails.
-        /// </summary>
-        private void PlaceAtPlanet(ISceneNode node, Planet planet)
-        {
-            ISceneNode currentParent = node.GetParent();
-
-            // Already at destination - ensure no movement state
-            if (currentParent == planet)
-            {
-                if (node is IMovable earlyMovable)
+                // Capital ships use probabilistic CSCRHT progression
+                if (activeItem is CapitalShip)
                 {
-                    earlyMovable.Movement = null;
+                    int csProgress = RollCapitalShipProgress(provider);
+                    if (csProgress > 0)
+                        activeItem.IncrementManufacturingProgress(csProgress);
+
+                    if (activeItem.IsManufacturingComplete())
+                    {
+                        items.RemoveAt(0);
+                        completed.Add(activeItem);
+                    }
+
+                    // Capital ships consume the entire queue slot per tick
+                    break;
                 }
-                return;
+
+                // Non-capital-ship items use linear progression with overflow
+                int remainingProgress =
+                    activeItem.GetConstructionCost() - activeItem.ManufacturingProgress;
+                int appliedProgress = Math.Min(progressIncrement, remainingProgress);
+                activeItem.IncrementManufacturingProgress(appliedProgress);
+                progressIncrement -= appliedProgress;
+
+                if (activeItem.IsManufacturingComplete())
+                {
+                    items.RemoveAt(0);
+                    completed.Add(activeItem);
+                }
+                else
+                    break;
             }
 
-            // Relocate existing node or attach new node
-            if (currentParent != null)
-            {
-                // Existing node - use MoveNode (atomic with rollback)
-                game.MoveNode(node, planet);
-            }
-            else
-            {
-                // New node - use AttachNode
-                game.AttachNode(node, planet);
-            }
-
-            // For movable items, ensure no movement state (at rest)
-            if (node is IMovable movable)
-            {
-                movable.Movement = null;
-            }
+            return completed;
         }
 
         /// <summary>
-        /// Handles placement rejection with type-specific fallback logic.
+        /// Completes manufacturing of an item. Marks it complete and hands it off to
+        /// MovementSystem to route from the production planet to its destination.
         /// </summary>
-        private void HandlePlacementRejection(ISceneNode item, Planet rejectionSite)
+        private void CompleteManufacturing(
+            Planet productionPlanet,
+            IManufacturable item,
+            MovementSystem movementSystem
+        )
         {
-            // Officers, Special Forces, Starfighters, Regiments → nearest friendly base
-            if (item is Officer || item is SpecialForces || item is Starfighter || item is Regiment)
-            {
-                RedirectToNearestFriendlyPlanet(item);
-                return;
-            }
-
-            // Capital Ships → should never reach here (blocked in CompleteManufacturing)
-            if (item is CapitalShip)
-            {
-                GameLogger.Error(
-                    $"Capital ship {item.GetDisplayName()} reached rejection handler - should not happen"
-                );
-                game.DetachNode(item);
-                return;
-            }
-
-            // Buildings → return to origin or destroy
-            if (item is Building building)
-            {
-                HandleBuildingRejection(building);
-                return;
-            }
-
-            // Unknown type → destroy
-            GameLogger.Warning($"Unknown item type {item.GetType().Name} rejected: destroying");
-            game.DetachNode(item);
+            item.ManufacturingStatus = ManufacturingStatus.Complete;
+            ISceneNode dest = ((ISceneNode)item).GetParent();
+            if (dest != null)
+                movementSystem.RequestMove((IMovable)item, dest, productionPlanet);
+            ApplyCompletionSupportShift(productionPlanet, item);
+            GameLogger.Log(
+                $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
+            );
         }
 
         /// <summary>
-        /// Redirects rejected unit to nearest faction-owned planet.
-        /// Destroys if no friendly planet exists.
+        /// Applies a popular support shift at the production planet when an item completes.
+        /// Matches the original game's behavior of boosting faction support on completion.
         /// </summary>
-        private void RedirectToNearestFriendlyPlanet(ISceneNode item)
+        private void ApplyCompletionSupportShift(Planet planet, IManufacturable item)
         {
             string ownerID = item.GetOwnerInstanceID();
             if (string.IsNullOrEmpty(ownerID))
-            {
-                game.DetachNode(item);
                 return;
-            }
 
-            // TODO: Cache faction-owned planets for performance and deterministic ordering
-            Planet nearest = FindNearestFactionPlanet(ownerID, item);
-
-            if (nearest != null)
+            GameConfig.ProductionConfig config = game.Config.Production;
+            int shift = item switch
             {
-                try
-                {
-                    PlaceAtPlanet(item, nearest);
-                    GameLogger.Log(
-                        $"Redirected {item.GetDisplayName()} to {nearest.GetDisplayName()}"
-                    );
-                }
-                catch (SceneAccessException)
-                {
-                    // Fallback also failed - destroy
-                    GameLogger.Warning($"Redirect failed for {item.GetDisplayName()}: destroying");
-                    game.DetachNode(item);
-                }
-            }
-            else
-            {
-                // No friendly planet exists - destroy
-                GameLogger.Warning($"No friendly planet for {item.GetDisplayName()}: destroying");
-                game.DetachNode(item);
-            }
-        }
+                CapitalShip => config.CapitalShipCompletionSupportShift,
+                Building => config.BuildingCompletionSupportShift,
+                Regiment => config.TroopCompletionSupportShift,
+                _ => 0,
+            };
 
-        /// <summary>
-        /// Finds nearest planet owned by specified faction.
-        /// Uses current item position (from parent or last known location).
-        /// </summary>
-        private Planet FindNearestFactionPlanet(string factionOwnerID, ISceneNode item)
-        {
-            // Get item's current position
-            Point fromPosition;
-            if (item is IMovable movable)
-            {
-                fromPosition = movable.GetPosition();
-            }
-            else
-            {
-                ISceneNode parent = item.GetParent();
-                fromPosition = parent is Planet p ? p.GetPosition() : new Point(0, 0);
-            }
-
-            List<Planet> candidates = game.GetSceneNodesByType<Planet>()
-                .Where(p => p.GetOwnerInstanceID() == factionOwnerID)
-                .ToList();
-
-            if (candidates.Count == 0)
-            {
-                return null;
-            }
-
-            // Find nearest by Euclidean distance
-            Planet nearest = null;
-            double minDistance = double.MaxValue;
-
-            foreach (Planet planet in candidates)
-            {
-                Point pos = planet.GetPosition();
-                double dx = pos.X - fromPosition.X;
-                double dy = pos.Y - fromPosition.Y;
-                double distance = Math.Sqrt(dx * dx + dy * dy);
-
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearest = planet;
-                }
-            }
-
-            return nearest;
-        }
-
-        /// <summary>
-        /// Handles rejected building: return to origin or destroy if no capacity.
-        /// Origin is determined by GetLastParent() (where it was manufactured).
-        /// </summary>
-        private void HandleBuildingRejection(Building building)
-        {
-            // Origin = where it was manufactured (GetLastParent tracks previous parent)
-            Planet origin = building.GetLastParent() as Planet;
-
-            if (origin == null)
-            {
-                GameLogger.Warning(
-                    $"Building {building.GetDisplayName()} has no origin planet: destroying"
-                );
-                game.DetachNode(building);
+            if (shift <= 0)
                 return;
-            }
 
-            // Check capacity using GetBuildingSlotCapacity
-            BuildingSlot slot = building.GetBuildingSlot();
-            int availableCapacity = origin.GetBuildingSlotCapacity(slot);
-
-            if (availableCapacity > 0)
-            {
-                try
-                {
-                    PlaceAtPlanet(building, origin);
-                    GameLogger.Log(
-                        $"Returned building {building.GetDisplayName()} to origin {origin.GetDisplayName()}"
-                    );
-                }
-                catch (SceneAccessException)
-                {
-                    // Can't even return to origin - destroy
-                    GameLogger.Warning(
-                        $"Cannot return {building.GetDisplayName()} to origin: destroying"
-                    );
-                    game.DetachNode(building);
-                }
-            }
-            else
-            {
-                GameLogger.Warning(
-                    $"Origin planet {origin.GetDisplayName()} has no capacity: destroying {building.GetDisplayName()}"
-                );
-                game.DetachNode(building);
-            }
+            int current = planet.GetPopularSupport(ownerID);
+            planet.SetPopularSupport(
+                ownerID,
+                current + shift,
+                game.Config.Planet.MaxPopularSupport
+            );
         }
 
         /// <summary>
@@ -475,10 +357,20 @@ namespace Rebellion.Systems
                 // Destroy all items in this queue
                 foreach (IManufacturable item in items.ToList())
                 {
-                    // Remove from scene graph using centralized global state management
-                    if (item is ISceneNode node)
+                    // Track parent fleet before detaching — may need cleanup if last ship removed.
+                    Fleet parentFleet =
+                        item is CapitalShip ? ((ISceneNode)item).GetParent() as Fleet : null;
+
+                    game.DetachNode((ISceneNode)item);
+
+                    // Clean up empty fleet after cancelling last capital ship.
+                    if (
+                        parentFleet != null
+                        && parentFleet.CapitalShips.Count == 0
+                        && parentFleet.GetParent() != null
+                    )
                     {
-                        game.DetachNode(node);
+                        game.DetachNode(parentFleet);
                     }
 
                     GameLogger.Debug(
@@ -501,11 +393,11 @@ namespace Rebellion.Systems
         public void RebuildQueues()
         {
             // First, clear all existing queues
-            foreach (var planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
-                foreach (var kvp in queue)
+                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
                 {
                     kvp.Value.Clear();
                 }
@@ -544,11 +436,11 @@ namespace Rebellion.Systems
                 });
 
             // Sort each queue by manufacturing progress (lowest progress first)
-            foreach (var planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
-                foreach (var kvp in queue)
+                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
                 {
                     kvp.Value.Sort(
                         (a, b) => a.ManufacturingProgress.CompareTo(b.ManufacturingProgress)

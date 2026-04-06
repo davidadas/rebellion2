@@ -163,7 +163,7 @@ namespace Rebellion.Systems
                         results.Add(
                             new CharacterMovedResult
                             {
-                                CharacterInstanceID = participantNode.GetInstanceID(),
+                                OfficerInstanceID = participantNode.GetInstanceID(),
                                 FromLocationInstanceID = mission.InstanceID,
                                 ToLocationInstanceID = nearestPlanet.InstanceID,
                                 Tick = game.CurrentTick,

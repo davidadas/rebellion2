@@ -65,6 +65,12 @@ namespace Rebellion.Game
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
+        public int RefinedMaterialProgress { get; set; }
+        public int ProductionCapacity { get; set; }
+        public int ProductionCapacityUsed { get; set; }
+        public int KdyPool { get; set; }
+        public int LnrPool { get; set; }
+
         // Movement Info
         public MovementState Movement { get; set; }
 
@@ -83,39 +89,57 @@ namespace Rebellion.Game
         public CapitalShip() { }
 
         /// <summary>
-        ///
+        /// Returns the maximum number of starfighters this ship can carry.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The starfighter capacity of this ship.</returns>
         public int GetStarfighterCapacity()
         {
             return StarfighterCapacity;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of starfighters currently assigned to this ship.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of starfighters currently on board.</returns>
         public int GetCurrentStarfighterCount()
         {
             return Starfighters.Count;
         }
 
         /// <summary>
-        ///
+        /// Returns the maximum number of regiments this ship can carry.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The regiment capacity of this ship.</returns>
         public int GetRegimentCapacity()
         {
             return RegimentCapacity;
         }
 
         /// <summary>
-        ///
+        /// Returns the number of regiments currently assigned to this ship.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The count of regiments currently on board.</returns>
         public int GetCurrentRegimentCount()
         {
             return Regiments.Count;
+        }
+
+        /// <summary>
+        /// Returns the number of additional starfighters this ship can carry.
+        /// </summary>
+        /// <returns>Remaining starfighter berths (capacity minus current count). Zero if full.</returns>
+        public int GetExcessStarfighterCapacity()
+        {
+            return StarfighterCapacity - Starfighters.Count;
+        }
+
+        /// <summary>
+        /// Returns the number of additional regiments this ship can carry.
+        /// </summary>
+        /// <returns>Remaining regiment berths (capacity minus current count). Zero if full.</returns>
+        public int GetExcessRegimentCapacity()
+        {
+            return RegimentCapacity - Regiments.Count;
         }
 
         /// <summary>
@@ -157,11 +181,28 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
         public void AddOfficer(Officer officer)
         {
-            if (this.OwnerInstanceID != officer.OwnerInstanceID)
+            if (!officer.IsCaptured && this.OwnerInstanceID != officer.OwnerInstanceID)
             {
                 throw new SceneAccessException(officer, this);
             }
             Officers.Add(officer);
+        }
+
+        /// <summary>
+        /// Returns true if this ship can accept the child: Starfighters and Regiments require spare
+        /// capacity; Officers must share the ship's owner or be captured.
+        /// </summary>
+        /// <param name="child">The candidate child node.</param>
+        /// <returns>True if AddChild would succeed; otherwise false.</returns>
+        public override bool CanAcceptChild(ISceneNode child)
+        {
+            if (child is Starfighter)
+                return GetExcessStarfighterCapacity() > 0;
+            if (child is Regiment)
+                return GetExcessRegimentCapacity() > 0;
+            if (child is Officer officer)
+                return officer.IsCaptured || officer.GetOwnerInstanceID() == GetOwnerInstanceID();
+            return false;
         }
 
         /// <summary>

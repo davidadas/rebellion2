@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Game.Missions
             string planetOwner = "empire"
         )
         {
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });

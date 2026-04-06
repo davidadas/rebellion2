@@ -82,6 +82,13 @@ namespace Rebellion.SceneGraph
         ///
         /// </summary>
         /// <param name="child"></param>
+        /// <returns></returns>
+        bool CanAcceptChild(ISceneNode child);
+
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="child"></param>
         void AddChild(ISceneNode child);
 
         /// <summary>

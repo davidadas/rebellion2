@@ -15,8 +15,7 @@ public class PlanetTests
         planet = new Planet
         {
             IsColonized = true,
-            GroundSlots = 5,
-            OrbitSlots = 3,
+            EnergyCapacity = 5,
             OwnerInstanceID = "FNALL1",
         };
     }
@@ -53,7 +52,7 @@ public class PlanetTests
     [Test]
     public void AddOfficer_InvalidOwner_ThrowsException()
     {
-        Officer officer = new Officer { OwnerInstanceID = "INVALID" };
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
         Assert.Throws<SceneAccessException>(
             () => planet.AddChild(officer),
@@ -62,40 +61,39 @@ public class PlanetTests
     }
 
     [Test]
+    public void AddOfficer_CapturedEnemy_AddsToOfficers()
+    {
+        Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
+
+        planet.AddChild(officer);
+
+        Assert.Contains(officer, planet.Officers, "Captured enemy officer should be accepted.");
+    }
+
+    [Test]
     public void AddBuilding_ValidBuilding_AddsToPlanet()
     {
         Building building = new Building
         {
-            BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
             OwnerInstanceID = "FNALL1",
         };
 
         planet.AddChild(building);
 
-        List<Building> buildings = planet.GetBuildings(BuildingSlot.Ground);
-        Assert.Contains(
-            building,
-            buildings,
-            "Building should be added to the ground slots of the planet."
-        );
+        List<Building> buildings = planet.GetAllBuildings();
+        Assert.Contains(building, buildings, "Building should be added to the planet.");
     }
 
     [Test]
     public void AddBuilding_ExceedsCapacity_ThrowsException()
     {
-        for (int i = 0; i < planet.GroundSlots; i++)
+        for (int i = 0; i < planet.EnergyCapacity; i++)
         {
-            planet.AddChild(
-                new Building { BuildingSlot = BuildingSlot.Ground, OwnerInstanceID = "FNALL1" }
-            );
+            planet.AddChild(new Building { OwnerInstanceID = "FNALL1" });
         }
 
-        Building extraBuilding = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
+        Building extraBuilding = new Building { OwnerInstanceID = "FNALL1" };
 
         Assert.Throws<InvalidOperationException>(
             () => planet.AddChild(extraBuilding),
@@ -131,7 +129,6 @@ public class PlanetTests
     {
         Building building = new Building
         {
-            BuildingSlot = BuildingSlot.Ground,
             DisplayName = "Test Building",
             OwnerInstanceID = "FNALL1",
         };
@@ -140,7 +137,7 @@ public class PlanetTests
         planet.RemoveChild(building);
 
         Assert.IsFalse(
-            planet.GetBuildings(BuildingSlot.Ground).Contains(building),
+            planet.GetAllBuildings().Contains(building),
             "Building should be removed from the planet."
         );
     }
@@ -150,11 +147,7 @@ public class PlanetTests
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        Building building = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
+        Building building = new Building { OwnerInstanceID = "FNALL1" };
 
         planet.AddChild(fleet);
         planet.AddChild(officer);
@@ -259,12 +252,14 @@ public class PlanetTests
             ProductionType = ManufacturingType.Ship,
             ProcessRate = 2,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building building2 = new Building
         {
             ProductionType = ManufacturingType.Ship,
             ProcessRate = 3,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
         planet.AddChild(building1);
@@ -325,20 +320,20 @@ public class PlanetTests
         Building mine1 = new Building
         {
             BuildingType = BuildingType.Mine,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building mine2 = new Building
         {
             BuildingType = BuildingType.Mine,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building refinery = new Building
         {
             BuildingType = BuildingType.Refinery,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
         planet.AddChild(mine1);
@@ -347,23 +342,21 @@ public class PlanetTests
 
         int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine);
 
-        Assert.AreEqual(2, mineCount, "Should return the correct count of mine buildings.");
+        Assert.AreEqual(2, mineCount, "Should return the correct count of active mine buildings.");
     }
 
     [Test]
-    public void GetBuildingTypeCount_ExcludingUnderConstruction_ReturnsOnlyCompleted()
+    public void GetBuildingTypeCount_ActiveFilter_ExcludesUnderConstruction()
     {
         Building completedMine = new Building
         {
             BuildingType = BuildingType.Mine,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
             ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building underConstructionMine = new Building
         {
             BuildingType = BuildingType.Mine,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
             ManufacturingStatus = ManufacturingStatus.Building,
         };
@@ -371,31 +364,40 @@ public class PlanetTests
         planet.AddChild(completedMine);
         planet.AddChild(underConstructionMine);
 
-        int mineCount = planet.GetBuildingTypeCount(
-            BuildingType.Mine,
-            includeUnderConstruction: false
-        );
+        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.Active);
 
-        Assert.AreEqual(
-            1,
-            mineCount,
-            "Should return only completed buildings when excluding under construction."
-        );
+        Assert.AreEqual(1, mineCount, "Active filter should exclude buildings under construction.");
+    }
+
+    [Test]
+    public void GetBuildingTypeCount_AllFilter_IncludesUnderConstruction()
+    {
+        Building completedMine = new Building
+        {
+            BuildingType = BuildingType.Mine,
+            OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
+        };
+        Building underConstructionMine = new Building
+        {
+            BuildingType = BuildingType.Mine,
+            OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Building,
+        };
+
+        planet.AddChild(completedMine);
+        planet.AddChild(underConstructionMine);
+
+        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+
+        Assert.AreEqual(2, mineCount, "All filter should include buildings under construction.");
     }
 
     [Test]
     public void GetAllBuildings_MultipleSlots_ReturnsAllBuildings()
     {
-        Building groundBuilding = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
-        Building orbitBuilding = new Building
-        {
-            BuildingSlot = BuildingSlot.Orbit,
-            OwnerInstanceID = "FNALL1",
-        };
+        Building groundBuilding = new Building { OwnerInstanceID = "FNALL1" };
+        Building orbitBuilding = new Building { OwnerInstanceID = "FNALL1" };
 
         planet.AddChild(groundBuilding);
         planet.AddChild(orbitBuilding);
@@ -408,33 +410,22 @@ public class PlanetTests
     }
 
     [Test]
-    public void GetBuildings_BySlot_ReturnsCorrectBuildings()
+    public void GetAllBuildings_ReturnsAllAddedBuildings()
     {
-        Building groundBuilding1 = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
-        Building groundBuilding2 = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
-        Building orbitBuilding = new Building
-        {
-            BuildingSlot = BuildingSlot.Orbit,
-            OwnerInstanceID = "FNALL1",
-        };
+        Building building1 = new Building { OwnerInstanceID = "FNALL1" };
+        Building building2 = new Building { OwnerInstanceID = "FNALL1" };
+        Building building3 = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(groundBuilding1);
-        planet.AddChild(groundBuilding2);
-        planet.AddChild(orbitBuilding);
+        planet.AddChild(building1);
+        planet.AddChild(building2);
+        planet.AddChild(building3);
 
-        List<Building> groundBuildings = planet.GetBuildings(BuildingSlot.Ground);
+        List<Building> allBuildings = planet.GetAllBuildings();
 
-        Assert.AreEqual(2, groundBuildings.Count, "Should return only ground buildings.");
-        Assert.Contains(groundBuilding1, groundBuildings, "Should include first ground building.");
-        Assert.Contains(groundBuilding2, groundBuildings, "Should include second ground building.");
+        Assert.AreEqual(3, allBuildings.Count, "Should return all buildings.");
+        Assert.Contains(building1, allBuildings, "Should include first building.");
+        Assert.Contains(building2, allBuildings, "Should include second building.");
+        Assert.Contains(building3, allBuildings, "Should include third building.");
     }
 
     [Test]
@@ -443,19 +434,16 @@ public class PlanetTests
         Building shipyard1 = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FNALL1",
         };
         Building shipyard2 = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FNALL1",
         };
         Building troopFacility = new Building
         {
             ProductionType = ManufacturingType.Troop,
-            BuildingSlot = BuildingSlot.Ground,
             OwnerInstanceID = "FNALL1",
         };
 
@@ -471,74 +459,43 @@ public class PlanetTests
     }
 
     [Test]
-    public void GetBuildingSlotCapacity_GroundSlot_ReturnsRemainingCapacity()
+    public void GetAvailableEnergy_WithBuildings_ReturnsRemainingCapacity()
     {
-        planet.GroundSlots = 5;
-        Building building1 = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
-        Building building2 = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
+        planet.EnergyCapacity = 5;
+        Building building1 = new Building { OwnerInstanceID = "FNALL1" };
+        Building building2 = new Building { OwnerInstanceID = "FNALL1" };
 
         planet.AddChild(building1);
         planet.AddChild(building2);
 
-        int capacity = planet.GetBuildingSlotCapacity(BuildingSlot.Ground);
+        int available = planet.GetAvailableEnergy();
 
-        Assert.AreEqual(3, capacity, "Should return remaining ground slot capacity.");
+        Assert.AreEqual(3, available, "Should return remaining energy capacity.");
     }
 
     [Test]
-    public void GetBuildingSlotCapacity_OrbitSlot_ReturnsRemainingCapacity()
+    public void GetAvailableEnergy_WithOneBuilding_ReturnsCorrectCount()
     {
-        planet.OrbitSlots = 3;
-        Building building = new Building
-        {
-            BuildingSlot = BuildingSlot.Orbit,
-            OwnerInstanceID = "FNALL1",
-        };
+        planet.EnergyCapacity = 5;
+        Building building = new Building { OwnerInstanceID = "FNALL1" };
 
         planet.AddChild(building);
 
-        int capacity = planet.GetBuildingSlotCapacity(BuildingSlot.Orbit);
+        int availableEnergy = planet.GetAvailableEnergy();
 
-        Assert.AreEqual(2, capacity, "Should return remaining orbit slot capacity.");
+        Assert.AreEqual(4, availableEnergy, "Should return correct amount of available energy.");
     }
 
     [Test]
-    public void GetAvailableSlots_GroundSlot_ReturnsCorrectCount()
+    public void GetAvailableEnergy_NoBuildings_ReturnsFullCapacity()
     {
-        planet.GroundSlots = 5;
-        Building building = new Building
-        {
-            BuildingSlot = BuildingSlot.Ground,
-            OwnerInstanceID = "FNALL1",
-        };
-
-        planet.AddChild(building);
-
-        int availableSlots = planet.GetAvailableSlots(BuildingSlot.Ground);
+        int availableEnergy = planet.GetAvailableEnergy();
 
         Assert.AreEqual(
-            4,
-            availableSlots,
-            "Should return correct number of available ground slots."
+            5,
+            availableEnergy,
+            "Should return full energy capacity when no buildings exist."
         );
-    }
-
-    [Test]
-    public void GetAvailableSlots_OrbitSlot_ReturnsCorrectCount()
-    {
-        planet.OrbitSlots = 3;
-
-        int availableSlots = planet.GetAvailableSlots(BuildingSlot.Orbit);
-
-        Assert.AreEqual(3, availableSlots, "Should return all orbit slots when none are used.");
     }
 
     [Test]
@@ -580,14 +537,14 @@ public class PlanetTests
         Building shipyard1 = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building shipyard2 = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
         planet.AddChild(shipyard1);
@@ -604,7 +561,6 @@ public class PlanetTests
         Building shipyard = new Building
         {
             ProductionType = ManufacturingType.Ship,
-            BuildingSlot = BuildingSlot.Orbit,
             OwnerInstanceID = "FNALL1",
         };
         planet.AddChild(shipyard);
@@ -761,7 +717,7 @@ public class PlanetTests
         Planet planet = new Planet
         {
             InstanceID = "p1",
-            OwnerInstanceID = "empire",
+            OwnerInstanceID = "FNEMP1",
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
@@ -785,7 +741,7 @@ public class PlanetTests
     {
         Planet planet = new Planet
         {
-            OwnerInstanceID = "empire",
+            OwnerInstanceID = "FNEMP1",
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 

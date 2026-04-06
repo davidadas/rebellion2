@@ -8,296 +8,181 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Generation
 {
     /// <summary>
-    /// Responsible for generating and deploying officers in the game.
+    /// Selects, decorates, and deploys officers during game generation.
     /// </summary>
-    public class OfficerGenerator : UnitGenerator<Officer>
+    public class OfficerGenerator
     {
-        /// <summary>
-        /// Constructs an OfficerGenerator object.
-        /// </summary>
-        /// <param name="summary">The game summary with options selected by the player.</param>
-        /// <param name="resourceManager">The resource manager for accessing configuration settings.</param>
-        /// <param name="randomProvider">Random number provider for deterministic generation.</param>
-        public OfficerGenerator(
-            GameSummary summary,
-            IResourceManager resourceManager,
-            IRandomNumberProvider randomProvider
-        )
-            : base(summary, resourceManager, randomProvider) { }
-
-        /// <summary>
-        /// Selects the initial set of officers for each faction based on game configuration.
-        /// </summary>
-        /// <param name="officersByFaction">Dictionary of officers grouped by faction.</param>
-        /// <returns>Array of selected officers.</returns>
-        private Officer[] SelectInitialOfficers(Dictionary<string, List<Officer>> officersByFaction)
+        public struct OfficerResults
         {
-            List<Officer> selectedOfficers = new List<Officer>();
+            public Officer[] Deployed;
+            public Officer[] Unrecruited;
+        }
 
-            GameGenerationRules rules = GetRules();
+        public OfficerResults Deploy(
+            PlanetSystem[] systems,
+            GameGenerationRules rules,
+            GameSummary summary,
+            IRandomNumberProvider rng
+        )
+        {
+            IResourceManager resourceManager = ResourceManager.Instance;
+            Officer[] allOfficers = resourceManager.GetGameData<Officer>();
+
+            Officer[] selected = SelectOfficers(allOfficers, rules, summary, rng);
+            DecorateOfficers(selected, rng);
+            DeployOfficers(selected, systems, rng);
+
+            Officer[] unrecruited = allOfficers.Except(selected).ToArray();
+
+            return new OfficerResults { Deployed = selected, Unrecruited = unrecruited };
+        }
+
+        private Officer[] SelectOfficers(
+            Officer[] allOfficers,
+            GameGenerationRules rules,
+            GameSummary summary,
+            IRandomNumberProvider rng
+        )
+        {
+            // Group officers by faction
+            Dictionary<string, List<Officer>> officersByFaction = new Dictionary<string, List<Officer>>();
+
+            foreach (Officer officer in allOfficers.Shuffle(rng))
+            {
+                string factionId = officer.OwnerInstanceID
+                    ?? (officer.AllowedOwnerInstanceIDs.Count == 1
+                        ? officer.AllowedOwnerInstanceIDs[0]
+                        : null);
+
+                if (factionId == null)
+                    continue;
+
+                if (!officersByFaction.ContainsKey(factionId))
+                    officersByFaction[factionId] = new List<Officer>();
+
+                // Main/owned officers go first
+                if (officer.OwnerInstanceID != null)
+                    officersByFaction[factionId].Insert(0, officer);
+                else
+                    officersByFaction[factionId].Add(officer);
+            }
+
+            // Determine count from galaxy size
             PlanetSizeProfile profile = rules.Officers.NumInitialOfficers;
-
-            int numAllowedOfficers = 0;
-
-            if (GetGameSummary().GalaxySize == GameSize.Small)
+            int numAllowed = summary.GalaxySize switch
             {
-                numAllowedOfficers = profile.Small;
-            }
-            else if (GetGameSummary().GalaxySize == GameSize.Medium)
-            {
-                numAllowedOfficers = profile.Medium;
-            }
-            else
-            {
-                numAllowedOfficers = profile.Large;
-            }
+                GameSize.Small => profile.Small,
+                GameSize.Medium => profile.Medium,
+                _ => profile.Large,
+            };
 
-            foreach (KeyValuePair<string, List<Officer>> pair in officersByFaction)
+            // Select from each faction
+            List<Officer> selected = new List<Officer>();
+            foreach ((string ownerInstanceId, List<Officer> officers) in officersByFaction)
             {
-                string ownerInstanceId = pair.Key;
-                List<Officer> officers = pair.Value;
-
-                IEnumerable<Officer> reducedOfficers = officers
-                    .Where(officer => officer.IsMain || officer.IsRecruitable)
-                    .TakeWhile((officer, index) => officer.IsMain || index < numAllowedOfficers)
-                    .Select(officer =>
+                IEnumerable<Officer> picked = officers
+                    .Where(o => o.IsMain || o.IsRecruitable)
+                    .TakeWhile((o, index) => o.IsMain || index < numAllowed)
+                    .Select(o =>
                     {
-                        officer.OwnerInstanceID = ownerInstanceId;
-                        return officer;
+                        o.OwnerInstanceID = ownerInstanceId;
+                        return o;
                     });
 
-                selectedOfficers.AddRange(reducedOfficers);
+                selected.AddRange(picked);
             }
 
-            return selectedOfficers.ToArray();
+            return selected.ToArray();
         }
 
-        /// <summary>
-        /// Creates a mapping of factions to potential deployment destinations.
-        /// </summary>
-        /// <param name="planetSystems">Array of planet systems in the game.</param>
-        /// <returns>Dictionary mapping faction IDs to a list of destinations (planets and fleets).</returns>
-        private Dictionary<string, List<ISceneNode>> GetDestinationMapping(
-            PlanetSystem[] planetSystems
+        private void DecorateOfficers(Officer[] officers, IRandomNumberProvider rng)
+        {
+            foreach (Officer officer in officers)
+            {
+                // Skills
+                officer.SetSkillValue(
+                    MissionParticipantSkill.Diplomacy,
+                    officer.GetSkillValue(MissionParticipantSkill.Diplomacy)
+                        + rng.NextInt(0, officer.DiplomacyVariance)
+                );
+                officer.SetSkillValue(
+                    MissionParticipantSkill.Espionage,
+                    officer.GetSkillValue(MissionParticipantSkill.Espionage)
+                        + rng.NextInt(0, officer.EspionageVariance)
+                );
+                officer.SetSkillValue(
+                    MissionParticipantSkill.Combat,
+                    officer.GetSkillValue(MissionParticipantSkill.Combat)
+                        + rng.NextInt(0, officer.CombatVariance)
+                );
+                officer.SetSkillValue(
+                    MissionParticipantSkill.Leadership,
+                    officer.GetSkillValue(MissionParticipantSkill.Leadership)
+                        + rng.NextInt(0, officer.LeadershipVariance)
+                );
+
+                // Attributes
+                officer.Loyalty += rng.NextInt(0, officer.LoyaltyVariance);
+                officer.ShipResearch += rng.NextInt(0, officer.ShipResearchVariance);
+                officer.TroopResearch += rng.NextInt(0, officer.TroopResearchVariance);
+                officer.FacilityResearch += rng.NextInt(0, officer.FacilityResearchVariance);
+
+                // Force sensitivity
+                officer.ForceExperience = officer.JediLevel;
+
+                if (officer.JediProbability > 0)
+                {
+                    double jediProbability = officer.JediProbability / 100.0;
+                    if (rng.NextDouble() < jediProbability)
+                        officer.ForceTier = ForceTier.Aware;
+                }
+
+                if (officer.ForceExperience >= 150)
+                    officer.ForceTier = ForceTier.Experienced;
+                else if (officer.ForceExperience >= 50)
+                    officer.ForceTier = ForceTier.Training;
+            }
+        }
+
+        private void DeployOfficers(
+            Officer[] officers,
+            PlanetSystem[] systems,
+            IRandomNumberProvider rng
         )
         {
-            Dictionary<string, List<ISceneNode>> destinationMapping =
-                new Dictionary<string, List<ISceneNode>>();
+            // Build destination mapping: faction -> list of planets and fleets
+            Dictionary<string, List<ISceneNode>> destinations = new Dictionary<string, List<ISceneNode>>();
 
-            IEnumerable<Planet> ownedPlanets = planetSystems
-                .SelectMany(ps => ps.Planets)
-                .Where(p => p.OwnerInstanceID != null);
-
-            foreach (Planet planet in ownedPlanets)
+            foreach (Planet planet in systems.SelectMany(s => s.Planets).Where(p => p.OwnerInstanceID != null))
             {
-                AddDestination(destinationMapping, planet);
+                AddDestination(destinations, planet);
                 foreach (Fleet fleet in planet.Fleets)
-                {
-                    AddDestination(destinationMapping, fleet);
-                }
+                    AddDestination(destinations, fleet);
             }
 
-            return destinationMapping;
+            foreach (Officer officer in officers)
+            {
+                List<ISceneNode> factionDests = destinations[officer.OwnerInstanceID];
+
+                ISceneNode destination = officer.InitialParentInstanceID != null
+                    ? factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID)
+                    : factionDests[rng.NextInt(0, factionDests.Count)];
+
+                if (destination is Planet planet)
+                    planet.AddChild(officer);
+                else if (destination is Fleet fleet && fleet.CapitalShips.Count > 0)
+                    fleet.CapitalShips[0].AddChild(officer);
+            }
         }
 
-        /// <summary>
-        /// Adds a destination to the destination mapping.
-        /// </summary>
-        /// <param name="mapping">The destination mapping to update.</param>
-        /// <param name="destination">The destination to add.</param>
         private void AddDestination(
             Dictionary<string, List<ISceneNode>> mapping,
             ISceneNode destination
         )
         {
             if (!mapping.ContainsKey(destination.OwnerInstanceID))
-            {
                 mapping[destination.OwnerInstanceID] = new List<ISceneNode>();
-            }
             mapping[destination.OwnerInstanceID].Add(destination);
-        }
-
-        /// <summary>
-        /// Selects officers for deployment based on their allowed factions and ownership.
-        /// </summary>
-        /// <param name="units">Array of all available officers.</param>
-        /// <returns>Array of selected officers.</returns>
-        public override Officer[] SelectUnits(Officer[] units)
-        {
-            Dictionary<string, List<Officer>> officersByFaction =
-                new Dictionary<string, List<Officer>>();
-
-            Officer[] shuffledUnits = units.Shuffle().ToArray();
-
-            foreach (Officer officer in shuffledUnits)
-            {
-                string factionId = null;
-
-                if (officer.OwnerInstanceID != null)
-                {
-                    factionId = officer.OwnerInstanceID;
-                }
-                else
-                {
-                    if (officer.AllowedOwnerInstanceIDs.Count == 1)
-                    {
-                        factionId = officer.AllowedOwnerInstanceIDs[0];
-                    }
-                }
-
-                if (factionId != null)
-                {
-                    if (!officersByFaction.ContainsKey(factionId))
-                    {
-                        officersByFaction[factionId] = new List<Officer>();
-                    }
-
-                    if (officer.OwnerInstanceID != null)
-                    {
-                        officersByFaction[factionId].Insert(0, officer);
-                    }
-                    else
-                    {
-                        officersByFaction[factionId].Add(officer);
-                    }
-                }
-            }
-
-            return SelectInitialOfficers(officersByFaction);
-        }
-
-        /// <summary>
-        /// Decorates an officer's skills with random variances.
-        /// </summary>
-        /// <param name="officer">The officer to decorate.</param>
-        private void DecorateOfficerSkills(Officer officer)
-        {
-            (MissionParticipantSkill, int)[] skillVariances = new[]
-            {
-                (MissionParticipantSkill.Diplomacy, officer.DiplomacyVariance),
-                (MissionParticipantSkill.Espionage, officer.EspionageVariance),
-                (MissionParticipantSkill.Combat, officer.CombatVariance),
-                (MissionParticipantSkill.Leadership, officer.LeadershipVariance),
-            };
-
-            IRandomNumberProvider rng = GetRandomProvider();
-            foreach ((MissionParticipantSkill skill, int variance) in skillVariances)
-            {
-                officer.SetSkillValue(
-                    skill,
-                    officer.GetSkillValue(skill) + rng.NextInt(0, variance)
-                );
-            }
-        }
-
-        /// <summary>
-        /// Decorates an officer's attributes with random variances.
-        /// </summary>
-        /// <param name="officer">The officer to decorate.</param>
-        private void DecorateOfficerAttributes(Officer officer)
-        {
-            IRandomNumberProvider rng = GetRandomProvider();
-            officer.Loyalty += rng.NextInt(0, officer.LoyaltyVariance);
-            officer.ShipResearch += rng.NextInt(0, officer.ShipResearchVariance);
-            officer.TroopResearch += rng.NextInt(0, officer.TroopResearchVariance);
-            officer.FacilityResearch += rng.NextInt(0, officer.FacilityResearchVariance);
-        }
-
-        /// <summary>
-        /// Determines if an officer awakens to Force sensitivity based on probability.
-        /// Sets ForceTier to Aware if awakening succeeds.
-        /// Initializes ForceExperience from JediLevel.
-        /// </summary>
-        /// <param name="officer">The officer to check.</param>
-        private void DetermineJediStatus(Officer officer)
-        {
-            // Initialize ForceExperience from JediLevel (base XP at game start)
-            officer.ForceExperience = officer.JediLevel;
-
-            // Check if officer awakens to Force sensitivity
-            if (officer.JediProbability > 0)
-            {
-                IRandomNumberProvider rng = GetRandomProvider();
-                double jediProbability = officer.JediProbability / 100.0;
-                if (rng.NextDouble() < jediProbability)
-                {
-                    officer.ForceTier = ForceTier.Aware;
-                }
-            }
-
-            // Characters with high initial XP start at higher tiers
-            if (officer.ForceExperience >= 150)
-            {
-                officer.ForceTier = ForceTier.Experienced;
-            }
-            else if (officer.ForceExperience >= 50)
-            {
-                officer.ForceTier = ForceTier.Training;
-            }
-        }
-
-        /// <summary>
-        /// Decorates officers with additional randomized attributes.
-        /// </summary>
-        /// <param name="units">Array of officers to decorate.</param>
-        /// <returns>Array of decorated officers.</returns>
-        public override Officer[] DecorateUnits(Officer[] units)
-        {
-            foreach (Officer officer in units)
-            {
-                DecorateOfficerSkills(officer);
-                DecorateOfficerAttributes(officer);
-                DetermineJediStatus(officer);
-            }
-
-            return units;
-        }
-
-        /// <summary>
-        /// Deploys officers to initial destinations based on the game configuration.
-        /// </summary>
-        /// <param name="officers">Array of officers to deploy.</param>
-        /// <param name="planetSystems">Array of planet systems in the game.</param>
-        /// <returns>Array of deployed officers.</returns>
-        public override Officer[] DeployUnits(Officer[] officers, PlanetSystem[] planetSystems)
-        {
-            Dictionary<string, List<ISceneNode>> destinationMapping = GetDestinationMapping(
-                planetSystems
-            );
-
-            foreach (Officer officer in officers)
-            {
-                List<ISceneNode> destinations = destinationMapping[officer.OwnerInstanceID];
-                ISceneNode destination = GetOfficerDestination(officer, destinations);
-
-                if (destination is Planet planet)
-                {
-                    planet.AddChild(officer);
-                }
-                else if (destination is Fleet fleet)
-                {
-                    fleet.AddChild(officer);
-                }
-            }
-
-            return officers;
-        }
-
-        /// <summary>
-        /// Determines the destination for an officer.
-        /// </summary>
-        /// <param name="officer">The officer to deploy.</param>
-        /// <param name="destinations">List of possible destinations.</param>
-        /// <returns>The selected destination for the officer.</returns>
-        private ISceneNode GetOfficerDestination(Officer officer, List<ISceneNode> destinations)
-        {
-            if (officer.InitialParentInstanceID != null)
-            {
-                return destinations.First(node =>
-                    node.InstanceID == officer.InitialParentInstanceID
-                );
-            }
-            return destinations.Shuffle().First();
         }
     }
 }

@@ -26,7 +26,6 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -64,7 +63,6 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -103,7 +101,6 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
-                BuildingSlot = BuildingSlot.Ground,
             };
             game.AttachNode(building, enemyPlanet);
 

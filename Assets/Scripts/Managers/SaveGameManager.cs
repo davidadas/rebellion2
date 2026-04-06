@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Systems;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -139,21 +138,8 @@ public class SaveGameManager
     {
         string saveFilePath = GetSaveFilePath(fileName);
 
-        // Deserialize the data from a file.
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
-        GameRoot game = (GameRoot)serializer.Deserialize(fileStream);
-
-        // Rebuild technology levels from current data (respects mods)
-        foreach (Faction faction in game.GetFactions())
-        {
-            faction.RebuildTechnologyLevels(game);
-        }
-
-        // Rebuild manufacturing queues from serialized state
-        ManufacturingSystem manufacturingSystem = new ManufacturingSystem(game);
-        manufacturingSystem.RebuildQueues();
-
-        return game;
+        return (GameRoot)serializer.Deserialize(fileStream);
     }
 }
