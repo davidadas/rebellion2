@@ -21,7 +21,7 @@ public abstract class Mission : ContainerNode
     public List<IMissionParticipant> DecoyParticipants { get; set; }
 
     public MissionParticipantSkill ParticipantSkill { get; set; }
-    public bool HasInitiated = false;
+    public bool HasInitiated;
 
     [PersistableIgnore]
     public ProbabilityTable SuccessProbabilityTable { get; set; }

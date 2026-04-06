@@ -41,87 +41,87 @@ namespace Rebellion.SceneGraph
         public List<string> AllowedOwnerInstanceIDs { get; set; }
 
         /// <summary>
-        ///
+        /// Sets the parent node of this scene node.
         /// </summary>
         /// <param name="newParent"></param>
         void SetParent(ISceneNode newParent);
 
         /// <summary>
-        ///
+        /// Returns the current parent node of this scene node.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The parent node, or null if this node has no parent.</returns>
         ISceneNode GetParent();
 
         /// <summary>
-        ///
+        /// Returns the previous parent node before the most recent reparenting.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The last parent node, or null if the node has not been reparented.</returns>
         ISceneNode GetLastParent();
 
         /// <summary>
-        ///
+        /// Returns the instance ID of the faction that owns this scene node.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The owner instance ID, or null if this node has no owner.</returns>
         string GetOwnerInstanceID();
 
         /// <summary>
-        ///
+        /// Sets the instance ID of the faction that owns this scene node.
         /// </summary>
         /// <param name="ownerInstanceID"></param>
         void SetOwnerInstanceID(string ownerInstanceID);
 
         /// <summary>
-        ///
+        /// Walks up the scene graph and returns the nearest ancestor of type <typeparamref name="T"/>.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
+        /// <returns>The nearest ancestor of type <typeparamref name="T"/>, or null if none is found.</returns>
         T GetParentOfType<T>()
             where T : class, ISceneNode;
 
         /// <summary>
-        ///
+        /// Returns whether this node can accept the specified child node.
         /// </summary>
         /// <param name="child"></param>
-        /// <returns></returns>
+        /// <returns>True if the child can be added; otherwise, false.</returns>
         bool CanAcceptChild(ISceneNode child);
 
         /// <summary>
-        ///
+        /// Adds the specified node as a child of this node.
         /// </summary>
         /// <param name="child"></param>
         void AddChild(ISceneNode child);
 
         /// <summary>
-        ///
+        /// Removes the specified child node from this node.
         /// </summary>
         /// <param name="child"></param>
         void RemoveChild(ISceneNode child);
 
         /// <summary>
-        ///
+        /// Returns all direct children of this node.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The children of this node.</returns>
         IEnumerable<ISceneNode> GetChildren();
 
         /// <summary>
-        ///
+        /// Returns children of type <typeparamref name="T"/> matching the given predicate, optionally recursing into descendants.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="predicate"></param>
         /// <param name="recurse"></param>
-        /// <returns></returns>
+        /// <returns>The matching children.</returns>
         IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
             where T : class, ISceneNode;
 
         /// <summary>
-        ///
+        /// Returns whether the specified owner instance ID is in this node's allowed owner list.
         /// </summary>
         /// <param name="ownerInstanceId"></param>
-        /// <returns></returns>
+        /// <returns>True if the owner instance ID is allowed; otherwise, false.</returns>
         bool HasAllowedOwnerInstanceID(string ownerInstanceId);
 
         /// <summary>
-        ///
+        /// Visits this node and all descendants, invoking the given action on each.
         /// </summary>
         /// <param name="action"></param>
         void Traverse(Action<ISceneNode> action);

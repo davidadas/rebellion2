@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -283,9 +282,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Placeholder for manual/interactive combat resolution.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="decision">The combat decision context.</param>
-        private void RunManualCombat(GameRoot game, CombatDecisionContext decision)
+        /// <param name="_game">The game instance.</param>
+        /// <param name="_decision">The combat decision context.</param>
+        private void RunManualCombat(GameRoot _game, CombatDecisionContext _decision)
         {
             // TODO: Implement manual combat resolution
         }
@@ -963,7 +962,7 @@ namespace Rebellion.Systems
             List<Building> defensiveBuildings = planet
                 .GetAllBuildings()
                 .Where(b => b.GetBuildingType() == BuildingType.Defense)
-                .OrderBy(b => _provider.NextDouble())
+                .OrderBy(_ => _provider.NextDouble())
                 .ToList();
 
             int strikesRemaining = excessAssaultStrength;

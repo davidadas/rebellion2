@@ -69,7 +69,7 @@ namespace Rebellion.Systems
 
         private void TransferBuildings(Planet planet, Faction newOwner)
         {
-            foreach (Building building in planet.GetChildren<Building>(b => true, recurse: false))
+            foreach (Building building in planet.GetChildren<Building>(_ => true, recurse: false))
             {
                 building.AllowedOwnerInstanceIDs = new List<string> { newOwner.InstanceID };
                 _game.ChangeUnitOwnership(building, newOwner.InstanceID);

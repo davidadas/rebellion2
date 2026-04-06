@@ -82,11 +82,11 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        ///
+        /// Deserializes the first XML element matching type <typeparamref name="T"/> from the given stream.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="stream"></param>
-        /// <returns></returns>
+        /// <returns>The deserialized instance of <typeparamref name="T"/>.</returns>
         /// <exception cref="InvalidDataException"></exception>
         public T DeserializeNode<T>(Stream stream)
         {

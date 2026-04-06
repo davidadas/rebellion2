@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
@@ -269,7 +268,7 @@ namespace Rebellion.Systems
                 return existing;
 
             // Create a new fleet at this planet for the ship to be built into
-            Fleet newFleet = faction.CreateFleet(_game, roleType: FleetRoleType.Battle);
+            Fleet newFleet = faction.CreateFleet(roleType: FleetRoleType.Battle);
             _game.AttachNode(newFleet, planet);
             return newFleet;
         }

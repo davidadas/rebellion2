@@ -15,6 +15,9 @@ namespace Rebellion.Util.Common
         private readonly int _rollMax;
         private readonly bool _fallbackToLast;
 
+        /// <summary>
+        /// Initializes a new weighted table with the given entries and roll range.
+        /// </summary>
         /// <param name="entries">Table entries with cumulative weights.</param>
         /// <param name="rollMin">Minimum roll value (inclusive). Default 0 for facility tables.</param>
         /// <param name="rollMax">Maximum roll value (exclusive upper bound for NextInt). Default 101.</param>

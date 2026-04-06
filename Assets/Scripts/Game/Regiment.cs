@@ -1,9 +1,4 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Drawing;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game
 {
@@ -39,18 +34,18 @@ namespace Rebellion.Game
         public Regiment() { }
 
         /// <summary>
-        ///
+        /// Returns the manufacturing type for this unit.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The manufacturing type.</returns>
         public ManufacturingType GetManufacturingType()
         {
             return ManufacturingType.Troop;
         }
 
         /// <summary>
-        ///
+        /// Returns whether the regiment can be ordered to move.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the regiment has no active movement state; otherwise, false.</returns>
         public bool IsMovable()
         {
             return Movement == null;

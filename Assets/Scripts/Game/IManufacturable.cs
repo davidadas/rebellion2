@@ -1,8 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using Rebellion.SceneGraph;
-using UnityEngine;
 
 namespace Rebellion.Game
 {

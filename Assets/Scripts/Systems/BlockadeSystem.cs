@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -93,7 +92,7 @@ namespace Rebellion.Systems
             }
         }
 
-        private void OnBlockadeEnded(Planet planet)
+        private void OnBlockadeEnded(Planet _)
         {
             // No special action needed on blockade end
             // Just the transition is tracked

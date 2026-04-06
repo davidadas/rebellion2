@@ -430,7 +430,6 @@ namespace Rebellion.Game
         /// Capital ships must be detached (no parent) before passing in.
         /// </summary>
         public Fleet CreateFleet(
-            GameRoot game,
             CapitalShip[] capitalShips = null,
             FleetRoleType roleType = FleetRoleType.None
         )
@@ -506,7 +505,6 @@ namespace Rebellion.Game
         /// (from data files, including any active mods) rather than the serialized Technology objects,
         /// ensuring that balance changes and new content are reflected in loaded saves.
         /// </summary>
-        /// <param name="game">The game instance containing current entity definitions.</param>
         public void LoadTechnologyLevels(IManufacturable[] templates)
         {
             TechnologyLevels.Clear();

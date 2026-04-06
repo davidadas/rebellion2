@@ -5,7 +5,6 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Manages unit and facility production during each game tick.

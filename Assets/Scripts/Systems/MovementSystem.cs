@@ -189,11 +189,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// 
+        /// Returns the interpolated screen position of a unit between its origin and its destination planet.
         /// </summary>
         /// <param name="movable"></param>
         /// <param name="destinationPlanet"></param>
-        /// <returns></returns>
+        /// <returns>The interpolated position.</returns>
         private Point CalculateInterpolatedPosition(IMovable movable, Planet destinationPlanet)
         {
             float progress = movable.Movement.Progress();
@@ -313,11 +313,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// 
+        /// Returns the nearest planet owned by the specified faction to the given position.
         /// </summary>
         /// <param name="factionOwnerID"></param>
         /// <param name="fromPosition"></param>
-        /// <returns></returns>
+        /// <returns>The nearest faction-owned planet, or null if none exists.</returns>
         private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
         {
             return _game.GetSceneNodesByType<Planet>()

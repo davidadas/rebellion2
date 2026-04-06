@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Rebellion.SceneGraph
@@ -46,12 +45,12 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        ///
+        /// Returns no children. Leaf nodes cannot have children.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="predicate"></param>
         /// <param name="recurse"></param>
-        /// <returns></returns>
+        /// <returns>An empty sequence.</returns>
         public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
         {
             yield break;
@@ -67,7 +66,7 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
-        ///
+        /// Visits this leaf node by invoking the given action on it.
         /// </summary>
         /// <param name="action"></param>
         public override void Traverse(System.Action<ISceneNode> action)

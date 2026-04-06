@@ -65,11 +65,16 @@ do_lint() {
     fi
 
     # Roslynator uses a committed portable project file so it works in CI without Unity.
+    # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
     roslynator analyze GameAssembly.Lint.csproj \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
-        --supported-diagnostics RCS1213 \
-        --severity-level warning
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level warning || true
+    roslynator analyze GameAssembly.Lint.csproj \
+        --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level error
     echo ""
     echo "Lint complete."
 }

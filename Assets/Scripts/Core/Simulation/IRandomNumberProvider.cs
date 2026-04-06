@@ -47,7 +47,7 @@ namespace Rebellion.Core.Simulation
     public class FixedRandomProvider : IRandomNumberProvider
     {
         private readonly double[] _values;
-        private int _index = 0;
+        private int _index;
 
         /// <summary>
         /// Creates a fixed random provider with the specified value sequence.

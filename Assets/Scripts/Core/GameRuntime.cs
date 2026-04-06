@@ -99,7 +99,7 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    ///
+    /// Loads the quicksave into the current active game session without reloading the scene.
     /// </summary>
     private void HotReloadGame()
     {
@@ -109,7 +109,7 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    ///
+    /// Loads the quicksave by setting the launch context and transitioning to the strategy scene.
     /// </summary>
     private void ColdStartFromSave()
     {

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -58,7 +57,7 @@ namespace Rebellion.Generation
                 .Where(p => p.InstanceID != null)
                 .ToDictionary(p => p.InstanceID);
 
-            DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory, rng);
+            DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory);
             DeployFixedGarrisons(config.FixedGarrisons, planetMap, classification, factory);
             DeployFixedFleets(config.FixedFleets, planetMap, factory, factions, rng);
             DeployBudgetUnits(systems, factions, config.FactionBudgets, factory, gameConfig, rng,
@@ -73,13 +72,11 @@ namespace Rebellion.Generation
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
         /// <param name="gcConfig">Galaxy classification config with per-faction garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
-        /// <param name="rng">Random number provider.</param>
         private void DeployUprisingPreventionGarrisons(
             PlanetSystem[] systems,
             UnitDeploymentSection config,
             GalaxyClassificationSection gcConfig,
-            UnitFactory factory,
-            IRandomNumberProvider rng
+            UnitFactory factory
         )
         {
             Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
@@ -198,7 +195,7 @@ namespace Rebellion.Generation
                     continue;
 
                 Faction faction = factions.First(f => f.InstanceID == fleetConfig.FactionID);
-                Fleet fleet = faction.CreateFleet(null, capitalShips.ToArray(), FleetRoleType.Battle);
+                Fleet fleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
                 planet.AddChild(fleet);
 
                 CapitalShip cargoShip = capitalShips[0];
@@ -294,7 +291,6 @@ namespace Rebellion.Generation
         /// <param name="systems">All planet systems (for maintenance capacity calculation).</param>
         /// <param name="faction">The faction to calculate budget for.</param>
         /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="factory">Unit factory (unused directly, reserved for cost queries).</param>
         /// <param name="gameConfig">Game config for the refinement multiplier.</param>
         /// <param name="galaxySize">Galaxy size index for budget level lookup.</param>
         /// <param name="difficulty">Difficulty index for budget level lookup.</param>
@@ -304,7 +300,7 @@ namespace Rebellion.Generation
             PlanetSystem[] systems,
             Faction faction,
             FactionBudget budget,
-            UnitFactory factory,
+            UnitFactory _,
             GameConfig gameConfig,
             int galaxySize,
             int difficulty,
@@ -399,7 +395,7 @@ namespace Rebellion.Generation
                 }
                 else
                 {
-                    Fleet newFleet = faction.CreateFleet(null, shipsForFleet.ToArray(), FleetRoleType.Battle);
+                    Fleet newFleet = faction.CreateFleet(shipsForFleet.ToArray(), FleetRoleType.Battle);
                     planet.AddChild(newFleet);
                 }
             }

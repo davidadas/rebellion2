@@ -25,7 +25,7 @@ namespace Rebellion.Util.Common
 
         // Default log file path and configuration settings
         private static string logFilePath = $"{Application.persistentDataPath}/log.txt";
-        private static bool logToFile = false;
+        private static bool logToFile;
         private static bool includeTimestamp = true;
 
         /// <summary>
