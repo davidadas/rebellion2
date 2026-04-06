@@ -135,6 +135,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_FacilityUnderConstruction_DoesNotAddCapacity()
+        {
+            Building shipyard = CreateShipyard("SY1");
+            shipyard.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(shipyard, planet);
+
+            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+
+            Assert.AreEqual(
+                0,
+                faction.ResearchCapacity[ManufacturingType.Ship],
+                "Facility under construction should not contribute to research capacity"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FacilityInTransit_DoesNotAddCapacity()
+        {
+            Building shipyard = CreateShipyard("SY1");
+            shipyard.Movement = new MovementState();
+            game.AttachNode(shipyard, planet);
+
+            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+
+            Assert.AreEqual(
+                0,
+                faction.ResearchCapacity[ManufacturingType.Ship],
+                "Facility in transit should not contribute to research capacity"
+            );
+        }
+
+        [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
             system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
