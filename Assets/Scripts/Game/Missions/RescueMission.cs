@@ -17,8 +17,8 @@ public class RescueMission : Mission
         Name = "Rescue";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 10;
-        MaxTicks = 20;
+        BaseTicks = 1;
+        SpreadTicks = 6;
     }
 
     public RescueMission(
@@ -37,8 +37,8 @@ public class RescueMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Combat,
             successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 20
+            baseTicks: 1,
+            spreadTicks: 6
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -86,8 +86,8 @@ public class RescueMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Rescue);
-        MinTicks = tables.TickRanges.Rescue.Min;
-        MaxTicks = tables.TickRanges.Rescue.Max;
+        BaseTicks = tables.TickRanges.Rescue.Base;
+        SpreadTicks = tables.TickRanges.Rescue.Spread;
     }
 
     /// <summary>

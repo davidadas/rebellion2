@@ -91,5 +91,6 @@ case "${1:-}" in
     build) do_build ;;
     clean) do_clean ;;
     all)   do_lint; do_test ;;
+    "")    do_lint; do_test ;;
     *)     usage ;;
 esac

@@ -4,7 +4,7 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID></HQInstanceID>
-<Modifiers>
+    <Modifiers>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>
       <UprisingResistance>1</UprisingResistance>
@@ -12,6 +12,7 @@
       <WeakSupportPenaltyTrigger>Positive</WeakSupportPenaltyTrigger>
     </Modifiers>
   </Faction>
+
   <Faction>
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>

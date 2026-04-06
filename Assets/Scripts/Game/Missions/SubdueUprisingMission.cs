@@ -13,8 +13,8 @@ public class SubdueUprisingMission : Mission
         Name = "Subdue Uprising";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        MinTicks = 10;
-        MaxTicks = 15;
+        BaseTicks = 2;
+        SpreadTicks = 10;
     }
 
     public SubdueUprisingMission(
@@ -32,8 +32,8 @@ public class SubdueUprisingMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Leadership,
             successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 15
+            baseTicks: 2,
+            spreadTicks: 10
         )
     {
         Planet planet = (Planet)target;
@@ -95,8 +95,8 @@ public class SubdueUprisingMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.SubdueUprising);
-        MinTicks = tables.TickRanges.SubdueUprising.Min;
-        MaxTicks = tables.TickRanges.SubdueUprising.Max;
+        BaseTicks = tables.TickRanges.SubdueUprising.Base;
+        SpreadTicks = tables.TickRanges.SubdueUprising.Spread;
     }
 
     /// <summary>

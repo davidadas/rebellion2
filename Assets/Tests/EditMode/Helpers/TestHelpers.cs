@@ -85,8 +85,8 @@ public class StubMission : Mission
             new List<IMissionParticipant>(),
             MissionParticipantSkill.Diplomacy,
             new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } }),
-            minTicks: 1,
-            maxTicks: 1
+            baseTicks: 1,
+            spreadTicks: 0
         ) { }
 
     protected override List<GameResult> OnSuccess(GameRoot game) => new List<GameResult>();

@@ -33,10 +33,10 @@ public abstract class Mission : ContainerNode
     public ProbabilityTable FoilProbabilityTable { get; set; }
 
     [PersistableIgnore]
-    public int MinTicks = 1;
+    public int BaseTicks = 1;
 
     [PersistableIgnore]
-    public int MaxTicks = 10;
+    public int SpreadTicks = 10;
 
     public int MaxProgress { get; set; }
     public int CurrentProgress { get; set; }
@@ -74,8 +74,8 @@ public abstract class Mission : ContainerNode
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
         ProbabilityTable successProbabilityTable,
-        int minTicks,
-        int maxTicks
+        int baseTicks,
+        int spreadTicks
     )
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -90,8 +90,8 @@ public abstract class Mission : ContainerNode
             successProbabilityTable ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
         DecoyProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
         FoilProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
-        MinTicks = minTicks;
-        MaxTicks = maxTicks;
+        BaseTicks = baseTicks;
+        SpreadTicks = spreadTicks;
     }
 
     /// <summary>
@@ -105,19 +105,20 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Randomizes MaxProgress within [MinTicks, MaxTicks] and marks the mission as initiated.
+    /// Randomizes MaxProgress as BaseTicks + random(0..SpreadTicks) inclusive.
+    /// Matches original: base_delay + roll_dice(spread).
     /// </summary>
     public void Initiate(IRandomNumberProvider provider)
     {
         CurrentProgress = 0;
-        MaxProgress = provider.NextInt(MinTicks, MaxTicks);
+        MaxProgress = BaseTicks + provider.NextInt(0, SpreadTicks + 1);
         HasInitiated = true;
     }
 
     /// <summary>
-    /// Returns the configured tick range as [MinTicks, MaxTicks].
+    /// Returns the configured tick range as [BaseTicks, SpreadTicks].
     /// </summary>
-    public int[] GetTickRange() => new int[] { MinTicks, MaxTicks };
+    public int[] GetTickRange() => new int[] { BaseTicks, SpreadTicks };
 
     /// <summary>
     /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.

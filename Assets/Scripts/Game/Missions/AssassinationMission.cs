@@ -18,8 +18,8 @@ public class AssassinationMission : Mission
         Name = "Assassination";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 15;
-        MaxTicks = 20;
+        BaseTicks = 1;
+        SpreadTicks = 1;
     }
 
     public AssassinationMission(
@@ -38,8 +38,8 @@ public class AssassinationMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Combat,
             successProbabilityTable,
-            minTicks: 15,
-            maxTicks: 20
+            baseTicks: 1,
+            spreadTicks: 1
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -87,8 +87,8 @@ public class AssassinationMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Assassination);
-        MinTicks = tables.TickRanges.Assassination.Min;
-        MaxTicks = tables.TickRanges.Assassination.Max;
+        BaseTicks = tables.TickRanges.Assassination.Base;
+        SpreadTicks = tables.TickRanges.Assassination.Spread;
     }
 
     /// <summary>

@@ -22,6 +22,9 @@ public enum MissionType
     Sabotage,
     InciteUprising,
     Rescue,
+    ShipDesignResearch,
+    TroopTrainingResearch,
+    FacilityDesignResearch,
 }
 
 /// <summary>
@@ -115,6 +118,27 @@ public class MissionFactory
                 mainParticipants,
                 decoyParticipants,
                 SelectRescueTarget(ownerInstanceId, target, provider)
+            ),
+            MissionType.ShipDesignResearch => new ResearchMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                ManufacturingType.Ship
+            ),
+            MissionType.TroopTrainingResearch => new ResearchMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                ManufacturingType.Troop
+            ),
+            MissionType.FacilityDesignResearch => new ResearchMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                ManufacturingType.Building
             ),
             _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
         };

@@ -16,8 +16,8 @@ public class RecruitmentMission : Mission
         Name = "Recruitment";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        MinTicks = 15;
-        MaxTicks = 20;
+        BaseTicks = 5;
+        SpreadTicks = 20;
     }
 
     public RecruitmentMission(
@@ -36,8 +36,8 @@ public class RecruitmentMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Leadership,
             successProbabilityTable,
-            minTicks: 15,
-            maxTicks: 20
+            baseTicks: 5,
+            spreadTicks: 20
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -90,8 +90,8 @@ public class RecruitmentMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Recruitment);
-        MinTicks = tables.TickRanges.Recruitment.Min;
-        MaxTicks = tables.TickRanges.Recruitment.Max;
+        BaseTicks = tables.TickRanges.Recruitment.Base;
+        SpreadTicks = tables.TickRanges.Recruitment.Spread;
     }
 
     /// <summary>

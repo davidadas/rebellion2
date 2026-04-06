@@ -14,8 +14,8 @@ public class SabotageMission : Mission
         Name = "Sabotage";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 10;
-        MaxTicks = 15;
+        BaseTicks = 1;
+        SpreadTicks = 2;
     }
 
     public SabotageMission(
@@ -33,8 +33,8 @@ public class SabotageMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Combat,
             successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 15
+            baseTicks: 1,
+            spreadTicks: 2
         ) { }
 
     /// <summary>
@@ -71,8 +71,8 @@ public class SabotageMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Sabotage);
-        MinTicks = tables.TickRanges.Sabotage.Min;
-        MaxTicks = tables.TickRanges.Sabotage.Max;
+        BaseTicks = tables.TickRanges.Sabotage.Base;
+        SpreadTicks = tables.TickRanges.Sabotage.Spread;
     }
 
     /// <summary>

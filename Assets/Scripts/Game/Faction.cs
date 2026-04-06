@@ -15,6 +15,12 @@ namespace Rebellion.Game
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
 
         /// <summary>
+        /// Faction-specific gameplay modifiers.
+        /// These affect game mechanics regardless of whether faction is player or AI controlled.
+        /// </summary>
+        public FactionModifiers Modifiers { get; set; } = new FactionModifiers();
+
+        /// <summary>
         /// Technology levels organized by manufacturing type and research level.
         /// NOT serialized - rebuilt from ManufacturingResearchLevels on load to respect mods.
         /// </summary>
@@ -32,14 +38,21 @@ namespace Rebellion.Game
                 { ManufacturingType.Ship, 0 },
                 { ManufacturingType.Troop, 0 },
             };
-        public string HQInstanceID { get; set; }
-        public string PlayerID { get; set; }
 
         /// <summary>
-        /// Faction-specific gameplay modifiers.
-        /// Affects game mechanics regardless of whether faction is player or AI controlled.
+        /// Running research capacity accumulator per manufacturing type.
+        /// Incremented by idle facilities and officer research each tick.
+        /// When capacity >= level cost threshold, research level advances.
         /// </summary>
-        public FactionModifiers Modifiers { get; set; } = new FactionModifiers();
+        public Dictionary<ManufacturingType, int> ResearchCapacity { get; set; } =
+            new Dictionary<ManufacturingType, int>()
+            {
+                { ManufacturingType.Building, 0 },
+                { ManufacturingType.Ship, 0 },
+                { ManufacturingType.Troop, 0 },
+            };
+        public string HQInstanceID { get; set; }
+        public string PlayerID { get; set; }
 
         /// <summary>
         /// Fog of war state - snapshots and entity tracking.

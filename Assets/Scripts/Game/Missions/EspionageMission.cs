@@ -18,8 +18,8 @@ public class EspionageMission : Mission
         Name = "Espionage";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        MinTicks = 10;
-        MaxTicks = 20;
+        BaseTicks = 1;
+        SpreadTicks = 20;
     }
 
     public EspionageMission(
@@ -38,8 +38,8 @@ public class EspionageMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Espionage,
             successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 20
+            baseTicks: 1,
+            spreadTicks: 20
         )
     {
         Planet planet = (Planet)target;
@@ -82,8 +82,8 @@ public class EspionageMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Espionage);
-        MinTicks = tables.TickRanges.Espionage.Min;
-        MaxTicks = tables.TickRanges.Espionage.Max;
+        BaseTicks = tables.TickRanges.Espionage.Base;
+        SpreadTicks = tables.TickRanges.Espionage.Spread;
     }
 
     /// <summary>

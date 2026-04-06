@@ -25,6 +25,7 @@ public class GameConfig
     public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
+    public ResearchConfig Research { get; set; } = new ResearchConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
 
     /// <summary>
@@ -87,6 +88,26 @@ public class GameConfig
         {
             throw new InvalidOperationException(
                 "GameConfig.Victory.MinVictoryTick cannot be negative"
+            );
+        }
+
+        // Research validation
+        if (Research.BaseResearchPoints <= 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Research.BaseResearchPoints must be positive"
+            );
+        }
+        if (Research.ResearchDiceRange < 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Research.ResearchDiceRange cannot be negative"
+            );
+        }
+        if (Research.LevelCosts == null || Research.LevelCosts.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Research.LevelCosts must have at least one entry"
             );
         }
     }
@@ -451,6 +472,37 @@ public class GameConfig
     }
 
     /// <summary>
+    /// Research system configuration.
+    /// Controls technology advancement rates and officer research mechanics.
+    /// Parameters derived from original GENERAL_PARAM_6171 and GENERAL_PARAM_6172.
+    /// </summary>
+    [Serializable]
+    [PersistableObject]
+    public class ResearchConfig
+    {
+        /// <summary>Base research points awarded per successful officer tick (GENERAL_PARAM_6171, default: 5)</summary>
+        public int BaseResearchPoints { get; set; } = 5;
+
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172, default: 10)</summary>
+        public int ResearchDiceRange { get; set; } = 10;
+
+        /// <summary>
+        /// Cumulative capacity cost to advance to each research level.
+        /// Key = level being advanced TO, Value = capacity required.
+        /// Once capacity >= cost, level advances and cost is subtracted.
+        /// </summary>
+        public Dictionary<int, int> LevelCosts { get; set; } =
+            new Dictionary<int, int>
+            {
+                { 1, 100 },
+                { 2, 200 },
+                { 3, 350 },
+                { 4, 550 },
+                { 5, 800 },
+            };
+    }
+
+    /// <summary>
     /// Probability tables configuration.
     /// All probability tables grouped by data type (not usage).
     /// </summary>
@@ -489,8 +541,11 @@ public class GameConfig
     [PersistableObject]
     public class MissionTickConfig
     {
-        public int Min { get; set; }
-        public int Max { get; set; }
+        /// <summary>Guaranteed minimum ticks before mission executes.</summary>
+        public int Base { get; set; }
+
+        /// <summary>Random spread added to base: total = Base + random(0, Spread) inclusive.</summary>
+        public int Spread { get; set; }
     }
 
     [PersistableObject]
@@ -505,6 +560,7 @@ public class GameConfig
         public MissionTickConfig Rescue { get; set; } = new MissionTickConfig();
         public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
         public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
+        public MissionTickConfig Research { get; set; } = new MissionTickConfig();
     }
 
     /// <summary>

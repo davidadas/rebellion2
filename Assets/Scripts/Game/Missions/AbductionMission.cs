@@ -18,8 +18,8 @@ public class AbductionMission : Mission
         Name = "Abduction";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        MinTicks = 15;
-        MaxTicks = 20;
+        BaseTicks = 1;
+        SpreadTicks = 2;
     }
 
     public AbductionMission(
@@ -38,8 +38,8 @@ public class AbductionMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Combat,
             successProbabilityTable,
-            minTicks: 15,
-            maxTicks: 20
+            baseTicks: 1,
+            spreadTicks: 2
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -87,8 +87,8 @@ public class AbductionMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Abduction);
-        MinTicks = tables.TickRanges.Abduction.Min;
-        MaxTicks = tables.TickRanges.Abduction.Max;
+        BaseTicks = tables.TickRanges.Abduction.Base;
+        SpreadTicks = tables.TickRanges.Abduction.Spread;
     }
 
     /// <summary>

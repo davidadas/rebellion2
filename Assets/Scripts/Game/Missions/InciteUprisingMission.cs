@@ -16,8 +16,8 @@ public class InciteUprisingMission : Mission
         Name = "Incite Uprising";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        MinTicks = 10;
-        MaxTicks = 20;
+        BaseTicks = 2;
+        SpreadTicks = 10;
     }
 
     public InciteUprisingMission(
@@ -35,8 +35,8 @@ public class InciteUprisingMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Espionage,
             successProbabilityTable,
-            minTicks: 10,
-            maxTicks: 20
+            baseTicks: 2,
+            spreadTicks: 10
         )
     {
         Planet planet = (Planet)target;
@@ -114,8 +114,8 @@ public class InciteUprisingMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.InciteUprising);
-        MinTicks = tables.TickRanges.InciteUprising.Min;
-        MaxTicks = tables.TickRanges.InciteUprising.Max;
+        BaseTicks = tables.TickRanges.InciteUprising.Base;
+        SpreadTicks = tables.TickRanges.InciteUprising.Spread;
     }
 
     /// <summary>

@@ -14,8 +14,8 @@ public class DiplomacyMission : Mission
         Name = "Diplomacy";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
-        MinTicks = 5;
-        MaxTicks = 10;
+        BaseTicks = 5;
+        SpreadTicks = 10;
     }
 
     public DiplomacyMission(
@@ -33,8 +33,8 @@ public class DiplomacyMission : Mission
             decoyParticipants,
             MissionParticipantSkill.Diplomacy,
             successProbabilityTable,
-            minTicks: 5,
-            maxTicks: 10
+            baseTicks: 5,
+            spreadTicks: 10
         )
     {
         Planet planet = (Planet)target;
@@ -142,8 +142,8 @@ public class DiplomacyMission : Mission
     {
         base.Configure(tables);
         SuccessProbabilityTable = new ProbabilityTable(tables.Diplomacy);
-        MinTicks = tables.TickRanges.Diplomacy.Min;
-        MaxTicks = tables.TickRanges.Diplomacy.Max;
+        BaseTicks = tables.TickRanges.Diplomacy.Base;
+        SpreadTicks = tables.TickRanges.Diplomacy.Spread;
     }
 
     /// <summary>
