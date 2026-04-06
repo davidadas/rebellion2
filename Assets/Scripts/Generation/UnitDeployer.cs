@@ -260,7 +260,7 @@ namespace Rebellion.Generation
                     continue;
 
                 WeightedTable<List<UnitEntry>> unitTable = new WeightedTable<List<UnitEntry>>(
-                    budget.UnitTable.Select(e => (e.CumulativeWeight, e.Units)).ToList(),
+                    budget.UnitTable.ConvertAll(e => (e.CumulativeWeight, e.Units)),
                     rollMin: 1,
                     rollMax: 101,
                     fallbackToLast: true

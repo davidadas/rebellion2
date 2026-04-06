@@ -385,7 +385,7 @@ public class GameBuilderTests
             {
                 // Ensure the planet has at most one fleet.
                 Assert.LessOrEqual(
-                    planet.GetFleets().Count(),
+                    planet.GetFleets().Count,
                     1,
                     $"Planet {planet.GetDisplayName()} should have at most one fleet."
                 );
@@ -401,7 +401,7 @@ public class GameBuilderTests
         {
             if (node is Fleet fleet)
             {
-                bool hasCapitalShips = fleet.GetChildren().Count() > 0;
+                bool hasCapitalShips = fleet.GetChildren().Any();
 
                 // Ensure the fleet has at least one capital ship.
                 Assert.IsTrue(
@@ -417,7 +417,7 @@ public class GameBuilderTests
     {
         // Ensure the game has at least one event in the event pool.
         Assert.GreaterOrEqual(
-            game.GetEventPool().Count(),
+            game.GetEventPool().Count,
             1,
             "Game should have at most one event in the event pool."
         );

@@ -48,7 +48,7 @@ namespace Rebellion.Util.Extensions
         /// <exception cref="ArgumentException">Thrown when the collection is null or empty.</exception>
         public static T RandomElement<T>(this IEnumerable<T> source, IRandomNumberProvider provider)
         {
-            if (source == null || !source.Any())
+            if (source?.Any() != true)
             {
                 throw new ArgumentException("Source collection cannot be null or empty.");
             }

@@ -863,7 +863,7 @@ namespace Rebellion.Systems
                 Tick = _game.CurrentTick,
             };
 
-            if (attackingFleets == null || !attackingFleets.Any())
+            if (attackingFleets?.Any() != true)
             {
                 result.Success = false;
                 return result;
@@ -1022,7 +1022,7 @@ namespace Rebellion.Systems
                 Tick = _game.CurrentTick,
             };
 
-            if (attackingFleets == null || !attackingFleets.Any())
+            if (attackingFleets?.Any() != true)
                 return result;
 
             string attackerFactionID = attackingFleets[0].GetOwnerInstanceID();

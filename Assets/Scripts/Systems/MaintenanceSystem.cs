@@ -84,7 +84,7 @@ namespace Rebellion.Systems
             _game.DetachNode(victim);
 
             // Clean up empty fleet after scrapping last capital ship.
-            if (parentFleet != null && parentFleet.CapitalShips.Count == 0)
+            if (parentFleet?.CapitalShips.Count == 0)
             {
                 _game.DetachNode(parentFleet);
             }

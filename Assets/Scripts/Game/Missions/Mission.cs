@@ -328,10 +328,8 @@ public abstract class Mission : ContainerNode
                 MissionInstanceID = InstanceID,
                 MissionName = Name,
                 TargetName = targetName,
-                ParticipantInstanceIDs = allParticipants.Select(p => p.GetInstanceID()).ToList(),
-                ParticipantNames = allParticipants
-                    .Select(p => ((ISceneNode)p).GetDisplayName())
-                    .ToList(),
+                ParticipantInstanceIDs = allParticipants.ConvertAll(p => p.GetInstanceID()),
+                ParticipantNames = allParticipants.ConvertAll(p => ((ISceneNode)p).GetDisplayName()),
                 Outcome = outcome,
                 Tick = game.CurrentTick,
             }

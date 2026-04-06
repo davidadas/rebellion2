@@ -151,7 +151,7 @@ public class IsOnMissionConditional : GameConditional
         string instanceId = this.GetConditionalValue();
         ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
         // Check if the unit is on a mission.
-        return sceneNode != null && sceneNode.GetParent() is Mission;
+        return sceneNode?.GetParent() is Mission;
     }
 }
 

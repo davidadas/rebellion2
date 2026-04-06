@@ -364,8 +364,7 @@ namespace Rebellion.Systems
 
                     // Clean up empty fleet after cancelling last capital ship.
                     if (
-                        parentFleet != null
-                        && parentFleet.CapitalShips.Count == 0
+                        parentFleet?.CapitalShips.Count == 0
                         && parentFleet.GetParent() != null
                     )
                     {

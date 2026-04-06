@@ -54,8 +54,7 @@ public class AssassinationMission : Mission
     protected override bool IsTargetValid(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return target != null
-            && !target.IsKilled
+        return target?.IsKilled == false
             && target.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 

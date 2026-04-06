@@ -219,7 +219,7 @@ namespace Rebellion.Systems
             // If the destination fleet is still in transit, chase it.
             Fleet movingFleet = destination is Fleet f ? f
                 : (destination is CapitalShip cs ? cs.GetParent() as Fleet : null);
-            if (movingFleet != null && movingFleet.Movement != null)
+            if (movingFleet?.Movement != null)
             {
                 Planet newDest = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
                 if (newDest != null)
@@ -442,7 +442,7 @@ namespace Rebellion.Systems
 
                 IEnumerable<Officer> officers = fleet.GetOfficers();
                 if (officers.Any())
-                    speedBonus = officers.Select(o => Math.Max(o.HyperdriveModifier, 0)).Max();
+                    speedBonus = officers.Max(o => Math.Max(o.HyperdriveModifier, 0));
             }
             else if (unit is CapitalShip capitalShip)
             {

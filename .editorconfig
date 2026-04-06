@@ -26,6 +26,8 @@ dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not e
 dotnet_diagnostic.RCS1129.severity = error    # remove redundant field initialization
 dotnet_diagnostic.RCS1163.severity = warning  # unused parameter (some intentional)
 dotnet_diagnostic.RCS1164.severity = error    # unused type parameter
+dotnet_diagnostic.RCS1077.severity = error    # optimize LINQ method call
+dotnet_diagnostic.RCS1146.severity = error    # use conditional access
 dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
 
 # Unity MonoBehaviour classes call Awake/Start/Update/OnDestroy via reflection.
@@ -34,7 +36,9 @@ dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
 [Assets/Scripts/UI/**/*.cs]
 dotnet_diagnostic.RCS1046.severity = none
 dotnet_diagnostic.RCS1047.severity = none
+dotnet_diagnostic.RCS1077.severity = none
 dotnet_diagnostic.RCS1129.severity = none
+dotnet_diagnostic.RCS1146.severity = none
 dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1164.severity = none
 dotnet_diagnostic.RCS1213.severity = none
@@ -46,6 +50,8 @@ dotnet_diagnostic.RCS1213.severity = none
 dotnet_naming_rule.private_fields_underscore.severity = none
 
 [Assets/Scripts/Core/AppBootstrap.cs]
+dotnet_diagnostic.RCS1077.severity = none
+dotnet_diagnostic.RCS1146.severity = none
 dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
 dotnet_naming_rule.private_fields_underscore.severity = none

@@ -155,10 +155,7 @@ namespace Rebellion.Game
         {
             IManufacturable tech = node.GetReference();
 
-            if (
-                tech.AllowedOwnerInstanceIDs != null
-                && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID)
-            )
+            if (tech.AllowedOwnerInstanceIDs?.Contains(InstanceID) == false)
             {
                 throw new InvalidOperationException(
                     $"Cannot add technology {tech.GetDisplayName()} to faction {DisplayName}. Owner IDs do not match."

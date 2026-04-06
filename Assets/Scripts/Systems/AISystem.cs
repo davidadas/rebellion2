@@ -481,8 +481,7 @@ namespace Rebellion.Systems
             // HQ defense priority
             Planet hqPlanet = _game.GetSceneNodeByInstanceID<Planet>(faction.GetHQInstanceID());
             bool hqNeedsRelief =
-                hqPlanet != null
-                && hqPlanet.IsContested()
+                hqPlanet?.IsContested() == true
                 && !faction
                     .GetOwnedUnitsByType<Fleet>()
                     .Any(f => f.GetParentOfType<Planet>() == hqPlanet);
