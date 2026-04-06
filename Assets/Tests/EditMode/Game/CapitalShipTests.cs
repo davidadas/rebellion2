@@ -7,12 +7,12 @@ using Rebellion.SceneGraph;
 [TestFixture]
 public class CapitalShipTests
 {
-    private CapitalShip capitalShip;
+    private CapitalShip _capitalShip;
 
     [SetUp]
     public void Setup()
     {
-        capitalShip = new CapitalShip
+        _capitalShip = new CapitalShip
         {
             StarfighterCapacity = 2,
             RegimentCapacity = 3,
@@ -38,19 +38,19 @@ public class CapitalShipTests
     {
         Starfighter starfighter = new Starfighter();
 
-        capitalShip.AddStarfighter(starfighter);
+        _capitalShip.AddStarfighter(starfighter);
 
-        Assert.Contains(starfighter, capitalShip.Starfighters);
+        Assert.Contains(starfighter, _capitalShip.Starfighters);
     }
 
     [Test]
     public void AddStarfighter_ExceedsCapacity_ThrowsException()
     {
-        capitalShip.AddStarfighter(new Starfighter());
-        capitalShip.AddStarfighter(new Starfighter());
+        _capitalShip.AddStarfighter(new Starfighter());
+        _capitalShip.AddStarfighter(new Starfighter());
 
         Assert.Throws<InvalidOperationException>(() =>
-            capitalShip.AddStarfighter(new Starfighter())
+            _capitalShip.AddStarfighter(new Starfighter())
         );
     }
 
@@ -59,19 +59,19 @@ public class CapitalShipTests
     {
         Regiment regiment = new Regiment();
 
-        capitalShip.AddRegiment(regiment);
+        _capitalShip.AddRegiment(regiment);
 
-        Assert.Contains(regiment, capitalShip.Regiments);
+        Assert.Contains(regiment, _capitalShip.Regiments);
     }
 
     [Test]
     public void AddRegiment_ExceedsCapacity_ThrowsException()
     {
-        capitalShip.AddRegiment(new Regiment());
-        capitalShip.AddRegiment(new Regiment());
-        capitalShip.AddRegiment(new Regiment());
+        _capitalShip.AddRegiment(new Regiment());
+        _capitalShip.AddRegiment(new Regiment());
+        _capitalShip.AddRegiment(new Regiment());
 
-        Assert.Throws<InvalidOperationException>(() => capitalShip.AddRegiment(new Regiment()));
+        Assert.Throws<InvalidOperationException>(() => _capitalShip.AddRegiment(new Regiment()));
     }
 
     [Test]
@@ -79,9 +79,9 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-        capitalShip.AddOfficer(officer);
+        _capitalShip.AddOfficer(officer);
 
-        Assert.Contains(officer, capitalShip.Officers);
+        Assert.Contains(officer, _capitalShip.Officers);
     }
 
     [Test]
@@ -89,7 +89,7 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
-        Assert.Throws<SceneAccessException>(() => capitalShip.AddOfficer(officer));
+        Assert.Throws<SceneAccessException>(() => _capitalShip.AddOfficer(officer));
     }
 
     [Test]
@@ -97,9 +97,9 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
 
-        capitalShip.AddOfficer(officer);
+        _capitalShip.AddOfficer(officer);
 
-        Assert.Contains(officer, capitalShip.Officers);
+        Assert.Contains(officer, _capitalShip.Officers);
     }
 
     [Test]
@@ -107,7 +107,7 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
 
-        Assert.IsTrue(capitalShip.CanAcceptChild(officer));
+        Assert.IsTrue(_capitalShip.CanAcceptChild(officer));
     }
 
     [Test]
@@ -115,40 +115,40 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
-        Assert.IsFalse(capitalShip.CanAcceptChild(officer));
+        Assert.IsFalse(_capitalShip.CanAcceptChild(officer));
     }
 
     [Test]
     public void RemoveStarfighter_RemovesStarfighter()
     {
         Starfighter starfighter = new Starfighter();
-        capitalShip.AddStarfighter(starfighter);
+        _capitalShip.AddStarfighter(starfighter);
 
-        capitalShip.RemoveChild(starfighter);
+        _capitalShip.RemoveChild(starfighter);
 
-        Assert.IsFalse(capitalShip.Starfighters.Contains(starfighter));
+        Assert.IsFalse(_capitalShip.Starfighters.Contains(starfighter));
     }
 
     [Test]
     public void RemoveRegiment_RemovesRegiment()
     {
         Regiment regiment = new Regiment();
-        capitalShip.AddRegiment(regiment);
+        _capitalShip.AddRegiment(regiment);
 
-        capitalShip.RemoveChild(regiment);
+        _capitalShip.RemoveChild(regiment);
 
-        Assert.IsFalse(capitalShip.Regiments.Contains(regiment));
+        Assert.IsFalse(_capitalShip.Regiments.Contains(regiment));
     }
 
     [Test]
     public void RemoveOfficer_RemovesOfficer()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        capitalShip.AddOfficer(officer);
+        _capitalShip.AddOfficer(officer);
 
-        capitalShip.RemoveChild(officer);
+        _capitalShip.RemoveChild(officer);
 
-        Assert.IsFalse(capitalShip.Officers.Contains(officer));
+        Assert.IsFalse(_capitalShip.Officers.Contains(officer));
     }
 
     [Test]
@@ -158,11 +158,11 @@ public class CapitalShipTests
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
 
-        capitalShip.AddOfficer(officer);
-        capitalShip.AddStarfighter(starfighter);
-        capitalShip.AddRegiment(regiment);
+        _capitalShip.AddOfficer(officer);
+        _capitalShip.AddStarfighter(starfighter);
+        _capitalShip.AddRegiment(regiment);
 
-        IEnumerable<ISceneNode> children = capitalShip.GetChildren();
+        IEnumerable<ISceneNode> children = _capitalShip.GetChildren();
 
         CollectionAssert.AreEquivalent(
             new ISceneNode[] { officer, starfighter, regiment },
@@ -176,9 +176,9 @@ public class CapitalShipTests
     {
         Starfighter starfighter = new Starfighter();
 
-        capitalShip.AddChild(starfighter);
+        _capitalShip.AddChild(starfighter);
 
-        Assert.Contains(starfighter, capitalShip.Starfighters);
+        Assert.Contains(starfighter, _capitalShip.Starfighters);
     }
 
     [Test]
@@ -186,9 +186,9 @@ public class CapitalShipTests
     {
         Regiment regiment = new Regiment();
 
-        capitalShip.AddChild(regiment);
+        _capitalShip.AddChild(regiment);
 
-        Assert.Contains(regiment, capitalShip.Regiments);
+        Assert.Contains(regiment, _capitalShip.Regiments);
     }
 
     [Test]
@@ -196,9 +196,9 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-        capitalShip.AddChild(officer);
+        _capitalShip.AddChild(officer);
 
-        Assert.Contains(officer, capitalShip.Officers);
+        Assert.Contains(officer, _capitalShip.Officers);
     }
 
     [Test]
@@ -206,40 +206,40 @@ public class CapitalShipTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID" };
 
-        Assert.Throws<SceneAccessException>(() => capitalShip.AddChild(officer));
+        Assert.Throws<SceneAccessException>(() => _capitalShip.AddChild(officer));
     }
 
     [Test]
     public void RemoveChild_RemovesStarfighter()
     {
         Starfighter starfighter = new Starfighter();
-        capitalShip.AddChild(starfighter);
+        _capitalShip.AddChild(starfighter);
 
-        capitalShip.RemoveChild(starfighter);
+        _capitalShip.RemoveChild(starfighter);
 
-        Assert.IsFalse(capitalShip.Starfighters.Contains(starfighter));
+        Assert.IsFalse(_capitalShip.Starfighters.Contains(starfighter));
     }
 
     [Test]
     public void RemoveChild_RemovesRegiment()
     {
         Regiment regiment = new Regiment();
-        capitalShip.AddChild(regiment);
+        _capitalShip.AddChild(regiment);
 
-        capitalShip.RemoveChild(regiment);
+        _capitalShip.RemoveChild(regiment);
 
-        Assert.IsFalse(capitalShip.Regiments.Contains(regiment));
+        Assert.IsFalse(_capitalShip.Regiments.Contains(regiment));
     }
 
     [Test]
     public void RemoveChild_RemovesOfficer()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        capitalShip.AddChild(officer);
+        _capitalShip.AddChild(officer);
 
-        capitalShip.RemoveChild(officer);
+        _capitalShip.RemoveChild(officer);
 
-        Assert.IsFalse(capitalShip.Officers.Contains(officer));
+        Assert.IsFalse(_capitalShip.Officers.Contains(officer));
     }
 
     [Test]
@@ -249,40 +249,40 @@ public class CapitalShipTests
         Starfighter starfighter = new Starfighter();
         Regiment regiment = new Regiment();
 
-        capitalShip.AddOfficer(officer);
-        capitalShip.AddStarfighter(starfighter);
-        capitalShip.AddRegiment(regiment);
+        _capitalShip.AddOfficer(officer);
+        _capitalShip.AddStarfighter(starfighter);
+        _capitalShip.AddRegiment(regiment);
 
         string serialized = SerializationHelper.Serialize(capitalShip);
         CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
 
         Assert.AreEqual(
-            capitalShip.StarfighterCapacity,
+            _capitalShip.StarfighterCapacity,
             deserialized.StarfighterCapacity,
             "StarfighterCapacity should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.RegimentCapacity,
+            _capitalShip.RegimentCapacity,
             deserialized.RegimentCapacity,
             "RegimentCapacity should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.OwnerInstanceID,
+            _capitalShip.OwnerInstanceID,
             deserialized.OwnerInstanceID,
             "OwnerInstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.Officers.Count,
+            _capitalShip.Officers.Count,
             deserialized.Officers.Count,
             "Officers should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.Starfighters.Count,
+            _capitalShip.Starfighters.Count,
             deserialized.Starfighters.Count,
             "Starfighters should be correctly deserialized."
         );
         Assert.AreEqual(
-            capitalShip.Regiments.Count,
+            _capitalShip.Regiments.Count,
             deserialized.Regiments.Count,
             "Regiments should be correctly deserialized."
         );
@@ -291,17 +291,17 @@ public class CapitalShipTests
     [Test]
     public void SetManufacturingStatus_BuildingToComplete_UpdatesSuccessfully()
     {
-        capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
+        _capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
 
         ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Complete);
 
-        Assert.AreEqual(ManufacturingStatus.Complete, capitalShip.ManufacturingStatus);
+        Assert.AreEqual(ManufacturingStatus.Complete, _capitalShip.ManufacturingStatus);
     }
 
     [Test]
     public void SetManufacturingStatus_CompleteToBuilding_ThrowsException()
     {
-        capitalShip.ManufacturingStatus = ManufacturingStatus.Complete;
+        _capitalShip.ManufacturingStatus = ManufacturingStatus.Complete;
 
         Assert.Throws<InvalidOperationException>(() =>
             ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Building)
@@ -311,7 +311,7 @@ public class CapitalShipTests
     [Test]
     public void GetStarfighterCapacity_ReturnsCorrectCapacity()
     {
-        int capacity = capitalShip.GetStarfighterCapacity();
+        int capacity = _capitalShip.GetStarfighterCapacity();
 
         Assert.AreEqual(2, capacity);
     }
@@ -319,7 +319,7 @@ public class CapitalShipTests
     [Test]
     public void GetCurrentStarfighterCount_NoStarfighters_ReturnsZero()
     {
-        int count = capitalShip.GetCurrentStarfighterCount();
+        int count = _capitalShip.GetCurrentStarfighterCount();
 
         Assert.AreEqual(0, count);
     }
@@ -327,10 +327,10 @@ public class CapitalShipTests
     [Test]
     public void GetCurrentStarfighterCount_WithStarfighters_ReturnsCorrectCount()
     {
-        capitalShip.AddStarfighter(new Starfighter());
-        capitalShip.AddStarfighter(new Starfighter());
+        _capitalShip.AddStarfighter(new Starfighter());
+        _capitalShip.AddStarfighter(new Starfighter());
 
-        int count = capitalShip.GetCurrentStarfighterCount();
+        int count = _capitalShip.GetCurrentStarfighterCount();
 
         Assert.AreEqual(2, count);
     }
@@ -338,7 +338,7 @@ public class CapitalShipTests
     [Test]
     public void GetRegimentCapacity_ReturnsCorrectCapacity()
     {
-        int capacity = capitalShip.GetRegimentCapacity();
+        int capacity = _capitalShip.GetRegimentCapacity();
 
         Assert.AreEqual(3, capacity);
     }
@@ -346,7 +346,7 @@ public class CapitalShipTests
     [Test]
     public void GetCurrentRegimentCount_NoRegiments_ReturnsZero()
     {
-        int count = capitalShip.GetCurrentRegimentCount();
+        int count = _capitalShip.GetCurrentRegimentCount();
 
         Assert.AreEqual(0, count);
     }
@@ -354,10 +354,10 @@ public class CapitalShipTests
     [Test]
     public void GetCurrentRegimentCount_WithRegiments_ReturnsCorrectCount()
     {
-        capitalShip.AddRegiment(new Regiment());
-        capitalShip.AddRegiment(new Regiment());
+        _capitalShip.AddRegiment(new Regiment());
+        _capitalShip.AddRegiment(new Regiment());
 
-        int count = capitalShip.GetCurrentRegimentCount();
+        int count = _capitalShip.GetCurrentRegimentCount();
 
         Assert.AreEqual(2, count);
     }
@@ -365,94 +365,94 @@ public class CapitalShipTests
     [Test]
     public void PrimaryWeapons_InitializedWithCorrectTypes()
     {
-        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.Turbolaser));
-        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.IonCannon));
-        Assert.IsTrue(capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
+        Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.Turbolaser));
+        Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.IonCannon));
+        Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
     }
 
     [Test]
     public void PrimaryWeapons_InitializedWithCorrectArraySizes()
     {
-        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser].Length);
-        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon].Length);
-        Assert.AreEqual(5, capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
+        Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser].Length);
+        Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon].Length);
+        Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
     }
 
     [Test]
     public void WeaponRecharge_ReturnsCorrectValue()
     {
-        Assert.AreEqual(12, capitalShip.WeaponRecharge);
+        Assert.AreEqual(12, _capitalShip.WeaponRecharge);
     }
 
     [Test]
     public void Bombardment_ReturnsCorrectValue()
     {
-        Assert.AreEqual(20, capitalShip.Bombardment);
+        Assert.AreEqual(20, _capitalShip.Bombardment);
     }
 
     [Test]
     public void HullStrength_ReturnsCorrectValue()
     {
-        Assert.AreEqual(100, capitalShip.HullStrength);
+        Assert.AreEqual(100, _capitalShip.HullStrength);
     }
 
     [Test]
     public void DamageControl_ReturnsCorrectValue()
     {
-        Assert.AreEqual(10, capitalShip.DamageControl);
+        Assert.AreEqual(10, _capitalShip.DamageControl);
     }
 
     [Test]
     public void MaxShieldStrength_ReturnsCorrectValue()
     {
-        Assert.AreEqual(50, capitalShip.MaxShieldStrength);
+        Assert.AreEqual(50, _capitalShip.MaxShieldStrength);
     }
 
     [Test]
     public void ShieldRechargeRate_ReturnsCorrectValue()
     {
-        Assert.AreEqual(5, capitalShip.ShieldRechargeRate);
+        Assert.AreEqual(5, _capitalShip.ShieldRechargeRate);
     }
 
     [Test]
     public void Hyperdrive_ReturnsCorrectValue()
     {
-        Assert.AreEqual(2, capitalShip.Hyperdrive);
+        Assert.AreEqual(2, _capitalShip.Hyperdrive);
     }
 
     [Test]
     public void SublightSpeed_ReturnsCorrectValue()
     {
-        Assert.AreEqual(15, capitalShip.SublightSpeed);
+        Assert.AreEqual(15, _capitalShip.SublightSpeed);
     }
 
     [Test]
     public void Maneuverability_ReturnsCorrectValue()
     {
-        Assert.AreEqual(8, capitalShip.Maneuverability);
+        Assert.AreEqual(8, _capitalShip.Maneuverability);
     }
 
     [Test]
     public void TractorBeamPower_ReturnsCorrectValue()
     {
-        Assert.AreEqual(7, capitalShip.TractorBeamPower);
+        Assert.AreEqual(7, _capitalShip.TractorBeamPower);
     }
 
     [Test]
     public void TractorBeamRange_ReturnsCorrectValue()
     {
-        Assert.AreEqual(3, capitalShip.TractorBeamnRange);
+        Assert.AreEqual(3, _capitalShip.TractorBeamnRange);
     }
 
     [Test]
     public void HasGravityWell_ReturnsCorrectValue()
     {
-        Assert.IsFalse(capitalShip.HasGravityWell);
+        Assert.IsFalse(_capitalShip.HasGravityWell);
     }
 
     [Test]
     public void DetectionRating_ReturnsCorrectValue()
     {
-        Assert.AreEqual(25, capitalShip.DetectionRating);
+        Assert.AreEqual(25, _capitalShip.DetectionRating);
     }
 }

@@ -112,7 +112,7 @@ public class GameManager
         switch (speed)
         {
             case TickSpeed.Fast:
-                _tickInterval = 0.2f;
+                _tickInterval = 1f;
                 break;
             case TickSpeed.Medium:
                 _tickInterval = 10f;

@@ -7,12 +7,12 @@ using Rebellion.SceneGraph;
 [TestFixture]
 public class PlanetTests
 {
-    private Planet planet;
+    private Planet _planet;
 
     [SetUp]
     public void Setup()
     {
-        planet = new Planet
+        _planet = new Planet
         {
             IsColonized = true,
             EnergyCapacity = 5,
@@ -24,9 +24,9 @@ public class PlanetTests
     public void AddFleet_ValidFleet_AddsToPlanet()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(fleet);
+        _planet.AddChild(fleet);
 
-        Assert.Contains(fleet, planet.Fleets, "Fleet should be added to the planet.");
+        Assert.Contains(fleet, _planet.Fleets, "Fleet should be added to the _planet.");
     }
 
     [Test]
@@ -35,7 +35,7 @@ public class PlanetTests
         Building building = new Building { OwnerInstanceID = "INVALID" };
 
         Assert.Throws<SceneAccessException>(
-            () => planet.AddChild(building),
+            () => _planet.AddChild(building),
             "Adding a fleet with a mismatched OwnerInstanceID should throw a SceneAccessException."
         );
     }
@@ -44,9 +44,9 @@ public class PlanetTests
     public void AddOfficer_ValidOfficer_AddsToPlanet()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(officer);
+        _planet.AddChild(officer);
 
-        Assert.Contains(officer, planet.Officers, "Officer should be added to the planet.");
+        Assert.Contains(officer, _planet.Officers, "Officer should be added to the _planet.");
     }
 
     [Test]
@@ -55,7 +55,7 @@ public class PlanetTests
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
         Assert.Throws<SceneAccessException>(
-            () => planet.AddChild(officer),
+            () => _planet.AddChild(officer),
             "Adding an officer with a mismatched OwnerInstanceID should throw a SceneAccessException."
         );
     }
@@ -65,9 +65,9 @@ public class PlanetTests
     {
         Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
 
-        planet.AddChild(officer);
+        _planet.AddChild(officer);
 
-        Assert.Contains(officer, planet.Officers, "Captured enemy officer should be accepted.");
+        Assert.Contains(officer, _planet.Officers, "Captured enemy officer should be accepted.");
     }
 
     [Test]
@@ -79,24 +79,24 @@ public class PlanetTests
             OwnerInstanceID = "FNALL1",
         };
 
-        planet.AddChild(building);
+        _planet.AddChild(building);
 
-        List<Building> buildings = planet.GetAllBuildings();
-        Assert.Contains(building, buildings, "Building should be added to the planet.");
+        List<Building> buildings = _planet.GetAllBuildings();
+        Assert.Contains(building, buildings, "Building should be added to the _planet.");
     }
 
     [Test]
     public void AddBuilding_ExceedsCapacity_ThrowsException()
     {
-        for (int i = 0; i < planet.EnergyCapacity; i++)
+        for (int i = 0; i < _planet.EnergyCapacity; i++)
         {
-            planet.AddChild(new Building { OwnerInstanceID = "FNALL1" });
+            _planet.AddChild(new Building { OwnerInstanceID = "FNALL1" });
         }
 
         Building extraBuilding = new Building { OwnerInstanceID = "FNALL1" };
 
         Assert.Throws<InvalidOperationException>(
-            () => planet.AddChild(extraBuilding),
+            () => _planet.AddChild(extraBuilding),
             "Adding a building when slots are full should throw a InvalidOperationException."
         );
     }
@@ -105,22 +105,22 @@ public class PlanetTests
     public void RemoveFleet_ValidFleet_RemovesFromPlanet()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(fleet);
-        planet.RemoveChild(fleet);
+        _planet.AddChild(fleet);
+        _planet.RemoveChild(fleet);
 
-        Assert.IsFalse(planet.Fleets.Contains(fleet), "Fleet should be removed from the planet.");
+        Assert.IsFalse(_planet.Fleets.Contains(fleet), "Fleet should be removed from the _planet.");
     }
 
     [Test]
     public void RemoveOfficer_ValidOfficer_RemovesFromPlanet()
     {
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(officer);
-        planet.RemoveChild(officer);
+        _planet.AddChild(officer);
+        _planet.RemoveChild(officer);
 
         Assert.IsFalse(
-            planet.Officers.Contains(officer),
-            "Officer should be removed from the planet."
+            _planet.Officers.Contains(officer),
+            "Officer should be removed from the _planet."
         );
     }
 
@@ -133,12 +133,12 @@ public class PlanetTests
             OwnerInstanceID = "FNALL1",
         };
 
-        planet.AddChild(building);
-        planet.RemoveChild(building);
+        _planet.AddChild(building);
+        _planet.RemoveChild(building);
 
         Assert.IsFalse(
-            planet.GetAllBuildings().Contains(building),
-            "Building should be removed from the planet."
+            _planet.GetAllBuildings().Contains(building),
+            "Building should be removed from the _planet."
         );
     }
 
@@ -149,11 +149,11 @@ public class PlanetTests
         Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
         Building building = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(fleet);
-        planet.AddChild(officer);
-        planet.AddChild(building);
+        _planet.AddChild(fleet);
+        _planet.AddChild(officer);
+        _planet.AddChild(building);
 
-        IEnumerable<ISceneNode> children = planet.GetChildren();
+        IEnumerable<ISceneNode> children = _planet.GetChildren();
         List<ISceneNode> expectedChildren = new List<ISceneNode> { fleet, officer, building };
 
         CollectionAssert.AreEquivalent(
@@ -166,9 +166,9 @@ public class PlanetTests
     [Test]
     public void GetPopularSupport_ExistingFaction_ReturnsSupport()
     {
-        planet.SetPopularSupport("FNALL1", 50, 100);
+        _planet.SetPopularSupport("FNALL1", 50, 100);
 
-        int support = planet.GetPopularSupport("FNALL1");
+        int support = _planet.GetPopularSupport("FNALL1");
         Assert.AreEqual(
             50,
             support,
@@ -179,16 +179,16 @@ public class PlanetTests
     [Test]
     public void GetPopularSupport_NonExistingFaction_ReturnsZero()
     {
-        int support = planet.GetPopularSupport("INVALID");
+        int support = _planet.GetPopularSupport("INVALID");
         Assert.AreEqual(0, support, "Popular support for a non-existing faction should return 0.");
     }
 
     [Test]
     public void SetPopularSupport_ValidFaction_SetsSupport()
     {
-        planet.SetPopularSupport("FNALL1", 75, 100);
+        _planet.SetPopularSupport("FNALL1", 75, 100);
 
-        int support = planet.GetPopularSupport("FNALL1");
+        int support = _planet.GetPopularSupport("FNALL1");
         Assert.AreEqual(75, support, "Popular support should be correctly set for the faction.");
     }
 
@@ -197,11 +197,11 @@ public class PlanetTests
     {
         Planet targetPlanet = new Planet
         {
-            PositionX = planet.GetPosition().X + 10,
-            PositionY = planet.GetPosition().Y + 10,
+            PositionX = _planet.GetPosition().X + 10,
+            PositionY = _planet.GetPosition().Y + 10,
         };
 
-        int travelTime = planet.GetDistanceTo(targetPlanet, 5, 100);
+        int travelTime = _planet.GetDistanceTo(targetPlanet, 5, 100);
 
         Assert.AreEqual(2, travelTime, "Travel time should be calculated correctly.");
     }
@@ -212,7 +212,7 @@ public class PlanetTests
         IManufacturable unit = new Starfighter();
 
         Assert.Throws<InvalidOperationException>(
-            () => planet.AddToManufacturingQueue(unit),
+            () => _planet.AddToManufacturingQueue(unit),
             "Adding a manufacturable unit without a parent should throw a InvalidOperationException."
         );
     }
@@ -220,25 +220,25 @@ public class PlanetTests
     [Test]
     public void SerializeAndDeserialize_Planet_RetainsProperties()
     {
-        planet.SetPopularSupport("FNALL1", 100, 100);
-        planet.IsDestroyed = true;
-        planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
+        _planet.SetPopularSupport("FNALL1", 100, 100);
+        _planet.IsDestroyed = true;
+        _planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
 
         string serialized = SerializationHelper.Serialize(planet);
         Planet deserialized = SerializationHelper.Deserialize<Planet>(serialized);
 
         Assert.AreEqual(
-            planet.IsDestroyed,
+            _planet.IsDestroyed,
             deserialized.IsDestroyed,
             "Deserialized planet should retain IsDestroyed property."
         );
         Assert.AreEqual(
-            planet.GetPopularSupport("FNALL1"),
+            _planet.GetPopularSupport("FNALL1"),
             deserialized.GetPopularSupport("FNALL1"),
             "Deserialized planet should retain popular support."
         );
         Assert.AreEqual(
-            planet.Fleets.Count,
+            _planet.Fleets.Count,
             deserialized.Fleets.Count,
             "Deserialized planet should retain fleets."
         );
@@ -262,10 +262,10 @@ public class PlanetTests
             ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
-        planet.AddChild(building1);
-        planet.AddChild(building2);
+        _planet.AddChild(building1);
+        _planet.AddChild(building2);
 
-        int rate = planet.GetProductionRate(ManufacturingType.Ship);
+        int rate = _planet.GetProductionRate(ManufacturingType.Ship);
 
         Assert.AreEqual(
             1,
@@ -277,9 +277,9 @@ public class PlanetTests
     [Test]
     public void GetRawResourceNodes_ValidPlanet_ReturnsCorrectCount()
     {
-        planet.NumRawResourceNodes = 10;
+        _planet.NumRawResourceNodes = 10;
 
-        int resourceNodes = planet.GetRawResourceNodes();
+        int resourceNodes = _planet.GetRawResourceNodes();
 
         Assert.AreEqual(10, resourceNodes, "Should return the total number of raw resource nodes.");
     }
@@ -287,9 +287,9 @@ public class PlanetTests
     [Test]
     public void GetAvailableResourceNodes_NotBlockaded_ReturnsRawResourceNodes()
     {
-        planet.NumRawResourceNodes = 8;
+        _planet.NumRawResourceNodes = 8;
 
-        int availableNodes = planet.GetAvailableResourceNodes();
+        int availableNodes = _planet.GetAvailableResourceNodes();
 
         Assert.AreEqual(
             8,
@@ -301,11 +301,11 @@ public class PlanetTests
     [Test]
     public void GetAvailableResourceNodes_Blockaded_ReturnsZero()
     {
-        planet.NumRawResourceNodes = 8;
+        _planet.NumRawResourceNodes = 8;
         Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-        planet.AddChild(enemyFleet);
+        _planet.AddChild(enemyFleet);
 
-        int availableNodes = planet.GetAvailableResourceNodes();
+        int availableNodes = _planet.GetAvailableResourceNodes();
 
         Assert.AreEqual(
             0,
@@ -336,11 +336,11 @@ public class PlanetTests
             ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
-        planet.AddChild(mine1);
-        planet.AddChild(mine2);
-        planet.AddChild(refinery);
+        _planet.AddChild(mine1);
+        _planet.AddChild(mine2);
+        _planet.AddChild(refinery);
 
-        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine);
+        int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine);
 
         Assert.AreEqual(2, mineCount, "Should return the correct count of active mine buildings.");
     }
@@ -361,10 +361,10 @@ public class PlanetTests
             ManufacturingStatus = ManufacturingStatus.Building,
         };
 
-        planet.AddChild(completedMine);
-        planet.AddChild(underConstructionMine);
+        _planet.AddChild(completedMine);
+        _planet.AddChild(underConstructionMine);
 
-        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.Active);
+        int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.Active);
 
         Assert.AreEqual(1, mineCount, "Active filter should exclude buildings under construction.");
     }
@@ -385,10 +385,10 @@ public class PlanetTests
             ManufacturingStatus = ManufacturingStatus.Building,
         };
 
-        planet.AddChild(completedMine);
-        planet.AddChild(underConstructionMine);
+        _planet.AddChild(completedMine);
+        _planet.AddChild(underConstructionMine);
 
-        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+        int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
 
         Assert.AreEqual(2, mineCount, "All filter should include buildings under construction.");
     }
@@ -399,10 +399,10 @@ public class PlanetTests
         Building groundBuilding = new Building { OwnerInstanceID = "FNALL1" };
         Building orbitBuilding = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(groundBuilding);
-        planet.AddChild(orbitBuilding);
+        _planet.AddChild(groundBuilding);
+        _planet.AddChild(orbitBuilding);
 
-        List<Building> allBuildings = planet.GetAllBuildings();
+        List<Building> allBuildings = _planet.GetAllBuildings();
 
         Assert.AreEqual(2, allBuildings.Count, "Should return all buildings from all slots.");
         Assert.Contains(groundBuilding, allBuildings, "Should include ground building.");
@@ -416,11 +416,11 @@ public class PlanetTests
         Building building2 = new Building { OwnerInstanceID = "FNALL1" };
         Building building3 = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(building1);
-        planet.AddChild(building2);
-        planet.AddChild(building3);
+        _planet.AddChild(building1);
+        _planet.AddChild(building2);
+        _planet.AddChild(building3);
 
-        List<Building> allBuildings = planet.GetAllBuildings();
+        List<Building> allBuildings = _planet.GetAllBuildings();
 
         Assert.AreEqual(3, allBuildings.Count, "Should return all buildings.");
         Assert.Contains(building1, allBuildings, "Should include first building.");
@@ -447,11 +447,11 @@ public class PlanetTests
             OwnerInstanceID = "FNALL1",
         };
 
-        planet.AddChild(shipyard1);
-        planet.AddChild(shipyard2);
-        planet.AddChild(troopFacility);
+        _planet.AddChild(shipyard1);
+        _planet.AddChild(shipyard2);
+        _planet.AddChild(troopFacility);
 
-        List<Building> shipBuildings = planet.GetBuildings(ManufacturingType.Ship);
+        List<Building> shipBuildings = _planet.GetBuildings(ManufacturingType.Ship);
 
         Assert.AreEqual(2, shipBuildings.Count, "Should return only ship manufacturing buildings.");
         Assert.Contains(shipyard1, shipBuildings, "Should include first shipyard.");
@@ -461,14 +461,14 @@ public class PlanetTests
     [Test]
     public void GetAvailableEnergy_WithBuildings_ReturnsRemainingCapacity()
     {
-        planet.EnergyCapacity = 5;
+        _planet.EnergyCapacity = 5;
         Building building1 = new Building { OwnerInstanceID = "FNALL1" };
         Building building2 = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(building1);
-        planet.AddChild(building2);
+        _planet.AddChild(building1);
+        _planet.AddChild(building2);
 
-        int available = planet.GetAvailableEnergy();
+        int available = _planet.GetAvailableEnergy();
 
         Assert.AreEqual(3, available, "Should return remaining energy capacity.");
     }
@@ -476,12 +476,12 @@ public class PlanetTests
     [Test]
     public void GetAvailableEnergy_WithOneBuilding_ReturnsCorrectCount()
     {
-        planet.EnergyCapacity = 5;
+        _planet.EnergyCapacity = 5;
         Building building = new Building { OwnerInstanceID = "FNALL1" };
 
-        planet.AddChild(building);
+        _planet.AddChild(building);
 
-        int availableEnergy = planet.GetAvailableEnergy();
+        int availableEnergy = _planet.GetAvailableEnergy();
 
         Assert.AreEqual(4, availableEnergy, "Should return correct amount of available energy.");
     }
@@ -489,7 +489,7 @@ public class PlanetTests
     [Test]
     public void GetAvailableEnergy_NoBuildings_ReturnsFullCapacity()
     {
-        int availableEnergy = planet.GetAvailableEnergy();
+        int availableEnergy = _planet.GetAvailableEnergy();
 
         Assert.AreEqual(
             5,
@@ -501,7 +501,7 @@ public class PlanetTests
     [Test]
     public void GetManufacturingQueue_EmptyQueue_ReturnsEmptyDictionary()
     {
-        Dictionary<ManufacturingType, List<IManufacturable>> queue = planet.GetManufacturingQueue();
+        Dictionary<ManufacturingType, List<IManufacturable>> queue = _planet.GetManufacturingQueue();
 
         Assert.IsNotNull(queue, "Manufacturing queue should not be null.");
         Assert.AreEqual(0, queue.Count, "Manufacturing queue should be empty initially.");
@@ -511,13 +511,13 @@ public class PlanetTests
     public void GetManufacturingQueue_WithItems_ReturnsCorrectQueue()
     {
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(fleet);
+        _planet.AddChild(fleet);
         CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
         ship.SetParent(planet);
 
-        planet.AddToManufacturingQueue(ship);
+        _planet.AddToManufacturingQueue(ship);
 
-        Dictionary<ManufacturingType, List<IManufacturable>> queue = planet.GetManufacturingQueue();
+        Dictionary<ManufacturingType, List<IManufacturable>> queue = _planet.GetManufacturingQueue();
 
         Assert.IsTrue(
             queue.ContainsKey(ManufacturingType.Ship),
@@ -547,10 +547,10 @@ public class PlanetTests
             ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
-        planet.AddChild(shipyard1);
-        planet.AddChild(shipyard2);
+        _planet.AddChild(shipyard1);
+        _planet.AddChild(shipyard2);
 
-        int idleFacilities = planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
+        int idleFacilities = _planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
 
         Assert.AreEqual(2, idleFacilities, "Should return all facilities when queue is empty.");
     }
@@ -563,15 +563,15 @@ public class PlanetTests
             ProductionType = ManufacturingType.Ship,
             OwnerInstanceID = "FNALL1",
         };
-        planet.AddChild(shipyard);
+        _planet.AddChild(shipyard);
 
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(fleet);
+        _planet.AddChild(fleet);
         CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
         ship.SetParent(planet);
-        planet.AddToManufacturingQueue(ship);
+        _planet.AddToManufacturingQueue(ship);
 
-        int idleFacilities = planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
+        int idleFacilities = _planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
 
         Assert.AreEqual(
             0,
@@ -584,12 +584,12 @@ public class PlanetTests
     public void AddStarfighter_ValidStarfighter_AddsToPlanet()
     {
         Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(starfighter);
+        _planet.AddChild(starfighter);
 
         Assert.Contains(
             starfighter,
-            planet.Starfighters,
-            "Starfighter should be added to the planet."
+            _planet.Starfighters,
+            "Starfighter should be added to the _planet."
         );
     }
 
@@ -599,7 +599,7 @@ public class PlanetTests
         Starfighter starfighter = new Starfighter { OwnerInstanceID = "INVALID" };
 
         Assert.Throws<SceneAccessException>(
-            () => planet.AddChild(starfighter),
+            () => _planet.AddChild(starfighter),
             "Adding a starfighter with a mismatched OwnerInstanceID should throw a SceneAccessException."
         );
     }
@@ -608,24 +608,24 @@ public class PlanetTests
     public void RemoveStarfighter_ValidStarfighter_RemovesFromPlanet()
     {
         Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(starfighter);
-        planet.RemoveChild(starfighter);
+        _planet.AddChild(starfighter);
+        _planet.RemoveChild(starfighter);
 
         Assert.IsFalse(
-            planet.Starfighters.Contains(starfighter),
-            "Starfighter should be removed from the planet."
+            _planet.Starfighters.Contains(starfighter),
+            "Starfighter should be removed from the _planet."
         );
     }
 
     [Test]
     public void GetStarfighterCount_AfterAdding_ReturnsCorrectCount()
     {
-        planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
-        planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
+        _planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
+        _planet.AddChild(new Starfighter { OwnerInstanceID = "FNALL1" });
 
         Assert.AreEqual(
             2,
-            planet.GetStarfighterCount(),
+            _planet.GetStarfighterCount(),
             "Should return correct starfighter count."
         );
     }
@@ -634,9 +634,9 @@ public class PlanetTests
     public void IsBlockaded_NoEnemyFleets_ReturnsFalse()
     {
         Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(friendlyFleet);
+        _planet.AddChild(friendlyFleet);
 
-        bool isBlockaded = planet.IsBlockaded();
+        bool isBlockaded = _planet.IsBlockaded();
 
         Assert.IsFalse(isBlockaded, "Planet should not be blockaded with only friendly fleets.");
     }
@@ -645,9 +645,9 @@ public class PlanetTests
     public void IsBlockaded_EnemyFleetPresent_ReturnsTrue()
     {
         Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-        planet.AddChild(enemyFleet);
+        _planet.AddChild(enemyFleet);
 
-        bool isBlockaded = planet.IsBlockaded();
+        bool isBlockaded = _planet.IsBlockaded();
 
         Assert.IsTrue(isBlockaded, "Planet should be blockaded when enemy fleet is present.");
     }
@@ -657,10 +657,10 @@ public class PlanetTests
     {
         Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
         Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-        planet.AddChild(friendlyFleet);
-        planet.AddChild(enemyFleet);
+        _planet.AddChild(friendlyFleet);
+        _planet.AddChild(enemyFleet);
 
-        bool isBlockaded = planet.IsBlockaded();
+        bool isBlockaded = _planet.IsBlockaded();
 
         Assert.IsFalse(
             isBlockaded,
@@ -673,10 +673,10 @@ public class PlanetTests
     {
         Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
         Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-        planet.AddChild(friendlyFleet);
-        planet.AddChild(enemyFleet);
+        _planet.AddChild(friendlyFleet);
+        _planet.AddChild(enemyFleet);
 
-        bool isContested = planet.IsContested();
+        bool isContested = _planet.IsContested();
 
         Assert.IsTrue(isContested, "Planet should be contested when any enemy fleet is present.");
     }
@@ -685,9 +685,9 @@ public class PlanetTests
     public void IsContested_OnlyFriendly_ReturnsFalse()
     {
         Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
-        planet.AddChild(friendlyFleet);
+        _planet.AddChild(friendlyFleet);
 
-        bool isContested = planet.IsContested();
+        bool isContested = _planet.IsContested();
 
         Assert.IsFalse(isContested, "Planet should not be contested with only friendly fleets.");
     }
@@ -696,9 +696,9 @@ public class PlanetTests
     public void IsContested_OnlyEnemy_ReturnsTrue()
     {
         Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-        planet.AddChild(enemyFleet);
+        _planet.AddChild(enemyFleet);
 
-        bool isContested = planet.IsContested();
+        bool isContested = _planet.IsContested();
 
         Assert.IsTrue(isContested, "Planet should be contested when only enemy fleet is present.");
     }
@@ -706,7 +706,7 @@ public class PlanetTests
     [Test]
     public void IsContested_NoFleets_ReturnsFalse()
     {
-        bool isContested = planet.IsContested();
+        bool isContested = _planet.IsContested();
 
         Assert.IsFalse(isContested, "Planet should not be contested with no fleets.");
     }
@@ -721,9 +721,9 @@ public class PlanetTests
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
-        planet.BeginUprising();
+        _planet.BeginUprising();
 
-        Assert.IsTrue(planet.IsInUprising);
+        Assert.IsTrue(_planet.IsInUprising);
     }
 
     [Test]
@@ -731,9 +731,9 @@ public class PlanetTests
     {
         Planet planet = new Planet { InstanceID = "p1", IsInUprising = true };
 
-        planet.EndUprising();
+        _planet.EndUprising();
 
-        Assert.IsFalse(planet.IsInUprising);
+        Assert.IsFalse(_planet.IsInUprising);
     }
 
     [Test]
@@ -745,7 +745,7 @@ public class PlanetTests
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
-        int loyalty = planet.CalculateLoyalty();
+        int loyalty = _planet.CalculateLoyalty();
 
         Assert.AreEqual(0, loyalty);
     }
@@ -759,7 +759,7 @@ public class PlanetTests
             PopularSupport = new Dictionary<string, int>(),
         };
 
-        int loyalty = planet.CalculateLoyalty();
+        int loyalty = _planet.CalculateLoyalty();
 
         Assert.AreEqual(0, loyalty);
     }
@@ -769,7 +769,7 @@ public class PlanetTests
     {
         Planet planet = new Planet { PopularSupport = new Dictionary<string, int>() };
 
-        bool populated = planet.IsPopulated();
+        bool populated = _planet.IsPopulated();
 
         Assert.IsFalse(populated);
     }
@@ -782,7 +782,7 @@ public class PlanetTests
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
-        bool populated = planet.IsPopulated();
+        bool populated = _planet.IsPopulated();
 
         Assert.IsTrue(populated);
     }
