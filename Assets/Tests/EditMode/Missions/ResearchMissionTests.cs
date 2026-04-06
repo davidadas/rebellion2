@@ -178,6 +178,29 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
+        public void CanContinue_AfterSuccess_ReturnsTrue()
+        {
+            Officer officer = CreateOfficer(shipSkill: 100);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after successful research");
+        }
+
+        [Test]
+        public void CanContinue_AfterFailure_ReturnsTrue()
+        {
+            Officer officer = CreateOfficer(shipSkill: 10);
+            ResearchMission mission = CreateMission(officer);
+
+            // RNG=0.99 → 99 > 10 → failure
+            mission.Execute(game, new FixedRNG(0.99));
+
+            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after failed research");
+        }
+
+        [Test]
         public void Constructor_EnemyPlanet_Throws()
         {
             Officer officer = CreateOfficer();

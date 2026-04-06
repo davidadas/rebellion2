@@ -877,8 +877,62 @@ namespace Rebellion.Systems
             if (owner == factionId && game.GetUnrecruitedOfficers(factionId).Any())
                 return MissionType.Recruitment;
 
+            // Research: owned planet with idle facilities matching officer's research skill
+            if (owner == factionId)
+            {
+                MissionType? researchMission = SelectResearchMissionType(officer, target);
+                if (researchMission != null)
+                    return researchMission;
+            }
+
             return null;
         }
+
+        /// <summary>
+        /// Selects the best research mission type for the officer at the given planet.
+        /// Picks the manufacturing type where the officer has the highest research skill
+        /// and the planet has at least one idle facility of that type.
+        /// </summary>
+        /// <param name="officer">The officer to assign.</param>
+        /// <param name="target">The owned planet being targeted.</param>
+        /// <returns>The research mission type to dispatch, or null if none viable.</returns>
+        private MissionType? SelectResearchMissionType(Officer officer, Planet target)
+        {
+            int bestSkill = 0;
+            ManufacturingType bestType = ManufacturingType.Ship;
+
+            foreach (ManufacturingType type in ResearchableTypes)
+            {
+                int skill = officer.GetResearchSkill(type);
+                if (skill <= 0)
+                    continue;
+                if (target.GetIdleManufacturingFacilities(type) <= 0)
+                    continue;
+                if (skill > bestSkill)
+                {
+                    bestSkill = skill;
+                    bestType = type;
+                }
+            }
+
+            if (bestSkill <= 0)
+                return null;
+
+            return bestType switch
+            {
+                ManufacturingType.Ship => MissionType.ShipDesignResearch,
+                ManufacturingType.Building => MissionType.FacilityDesignResearch,
+                ManufacturingType.Troop => MissionType.TroopTrainingResearch,
+                _ => null,
+            };
+        }
+
+        private static readonly ManufacturingType[] ResearchableTypes = new[]
+        {
+            ManufacturingType.Ship,
+            ManufacturingType.Building,
+            ManufacturingType.Troop,
+        };
 
         /// <summary>
         /// Processes capital ship production issues for all systems with active construction.
