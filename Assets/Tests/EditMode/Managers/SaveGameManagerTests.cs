@@ -73,7 +73,6 @@ namespace Rebellion.Tests.Managers
             // Load the game from file.
             GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
-            // Assert that the loaded game's summary matches the original summary.
             Assert.AreEqual(
                 loadedGame.Summary.GalaxySize,
                 summary.GalaxySize,
@@ -158,7 +157,6 @@ namespace Rebellion.Tests.Managers
             CapitalShip loadedCapitalShip = loadedFleet.CapitalShips[0];
             Officer loadedOfficer = loadedCapitalShip.Officers[0];
 
-            // Assert that children are correctly parented.
             Assert.AreEqual(planetSystem.InstanceID, loadedPlanet.GetParent().InstanceID);
             Assert.AreEqual(fleet.InstanceID, loadedCapitalShip.GetParent().InstanceID);
             Assert.AreEqual(capitalShip.InstanceID, loadedOfficer.GetParent().InstanceID);

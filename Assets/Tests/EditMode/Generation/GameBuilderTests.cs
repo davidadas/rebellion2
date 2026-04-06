@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in game.Factions)
             {
-                int techCountBefore = faction.ResearchQueue.Values.SelectMany(q => q).Count();
+                int techCountBefore = faction.ResearchQueue.Values.Sum(q => q.Count);
 
                 Assert.Greater(
                     techCountBefore,
@@ -182,7 +182,7 @@ namespace Rebellion.Tests.Generation
 
                 faction.RebuildResearchQueues(templates);
 
-                int techCountAfter = faction.ResearchQueue.Values.SelectMany(q => q).Count();
+                int techCountAfter = faction.ResearchQueue.Values.Sum(q => q.Count);
 
                 Assert.Greater(
                     techCountAfter,
@@ -234,7 +234,6 @@ namespace Rebellion.Tests.Generation
         [Test, TestCaseSource(nameof(GameTestCases))]
         public void BuildGame_ValidConfig_SetsHQs(GameRoot game)
         {
-            // Assert that the game's factions and galaxy map are not null.
             Assert.IsNotNull(game.Factions, "Factions should not be null.");
             Assert.IsNotNull(game.Galaxy, "GalaxyMap should not be null.");
 
@@ -247,7 +246,6 @@ namespace Rebellion.Tests.Generation
                         planet.OwnerInstanceID == faction.InstanceID && planet.IsHeadquarters
                     );
 
-                // Assert that the faction has a headquarters
                 Assert.IsTrue(
                     hasHQ,
                     $"Faction {faction.GetDisplayName()} should have a headquarters."

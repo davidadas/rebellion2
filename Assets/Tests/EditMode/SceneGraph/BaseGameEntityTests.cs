@@ -130,7 +130,6 @@ namespace Rebellion.Tests.SceneGraph
         [Test]
         public void GetDeepCopy_IgnoresInstanceID_WhenDeepCopying()
         {
-            // Arrange
             BaseGameEntity originalEntity = new BaseGameEntity
             {
                 InstanceID = "originalInstanceID",
@@ -139,10 +138,8 @@ namespace Rebellion.Tests.SceneGraph
                 Description = "This is a test description.",
             };
 
-            // Act
             BaseGameEntity clonedEntity = originalEntity.GetDeepCopy();
 
-            // Assert
             Assert.AreNotEqual(
                 originalEntity.InstanceID,
                 clonedEntity.InstanceID,

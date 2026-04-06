@@ -63,8 +63,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoShortfall_DoesNotScrap()
         {
-            // Arrange: faction has 1 mine + 1 refinery on planet with 5 resource nodes
-            // Capacity = min(1, 5, 1) * 50 = 50. Regiment costs 1. No shortfall.
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -90,18 +88,14 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem system2 = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
 
-            // Act
             system2.ProcessTick(rng);
 
-            // Assert: regiment still exists
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
         [Test]
         public void ProcessTick_Shortfall_ScrapsOneUnit()
         {
-            // Arrange: no mines or refineries, so capacity = 0.
-            // Regiment has maintenance cost 1, so required > capacity.
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -137,10 +131,8 @@ namespace Rebellion.Tests.Systems
             // RNG returns 0, so first candidate is selected
             FixedRNG rng = new FixedRNG();
 
-            // Act
             maintenanceSystem.ProcessTick(rng);
 
-            // Assert: exactly one regiment was scrapped (the first one, index 0)
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
@@ -148,7 +140,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_Shortfall_ScrapsOnlyOnePerTick()
         {
-            // Arrange: capacity 0, two regiments each costing 1
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -183,10 +174,8 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
 
-            // Act: single tick
             maintenanceSystem.ProcessTick(rng);
 
-            // Assert: only one was scrapped, not both
             int remaining =
                 (game.GetSceneNodeByInstanceID<Regiment>("r1") != null ? 1 : 0)
                 + (game.GetSceneNodeByInstanceID<Regiment>("r2") != null ? 1 : 0);
@@ -196,7 +185,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_UnitUnderConstruction_DoesNotScrap()
         {
-            // Arrange: only unit is under construction — should not be scrapped
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -221,17 +209,14 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
 
-            // Act
             maintenanceSystem.ProcessTick(rng);
 
-            // Assert: still exists (not eligible for scrap)
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
         [Test]
         public void ProcessTick_UnitInTransit_DoesNotScrap()
         {
-            // Arrange: capacity 0, only unit is a completed capital ship that is in transit
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -266,18 +251,14 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
 
-            // Act
             maintenanceSystem.ProcessTick(rng);
 
-            // Assert: in-transit ship is not eligible for scrap
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
         }
 
         [Test]
         public void GetMaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
         {
-            // Arrange: 2 mines, 5 resource nodes, 1 refinery
-            // Capacity = min(2, 5, 1) * 50 = 50
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -292,17 +273,14 @@ namespace Rebellion.Tests.Systems
 
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
 
-            // Act
             int capacity = maintenanceSystem.GetMaintenanceCapacity(empire);
 
-            // Assert: min(2 mines, 5 nodes, 1 refinery) * 50 = 50
             Assert.AreEqual(50, capacity);
         }
 
         [Test]
         public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
-            // Arrange: capacity 0, only unit is a completed defense building
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
@@ -328,10 +306,8 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
 
-            // Act
             maintenanceSystem.ProcessTick(rng);
 
-            // Assert
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }
     }

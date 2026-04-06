@@ -18,7 +18,6 @@ namespace Rebellion.Tests.Util.Extensions
 
             collection.AddAll(enumerable1, enumerable2, enumerable3);
 
-            // Assert collection contains all elements
             Assert.AreEqual(9, collection.Count, "Collection should contain 9 elements.");
             CollectionAssert.AreEquivalent(
                 new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
@@ -35,7 +34,6 @@ namespace Rebellion.Tests.Util.Extensions
 
             collection.AddAll(emptyEnumerable);
 
-            // Assert collection is not empty
             Assert.AreEqual(0, collection.Count, "Collection should be empty.");
         }
 
@@ -47,7 +45,6 @@ namespace Rebellion.Tests.Util.Extensions
 
             collection.AddAll(enumerable);
 
-            // Assert collection contains new elements
             Assert.AreEqual(4, collection.Count, "Collection should contain 4 elements.");
             CollectionAssert.AreEquivalent(
                 new List<int> { 0, 1, 2, 3 },

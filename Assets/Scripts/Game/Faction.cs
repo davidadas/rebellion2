@@ -467,8 +467,7 @@ namespace Rebellion.Game
             foreach (IManufacturable template in templates)
             {
                 if (
-                    template.AllowedOwnerInstanceIDs != null
-                    && template.AllowedOwnerInstanceIDs.Count > 0
+                    template.AllowedOwnerInstanceIDs?.Count > 0
                     && !template.AllowedOwnerInstanceIDs.Contains(InstanceID)
                 )
                     continue;

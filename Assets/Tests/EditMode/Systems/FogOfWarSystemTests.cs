@@ -708,7 +708,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetInPlanetSystem_MappsPlanetToSystem()
+        public void CaptureSnapshot_PlanetInPlanetSystem_MapsPlanetToSystem()
         {
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 

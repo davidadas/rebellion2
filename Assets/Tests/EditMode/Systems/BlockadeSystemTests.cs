@@ -17,7 +17,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NewBlockade_DestroysInTransitDefenders()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -60,17 +59,14 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(inTransitRegiment.Movement);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: in-transit regiment destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
         [Test]
         public void ProcessTick_NewBlockade_GarrisonedDefendersSurvive()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -113,17 +109,14 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNull(garrisonedRegiment.Movement);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: garrisoned regiment survives
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
         [Test]
         public void ProcessTick_AlreadyBlockaded_DoesNotTriggerStartAgain()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -176,17 +169,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment2, planet);
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
 
-            // Act: second tick, blockade already active
             manager.ProcessTick();
 
-            // Assert: regiment2 NOT destroyed (no start event fired again)
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
 
         [Test]
         public void ProcessTick_BlockadeEnds_TriggersEnd()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -230,17 +220,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defenderFleet, planet);
             Assert.IsFalse(planet.IsBlockaded());
 
-            // Act: blockade ends this tick
             manager.ProcessTick();
 
-            // Assert: No exception, end event fired (logged internally)
             Assert.IsFalse(planet.IsBlockaded());
         }
 
         [Test]
         public void ProcessTick_NotBlockaded_DoesNotTriggerEndAgain()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -285,17 +272,14 @@ namespace Rebellion.Tests.Systems
             manager.ProcessTick();
             Assert.IsFalse(planet.IsBlockaded());
 
-            // Act: third tick, still not blockaded
             manager.ProcessTick();
 
-            // Assert: No exception, no duplicate end event
             Assert.IsFalse(planet.IsBlockaded());
         }
 
         [Test]
         public void ProcessTick_BlockadeStart_DestroysOnlyInTransitDefendingRegiments()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -346,10 +330,8 @@ namespace Rebellion.Tests.Systems
             planet.Regiments.Add(allianceInTransit);
             game.AddSceneNodeByInstanceID(allianceInTransit);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: only defending in-transit regiment destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
@@ -357,7 +339,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_BlockadeStart_DestroysAllInTransitDefendingRegiments()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -411,10 +392,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment2, planet);
             game.AttachNode(regiment3, planet);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: all in-transit defending regiments destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r3"));
@@ -423,7 +402,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_BlockadeStart_GarrisonedDefendersSurvive()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -477,10 +455,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(garrisoned2, planet);
             game.AttachNode(inTransit, planet);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: garrisoned survive, in-transit destroyed
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r3"));
@@ -489,7 +465,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultiplePlanets_HandledIndependently()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -555,10 +530,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment1, planet1);
             game.AttachNode(regiment2, planet2);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: only planet1 in-transit regiment destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
@@ -566,7 +539,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_SimultaneousBlockades_AllHandled()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -632,10 +604,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment1, planet1);
             game.AttachNode(regiment2, planet2);
 
-            // Act
             manager.ProcessTick();
 
-            // Assert: both in-transit regiments destroyed
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
         }
@@ -643,7 +613,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_BlockadeEnds_DoesNotRestoreTroops()
         {
-            // Arrange
             GameRoot game = new GameRoot();
             BlockadeSystem manager = new BlockadeSystem(game);
 
@@ -695,7 +664,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defenderFleet, planet);
             manager.ProcessTick();
 
-            // Assert: regiment still destroyed (not restored)
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
     }

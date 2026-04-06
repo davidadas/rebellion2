@@ -36,7 +36,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ApplyResourceDecay_FactionWithResources_ReducesValues()
         {
-            // Arrange
             GameRoot game = CreateGame();
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             game.Factions.Add(empire);
@@ -50,11 +49,9 @@ namespace Rebellion.Tests.Systems
             StubRNG rng = new StubRNG();
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
-            // Act: advance tick past timer
             game.CurrentTick = 1;
             system.ProcessTick(rng);
 
-            // Assert: values should have decreased (probability check always succeeds with roll=0)
             Assert.Less(planet.NumRawResourceNodes, 10);
             Assert.Less(planet.EnergyCapacity, 10);
         }
@@ -62,7 +59,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ApplyResourceDecay_ResourcesBelowEnergy_ClampsRawMaterialsToEnergy()
         {
-            // Arrange: raw materials (10) > energy (3). After decay, raw should be <= energy.
             GameRoot game = CreateGame();
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             game.Factions.Add(empire);
@@ -78,14 +74,12 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 1;
             system.ProcessTick(rng);
 
-            // Assert: raw materials clamped to energy
             Assert.LessOrEqual(planet.NumRawResourceNodes, planet.EnergyCapacity);
         }
 
         [Test]
         public void ApplyResourceDecay_FactionWithFullResources_GuaranteesAtLeastOneLoss()
         {
-            // Arrange: very low values, use RNG that always fails probability checks
             GameConfig config = TestConfig.Create();
             config.ResourceRebalance.RebalanceTimerBase = 0;
             config.ResourceRebalance.RebalanceTimerSpread = 1;
@@ -107,7 +101,6 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 1;
             system.ProcessTick(rng);
 
-            // Assert: at least 1 unit lost despite all probability checks failing
             int totalRemaining = planet.NumRawResourceNodes + planet.EnergyCapacity;
             Assert.Less(
                 totalRemaining,
@@ -119,7 +112,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ResourceWalk_FactionWithEnergy_CanIncrementEnergy()
         {
-            // Arrange
             GameConfig config = TestConfig.Create();
             config.ResourceRebalance.RebalanceTimerBase = 999; // Don't fire rebalance
             config.ResourceRebalance.RebalanceTimerSpread = 1;
@@ -142,14 +134,12 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 1000; // Past the walk timer
             system.ProcessTick(rng);
 
-            // Assert
             Assert.AreEqual(6, planet.EnergyCapacity, "Energy should have been incremented by 1.");
         }
 
         [Test]
         public void ResourceWalk_FactionAtMaxEnergy_EnergyCannotExceedMax()
         {
-            // Arrange
             GameConfig config = TestConfig.Create();
             config.ResourceRebalance.RebalanceTimerBase = 999;
             config.ResourceRebalance.RebalanceTimerSpread = 1;
@@ -172,7 +162,6 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 1000;
             system.ProcessTick(rng);
 
-            // Assert: energy stays at max
             Assert.AreEqual(15, planet.EnergyCapacity);
         }
 
