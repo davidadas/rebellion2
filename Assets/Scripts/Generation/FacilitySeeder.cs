@@ -29,8 +29,8 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            var config = rules.FacilityGeneration;
-            var deployedBuildings = new List<Building>();
+            FacilityGenerationSection config = rules.FacilityGeneration;
+            List<Building> deployedBuildings = new List<Building>();
 
             Dictionary<string, Building> templateMap = templates
                 .GroupBy(b => b.TypeID)
@@ -157,7 +157,7 @@ namespace Rebellion.Generation
         /// <returns>A WeightedTable that maps rolls to facility TypeIDs.</returns>
         private WeightedTable<string> BuildTable(List<WeightedFacilityEntry> entries)
         {
-            var tableEntries = entries.Select(e => (e.CumulativeWeight, e.TypeID)).ToList();
+            List<(int, string)> tableEntries = entries.Select(e => (e.CumulativeWeight, e.TypeID)).ToList();
             return new WeightedTable<string>(tableEntries);
         }
     }

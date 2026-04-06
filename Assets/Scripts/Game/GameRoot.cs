@@ -414,7 +414,7 @@ namespace Rebellion.Game
         {
             List<ISceneNode> matchingNodes = new List<ISceneNode>();
 
-            foreach (var instanceId in instanceIDs)
+            foreach (string instanceId in instanceIDs)
             {
                 if (NodesByInstanceID.TryGetValue(instanceId, out ISceneNode node))
                 {

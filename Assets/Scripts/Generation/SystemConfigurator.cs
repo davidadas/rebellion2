@@ -19,8 +19,8 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            var res = rules.SystemResources;
-            var sup = rules.SystemSupport;
+            SystemResourcesSection res = rules.SystemResources;
+            SystemSupportSection sup = rules.SystemSupport;
 
             foreach (PlanetSystem system in systems)
             {

@@ -393,11 +393,11 @@ namespace Rebellion.Systems
         public void RebuildQueues()
         {
             // First, clear all existing queues
-            foreach (var planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
-                foreach (var kvp in queue)
+                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
                 {
                     kvp.Value.Clear();
                 }
@@ -436,11 +436,11 @@ namespace Rebellion.Systems
                 });
 
             // Sort each queue by manufacturing progress (lowest progress first)
-            foreach (var planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
                     planet.GetManufacturingQueue();
-                foreach (var kvp in queue)
+                foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue)
                 {
                     kvp.Value.Sort(
                         (a, b) => a.ManufacturingProgress.CompareTo(b.ManufacturingProgress)

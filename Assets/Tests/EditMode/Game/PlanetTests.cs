@@ -321,16 +321,19 @@ public class PlanetTests
         {
             BuildingType = BuildingType.Mine,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building mine2 = new Building
         {
             BuildingType = BuildingType.Mine,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
         Building refinery = new Building
         {
             BuildingType = BuildingType.Refinery,
             OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
         };
 
         planet.AddChild(mine1);
@@ -339,11 +342,11 @@ public class PlanetTests
 
         int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine);
 
-        Assert.AreEqual(2, mineCount, "Should return the correct count of mine buildings.");
+        Assert.AreEqual(2, mineCount, "Should return the correct count of active mine buildings.");
     }
 
     [Test]
-    public void GetBuildingTypeCount_ExcludingUnderConstruction_ReturnsOnlyCompleted()
+    public void GetBuildingTypeCount_ActiveFilter_ExcludesUnderConstruction()
     {
         Building completedMine = new Building
         {
@@ -361,16 +364,33 @@ public class PlanetTests
         planet.AddChild(completedMine);
         planet.AddChild(underConstructionMine);
 
-        int mineCount = planet.GetBuildingTypeCount(
-            BuildingType.Mine,
-            includeUnderConstruction: false
-        );
+        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.Active);
 
-        Assert.AreEqual(
-            1,
-            mineCount,
-            "Should return only completed buildings when excluding under construction."
-        );
+        Assert.AreEqual(1, mineCount, "Active filter should exclude buildings under construction.");
+    }
+
+    [Test]
+    public void GetBuildingTypeCount_AllFilter_IncludesUnderConstruction()
+    {
+        Building completedMine = new Building
+        {
+            BuildingType = BuildingType.Mine,
+            OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Complete,
+        };
+        Building underConstructionMine = new Building
+        {
+            BuildingType = BuildingType.Mine,
+            OwnerInstanceID = "FNALL1",
+            ManufacturingStatus = ManufacturingStatus.Building,
+        };
+
+        planet.AddChild(completedMine);
+        planet.AddChild(underConstructionMine);
+
+        int mineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+
+        Assert.AreEqual(2, mineCount, "All filter should include buildings under construction.");
     }
 
     [Test]

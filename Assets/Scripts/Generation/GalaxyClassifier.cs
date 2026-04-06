@@ -33,14 +33,18 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            var config = rules.GalaxyClassification;
-            var result = new GalaxyClassificationResult();
-            var factionMap = factions.ToDictionary(f => f.InstanceID);
+            GalaxyClassificationSection config = rules.GalaxyClassification;
+            GalaxyClassificationResult result = new GalaxyClassificationResult();
+            Dictionary<string, Faction> factionMap = factions.ToDictionary(f => f.InstanceID);
 
             ValidateStartingPlanets(config);
 
-            var (corePlanets, rimPlanets, resolvedStartingPlanets, preassignedCoreCount) =
-                PartitionPlanets(systems, config, rng);
+            (
+                List<Planet> corePlanets,
+                List<Planet> rimPlanets,
+                List<(Planet planet, FactionSetup setup, StartingPlanet config)> resolvedStartingPlanets,
+                int preassignedCoreCount
+            ) = PartitionPlanets(systems, config, rng);
 
             AssignStartingPlanets(
                 systems, resolvedStartingPlanets, factionMap, result,
@@ -64,7 +68,7 @@ namespace Rebellion.Generation
         /// <param name="config">Galaxy classification config to validate.</param>
         private void ValidateStartingPlanets(GalaxyClassificationSection config)
         {
-            var claimedPlanetIds = new HashSet<string>();
+            HashSet<string> claimedPlanetIds = new HashSet<string>();
             foreach (FactionSetup setup in config.FactionSetups)
             {
                 if (setup.StartingPlanets == null)
@@ -103,7 +107,7 @@ namespace Rebellion.Generation
         )
         {
             // Build lookup for static starting planets
-            var staticStartingPlanets =
+            Dictionary<string, (FactionSetup setup, StartingPlanet config)> staticStartingPlanets =
                 new Dictionary<string, (FactionSetup setup, StartingPlanet config)>();
             foreach (FactionSetup setup in config.FactionSetups)
             {
@@ -116,16 +120,16 @@ namespace Rebellion.Generation
                 }
             }
 
-            var corePlanets = new List<Planet>();
-            var rimPlanets = new List<Planet>();
-            var resolved = new List<(Planet, FactionSetup, StartingPlanet)>();
+            List<Planet> corePlanets = new List<Planet>();
+            List<Planet> rimPlanets = new List<Planet>();
+            List<(Planet, FactionSetup, StartingPlanet)> resolved = new List<(Planet, FactionSetup, StartingPlanet)>();
             int preassignedCoreCount = 0;
 
             foreach (PlanetSystem system in systems)
             {
                 foreach (Planet planet in system.Planets)
                 {
-                    if (staticStartingPlanets.TryGetValue(planet.InstanceID, out var entry))
+                    if (staticStartingPlanets.TryGetValue(planet.InstanceID, out (FactionSetup setup, StartingPlanet config) entry))
                     {
                         resolved.Add((planet, entry.setup, entry.config));
                         if (system.SystemType == PlanetSystemType.CoreSystem)
@@ -180,7 +184,7 @@ namespace Rebellion.Generation
         {
             strongCountAdjustments = new Dictionary<string, int>();
 
-            foreach (var (planet, setup, spConfig) in resolvedStartingPlanets)
+            foreach ((Planet planet, FactionSetup setup, StartingPlanet spConfig) in resolvedStartingPlanets)
             {
                 Faction faction = factionMap[setup.FactionID];
 
@@ -261,7 +265,7 @@ namespace Rebellion.Generation
             // calculation, then subtracts them afterward.
             int totalCore = corePlanets.Count + preassignedCoreCount;
 
-            var factionBucketCounts = new List<(string factionID, int strongCount, int weakCount)>();
+            List<(string factionID, int strongCount, int weakCount)> factionBucketCounts = new List<(string factionID, int strongCount, int weakCount)>();
             foreach (FactionBucketConfig fb in profile.FactionBuckets)
             {
                 int strong = totalCore * fb.StrongPct / 100;
@@ -282,7 +286,7 @@ namespace Rebellion.Generation
 
             // Assign: Strong-F1, Weak-F1, Strong-F2, Weak-F2, ..., then Neutral for remainder
             int idx = 0;
-            foreach (var (factionID, strongCount, weakCount) in factionBucketCounts)
+            foreach ((string factionID, int strongCount, int weakCount) in factionBucketCounts)
             {
                 for (int i = 0; i < strongCount && idx < corePlanets.Count; i++, idx++)
                 {
@@ -320,7 +324,7 @@ namespace Rebellion.Generation
         /// <param name="result">Classification result containing the bucket map.</param>
         private void AssignStrongPlanetOwnership(GalaxyClassificationResult result)
         {
-            foreach (var kvp in result.BucketMap)
+            foreach (KeyValuePair<Planet, PlanetBucket> kvp in result.BucketMap)
             {
                 Planet planet = kvp.Key;
                 if (planet.OwnerInstanceID != null)

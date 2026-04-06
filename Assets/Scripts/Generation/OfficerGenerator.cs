@@ -45,7 +45,7 @@ namespace Rebellion.Generation
         )
         {
             // Group officers by faction
-            var officersByFaction = new Dictionary<string, List<Officer>>();
+            Dictionary<string, List<Officer>> officersByFaction = new Dictionary<string, List<Officer>>();
 
             foreach (Officer officer in allOfficers.Shuffle())
             {
@@ -77,8 +77,8 @@ namespace Rebellion.Generation
             };
 
             // Select from each faction
-            var selected = new List<Officer>();
-            foreach (var (ownerInstanceId, officers) in officersByFaction)
+            List<Officer> selected = new List<Officer>();
+            foreach ((string ownerInstanceId, List<Officer> officers) in officersByFaction)
             {
                 IEnumerable<Officer> picked = officers
                     .Where(o => o.IsMain || o.IsRecruitable)
@@ -151,7 +151,7 @@ namespace Rebellion.Generation
         )
         {
             // Build destination mapping: faction -> list of planets and fleets
-            var destinations = new Dictionary<string, List<ISceneNode>>();
+            Dictionary<string, List<ISceneNode>> destinations = new Dictionary<string, List<ISceneNode>>();
 
             foreach (Planet planet in systems.SelectMany(s => s.Planets).Where(p => p.OwnerInstanceID != null))
             {

@@ -176,7 +176,7 @@ namespace Rebellion.Game
         /// <returns>The total number of mined resource nodes, limited by the raw node count.</returns>
         public int GetRawMinedResources()
         {
-            int mineCount = GetBuildingTypeCount(BuildingType.Mine);
+            int mineCount = GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
             return Math.Min(NumRawResourceNodes, mineCount);
         }
 
@@ -192,10 +192,7 @@ namespace Rebellion.Game
                 return 0;
             }
 
-            int mineCount = GetBuildingTypeCount(
-                BuildingType.Mine,
-                includeUnderConstruction: false
-            );
+            int mineCount = GetBuildingTypeCount(BuildingType.Mine);
             return Math.Min(NumRawResourceNodes, mineCount);
         }
 
@@ -206,7 +203,7 @@ namespace Rebellion.Game
         /// <returns>The total refinement capacity.</returns>
         public int GetRawRefinementCapacity()
         {
-            return GetBuildingTypeCount(BuildingType.Refinery);
+            return GetBuildingTypeCount(BuildingType.Refinery, EntityStateFilter.All);
         }
 
         /// <summary>
@@ -221,11 +218,7 @@ namespace Rebellion.Game
                 return 0;
             }
 
-            int refineryCount = GetBuildingTypeCount(
-                BuildingType.Refinery,
-                includeUnderConstruction: false
-            );
-            return refineryCount;
+            return GetBuildingTypeCount(BuildingType.Refinery);
         }
 
         /// <summary>
@@ -569,12 +562,16 @@ namespace Rebellion.Game
         /// <summary>
         /// Calculates total defense strength from defensive buildings.
         /// </summary>
-        public int GetDefenseStrength()
+        /// <param name="filter">
+        /// <see cref="EntityStateFilter.Active"/> (default) counts only operational defenses;
+        /// <see cref="EntityStateFilter.All"/> includes buildings under construction or in transit.
+        /// </param>
+        public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()
                 .Where(b =>
                     b.GetBuildingType() == BuildingType.Defense
-                    && b.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && IsEntityActive(b, filter)
                 )
                 .Sum(b => b.WeaponStrength);
         }
@@ -583,21 +580,32 @@ namespace Rebellion.Game
         /// Gets the count of buildings of a specific type.
         /// </summary>
         /// <param name="buildingType">The type of building.</param>
-        /// <param name="includeUnderConstruction">Whether to include buildings under construction.</param>
+        /// <param name="filter">
+        /// <see cref="EntityStateFilter.Active"/> (default) counts only operational buildings
+        /// (manufacturing complete and not in transit);
+        /// <see cref="EntityStateFilter.All"/> includes buildings under construction or in transit.
+        /// </param>
         /// <returns>The count of buildings of the specified type.</returns>
         public int GetBuildingTypeCount(
             BuildingType buildingType,
-            bool includeUnderConstruction = true
+            EntityStateFilter filter = EntityStateFilter.Active
         )
         {
-            return Buildings.Count(building =>
-            {
-                return (
-                        includeUnderConstruction
-                        || building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    )
-                    && building.GetBuildingType() == buildingType;
-            });
+            return Buildings.Count(b =>
+                b.GetBuildingType() == buildingType && IsEntityActive(b, filter)
+            );
+        }
+
+        /// <summary>
+        /// Returns true if <paramref name="entity"/> satisfies <paramref name="filter"/>.
+        /// Active means manufacturing complete and not in transit.
+        /// </summary>
+        private static bool IsEntityActive(IManufacturable entity, EntityStateFilter filter)
+        {
+            if (filter == EntityStateFilter.All)
+                return true;
+            return entity.ManufacturingStatus == ManufacturingStatus.Complete
+                && ((IMovable)entity).Movement == null;
         }
 
         /// <summary>

@@ -42,7 +42,7 @@ namespace Rebellion.Util.Common
 
             int roll = rng.NextInt(rollMin, rollMax);
 
-            foreach (var entry in entries)
+            foreach ((int cumulativeWeight, T item) entry in entries)
             {
                 if (roll < entry.cumulativeWeight)
                     return entry.item;

@@ -52,7 +52,7 @@ namespace Rebellion.Generation
             GameEvent[] gameEvents = resourceManager.GetGameData<GameEvent>();
 
             // Phase 1: Galaxy classification
-            var classifier = new GalaxyClassifier();
+            GalaxyClassifier classifier = new GalaxyClassifier();
             GalaxyClassificationResult classification = classifier.Classify(
                 systems,
                 factions,
@@ -68,7 +68,7 @@ namespace Rebellion.Generation
             }
 
             // Phase 2: System configuration (energy, raw materials, colonization, support)
-            var configurator = new SystemConfigurator();
+            SystemConfigurator configurator = new SystemConfigurator();
             configurator.Configure(
                 systems,
                 classification,
@@ -81,7 +81,7 @@ namespace Rebellion.Generation
             SetFactionResearchLevels(factions);
 
             // Phase 4: Facility seeding
-            var facilitySeeder = new FacilitySeeder();
+            FacilitySeeder facilitySeeder = new FacilitySeeder();
             List<Building> deployedBuildings = facilitySeeder.Seed(
                 systems,
                 buildingTemplates,
@@ -90,7 +90,7 @@ namespace Rebellion.Generation
             );
 
             // Phase 5: Unit deployment
-            var unitDeployer = new UnitDeployer();
+            UnitDeployer unitDeployer = new UnitDeployer();
             unitDeployer.Deploy(
                 systems,
                 factions,
@@ -107,7 +107,7 @@ namespace Rebellion.Generation
             );
 
             // Phase 6: Officers
-            var officerGenerator = new OfficerGenerator();
+            OfficerGenerator officerGenerator = new OfficerGenerator();
             OfficerGenerator.OfficerResults officerResults = officerGenerator.Deploy(
                 systems,
                 rules,
@@ -117,7 +117,7 @@ namespace Rebellion.Generation
             Officer[] unrecruitedOfficers = officerResults.Unrecruited;
 
             // Phase 7: Balance pass
-            var balancePass = new BalancePass();
+            BalancePass balancePass = new BalancePass();
             balancePass.Apply(systems, factions);
 
             // Phase 8: Technology tree setup
@@ -186,7 +186,7 @@ namespace Rebellion.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(game);
 
             // Build set of (planetID, factionID) visibility overrides from config
-            var visibilityOverrides = new HashSet<(string planetId, string viewerFactionId)>();
+            HashSet<(string planetId, string viewerFactionId)> visibilityOverrides = new HashSet<(string planetId, string viewerFactionId)>();
             foreach (FactionSetup factionSetup in rules.GalaxyClassification.FactionSetups)
             {
                 if (factionSetup.StartingPlanets == null)

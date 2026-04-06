@@ -285,7 +285,7 @@ public sealed class FleetsPane : MonoBehaviour
         int regimentCount = 0;
         int officerCount = 0;
 
-        foreach (var ship in fleet.CapitalShips)
+        foreach (CapitalShip ship in fleet.CapitalShips)
         {
             fighterCount += ship.Starfighters.Count;
             regimentCount += ship.Regiments.Count;
@@ -330,22 +330,22 @@ public sealed class FleetsPane : MonoBehaviour
         switch (activeTab)
         {
             case FleetTabType.CapitalShips:
-                foreach (var ship in fleet.CapitalShips)
+                foreach (CapitalShip ship in fleet.CapitalShips)
                     garrisonGrid.AddTile(ship);
                 break;
 
             case FleetTabType.Starfighters:
-                foreach (var fighter in fleet.GetStarfighters())
+                foreach (Starfighter fighter in fleet.GetStarfighters())
                     garrisonGrid.AddTile(fighter);
                 break;
 
             case FleetTabType.Regiments:
-                foreach (var regiment in fleet.GetRegiments())
+                foreach (Regiment regiment in fleet.GetRegiments())
                     garrisonGrid.AddTile(regiment);
                 break;
 
             case FleetTabType.Officers:
-                foreach (var officer in fleet.GetOfficers())
+                foreach (Officer officer in fleet.GetOfficers())
                     garrisonGrid.AddTile(officer);
                 break;
         }

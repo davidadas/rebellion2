@@ -250,8 +250,8 @@ public sealed class GarrisonPane : MonoBehaviour
         starfightersButton.interactable = planet.GetStarfighterCount() > 0;
         regimentsButton.interactable = planet.GetRegimentCount() > 0;
 
-        shieldsButton.interactable = planet.GetBuildingTypeCount(BuildingType.Defense) > 0;
+        shieldsButton.interactable = planet.GetBuildingTypeCount(BuildingType.Defense, EntityStateFilter.All) > 0;
 
-        weaponsButton.interactable = planet.GetBuildingTypeCount(BuildingType.Weapon) > 0;
+        weaponsButton.interactable = planet.GetBuildingTypeCount(BuildingType.Weapon, EntityStateFilter.All) > 0;
     }
 }

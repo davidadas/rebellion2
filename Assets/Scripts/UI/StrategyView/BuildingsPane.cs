@@ -192,18 +192,18 @@ public sealed class BuildingsPane : MonoBehaviour
     {
         productionTab.SetDisabled(false);
 
-        shipyardsTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Shipyard) == 0);
+        shipyardsTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All) == 0);
 
         trainingFacilitiesTab.SetDisabled(
-            planet.GetBuildingTypeCount(BuildingType.TrainingFacility) == 0
+            planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All) == 0
         );
 
         constructionFacilitiesTab.SetDisabled(
-            planet.GetBuildingTypeCount(BuildingType.ConstructionFacility) == 0
+            planet.GetBuildingTypeCount(BuildingType.ConstructionFacility, EntityStateFilter.All) == 0
         );
 
-        refineriesTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Refinery) == 0);
+        refineriesTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Refinery, EntityStateFilter.All) == 0);
 
-        minesTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Mine) == 0);
+        minesTab.SetDisabled(planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All) == 0);
     }
 }

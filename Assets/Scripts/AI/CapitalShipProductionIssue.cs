@@ -162,7 +162,7 @@ public class CapitalShipProductionIssue
             }
         )
         {
-            var issue = new CapitalShipProductionIssue(v, game, faction, system, provider);
+            CapitalShipProductionIssue issue = new CapitalShipProductionIssue(v, game, faction, system, provider);
             issue.Execute();
         }
     }
@@ -488,7 +488,7 @@ public class CapitalShipProductionIssue
         {
             if (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == factionId)
                 continue;
-            totalDefense += planet.GetDefenseStrength();
+            totalDefense += planet.GetDefenseStrength(EntityStateFilter.All);
         }
 
         // 3. Calculate net strength

@@ -50,8 +50,8 @@ namespace Rebellion.Generation
             string playerFactionID
         )
         {
-            var factory = new UnitFactory(regimentTemplates, fighterTemplates, shipTemplates);
-            var config = rules.UnitDeployment;
+            UnitFactory factory = new UnitFactory(regimentTemplates, fighterTemplates, shipTemplates);
+            UnitDeploymentSection config = rules.UnitDeployment;
 
             Dictionary<string, Planet> planetMap = systems
                 .SelectMany(s => s.Planets)
@@ -82,7 +82,7 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            var garrisonTroopMap = new Dictionary<string, string>();
+            Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
             foreach (FactionSetup setup in gcConfig.FactionSetups)
             {
                 if (!string.IsNullOrEmpty(setup.GarrisonTroopTypeID))
@@ -184,7 +184,7 @@ namespace Rebellion.Generation
                 if (fleetConfig.SpawnChancePct < 100 && rng.NextInt(0, 100) >= fleetConfig.SpawnChancePct)
                     continue;
 
-                var capitalShips = new List<CapitalShip>();
+                List<CapitalShip> capitalShips = new List<CapitalShip>();
                 foreach (UnitEntry entry in fleetConfig.Ships)
                 {
                     for (int i = 0; i < entry.Count; i++)
@@ -262,7 +262,7 @@ namespace Rebellion.Generation
                 if (ownedCorePlanets.Count == 0)
                     continue;
 
-                var unitTable = new WeightedTable<List<UnitEntry>>(
+                WeightedTable<List<UnitEntry>> unitTable = new WeightedTable<List<UnitEntry>>(
                     budget.UnitTable.Select(e => (e.CumulativeWeight, e.Units)).ToList(),
                     rollMin: 1,
                     rollMax: 101,
@@ -362,9 +362,9 @@ namespace Rebellion.Generation
             UnitFactory factory
         )
         {
-            var shipsForFleet = new List<CapitalShip>();
-            var cargoFighters = new List<Starfighter>();
-            var cargoRegiments = new List<Regiment>();
+            List<CapitalShip> shipsForFleet = new List<CapitalShip>();
+            List<Starfighter> cargoFighters = new List<Starfighter>();
+            List<Regiment> cargoRegiments = new List<Regiment>();
 
             foreach (UnitEntry entry in entries)
             {

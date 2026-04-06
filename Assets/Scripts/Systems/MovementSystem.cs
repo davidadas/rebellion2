@@ -30,10 +30,6 @@ namespace Rebellion.Systems
             this.fogOfWar = fogOfWar;
         }
 
-        // -----------------------------------------------------------------------------------------
-        // Public API
-        // -----------------------------------------------------------------------------------------
-
         /// <summary>
         /// Processes movement for the current tick.
         /// </summary>
@@ -162,10 +158,6 @@ namespace Rebellion.Systems
             }
         }
 
-        // -----------------------------------------------------------------------------------------
-        // Tick processing
-        // -----------------------------------------------------------------------------------------
-
         /// <summary>
         /// Advances the movement of a single unit by one tick and handles arrival.
         /// </summary>
@@ -196,6 +188,12 @@ namespace Rebellion.Systems
                 CheckArrival(movable, destination, destinationPlanet);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="movable"></param>
+        /// <param name="destinationPlanet"></param>
+        /// <returns></returns>
         private Point CalculateInterpolatedPosition(IMovable movable, Planet destinationPlanet)
         {
             float progress = movable.Movement.Progress();
@@ -207,10 +205,6 @@ namespace Rebellion.Systems
                 (int)(originPos.Y + (destPos.Y - originPos.Y) * progress)
             );
         }
-
-        // -----------------------------------------------------------------------------------------
-        // Arrival handling
-        // -----------------------------------------------------------------------------------------
 
         /// <summary>
         /// Handles unit arrival at its destination. Destroys buildings if destination changed
@@ -318,6 +312,12 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="factionOwnerID"></param>
+        /// <param name="fromPosition"></param>
+        /// <returns></returns>
         private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
         {
             return game.GetSceneNodesByType<Planet>()
@@ -331,10 +331,6 @@ namespace Rebellion.Systems
                 })
                 .FirstOrDefault();
         }
-
-        // -----------------------------------------------------------------------------------------
-        // Move execution
-        // -----------------------------------------------------------------------------------------
 
         /// <summary>
         /// Reparents the unit to the destination, sets up its visual transit state, and logs
