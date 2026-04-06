@@ -289,7 +289,7 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
             movement.RequestMove(officer, destination);
 
-            movement.UpdateMovement(officer);
+            movement.ProcessTick();
 
             Assert.AreEqual(1, officer.Movement.TicksElapsed);
         }
@@ -307,7 +307,7 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.UpdateMovement(officer);
+            movement.ProcessTick();
 
             Assert.IsNull(officer.Movement);
         }
@@ -325,7 +325,7 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.UpdateMovement(officer);
+            movement.ProcessTick();
 
             Assert.AreEqual(destination, officer.GetParent());
         }
