@@ -253,7 +253,7 @@ public class CapitalShipTests
         _capitalShip.AddStarfighter(starfighter);
         _capitalShip.AddRegiment(regiment);
 
-        string serialized = SerializationHelper.Serialize(capitalShip);
+        string serialized = SerializationHelper.Serialize(_capitalShip);
         CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
 
         Assert.AreEqual(
@@ -293,7 +293,7 @@ public class CapitalShipTests
     {
         _capitalShip.ManufacturingStatus = ManufacturingStatus.Building;
 
-        ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Complete);
+        ((IManufacturable)_capitalShip).SetManufacturingStatus(ManufacturingStatus.Complete);
 
         Assert.AreEqual(ManufacturingStatus.Complete, _capitalShip.ManufacturingStatus);
     }
@@ -304,7 +304,7 @@ public class CapitalShipTests
         _capitalShip.ManufacturingStatus = ManufacturingStatus.Complete;
 
         Assert.Throws<InvalidOperationException>(() =>
-            ((IManufacturable)capitalShip).SetManufacturingStatus(ManufacturingStatus.Building)
+            ((IManufacturable)_capitalShip).SetManufacturingStatus(ManufacturingStatus.Building)
         );
     }
 

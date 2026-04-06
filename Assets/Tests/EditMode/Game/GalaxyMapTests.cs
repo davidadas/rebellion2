@@ -47,7 +47,7 @@ public class GalaxyMapTests
         IEnumerable<ISceneNode> children = _galaxyMap.GetChildren();
 
         CollectionAssert.AreEquivalent(
-            new ISceneNode[] { _planetSystem1, planetSystem2 },
+            new ISceneNode[] { _planetSystem1, _planetSystem2 },
             children,
             "GalaxyMap should return correct children."
         );
@@ -59,7 +59,7 @@ public class GalaxyMapTests
         _galaxyMap.AddChild(_planetSystem1);
         _galaxyMap.AddChild(_planetSystem2);
 
-        string serialized = SerializationHelper.Serialize(galaxyMap);
+        string serialized = SerializationHelper.Serialize(_galaxyMap);
         GalaxyMap deserialized = SerializationHelper.Deserialize<GalaxyMap>(serialized);
 
         Assert.AreEqual(

@@ -21,8 +21,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes betrayal checks for the current tick.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public void ProcessTick()
         {
             // TODO: Implement betrayal logic
         }

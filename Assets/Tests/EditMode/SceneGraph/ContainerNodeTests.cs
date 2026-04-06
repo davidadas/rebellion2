@@ -84,61 +84,61 @@ public class ContainerNodeTests
 
     private class MockContainerNodeC : MockContainerNode { }
 
-    private MockContainerNode rootNode;
-    private MockContainerNode childNode1;
-    private MockContainerNode childNode2;
-    private MockContainerNodeA nodeA1;
-    private MockContainerNodeA nodeA2;
-    private MockContainerNodeB nodeB1;
-    private MockContainerNodeB nodeB2;
-    private MockContainerNodeC nodeC1;
+    private MockContainerNode _rootNode;
+    private MockContainerNode _childNode1;
+    private MockContainerNode _childNode2;
+    private MockContainerNodeA _nodeA1;
+    private MockContainerNodeA _nodeA2;
+    private MockContainerNodeB _nodeB1;
+    private MockContainerNodeB _nodeB2;
+    private MockContainerNodeC _nodeC1;
 
     [SetUp]
     public void SetUp()
     {
-        rootNode = new MockContainerNode
+        _rootNode = new MockContainerNode
         {
             DisplayName = "RootNode",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        childNode1 = new MockContainerNode
+        _childNode1 = new MockContainerNode
         {
             DisplayName = "ChildNode1",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        childNode2 = new MockContainerNode
+        _childNode2 = new MockContainerNode
         {
             DisplayName = "ChildNode2",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeA1 = new MockContainerNodeA
+        _nodeA1 = new MockContainerNodeA
         {
             DisplayName = "NodeA1",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeA2 = new MockContainerNodeA
+        _nodeA2 = new MockContainerNodeA
         {
             DisplayName = "NodeA2",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeB1 = new MockContainerNodeB
+        _nodeB1 = new MockContainerNodeB
         {
             DisplayName = "NodeB1",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeB2 = new MockContainerNodeB
+        _nodeB2 = new MockContainerNodeB
         {
             DisplayName = "NodeB2",
             InstanceID = Guid.NewGuid().ToString(),
         };
 
-        nodeC1 = new MockContainerNodeC
+        _nodeC1 = new MockContainerNodeC
         {
             DisplayName = "NodeC1",
             InstanceID = Guid.NewGuid().ToString(),
@@ -150,61 +150,61 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_NonRecursive_ReturnsOnlyImmediateChildren()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: false
         );
 
         Assert.AreEqual(2, result.Count(), "Should return only immediate children");
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, childNode2);
-        CollectionAssert.DoesNotContain(result, nodeA1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _childNode2);
+        CollectionAssert.DoesNotContain(result, _nodeA1);
     }
 
     [Test]
     public void GetChildren_NonRecursiveWithPredicate_ReturnsFilteredImmediateChildren()
     {
-        childNode1.OwnerInstanceID = "Owner1";
-        childNode2.OwnerInstanceID = "Owner2";
+        _childNode1.OwnerInstanceID = "Owner1";
+        _childNode2.OwnerInstanceID = "Owner2";
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => node.OwnerInstanceID == "Owner1",
             recurse: false
         );
 
         Assert.AreEqual(1, result.Count(), "Should return only matching immediate children");
-        Assert.AreEqual(childNode1, result.First());
+        Assert.AreEqual(_childNode1, result.First());
     }
 
     [Test]
     public void GetChildren_NonRecursiveWithTypeFilter_ReturnsOnlyMatchingTypes()
     {
-        rootNode.AddChild(nodeA1);
-        rootNode.AddChild(nodeB1);
-        rootNode.AddChild(nodeA2);
+        _rootNode.AddChild(_nodeA1);
+        _rootNode.AddChild(_nodeB1);
+        _rootNode.AddChild(_nodeA2);
 
-        IEnumerable<MockContainerNodeA> result = rootNode.GetChildren<MockContainerNodeA>(
+        IEnumerable<MockContainerNodeA> result = _rootNode.GetChildren<MockContainerNodeA>(
             node => true,
             recurse: false
         );
 
         Assert.AreEqual(2, result.Count(), "Should return only type A nodes");
-        CollectionAssert.Contains(result, nodeA1);
-        CollectionAssert.Contains(result, nodeA2);
-        CollectionAssert.DoesNotContain(result, nodeB1);
+        CollectionAssert.Contains(result, _nodeA1);
+        CollectionAssert.Contains(result, _nodeA2);
+        CollectionAssert.DoesNotContain(result, _nodeB1);
     }
 
     [Test]
     public void GetChildren_NonRecursiveEmptyChildren_ReturnsEmptyCollection()
     {
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: false
         );
@@ -215,15 +215,15 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_NonRecursiveSingleChild_ReturnsSingleChild()
     {
-        rootNode.AddChild(childNode1);
+        _rootNode.AddChild(_childNode1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: false
         );
 
         Assert.AreEqual(1, result.Count(), "Should return single child");
-        Assert.AreEqual(childNode1, result.First());
+        Assert.AreEqual(_childNode1, result.First());
     }
 
     #endregion
@@ -233,83 +233,83 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_Recursive_ReturnsAllDescendants()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
-        childNode2.AddChild(nodeB1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
+        _childNode2.AddChild(_nodeB1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
 
         Assert.AreEqual(4, result.Count(), "Should return all descendants");
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, childNode2);
-        CollectionAssert.Contains(result, nodeA1);
-        CollectionAssert.Contains(result, nodeB1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _childNode2);
+        CollectionAssert.Contains(result, _nodeA1);
+        CollectionAssert.Contains(result, _nodeB1);
     }
 
     [Test]
     public void GetChildren_RecursiveWithPredicate_ReturnsFilteredDescendants()
     {
-        childNode1.OwnerInstanceID = "Owner1";
-        childNode2.OwnerInstanceID = "Owner2";
-        nodeA1.OwnerInstanceID = "Owner1";
-        nodeB1.OwnerInstanceID = "Owner2";
+        _childNode1.OwnerInstanceID = "Owner1";
+        _childNode2.OwnerInstanceID = "Owner2";
+        _nodeA1.OwnerInstanceID = "Owner1";
+        _nodeB1.OwnerInstanceID = "Owner2";
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
-        childNode2.AddChild(nodeB1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
+        _childNode2.AddChild(_nodeB1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => node.OwnerInstanceID == "Owner1",
             recurse: true
         );
 
         Assert.AreEqual(2, result.Count(), "Should return only matching descendants");
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, nodeA1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _nodeA1);
     }
 
     [Test]
     public void GetChildren_RecursiveWithTypeFilter_ReturnsOnlyMatchingTypeDescendants()
     {
-        rootNode.AddChild(childNode1);
-        childNode1.AddChild(nodeA1);
-        childNode1.AddChild(nodeB1);
-        nodeB1.AddChild(nodeA2);
+        _rootNode.AddChild(_childNode1);
+        _childNode1.AddChild(_nodeA1);
+        _childNode1.AddChild(_nodeB1);
+        _nodeB1.AddChild(_nodeA2);
 
-        IEnumerable<MockContainerNodeA> result = rootNode.GetChildren<MockContainerNodeA>(
+        IEnumerable<MockContainerNodeA> result = _rootNode.GetChildren<MockContainerNodeA>(
             node => true,
             recurse: true
         );
 
         Assert.AreEqual(2, result.Count(), "Should return only type A descendants");
-        CollectionAssert.Contains(result, nodeA1);
-        CollectionAssert.Contains(result, nodeA2);
+        CollectionAssert.Contains(result, _nodeA1);
+        CollectionAssert.Contains(result, _nodeA2);
     }
 
     [Test]
     public void GetChildren_RecursiveMultipleLevels_ReturnsAllLevels()
     {
         // Create a 4-level hierarchy
-        rootNode.AddChild(childNode1);
-        childNode1.AddChild(childNode2);
-        childNode2.AddChild(nodeA1);
-        nodeA1.AddChild(nodeB1);
+        _rootNode.AddChild(_childNode1);
+        _childNode1.AddChild(_childNode2);
+        _childNode2.AddChild(_nodeA1);
+        _nodeA1.AddChild(_nodeB1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
 
         Assert.AreEqual(4, result.Count(), "Should return all levels");
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, childNode2);
-        CollectionAssert.Contains(result, nodeA1);
-        CollectionAssert.Contains(result, nodeB1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _childNode2);
+        CollectionAssert.Contains(result, _nodeA1);
+        CollectionAssert.Contains(result, _nodeB1);
     }
 
     [Test]
@@ -318,10 +318,10 @@ public class ContainerNodeTests
         // Create a larger hierarchy with 10 nodes
         List<MockContainerNode> allNodes = new List<MockContainerNode>();
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        allNodes.Add(childNode1);
-        allNodes.Add(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        allNodes.Add(_childNode1);
+        allNodes.Add(_childNode2);
 
         for (int i = 0; i < 4; i++)
         {
@@ -330,7 +330,7 @@ public class ContainerNodeTests
                 DisplayName = $"Node{i}",
                 InstanceID = Guid.NewGuid().ToString(),
             };
-            childNode1.AddChild(node);
+            _childNode1.AddChild(node);
             allNodes.Add(node);
         }
 
@@ -341,11 +341,11 @@ public class ContainerNodeTests
                 DisplayName = $"NodeB{i}",
                 InstanceID = Guid.NewGuid().ToString(),
             };
-            childNode2.AddChild(node);
+            _childNode2.AddChild(node);
             allNodes.Add(node);
         }
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
@@ -364,29 +364,29 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_RecursiveNullPredicate_ReturnsAllDescendants()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             null,
             recurse: true
         );
 
         Assert.AreEqual(3, result.Count(), "Should return all descendants when predicate is null");
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, childNode2);
-        CollectionAssert.Contains(result, nodeA1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _childNode2);
+        CollectionAssert.Contains(result, _nodeA1);
     }
 
     [Test]
     public void GetChildren_NonRecursiveNullPredicate_ReturnsAllImmediateChildren()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             null,
             recurse: false
         );
@@ -396,9 +396,9 @@ public class ContainerNodeTests
             result.Count(),
             "Should return immediate children when predicate is null"
         );
-        CollectionAssert.Contains(result, childNode1);
-        CollectionAssert.Contains(result, childNode2);
-        CollectionAssert.DoesNotContain(result, nodeA1);
+        CollectionAssert.Contains(result, _childNode1);
+        CollectionAssert.Contains(result, _childNode2);
+        CollectionAssert.DoesNotContain(result, _nodeA1);
     }
 
     #endregion
@@ -408,14 +408,14 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_Recursive_DoesNotIncludeSelf()
     {
-        rootNode.AddChild(childNode1);
+        _rootNode.AddChild(_childNode1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
 
-        CollectionAssert.DoesNotContain(result, rootNode, "Should not include the node itself");
+        CollectionAssert.DoesNotContain(result, _rootNode, "Should not include the node itself");
     }
 
     [Test]
@@ -427,8 +427,8 @@ public class ContainerNodeTests
             DisplayName = "RootA",
             InstanceID = Guid.NewGuid().ToString(),
         };
-        rootA.AddChild(nodeA1);
-        rootA.AddChild(nodeA2);
+        rootA.AddChild(_nodeA1);
+        rootA.AddChild(_nodeA2);
 
         IEnumerable<MockContainerNodeA> result = rootA.GetChildren<MockContainerNodeA>(
             node => true,
@@ -436,26 +436,26 @@ public class ContainerNodeTests
         );
 
         Assert.AreEqual(2, result.Count(), "Should not include self even if type matches");
-        CollectionAssert.Contains(result, nodeA1);
-        CollectionAssert.Contains(result, nodeA2);
+        CollectionAssert.Contains(result, _nodeA1);
+        CollectionAssert.Contains(result, _nodeA2);
         CollectionAssert.DoesNotContain(result, rootA);
     }
 
     [Test]
     public void GetChildren_RecursiveWithPredicateMatchingSelf_DoesNotIncludeSelf()
     {
-        rootNode.OwnerInstanceID = "Owner1";
-        childNode1.OwnerInstanceID = "Owner1";
+        _rootNode.OwnerInstanceID = "Owner1";
+        _childNode1.OwnerInstanceID = "Owner1";
 
-        rootNode.AddChild(childNode1);
+        _rootNode.AddChild(_childNode1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => node.OwnerInstanceID == "Owner1",
             recurse: true
         );
 
         Assert.AreEqual(1, result.Count(), "Should not include self even if predicate matches");
-        Assert.AreEqual(childNode1, result.First());
+        Assert.AreEqual(_childNode1, result.First());
     }
 
     #endregion
@@ -465,81 +465,81 @@ public class ContainerNodeTests
     [Test]
     public void Traverse_SimpleHierarchy_VisitsAllNodes()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         Assert.AreEqual(3, visitedNodes.Count, "Should visit all nodes including root");
-        CollectionAssert.Contains(visitedNodes, rootNode);
-        CollectionAssert.Contains(visitedNodes, childNode1);
-        CollectionAssert.Contains(visitedNodes, childNode2);
+        CollectionAssert.Contains(visitedNodes, _rootNode);
+        CollectionAssert.Contains(visitedNodes, _childNode1);
+        CollectionAssert.Contains(visitedNodes, _childNode2);
     }
 
     [Test]
     public void Traverse_VisitsRootFirst()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
-        Assert.AreEqual(rootNode, visitedNodes[0], "Root should be visited first");
+        Assert.AreEqual(_rootNode, visitedNodes[0], "Root should be visited first");
     }
 
     [Test]
     public void Traverse_DeepHierarchy_VisitsInCorrectOrder()
     {
-        rootNode.AddChild(childNode1);
-        childNode1.AddChild(childNode2);
-        childNode2.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _childNode1.AddChild(_childNode2);
+        _childNode2.AddChild(_nodeA1);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         Assert.AreEqual(4, visitedNodes.Count, "Should visit all 4 nodes");
-        Assert.AreEqual(rootNode, visitedNodes[0], "Root should be first");
+        Assert.AreEqual(_rootNode, visitedNodes[0], "Root should be first");
 
         // Verify all nodes are visited
-        CollectionAssert.Contains(visitedNodes, rootNode);
-        CollectionAssert.Contains(visitedNodes, childNode1);
-        CollectionAssert.Contains(visitedNodes, childNode2);
-        CollectionAssert.Contains(visitedNodes, nodeA1);
+        CollectionAssert.Contains(visitedNodes, _rootNode);
+        CollectionAssert.Contains(visitedNodes, _childNode1);
+        CollectionAssert.Contains(visitedNodes, _childNode2);
+        CollectionAssert.Contains(visitedNodes, _nodeA1);
     }
 
     [Test]
     public void Traverse_EmptyChildren_VisitsOnlyRoot()
     {
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         Assert.AreEqual(1, visitedNodes.Count, "Should visit only root when no children");
-        Assert.AreEqual(rootNode, visitedNodes[0]);
+        Assert.AreEqual(_rootNode, visitedNodes[0]);
     }
 
     [Test]
     public void Traverse_SingleChild_VisitsRootAndChild()
     {
-        rootNode.AddChild(childNode1);
+        _rootNode.AddChild(_childNode1);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         Assert.AreEqual(2, visitedNodes.Count, "Should visit root and single child");
-        Assert.AreEqual(rootNode, visitedNodes[0]);
-        Assert.AreEqual(childNode1, visitedNodes[1]);
+        Assert.AreEqual(_rootNode, visitedNodes[0]);
+        Assert.AreEqual(_childNode1, visitedNodes[1]);
     }
 
     [Test]
     public void Traverse_WithAction_ExecutesActionOnEachNode()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
         int actionCount = 0;
-        rootNode.Traverse(node => actionCount++);
+        _rootNode.Traverse(node => actionCount++);
 
         Assert.AreEqual(3, actionCount, "Action should be executed on each node");
     }
@@ -555,7 +555,7 @@ public class ContainerNodeTests
                 DisplayName = $"Child{i}",
                 InstanceID = Guid.NewGuid().ToString(),
             };
-            rootNode.AddChild(child);
+            _rootNode.AddChild(child);
 
             for (int j = 0; j < 2; j++)
             {
@@ -569,7 +569,7 @@ public class ContainerNodeTests
         }
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
-        rootNode.Traverse(node => visitedNodes.Add(node));
+        _rootNode.Traverse(node => visitedNodes.Add(node));
 
         // 1 root + 10 children + 20 grandchildren = 31 nodes
         Assert.AreEqual(31, visitedNodes.Count, "Should visit all 31 nodes");
@@ -582,14 +582,14 @@ public class ContainerNodeTests
     [Test]
     public void Traverse_ModifyingChildrenDuringTraversal_HandlesModificationSafely()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
 
         // This test verifies that the Traverse method creates a snapshot of children
         // before iterating, so modifications during traversal don't cause issues
-        rootNode.Traverse(node =>
+        _rootNode.Traverse(node =>
         {
             visitedNodes.Add(node);
         });
@@ -602,21 +602,21 @@ public class ContainerNodeTests
     [Test]
     public void Traverse_ChildRemovedDuringTraversal_ContinuesTraversal()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        childNode1.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _childNode1.AddChild(_nodeA1);
 
         List<ISceneNode> visitedNodes = new List<ISceneNode>();
 
         // Note: The implementation creates a snapshot with ToList(), so removing
         // children during traversal won't affect the current traversal
-        rootNode.Traverse(node =>
+        _rootNode.Traverse(node =>
         {
             visitedNodes.Add(node);
-            if (node == childNode1)
+            if (node == _childNode1)
             {
                 // Try to remove a child during traversal
-                rootNode.RemoveChild(childNode2);
+                _rootNode.RemoveChild(_childNode2);
             }
         });
 
@@ -636,7 +636,7 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_RecursiveEmptyHierarchy_ReturnsEmptyCollection()
     {
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
@@ -647,10 +647,10 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_PredicateRejectsAll_ReturnsEmptyCollection()
     {
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => false,
             recurse: true
         );
@@ -661,10 +661,10 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_TypeMismatch_ReturnsEmptyCollection()
     {
-        rootNode.AddChild(nodeA1);
-        rootNode.AddChild(nodeA2);
+        _rootNode.AddChild(_nodeA1);
+        _rootNode.AddChild(_nodeA2);
 
-        IEnumerable<MockContainerNodeB> result = rootNode.GetChildren<MockContainerNodeB>(
+        IEnumerable<MockContainerNodeB> result = _rootNode.GetChildren<MockContainerNodeB>(
             node => true,
             recurse: true
         );
@@ -675,26 +675,26 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_ComplexPredicateWithMultipleConditions_ReturnsCorrectResults()
     {
-        childNode1.OwnerInstanceID = "Owner1";
-        childNode1.DisplayName = "Match";
+        _childNode1.OwnerInstanceID = "Owner1";
+        _childNode1.DisplayName = "Match";
 
-        childNode2.OwnerInstanceID = "Owner1";
-        childNode2.DisplayName = "NoMatch";
+        _childNode2.OwnerInstanceID = "Owner1";
+        _childNode2.DisplayName = "NoMatch";
 
-        nodeA1.OwnerInstanceID = "Owner2";
-        nodeA1.DisplayName = "Match";
+        _nodeA1.OwnerInstanceID = "Owner2";
+        _nodeA1.DisplayName = "Match";
 
-        rootNode.AddChild(childNode1);
-        rootNode.AddChild(childNode2);
-        rootNode.AddChild(nodeA1);
+        _rootNode.AddChild(_childNode1);
+        _rootNode.AddChild(_childNode2);
+        _rootNode.AddChild(_nodeA1);
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => node.OwnerInstanceID == "Owner1" && node.DisplayName == "Match",
             recurse: false
         );
 
         Assert.AreEqual(1, result.Count(), "Should return only nodes matching complex predicate");
-        Assert.AreEqual(childNode1, result.First());
+        Assert.AreEqual(_childNode1, result.First());
     }
 
     [Test]
@@ -709,11 +709,11 @@ public class ContainerNodeTests
                 DisplayName = $"Child{i}",
                 InstanceID = Guid.NewGuid().ToString(),
             };
-            rootNode.AddChild(child);
+            _rootNode.AddChild(child);
             children.Add(child);
         }
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: false
         );
@@ -729,7 +729,7 @@ public class ContainerNodeTests
     public void GetChildren_DeepHierarchy_HandlesMultipleLevelsCorrectly()
     {
         // Create a deep hierarchy: 10 levels deep
-        MockContainerNode current = rootNode;
+        MockContainerNode current = _rootNode;
         List<MockContainerNode> allNodes = new List<MockContainerNode>();
 
         for (int i = 0; i < 10; i++)
@@ -744,7 +744,7 @@ public class ContainerNodeTests
             current = child;
         }
 
-        IEnumerable<MockContainerNode> result = rootNode.GetChildren<MockContainerNode>(
+        IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
             node => true,
             recurse: true
         );
@@ -759,22 +759,22 @@ public class ContainerNodeTests
     [Test]
     public void GetChildren_MixedTypeHierarchy_FiltersCorrectly()
     {
-        rootNode.AddChild(nodeA1);
-        rootNode.AddChild(nodeB1);
-        nodeA1.AddChild(nodeC1);
-        nodeB1.AddChild(nodeA2);
+        _rootNode.AddChild(_nodeA1);
+        _rootNode.AddChild(_nodeB1);
+        _nodeA1.AddChild(_nodeC1);
+        _nodeB1.AddChild(_nodeA2);
 
-        IEnumerable<MockContainerNodeA> resultA = rootNode.GetChildren<MockContainerNodeA>(
+        IEnumerable<MockContainerNodeA> resultA = _rootNode.GetChildren<MockContainerNodeA>(
             node => true,
             recurse: true
         );
 
-        IEnumerable<MockContainerNodeB> resultB = rootNode.GetChildren<MockContainerNodeB>(
+        IEnumerable<MockContainerNodeB> resultB = _rootNode.GetChildren<MockContainerNodeB>(
             node => true,
             recurse: true
         );
 
-        IEnumerable<MockContainerNodeC> resultC = rootNode.GetChildren<MockContainerNodeC>(
+        IEnumerable<MockContainerNodeC> resultC = _rootNode.GetChildren<MockContainerNodeC>(
             node => true,
             recurse: true
         );

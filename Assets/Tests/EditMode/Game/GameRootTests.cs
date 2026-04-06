@@ -43,9 +43,9 @@ public class GameRootTests
 
         // Initialize the _game.
         GameConfig config = ConfigLoader.LoadGameConfig();
-        _game = new GameRoot(summary, config);
-        _game.Factions.Add(faction1);
-        _game.Factions.Add(faction2);
+        _game = new GameRoot(_summary, config);
+        _game.Factions.Add(_faction1);
+        _game.Factions.Add(_faction2);
     }
 
     [Test]
@@ -489,7 +489,7 @@ public class GameRootTests
         GameSummary summaryWithInvalidPlayer = new GameSummary { PlayerFactionID = "NONEXISTENT" };
         GameConfig config = ConfigLoader.LoadGameConfig();
         GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
-        gameWithInvalidPlayer.Factions.Add(faction1);
+        gameWithInvalidPlayer.Factions.Add(_faction1);
 
         // Attempt to get player faction.
         Assert.Throws<InvalidOperationException>(

@@ -47,7 +47,7 @@ public class FactionTests
             RequiredResearchLevel = 1,
         };
 
-        _technology = new Technology(building);
+        _technology = new Technology(_building);
     }
 
     [Test]
@@ -264,7 +264,7 @@ public class FactionTests
         _faction.AddOwnedUnit(availableOfficer);
         _faction.AddOwnedUnit(unavailableOfficer);
 
-        List<Officer> available = _faction.GetAvailableOfficers(faction);
+        List<Officer> available = _faction.GetAvailableOfficers(_faction);
 
         Assert.AreEqual(1, available.Count, "Should return only movable officers");
         Assert.Contains(availableOfficer, available, "Should contain available officer");
@@ -316,7 +316,7 @@ public class FactionTests
         _faction.AddOwnedUnit(_planet1);
         _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
 
-        string serialized = SerializationHelper.Serialize(faction);
+        string serialized = SerializationHelper.Serialize(_faction);
         Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
 
         Assert.AreEqual(

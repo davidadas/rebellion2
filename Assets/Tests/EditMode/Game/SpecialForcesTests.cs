@@ -6,12 +6,12 @@ using Rebellion.Game;
 [TestFixture]
 public class SpecialForcesTests
 {
-    private SpecialForces specialForces;
+    private SpecialForces _specialForces;
 
     [SetUp]
     public void SetUp()
     {
-        specialForces = new SpecialForces
+        _specialForces = new SpecialForces
         {
             InstanceID = "SF1",
             OwnerInstanceID = "FACTION1",
@@ -24,16 +24,16 @@ public class SpecialForcesTests
             ManufacturingProgress = 0,
         };
 
-        specialForces.Skills[MissionParticipantSkill.Diplomacy] = 10;
-        specialForces.Skills[MissionParticipantSkill.Espionage] = 20;
-        specialForces.Skills[MissionParticipantSkill.Combat] = 30;
-        specialForces.Skills[MissionParticipantSkill.Leadership] = 15;
+        _specialForces.Skills[MissionParticipantSkill.Diplomacy] = 10;
+        _specialForces.Skills[MissionParticipantSkill.Espionage] = 20;
+        _specialForces.Skills[MissionParticipantSkill.Combat] = 30;
+        _specialForces.Skills[MissionParticipantSkill.Leadership] = 15;
     }
 
     [Test]
     public void GetManufacturingType_ReturnsTroop()
     {
-        ManufacturingType type = specialForces.GetManufacturingType();
+        ManufacturingType type = _specialForces.GetManufacturingType();
 
         Assert.AreEqual(ManufacturingType.Troop, type, "SpecialForces should be of type Troop");
     }
@@ -42,7 +42,7 @@ public class SpecialForcesTests
     public void SetMissionSkillValue_ThrowsException()
     {
         Assert.Throws<InvalidOperationException>(
-            () => specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50),
+            () => _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50),
             "Special forces should not allow setting mission skills"
         );
     }
@@ -51,9 +51,9 @@ public class SpecialForcesTests
     public void IsOnMission_WhenAssignedToMission_ReturnsTrue()
     {
         StubMission mission = new StubMission();
-        specialForces.SetParent(mission);
+        _specialForces.SetParent(mission);
 
-        bool isOnMission = specialForces.IsOnMission();
+        bool isOnMission = _specialForces.IsOnMission();
 
         Assert.IsTrue(isOnMission, "SpecialForces should be on mission when parent is Mission");
     }
@@ -61,7 +61,7 @@ public class SpecialForcesTests
     [Test]
     public void IsOnMission_WhenNotAssignedToMission_ReturnsFalse()
     {
-        bool isOnMission = specialForces.IsOnMission();
+        bool isOnMission = _specialForces.IsOnMission();
 
         Assert.IsFalse(
             isOnMission,
@@ -72,9 +72,9 @@ public class SpecialForcesTests
     [Test]
     public void IsMovable_WhenInTransitAndNotOnMission_ReturnsTrue()
     {
-        specialForces.Movement = new MovementState();
+        _specialForces.Movement = new MovementState();
 
-        bool isMovable = specialForces.IsMovable();
+        bool isMovable = _specialForces.IsMovable();
 
         Assert.IsTrue(
             isMovable,
@@ -85,9 +85,9 @@ public class SpecialForcesTests
     [Test]
     public void IsMovable_WhenIdle_ReturnsFalse()
     {
-        specialForces.Movement = null;
+        _specialForces.Movement = null;
 
-        bool isMovable = specialForces.IsMovable();
+        bool isMovable = _specialForces.IsMovable();
 
         Assert.IsFalse(isMovable, "SpecialForces should not be movable when idle");
     }
@@ -96,10 +96,10 @@ public class SpecialForcesTests
     public void IsMovable_WhenOnMission_ReturnsFalse()
     {
         StubMission mission = new StubMission();
-        specialForces.Movement = new MovementState();
-        specialForces.SetParent(mission);
+        _specialForces.Movement = new MovementState();
+        _specialForces.SetParent(mission);
 
-        bool isMovable = specialForces.IsMovable();
+        bool isMovable = _specialForces.IsMovable();
 
         Assert.IsFalse(isMovable, "SpecialForces should not be movable when on mission");
     }
@@ -107,7 +107,7 @@ public class SpecialForcesTests
     [Test]
     public void GetSkillValue_Diplomacy_ReturnsCorrectValue()
     {
-        int skillValue = specialForces.Skills[MissionParticipantSkill.Diplomacy];
+        int skillValue = _specialForces.Skills[MissionParticipantSkill.Diplomacy];
 
         Assert.AreEqual(10, skillValue, "Diplomacy skill should return the correct value");
     }
@@ -115,7 +115,7 @@ public class SpecialForcesTests
     [Test]
     public void GetSkillValue_Espionage_ReturnsCorrectValue()
     {
-        int skillValue = specialForces.Skills[MissionParticipantSkill.Espionage];
+        int skillValue = _specialForces.Skills[MissionParticipantSkill.Espionage];
 
         Assert.AreEqual(20, skillValue, "Espionage skill should return the correct value");
     }
@@ -123,7 +123,7 @@ public class SpecialForcesTests
     [Test]
     public void GetSkillValue_Combat_ReturnsCorrectValue()
     {
-        int skillValue = specialForces.Skills[MissionParticipantSkill.Combat];
+        int skillValue = _specialForces.Skills[MissionParticipantSkill.Combat];
 
         Assert.AreEqual(30, skillValue, "Combat skill should return the correct value");
     }
@@ -131,7 +131,7 @@ public class SpecialForcesTests
     [Test]
     public void GetSkillValue_Leadership_ReturnsCorrectValue()
     {
-        int skillValue = specialForces.Skills[MissionParticipantSkill.Leadership];
+        int skillValue = _specialForces.Skills[MissionParticipantSkill.Leadership];
 
         Assert.AreEqual(15, skillValue, "Leadership skill should return the correct value");
     }
@@ -150,9 +150,9 @@ public class SpecialForcesTests
     [Test]
     public void Skills_ModifiedBeforeMission_UpdatesCorrectly()
     {
-        specialForces.Skills[MissionParticipantSkill.Combat] = 100;
+        _specialForces.Skills[MissionParticipantSkill.Combat] = 100;
 
-        int skillValue = specialForces.Skills[MissionParticipantSkill.Combat];
+        int skillValue = _specialForces.Skills[MissionParticipantSkill.Combat];
 
         Assert.AreEqual(100, skillValue, "Combat skill should update correctly");
     }
@@ -200,19 +200,19 @@ public class SpecialForcesTests
     [Test]
     public void ManufacturingProgress_WhenIncremented_UpdatesCorrectly()
     {
-        specialForces.ManufacturingProgress = 50;
+        _specialForces.ManufacturingProgress = 50;
 
-        Assert.AreEqual(50, specialForces.ManufacturingProgress);
+        Assert.AreEqual(50, _specialForces.ManufacturingProgress);
     }
 
     [Test]
     public void ManufacturingProgress_WhenCompleted_ReachesConstructionCost()
     {
-        specialForces.ManufacturingProgress = specialForces.ConstructionCost;
+        _specialForces.ManufacturingProgress = _specialForces.ConstructionCost;
 
         Assert.AreEqual(
-            specialForces.ConstructionCost,
-            specialForces.ManufacturingProgress,
+            _specialForces.ConstructionCost,
+            _specialForces.ManufacturingProgress,
             "ManufacturingProgress should equal ConstructionCost when complete"
         );
     }
@@ -228,9 +228,9 @@ public class SpecialForcesTests
     [Test]
     public void ManufacturingStatus_WhenChanged_UpdatesCorrectly()
     {
-        specialForces.ManufacturingStatus = ManufacturingStatus.Complete;
+        _specialForces.ManufacturingStatus = ManufacturingStatus.Complete;
 
-        Assert.AreEqual(ManufacturingStatus.Complete, specialForces.ManufacturingStatus);
+        Assert.AreEqual(ManufacturingStatus.Complete, _specialForces.ManufacturingStatus);
     }
 
     [Test]
@@ -244,9 +244,9 @@ public class SpecialForcesTests
     [Test]
     public void OwnerInstanceID_WhenChanged_UpdatesCorrectly()
     {
-        specialForces.OwnerInstanceID = "FACTION3";
+        _specialForces.OwnerInstanceID = "FACTION3";
 
-        Assert.AreEqual("FACTION3", specialForces.OwnerInstanceID);
+        Assert.AreEqual("FACTION3", _specialForces.OwnerInstanceID);
     }
 
     [Test]
@@ -260,71 +260,71 @@ public class SpecialForcesTests
     [Test]
     public void SerializeAndDeserialize_MaintainsState()
     {
-        string serialized = SerializationHelper.Serialize(specialForces);
+        string serialized = SerializationHelper.Serialize(_specialForces);
         SpecialForces deserialized = SerializationHelper.Deserialize<SpecialForces>(serialized);
 
         Assert.AreEqual(
-            specialForces.InstanceID,
+            _specialForces.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.OwnerInstanceID,
+            _specialForces.OwnerInstanceID,
             deserialized.OwnerInstanceID,
             "OwnerInstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.ConstructionCost,
+            _specialForces.ConstructionCost,
             deserialized.ConstructionCost,
             "ConstructionCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.MaintenanceCost,
+            _specialForces.MaintenanceCost,
             deserialized.MaintenanceCost,
             "MaintenanceCost should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.BaseBuildSpeed,
+            _specialForces.BaseBuildSpeed,
             deserialized.BaseBuildSpeed,
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.RequiredResearchLevel,
+            _specialForces.RequiredResearchLevel,
             deserialized.RequiredResearchLevel,
             "RequiredResearchLevel should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.Movement,
+            _specialForces.Movement,
             deserialized.Movement,
             "MovementStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.ManufacturingStatus,
+            _specialForces.ManufacturingStatus,
             deserialized.ManufacturingStatus,
             "ManufacturingStatus should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.ManufacturingProgress,
+            _specialForces.ManufacturingProgress,
             deserialized.ManufacturingProgress,
             "ManufacturingProgress should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.Skills[MissionParticipantSkill.Diplomacy],
+            _specialForces.Skills[MissionParticipantSkill.Diplomacy],
             deserialized.Skills[MissionParticipantSkill.Diplomacy],
             "Diplomacy skill should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.Skills[MissionParticipantSkill.Espionage],
+            _specialForces.Skills[MissionParticipantSkill.Espionage],
             deserialized.Skills[MissionParticipantSkill.Espionage],
             "Espionage skill should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.Skills[MissionParticipantSkill.Combat],
+            _specialForces.Skills[MissionParticipantSkill.Combat],
             deserialized.Skills[MissionParticipantSkill.Combat],
             "Combat skill should be correctly deserialized."
         );
         Assert.AreEqual(
-            specialForces.Skills[MissionParticipantSkill.Leadership],
+            _specialForces.Skills[MissionParticipantSkill.Leadership],
             deserialized.Skills[MissionParticipantSkill.Leadership],
             "Leadership skill should be correctly deserialized."
         );

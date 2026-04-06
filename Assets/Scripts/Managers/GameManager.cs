@@ -199,7 +199,7 @@ public class GameManager
         _aiSystem.ProcessTick();
 
         // 7. Blockade: checks fleet presence after AI decisions
-        _blockadeManager.ProcessTick(_game);
+        _blockadeManager.ProcessTick();
 
         // 8. Support shift: adjusts popular support based on hostile forces
         _supportShiftManager.ProcessTick();
@@ -208,13 +208,13 @@ public class GameManager
         _uprisingManager.ProcessTick(_randomProvider);
 
         // 10. Betrayal: loyalty checks after uprising
-        _betrayalManager.ProcessTick(_game);
+        _betrayalManager.ProcessTick();
 
         // 11. Death Star: construction countdown and planet destruction
-        _deathStarManager.ProcessTick(_game);
+        _deathStarManager.ProcessTick();
 
         // 12. Research: applies tech upgrades
-        _researchManager.ProcessTick(_game);
+        _researchManager.ProcessTick();
 
         // 13. Jedi: advances Force tiers
         ProcessResults(_jediManager.ProcessTick(_game, _randomProvider));

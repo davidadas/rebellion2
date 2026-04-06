@@ -24,14 +24,14 @@ public class StubRNG : IRandomNumberProvider
 /// </summary>
 public class FixedRNG : IRandomNumberProvider
 {
-    private readonly double value;
+    private readonly double _value;
 
     public FixedRNG(double value = 0.5)
     {
-        this.value = value;
+        _value = value;
     }
 
-    public double NextDouble() => value;
+    public double NextDouble() => _value;
 
     public int NextInt(int min, int max) => min;
 }
@@ -42,14 +42,14 @@ public class FixedRNG : IRandomNumberProvider
 /// </summary>
 public class QueueRNG : IRandomNumberProvider
 {
-    private Queue<double> values;
+    private Queue<double> _values;
 
     public QueueRNG(params double[] values)
     {
-        this.values = new Queue<double>(values);
+        _values = new Queue<double>(values);
     }
 
-    public double NextDouble() => values.Count > 0 ? values.Dequeue() : 0.5;
+    public double NextDouble() => _values.Count > 0 ? _values.Dequeue() : 0.5;
 
     public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
 }
@@ -100,7 +100,7 @@ public class StubMission : Mission
 /// </summary>
 public class CyclingRNG : IRandomNumberProvider
 {
-    private int counter;
+    private int _counter;
 
     public double NextDouble() => 0.5;
 
@@ -109,8 +109,8 @@ public class CyclingRNG : IRandomNumberProvider
         int range = max - min;
         if (range <= 0)
             return min;
-        int value = min + (counter % range);
-        counter++;
+        int value = min + (_counter % range);
+        _counter++;
         return value;
     }
 }
@@ -121,19 +121,19 @@ public class CyclingRNG : IRandomNumberProvider
 /// </summary>
 public class SequenceRNG : IRandomNumberProvider
 {
-    private readonly Queue<int> ints;
-    private readonly Queue<double> doubles;
+    private readonly Queue<int> _ints;
+    private readonly Queue<double> _doubles;
 
     public SequenceRNG(int[] intValues = null, double[] doubleValues = null)
     {
-        ints = new Queue<int>(intValues ?? new int[0]);
-        doubles = new Queue<double>(doubleValues ?? new double[0]);
+        _ints = new Queue<int>(intValues ?? new int[0]);
+        _doubles = new Queue<double>(doubleValues ?? new double[0]);
     }
 
-    public double NextDouble() => doubles.Count > 0 ? doubles.Dequeue() : 0.0;
+    public double NextDouble() => _doubles.Count > 0 ? _doubles.Dequeue() : 0.0;
 
     public int NextInt(int min, int max) =>
-        ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, ints.Dequeue())) : min;
+        _ints.Count > 0 ? System.Math.Max(min, System.Math.Min(max - 1, _ints.Dequeue())) : min;
 }
 
 public static class TestConfig

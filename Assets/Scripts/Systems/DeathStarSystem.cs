@@ -21,8 +21,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes Death Star mechanics for the current tick.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public void ProcessTick()
         {
             // TODO: Implement Death Star logic
         }

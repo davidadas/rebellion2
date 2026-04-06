@@ -54,7 +54,7 @@ public class PlanetSystemTests
         IEnumerable<ISceneNode> children = _planetSystem.GetChildren();
 
         CollectionAssert.AreEquivalent(
-            new ISceneNode[] { _planet1, planet2 },
+            new ISceneNode[] { _planet1, _planet2 },
             children,
             "PlanetSystem should return correct children."
         );
@@ -66,7 +66,7 @@ public class PlanetSystemTests
         _planetSystem.AddChild(_planet1);
         _planetSystem.AddChild(_planet2);
 
-        string serialized = SerializationHelper.Serialize(planetSystem);
+        string serialized = SerializationHelper.Serialize(_planetSystem);
         PlanetSystem deserialized = SerializationHelper.Deserialize<PlanetSystem>(serialized);
 
         Assert.AreEqual(

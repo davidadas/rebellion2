@@ -12,34 +12,34 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class CapitalShipProductionIssueTests
     {
-        private GameRoot game;
-        private Faction empire;
-        private Faction rebels;
-        private PlanetSystem system;
-        private Planet empPlanet;
-        private Planet rebelPlanet;
-        private ManufacturingSystem manufacturing;
+        private GameRoot _game;
+        private Faction _empire;
+        private Faction _rebels;
+        private PlanetSystem _system;
+        private Planet _empPlanet;
+        private Planet _rebelPlanet;
+        private ManufacturingSystem _manufacturing;
 
         [SetUp]
         public void SetUp()
         {
             GameConfig config = TestConfig.Create();
-            game = new GameRoot(config);
+            _game = new GameRoot(config);
 
-            empire = new Faction { InstanceID = "empire", PlayerID = null };
-            rebels = new Faction { InstanceID = "rebels", PlayerID = null };
-            game.Factions.Add(empire);
-            game.Factions.Add(rebels);
+            _empire = new Faction { InstanceID = "empire", PlayerID = null };
+            _rebels = new Faction { InstanceID = "rebels", PlayerID = null };
+            _game.Factions.Add(_empire);
+            _game.Factions.Add(_rebels);
 
-            system = new PlanetSystem
+            _system = new PlanetSystem
             {
                 InstanceID = "sys1",
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(system, game.Galaxy);
+            _game.AttachNode(_system, _game.Galaxy);
 
-            empPlanet = new Planet
+            _empPlanet = new Planet
             {
                 InstanceID = "emp_p1",
                 OwnerInstanceID = "empire",
@@ -50,9 +50,9 @@ namespace Rebellion.Tests.Managers
                 EnergyCapacity = 10,
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
-            game.AttachNode(empPlanet, system);
+            _game.AttachNode(_empPlanet, _system);
 
-            rebelPlanet = new Planet
+            _rebelPlanet = new Planet
             {
                 InstanceID = "reb_p1",
                 OwnerInstanceID = "rebels",
@@ -62,9 +62,9 @@ namespace Rebellion.Tests.Managers
                 EnergyCapacity = 5,
                 PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
             };
-            game.AttachNode(rebelPlanet, system);
+            _game.AttachNode(_rebelPlanet, _system);
 
-            manufacturing = new ManufacturingSystem(game);
+            _manufacturing = new ManufacturingSystem(_game);
         }
 
         // --- Helpers ---
@@ -155,8 +155,8 @@ namespace Rebellion.Tests.Managers
                 displayName
             );
             Fleet fleet = EntityFactory.CreateFleet(id + "_fleet", factionId);
-            game.AttachNode(fleet, planet);
-            manufacturing.Enqueue(planet, ship, fleet, ignoreCost: true);
+            _game.AttachNode(fleet, planet);
+            _manufacturing.Enqueue(planet, ship, fleet, ignoreCost: true);
             return ship;
         }
 
@@ -166,13 +166,13 @@ namespace Rebellion.Tests.Managers
         public void Contribution_KDY_FillsPrimaryShortageOnly()
         {
             // KDY should fill primary shortage (ConstructionCost), never capacity
-            game.AttachNode(CreateKDYFacility("kdy1", "empire", modifier: 100), empPlanet);
+            _game.AttachNode(CreateKDYFacility("kdy1", "empire", modifier: 100), _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 50);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 50);
             // Give it a large KDY pool to exceed primary shortage
             ship.KdyPool = 200;
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             // Primary should be fully covered
             Assert.AreEqual(50, ship.RefinedMaterialProgress, "KDY should fill primary shortage");
@@ -189,10 +189,10 @@ namespace Rebellion.Tests.Managers
         public void Contribution_LNR_FillsPrimaryThenOverflowsToCapacity()
         {
             // LNR should fill primary first, then overflow into capacity
-            game.AttachNode(CreateLNRFacility("lnr1", "empire", modifier: 100), empPlanet);
+            _game.AttachNode(CreateLNRFacility("lnr1", "empire", modifier: 100), _empPlanet);
 
             CapitalShip ship = EnqueueShip(
-                empPlanet,
+                _empPlanet,
                 "cs1",
                 "empire",
                 constructionCost: 20,
@@ -201,7 +201,7 @@ namespace Rebellion.Tests.Managers
             // Give it enough LNR pool to cover primary (20) + all capacity (40)
             ship.LnrPool = 200;
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(
                 20,
@@ -219,10 +219,10 @@ namespace Rebellion.Tests.Managers
         public void Contribution_ConsumeFromPool_ExactMatch()
         {
             // When pool exactly matches requirement, both go to zero
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 50);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 50);
             ship.KdyPool = 50;
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(50, ship.RefinedMaterialProgress, "Primary fully covered");
             Assert.AreEqual(0, ship.KdyPool, "KDY pool fully consumed");
@@ -232,17 +232,17 @@ namespace Rebellion.Tests.Managers
         public void Contribution_PoolsPersistAcrossTicks()
         {
             // Pools that aren't fully consumed should persist for next tick
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 100);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 100);
             ship.KdyPool = 30;
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(30, ship.RefinedMaterialProgress, "Should consume what's available");
             Assert.AreEqual(0, ship.KdyPool, "Pool should be drained");
 
             // Next tick: add more to the pool
             ship.KdyPool = 40;
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(
                 70,
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.Managers
         public void Contribution_ShipCompletesWhenCapacityFull()
         {
             CapitalShip ship = EnqueueShip(
-                empPlanet,
+                _empPlanet,
                 "cs1",
                 "empire",
                 constructionCost: 10,
@@ -264,7 +264,7 @@ namespace Rebellion.Tests.Managers
             // Give enough to cover primary (10) and all capacity (40)
             ship.LnrPool = 100;
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(40, ship.ProductionCapacityUsed, "Capacity should be full");
             Assert.GreaterOrEqual(
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.Managers
         {
             // Test the full consumption chain: KDY→primary, LNR→primary, LNR→capacity
             CapitalShip ship = EnqueueShip(
-                empPlanet,
+                _empPlanet,
                 "cs1",
                 "empire",
                 constructionCost: 100,
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Managers
             ship.KdyPool = 60; // Covers 60 of 100 primary
             ship.LnrPool = 80; // Covers remaining 40 primary + 40 capacity
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(100, ship.RefinedMaterialProgress, "Primary fully covered by KDY+LNR");
             Assert.AreEqual(40, ship.ProductionCapacityUsed, "Capacity filled by LNR overflow");
@@ -304,15 +304,15 @@ namespace Rebellion.Tests.Managers
             // A KDY facility should contribute to the ship's KDY pool
             // Formula: (personnelSkill / divisor + 1) * productionModifier
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 5);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
             // Officer at the system provides personnel skill
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            game.AttachNode(officer, empPlanet);
+            _game.AttachNode(officer, _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 1000);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 1000);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             // With leadership=50, divisor from config, modifier=5:
             // contribution = (50 / divisor + 1) * 5
@@ -328,9 +328,9 @@ namespace Rebellion.Tests.Managers
         public void Contribution_NoFacilities_NoPoolChange()
         {
             // Without KDY/LNR facilities, no contributions should occur
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 100);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 100);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(
                 0,
@@ -346,11 +346,11 @@ namespace Rebellion.Tests.Managers
         {
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
             kdy.ManufacturingStatus = ManufacturingStatus.Building;
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 100);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 100);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(
                 0,
@@ -370,9 +370,9 @@ namespace Rebellion.Tests.Managers
             // This test ensures no short-circuiting.
             CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
                 CapitalShipProductionIssue.Variant.FullPipeline,
-                game,
-                empire,
-                system,
+                _game,
+                _empire,
+                _system,
                 new StubRNG()
             );
 
@@ -389,8 +389,8 @@ namespace Rebellion.Tests.Managers
         {
             CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
                 CapitalShipProductionIssue.Variant.FullPipeline,
-                game,
-                empire,
+                _game,
+                _empire,
                 null,
                 new StubRNG()
             );
@@ -403,9 +403,9 @@ namespace Rebellion.Tests.Managers
         {
             CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
                 CapitalShipProductionIssue.Variant.FullPipeline,
-                game,
+                _game,
                 null,
-                system,
+                _system,
                 new StubRNG()
             );
 
@@ -429,22 +429,22 @@ namespace Rebellion.Tests.Managers
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
-            game.AttachNode(empPlanet2, system);
+            _game.AttachNode(empPlanet2, _system);
 
             Officer officer1 = EntityFactory.CreateOfficer("o1", "empire");
             officer1.SetSkillValue(MissionParticipantSkill.Leadership, 30);
-            game.AttachNode(officer1, empPlanet);
+            _game.AttachNode(officer1, _empPlanet);
 
             Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
             officer2.SetSkillValue(MissionParticipantSkill.Leadership, 90);
-            game.AttachNode(officer2, empPlanet2);
+            _game.AttachNode(officer2, empPlanet2);
 
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship1 = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            CapitalShip ship1 = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             int progress1 = ship1.RefinedMaterialProgress;
 
@@ -453,12 +453,12 @@ namespace Rebellion.Tests.Managers
             ship1.KdyPool = 0;
 
             // Remove officers and re-add in opposite order
-            game.DetachNode(officer1);
-            game.DetachNode(officer2);
-            game.AttachNode(officer2, empPlanet); // 90 skill, now first
-            game.AttachNode(officer1, empPlanet2); // 30 skill, now second
+            _game.DetachNode(officer1);
+            _game.DetachNode(officer2);
+            _game.AttachNode(officer2, _empPlanet); // 90 skill, now first
+            _game.AttachNode(officer1, empPlanet2); // 30 skill, now second
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             int progress2 = ship1.RefinedMaterialProgress;
 
@@ -471,11 +471,11 @@ namespace Rebellion.Tests.Managers
         {
             // With no officers, personnel skill = 0, formula = (0/divisor + 1) * modifier = modifier
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             // (0 / divisor + 1) * 10 = 10 per facility per variant that has contribution enabled
             Assert.Greater(
@@ -494,9 +494,9 @@ namespace Rebellion.Tests.Managers
             // With StubRNG (always returns min=0), all contributions go to the first ship.
             // With a different RNG, contributions should spread.
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship1 = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            CapitalShip ship1 = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
             // Need a second planet with a ship for the second queue entry
             Planet empPlanet2 = new Planet
@@ -508,11 +508,11 @@ namespace Rebellion.Tests.Managers
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
-            game.AttachNode(empPlanet2, system);
+            _game.AttachNode(empPlanet2, _system);
             CapitalShip ship2 = EnqueueShip(empPlanet2, "cs2", "empire", constructionCost: 10000);
 
             // StubRNG always returns min (0), so all contributions go to ship at index 0
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.Greater(
                 ship1.RefinedMaterialProgress,
@@ -530,7 +530,7 @@ namespace Rebellion.Tests.Managers
             SequenceRNG lastRNG = new SequenceRNG(
                 intValues: Enumerable.Repeat(1, 100).ToArray()
             );
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, lastRNG);
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, lastRNG);
 
             Assert.Greater(
                 ship2.RefinedMaterialProgress,
@@ -693,10 +693,10 @@ namespace Rebellion.Tests.Managers
             // shrinking list size and become no-ops. This test verifies the dampening.
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.SetSkillValue(MissionParticipantSkill.Leadership, 100);
-            game.AttachNode(officer, empPlanet);
+            _game.AttachNode(officer, _empPlanet);
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
-            game.AttachNode(fleet, empPlanet);
+            _game.AttachNode(fleet, _empPlanet);
 
             // Add a strong capital ship to the fleet for high combat value
             CapitalShip warship = new CapitalShip
@@ -717,7 +717,7 @@ namespace Rebellion.Tests.Managers
                     { PrimaryWeaponType.LaserCannon, new int[] { 50, 50, 50, 50, 50 } },
                 },
             };
-            game.AttachNode(warship, fleet);
+            _game.AttachNode(warship, fleet);
 
             // Place a few enemy regiments as strike targets
             int initialRegimentCount = 3;
@@ -725,24 +725,24 @@ namespace Rebellion.Tests.Managers
             {
                 Regiment reg = EntityFactory.CreateRegiment($"reg{i}", "rebels");
                 reg.DefenseRating = 0; // Easy to strike
-                game.AttachNode(reg, rebelPlanet);
+                _game.AttachNode(reg, _rebelPlanet);
             }
 
             // Ship in progress (so productionComplete doesn't get set by contribution)
-            EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
             // Run only the FullPipeline variant (has all stages enabled)
             CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
                 CapitalShipProductionIssue.Variant.SetupContributionAssault,
-                game,
-                empire,
-                system,
+                _game,
+                _empire,
+                _system,
                 new StubRNG()
             );
             issue.Execute();
 
             // Count remaining regiments
-            List<Regiment> remaining = rebelPlanet
+            List<Regiment> remaining = _rebelPlanet
                 .GetAllRegiments()
                 .Where(r => r.GetOwnerInstanceID() == "rebels")
                 .ToList();
@@ -767,15 +767,15 @@ namespace Rebellion.Tests.Managers
             // Variant 0x221 only has enableContribution. It should still work
             // by enumerating ships directly without setup's ship list.
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
             CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
                 CapitalShipProductionIssue.Variant.ContributionOnly,
-                game,
-                empire,
-                system,
+                _game,
+                _empire,
+                _system,
                 new StubRNG()
             );
 
@@ -795,16 +795,16 @@ namespace Rebellion.Tests.Managers
             // ExecuteAllVariants should run all 4 variants without throwing.
             // Contribution happens in variants 221, 222, and 223 (3 variants with enableContribution).
             Building kdy = CreateKDYFacility("kdy1", "empire", modifier: 10);
-            game.AttachNode(kdy, empPlanet);
+            _game.AttachNode(kdy, _empPlanet);
 
-            CapitalShip ship = EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
             Assert.DoesNotThrow(
                 () =>
                     CapitalShipProductionIssue.ExecuteAllVariants(
-                        game,
-                        empire,
-                        system,
+                        _game,
+                        _empire,
+                        _system,
                         new StubRNG()
                     ),
                 "ExecuteAllVariants should not throw"
@@ -825,15 +825,15 @@ namespace Rebellion.Tests.Managers
         public void Finalize_NoDeathStar_NoSupportShift()
         {
             // Without Death Star ships, finalize should not modify popular support
-            int initialSupport = rebelPlanet.PopularSupport["rebels"];
+            int initialSupport = _rebelPlanet.PopularSupport["rebels"];
 
-            EnqueueShip(empPlanet, "cs1", "empire", constructionCost: 10000);
+            EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
 
-            CapitalShipProductionIssue.ExecuteAllVariants(game, empire, system, new StubRNG());
+            CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
             Assert.AreEqual(
                 initialSupport,
-                rebelPlanet.PopularSupport["rebels"],
+                _rebelPlanet.PopularSupport["rebels"],
                 "Support should be unchanged without Death Star"
             );
         }

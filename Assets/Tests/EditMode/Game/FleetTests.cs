@@ -74,7 +74,7 @@ public class FleetTests
         IEnumerable<ISceneNode> children = _fleet.GetChildren();
 
         CollectionAssert.AreEquivalent(
-            new ISceneNode[] { _capitalShip1, capitalShip2 },
+            new ISceneNode[] { _capitalShip1, _capitalShip2 },
             children,
             "Fleet should return correct children."
         );
@@ -186,7 +186,7 @@ public class FleetTests
     public void SerializeAndDeserialize_MaintainsState()
     {
         _fleet.AddChild(_capitalShip1);
-        string serialized = SerializationHelper.Serialize(fleet);
+        string serialized = SerializationHelper.Serialize(_fleet);
         Fleet deserialized = SerializationHelper.Deserialize<Fleet>(serialized);
 
         Assert.AreEqual(

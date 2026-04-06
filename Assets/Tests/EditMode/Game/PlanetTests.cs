@@ -224,7 +224,7 @@ public class PlanetTests
         _planet.IsDestroyed = true;
         _planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
 
-        string serialized = SerializationHelper.Serialize(planet);
+        string serialized = SerializationHelper.Serialize(_planet);
         Planet deserialized = SerializationHelper.Deserialize<Planet>(serialized);
 
         Assert.AreEqual(
@@ -513,7 +513,7 @@ public class PlanetTests
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         _planet.AddChild(fleet);
         CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
-        ship.SetParent(planet);
+        ship.SetParent(_planet);
 
         _planet.AddToManufacturingQueue(ship);
 
@@ -568,7 +568,7 @@ public class PlanetTests
         Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
         _planet.AddChild(fleet);
         CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
-        ship.SetParent(planet);
+        ship.SetParent(_planet);
         _planet.AddToManufacturingQueue(ship);
 
         int idleFacilities = _planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
@@ -782,7 +782,7 @@ public class PlanetTests
             PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
         };
 
-        bool populated = _planet.IsPopulated();
+        bool populated = planet.IsPopulated();
 
         Assert.IsTrue(populated);
     }

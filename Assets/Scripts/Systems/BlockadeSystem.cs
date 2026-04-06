@@ -27,18 +27,12 @@ namespace Rebellion.Systems
         /// Processes blockades for the current tick.
         /// Detects blockade start/end transitions and destroys in-transit troops on blockade start.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        public void ProcessTick(GameRoot game)
+        public void ProcessTick()
         {
-            if (game == null)
-                throw new InvalidOperationException(
-                    "BlockadeSystem.ProcessTick called with null game"
-                );
-
             // Compute current blockade set from world state
             HashSet<string> nowBlockaded = new HashSet<string>();
 
-            foreach (PlanetSystem system in game.GetGalaxyMap().PlanetSystems)
+            foreach (PlanetSystem system in _game.GetGalaxyMap().PlanetSystems)
             {
                 foreach (Planet planet in system.Planets)
                 {
@@ -55,10 +49,10 @@ namespace Rebellion.Systems
                 if (!_blockadedPlanets.Contains(planetId))
                 {
                     // Blockade started
-                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
+                    Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
-                        OnBlockadeStarted(planet, game);
+                        OnBlockadeStarted(planet);
                     }
                 }
             }
@@ -69,7 +63,7 @@ namespace Rebellion.Systems
                 if (!nowBlockaded.Contains(planetId))
                 {
                     // Blockade ended
-                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
+                    Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
                         OnBlockadeEnded(planet);
@@ -85,7 +79,7 @@ namespace Rebellion.Systems
             }
         }
 
-        private void OnBlockadeStarted(Planet planet, GameRoot game)
+        private void OnBlockadeStarted(Planet planet)
         {
             // Destroy in-transit troops belonging to the defending faction
             string defendingFaction = planet.OwnerInstanceID;
@@ -95,7 +89,7 @@ namespace Rebellion.Systems
 
             foreach (Regiment regiment in regimentsToDestroy)
             {
-                game.DetachNode(regiment);
+                _game.DetachNode(regiment);
             }
         }
 
