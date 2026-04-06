@@ -177,17 +177,15 @@ namespace Rebellion.Generation
             FogOfWarSystem fogSystem = new FogOfWarSystem(game);
 
             // Build set of (planetID, factionID) visibility overrides from config
-            HashSet<(string planetId, string viewerFactionId)> visibilityOverrides = new HashSet<(string planetId, string viewerFactionId)>();
+            HashSet<(string planetId, string viewerFactionId)> visibilityOverrides =
+                new HashSet<(string planetId, string viewerFactionId)>();
             foreach (FactionSetup factionSetup in rules.GalaxyClassification.FactionSetups)
             {
                 if (factionSetup.StartingPlanets == null)
                     continue;
                 foreach (StartingPlanet sp in factionSetup.StartingPlanets)
                 {
-                    if (
-                        string.IsNullOrEmpty(sp.PlanetInstanceID)
-                        || sp.VisibleToFactionIDs == null
-                    )
+                    if (string.IsNullOrEmpty(sp.PlanetInstanceID) || sp.VisibleToFactionIDs == null)
                         continue;
                     foreach (string viewerId in sp.VisibleToFactionIDs)
                     {

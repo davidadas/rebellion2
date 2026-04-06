@@ -96,7 +96,12 @@ namespace Rebellion.Systems
                 if (leader == null)
                     break;
 
-                _missionManager.InitiateMission(MissionType.SubdueUprising, leader, planet, _randomProvider);
+                _missionManager.InitiateMission(
+                    MissionType.SubdueUprising,
+                    leader,
+                    planet,
+                    _randomProvider
+                );
             }
         }
 
@@ -123,7 +128,9 @@ namespace Rebellion.Systems
                         && f.CapitalShips.Count > 0
                         && !dispatched.Contains(f.GetInstanceID())
                     )
-                    .OrderBy(f => f.GetParentOfType<Planet>()?.GetRawDistanceTo(planet) ?? int.MaxValue)
+                    .OrderBy(f =>
+                        f.GetParentOfType<Planet>()?.GetRawDistanceTo(planet) ?? int.MaxValue
+                    )
                     .FirstOrDefault();
 
                 if (relief == null)
@@ -347,7 +354,9 @@ namespace Rebellion.Systems
         /// </summary>
         private void UpdateTroopTraining(Faction faction)
         {
-            List<Planet> idleTrainingFacilities = faction.GetIdleFacilities(ManufacturingType.Troop);
+            List<Planet> idleTrainingFacilities = faction.GetIdleFacilities(
+                ManufacturingType.Troop
+            );
             if (!idleTrainingFacilities.Any())
                 return;
 
@@ -488,7 +497,9 @@ namespace Rebellion.Systems
 
             // Enemy planets (cached once per evaluation)
             List<Planet> allEnemyPlanets = _game.GetSceneNodesByType<Planet>(p =>
-                p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
+                p.IsColonized
+                && p.GetOwnerInstanceID() != null
+                && p.GetOwnerInstanceID() != factionId
             );
 
             if (!allEnemyPlanets.Any() && !hqNeedsRelief)
@@ -523,7 +534,9 @@ namespace Rebellion.Systems
                 int sysY = system.PositionY;
                 List<Planet> sortedEnemies = allEnemyPlanets
                     .Where(p =>
-                        !faction.GetOwnedUnitsByType<Fleet>().Any(f => f.GetParentOfType<Planet>() == p)
+                        !faction
+                            .GetOwnedUnitsByType<Fleet>()
+                            .Any(f => f.GetParentOfType<Planet>() == p)
                     )
                     .OrderBy(p =>
                     {
@@ -556,7 +569,9 @@ namespace Rebellion.Systems
                         .Sum(f => f.GetCombatValue());
 
                     // Calculate available assault from remaining fleets
-                    int availableAssault = remainingFleets.Sum(f => CalculateFleetAssaultStrength(f));
+                    int availableAssault = remainingFleets.Sum(f =>
+                        CalculateFleetAssaultStrength(f)
+                    );
                     int netStrength = availableAssault - targetDefense;
 
                     if (netStrength <= 0)
@@ -570,7 +585,8 @@ namespace Rebellion.Systems
                     // Deploy fleets strongest-first until deployed strength exceeds defense
                     remainingFleets.Sort(
                         (a, b) =>
-                            CalculateFleetAssaultStrength(b).CompareTo(CalculateFleetAssaultStrength(a))
+                            CalculateFleetAssaultStrength(b)
+                                .CompareTo(CalculateFleetAssaultStrength(a))
                     );
 
                     int deployedStrength = 0;
@@ -680,7 +696,12 @@ namespace Rebellion.Systems
                 GameLogger.Log(
                     $"Sending {officer.GetDisplayName()} on {enemyMissionType} mission to {enemyTarget.GetDisplayName()}."
                 );
-                _missionManager.InitiateMission(enemyMissionType.Value, officer, enemyTarget, _randomProvider);
+                _missionManager.InitiateMission(
+                    enemyMissionType.Value,
+                    officer,
+                    enemyTarget,
+                    _randomProvider
+                );
             }
         }
 
@@ -693,7 +714,8 @@ namespace Rebellion.Systems
         {
             string factionId = faction.GetInstanceID();
             List<Planet> candidates = _game.GetSceneNodesByType<Planet>(p =>
-                p.IsColonized && (p.GetOwnerInstanceID() == factionId || p.GetOwnerInstanceID() == null)
+                p.IsColonized
+                && (p.GetOwnerInstanceID() == factionId || p.GetOwnerInstanceID() == null)
             );
 
             if (candidates.Count == 0)
@@ -711,7 +733,9 @@ namespace Rebellion.Systems
         {
             string factionId = faction.GetInstanceID();
             List<Planet> candidates = _game.GetSceneNodesByType<Planet>(p =>
-                p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
+                p.IsColonized
+                && p.GetOwnerInstanceID() != null
+                && p.GetOwnerInstanceID() != factionId
             );
 
             if (candidates.Count == 0)
@@ -799,7 +823,9 @@ namespace Rebellion.Systems
             Officer assassinTarget = target
                 .GetChildren()
                 .OfType<Officer>()
-                .FirstOrDefault(o => o.GetOwnerInstanceID() == owner && !o.IsCaptured && !o.IsKilled);
+                .FirstOrDefault(o =>
+                    o.GetOwnerInstanceID() == owner && !o.IsCaptured && !o.IsKilled
+                );
             if (assassinTarget != null)
             {
                 int score =
@@ -852,7 +878,9 @@ namespace Rebellion.Systems
             if (target.IsInUprising && owner == factionId)
             {
                 int score =
-                    officer.GetSkillValue(MissionParticipantSkill.Combat) - (int)popularSupport + rank;
+                    officer.GetSkillValue(MissionParticipantSkill.Combat)
+                    - (int)popularSupport
+                    + rank;
                 if (tables.SubdueUprising.Lookup(score) > 0)
                     return MissionType.SubdueUprising;
             }
@@ -994,7 +1022,12 @@ namespace Rebellion.Systems
             // Execute all 4 variants for each active system
             foreach (PlanetSystem system in activeSystems)
             {
-                CapitalShipProductionIssue.ExecuteAllVariants(_game, faction, system, _randomProvider);
+                CapitalShipProductionIssue.ExecuteAllVariants(
+                    _game,
+                    faction,
+                    system,
+                    _randomProvider
+                );
             }
         }
 
@@ -1027,7 +1060,10 @@ namespace Rebellion.Systems
             int facilities =
                 planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All)
                 + planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All)
-                + planet.GetBuildingTypeCount(BuildingType.ConstructionFacility, EntityStateFilter.All);
+                + planet.GetBuildingTypeCount(
+                    BuildingType.ConstructionFacility,
+                    EntityStateFilter.All
+                );
 
             int rawMaterials = planet.NumRawResourceNodes;
             int energy = planet.EnergyCapacity;
@@ -1062,11 +1098,17 @@ namespace Rebellion.Systems
             return buildingType switch
             {
                 BuildingType.Mine => CalculateMinePriority(planet),
-                BuildingType.Defense => planet.GetBuildingTypeCount(BuildingType.Defense, EntityStateFilter.All),
+                BuildingType.Defense => planet.GetBuildingTypeCount(
+                    BuildingType.Defense,
+                    EntityStateFilter.All
+                ),
                 BuildingType.Refinery => CalculateRefineryPriority(planet),
                 BuildingType.Shipyard
                 or BuildingType.TrainingFacility
-                or BuildingType.ConstructionFacility => CalculateFacilityPriority(planet, buildingType),
+                or BuildingType.ConstructionFacility => CalculateFacilityPriority(
+                    planet,
+                    buildingType
+                ),
                 _ => 0,
             };
         }
@@ -1077,7 +1119,10 @@ namespace Rebellion.Systems
         private int CalculateMinePriority(Planet planet)
         {
             return planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All)
-                + planet.GetBuildingTypeCount(BuildingType.ConstructionFacility, EntityStateFilter.All)
+                + planet.GetBuildingTypeCount(
+                    BuildingType.ConstructionFacility,
+                    EntityStateFilter.All
+                )
                 + planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All);
         }
 
@@ -1097,7 +1142,10 @@ namespace Rebellion.Systems
         /// </summary>
         private int CalculateFacilityPriority(Planet planet, BuildingType facilityType)
         {
-            int sameFacilityCount = planet.GetBuildingTypeCount(facilityType, EntityStateFilter.All);
+            int sameFacilityCount = planet.GetBuildingTypeCount(
+                facilityType,
+                EntityStateFilter.All
+            );
             int otherFacilityCount = new[]
             {
                 BuildingType.Shipyard,

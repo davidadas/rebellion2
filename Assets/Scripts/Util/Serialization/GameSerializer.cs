@@ -49,7 +49,9 @@ namespace Rebellion.Util.Serialization
         /// <param name="obj">The object to serialize.</param>
         public void Serialize(TextWriter textWriter, object obj)
         {
-            using (XmlWriter writer = XmlWriter.Create(textWriter, _settings.CreateWriterSettings()))
+            using (
+                XmlWriter writer = XmlWriter.Create(textWriter, _settings.CreateWriterSettings())
+            )
             {
                 SerializeToXmlWriter(writer, obj);
             }
@@ -75,7 +77,9 @@ namespace Rebellion.Util.Serialization
         /// <returns>The deserialized object.</returns>
         public object Deserialize(TextReader textReader)
         {
-            using (XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings()))
+            using (
+                XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings())
+            )
             {
                 return DeserializeFromXmlReader(reader);
             }

@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Missions
     public class AssassinationMissionTests
     {
         [Test]
-        public void OnSuccess_SetsTargetKilled()
+        public void Execute_TargetOnEnemyPlanet_SetsTargetKilled()
         {
             (
                 GameRoot game,
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsCharacterKilledResult()
+        public void Execute_TargetOnEnemyPlanet_ReturnsCharacterKilledResult()
         {
             (
                 GameRoot game,
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_DetachesTargetFromSceneGraph()
+        public void Execute_TargetOnEnemyPlanet_DetachesTargetFromSceneGraph()
         {
             (
                 GameRoot game,
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetAlreadyKilled_ReturnsFailed()
+        public void Execute_TargetAlreadyKilled_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetRemovedFromScene_ReturnsFailed()
+        public void Execute_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -231,7 +231,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NullTarget_Throws()
+        public void Constructor_NullTarget_ThrowsArgumentException()
         {
             (
                 GameRoot game,
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NonPlanetTarget_Throws()
+        public void Constructor_NonPlanetTarget_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,

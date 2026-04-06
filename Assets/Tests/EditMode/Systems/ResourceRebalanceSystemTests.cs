@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ApplyResourceDecay_ReducesValues()
+        public void ApplyResourceDecay_FactionWithResources_ReducesValues()
         {
             // Arrange
             GameRoot game = CreateGame();
@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ApplyResourceDecay_ClampsRawMaterialsToEnergy()
+        public void ApplyResourceDecay_ResourcesBelowEnergy_ClampsRawMaterialsToEnergy()
         {
             // Arrange: raw materials (10) > energy (3). After decay, raw should be <= energy.
             GameRoot game = CreateGame();
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ApplyResourceDecay_GuaranteesAtLeastOneLoss()
+        public void ApplyResourceDecay_FactionWithFullResources_GuaranteesAtLeastOneLoss()
         {
             // Arrange: very low values, use RNG that always fails probability checks
             GameConfig config = TestConfig.Create();
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ResourceWalk_CanIncrementEnergy()
+        public void ResourceWalk_FactionWithEnergy_CanIncrementEnergy()
         {
             // Arrange
             GameConfig config = TestConfig.Create();
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ResourceWalk_EnergyCannotExceedMax()
+        public void ResourceWalk_FactionAtMaxEnergy_EnergyCannotExceedMax()
         {
             // Arrange
             GameConfig config = TestConfig.Create();

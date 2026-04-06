@@ -46,7 +46,6 @@ namespace Rebellion.Systems
             _provider = provider;
         }
 
-
         /// <summary>
         /// Resolves all AI-vs-AI combat encounters this tick in a single pass.
         /// When a player-involved encounter is found, emits a PendingCombatResult and stops —
@@ -195,7 +194,6 @@ namespace Rebellion.Systems
             return false;
         }
 
-
         /// <summary>
         /// Resolves a pending combat encounter. Applies damage to the game world and
         /// clears IsInCombat on both fleets regardless of outcome.
@@ -266,7 +264,11 @@ namespace Rebellion.Systems
             }
 
             SpaceCombatResult result = ResolveSpace(
-                attacker, defender, planet, rng, game.CurrentTick
+                attacker,
+                defender,
+                planet,
+                rng,
+                game.CurrentTick
             );
             ApplyCombatResult(result);
 
@@ -344,10 +346,15 @@ namespace Rebellion.Systems
 
             // Phase 7: Build result
             return BuildSpaceResult(
-                attackerFleet, defenderFleet, planet,
-                atkShips, defShips,
-                atkFighters, defFighters,
-                atkInitialFighters, defInitialFighters,
+                attackerFleet,
+                defenderFleet,
+                planet,
+                atkShips,
+                defShips,
+                atkFighters,
+                defFighters,
+                atkInitialFighters,
+                defInitialFighters,
                 tick
             );
         }
@@ -376,7 +383,6 @@ namespace Rebellion.Systems
                 return CombatSide.Defender;
             return CombatSide.Draw;
         }
-
 
         /// <summary>
         /// Builds mutable hull snapshots for all capital ships and fighter squadron
@@ -501,7 +507,11 @@ namespace Rebellion.Systems
         /// <param name="target">The target ship snapshot to damage.</param>
         /// <param name="baseDamage">Base damage before variance.</param>
         /// <param name="rng">Random number provider for variance roll.</param>
-        private static void ApplyWeaponDamage(ShipSnap target, int baseDamage, IRandomNumberProvider rng)
+        private static void ApplyWeaponDamage(
+            ShipSnap target,
+            int baseDamage,
+            IRandomNumberProvider rng
+        )
         {
             double roll = rng.NextDouble();
             int variance = (int)(baseDamage * 0.2 * (roll * 2.0 - 1.0));
@@ -652,7 +662,6 @@ namespace Rebellion.Systems
             }
         }
 
-
         /// <summary>
         /// Builds a SpaceCombatResult by comparing post-combat snapshots to initial state.
         /// Records per-ship damage and per-squadron losses.
@@ -692,8 +701,18 @@ namespace Rebellion.Systems
 
             CollectShipDamage(result.ShipDamage, attackerFleet, atkShips);
             CollectShipDamage(result.ShipDamage, defenderFleet, defShips);
-            CollectFighterLosses(result.FighterLosses, attackerFleet, atkFighters, atkInitialFighters);
-            CollectFighterLosses(result.FighterLosses, defenderFleet, defFighters, defInitialFighters);
+            CollectFighterLosses(
+                result.FighterLosses,
+                attackerFleet,
+                atkFighters,
+                atkInitialFighters
+            );
+            CollectFighterLosses(
+                result.FighterLosses,
+                defenderFleet,
+                defFighters,
+                defInitialFighters
+            );
 
             return result;
         }
@@ -813,7 +832,9 @@ namespace Rebellion.Systems
                 IGrouping<Fleet, FighterLossResult> fleetGroup in lossResults.GroupBy(l => l.Fleet)
             )
             {
-                foreach (FighterLossResult loss in fleetGroup.OrderByDescending(l => l.FighterIndex))
+                foreach (
+                    FighterLossResult loss in fleetGroup.OrderByDescending(l => l.FighterIndex)
+                )
                 {
                     List<Starfighter> fighters = loss.Fleet.GetStarfighters().ToList();
                     if (loss.FighterIndex >= fighters.Count)
@@ -825,9 +846,7 @@ namespace Rebellion.Systems
                     if (loss.SquadsAfter <= 0)
                     {
                         _game.DetachNode(fighter);
-                        GameLogger.Log(
-                            $"Fighter squadron destroyed: {fighter.GetDisplayName()}"
-                        );
+                        GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                     }
                 }
             }
@@ -842,7 +861,6 @@ namespace Rebellion.Systems
             _game.DetachNode(fleet);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
-
 
         /// <summary>
         /// Executes a planetary assault against a defending planet.
@@ -1002,7 +1020,6 @@ namespace Rebellion.Systems
             );
         }
 
-
         /// <summary>
         /// Executes orbital bombardment against a planet.
         /// Pipeline from FUN_0058c580 in REBEXE.EXE: shield gate, fleet strength calculation,
@@ -1097,8 +1114,7 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in fleets)
             {
                 Officer commander = fleet.GetChildren().OfType<Officer>().FirstOrDefault();
-                int personnel =
-                    commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+                int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
 
                 foreach (CapitalShip ship in fleet.CapitalShips)
                 {
@@ -1322,7 +1338,6 @@ namespace Rebellion.Systems
 
             result.Strikes.Add(strike);
         }
-
 
         /// <summary>
         /// Mutable snapshot of one capital ship hull for the duration of a single space battle.

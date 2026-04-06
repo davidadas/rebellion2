@@ -58,7 +58,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AdvancesToTraining()
+        public void ProcessTick_NoviceJediWithTrainingPlanet_AdvancesToTraining()
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
 
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AdvancesToExperienced()
+        public void ProcessTick_TrainingJediWithTrainingPlanet_AdvancesToExperienced()
         {
             Officer luke = CreateOfficer("LUKE", 100, 150, ForceTier.Training);
 
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_JumpFromNoneToExperienced()
+        public void ProcessTick_NoviceJediWithHighSkillPlanet_JumpsToExperienced()
         {
             // Palpatine starts at 150 XP from None
             Officer palpatine = CreateOfficer("PALPATINE", 100, 150, ForceTier.None);
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DetectionTriggered()
+        public void ProcessTick_JediOnEnemyPlanet_TriggersDetection()
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             _game.CurrentTick = 30; // Detection interval
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DetectionFailsHighRoll()
+        public void ProcessTick_JediOnEnemyPlanetWithHighRoll_DetectionFails()
         {
             Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
             _game.CurrentTick = 30;

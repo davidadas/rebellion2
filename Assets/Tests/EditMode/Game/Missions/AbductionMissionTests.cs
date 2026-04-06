@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Missions
     public class AbductionMissionTests
     {
         [Test]
-        public void OnSuccess_SetsTargetCaptured()
+        public void Execute_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
             (
                 GameRoot game,
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsCharacterCapturedResult()
+        public void Execute_TargetOnEnemyPlanet_ReturnsCharacterCapturedResult()
         {
             (
                 GameRoot game,
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetAlreadyCaptured_ReturnsFailed()
+        public void Execute_TargetAlreadyCaptured_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetRemovedFromScene_ReturnsFailed()
+        public void Execute_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NullTarget_Throws()
+        public void Constructor_NullTarget_ThrowsArgumentException()
         {
             (
                 GameRoot game,
@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NonPlanetTarget_Throws()
+        public void Constructor_NonPlanetTarget_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,

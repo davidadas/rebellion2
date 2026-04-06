@@ -556,7 +556,8 @@ namespace Rebellion.Game
                 s.GetOwnerInstanceID() != null && s.GetOwnerInstanceID() != ownerId
             );
 
-            int modifier = 100 - hostileCapitalShips * capitalShipPenalty - hostileFighters * fighterPenalty;
+            int modifier =
+                100 - hostileCapitalShips * capitalShipPenalty - hostileFighters * fighterPenalty;
             return Math.Max(0, modifier);
         }
 
@@ -567,8 +568,7 @@ namespace Rebellion.Game
         {
             return GetAllBuildings()
                 .Where(b =>
-                    b.GetBuildingType() == BuildingType.Defense
-                    && IsEntityActive(b, filter)
+                    b.GetBuildingType() == BuildingType.Defense && IsEntityActive(b, filter)
                 )
                 .Sum(b => b.WeaponStrength);
         }

@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void Contribution_PoolsPersistAcrossTicks()
+        public void Contribution_PartiallyConsumedPool_PoolsPersistAcrossTicks()
         {
             // Pools that aren't fully consumed should persist for next tick
             CapitalShip ship = EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 100);
@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void Contribution_ShipCompletesWhenCapacityFull()
+        public void Contribution_PoolFillsRemainingCapacity_CompletesShip()
         {
             CapitalShip ship = EnqueueShip(
                 _empPlanet,
@@ -332,11 +332,7 @@ namespace Rebellion.Tests.Managers
 
             CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, new StubRNG());
 
-            Assert.AreEqual(
-                0,
-                ship.RefinedMaterialProgress,
-                "No facilities means no contribution"
-            );
+            Assert.AreEqual(0, ship.RefinedMaterialProgress, "No facilities means no contribution");
             Assert.AreEqual(0, ship.KdyPool, "KDY pool unchanged without KDY facilities");
             Assert.AreEqual(0, ship.LnrPool, "LNR pool unchanged without LNR facilities");
         }
@@ -362,7 +358,7 @@ namespace Rebellion.Tests.Managers
         // --- Stage execution tests ---
 
         [Test]
-        public void Execute_AllStagesRunUnconditionally()
+        public void Execute_NoShipsInProgress_AllStagesRunWithoutShortCircuiting()
         {
             // Verify that all 4 stages always run, regardless of prior stage results.
             // The AND-chain only affects the return value.
@@ -415,7 +411,7 @@ namespace Rebellion.Tests.Managers
         // --- Personnel skill tests ---
 
         [Test]
-        public void PersonnelSkill_SystemWideFirstMatch()
+        public void PersonnelSkill_TwoOfficersDifferentPlanets_UsesFirstMatchNotBest()
         {
             // Personnel lookup is system-wide (not per-planet), returns first match.
             // Two officers: one on empPlanet (leadership=30), one on a second empire planet (leadership=90).
@@ -527,9 +523,7 @@ namespace Rebellion.Tests.Managers
             ship2.KdyPool = 0;
 
             // SequenceRNG with int value 1 will select ship at index 1
-            SequenceRNG lastRNG = new SequenceRNG(
-                intValues: Enumerable.Repeat(1, 100).ToArray()
-            );
+            SequenceRNG lastRNG = new SequenceRNG(intValues: Enumerable.Repeat(1, 100).ToArray());
             CapitalShipProductionIssue.ExecuteAllVariants(_game, _empire, _system, lastRNG);
 
             Assert.Greater(
@@ -540,7 +534,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void AI_BuildsDifferentCapitalShipTypes()
+        public void ProcessTick_MultipleManufacturingOptions_BuildsVarietyOfCapitalShipTypes()
         {
             // Verify that AI can queue different ship types when multiple technologies
             // are available at the same research level.
@@ -707,10 +701,7 @@ namespace Rebellion.Tests.Managers
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 PrimaryWeapons = new Dictionary<PrimaryWeaponType, int[]>
                 {
-                    {
-                        PrimaryWeaponType.Turbolaser,
-                        new int[] { 100, 100, 100, 100, 100 }
-                    },
+                    { PrimaryWeaponType.Turbolaser, new int[] { 100, 100, 100, 100, 100 } },
                     { PrimaryWeaponType.IonCannon, new int[] { 50, 50, 50, 50, 50 } },
                     { PrimaryWeaponType.LaserCannon, new int[] { 50, 50, 50, 50, 50 } },
                 },
@@ -788,7 +779,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ExecuteAllVariants_RunsAll4Variants()
+        public void ExecuteAllVariants_ShipInProductionWithFacilities_RunsAll4Variants()
         {
             // ExecuteAllVariants should run all 4 variants without throwing.
             // Contribution happens in variants 221, 222, and 223 (3 variants with enableContribution).

@@ -194,7 +194,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DoesNotScrapUnderConstruction()
+        public void ProcessTick_UnitUnderConstruction_DoesNotScrap()
         {
             // Arrange: only unit is under construction — should not be scrapped
             GameRoot game = CreateGame();
@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DoesNotScrapInTransitUnit()
+        public void ProcessTick_UnitInTransit_DoesNotScrap()
         {
             // Arrange: capacity 0, only unit is a completed capital ship that is in transit
             GameRoot game = CreateGame();
@@ -274,7 +274,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetMaintenanceCapacity_CalculatesCorrectly()
+        public void GetMaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
         {
             // Arrange: 2 mines, 5 resource nodes, 1 refinery
             // Capacity = min(2, 5, 1) * 50 = 50
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CanScrapBuildings()
+        public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
             // Arrange: capacity 0, only unit is a completed defense building
             GameRoot game = CreateGame();

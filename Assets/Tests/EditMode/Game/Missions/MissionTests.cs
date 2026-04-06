@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     public class MissionTests
     {
         [Test]
-        public void Execute_DecoyUsesDecoyParticipantSkill()
+        public void Execute_MissionWithDecoy_UsesDecoyParticipantSkill()
         {
             // Decoy has Espionage=0, Combat=80. DecoyParticipantSkill=Combat.
             // DecoyProbabilityTable requires score >= 50 to pass.
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_Success_AlwaysIncludesMissionCompletedResult()
+        public void Execute_SuccessOutcome_AlwaysIncludesMissionCompletedResult()
         {
             (
                 GameRoot game,
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_Fail_AlwaysIncludesMissionCompletedResult()
+        public void Execute_FailOutcome_AlwaysIncludesMissionCompletedResult()
         {
             (
                 GameRoot game,
@@ -199,7 +199,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_EnemyRegimentsPresent_CanBeFoiled()
+        public void Execute_EnemyRegimentsPresent_CanBeFoiledByEnemyForces()
         {
             (
                 GameRoot game,
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_DecoyNullifiesFoil()
+        public void Execute_MissionWithDecoy_DecoyNullifiesFoil()
         {
             (
                 GameRoot game,
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_OnSuccess_ImprovesMissionSkill()
+        public void Execute_SuccessfulMission_ImprovesMissionSkill()
         {
             (
                 GameRoot game,

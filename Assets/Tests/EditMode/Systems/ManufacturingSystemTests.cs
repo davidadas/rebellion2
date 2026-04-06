@@ -373,7 +373,10 @@ namespace Rebellion.Tests.Systems
             };
 
             bool result = _manager.Enqueue(_coruscant, rebelBuilding, _coruscant, ignoreCost: true);
-            Assert.IsFalse(result, "Enqueueing a building owned by a different faction must return false");
+            Assert.IsFalse(
+                result,
+                "Enqueueing a building owned by a different faction must return false"
+            );
         }
 
         [Test]
@@ -674,17 +677,26 @@ namespace Rebellion.Tests.Systems
             // Tick 1: mine1 completes
             _manager.ProcessTick(_movement, _provider);
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
-            Assert.AreEqual(2, _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreEqual(
+                2,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
 
             // Tick 2: mine2 completes
             _manager.ProcessTick(_movement, _provider);
             Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
-            Assert.AreEqual(1, _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreEqual(
+                1,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
 
             // Tick 3: mine3 completes
             _manager.ProcessTick(_movement, _provider);
             Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
-            Assert.AreEqual(0, _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreEqual(
+                0,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
         }
 
         [Test]
@@ -975,7 +987,10 @@ namespace Rebellion.Tests.Systems
 
             // Verify completion behavior
             Assert.AreEqual(ManufacturingStatus.Complete, free.ManufacturingStatus);
-            Assert.AreEqual(0, _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreEqual(
+                0,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
         }
 
         [Test]
@@ -1690,8 +1705,15 @@ namespace Rebellion.Tests.Systems
             mfg.ProcessTick(localMovement, _provider);
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
-            Assert.IsNull(ship.Movement, "No transit — no valid friendly planet accepts a capital ship directly.");
-            Assert.AreEqual(fleet, ship.GetParentOfType<Fleet>(), "Ship stays in its assigned fleet.");
+            Assert.IsNull(
+                ship.Movement,
+                "No transit — no valid friendly planet accepts a capital ship directly."
+            );
+            Assert.AreEqual(
+                fleet,
+                ship.GetParentOfType<Fleet>(),
+                "Ship stays in its assigned fleet."
+            );
         }
 
         [Test]
@@ -2180,8 +2202,15 @@ namespace Rebellion.Tests.Systems
             mfg.ProcessTick(localMovement, _provider);
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
-            Assert.AreEqual(planetA, mine.GetParent(), "Mine should redirect to production planet.");
-            Assert.IsNotNull(mine.Movement, "Mine should be in visual transit to production planet.");
+            Assert.AreEqual(
+                planetA,
+                mine.GetParent(),
+                "Mine should redirect to production planet."
+            );
+            Assert.IsNotNull(
+                mine.Movement,
+                "Mine should be in visual transit to production planet."
+            );
         }
 
         [Test]

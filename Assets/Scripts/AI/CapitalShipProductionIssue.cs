@@ -162,7 +162,13 @@ public class CapitalShipProductionIssue
             }
         )
         {
-            CapitalShipProductionIssue issue = new CapitalShipProductionIssue(v, game, faction, system, provider);
+            CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
+                v,
+                game,
+                faction,
+                system,
+                provider
+            );
             issue.Execute();
         }
     }

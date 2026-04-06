@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_ChangesPlanetOwner()
+        public void TransferPlanet_ValidTransfer_ChangesPlanetOwner()
         {
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictsEnemyFleets()
+        public void TransferPlanet_PlanetWithEnemyFleets_EvictsEnemyFleets()
         {
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
             _game.AttachNode(empireFleet, _targetPlanet);
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_DoesNotEvictNewOwnerFleets()
+        public void TransferPlanet_PlanetWithNewOwnerFleets_DoesNotEvictNewOwnerFleets()
         {
             Fleet rebelFleet = new Fleet("rebels", "Rebel Fleet");
             _game.AttachNode(rebelFleet, _targetPlanet);
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_CancelsCompetingMissions()
+        public void TransferPlanet_PlanetWithActiveMissions_CancelsCompetingMissions()
         {
             StubMission empireMission = EntityFactory.CreateMission(
                 "m1",
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_ReturnsParticipantsOfCanceledMission()
+        public void TransferPlanet_PlanetWithCanceledMission_ReturnsParticipants()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
 
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_DoesNotCancelNewOwnerMissions()
+        public void TransferPlanet_PlanetWithNewOwnerMissions_DoesNotCancelThem()
         {
             StubMission rebelMission = EntityFactory.CreateMission(
                 "m1",
@@ -186,7 +186,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_PreservesUncancelableMissions()
+        public void TransferPlanet_PlanetWithUncancelableMissions_PreservesThem()
         {
             UncancelableMission mission = new UncancelableMission(
                 "empire",
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictsEnemyOfficers()
+        public void TransferPlanet_PlanetWithEnemyOfficers_EvictsEnemyOfficers()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictsEnemyRegiments()
+        public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictsInTransitFleet()
+        public void TransferPlanet_InTransitFleetDestinedForPlanet_EvictsFleet()
         {
             // Fleet already reparented to target (our immediate-reparent model) but mid-flight.
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictsInTransitOfficer()
+        public void TransferPlanet_InTransitOfficerDestinedForPlanet_EvictsOfficer()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_DoesNotChangeOwnerOfEvictedFleet()
+        public void TransferPlanet_EvictedFleet_DoesNotChangeFleetOwner()
         {
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
             _game.AttachNode(empireFleet, _targetPlanet);
@@ -329,7 +329,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_DoesNotChangeOwnerOfEvictedOfficer()
+        public void TransferPlanet_EvictedOfficer_DoesNotChangeOfficerOwner()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -345,7 +345,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_ClearsManufacturingQueues()
+        public void TransferPlanet_PlanetWithManufacturingQueues_ClearsQueues()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
@@ -369,7 +369,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_ClearsInProgressBuilding()
+        public void TransferPlanet_PlanetWithInProgressBuilding_ClearsInProgressBuilding()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;

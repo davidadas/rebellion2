@@ -45,14 +45,18 @@ namespace Rebellion.Generation
         )
         {
             // Group officers by faction
-            Dictionary<string, List<Officer>> officersByFaction = new Dictionary<string, List<Officer>>();
+            Dictionary<string, List<Officer>> officersByFaction =
+                new Dictionary<string, List<Officer>>();
 
             foreach (Officer officer in allOfficers.Shuffle(rng))
             {
-                string factionId = officer.OwnerInstanceID
-                    ?? (officer.AllowedOwnerInstanceIDs.Count == 1
-                        ? officer.AllowedOwnerInstanceIDs[0]
-                        : null);
+                string factionId =
+                    officer.OwnerInstanceID
+                    ?? (
+                        officer.AllowedOwnerInstanceIDs.Count == 1
+                            ? officer.AllowedOwnerInstanceIDs[0]
+                            : null
+                    );
 
                 if (factionId == null)
                     continue;
@@ -151,9 +155,14 @@ namespace Rebellion.Generation
         )
         {
             // Build destination mapping: faction -> list of planets and fleets
-            Dictionary<string, List<ISceneNode>> destinations = new Dictionary<string, List<ISceneNode>>();
+            Dictionary<string, List<ISceneNode>> destinations =
+                new Dictionary<string, List<ISceneNode>>();
 
-            foreach (Planet planet in systems.SelectMany(s => s.Planets).Where(p => p.OwnerInstanceID != null))
+            foreach (
+                Planet planet in systems
+                    .SelectMany(s => s.Planets)
+                    .Where(p => p.OwnerInstanceID != null)
+            )
             {
                 AddDestination(destinations, planet);
                 foreach (Fleet fleet in planet.Fleets)
@@ -164,9 +173,10 @@ namespace Rebellion.Generation
             {
                 List<ISceneNode> factionDests = destinations[officer.OwnerInstanceID];
 
-                ISceneNode destination = officer.InitialParentInstanceID != null
-                    ? factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID)
-                    : factionDests[rng.NextInt(0, factionDests.Count)];
+                ISceneNode destination =
+                    officer.InitialParentInstanceID != null
+                        ? factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID)
+                        : factionDests[rng.NextInt(0, factionDests.Count)];
 
                 if (destination is Planet planet)
                     planet.AddChild(officer);

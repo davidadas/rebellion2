@@ -7,7 +7,7 @@ namespace Rebellion.Tests.Game.Missions
     public class RecruitmentMissionTests
     {
         [Test]
-        public void SerializesAndDeserializes()
+        public void SerializeAndDeserialize_PopulatedMission_RetainsAllProperties()
         {
             RecruitmentMission mission = new RecruitmentMission
             {

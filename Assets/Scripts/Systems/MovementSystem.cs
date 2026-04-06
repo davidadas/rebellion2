@@ -35,7 +35,8 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick()
         {
-            _game.GetGalaxyMap()
+            _game
+                .GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IMovable movable)
@@ -166,7 +167,10 @@ namespace Rebellion.Systems
             if (movable.Movement == null)
                 return;
 
-            if (movable is IManufacturable m && m.GetManufacturingStatus() == ManufacturingStatus.Building)
+            if (
+                movable is IManufacturable m
+                && m.GetManufacturingStatus() == ManufacturingStatus.Building
+            )
                 return;
 
             Planet destinationPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
@@ -217,7 +221,8 @@ namespace Rebellion.Systems
         )
         {
             // If the destination fleet is still in transit, chase it.
-            Fleet movingFleet = destination is Fleet f ? f
+            Fleet movingFleet = destination is Fleet f
+                ? f
                 : (destination is CapitalShip cs ? cs.GetParent() as Fleet : null);
             if (movingFleet?.Movement != null)
             {
@@ -257,7 +262,9 @@ namespace Rebellion.Systems
             {
                 _game.MoveNode(movable, destination);
                 movable.Movement = null;
-                GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
+                GameLogger.Log(
+                    $"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}"
+                );
 
                 if (movable is Fleet fleet && _fogOfWar != null)
                 {
@@ -268,7 +275,12 @@ namespace Rebellion.Systems
                     {
                         PlanetSystem system = destinationPlanet.GetParentOfType<PlanetSystem>();
                         if (system != null)
-                            _fogOfWar.CaptureSnapshot(faction, destinationPlanet, system, _game.CurrentTick);
+                            _fogOfWar.CaptureSnapshot(
+                                faction,
+                                destinationPlanet,
+                                system,
+                                _game.CurrentTick
+                            );
                     }
                 }
             }
@@ -292,7 +304,9 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(ownerID))
             {
                 movable.Movement = null;
-                GameLogger.Warning($"{movable.GetDisplayName()} has no owner, cannot find fallback.");
+                GameLogger.Warning(
+                    $"{movable.GetDisplayName()} has no owner, cannot find fallback."
+                );
                 return;
             }
 
@@ -301,7 +315,9 @@ namespace Rebellion.Systems
             if (fallback != null && fallback != rejectedDestination)
             {
                 RequestMove(movable, fallback);
-                GameLogger.Log($"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}");
+                GameLogger.Log(
+                    $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
+                );
             }
             else
             {
@@ -320,7 +336,8 @@ namespace Rebellion.Systems
         /// <returns>The nearest faction-owned planet, or null if none exists.</returns>
         private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
         {
-            return _game.GetSceneNodesByType<Planet>()
+            return _game
+                .GetSceneNodesByType<Planet>()
                 .Where(p => p.GetOwnerInstanceID() == factionOwnerID)
                 .OrderBy(p =>
                 {
@@ -449,9 +466,10 @@ namespace Rebellion.Systems
                 slowestHyperdrive = Math.Max(capitalShip.Hyperdrive, 1);
             }
 
-            int baseTicks = (int)Math.Ceiling(
-                (distance * _game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
-            );
+            int baseTicks = (int)
+                Math.Ceiling(
+                    (distance * _game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
+                );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
         }

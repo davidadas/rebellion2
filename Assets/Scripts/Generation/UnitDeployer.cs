@@ -49,7 +49,11 @@ namespace Rebellion.Generation
             string playerFactionID
         )
         {
-            UnitFactory factory = new UnitFactory(regimentTemplates, fighterTemplates, shipTemplates);
+            UnitFactory factory = new UnitFactory(
+                regimentTemplates,
+                fighterTemplates,
+                shipTemplates
+            );
             UnitDeploymentSection config = rules.UnitDeployment;
 
             Dictionary<string, Planet> planetMap = systems
@@ -60,8 +64,17 @@ namespace Rebellion.Generation
             DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory);
             DeployFixedGarrisons(config.FixedGarrisons, planetMap, classification, factory);
             DeployFixedFleets(config.FixedFleets, planetMap, factory, factions, rng);
-            DeployBudgetUnits(systems, factions, config.FactionBudgets, factory, gameConfig, rng,
-                galaxySize, difficulty, playerFactionID);
+            DeployBudgetUnits(
+                systems,
+                factions,
+                config.FactionBudgets,
+                factory,
+                gameConfig,
+                rng,
+                galaxySize,
+                difficulty,
+                playerFactionID
+            );
         }
 
         /// <summary>
@@ -97,7 +110,12 @@ namespace Rebellion.Generation
                     if (ownerSupport >= config.UprisingPreventionThreshold)
                         continue;
 
-                    if (!garrisonTroopMap.TryGetValue(planet.OwnerInstanceID, out string troopTypeID))
+                    if (
+                        !garrisonTroopMap.TryGetValue(
+                            planet.OwnerInstanceID,
+                            out string troopTypeID
+                        )
+                    )
                         continue;
 
                     // Original uses ceiling division: (divisor - 1 + dividend) / divisor
@@ -134,7 +152,12 @@ namespace Rebellion.Generation
                 string planetId = garrison.PlanetInstanceID;
                 if (planetId == "FACTION_HQ")
                 {
-                    if (classification.FactionHQs.TryGetValue(garrison.FactionID, out Planet hqPlanet))
+                    if (
+                        classification.FactionHQs.TryGetValue(
+                            garrison.FactionID,
+                            out Planet hqPlanet
+                        )
+                    )
                         planetId = hqPlanet.InstanceID;
                     else
                         continue;
@@ -178,7 +201,10 @@ namespace Rebellion.Generation
                 if (!planetMap.TryGetValue(fleetConfig.PlanetInstanceID, out Planet planet))
                     continue;
 
-                if (fleetConfig.SpawnChancePct < 100 && rng.NextInt(0, 100) >= fleetConfig.SpawnChancePct)
+                if (
+                    fleetConfig.SpawnChancePct < 100
+                    && rng.NextInt(0, 100) >= fleetConfig.SpawnChancePct
+                )
                     continue;
 
                 List<CapitalShip> capitalShips = new List<CapitalShip>();
@@ -245,7 +271,14 @@ namespace Rebellion.Generation
                     continue;
 
                 int deployBudget = CalculateDeployBudget(
-                    systems, faction, budget, factory, gameConfig, galaxySize, difficulty, playerFactionID
+                    systems,
+                    faction,
+                    budget,
+                    factory,
+                    gameConfig,
+                    galaxySize,
+                    difficulty,
+                    playerFactionID
                 );
                 if (deployBudget <= 0)
                     continue;
@@ -272,7 +305,9 @@ namespace Rebellion.Generation
                     if (rolledUnits == null || rolledUnits.Count == 0)
                         break;
 
-                    int totalCost = rolledUnits.Sum(e => factory.GetMaintenanceCost(e.TypeID) * e.Count);
+                    int totalCost = rolledUnits.Sum(e =>
+                        factory.GetMaintenanceCost(e.TypeID) * e.Count
+                    );
                     deployBudget -= totalCost;
                     if (deployBudget < 0)
                         break;
@@ -312,7 +347,9 @@ namespace Rebellion.Generation
 
             BudgetLevel level =
                 budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize && b.Difficulty == effectiveDifficulty && b.IsAI == isAI
+                    b.GalaxySize == galaxySize
+                    && b.Difficulty == effectiveDifficulty
+                    && b.IsAI == isAI
                 )
                 ?? budget.BudgetLevels.FirstOrDefault(b =>
                     b.GalaxySize == galaxySize && b.Difficulty == -1
@@ -395,7 +432,10 @@ namespace Rebellion.Generation
                 }
                 else
                 {
-                    Fleet newFleet = faction.CreateFleet(shipsForFleet.ToArray(), FleetRoleType.Battle);
+                    Fleet newFleet = faction.CreateFleet(
+                        shipsForFleet.ToArray(),
+                        FleetRoleType.Battle
+                    );
                     planet.AddChild(newFleet);
                 }
             }
@@ -467,14 +507,14 @@ namespace Rebellion.Generation
             private readonly Dictionary<string, Starfighter> _fighterMap;
             private readonly Dictionary<string, CapitalShip> _shipMap;
 
-            public UnitFactory(
-                Regiment[] regiments,
-                Starfighter[] fighters,
-                CapitalShip[] ships
-            )
+            public UnitFactory(Regiment[] regiments, Starfighter[] fighters, CapitalShip[] ships)
             {
-                _regimentMap = regiments.GroupBy(r => r.TypeID).ToDictionary(g => g.Key, g => g.First());
-                _fighterMap = fighters.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
+                _regimentMap = regiments
+                    .GroupBy(r => r.TypeID)
+                    .ToDictionary(g => g.Key, g => g.First());
+                _fighterMap = fighters
+                    .GroupBy(s => s.TypeID)
+                    .ToDictionary(g => g.Key, g => g.First());
                 _shipMap = ships.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
             }
 

@@ -104,7 +104,8 @@ namespace Rebellion.Systems
         /// </summary>
         private bool CheckAllMainCharactersCaptured(Faction faction)
         {
-            List<Officer> mainCharacters = _game.GetSceneNodesByType<Officer>()
+            List<Officer> mainCharacters = _game
+                .GetSceneNodesByType<Officer>()
                 .Where(o => o.GetOwnerInstanceID() == faction.InstanceID && o.IsMain)
                 .ToList();
 

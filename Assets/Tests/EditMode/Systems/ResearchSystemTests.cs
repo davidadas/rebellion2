@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AccumulatesAcrossMultipleTicks()
+        public void ProcessTick_IdleFacilityAcrossMultipleTicks_AccumulatesCapacity()
         {
             SetupShipResearchQueue(
                 ("Dreadnaught", 0, 0),
