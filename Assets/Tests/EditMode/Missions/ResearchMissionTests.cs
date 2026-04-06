@@ -178,6 +178,22 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
+        public void Execute_Success_DoesNotIncrementLeadership()
+        {
+            Officer officer = CreateOfficer(shipSkill: 100);
+            int leadershipBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                leadershipBefore,
+                officer.GetSkillValue(MissionParticipantSkill.Leadership),
+                "Research missions should not increment Leadership"
+            );
+        }
+
+        [Test]
         public void CanContinue_AfterSuccess_ReturnsTrue()
         {
             Officer officer = CreateOfficer(shipSkill: 100);

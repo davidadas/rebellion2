@@ -261,7 +261,7 @@ public abstract class Mission : ContainerNode
     /// Increments the mission skill of every participant that has CanImproveMissionSkill set.
     /// Called automatically by Execute on a successful outcome.
     /// </summary>
-    protected void ImproveMissionParticipantsSkill()
+    protected virtual void ImproveMissionParticipantsSkill()
     {
         foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
         {

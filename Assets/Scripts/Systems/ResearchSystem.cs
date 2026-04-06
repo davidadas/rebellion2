@@ -11,7 +11,12 @@ namespace Rebellion.Systems
 {
     public class ResearchSystem
     {
-        public ResearchSystem(GameRoot game) { }
+        private readonly GameRoot _game;
+
+        public ResearchSystem(GameRoot game)
+        {
+            _game = game;
+        }
 
         /// <summary>
         /// Processes research for the current tick across all factions.

@@ -71,6 +71,12 @@ public class ResearchMission : Mission
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
+    /// Research missions only improve research skill (handled in OnSuccess),
+    /// not the ParticipantSkill (Leadership). Matches original game behavior.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill() { }
+
+    /// <summary>
     /// Awards research capacity points to the faction and increments the officer's skill.
     /// </summary>
     /// <param name="game">The game instance.</param>

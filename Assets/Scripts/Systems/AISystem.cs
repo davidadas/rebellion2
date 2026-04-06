@@ -831,7 +831,7 @@ namespace Rebellion.Systems
         /// Determines the best mission type for an officer at a given planet.
         /// Score formula: (officer_skill - popular_support) + leadership_rank.
         /// Returns null if no viable mission exists at this planet.
-        /// Priority: SubdueUprising > Diplomacy > Recruitment
+        /// Priority: SubdueUprising > Research (if best skill) > Diplomacy > Recruitment > Research (fallback)
         /// </summary>
         /// <param name="faction">The officer's faction.</param>
         /// <param name="officer">The officer to assign.</param>
