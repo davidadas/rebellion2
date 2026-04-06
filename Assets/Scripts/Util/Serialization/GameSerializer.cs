@@ -1038,22 +1038,31 @@ namespace Rebellion.Util.Serialization
         /// <returns>A dictionary mapping type names to Type objects.</returns>
         public static IDictionary<string, Type> GetPersistableObjectMap()
         {
-            return Assembly
-                .GetExecutingAssembly()
-                .GetTypes()
+            return AppDomain.CurrentDomain
+                .GetAssemblies()
+                .SelectMany(a =>
+                {
+                    try
+                    {
+                        return a.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException e)
+                    {
+                        return e.Types.Where(t => t != null);
+                    }
+                })
                 .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
-                .ToDictionary(
-                    type =>
-                        (
-                            (PersistableObjectAttribute)
-                                Attribute.GetCustomAttribute(
-                                    type,
-                                    typeof(PersistableObjectAttribute)
-                                )
-                        )?.Name
-                        ?? type.Name,
-                    type => type
-                );
+                .GroupBy(type =>
+                    (
+                        (PersistableObjectAttribute)
+                            Attribute.GetCustomAttribute(
+                                type,
+                                typeof(PersistableObjectAttribute)
+                            )
+                    )?.Name
+                    ?? type.Name
+                )
+                .ToDictionary(g => g.Key, g => g.First());
         }
 
         /// <summary>
