@@ -12,9 +12,9 @@ namespace Rebellion.Systems
     /// </summary>
     public class OwnershipSystem
     {
-        private readonly GameRoot game;
-        private readonly MovementSystem movementSystem;
-        private readonly ManufacturingSystem manufacturingSystem;
+        private readonly GameRoot _game;
+        private readonly MovementSystem _movementSystem;
+        private readonly ManufacturingSystem _manufacturingSystem;
 
         public OwnershipSystem(
             GameRoot game,
@@ -22,9 +22,9 @@ namespace Rebellion.Systems
             ManufacturingSystem manufacturingSystem
         )
         {
-            this.game = game;
-            this.movementSystem = movementSystem;
-            this.manufacturingSystem = manufacturingSystem;
+            _game = game;
+            _movementSystem = movementSystem;
+            _manufacturingSystem = manufacturingSystem;
         }
 
         /// <summary>
@@ -39,14 +39,14 @@ namespace Rebellion.Systems
         {
             CancelCompetingMissions(planet, newOwner.InstanceID);
             TransferBuildings(planet, newOwner);
-            manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+            _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             EvictEnemyUnits(planet, newOwner.InstanceID);
-            game.ChangeUnitOwnership(planet, newOwner.InstanceID);
+            _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
         }
 
         private void CancelCompetingMissions(Planet planet, string newOwnerID)
         {
-            List<Mission> competing = game.GetSceneNodesByType<Mission>()
+            List<Mission> competing = _game.GetSceneNodesByType<Mission>()
                 .Where(m =>
                     m.CanceledOnOwnershipChange
                     && m.OwnerInstanceID != newOwnerID
@@ -60,10 +60,10 @@ namespace Rebellion.Systems
                 {
                     Planet fallback = FindNearestFactionPlanet(participant);
                     if (fallback != null)
-                        movementSystem.RequestMove(participant, fallback);
+                        _movementSystem.RequestMove(participant, fallback);
                 }
 
-                game.DetachNode(mission);
+                _game.DetachNode(mission);
             }
         }
 
@@ -72,7 +72,7 @@ namespace Rebellion.Systems
             foreach (Building building in planet.GetChildren<Building>(b => true, recurse: false))
             {
                 building.AllowedOwnerInstanceIDs = new List<string> { newOwner.InstanceID };
-                game.ChangeUnitOwnership(building, newOwner.InstanceID);
+                _game.ChangeUnitOwnership(building, newOwner.InstanceID);
             }
         }
 
@@ -86,7 +86,7 @@ namespace Rebellion.Systems
             {
                 Planet fallback = FindNearestFactionPlanet(unit);
                 if (fallback != null)
-                    movementSystem.RequestMove(unit, fallback);
+                    _movementSystem.RequestMove(unit, fallback);
             }
         }
 
@@ -98,7 +98,7 @@ namespace Rebellion.Systems
 
             Planet current = unit.GetParentOfType<Planet>();
 
-            return game.GetSceneNodesByType<Planet>()
+            return _game.GetSceneNodesByType<Planet>()
                 .Where(p => p.GetOwnerInstanceID() == ownerID && p != current)
                 .OrderBy(p =>
                 {

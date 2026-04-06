@@ -35,10 +35,10 @@ public class AudioManager : MonoBehaviour
     [Range(0f, 1f)]
     public float ambienceVolume = 1f;
 
-    private AudioClip[] currentPlaylist;
-    private string[] currentPlaylistPaths;
-    private int playlistIndex;
-    private bool playlistShuffle;
+    private AudioClip[] _currentPlaylist;
+    private string[] _currentPlaylistPaths;
+    private int _playlistIndex;
+    private bool _playlistShuffle;
 
     /// <summary>
     /// Ensures singleton instance and persists across scene loads.
@@ -95,18 +95,18 @@ public class AudioManager : MonoBehaviour
 
         StopPlaylist();
 
-        currentPlaylist = new AudioClip[tracks.Length];
+        _currentPlaylist = new AudioClip[tracks.Length];
         for (int i = 0; i < tracks.Length; i++)
         {
-            currentPlaylist[i] = tracks[i];
+            _currentPlaylist[i] = tracks[i];
         }
 
-        playlistIndex = 0;
-        playlistShuffle = shuffle;
+        _playlistIndex = 0;
+        _playlistShuffle = shuffle;
 
-        if (playlistShuffle)
+        if (_playlistShuffle)
         {
-            currentPlaylist = currentPlaylist.Shuffle().ToArray();
+            _currentPlaylist = _currentPlaylist.Shuffle().ToArray();
         }
 
         PlayNextTrack();
@@ -124,18 +124,18 @@ public class AudioManager : MonoBehaviour
 
         StopPlaylist();
 
-        currentPlaylistPaths = new string[paths.Length];
+        _currentPlaylistPaths = new string[paths.Length];
         for (int i = 0; i < paths.Length; i++)
         {
-            currentPlaylistPaths[i] = paths[i];
+            _currentPlaylistPaths[i] = paths[i];
         }
 
-        playlistIndex = 0;
-        playlistShuffle = shuffle;
+        _playlistIndex = 0;
+        _playlistShuffle = shuffle;
 
-        if (playlistShuffle)
+        if (_playlistShuffle)
         {
-            currentPlaylistPaths = currentPlaylistPaths.Shuffle().ToArray();
+            _currentPlaylistPaths = _currentPlaylistPaths.Shuffle().ToArray();
         }
 
         PlayNextTrackFromPaths();
@@ -148,9 +148,9 @@ public class AudioManager : MonoBehaviour
     {
         StopAllCoroutines();
 
-        currentPlaylist = null;
-        currentPlaylistPaths = null;
-        playlistIndex = 0;
+        _currentPlaylist = null;
+        _currentPlaylistPaths = null;
+        _playlistIndex = 0;
     }
 
     /// <summary>
@@ -248,12 +248,12 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     private void PlayNextTrack()
     {
-        if (currentPlaylist == null || currentPlaylist.Length == 0)
+        if (_currentPlaylist == null || _currentPlaylist.Length == 0)
         {
             return;
         }
 
-        musicSource.clip = currentPlaylist[playlistIndex];
+        musicSource.clip = _currentPlaylist[_playlistIndex];
         musicSource.loop = false;
         musicSource.Play();
 
@@ -265,12 +265,12 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     private void PlayNextTrackFromPaths()
     {
-        if (currentPlaylistPaths == null || currentPlaylistPaths.Length == 0)
+        if (_currentPlaylistPaths == null || _currentPlaylistPaths.Length == 0)
         {
             return;
         }
 
-        string path = currentPlaylistPaths[playlistIndex];
+        string path = _currentPlaylistPaths[_playlistIndex];
         AudioClip clip = ResourceManager.Instance.GetAudio(path);
 
         if (clip == null)
@@ -295,11 +295,11 @@ public class AudioManager : MonoBehaviour
             yield return null;
         }
 
-        playlistIndex++;
+        _playlistIndex++;
 
-        if (playlistIndex >= currentPlaylist.Length)
+        if (_playlistIndex >= _currentPlaylist.Length)
         {
-            playlistIndex = 0;
+            _playlistIndex = 0;
         }
 
         PlayNextTrack();
@@ -315,11 +315,11 @@ public class AudioManager : MonoBehaviour
             yield return null;
         }
 
-        playlistIndex++;
+        _playlistIndex++;
 
-        if (playlistIndex >= currentPlaylistPaths.Length)
+        if (_playlistIndex >= _currentPlaylistPaths.Length)
         {
-            playlistIndex = 0;
+            _playlistIndex = 0;
         }
 
         PlayNextTrackFromPaths();

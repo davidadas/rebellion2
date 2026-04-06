@@ -10,8 +10,8 @@ namespace Rebellion.Systems
 {
     public class BlockadeSystem
     {
-        private readonly GameRoot game;
-        private readonly HashSet<string> blockadedPlanets;
+        private readonly GameRoot _game;
+        private readonly HashSet<string> _blockadedPlanets;
 
         /// <summary>
         /// Creates a new BlockadeManager.
@@ -19,8 +19,8 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         public BlockadeSystem(GameRoot game)
         {
-            this.game = game;
-            this.blockadedPlanets = new HashSet<string>();
+            _game = game;
+            _blockadedPlanets = new HashSet<string>();
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace Rebellion.Systems
             // Detect new blockades (entered this tick)
             foreach (string planetId in nowBlockaded)
             {
-                if (!blockadedPlanets.Contains(planetId))
+                if (!_blockadedPlanets.Contains(planetId))
                 {
                     // Blockade started
                     Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetId);
@@ -64,7 +64,7 @@ namespace Rebellion.Systems
             }
 
             // Detect cleared blockades (ended this tick)
-            foreach (string planetId in blockadedPlanets)
+            foreach (string planetId in _blockadedPlanets)
             {
                 if (!nowBlockaded.Contains(planetId))
                 {
@@ -78,10 +78,10 @@ namespace Rebellion.Systems
             }
 
             // Update tracked state
-            blockadedPlanets.Clear();
+            _blockadedPlanets.Clear();
             foreach (string planetId in nowBlockaded)
             {
-                blockadedPlanets.Add(planetId);
+                _blockadedPlanets.Add(planetId);
             }
         }
 

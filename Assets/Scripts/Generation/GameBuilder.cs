@@ -25,46 +25,46 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class GameBuilder
     {
-        private readonly GameSummary summary;
-        private readonly IResourceManager resourceManager;
-        private readonly IRandomNumberProvider randomProvider;
+        private readonly GameSummary _summary;
+        private readonly IResourceManager _resourceManager;
+        private readonly IRandomNumberProvider _randomProvider;
 
         public GameBuilder(GameSummary summary)
         {
-            this.summary = summary;
-            this.resourceManager = ResourceManager.Instance;
-            this.randomProvider = new SystemRandomProvider(Environment.TickCount);
+            _summary = summary;
+            _resourceManager = ResourceManager.Instance;
+            _randomProvider = new SystemRandomProvider(Environment.TickCount);
         }
 
         public GameRoot BuildGame()
         {
             GameConfig gameConfig = ConfigLoader.LoadGameConfig();
-            GameGenerationRules rules = resourceManager.GetConfig<GameGenerationRules>();
+            GameGenerationRules rules = _resourceManager.GetConfig<GameGenerationRules>();
 
             // Phase 0: Load templates and filter systems by galaxy size
-            PlanetSystem[] allSystems = resourceManager.GetGameData<PlanetSystem>();
+            PlanetSystem[] allSystems = _resourceManager.GetGameData<PlanetSystem>();
             PlanetSystem[] systems = FilterSystemsByGalaxySize(allSystems);
-            Faction[] factions = resourceManager.GetGameData<Faction>();
-            Building[] buildingTemplates = resourceManager.GetGameData<Building>();
-            CapitalShip[] shipTemplates = resourceManager.GetGameData<CapitalShip>();
-            Starfighter[] fighterTemplates = resourceManager.GetGameData<Starfighter>();
-            Regiment[] regimentTemplates = resourceManager.GetGameData<Regiment>();
-            GameEvent[] gameEvents = resourceManager.GetGameData<GameEvent>();
+            Faction[] factions = _resourceManager.GetGameData<Faction>();
+            Building[] buildingTemplates = _resourceManager.GetGameData<Building>();
+            CapitalShip[] shipTemplates = _resourceManager.GetGameData<CapitalShip>();
+            Starfighter[] fighterTemplates = _resourceManager.GetGameData<Starfighter>();
+            Regiment[] regimentTemplates = _resourceManager.GetGameData<Regiment>();
+            GameEvent[] gameEvents = _resourceManager.GetGameData<GameEvent>();
 
             // Phase 1: Galaxy classification
             GalaxyClassifier classifier = new GalaxyClassifier();
             GalaxyClassificationResult classification = classifier.Classify(
                 systems,
                 factions,
-                summary,
+                _summary,
                 rules,
-                randomProvider
+                _randomProvider
             );
 
             // Ensure StartingFactionIDs is populated
-            if (summary.StartingFactionIDs == null || summary.StartingFactionIDs.Length == 0)
+            if (_summary.StartingFactionIDs == null || _summary.StartingFactionIDs.Length == 0)
             {
-                summary.StartingFactionIDs = factions.Select(f => f.InstanceID).ToArray();
+                _summary.StartingFactionIDs = factions.Select(f => f.InstanceID).ToArray();
             }
 
             // Phase 2: System configuration (energy, raw materials, colonization, support)
@@ -73,8 +73,8 @@ namespace Rebellion.Generation
                 systems,
                 classification,
                 rules,
-                summary.StartingFactionIDs,
-                randomProvider
+                _summary.StartingFactionIDs,
+                _randomProvider
             );
 
             // Phase 3: Set faction research levels
@@ -86,7 +86,7 @@ namespace Rebellion.Generation
                 systems,
                 buildingTemplates,
                 rules,
-                randomProvider
+                _randomProvider
             );
 
             // Phase 5: Unit deployment
@@ -100,10 +100,10 @@ namespace Rebellion.Generation
                 rules,
                 classification,
                 gameConfig,
-                randomProvider,
-                (int)summary.GalaxySize,
-                (int)summary.Difficulty,
-                summary.PlayerFactionID
+                _randomProvider,
+                (int)_summary.GalaxySize,
+                (int)_summary.Difficulty,
+                _summary.PlayerFactionID
             );
 
             // Phase 6: Officers
@@ -111,8 +111,8 @@ namespace Rebellion.Generation
             OfficerGenerator.OfficerResults officerResults = officerGenerator.Deploy(
                 systems,
                 rules,
-                summary,
-                randomProvider
+                _summary,
+                _randomProvider
             );
             Officer[] unrecruitedOfficers = officerResults.Unrecruited;
 
@@ -135,13 +135,13 @@ namespace Rebellion.Generation
 
         private PlanetSystem[] FilterSystemsByGalaxySize(PlanetSystem[] allSystems)
         {
-            int galaxySize = (int)summary.GalaxySize;
+            int galaxySize = (int)_summary.GalaxySize;
             return allSystems.Where(s => (int)s.Visibility <= galaxySize).ToArray();
         }
 
         private void SetFactionResearchLevels(Faction[] factions)
         {
-            int researchLevel = summary.StartingResearchLevel;
+            int researchLevel = _summary.StartingResearchLevel;
             foreach (Faction faction in factions)
             {
                 faction.SetResearchLevel(ManufacturingType.Building, researchLevel);
@@ -182,7 +182,7 @@ namespace Rebellion.Generation
 
         private void InitializeFogOfWar(GameRoot game)
         {
-            GameGenerationRules rules = resourceManager.GetConfig<GameGenerationRules>();
+            GameGenerationRules rules = _resourceManager.GetConfig<GameGenerationRules>();
             FogOfWarSystem fogSystem = new FogOfWarSystem(game);
 
             // Build set of (planetID, factionID) visibility overrides from config
@@ -246,7 +246,7 @@ namespace Rebellion.Generation
             GameRoot game = new GameRoot
             {
                 EventPool = gameEvents.ToList(),
-                Summary = this.summary,
+                Summary = _summary,
                 Factions = factions.ToList(),
                 Galaxy = galaxy,
                 UnrecruitedOfficers = unrecruitedOfficers.ToList(),

@@ -19,11 +19,11 @@ namespace Rebellion.Systems
 {
     public class JediSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public JediSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -111,9 +111,9 @@ namespace Rebellion.Systems
 
         private ForceTier TierForXP(int xp)
         {
-            if (xp >= game.Config.Jedi.XpToExperienced)
+            if (xp >= _game.Config.Jedi.XpToExperienced)
                 return ForceTier.Experienced;
-            if (xp >= game.Config.Jedi.XpToTraining)
+            if (xp >= _game.Config.Jedi.XpToTraining)
                 return ForceTier.Training;
             if (xp > 0)
                 return ForceTier.Aware;
@@ -123,9 +123,9 @@ namespace Rebellion.Systems
         private double DetectionProbability(ForceTier tier) =>
             tier switch
             {
-                ForceTier.Aware => game.Config.Jedi.DetectProbAware,
-                ForceTier.Training => game.Config.Jedi.DetectProbTraining,
-                ForceTier.Experienced => game.Config.Jedi.DetectProbExperienced,
+                ForceTier.Aware => _game.Config.Jedi.DetectProbAware,
+                ForceTier.Training => _game.Config.Jedi.DetectProbTraining,
+                ForceTier.Experienced => _game.Config.Jedi.DetectProbExperienced,
                 _ => 0.0,
             };
     }

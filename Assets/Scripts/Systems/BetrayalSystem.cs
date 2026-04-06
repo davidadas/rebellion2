@@ -7,7 +7,7 @@ namespace Rebellion.Systems
 {
     public class BetrayalSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         /// <summary>
         /// Creates a new BetrayalManager.
@@ -15,7 +15,7 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         public BetrayalSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>

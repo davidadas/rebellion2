@@ -11,21 +11,21 @@ namespace Rebellion.Systems
     /// </summary>
     public class GameEventSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public GameEventSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         private List<GameResult> ProcessEvent(GameEvent gameEvent, IRandomNumberProvider provider)
         {
-            if (!gameEvent.AreConditionsMet(game))
+            if (!gameEvent.AreConditionsMet(_game))
                 return new List<GameResult>();
 
             GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
-            List<GameResult> results = gameEvent.Execute(game, provider);
-            game.AddCompletedEvent(gameEvent);
+            List<GameResult> results = gameEvent.Execute(_game, provider);
+            _game.AddCompletedEvent(gameEvent);
             return results;
         }
 
@@ -49,7 +49,7 @@ namespace Rebellion.Systems
             }
 
             foreach (GameEvent eventToRemove in eventsToRemove)
-                game.RemoveEvent(eventToRemove);
+                _game.RemoveEvent(eventToRemove);
 
             return allResults;
         }

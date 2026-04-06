@@ -20,11 +20,11 @@ namespace Rebellion.Systems
     /// </summary>
     public class MaintenanceSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public MaintenanceSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Rebellion.Systems
         public int GetMaintenanceCapacity(Faction faction)
         {
             int rawCount = faction.GetTotalAvailableMaterialsRaw();
-            int multiplier = game.GetConfig().Production.RefinementMultiplier;
+            int multiplier = _game.GetConfig().Production.RefinementMultiplier;
             return rawCount * multiplier;
         }
 
@@ -52,7 +52,7 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick(IRandomNumberProvider provider)
         {
-            foreach (Faction faction in game.GetFactions())
+            foreach (Faction faction in _game.GetFactions())
             {
                 int capacity = GetMaintenanceCapacity(faction);
                 int required = GetMaintenanceRequired(faction);
@@ -83,12 +83,12 @@ namespace Rebellion.Systems
             // Track parent fleet before detaching — may need cleanup if last ship removed.
             Fleet parentFleet = victim is CapitalShip ? victim.GetParent() as Fleet : null;
 
-            game.DetachNode(victim);
+            _game.DetachNode(victim);
 
             // Clean up empty fleet after scrapping last capital ship.
             if (parentFleet != null && parentFleet.CapitalShips.Count == 0)
             {
-                game.DetachNode(parentFleet);
+                _game.DetachNode(parentFleet);
             }
 
             GameLogger.Log(

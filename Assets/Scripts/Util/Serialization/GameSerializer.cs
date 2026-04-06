@@ -15,8 +15,8 @@ namespace Rebellion.Util.Serialization
     /// </summary>
     public class GameSerializer
     {
-        private readonly Type type;
-        private readonly GameSerializerSettings settings;
+        private readonly Type _type;
+        private readonly GameSerializerSettings _settings;
 
         /// <summary>
         /// Initializes a new instance of the GameSerializer class.
@@ -25,8 +25,8 @@ namespace Rebellion.Util.Serialization
         /// <param name="settings">Optional settings for the serializer.</param>
         public GameSerializer(Type type, GameSerializerSettings settings = null)
         {
-            this.type = type;
-            this.settings = settings ?? new GameSerializerSettings();
+            _type = type;
+            _settings = settings ?? new GameSerializerSettings();
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace Rebellion.Util.Serialization
         /// <param name="obj">The object to serialize.</param>
         public void Serialize(Stream stream, object obj)
         {
-            using (XmlWriter writer = XmlWriter.Create(stream, settings.CreateWriterSettings()))
+            using (XmlWriter writer = XmlWriter.Create(stream, _settings.CreateWriterSettings()))
             {
                 SerializeToXmlWriter(writer, obj);
             }
@@ -49,7 +49,7 @@ namespace Rebellion.Util.Serialization
         /// <param name="obj">The object to serialize.</param>
         public void Serialize(TextWriter textWriter, object obj)
         {
-            using (XmlWriter writer = XmlWriter.Create(textWriter, settings.CreateWriterSettings()))
+            using (XmlWriter writer = XmlWriter.Create(textWriter, _settings.CreateWriterSettings()))
             {
                 SerializeToXmlWriter(writer, obj);
             }
@@ -62,7 +62,7 @@ namespace Rebellion.Util.Serialization
         /// <returns>The deserialized object.</returns>
         public object Deserialize(Stream stream)
         {
-            using (XmlReader reader = XmlReader.Create(stream, settings.CreateReaderSettings()))
+            using (XmlReader reader = XmlReader.Create(stream, _settings.CreateReaderSettings()))
             {
                 return DeserializeFromXmlReader(reader);
             }
@@ -75,7 +75,7 @@ namespace Rebellion.Util.Serialization
         /// <returns>The deserialized object.</returns>
         public object Deserialize(TextReader textReader)
         {
-            using (XmlReader reader = XmlReader.Create(textReader, settings.CreateReaderSettings()))
+            using (XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings()))
             {
                 return DeserializeFromXmlReader(reader);
             }
@@ -90,7 +90,7 @@ namespace Rebellion.Util.Serialization
         /// <exception cref="InvalidDataException"></exception>
         public T DeserializeNode<T>(Stream stream)
         {
-            using XmlReader reader = XmlReader.Create(stream, settings.CreateReaderSettings());
+            using XmlReader reader = XmlReader.Create(stream, _settings.CreateReaderSettings());
 
             reader.MoveToContent();
 
@@ -115,7 +115,7 @@ namespace Rebellion.Util.Serialization
         private void SerializeToXmlWriter(XmlWriter writer, object obj)
         {
             writer.WriteStartDocument();
-            XmlSerializer.WriteValue(obj, writer, settings.RootName);
+            XmlSerializer.WriteValue(obj, writer, _settings.RootName);
             writer.WriteEndDocument();
         }
 
@@ -127,7 +127,7 @@ namespace Rebellion.Util.Serialization
         private object DeserializeFromXmlReader(XmlReader reader)
         {
             reader.MoveToContent();
-            return XmlDeserializer.ReadValue(type, reader);
+            return XmlDeserializer.ReadValue(_type, reader);
         }
     }
 

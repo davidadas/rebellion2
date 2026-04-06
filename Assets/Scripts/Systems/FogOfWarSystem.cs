@@ -12,14 +12,14 @@ namespace Rebellion.Systems
     /// </summary>
     public class FogOfWarSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         /// <summary>
         /// Creates a FogOfWarSystem for the given game instance.
         /// </summary>
         public FogOfWarSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Rebellion.Systems
         {
             GalaxyMap factionView = new GalaxyMap();
 
-            foreach (PlanetSystem masterSystem in game.Galaxy.PlanetSystems)
+            foreach (PlanetSystem masterSystem in _game.Galaxy.PlanetSystems)
             {
                 PlanetSystem viewSystem = masterSystem.GetShallowCopy(CloneMode.Full);
                 viewSystem.Planets = new List<Planet>();

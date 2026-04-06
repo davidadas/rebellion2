@@ -7,7 +7,7 @@ namespace Rebellion.Systems
 {
     public class ResearchSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         /// <summary>
         /// Creates a new ResearchManager.
@@ -15,7 +15,7 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         public ResearchSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>

@@ -12,7 +12,7 @@ public sealed class AppBootstrap : MonoBehaviour
     [SerializeField]
     private GlobalInputHandler inputHandler;
 
-    private GameRuntime runtime;
+    private GameRuntime _runtime;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -45,13 +45,13 @@ public sealed class AppBootstrap : MonoBehaviour
 
     private void InitializeRuntime()
     {
-        runtime = new GameRuntime();
+        _runtime = new GameRuntime();
 
         if (inputHandler == null)
             inputHandler = CreateInputHandler();
 
         if (inputHandler != null)
-            inputHandler.Initialize(runtime);
+            inputHandler.Initialize(_runtime);
     }
 
     private GlobalInputHandler CreateInputHandler()
@@ -70,6 +70,6 @@ public sealed class AppBootstrap : MonoBehaviour
 
     public GameRuntime GetRuntime()
     {
-        return runtime;
+        return _runtime;
     }
 }

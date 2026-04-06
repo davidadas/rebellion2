@@ -47,10 +47,10 @@ namespace Rebellion.Game
         public FogState Fog { get; set; } = new FogState();
 
         // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
-        private int nextFleetNumber = 1;
+        private int _nextFleetNumber = 1;
 
         // Owned Entities (Fleets, Planets, etc).
-        private Dictionary<Type, List<ISceneNode>> ownedEntities = new Dictionary<
+        private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
             Type,
             List<ISceneNode>
         >()
@@ -99,7 +99,7 @@ namespace Rebellion.Game
         /// <returns>A list of all owned units.</returns>
         public List<ISceneNode> GetAllOwnedNodes()
         {
-            return ownedEntities.Values.SelectMany(x => x).ToList();
+            return _ownedEntities.Values.SelectMany(x => x).ToList();
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Rebellion.Game
         public List<T> GetOwnedUnitsByType<T>()
             where T : ISceneNode
         {
-            return ownedEntities[typeof(T)].Cast<T>().ToList();
+            return _ownedEntities[typeof(T)].Cast<T>().ToList();
         }
 
         public List<Fleet> GetFleetsByType(FleetRoleType roleType)
@@ -126,9 +126,9 @@ namespace Rebellion.Game
         public void AddOwnedUnit<T>(T unit)
             where T : ISceneNode
         {
-            if (ownedEntities.ContainsKey(unit.GetType()))
+            if (_ownedEntities.ContainsKey(unit.GetType()))
             {
-                ownedEntities[unit.GetType()].Add(unit);
+                _ownedEntities[unit.GetType()].Add(unit);
             }
         }
 
@@ -140,9 +140,9 @@ namespace Rebellion.Game
         public void RemoveOwnedUnit<T>(T unit)
             where T : ISceneNode
         {
-            if (ownedEntities.ContainsKey(unit.GetType()))
+            if (_ownedEntities.ContainsKey(unit.GetType()))
             {
-                ownedEntities[unit.GetType()].Remove(unit);
+                _ownedEntities[unit.GetType()].Remove(unit);
             }
         }
 
@@ -391,7 +391,7 @@ namespace Rebellion.Game
         /// <returns>The summed cost across all owned manufacturable entities.</returns>
         public int GetTotalUnitCost()
         {
-            return ownedEntities
+            return _ownedEntities
                 .Where(kvp => typeof(IManufacturable).IsAssignableFrom(kvp.Key))
                 .SelectMany(kvp => kvp.Value)
                 .OfType<IManufacturable>()
@@ -435,7 +435,7 @@ namespace Rebellion.Game
             FleetRoleType roleType = FleetRoleType.None
         )
         {
-            Fleet fleet = new Fleet(this.InstanceID, $"Fleet {nextFleetNumber}");
+            Fleet fleet = new Fleet(this.InstanceID, $"Fleet {_nextFleetNumber}");
             fleet.RoleType = roleType;
 
             if (capitalShips != null)
@@ -452,7 +452,7 @@ namespace Rebellion.Game
                 }
             }
 
-            nextFleetNumber++;
+            _nextFleetNumber++;
             return fleet;
         }
 

@@ -14,10 +14,10 @@ namespace Rebellion.Systems
     /// </summary>
     public class MissionSystem
     {
-        private readonly GameRoot game;
-        private readonly MovementSystem movementManager;
-        private readonly OwnershipSystem ownershipSystem;
-        private readonly MissionFactory missionFactory;
+        private readonly GameRoot _game;
+        private readonly MovementSystem _movementManager;
+        private readonly OwnershipSystem _ownershipSystem;
+        private readonly MissionFactory _missionFactory;
 
         /// <summary>
         /// Creates a MissionSystem wired to the given game, movement, and ownership systems.
@@ -29,10 +29,10 @@ namespace Rebellion.Systems
             FogOfWarSystem fogOfWar = null
         )
         {
-            this.game = game;
-            this.movementManager = movementManager;
-            this.ownershipSystem = ownershipSystem;
-            this.missionFactory = new MissionFactory(game, fogOfWar);
+            _game = game;
+            _movementManager = movementManager;
+            _ownershipSystem = ownershipSystem;
+            _missionFactory = new MissionFactory(game, fogOfWar);
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
             string ownerInstanceId = participant.OwnerInstanceID;
 
-            Mission mission = missionFactory.CreateAndAttachMission(
+            Mission mission = _missionFactory.CreateAndAttachMission(
                 missionType,
                 ownerInstanceId,
                 mainParticipants,
@@ -89,7 +89,7 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
 
             // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
-            if (mission.IsCanceled(game))
+            if (mission.IsCanceled(_game))
             {
                 TearDownMission(mission, results);
                 return results;
@@ -100,24 +100,24 @@ namespace Rebellion.Systems
             if (!mission.IsComplete())
                 return results;
 
-            results.AddRange(mission.Execute(game, provider));
+            results.AddRange(mission.Execute(_game, provider));
 
             foreach (GameResult result in results)
             {
                 if (result is PlanetOwnershipChangedResult ownershipResult)
                 {
-                    Planet planet = game.GetSceneNodeByInstanceID<Planet>(
+                    Planet planet = _game.GetSceneNodeByInstanceID<Planet>(
                         ownershipResult.PlanetInstanceID
                     );
-                    Faction newOwner = game.GetFactionByOwnerInstanceID(
+                    Faction newOwner = _game.GetFactionByOwnerInstanceID(
                         ownershipResult.NewOwnerInstanceID
                     );
                     if (planet != null && newOwner != null)
-                        ownershipSystem.TransferPlanet(planet, newOwner);
+                        _ownershipSystem.TransferPlanet(planet, newOwner);
                 }
             }
 
-            if (mission.CanContinue(game))
+            if (mission.CanContinue(_game))
             {
                 BeginMission(mission, provider);
             }
@@ -137,7 +137,7 @@ namespace Rebellion.Systems
         private void TearDownMission(Mission mission, List<GameResult> results)
         {
             Planet missionPlanet = mission.GetParent() as Planet;
-            Faction faction = game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
             Planet nearestPlanet = faction.GetNearestFriendlyPlanetTo(mission);
             if (nearestPlanet == null)
             {
@@ -157,7 +157,7 @@ namespace Rebellion.Systems
                     // which calls mission.RemoveChild and drains the participant lists.
                     // It silently returns (without reparenting) for captured officers or on
                     // SceneAccessException. Check the parent to confirm the move succeeded.
-                    movementManager.RequestMove(movable, nearestPlanet);
+                    _movementManager.RequestMove(movable, nearestPlanet);
                     if (participantNode.GetParent() == nearestPlanet)
                     {
                         results.Add(
@@ -166,7 +166,7 @@ namespace Rebellion.Systems
                                 OfficerInstanceID = participantNode.GetInstanceID(),
                                 FromLocationInstanceID = mission.InstanceID,
                                 ToLocationInstanceID = nearestPlanet.InstanceID,
-                                Tick = game.CurrentTick,
+                                Tick = _game.CurrentTick,
                             }
                         );
                     }
@@ -177,7 +177,7 @@ namespace Rebellion.Systems
                     {
                         // RequestMove was rejected; reparent to the mission planet so the
                         // participant is not orphaned when DetachNode(mission) runs below.
-                        game.AttachNode(participantNode, missionPlanet);
+                        _game.AttachNode(participantNode, missionPlanet);
                     }
                 }
                 else if (
@@ -187,11 +187,11 @@ namespace Rebellion.Systems
                 {
                     // No friendly planet; keep participant at the current planet rather than
                     // losing them when the mission node is detached.
-                    game.AttachNode(participantNode, missionPlanet);
+                    _game.AttachNode(participantNode, missionPlanet);
                 }
             }
 
-            game.DetachNode(mission);
+            _game.DetachNode(mission);
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace Rebellion.Systems
             {
                 if (participant.GetParent() != mission)
                 {
-                    movementManager.RequestMove(participant, mission);
+                    _movementManager.RequestMove(participant, mission);
                 }
             }
 
