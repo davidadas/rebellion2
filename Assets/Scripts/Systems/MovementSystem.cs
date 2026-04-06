@@ -373,6 +373,23 @@ namespace Rebellion.Systems
                 return;
             }
 
+            // If destination changed sides since dispatch, handle before attempting MoveNode.
+            if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
+            {
+                if (movable is Building)
+                {
+                    game.DetachNode((ISceneNode)movable);
+                    GameLogger.Log(
+                        $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
+                    );
+                }
+                else
+                {
+                    HandleArrivalRejection(movable, destinationPlanet);
+                }
+                return;
+            }
+
             try
             {
                 game.MoveNode(movable, destination);

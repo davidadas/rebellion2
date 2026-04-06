@@ -857,5 +857,116 @@ namespace Rebellion.Tests.Systems
             );
             Assert.AreEqual(planetB, fleet.GetParent(), "Fleet should still be at planet B.");
         }
+
+        [Test]
+        public void UpdateMovement_BuildingInTransit_DestinationChangedSides_BuildingDestroyed()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, system);
+
+            Planet destPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destPlanet, system);
+
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            game.AttachNode(mine, destPlanet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(mine, destPlanet, originPlanet);
+
+            // Destination captured while building is in transit.
+            destPlanet.OwnerInstanceID = "rebels";
+
+            int transit = mine.Movement.TransitTicks;
+            for (int i = 0; i < transit; i++)
+                movement.ProcessTick();
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("mine1"),
+                "Building should be destroyed when destination changes sides during transit."
+            );
+        }
+
+        [Test]
+        public void UpdateMovement_NonBuildingInTransit_DestinationChangedSides_UnitRerouted()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, system);
+
+            Planet destPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destPlanet, system);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "rg1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destPlanet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(regiment, destPlanet, originPlanet);
+
+            // Destination captured while regiment is in transit.
+            destPlanet.OwnerInstanceID = "rebels";
+
+            int transit = regiment.Movement.TransitTicks;
+            for (int i = 0; i < transit; i++)
+                movement.ProcessTick();
+
+            // Regiment should be rerouted to nearest friendly planet (originPlanet).
+            Assert.AreEqual(originPlanet, regiment.GetParent(), "Regiment should reroute to nearest friendly planet.");
+        }
     }
 }
