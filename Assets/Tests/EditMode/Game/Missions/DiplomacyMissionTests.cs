@@ -60,7 +60,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -81,7 +82,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             PlanetOwnershipChangedResult ownershipResult = results
                 .OfType<PlanetOwnershipChangedResult>()
@@ -103,7 +105,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),

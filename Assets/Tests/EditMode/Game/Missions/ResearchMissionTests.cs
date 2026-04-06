@@ -201,7 +201,10 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after successful research");
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Mission should continue after successful research"
+            );
         }
 
         [Test]
@@ -213,7 +216,10 @@ namespace Rebellion.Tests.Game.Missions
             // RNG=0.99 → 99 > 10 → failure
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after failed research");
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Mission should continue after failed research"
+            );
         }
 
         [Test]

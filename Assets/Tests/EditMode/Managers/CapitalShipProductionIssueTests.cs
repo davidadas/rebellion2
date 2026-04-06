@@ -635,7 +635,9 @@ namespace Rebellion.Tests.Managers
                 RegimentCapacity = 0,
             };
 
-            testEmpire.RebuildResearchQueues(new IManufacturable[] { dreadnaught, galleon, carrack });
+            testEmpire.RebuildResearchQueues(
+                new IManufacturable[] { dreadnaught, galleon, carrack }
+            );
 
             // Run AI manufacturing
             FogOfWarSystem fog = new FogOfWarSystem(testGame);

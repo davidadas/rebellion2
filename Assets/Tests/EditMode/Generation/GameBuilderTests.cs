@@ -132,7 +132,11 @@ namespace Rebellion.Tests.Generation
             Assert.IsNotNull(game.Factions, "Factions should not be null.");
 
             // Ensure the game has at least two factions.
-            Assert.GreaterOrEqual(game.Factions.Count, 2, "Game should have at least two factions.");
+            Assert.GreaterOrEqual(
+                game.Factions.Count,
+                2,
+                "Game should have at least two factions."
+            );
         }
 
         [Test, TestCaseSource(nameof(GameTestCases))]
@@ -168,9 +172,7 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in game.Factions)
             {
-                int techCountBefore = faction.ResearchQueue.Values
-                    .SelectMany(q => q)
-                    .Count();
+                int techCountBefore = faction.ResearchQueue.Values.SelectMany(q => q).Count();
 
                 Assert.Greater(
                     techCountBefore,
@@ -180,9 +182,7 @@ namespace Rebellion.Tests.Generation
 
                 faction.RebuildResearchQueues(templates);
 
-                int techCountAfter = faction.ResearchQueue.Values
-                    .SelectMany(q => q)
-                    .Count();
+                int techCountAfter = faction.ResearchQueue.Values.SelectMany(q => q).Count();
 
                 Assert.Greater(
                     techCountAfter,

@@ -89,10 +89,7 @@ public class ResearchMission : Mission
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>An empty list (no additional results).</returns>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
         if (faction == null)
@@ -114,8 +111,7 @@ public class ResearchMission : Mission
     /// <returns>True if the parent planet is owned by this faction.</returns>
     protected override bool IsTargetValid(GameRoot game)
     {
-        return GetParent() is Planet p
-            && p.GetOwnerInstanceID() == OwnerInstanceID;
+        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 
     /// <summary>

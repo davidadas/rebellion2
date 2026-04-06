@@ -187,7 +187,11 @@ namespace Rebellion.Tests.Game
         [Test]
         public void ResearchOrder_WhenSet_ReturnsCorrectValue()
         {
-            SpecialForces newSpecialForces = new SpecialForces { ResearchOrder = 5, ResearchDifficulty = 50 };
+            SpecialForces newSpecialForces = new SpecialForces
+            {
+                ResearchOrder = 5,
+                ResearchDifficulty = 50,
+            };
 
             Assert.AreEqual(5, newSpecialForces.ResearchOrder);
             Assert.AreEqual(50, newSpecialForces.ResearchDifficulty);

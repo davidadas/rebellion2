@@ -144,12 +144,23 @@ namespace Rebellion.Tests.Game
                 ResearchDifficulty = 60,
             };
 
-            IManufacturable[] templates = new IManufacturable[] { _building, advancedBuilding, futureBuilding };
+            IManufacturable[] templates = new IManufacturable[]
+            {
+                _building,
+                advancedBuilding,
+                futureBuilding,
+            };
             _faction.RebuildResearchQueues(templates);
 
-            List<Technology> unlocked = _faction.GetUnlockedTechnologies(ManufacturingType.Building);
+            List<Technology> unlocked = _faction.GetUnlockedTechnologies(
+                ManufacturingType.Building
+            );
 
-            Assert.AreEqual(2, unlocked.Count, "Should only return technologies at or below unlocked order");
+            Assert.AreEqual(
+                2,
+                unlocked.Count,
+                "Should only return technologies at or below unlocked order"
+            );
             Assert.IsFalse(
                 unlocked.Exists(t => t.GetReference().GetDisplayName() == "Future Building"),
                 "Should not contain order 3 technology"
@@ -228,9 +239,27 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RebuildResearchQueues_WithMultipleBuildings_SortsByResearchOrder()
         {
-            Building b1 = new Building { DisplayName = "B1", ResearchOrder = 3, ResearchDifficulty = 60, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
-            Building b2 = new Building { DisplayName = "B2", ResearchOrder = 1, ResearchDifficulty = 24, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
-            Building b3 = new Building { DisplayName = "B3", ResearchOrder = 0, ResearchDifficulty = 0, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
+            Building b1 = new Building
+            {
+                DisplayName = "B1",
+                ResearchOrder = 3,
+                ResearchDifficulty = 60,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            Building b2 = new Building
+            {
+                DisplayName = "B2",
+                ResearchOrder = 1,
+                ResearchDifficulty = 24,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            Building b3 = new Building
+            {
+                DisplayName = "B3",
+                ResearchOrder = 0,
+                ResearchDifficulty = 0,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
 
             _faction.RebuildResearchQueues(new IManufacturable[] { b1, b2, b3 });
 
@@ -271,7 +300,11 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetAvailableOfficers_MixedOfficerStates_ReturnsOnlyMovableOfficers()
         {
-            Officer availableOfficer = new Officer { OwnerInstanceID = "FACTION1", Movement = null };
+            Officer availableOfficer = new Officer
+            {
+                OwnerInstanceID = "FACTION1",
+                Movement = null,
+            };
 
             Officer unavailableOfficer = new Officer
             {
@@ -314,7 +347,11 @@ namespace Rebellion.Tests.Game
 
             _planet2.NumRawResourceNodes = 15;
             // Add an enemy fleet to planet2 to blockade it
-            Fleet enemyFleet = new Fleet { InstanceID = "ENEMYFLEET1", OwnerInstanceID = "FACTION2" };
+            Fleet enemyFleet = new Fleet
+            {
+                InstanceID = "ENEMYFLEET1",
+                OwnerInstanceID = "FACTION2",
+            };
             _planet2.Fleets.Add(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);

@@ -149,7 +149,11 @@ namespace Rebellion.Tests.Game
         {
             _regiment.DefenseRating = 60;
 
-            Assert.AreEqual(60, _regiment.DefenseRating, "DefenseRating should return the set value");
+            Assert.AreEqual(
+                60,
+                _regiment.DefenseRating,
+                "DefenseRating should return the set value"
+            );
         }
 
         [Test]

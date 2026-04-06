@@ -57,13 +57,18 @@ namespace Rebellion.Tests.Systems
 
         private void SetupShipResearchQueue(params (string name, int order, int difficulty)[] techs)
         {
-            IManufacturable[] templates = techs.Select(t => (IManufacturable)new CapitalShip
-            {
-                DisplayName = t.name,
-                ResearchOrder = t.order,
-                ResearchDifficulty = t.difficulty,
-                AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
-            }).ToArray();
+            IManufacturable[] templates = techs
+                .Select(t =>
+                    (IManufacturable)
+                        new CapitalShip
+                        {
+                            DisplayName = t.name,
+                            ResearchOrder = t.order,
+                            ResearchDifficulty = t.difficulty,
+                            AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
+                        }
+                )
+                .ToArray();
             faction.RebuildResearchQueues(templates);
         }
 
@@ -165,26 +170,23 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CapacityMeetsDifficulty_UnlocksUnit()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
             system.ProcessTick(game);
 
             Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
-            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship],
-                "Cost should be subtracted from capacity");
+            Assert.AreEqual(
+                0,
+                faction.ResearchCapacity[ManufacturingType.Ship],
+                "Cost should be subtracted from capacity"
+            );
         }
 
         [Test]
         public void ProcessTick_CapacityMeetsDifficulty_EmitsResult()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
             List<GameResult> results = system.ProcessTick(game);
@@ -202,28 +204,24 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ExcessCapacity_CarriesOverAndUnlocksMultiple()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12),
-                ("Cruiser", 2, 24)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
             // Enough to unlock both: 12 + 24 = 36
             faction.ResearchCapacity[ManufacturingType.Ship] = 40;
 
             system.ProcessTick(game);
 
             Assert.AreEqual(2, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
-            Assert.AreEqual(4, faction.ResearchCapacity[ManufacturingType.Ship],
-                "Remainder should carry over after unlocking");
+            Assert.AreEqual(
+                4,
+                faction.ResearchCapacity[ManufacturingType.Ship],
+                "Remainder should carry over after unlocking"
+            );
         }
 
         [Test]
         public void ProcessTick_CapacityBelowDifficulty_NoUnlock()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 5;
 
             system.ProcessTick(game);
@@ -235,26 +233,23 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_AllUnlocked_NoFurtherAdvancement()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 1);
             faction.ResearchCapacity[ManufacturingType.Ship] = 9999;
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
-                "Should not advance beyond last technology");
+            Assert.AreEqual(
+                1,
+                faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                "Should not advance beyond last technology"
+            );
         }
 
         [Test]
         public void ProcessTick_IdleFacilityAcrossMultipleTicks_AccumulatesCapacity()
         {
-            SetupShipResearchQueue(
-                ("Dreadnaught", 0, 0),
-                ("Frigate", 1, 12)
-            );
+            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             game.AttachNode(CreateShipyard("SY1"), planet);
 
             // Run 12 ticks with just the idle facility (+1 per tick = 12 total → unlock Frigate)
@@ -263,8 +258,11 @@ namespace Rebellion.Tests.Systems
                 system.ProcessTick(game);
             }
 
-            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
-                "12 ticks of +1 should reach Frigate's difficulty of 12");
+            Assert.AreEqual(
+                1,
+                faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                "12 ticks of +1 should reach Frigate's difficulty of 12"
+            );
         }
 
         // --- Multi-faction isolation ---

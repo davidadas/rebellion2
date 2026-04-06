@@ -73,10 +73,7 @@ public class DiplomacyMission : Mission
     /// Increments popular support and emits a PlanetOwnershipChangedResult when support
     /// crosses 60 and the planet is not yet owned by this faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)

@@ -47,10 +47,7 @@ public class SabotageMission : Mission
     /// <summary>
     /// Destroys the first building on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
         List<Building> buildings = planet.GetAllBuildings();

@@ -92,10 +92,7 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Starts an uprising on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
         planet.BeginUprising();

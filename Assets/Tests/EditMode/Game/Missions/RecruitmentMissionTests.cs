@@ -21,8 +21,9 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            RecruitmentMission deserialized =
-                SerializationHelper.Deserialize<RecruitmentMission>(xml);
+            RecruitmentMission deserialized = SerializationHelper.Deserialize<RecruitmentMission>(
+                xml
+            );
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);

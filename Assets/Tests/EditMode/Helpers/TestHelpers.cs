@@ -91,10 +91,8 @@ public class StubMission : Mission
         SpreadTicks = 0;
     }
 
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    ) => new List<GameResult>();
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     public override bool CanContinue(GameRoot game) => false;
 }

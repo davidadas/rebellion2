@@ -178,7 +178,11 @@ namespace Rebellion.Tests.Game
         {
             Starfighter newStarfighter = new Starfighter();
 
-            Assert.AreEqual(0, newStarfighter.DetectionRating, "DetectionRating should default to 0");
+            Assert.AreEqual(
+                0,
+                newStarfighter.DetectionRating,
+                "DetectionRating should default to 0"
+            );
         }
 
         [Test]

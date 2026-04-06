@@ -52,11 +52,7 @@ namespace Rebellion.Systems
         /// Unlocks the next technology in the queue when accumulated capacity
         /// meets the target's ResearchDifficulty. Loops to handle carry-over.
         /// </summary>
-        private void CheckUnitUnlock(
-            Faction faction,
-            GameRoot game,
-            List<GameResult> results
-        )
+        private void CheckUnitUnlock(Faction faction, GameRoot game, List<GameResult> results)
         {
             foreach (ManufacturingType type in ResearchableTypes)
             {
@@ -74,14 +70,16 @@ namespace Rebellion.Systems
                     faction.SetHighestUnlockedOrder(type, target.GetResearchOrder());
 
                     string techName = target.GetReference().GetDisplayName();
-                    results.Add(new TechnologyUnlockedResult
-                    {
-                        Tick = game.CurrentTick,
-                        FactionInstanceID = faction.InstanceID,
-                        ResearchType = type,
-                        TechnologyName = techName,
-                        ResearchOrder = target.GetResearchOrder(),
-                    });
+                    results.Add(
+                        new TechnologyUnlockedResult
+                        {
+                            Tick = game.CurrentTick,
+                            FactionInstanceID = faction.InstanceID,
+                            ResearchType = type,
+                            TechnologyName = techName,
+                            ResearchOrder = target.GetResearchOrder(),
+                        }
+                    );
 
                     GameLogger.Log(
                         $"{faction.DisplayName} unlocked {type} technology: {techName} (order {target.GetResearchOrder()})"
