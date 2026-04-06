@@ -1,18 +1,11 @@
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
 /// <summary>
 /// Manages research and technology advancement during each game tick.
-///
-/// Three-phase per-tick processing (matches original disassembly):
-///   Phase 1 - Passive capacity: each idle facility contributes +1 capacity per tick.
-///   Phase 2 - Officer research: idle officers at planets with matching facilities
-///             roll against their research skill. On success, they generate
-///             BaseResearchPoints + random(0, DiceRange) points and improve by 1.
-///   Phase 3 - Level advancement: when accumulated capacity >= level cost threshold,
-///             research level advances, cost is subtracted, and tech tree rebuilds.
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -25,33 +18,25 @@ namespace Rebellion.Systems
             this.game = game;
         }
 
-        /// <summary>
-        /// Processes research for the current tick across all factions.
-        /// </summary>
-        public void ProcessTick(GameRoot game, IRandomNumberProvider provider)
+        /// <summary>Processes research for the current tick across all factions.</summary>
+        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider provider)
         {
+            List<GameResult> results = new List<GameResult>();
             GameConfig config = game.GetConfig();
             GameConfig.ResearchConfig researchConfig = config.Research;
             List<Faction> factions = game.GetFactions();
 
             foreach (Faction faction in factions)
             {
-                // Phase 1: Passive capacity from idle facilities
                 AccumulateIdleFacilityCapacity(faction);
-
-                // Phase 2: Officer research contributions
                 AccumulateOfficerResearch(faction, researchConfig, provider);
-
-                // Phase 3: Level advancement
-                CheckLevelAdvancement(faction, researchConfig, game);
+                CheckLevelAdvancement(faction, researchConfig, game, results);
             }
+
+            return results;
         }
 
-        /// <summary>
-        /// Phase 1: Each idle manufacturing facility on a faction's planets
-        /// contributes +1 research capacity per tick to the matching type.
-        /// A facility is "idle" when it has no items in its manufacturing queue.
-        /// </summary>
+        /// <summary>Each idle facility contributes +1 research capacity per tick.</summary>
         private void AccumulateIdleFacilityCapacity(Faction faction)
         {
             List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
@@ -69,13 +54,7 @@ namespace Rebellion.Systems
             }
         }
 
-        /// <summary>
-        /// Phase 2: Officers that are idle (not on a mission, not in transit)
-        /// and located on a planet with at least one matching idle facility
-        /// roll against their research skill. On success:
-        ///   - Award BaseResearchPoints + random(0, DiceRange) to faction capacity
-        ///   - Increment the officer's research skill by 1
-        /// </summary>
+        /// <summary>Idle officers at planets with matching facilities roll against their research skill.</summary>
         private void AccumulateOfficerResearch(
             Faction faction,
             GameConfig.ResearchConfig config,
@@ -121,15 +100,12 @@ namespace Rebellion.Systems
             }
         }
 
-        /// <summary>
-        /// Phase 3: Check if accumulated capacity meets or exceeds the cost
-        /// for the next research level. If so, advance the level, subtract
-        /// the cost, and rebuild the faction's technology tree.
-        /// </summary>
+        /// <summary>Advances research level when accumulated capacity meets the threshold.</summary>
         private void CheckLevelAdvancement(
             Faction faction,
             GameConfig.ResearchConfig config,
-            GameRoot game
+            GameRoot game,
+            List<GameResult> results
         )
         {
             foreach (ManufacturingType type in ResearchableTypes)
@@ -138,17 +114,21 @@ namespace Rebellion.Systems
                 int nextLevel = currentLevel + 1;
 
                 if (!config.LevelCosts.TryGetValue(nextLevel, out int cost))
-                {
-                    // No more levels to advance - research exhausted for this type
                     continue;
-                }
 
                 if (faction.ResearchCapacity[type] >= cost)
                 {
                     faction.ResearchCapacity[type] -= cost;
                     faction.SetResearchLevel(type, nextLevel);
                     // TODO: Rebuild technology levels after research advancement
-                    // faction.LoadTechnologyLevels(templates) — needs ResourceManager access
+
+                    results.Add(new ResearchLevelAdvancedResult
+                    {
+                        Tick = game.CurrentTick,
+                        FactionInstanceID = faction.InstanceID,
+                        ResearchType = type,
+                        NewLevel = nextLevel,
+                    });
 
                     GameLogger.Log(
                         $"{faction.DisplayName} advanced {type} research to level {nextLevel}"

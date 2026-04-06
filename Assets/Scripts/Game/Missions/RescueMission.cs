@@ -17,8 +17,6 @@ public class RescueMission : Mission
         Name = "Rescue";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        BaseTicks = 1;
-        SpreadTicks = 6;
     }
 
     public RescueMission(

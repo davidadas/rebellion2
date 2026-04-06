@@ -18,8 +18,6 @@ public class EspionageMission : Mission
         Name = "Espionage";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        BaseTicks = 1;
-        SpreadTicks = 20;
     }
 
     public EspionageMission(

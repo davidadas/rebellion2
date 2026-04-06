@@ -16,8 +16,6 @@ public class InciteUprisingMission : Mission
         Name = "Incite Uprising";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Espionage;
-        BaseTicks = 2;
-        SpreadTicks = 10;
     }
 
     public InciteUprisingMission(

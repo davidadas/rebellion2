@@ -13,8 +13,6 @@ public class SubdueUprisingMission : Mission
         Name = "Subdue Uprising";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        BaseTicks = 2;
-        SpreadTicks = 10;
     }
 
     public SubdueUprisingMission(

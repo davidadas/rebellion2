@@ -18,8 +18,6 @@ public class AssassinationMission : Mission
         Name = "Assassination";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        BaseTicks = 1;
-        SpreadTicks = 1;
     }
 
     public AssassinationMission(

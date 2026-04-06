@@ -14,8 +14,6 @@ public class DiplomacyMission : Mission
         Name = "Diplomacy";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
-        BaseTicks = 5;
-        SpreadTicks = 10;
     }
 
     public DiplomacyMission(

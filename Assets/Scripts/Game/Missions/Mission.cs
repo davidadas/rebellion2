@@ -33,10 +33,10 @@ public abstract class Mission : ContainerNode
     public ProbabilityTable FoilProbabilityTable { get; set; }
 
     [PersistableIgnore]
-    public int BaseTicks = 1;
+    public int BaseTicks;
 
     [PersistableIgnore]
-    public int SpreadTicks = 10;
+    public int SpreadTicks;
 
     public int MaxProgress { get; set; }
     public int CurrentProgress { get; set; }

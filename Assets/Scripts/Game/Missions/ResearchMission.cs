@@ -24,8 +24,6 @@ public class ResearchMission : Mission
         Name = "Research";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        BaseTicks = 10;
-        SpreadTicks = 10;
     }
 
     public ResearchMission(

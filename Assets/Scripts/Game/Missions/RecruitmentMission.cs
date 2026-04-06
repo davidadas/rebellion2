@@ -16,8 +16,6 @@ public class RecruitmentMission : Mission
         Name = "Recruitment";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Leadership;
-        BaseTicks = 5;
-        SpreadTicks = 20;
     }
 
     public RecruitmentMission(

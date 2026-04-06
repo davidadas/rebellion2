@@ -18,8 +18,6 @@ public class AbductionMission : Mission
         Name = "Abduction";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        BaseTicks = 1;
-        SpreadTicks = 2;
     }
 
     public AbductionMission(

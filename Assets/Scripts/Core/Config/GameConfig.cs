@@ -480,26 +480,17 @@ public class GameConfig
     [PersistableObject]
     public class ResearchConfig
     {
-        /// <summary>Base research points awarded per successful officer tick (GENERAL_PARAM_6171, default: 5)</summary>
-        public int BaseResearchPoints { get; set; } = 5;
+        /// <summary>Base research points awarded per successful officer tick (GENERAL_PARAM_6171).</summary>
+        public int BaseResearchPoints { get; set; }
 
-        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172, default: 10)</summary>
-        public int ResearchDiceRange { get; set; } = 10;
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172).</summary>
+        public int ResearchDiceRange { get; set; }
 
         /// <summary>
         /// Cumulative capacity cost to advance to each research level.
         /// Key = level being advanced TO, Value = capacity required.
-        /// Once capacity >= cost, level advances and cost is subtracted.
         /// </summary>
-        public Dictionary<int, int> LevelCosts { get; set; } =
-            new Dictionary<int, int>
-            {
-                { 1, 100 },
-                { 2, 200 },
-                { 3, 350 },
-                { 4, 550 },
-                { 5, 800 },
-            };
+        public Dictionary<int, int> LevelCosts { get; set; } = new Dictionary<int, int>();
     }
 
     /// <summary>

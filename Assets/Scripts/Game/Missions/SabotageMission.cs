@@ -14,8 +14,6 @@ public class SabotageMission : Mission
         Name = "Sabotage";
         DisplayName = Name;
         ParticipantSkill = MissionParticipantSkill.Combat;
-        BaseTicks = 1;
-        SpreadTicks = 2;
     }
 
     public SabotageMission(
