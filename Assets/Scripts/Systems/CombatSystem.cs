@@ -47,9 +47,6 @@ namespace Rebellion.Systems
             this.provider = provider;
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Tick processing & combat detection
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Resolves all AI-vs-AI combat encounters this tick in a single pass.
@@ -199,9 +196,6 @@ namespace Rebellion.Systems
             return false;
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Space combat resolution
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Resolves a pending combat encounter. Applies damage to the game world and
@@ -386,9 +380,6 @@ namespace Rebellion.Systems
             return CombatSide.Draw;
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Space combat phases
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Builds mutable hull snapshots for all capital ships and fighter squadron
@@ -664,9 +655,6 @@ namespace Rebellion.Systems
             }
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Space combat result building & application
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Builds a SpaceCombatResult by comparing post-combat snapshots to initial state.
@@ -858,9 +846,6 @@ namespace Rebellion.Systems
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Planetary assault
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Executes a planetary assault against a defending planet.
@@ -1020,9 +1005,6 @@ namespace Rebellion.Systems
             );
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Orbital bombardment
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Executes orbital bombardment against a planet.
@@ -1344,9 +1326,6 @@ namespace Rebellion.Systems
             result.Strikes.Add(strike);
         }
 
-        // ──────────────────────────────────────────────────────────────
-        //  Private inner types (transient combat state, not results)
-        // ──────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Mutable snapshot of one capital ship hull for the duration of a single space battle.

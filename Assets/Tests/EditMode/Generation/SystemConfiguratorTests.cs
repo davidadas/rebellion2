@@ -121,20 +121,20 @@ public class SystemConfiguratorTests
     [Test]
     public void SetPopularSupport_Coruscant_Gets0Alliance100Empire()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             InstanceID = "CORUSCANT",
             IsColonized = true,
             OwnerInstanceID = "FNEMP1",
         };
-        var system = new PlanetSystem
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = "FNEMP1",
@@ -142,7 +142,7 @@ public class SystemConfiguratorTests
         };
         classification.StartingPlanetLoyalty[planet] = 100;
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -158,23 +158,23 @@ public class SystemConfiguratorTests
     [Test]
     public void SetPopularSupport_Yavin_Gets100Alliance0Empire()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             InstanceID = "YAVIN",
             IsColonized = true,
             OwnerInstanceID = "FNALL1",
         };
-        var system = new PlanetSystem
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.StartingPlanetLoyalty[planet] = 100;
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -190,22 +190,22 @@ public class SystemConfiguratorTests
     [Test]
     public void SetPopularSupport_AllianceOwnedRim_Gets100Alliance0Empire()
     {
-        var planet = new Planet
+        Planet planet = new Planet
         {
             InstanceID = "RIM_HQ",
             OwnerInstanceID = "FNALL1",
             IsColonized = true,
         };
-        var system = new PlanetSystem
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -221,17 +221,17 @@ public class SystemConfiguratorTests
     [Test]
     public void SetPopularSupport_UnownedRim_Gets50_50()
     {
-        var planet = new Planet { InstanceID = "RIM_PLANET", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "RIM_PLANET", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -248,22 +248,22 @@ public class SystemConfiguratorTests
     public void SetPopularSupport_StrongAlliance_RangeIs60To90()
     {
         // StubRNG returns min (0), so support = 60 + 0 = 60
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = "FNALL1",
             Strength = BucketStrength.Strong,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -281,22 +281,22 @@ public class SystemConfiguratorTests
     {
         // StubRNG returns min (0), so support = 60 + 0 = 60 for Empire
         // Alliance gets remainder = 40
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = "FNEMP1",
             Strength = BucketStrength.Strong,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -313,22 +313,22 @@ public class SystemConfiguratorTests
     public void SetPopularSupport_Neutral_RangeIs41To59()
     {
         // StubRNG returns min (0), so support = 41 + 0 = 41
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = null,
             Strength = BucketStrength.Neutral,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -348,22 +348,22 @@ public class SystemConfiguratorTests
     [Test]
     public void Configure_CorePlanet_SetsEnergyInRange()
     {
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = null,
             Strength = BucketStrength.Neutral,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -381,7 +381,7 @@ public class SystemConfiguratorTests
     {
         // Use a RNG that returns max values to push raw materials above energy
         // SequenceRNG with high int values: energy roll returns max, raw mat roll returns max
-        var rng = new SequenceRNG(
+        SequenceRNG rng = new SequenceRNG(
             intValues: new[]
             {
                 0, // core energy random1 (10 + 0 = 10)
@@ -391,22 +391,22 @@ public class SystemConfiguratorTests
             }
         );
 
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = null,
             Strength = BucketStrength.Neutral,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
 
         Assert.AreEqual(10, planet.EnergyCapacity);
@@ -416,22 +416,22 @@ public class SystemConfiguratorTests
     [Test]
     public void Configure_CorePlanet_IsAlwaysColonized()
     {
-        var planet = new Planet { InstanceID = "CORE1", IsColonized = false };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "CORE1", IsColonized = false };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.CoreSystem,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
         classification.BucketMap[planet] = new PlanetBucket
         {
             FactionID = null,
             Strength = BucketStrength.Neutral,
         };
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -447,17 +447,17 @@ public class SystemConfiguratorTests
     public void Configure_RimPlanet_ColonizedAt31Percent()
     {
         // StubRNG returns min (0) for NextInt, so roll=0 < 31 -> colonized
-        var planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(
             new[] { system },
             classification,
@@ -473,7 +473,7 @@ public class SystemConfiguratorTests
     public void Configure_RimPlanet_NotColonizedWhenRollAboveThreshold()
     {
         // SequenceRNG: energy rolls, raw mat rolls, then colonization roll = 50 (> 31)
-        var rng = new SequenceRNG(
+        SequenceRNG rng = new SequenceRNG(
             intValues: new[]
             {
                 0, // rim energy random1
@@ -483,17 +483,17 @@ public class SystemConfiguratorTests
             }
         );
 
-        var planet = new Planet { InstanceID = "RIM1", IsColonized = false };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
 
         Assert.IsFalse(planet.IsColonized);
@@ -503,19 +503,19 @@ public class SystemConfiguratorTests
     public void Configure_AlreadyColonizedRim_StaysColonized()
     {
         // Even with a high roll, pre-colonized rim planets stay colonized
-        var rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 99 });
+        SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 99 });
 
-        var planet = new Planet { InstanceID = "RIM1", IsColonized = true };
-        var system = new PlanetSystem
+        Planet planet = new Planet { InstanceID = "RIM1", IsColonized = true };
+        PlanetSystem system = new PlanetSystem
         {
             InstanceID = "sys1",
             SystemType = PlanetSystemType.OuterRim,
         };
         system.Planets.Add(planet);
 
-        var classification = new GalaxyClassificationResult();
+        GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
-        var configurator = new SystemConfigurator();
+        SystemConfigurator configurator = new SystemConfigurator();
         configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
 
         Assert.IsTrue(planet.IsColonized);

@@ -672,7 +672,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_FleetArrivesBeforeChildren()
         {
-            var scene = BuildFleetWithInTransitChildrenScene();
+            (GameRoot game, MovementSystem movement, Fleet fleet, CapitalShip cs1, CapitalShip cs2, Starfighter sf, Regiment reg, Officer officer, Planet planetA, Planet planetB, Planet planetC, int fleetTransit, int cs2Transit) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
                 scene.cs2Transit,
@@ -705,7 +705,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_ChildrenArriveAfterFleet()
         {
-            var scene = BuildFleetWithInTransitChildrenScene();
+            (GameRoot game, MovementSystem movement, Fleet fleet, CapitalShip cs1, CapitalShip cs2, Starfighter sf, Regiment reg, Officer officer, Planet planetA, Planet planetB, Planet planetC, int fleetTransit, int cs2Transit) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
                 scene.cs2Transit,

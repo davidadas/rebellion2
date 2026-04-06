@@ -19,6 +19,9 @@ namespace Rebellion.Systems
         private readonly ManufacturingSystem manufacturingManager;
         private readonly IRandomNumberProvider randomProvider;
 
+        /// <summary>
+        /// Creates a new AISystem.
+        /// </summary>
         public AISystem(
             GameRoot game,
             MissionSystem missionManager,
@@ -247,6 +250,10 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Returns an existing movable fleet in the same system owned by the faction,
+        /// or creates a new battle fleet at the given planet if none exists.
+        /// </summary>
         private Fleet FindOrCreateFleetInSystem(Planet planet, Faction faction)
         {
             PlanetSystem system = planet.GetParent() as PlanetSystem;
@@ -970,6 +977,9 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Returns a priority score for building the given type at the planet. Higher is more urgent.
+        /// </summary>
         private int CalculateBuildingPriority(Planet planet, BuildingType buildingType)
         {
             return buildingType switch
@@ -984,6 +994,9 @@ namespace Rebellion.Systems
             };
         }
 
+        /// <summary>
+        /// Mine priority is proportional to the number of manufacturing facilities that need feeding.
+        /// </summary>
         private int CalculateMinePriority(Planet planet)
         {
             return planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All)
@@ -991,6 +1004,9 @@ namespace Rebellion.Systems
                 + planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All);
         }
 
+        /// <summary>
+        /// Refinery priority scales with raw resource nodes and manufacturing facility count.
+        /// </summary>
         private int CalculateRefineryPriority(Planet planet)
         {
             int rawResourceNodeCount = planet.GetRawResourceNodes();
@@ -998,6 +1014,10 @@ namespace Rebellion.Systems
             return rawResourceNodeCount * 1000 + manufacturingFacilityScore;
         }
 
+        /// <summary>
+        /// Facility priority favors variety: penalizes duplicates of the same type,
+        /// rewards having fewer of the complementary facility types.
+        /// </summary>
         private int CalculateFacilityPriority(Planet planet, BuildingType facilityType)
         {
             int sameFacilityCount = planet.GetBuildingTypeCount(facilityType, EntityStateFilter.All);
@@ -1013,6 +1033,10 @@ namespace Rebellion.Systems
             return otherFacilityCount * 1000 - sameFacilityCount;
         }
 
+        /// <summary>
+        /// Returns the highest-tier researched technology of the given manufacturing type
+        /// whose reference object matches <paramref name="referenceType"/>.
+        /// </summary>
         private Technology GetHighestTierTechnology(
             Faction faction,
             ManufacturingType manufacturingType,
@@ -1024,6 +1048,10 @@ namespace Rebellion.Systems
                 .LastOrDefault(tech => tech.GetReference().GetType() == referenceType);
         }
 
+        /// <summary>
+        /// Returns the highest-tier researched technology of the given manufacturing type
+        /// whose reference object is a building of <paramref name="buildingType"/>.
+        /// </summary>
         private Technology GetHighestTierTechnology(
             Faction faction,
             ManufacturingType manufacturingType,

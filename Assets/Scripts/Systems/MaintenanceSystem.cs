@@ -98,36 +98,33 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Returns all units eligible for maintenance auto-scrap.
+        /// Excludes units under construction or in transit.
         /// </summary>
         private List<ISceneNode> GetScrapCandidates(Faction faction)
         {
             List<ISceneNode> candidates = new List<ISceneNode>();
 
-            // Regiments (completed only)
             foreach (Regiment regiment in faction.GetOwnedUnitsByType<Regiment>())
             {
-                if (regiment.ManufacturingStatus == ManufacturingStatus.Complete)
+                if (regiment.ManufacturingStatus == ManufacturingStatus.Complete && regiment.Movement == null)
                     candidates.Add(regiment);
             }
 
-            // Starfighters (completed only)
             foreach (Starfighter fighter in faction.GetOwnedUnitsByType<Starfighter>())
             {
-                if (fighter.ManufacturingStatus == ManufacturingStatus.Complete)
+                if (fighter.ManufacturingStatus == ManufacturingStatus.Complete && fighter.Movement == null)
                     candidates.Add(fighter);
             }
 
-            // Capital ships (completed only)
             foreach (CapitalShip ship in faction.GetOwnedUnitsByType<CapitalShip>())
             {
-                if (ship.ManufacturingStatus == ManufacturingStatus.Complete)
+                if (ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null)
                     candidates.Add(ship);
             }
 
-            // Buildings (completed only)
             foreach (Building building in faction.GetOwnedUnitsByType<Building>())
             {
-                if (building.GetManufacturingStatus() == ManufacturingStatus.Complete)
+                if (building.GetManufacturingStatus() == ManufacturingStatus.Complete && building.Movement == null)
                     candidates.Add(building);
             }
 

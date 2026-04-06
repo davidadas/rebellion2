@@ -581,7 +581,7 @@ namespace Rebellion.Tests.Managers
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
 
-            var method = typeof(AISystem).GetMethod(
+            System.Reflection.MethodInfo method = typeof(AISystem).GetMethod(
                 "CalculateFleetAssaultStrength",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
@@ -648,7 +648,7 @@ namespace Rebellion.Tests.Managers
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
 
-            var method = typeof(AISystem).GetMethod(
+            System.Reflection.MethodInfo method = typeof(AISystem).GetMethod(
                 "CalculateFleetAssaultStrength",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );

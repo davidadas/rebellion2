@@ -95,15 +95,6 @@ public class StubMission : Mission
 }
 
 /// <summary>
-/// Static factories for common game entities used in tests.
-/// Each method returns an unattached entity — call game.AttachNode() as needed.
-/// Replaces duplicated factory methods in FogOfWarSystemTests.
-/// </summary>
-/// <summary>
-/// Returns queued int values for NextInt, queued double values for NextDouble.
-/// Falls back to 0 when queues are exhausted.
-/// </summary>
-/// <summary>
 /// Cycles through int values 0, 1, 2, ... wrapping at the range.
 /// Useful for tests that need variety (e.g., different ship types per shipyard).
 /// </summary>
@@ -124,6 +115,10 @@ public class CyclingRNG : IRandomNumberProvider
     }
 }
 
+/// <summary>
+/// Returns queued int values for NextInt, queued double values for NextDouble.
+/// Falls back to 0 when queues are exhausted.
+/// </summary>
 public class SequenceRNG : IRandomNumberProvider
 {
     private readonly Queue<int> ints;
@@ -224,6 +219,10 @@ public static class MissionSceneBuilder
     }
 }
 
+/// <summary>
+/// Static factories for common game entities used in tests.
+/// Each method returns an unattached entity — call game.AttachNode() as needed.
+/// </summary>
 public static class EntityFactory
 {
     public static Officer CreateOfficer(string id, string factionId)

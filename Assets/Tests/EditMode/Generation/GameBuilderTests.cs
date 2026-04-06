@@ -365,7 +365,7 @@ public class GameBuilderTests
             }
         });
 
-        foreach (var faction in game.Factions)
+        foreach (Faction faction in game.Factions)
         {
             // Ensure the faction has at least one fleet.
             Assert.IsTrue(
@@ -457,7 +457,7 @@ public class GameBuilderTests
     public void BuildGame_FogOfWar_OuterRimPlanetsStartUnexplored(GameRoot game)
     {
         GameGenerationRules rules = ResourceManager.Instance.GetConfig<GameGenerationRules>();
-        var visibilityOverrides = new HashSet<(string planetId, string factionId)>(
+        HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(string planetId, string factionId)>(
             rules.GalaxyClassification.FactionSetups
                 .SelectMany(fs => fs.StartingPlanets ?? new List<StartingPlanet>())
                 .Where(sp => !string.IsNullOrEmpty(sp.PlanetInstanceID) && sp.VisibleToFactionIDs != null)

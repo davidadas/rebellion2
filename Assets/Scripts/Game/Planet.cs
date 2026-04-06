@@ -562,10 +562,6 @@ namespace Rebellion.Game
         /// <summary>
         /// Calculates total defense strength from defensive buildings.
         /// </summary>
-        /// <param name="filter">
-        /// <see cref="EntityStateFilter.Active"/> (default) counts only operational defenses;
-        /// <see cref="EntityStateFilter.All"/> includes buildings under construction or in transit.
-        /// </param>
         public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()
@@ -579,12 +575,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets the count of buildings of a specific type.
         /// </summary>
-        /// <param name="buildingType">The type of building.</param>
-        /// <param name="filter">
-        /// <see cref="EntityStateFilter.Active"/> (default) counts only operational buildings
-        /// (manufacturing complete and not in transit);
-        /// <see cref="EntityStateFilter.All"/> includes buildings under construction or in transit.
-        /// </param>
+        /// <param name="buildingType">The type of building to count.</param>
+        /// <param name="filter">Active (default) counts only operational buildings; All includes under construction and in transit.</param>
         /// <returns>The count of buildings of the specified type.</returns>
         public int GetBuildingTypeCount(
             BuildingType buildingType,
@@ -596,10 +588,6 @@ namespace Rebellion.Game
             );
         }
 
-        /// <summary>
-        /// Returns true if <paramref name="entity"/> satisfies <paramref name="filter"/>.
-        /// Active means manufacturing complete and not in transit.
-        /// </summary>
         private static bool IsEntityActive(IManufacturable entity, EntityStateFilter filter)
         {
             if (filter == EntityStateFilter.All)

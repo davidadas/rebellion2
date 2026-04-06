@@ -1127,7 +1127,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 10);
 
             // SequenceRNG: lane select=0 (troops), threshold roll=10 (max, always hits resistance 0)
-            var rng = new SequenceRNG(
+            SequenceRNG rng = new SequenceRNG(
                 intValues: new[]
                 {
                     0, // lane select (troops)
@@ -1155,7 +1155,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
 
             // All rolls select lane 0 (energy) and roll high enough to hit
-            var rng = new SequenceRNG(
+            SequenceRNG rng = new SequenceRNG(
                 intValues: new[]
                 {
                     0,
@@ -1199,7 +1199,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
 
             // Lane 0=energy, lane 1=building. Select lane 1 (building).
-            var rng = new SequenceRNG(intValues: new[] { 1, 10 });
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1, 10 });
             CombatSystem combat = new CombatSystem(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1226,7 +1226,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
 
-            var rng = new SequenceRNG(intValues: new[] { 0, 10 });
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 10 });
             CombatSystem combat = new CombatSystem(game, rng);
 
             int supportBefore = planet.GetPopularSupport("empire");
@@ -1250,7 +1250,7 @@ namespace Rebellion.Tests.Systems
             // Fleet with bombardment=100 → 100 net strikes, but only 1 energy to destroy
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 100);
 
-            var rng = new SequenceRNG(intValues: new[] { 0, 10 });
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 10 });
             CombatSystem combat = new CombatSystem(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1283,7 +1283,7 @@ namespace Rebellion.Tests.Systems
 
             // Lane 0=energy, lane 1=building. Select lane 1 (building).
             // Roll = 1 (min threshold), resistance 15 >= 1 → miss
-            var rng = new SequenceRNG(intValues: new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
             CombatSystem combat = new CombatSystem(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(

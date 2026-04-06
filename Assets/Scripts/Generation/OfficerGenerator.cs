@@ -47,7 +47,7 @@ namespace Rebellion.Generation
             // Group officers by faction
             Dictionary<string, List<Officer>> officersByFaction = new Dictionary<string, List<Officer>>();
 
-            foreach (Officer officer in allOfficers.Shuffle())
+            foreach (Officer officer in allOfficers.Shuffle(rng))
             {
                 string factionId = officer.OwnerInstanceID
                     ?? (officer.AllowedOwnerInstanceIDs.Count == 1
@@ -166,7 +166,7 @@ namespace Rebellion.Generation
 
                 ISceneNode destination = officer.InitialParentInstanceID != null
                     ? factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID)
-                    : factionDests.Shuffle().First();
+                    : factionDests[rng.NextInt(0, factionDests.Count)];
 
                 if (destination is Planet planet)
                     planet.AddChild(officer);

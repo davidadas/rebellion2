@@ -1,3 +1,4 @@
+using System.Drawing;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
@@ -225,6 +226,51 @@ namespace Rebellion.Tests.Systems
 
             // Assert: still exists (not eligible for scrap)
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+
+        [Test]
+        public void ProcessTick_DoesNotScrapInTransitUnit()
+        {
+            // Arrange: capacity 0, only unit is a completed capital ship that is in transit
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                DisplayName = "Star Destroyer",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+                ConstructionCost = 1,
+                Movement = new MovementState
+                {
+                    TransitTicks = 10,
+                    TicksElapsed = 1,
+                    OriginPosition = new Point(0, 0),
+                    CurrentPosition = new Point(0, 0),
+                },
+            };
+            game.AttachNode(ship, fleet);
+
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
+            FixedRNG rng = new FixedRNG();
+
+            // Act
+            maintenanceSystem.ProcessTick(rng);
+
+            // Assert: in-transit ship is not eligible for scrap
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
         }
 
         [Test]
