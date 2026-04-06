@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -32,9 +33,7 @@ public class InciteUprisingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable,
-            baseTicks: 2,
-            spreadTicks: 10
+            successProbabilityTable
         )
     {
         Planet planet = (Planet)target;
@@ -92,7 +91,10 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Starts an uprising on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         planet.BeginUprising();

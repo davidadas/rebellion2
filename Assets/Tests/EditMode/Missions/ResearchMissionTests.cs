@@ -235,5 +235,79 @@ namespace Rebellion.Tests.Missions
                 );
             });
         }
+
+        [Test]
+        public void ShipDesign_SerializesAndDeserializes()
+        {
+            ResearchMission mission = new ResearchMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                Name = "Ship Design",
+                DisplayName = "Ship Design",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Leadership,
+                ResearchType = ManufacturingType.Ship,
+                HasInitiated = true,
+                MaxProgress = 15,
+                CurrentProgress = 7,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
+            Assert.AreEqual("Ship Design", deserialized.Name);
+            Assert.AreEqual("Ship Design", deserialized.DisplayName);
+            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Leadership, deserialized.ParticipantSkill);
+            Assert.AreEqual(ManufacturingType.Ship, deserialized.ResearchType);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(15, deserialized.MaxProgress);
+            Assert.AreEqual(7, deserialized.CurrentProgress);
+        }
+
+        [Test]
+        public void TroopTraining_SerializesAndDeserializes()
+        {
+            ResearchMission mission = new ResearchMission
+            {
+                InstanceID = "MISSION2",
+                OwnerInstanceID = "FACTION1",
+                Name = "Troop Training",
+                DisplayName = "Troop Training",
+                TargetInstanceID = "PLANET1",
+                ResearchType = ManufacturingType.Troop,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+
+            Assert.AreEqual("Troop Training", deserialized.Name);
+            Assert.AreEqual("Troop Training", deserialized.DisplayName);
+            Assert.AreEqual(ManufacturingType.Troop, deserialized.ResearchType);
+        }
+
+        [Test]
+        public void FacilityDesign_SerializesAndDeserializes()
+        {
+            ResearchMission mission = new ResearchMission
+            {
+                InstanceID = "MISSION3",
+                OwnerInstanceID = "FACTION1",
+                Name = "Facility Design",
+                DisplayName = "Facility Design",
+                TargetInstanceID = "PLANET1",
+                ResearchType = ManufacturingType.Building,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+
+            Assert.AreEqual("Facility Design", deserialized.Name);
+            Assert.AreEqual("Facility Design", deserialized.DisplayName);
+            Assert.AreEqual(ManufacturingType.Building, deserialized.ResearchType);
+        }
     }
 }

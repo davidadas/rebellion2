@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -34,9 +35,7 @@ public class RescueMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable,
-            baseTicks: 1,
-            spreadTicks: 6
+            successProbabilityTable
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -60,7 +59,10 @@ public class RescueMission : Mission
     /// <summary>
     /// Clears the captured state and captor from the rescued officer.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)

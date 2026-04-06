@@ -243,7 +243,7 @@ public class GameManager
         combatManager = new CombatSystem(game, randomProvider);
         blockadeManager = new BlockadeSystem(game);
         deathStarManager = new DeathStarSystem(game);
-        researchManager = new ResearchSystem(game);
+        researchManager = new ResearchSystem();
         jediManager = new JediSystem(game);
         betrayalManager = new BetrayalSystem(game);
         supportShiftManager = new SupportShiftSystem(game);

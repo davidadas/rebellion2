@@ -37,9 +37,7 @@ public class ResearchMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            null,
-            baseTicks: 10,
-            spreadTicks: 10
+            null
         )
     {
         ResearchType = researchType;
@@ -53,6 +51,8 @@ public class ResearchMission : Mission
 
     /// <summary>
     /// Returns the officer's research skill as a direct probability (0-100).
+    /// Only Officers should be assigned to research missions; non-Officer participants
+    /// return 0 and will always fail the success check.
     /// </summary>
     /// <param name="agent">The mission participant to evaluate.</param>
     /// <returns>The officer's research skill for this mission's type, or 0 if not an officer.</returns>
@@ -81,15 +81,17 @@ public class ResearchMission : Mission
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>An empty list (no additional results).</returns>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
         if (faction == null)
             return new List<GameResult>();
 
         GameConfig.ResearchConfig config = game.Config.Research;
-        Random rng = new Random(game.CurrentTick ^ InstanceID.GetHashCode());
-        int reward = config.BaseResearchPoints + rng.Next(0, config.ResearchDiceRange + 1);
+        int reward = config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
 
         if (faction.ResearchCapacity.ContainsKey(ResearchType))
             faction.ResearchCapacity[ResearchType] += reward;

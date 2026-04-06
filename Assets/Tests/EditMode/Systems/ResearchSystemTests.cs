@@ -38,7 +38,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, sys);
 
-            system = new ResearchSystem(game);
+            system = new ResearchSystem();
         }
 
         private Building CreateShipyard(string id)

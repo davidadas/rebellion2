@@ -33,9 +33,7 @@ public class RecruitmentMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable,
-            baseTicks: 5,
-            spreadTicks: 20
+            successProbabilityTable
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -56,7 +54,10 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         Planet planet = GetParent() as Planet;

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -30,9 +31,7 @@ public class SabotageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable,
-            baseTicks: 1,
-            spreadTicks: 2
+            successProbabilityTable
         ) { }
 
     /// <summary>
@@ -46,7 +45,10 @@ public class SabotageMission : Mission
     /// <summary>
     /// Destroys the first building on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Planet planet = GetParent() as Planet;
         List<Building> buildings = planet.GetAllBuildings();

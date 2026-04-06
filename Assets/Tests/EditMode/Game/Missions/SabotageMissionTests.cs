@@ -126,5 +126,33 @@ namespace Rebellion.Tests.Game.Missions
                 "Mission should fail when all buildings removed before execution"
             );
         }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            SabotageMission mission = new SabotageMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                Name = "Sabotage",
+                DisplayName = "Sabotage",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Combat,
+                HasInitiated = true,
+                MaxProgress = 6,
+                CurrentProgress = 4,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            SabotageMission deserialized = SerializationHelper.Deserialize<SabotageMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("Sabotage", deserialized.Name);
+            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Combat, deserialized.ParticipantSkill);
+            Assert.IsTrue(deserialized.HasInitiated);
+            Assert.AreEqual(6, deserialized.MaxProgress);
+            Assert.AreEqual(4, deserialized.CurrentProgress);
+        }
     }
 }

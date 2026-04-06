@@ -73,9 +73,7 @@ public abstract class Mission : ContainerNode
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
-        ProbabilityTable successProbabilityTable,
-        int baseTicks,
-        int spreadTicks
+        ProbabilityTable successProbabilityTable
     )
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -90,8 +88,6 @@ public abstract class Mission : ContainerNode
             successProbabilityTable ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
         DecoyProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
         FoilProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
-        BaseTicks = baseTicks;
-        SpreadTicks = spreadTicks;
     }
 
     /// <summary>
@@ -295,24 +291,24 @@ public abstract class Mission : ContainerNode
             if (!IsTargetValid(game))
             {
                 outcome = MissionOutcome.Failed;
-                results.AddRange(OnFailed(game));
+                results.AddRange(OnFailed(game, provider));
             }
             else
             {
                 outcome = MissionOutcome.Success;
-                results.AddRange(OnSuccess(game));
+                results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
             }
         }
         else if (CheckMissionFoiled(provider, foilProbability))
         {
             outcome = MissionOutcome.Foiled;
-            results.AddRange(OnFoiled(game));
+            results.AddRange(OnFoiled(game, provider));
         }
         else
         {
             outcome = MissionOutcome.Failed;
-            results.AddRange(OnFailed(game));
+            results.AddRange(OnFailed(game, provider));
         }
 
         List<IMissionParticipant> allParticipants = GetAllParticipants();
@@ -369,18 +365,20 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.
     /// </summary>
-    protected abstract List<GameResult> OnSuccess(GameRoot game);
+    protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
 
     /// <summary>
     /// Override to apply effects when the mission is foiled by enemy forces.
     /// Default returns no results.
     /// </summary>
-    protected virtual List<GameResult> OnFoiled(GameRoot game) => new List<GameResult>();
+    protected virtual List<GameResult> OnFoiled(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.
     /// </summary>
-    protected virtual List<GameResult> OnFailed(GameRoot game) => new List<GameResult>();
+    protected virtual List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     /// <summary>
     /// Returns all mission participants as children of the mission.

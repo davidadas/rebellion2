@@ -35,9 +35,7 @@ public class AbductionMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable,
-            baseTicks: 1,
-            spreadTicks: 2
+            successProbabilityTable
         )
     {
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
@@ -61,7 +59,10 @@ public class AbductionMission : Mission
     /// <summary>
     /// Marks the target officer as captured and assigns the captor faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(GameRoot game)
+    protected override List<GameResult> OnSuccess(
+        GameRoot game,
+        IRandomNumberProvider provider
+    )
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)

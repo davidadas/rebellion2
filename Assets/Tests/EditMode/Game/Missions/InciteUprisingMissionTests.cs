@@ -244,5 +244,33 @@ namespace Rebellion.Tests.Game.Missions
                 "High enemy regiment strength should reduce incite probability enough to fail at 99% roll"
             );
         }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            InciteUprisingMission mission = new InciteUprisingMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                Name = "Incite Uprising",
+                DisplayName = "Incite Uprising",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Diplomacy,
+                HasInitiated = false,
+                MaxProgress = 20,
+                CurrentProgress = 0,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            InciteUprisingMission deserialized =
+                SerializationHelper.Deserialize<InciteUprisingMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("Incite Uprising", deserialized.Name);
+            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
+            Assert.IsFalse(deserialized.HasInitiated);
+            Assert.AreEqual(20, deserialized.MaxProgress);
+        }
     }
 }

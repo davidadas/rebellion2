@@ -246,5 +246,33 @@ namespace Rebellion.Tests.Game.Missions
                 )
             );
         }
+
+        [Test]
+        public void SerializesAndDeserializes()
+        {
+            AbductionMission mission = new AbductionMission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                Name = "Abduction",
+                DisplayName = "Abduction",
+                TargetInstanceID = "PLANET1",
+                ParticipantSkill = MissionParticipantSkill.Espionage,
+                TargetOfficerInstanceID = "OFFICER2",
+                HasInitiated = false,
+                MaxProgress = 5,
+                CurrentProgress = 0,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            AbductionMission deserialized = SerializationHelper.Deserialize<AbductionMission>(xml);
+
+            Assert.AreEqual("MISSION1", deserialized.InstanceID);
+            Assert.AreEqual("Abduction", deserialized.Name);
+            Assert.AreEqual("OFFICER2", deserialized.TargetOfficerInstanceID);
+            Assert.AreEqual(MissionParticipantSkill.Espionage, deserialized.ParticipantSkill);
+            Assert.IsFalse(deserialized.HasInitiated);
+            Assert.AreEqual(5, deserialized.MaxProgress);
+        }
     }
 }
