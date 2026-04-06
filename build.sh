@@ -4,15 +4,31 @@ set -e
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
 
+# Roslynator needs DOTNET_ROOT to find the SDK
+if [ -z "$DOTNET_ROOT" ]; then
+    sdk_base="$(dotnet --info 2>/dev/null | sed -n 's/.*Base Path:[[:space:]]*//p' | tr -d '[:space:]')"
+    if [ -n "$sdk_base" ]; then
+        export DOTNET_ROOT="$(dirname "$(dirname "$sdk_base")")"
+    fi
+fi
+
 # Detect platform and set defaults
 case "$(uname -s)" in
     Darwin)
         UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/MacOS/Unity}"
         FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
         ;;
-    *)
+    Linux)
+        UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.4.0f1/Editor/Unity}"
+        FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
         UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
         FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
+        ;;
+    *)
+        echo "Unknown platform: $(uname -s). Set UNITY env var manually."
+        exit 1
         ;;
 esac
 
@@ -20,11 +36,12 @@ usage() {
     echo "Usage: ./build.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  lint    Run Roslynator static analysis"
-    echo "  test    Run EditMode tests via Unity"
-    echo "  build   Build standalone player"
-    echo "  clean   Remove build artifacts"
-    echo "  all     Run lint + test"
+    echo "  lint      Run Roslynator static analysis"
+    echo "  test      Run EditMode tests via Unity"
+    echo "  coverage  Run EditMode tests with code coverage report"
+    echo "  build     Build standalone player"
+    echo "  clean     Remove build artifacts"
+    echo "  all       Run lint + test"
     exit 1
 }
 
@@ -68,6 +85,21 @@ do_test() {
     echo "Test results written to $TEST_RESULTS"
 }
 
+do_coverage() {
+    local coverage_dir="${COVERAGE_DIR:-Coverage}"
+    "$UNITY" \
+        -runTests \
+        -testPlatform EditMode \
+        -projectPath "$PROJECT_PATH" \
+        -testResults "$TEST_RESULTS" \
+        -batchmode \
+        -nographics \
+        -enableCodeCoverage \
+        -coverageResultsPath "$coverage_dir" \
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+    echo "Coverage report written to $coverage_dir/Report/index.html"
+}
+
 do_build() {
     "$UNITY" \
         -batchmode \
@@ -86,10 +118,12 @@ do_clean() {
 }
 
 case "${1:-}" in
-    lint)  do_lint ;;
-    test)  do_test ;;
-    build) do_build ;;
-    clean) do_clean ;;
-    all)   do_lint; do_test ;;
-    *)     usage ;;
+    lint)     do_lint ;;
+    test)     do_test ;;
+    coverage) do_coverage ;;
+    build)    do_build ;;
+    clean)    do_clean ;;
+    all)      do_lint; do_test ;;
+    "")       do_lint; do_test ;;
+    *)        usage ;;
 esac

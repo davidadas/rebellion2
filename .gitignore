@@ -1,6 +1,9 @@
 # Claude Code
 .claude/
 
+# Coverage
+/Coverage/
+
 # Unity Files
 /[Ll]ibrary/
 /[Ll]ogs/
