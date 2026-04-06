@@ -512,15 +512,12 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Rebuilds TechnologyLevels from current game data based on ManufacturingResearchLevels.
-        /// Called after loading a save file to ensure mod compatibility.
-        ///
-        /// This method reconstructs the technology tree using the current game's entity definitions
-        /// (from data files, including any active mods) rather than the serialized Technology objects,
-        /// ensuring that balance changes and new content are reflected in loaded saves.
+        /// Rebuilds TechnologyLevels from the given templates.
+        /// Loads all tiers into the tree; <see cref="GetResearchedTechnologies"/> filters
+        /// by the faction's current research level at query time.
         /// </summary>
-        /// <param name="game">The game instance containing current entity definitions.</param>
-        public void LoadTechnologyLevels(IManufacturable[] templates)
+        /// <param name="templates">All manufacturable entity definitions to evaluate.</param>
+        public void RebuildTechnologyLevels(IManufacturable[] templates)
         {
             TechnologyLevels.Clear();
 
@@ -530,10 +527,7 @@ namespace Rebellion.Game
                     continue;
 
                 int requiredLevel = template.GetRequiredResearchLevel();
-                int currentLevel = ManufacturingResearchLevels[template.GetManufacturingType()];
-
-                if (currentLevel >= requiredLevel)
-                    AddTechnologyNode(requiredLevel, new Technology(template));
+                AddTechnologyNode(requiredLevel, new Technology(template));
             }
         }
     }

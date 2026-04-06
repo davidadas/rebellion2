@@ -8,11 +8,8 @@ using Rebellion.Util.Common;
 
 /// <summary>
 /// Research mission that awards capacity points to a faction's research pool.
-/// Three subtypes (Ship Design, Troop Training, Facility Design) all share this class,
-/// differing only in which ManufacturingType they target.
-/// Success probability is the officer's research skill for the subtype (0–100).
-/// On success: awards BaseResearchPoints + random(0, ResearchDiceRange) capacity points
-/// and increments the officer's research skill by 1.
+/// Three subtypes (Ship Design, Troop Training, Facility Design) share this class,
+/// differing only in which <see cref="ManufacturingType"/> they target.
 /// </summary>
 public class ResearchMission : Mission
 {
@@ -55,9 +52,10 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Uses the officer's research skill for the subtype as a direct probability (0–100).
-    /// Matches the original: no table lookup, skill IS the success chance.
+    /// Returns the officer's research skill as a direct probability (0-100).
     /// </summary>
+    /// <param name="agent">The mission participant to evaluate.</param>
+    /// <returns>The officer's research skill for this mission's type, or 0 if not an officer.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (agent is Officer officer)
@@ -66,15 +64,17 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Research missions target own planets — never foiled.
+    /// Research missions target own planets and are never foiled.
     /// </summary>
+    /// <param name="defenseScore">The defense score (unused).</param>
+    /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// Awards research capacity points to the faction and increments the officer's
-    /// research skill. Reward = BaseResearchPoints + random(0, ResearchDiceRange).
-    /// Original: 1 + random(0, 6) = 1–7 points.
+    /// Awards research capacity points to the faction and increments the officer's skill.
     /// </summary>
+    /// <param name="game">The game instance.</param>
+    /// <returns>An empty list (no additional results).</returns>
     protected override List<GameResult> OnSuccess(GameRoot game)
     {
         Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
@@ -97,12 +97,21 @@ public class ResearchMission : Mission
         return new List<GameResult>();
     }
 
+    /// <summary>
+    /// Checks whether the mission target planet is still owned by the mission's faction.
+    /// </summary>
+    /// <param name="game">The game instance.</param>
+    /// <returns>True if the parent planet is owned by this faction.</returns>
     protected override bool IsTargetValid(GameRoot game)
     {
         return GetParent() is Planet p
             && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 
+    /// <summary>
+    /// Applies tick range configuration for research missions.
+    /// </summary>
+    /// <param name="tables">The mission probability tables config.</param>
     public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         base.Configure(tables);
@@ -114,13 +123,20 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Research missions repeat as long as the planet remains owned.
+    /// Research missions repeat as long as the planet remains owned by this faction.
     /// </summary>
+    /// <param name="game">The game instance.</param>
+    /// <returns>True if the mission should continue.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 
+    /// <summary>
+    /// Maps a manufacturing type to the display name for the research subtype.
+    /// </summary>
+    /// <param name="type">The manufacturing type.</param>
+    /// <returns>The mission display name.</returns>
     private static string GetMissionName(ManufacturingType type)
     {
         return type switch

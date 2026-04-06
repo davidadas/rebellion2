@@ -200,7 +200,7 @@ public class GameBuilderTests
             );
 
             // Simulate what GameManager.RebuildDerivedState does
-            faction.LoadTechnologyLevels(templates);
+            faction.RebuildTechnologyLevels(templates);
 
             int techCountAfter = faction
                 .TechnologyLevels.Values.SelectMany(level =>
@@ -211,7 +211,7 @@ public class GameBuilderTests
             Assert.Greater(
                 techCountAfter,
                 0,
-                $"Faction {faction.GetDisplayName()} should still have technologies after LoadTechnologyLevels."
+                $"Faction {faction.GetDisplayName()} should still have technologies after RebuildTechnologyLevels."
             );
 
             Assert.AreEqual(
@@ -237,7 +237,7 @@ public class GameBuilderTests
         foreach (Faction faction in game.Factions)
         {
             // Rebuild to test the rebuild path specifically
-            faction.LoadTechnologyLevels(templates);
+            faction.RebuildTechnologyLevels(templates);
 
             Assert.IsTrue(
                 faction.GetResearchedTechnologies(ManufacturingType.Ship).Count > 0,

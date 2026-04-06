@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
+using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -305,6 +308,25 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_CapacityMeetsThreshold_EmitsResult()
+        {
+            faction.ResearchCapacity[ManufacturingType.Ship] = 100;
+
+            List<GameResult> results = system.ProcessTick(
+                game,
+                new FixedRandomProvider(new[] { 0.5 })
+            );
+
+            ResearchLevelAdvancedResult result = results
+                .OfType<ResearchLevelAdvancedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(result, "Should emit a ResearchLevelAdvancedResult");
+            Assert.AreEqual(faction.InstanceID, result.FactionInstanceID);
+            Assert.AreEqual(ManufacturingType.Ship, result.ResearchType);
+            Assert.AreEqual(1, result.NewLevel);
+        }
+
+        [Test]
         public void ProcessTick_CapacityExceedsThreshold_KeepsRemainder()
         {
             faction.ResearchCapacity[ManufacturingType.Ship] = 130;
@@ -400,6 +422,59 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
             Assert.AreEqual(3, empire.ResearchCapacity[ManufacturingType.Ship]);
+        }
+
+        // --- Technology unlocking after level advancement ---
+
+        private IManufacturable[] LoadTemplates()
+        {
+            IResourceManager resourceManager = ResourceManager.Instance;
+            return resourceManager
+                .GetGameData<Building>()
+                .Cast<IManufacturable>()
+                .Concat(resourceManager.GetGameData<CapitalShip>())
+                .Concat(resourceManager.GetGameData<Starfighter>())
+                .Concat(resourceManager.GetGameData<Regiment>())
+                .ToArray();
+        }
+
+        [Test]
+        public void ProcessTick_LevelAdvancement_UnlocksNewTechnologies(
+            [Values(ManufacturingType.Ship, ManufacturingType.Building, ManufacturingType.Troop)]
+                ManufacturingType type
+        )
+        {
+            IManufacturable[] templates = LoadTemplates();
+            faction.RebuildTechnologyLevels(templates);
+
+            // Start at level 0
+            faction.SetResearchLevel(type, 0);
+            List<Technology> techsAtLevel0 = faction.GetResearchedTechnologies(type);
+
+            // Verify there are level 1 techs to unlock
+            bool hasLevel1Techs = templates.Any(t =>
+                t.GetManufacturingType() == type
+                && t.GetRequiredResearchLevel() == 1
+                && t.AllowedOwnerInstanceIDs.Contains(faction.InstanceID)
+            );
+            if (!hasLevel1Techs)
+                Assert.Ignore($"No level 1 {type} technologies for {faction.InstanceID}");
+
+            // Set capacity to meet threshold, advance via ProcessTick
+            GameConfig config = game.GetConfig();
+            int cost = config.Research.LevelCosts[1];
+            faction.ResearchCapacity[type] = cost;
+
+            system.ProcessTick(game, new FixedRandomProvider(new[] { 0.5 }));
+
+            Assert.AreEqual(1, faction.GetResearchLevel(type));
+
+            List<Technology> techsAtLevel1 = faction.GetResearchedTechnologies(type);
+            Assert.Greater(
+                techsAtLevel1.Count,
+                techsAtLevel0.Count,
+                $"Advancing {type} research to level 1 should unlock additional technologies"
+            );
         }
     }
 }

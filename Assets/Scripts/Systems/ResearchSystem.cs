@@ -11,14 +11,14 @@ namespace Rebellion.Systems
 {
     public class ResearchSystem
     {
-        private readonly GameRoot game;
+        public ResearchSystem(GameRoot game) { }
 
-        public ResearchSystem(GameRoot game)
-        {
-            this.game = game;
-        }
-
-        /// <summary>Processes research for the current tick across all factions.</summary>
+        /// <summary>
+        /// Processes research for the current tick across all factions.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for skill rolls.</param>
+        /// <returns>Any results produced during this tick (e.g. level advancements).</returns>
         public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -36,7 +36,10 @@ namespace Rebellion.Systems
             return results;
         }
 
-        /// <summary>Each idle facility contributes +1 research capacity per tick.</summary>
+        /// <summary>
+        /// Each idle facility contributes +1 research capacity per tick.
+        /// </summary>
+        /// <param name="faction">The faction to accumulate capacity for.</param>
         private void AccumulateIdleFacilityCapacity(Faction faction)
         {
             List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
@@ -54,7 +57,13 @@ namespace Rebellion.Systems
             }
         }
 
-        /// <summary>Idle officers at planets with matching facilities roll against their research skill.</summary>
+        /// <summary>
+        /// Idle officers at planets with matching facilities roll against their research skill.
+        /// On success, awards capacity points and increments the officer's skill.
+        /// </summary>
+        /// <param name="faction">The faction whose officers to process.</param>
+        /// <param name="config">Research configuration (points, dice range).</param>
+        /// <param name="provider">Random number provider for skill rolls.</param>
         private void AccumulateOfficerResearch(
             Faction faction,
             GameConfig.ResearchConfig config,
@@ -100,7 +109,13 @@ namespace Rebellion.Systems
             }
         }
 
-        /// <summary>Advances research level when accumulated capacity meets the threshold.</summary>
+        /// <summary>
+        /// Advances research level when accumulated capacity meets the threshold.
+        /// </summary>
+        /// <param name="faction">The faction to check advancement for.</param>
+        /// <param name="config">Research configuration (level costs).</param>
+        /// <param name="game">The game instance.</param>
+        /// <param name="results">List to append advancement results to.</param>
         private void CheckLevelAdvancement(
             Faction faction,
             GameConfig.ResearchConfig config,
@@ -120,7 +135,6 @@ namespace Rebellion.Systems
                 {
                     faction.ResearchCapacity[type] -= cost;
                     faction.SetResearchLevel(type, nextLevel);
-                    // TODO: Rebuild technology levels after research advancement
 
                     results.Add(new ResearchLevelAdvancedResult
                     {

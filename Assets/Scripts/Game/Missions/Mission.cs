@@ -116,7 +116,8 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Returns the configured tick range as [BaseTicks, SpreadTicks].
+    /// Returns the configured tick values as [BaseTicks, SpreadTicks].
+    /// Actual duration is BaseTicks + random(0, SpreadTicks) inclusive.
     /// </summary>
     public int[] GetTickRange() => new int[] { BaseTicks, SpreadTicks };
 
