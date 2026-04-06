@@ -35,7 +35,8 @@ namespace Rebellion.Game
         public int BaseBuildSpeed { get; set; }
 
         // Research Info
-        public int RequiredResearchLevel { get; set; }
+        public int ResearchOrder { get; set; }
+        public int ResearchDifficulty { get; set; }
 
         // Manufacturing Info
         public string ProducerOwnerID { get; set; }
@@ -93,12 +94,20 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the research level required to manufacture the manufacturable.
+        /// Returns the position in the research unlock sequence for this unit's manufacturing type.
+        /// 0 = available at game start without research.
         /// </summary>
-        /// <returns>The research level required to manufacture the manufacturable.</returns>
-        public int GetRequiredResearchLevel()
+        public int GetResearchOrder()
         {
-            return RequiredResearchLevel;
+            return ResearchOrder;
+        }
+
+        /// <summary>
+        /// Returns the accumulated research capacity cost required to unlock this unit.
+        /// </summary>
+        public int GetResearchDifficulty()
+        {
+            return ResearchDifficulty;
         }
 
         /// <summary>

@@ -221,7 +221,7 @@ namespace Rebellion.Systems
             // Original game selects randomly from ALL researched capital ship types,
             // not just the highest tier. Each shipyard gets a random ship type.
             List<Technology> availableTechs = faction
-                .GetResearchedTechnologies(ManufacturingType.Ship)
+                .GetUnlockedTechnologies(ManufacturingType.Ship)
                 .Where(tech => tech.GetReference().GetType() == typeof(CapitalShip))
                 .ToList();
 
@@ -1123,7 +1123,7 @@ namespace Rebellion.Systems
         )
         {
             return faction
-                .GetResearchedTechnologies(manufacturingType)
+                .GetUnlockedTechnologies(manufacturingType)
                 .LastOrDefault(tech => tech.GetReference().GetType() == referenceType);
         }
 
@@ -1138,7 +1138,7 @@ namespace Rebellion.Systems
         )
         {
             return faction
-                .GetResearchedTechnologies(manufacturingType)
+                .GetUnlockedTechnologies(manufacturingType)
                 .LastOrDefault(tech =>
                     (tech.GetReference() as Building)?.GetBuildingType() == buildingType
                 );

@@ -21,19 +21,15 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes research for the current tick across all factions.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <returns>Any results produced during this tick (e.g. level advancements).</returns>
         public List<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            GameConfig config = game.GetConfig();
-            GameConfig.ResearchConfig researchConfig = config.Research;
             List<Faction> factions = game.GetFactions();
 
             foreach (Faction faction in factions)
             {
                 AccumulateIdleFacilityCapacity(faction);
-                CheckLevelAdvancement(faction, researchConfig, game, results);
+                CheckUnitUnlock(faction, game, results);
             }
 
             return results;
@@ -42,7 +38,6 @@ namespace Rebellion.Systems
         /// <summary>
         /// Each idle facility contributes +1 research capacity per tick.
         /// </summary>
-        /// <param name="faction">The faction to accumulate capacity for.</param>
         private void AccumulateIdleFacilityCapacity(Faction faction)
         {
             List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
@@ -61,42 +56,42 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances research level when accumulated capacity meets the threshold.
+        /// Unlocks the next technology in the queue when accumulated capacity
+        /// meets the target's ResearchDifficulty. Loops to handle carry-over.
         /// </summary>
-        /// <param name="faction">The faction to check advancement for.</param>
-        /// <param name="config">Research configuration (level costs).</param>
-        /// <param name="game">The game instance.</param>
-        /// <param name="results">List to append advancement results to.</param>
-        private void CheckLevelAdvancement(
+        private void CheckUnitUnlock(
             Faction faction,
-            GameConfig.ResearchConfig config,
             GameRoot game,
             List<GameResult> results
         )
         {
             foreach (ManufacturingType type in ResearchableTypes)
             {
-                int currentLevel = faction.GetResearchLevel(type);
-                int nextLevel = currentLevel + 1;
-
-                if (!config.LevelCosts.TryGetValue(nextLevel, out int cost))
-                    continue;
-
-                if (faction.ResearchCapacity[type] >= cost)
+                while (true)
                 {
-                    faction.ResearchCapacity[type] -= cost;
-                    faction.SetResearchLevel(type, nextLevel);
+                    Technology target = faction.GetCurrentResearchTarget(type);
+                    if (target == null)
+                        break;
 
-                    results.Add(new ResearchLevelAdvancedResult
+                    int difficulty = target.GetResearchDifficulty();
+                    if (faction.ResearchCapacity[type] < difficulty)
+                        break;
+
+                    faction.ResearchCapacity[type] -= difficulty;
+                    faction.SetHighestUnlockedOrder(type, target.GetResearchOrder());
+
+                    string techName = target.GetReference().GetDisplayName();
+                    results.Add(new TechnologyUnlockedResult
                     {
                         Tick = game.CurrentTick,
                         FactionInstanceID = faction.InstanceID,
                         ResearchType = type,
-                        NewLevel = nextLevel,
+                        TechnologyName = techName,
+                        ResearchOrder = target.GetResearchOrder(),
                     });
 
                     GameLogger.Log(
-                        $"{faction.DisplayName} advanced {type} research to level {nextLevel}"
+                        $"{faction.DisplayName} unlocked {type} technology: {techName} (order {target.GetResearchOrder()})"
                     );
                 }
             }

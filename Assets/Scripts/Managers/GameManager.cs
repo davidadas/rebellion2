@@ -267,7 +267,7 @@ public class GameManager
             .ToArray();
 
         foreach (Faction faction in game.GetFactions())
-            faction.RebuildTechnologyLevels(templates);
+            faction.RebuildResearchQueues(templates);
 
         manufacturingManager.RebuildQueues();
     }

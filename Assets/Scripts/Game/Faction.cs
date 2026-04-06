@@ -21,17 +21,18 @@ namespace Rebellion.Game
         public FactionModifiers Modifiers { get; set; } = new FactionModifiers();
 
         /// <summary>
-        /// Technology levels organized by manufacturing type and research level.
-        /// NOT serialized - rebuilt from ManufacturingResearchLevels on load to respect mods.
+        /// Flat sorted list of technologies per manufacturing type.
+        /// NOT serialized — rebuilt from templates on load to respect mods.
         /// </summary>
         [PersistableIgnore]
-        public Dictionary<
-            ManufacturingType,
-            SortedDictionary<int, List<Technology>>
-        > TechnologyLevels { get; set; } =
-            new Dictionary<ManufacturingType, SortedDictionary<int, List<Technology>>>();
+        public Dictionary<ManufacturingType, List<Technology>> ResearchQueue { get; set; } =
+            new Dictionary<ManufacturingType, List<Technology>>();
 
-        public Dictionary<ManufacturingType, int> ManufacturingResearchLevels { get; set; } =
+        /// <summary>
+        /// Highest research order unlocked per manufacturing type.
+        /// Units with ResearchOrder &lt;= this value are available for production.
+        /// </summary>
+        public Dictionary<ManufacturingType, int> UnlockedResearchOrders { get; set; } =
             new Dictionary<ManufacturingType, int>()
             {
                 { ManufacturingType.Building, 0 },
@@ -160,100 +161,45 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Adds a technology node to the faction's technology levels.
+        /// Returns technologies unlocked for a specific manufacturing type.
+        /// A technology is unlocked when its ResearchOrder &lt;= UnlockedResearchOrders[type].
         /// </summary>
-        /// <param name="level">The level of the technology.</param>
-        /// <param name="node">The technology node to add.</param>
-        public void AddTechnologyNode(int level, Technology node)
+        public List<Technology> GetUnlockedTechnologies(ManufacturingType manufacturingType)
         {
-            IManufacturable tech = node.GetReference();
-
-            if (
-                tech.AllowedOwnerInstanceIDs != null
-                && !tech.AllowedOwnerInstanceIDs.Contains(InstanceID)
-            )
-            {
-                throw new InvalidOperationException(
-                    $"Cannot add technology {tech.GetDisplayName()} to faction {DisplayName}. Owner IDs do not match."
-                );
-            }
-
-            if (
-                !TechnologyLevels.TryGetValue(
-                    tech.GetManufacturingType(),
-                    out SortedDictionary<int, List<Technology>> techLevels
-                )
-            )
-            {
-                techLevels = new SortedDictionary<int, List<Technology>>();
-                TechnologyLevels[tech.GetManufacturingType()] = techLevels;
-            }
-
-            if (!techLevels.TryGetValue(level, out List<Technology> nodesAtLevel))
-            {
-                nodesAtLevel = new List<Technology>();
-                techLevels[level] = nodesAtLevel;
-            }
-
-            if (!nodesAtLevel.Contains(node))
-            {
-                nodesAtLevel.Add(node);
-            }
-        }
-
-        /// <summary>
-        /// Returns a list of technologies that have been researched for a specific manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to check.</param>
-        /// <returns>A list of researched technologies.</returns>
-        public List<Technology> GetResearchedTechnologies(ManufacturingType manufacturingType)
-        {
-            if (
-                !TechnologyLevels.TryGetValue(
-                    manufacturingType,
-                    out SortedDictionary<int, List<Technology>> techLevels
-                )
-            )
-            {
+            if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
                 return new List<Technology>();
-            }
 
-            int currentResearchLevel = GetResearchLevel(manufacturingType);
-
-            return techLevels
-                .Where(kvp => kvp.Key <= currentResearchLevel)
-                .SelectMany(kvp => kvp.Value)
-                .Where(tech => tech.GetRequiredResearchLevel() <= currentResearchLevel)
-                .ToList();
+            int unlockedOrder = GetHighestUnlockedOrder(manufacturingType);
+            return queue.Where(t => t.GetResearchOrder() <= unlockedOrder).ToList();
         }
 
         /// <summary>
-        /// Returns the research level for each manufacturing type.
+        /// Returns the next technology to be researched for a manufacturing type,
+        /// or null if all technologies are unlocked.
         /// </summary>
-        /// <returns>A dictionary mapping manufacturing type to its current research level.</returns>
-        public Dictionary<ManufacturingType, int> GetResearchLevels()
+        public Technology GetCurrentResearchTarget(ManufacturingType manufacturingType)
         {
-            return ManufacturingResearchLevels;
+            if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
+                return null;
+
+            int unlockedOrder = GetHighestUnlockedOrder(manufacturingType);
+            return queue.FirstOrDefault(t => t.GetResearchOrder() > unlockedOrder);
         }
 
         /// <summary>
-        /// Returns the research level for a specific manufacturing type.
+        /// Returns the highest unlocked research order for a specific manufacturing type.
         /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to check.</param>
-        /// <returns>The research level for the specified manufacturing type.</returns>
-        public int GetResearchLevel(ManufacturingType manufacturingType)
+        public int GetHighestUnlockedOrder(ManufacturingType manufacturingType)
         {
-            return ManufacturingResearchLevels[manufacturingType];
+            return UnlockedResearchOrders[manufacturingType];
         }
 
         /// <summary>
-        /// Sets the research level for a specific manufacturing type.
+        /// Sets the highest unlocked research order for a specific manufacturing type.
         /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to set.</param>
-        /// <param name="level">The new research level.</param>
-        public void SetResearchLevel(ManufacturingType manufacturingType, int level)
+        public void SetHighestUnlockedOrder(ManufacturingType manufacturingType, int order)
         {
-            ManufacturingResearchLevels[manufacturingType] = level;
+            UnlockedResearchOrders[manufacturingType] = order;
         }
 
         /// <summary>
@@ -512,23 +458,34 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Rebuilds TechnologyLevels from the given templates.
-        /// Loads all tiers into the tree; <see cref="GetResearchedTechnologies"/> filters
-        /// by the faction's current research level at query time.
+        /// Rebuilds ResearchQueue from the given templates.
+        /// Groups by ManufacturingType, sorts by ResearchOrder.
         /// </summary>
-        /// <param name="templates">All manufacturable entity definitions to evaluate.</param>
-        public void RebuildTechnologyLevels(IManufacturable[] templates)
+        public void RebuildResearchQueues(IManufacturable[] templates)
         {
-            TechnologyLevels.Clear();
+            ResearchQueue.Clear();
 
             foreach (IManufacturable template in templates)
             {
-                if (!template.AllowedOwnerInstanceIDs.Contains(InstanceID))
+                if (
+                    template.AllowedOwnerInstanceIDs != null
+                    && template.AllowedOwnerInstanceIDs.Count > 0
+                    && !template.AllowedOwnerInstanceIDs.Contains(InstanceID)
+                )
                     continue;
 
-                int requiredLevel = template.GetRequiredResearchLevel();
-                AddTechnologyNode(requiredLevel, new Technology(template));
+                ManufacturingType type = template.GetManufacturingType();
+                if (!ResearchQueue.TryGetValue(type, out List<Technology> queue))
+                {
+                    queue = new List<Technology>();
+                    ResearchQueue[type] = queue;
+                }
+
+                queue.Add(new Technology(template));
             }
+
+            foreach (List<Technology> queue in ResearchQueue.Values)
+                queue.Sort((a, b) => a.GetResearchOrder().CompareTo(b.GetResearchOrder()));
         }
     }
 }

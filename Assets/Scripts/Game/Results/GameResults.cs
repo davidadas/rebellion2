@@ -161,11 +161,12 @@ namespace Rebellion.Game.Results
         public List<string> DestroyedBuildingInstanceIDs { get; set; } = new List<string>();
     }
 
-    public class ResearchLevelAdvancedResult : GameResult
+    public class TechnologyUnlockedResult : GameResult
     {
         public string FactionInstanceID { get; set; }
         public ManufacturingType ResearchType { get; set; }
-        public int NewLevel { get; set; }
+        public string TechnologyName { get; set; }
+        public int ResearchOrder { get; set; }
     }
 
     public class VictoryResult : GameResult

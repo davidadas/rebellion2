@@ -69,6 +69,18 @@ namespace Rebellion.Tests.Systems
             };
         }
 
+        private void SetupShipResearchQueue(params (string name, int order, int difficulty)[] techs)
+        {
+            IManufacturable[] templates = techs.Select(t => (IManufacturable)new CapitalShip
+            {
+                DisplayName = t.name,
+                ResearchOrder = t.order,
+                ResearchDifficulty = t.difficulty,
+                AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
+            }).ToArray();
+            faction.RebuildResearchQueues(templates);
+        }
+
         // --- Passive capacity from idle facilities ---
 
         [Test]
@@ -162,98 +174,111 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Troop]);
         }
 
-        // --- Level advancement ---
+        // --- Per-unit sequential unlocking ---
 
         [Test]
-        public void ProcessTick_CapacityMeetsThreshold_AdvancesLevel()
+        public void ProcessTick_CapacityMeetsDifficulty_UnlocksUnit()
         {
-            // Level 0 → 1 costs 100 capacity
-            faction.ResearchCapacity[ManufacturingType.Ship] = 100;
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12)
+            );
+            faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(1, faction.GetResearchLevel(ManufacturingType.Ship));
-            Assert.AreEqual(
-                0,
-                faction.ResearchCapacity[ManufacturingType.Ship],
-                "Cost should be subtracted from capacity"
-            );
+            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
+            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship],
+                "Cost should be subtracted from capacity");
         }
 
         [Test]
-        public void ProcessTick_CapacityMeetsThreshold_EmitsResult()
+        public void ProcessTick_CapacityMeetsDifficulty_EmitsResult()
         {
-            faction.ResearchCapacity[ManufacturingType.Ship] = 100;
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12)
+            );
+            faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
             List<GameResult> results = system.ProcessTick(game);
 
-            ResearchLevelAdvancedResult result = results
-                .OfType<ResearchLevelAdvancedResult>()
+            TechnologyUnlockedResult result = results
+                .OfType<TechnologyUnlockedResult>()
                 .FirstOrDefault();
-            Assert.IsNotNull(result, "Should emit a ResearchLevelAdvancedResult");
+            Assert.IsNotNull(result, "Should emit a TechnologyUnlockedResult");
             Assert.AreEqual(faction.InstanceID, result.FactionInstanceID);
             Assert.AreEqual(ManufacturingType.Ship, result.ResearchType);
-            Assert.AreEqual(1, result.NewLevel);
+            Assert.AreEqual("Frigate", result.TechnologyName);
+            Assert.AreEqual(1, result.ResearchOrder);
         }
 
         [Test]
-        public void ProcessTick_CapacityExceedsThreshold_KeepsRemainder()
+        public void ProcessTick_ExcessCapacity_CarriesOverAndUnlocksMultiple()
         {
-            faction.ResearchCapacity[ManufacturingType.Ship] = 130;
-
-            system.ProcessTick(game);
-
-            Assert.AreEqual(1, faction.GetResearchLevel(ManufacturingType.Ship));
-            Assert.AreEqual(
-                30,
-                faction.ResearchCapacity[ManufacturingType.Ship],
-                "Remainder should carry over after level advancement"
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12),
+                ("Cruiser", 2, 24)
             );
-        }
-
-        [Test]
-        public void ProcessTick_CapacityBelowThreshold_NoAdvancement()
-        {
-            faction.ResearchCapacity[ManufacturingType.Ship] = 50;
+            // Enough to unlock both: 12 + 24 = 36
+            faction.ResearchCapacity[ManufacturingType.Ship] = 40;
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(0, faction.GetResearchLevel(ManufacturingType.Ship));
-            Assert.AreEqual(50, faction.ResearchCapacity[ManufacturingType.Ship]);
+            Assert.AreEqual(2, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
+            Assert.AreEqual(4, faction.ResearchCapacity[ManufacturingType.Ship],
+                "Remainder should carry over after unlocking");
         }
 
         [Test]
-        public void ProcessTick_MaxLevel_NoFurtherAdvancement()
+        public void ProcessTick_CapacityBelowDifficulty_NoUnlock()
         {
-            // Default config has levels 1-5, set to max
-            faction.SetResearchLevel(ManufacturingType.Ship, 5);
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12)
+            );
+            faction.ResearchCapacity[ManufacturingType.Ship] = 5;
+
+            system.ProcessTick(game);
+
+            Assert.AreEqual(0, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
+            Assert.AreEqual(5, faction.ResearchCapacity[ManufacturingType.Ship]);
+        }
+
+        [Test]
+        public void ProcessTick_AllUnlocked_NoFurtherAdvancement()
+        {
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12)
+            );
+            faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 1);
             faction.ResearchCapacity[ManufacturingType.Ship] = 9999;
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(
-                5,
-                faction.GetResearchLevel(ManufacturingType.Ship),
-                "Should not advance beyond max configured level"
-            );
+            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                "Should not advance beyond last technology");
         }
 
         [Test]
         public void ProcessTick_AccumulatesAcrossMultipleTicks()
         {
+            SetupShipResearchQueue(
+                ("Dreadnaught", 0, 0),
+                ("Frigate", 1, 12)
+            );
             game.AttachNode(CreateShipyard("SY1"), planet);
 
-            // Run 100 ticks with just the idle facility (+1 per tick = 100 total → level 1)
-            for (int i = 0; i < 100; i++)
+            // Run 12 ticks with just the idle facility (+1 per tick = 12 total → unlock Frigate)
+            for (int i = 0; i < 12; i++)
             {
                 system.ProcessTick(game);
             }
 
-            Assert.AreEqual(
-                1,
-                faction.GetResearchLevel(ManufacturingType.Ship),
-                "100 ticks of +1 should reach level 1 threshold of 100"
-            );
+            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                "12 ticks of +1 should reach Frigate's difficulty of 12");
         }
 
         // --- Multi-faction isolation ---
@@ -294,7 +319,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(3, empire.ResearchCapacity[ManufacturingType.Ship]);
         }
 
-        // --- Technology unlocking after level advancement ---
+        // --- Technology unlocking with real templates ---
 
         private IManufacturable[] LoadTemplates()
         {
@@ -309,41 +334,35 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LevelAdvancement_UnlocksNewTechnologies(
+        public void ProcessTick_UnlockUnit_UnlocksNewTechnologies(
             [Values(ManufacturingType.Ship, ManufacturingType.Building, ManufacturingType.Troop)]
                 ManufacturingType type
         )
         {
             IManufacturable[] templates = LoadTemplates();
-            faction.RebuildTechnologyLevels(templates);
+            faction.RebuildResearchQueues(templates);
 
-            // Start at level 0
-            faction.SetResearchLevel(type, 0);
-            List<Technology> techsAtLevel0 = faction.GetResearchedTechnologies(type);
+            // Start at order 0
+            faction.SetHighestUnlockedOrder(type, 0);
+            List<Technology> techsAtOrder0 = faction.GetUnlockedTechnologies(type);
 
-            // Verify there are level 1 techs to unlock
-            bool hasLevel1Techs = templates.Any(t =>
-                t.GetManufacturingType() == type
-                && t.GetRequiredResearchLevel() == 1
-                && t.AllowedOwnerInstanceIDs.Contains(faction.InstanceID)
-            );
-            if (!hasLevel1Techs)
-                Assert.Ignore($"No level 1 {type} technologies for {faction.InstanceID}");
+            // Find the first technology with order > 0
+            Technology target = faction.GetCurrentResearchTarget(type);
+            if (target == null)
+                Assert.Ignore($"No researchable {type} technologies for {faction.InstanceID}");
 
-            // Set capacity to meet threshold, advance via ProcessTick
-            GameConfig config = game.GetConfig();
-            int cost = config.Research.LevelCosts[1];
-            faction.ResearchCapacity[type] = cost;
+            // Set capacity to meet its difficulty
+            faction.ResearchCapacity[type] = target.GetResearchDifficulty();
 
             system.ProcessTick(game);
 
-            Assert.AreEqual(1, faction.GetResearchLevel(type));
+            Assert.AreEqual(target.GetResearchOrder(), faction.GetHighestUnlockedOrder(type));
 
-            List<Technology> techsAtLevel1 = faction.GetResearchedTechnologies(type);
+            List<Technology> techsAfter = faction.GetUnlockedTechnologies(type);
             Assert.Greater(
-                techsAtLevel1.Count,
-                techsAtLevel0.Count,
-                $"Advancing {type} research to level 1 should unlock additional technologies"
+                techsAfter.Count,
+                techsAtOrder0.Count,
+                $"Unlocking {type} technology should increase available technologies"
             );
         }
     }

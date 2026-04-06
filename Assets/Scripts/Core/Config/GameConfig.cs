@@ -104,12 +104,6 @@ public class GameConfig
                 "GameConfig.Research.ResearchDiceRange cannot be negative"
             );
         }
-        if (Research.LevelCosts == null || Research.LevelCosts.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "GameConfig.Research.LevelCosts must have at least one entry"
-            );
-        }
     }
 
     /// <summary>
@@ -480,17 +474,11 @@ public class GameConfig
     [PersistableObject]
     public class ResearchConfig
     {
-        /// <summary>Base research points awarded per successful officer tick (GENERAL_PARAM_6171).</summary>
+        /// <summary>Base research points awarded per successful research mission (GENERAL_PARAM_6171).</summary>
         public int BaseResearchPoints { get; set; }
 
         /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172).</summary>
         public int ResearchDiceRange { get; set; }
-
-        /// <summary>
-        /// Cumulative capacity cost to advance to each research level.
-        /// Key = level being advanced TO, Value = capacity required.
-        /// </summary>
-        public Dictionary<int, int> LevelCosts { get; set; } = new Dictionary<int, int>();
     }
 
     /// <summary>

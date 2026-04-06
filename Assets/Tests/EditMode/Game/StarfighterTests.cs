@@ -17,7 +17,8 @@ public class StarfighterTests
             ConstructionCost = 200,
             MaintenanceCost = 15,
             BaseBuildSpeed = 8,
-            RequiredResearchLevel = 2,
+            ResearchOrder = 2,
+            ResearchDifficulty = 24,
             SquadronSize = 12,
             DetectionRating = 50,
             Bombardment = 30,
@@ -427,9 +428,14 @@ public class StarfighterTests
             "BaseBuildSpeed should be correctly deserialized."
         );
         Assert.AreEqual(
-            starfighter.RequiredResearchLevel,
-            deserialized.RequiredResearchLevel,
-            "RequiredResearchLevel should be correctly deserialized."
+            starfighter.ResearchOrder,
+            deserialized.ResearchOrder,
+            "ResearchOrder should be correctly deserialized."
+        );
+        Assert.AreEqual(
+            starfighter.ResearchDifficulty,
+            deserialized.ResearchDifficulty,
+            "ResearchDifficulty should be correctly deserialized."
         );
         Assert.AreEqual(
             starfighter.SquadronSize,

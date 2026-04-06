@@ -771,18 +771,17 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(yard, planet);
 
             // Add a mine tech so the AI has something to try to build
-            empire.AddTechnologyNode(
-                0,
-                new Technology(
-                    new Building
-                    {
-                        InstanceID = "mine_template",
-                        OwnerInstanceID = "empire",
-                        BuildingType = BuildingType.Mine,
-                        ConstructionCost = 1,
-                    }
-                )
-            );
+            empire.RebuildResearchQueues(new IManufacturable[]
+            {
+                new Building
+                {
+                    InstanceID = "mine_template",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ConstructionCost = 1,
+                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                }
+            });
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
@@ -1445,17 +1444,16 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(stationaryFleet, planet);
 
-            empire.AddTechnologyNode(
-                0,
-                new Technology(
-                    new CapitalShip
-                    {
-                        InstanceID = "ship_template",
-                        ConstructionCost = 1,
-                        BaseBuildSpeed = 1,
-                    }
-                )
-            );
+            empire.RebuildResearchQueues(new IManufacturable[]
+            {
+                new CapitalShip
+                {
+                    InstanceID = "ship_template",
+                    ConstructionCost = 1,
+                    BaseBuildSpeed = 1,
+                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                }
+            });
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
@@ -1536,17 +1534,16 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(refinery, planet);
 
-            empire.AddTechnologyNode(
-                0,
-                new Technology(
-                    new CapitalShip
-                    {
-                        InstanceID = "ship_template",
-                        ConstructionCost = 1,
-                        BaseBuildSpeed = 1,
-                    }
-                )
-            );
+            empire.RebuildResearchQueues(new IManufacturable[]
+            {
+                new CapitalShip
+                {
+                    InstanceID = "ship_template",
+                    ConstructionCost = 1,
+                    BaseBuildSpeed = 1,
+                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                }
+            });
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);

@@ -712,37 +712,14 @@
   </Jedi>
 
   <!-- Research System Configuration -->
-  <!-- Controls technology advancement from idle facilities and officer research -->
+  <!-- Controls technology advancement from idle facilities and officer research missions.
+       Per-unit unlock costs are defined by ResearchDifficulty in the unit data XMLs. -->
   <Research>
-    <!-- Base research points per successful officer tick (GENERAL_PARAM_6171) -->
-    <BaseResearchPoints>5</BaseResearchPoints>
+    <!-- Base research points per successful research mission (GENERAL_PARAM_6171) -->
+    <BaseResearchPoints>1</BaseResearchPoints>
 
     <!-- Random bonus range: award random(0, DiceRange) extra points (GENERAL_PARAM_6172) -->
-    <ResearchDiceRange>10</ResearchDiceRange>
-
-    <!-- Capacity cost to advance TO each research level -->
-    <LevelCosts>
-      <Entry>
-        <Key>1</Key>
-        <Value>100</Value>
-      </Entry>
-      <Entry>
-        <Key>2</Key>
-        <Value>200</Value>
-      </Entry>
-      <Entry>
-        <Key>3</Key>
-        <Value>350</Value>
-      </Entry>
-      <Entry>
-        <Key>4</Key>
-        <Value>550</Value>
-      </Entry>
-      <Entry>
-        <Key>5</Key>
-        <Value>800</Value>
-      </Entry>
-    </LevelCosts>
+    <ResearchDiceRange>6</ResearchDiceRange>
   </Research>
 
   <!-- Probability Tables -->

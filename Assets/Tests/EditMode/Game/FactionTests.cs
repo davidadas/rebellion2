@@ -44,7 +44,8 @@ public class FactionTests
             InstanceID = "BUILDING1",
             DisplayName = "Mine",
             ConstructionCost = 100,
-            RequiredResearchLevel = 1,
+            ResearchOrder = 1,
+            ResearchDifficulty = 24,
         };
 
         technology = new Technology(building);
@@ -123,103 +124,118 @@ public class FactionTests
     }
 
     [Test]
-    public void AddTechnologyNode_AddsTechnology()
+    public void GetUnlockedTechnologies_ReturnsCorrectTechnologies()
     {
-        faction.SetResearchLevel(ManufacturingType.Building, 1);
-        faction.AddTechnologyNode(1, technology);
-
-        List<Technology> technologies = faction.GetResearchedTechnologies(
-            ManufacturingType.Building
-        );
-
-        Assert.Contains(technology, technologies, "Should contain the added technology");
-    }
-
-    [Test]
-    public void AddTechnologyNode_WithInvalidOwner_ThrowsException()
-    {
-        Building restrictedBuilding = new Building
-        {
-            DisplayName = "Restricted Building",
-            RequiredResearchLevel = 1,
-            AllowedOwnerInstanceIDs = new List<string> { "FACTION2" },
-        };
-        Technology restrictedTech = new Technology(restrictedBuilding);
-
-        Assert.Throws<InvalidOperationException>(
-            () => faction.AddTechnologyNode(1, restrictedTech),
-            "Should throw exception when owner IDs do not match"
-        );
-    }
-
-    [Test]
-    public void GetResearchedTechnologies_ReturnsCorrectTechnologies()
-    {
-        faction.SetResearchLevel(ManufacturingType.Building, 2);
-        faction.AddTechnologyNode(1, technology);
+        faction.SetHighestUnlockedOrder(ManufacturingType.Building, 2);
 
         Building advancedBuilding = new Building
         {
             DisplayName = "Advanced Mine",
-            RequiredResearchLevel = 2,
+            ResearchOrder = 2,
+            ResearchDifficulty = 40,
         };
-        Technology advancedTech = new Technology(advancedBuilding);
-        faction.AddTechnologyNode(2, advancedTech);
 
         Building futureBuilding = new Building
         {
             DisplayName = "Future Building",
-            RequiredResearchLevel = 3,
+            ResearchOrder = 3,
+            ResearchDifficulty = 60,
         };
-        Technology futureTech = new Technology(futureBuilding);
-        faction.AddTechnologyNode(3, futureTech);
 
-        List<Technology> researched = faction.GetResearchedTechnologies(ManufacturingType.Building);
+        IManufacturable[] templates = new IManufacturable[] { building, advancedBuilding, futureBuilding };
+        faction.RebuildResearchQueues(templates);
 
-        Assert.AreEqual(
-            2,
-            researched.Count,
-            "Should only return technologies at or below research level"
+        List<Technology> unlocked = faction.GetUnlockedTechnologies(ManufacturingType.Building);
+
+        Assert.AreEqual(2, unlocked.Count, "Should only return technologies at or below unlocked order");
+        Assert.IsFalse(
+            unlocked.Exists(t => t.GetReference().GetDisplayName() == "Future Building"),
+            "Should not contain order 3 technology"
         );
-        Assert.Contains(technology, researched, "Should contain level 1 technology");
-        Assert.Contains(advancedTech, researched, "Should contain level 2 technology");
-        Assert.IsFalse(researched.Contains(futureTech), "Should not contain level 3 technology");
     }
 
     [Test]
-    public void GetResearchLevel_ReturnsCorrectLevel()
+    public void GetCurrentResearchTarget_ReturnsNextUnlocked()
     {
-        faction.SetResearchLevel(ManufacturingType.Ship, 5);
+        faction.SetHighestUnlockedOrder(ManufacturingType.Building, 0);
 
-        int level = faction.GetResearchLevel(ManufacturingType.Ship);
+        IManufacturable[] templates = new IManufacturable[] { building };
+        faction.RebuildResearchQueues(templates);
 
-        Assert.AreEqual(5, level, "Should return the correct research level");
+        Technology target = faction.GetCurrentResearchTarget(ManufacturingType.Building);
+
+        Assert.IsNotNull(target, "Should return the next technology to research");
+        Assert.AreEqual(1, target.GetResearchOrder());
     }
 
     [Test]
-    public void SetResearchLevel_SetsLevel()
+    public void GetCurrentResearchTarget_AllUnlocked_ReturnsNull()
     {
-        faction.SetResearchLevel(ManufacturingType.Troop, 3);
+        faction.SetHighestUnlockedOrder(ManufacturingType.Building, 99);
+
+        IManufacturable[] templates = new IManufacturable[] { building };
+        faction.RebuildResearchQueues(templates);
+
+        Technology target = faction.GetCurrentResearchTarget(ManufacturingType.Building);
+
+        Assert.IsNull(target, "Should return null when all technologies are unlocked");
+    }
+
+    [Test]
+    public void GetHighestUnlockedOrder_ReturnsCorrectOrder()
+    {
+        faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 5);
+
+        int order = faction.GetHighestUnlockedOrder(ManufacturingType.Ship);
+
+        Assert.AreEqual(5, order, "Should return the correct unlocked order");
+    }
+
+    [Test]
+    public void SetHighestUnlockedOrder_SetsOrder()
+    {
+        faction.SetHighestUnlockedOrder(ManufacturingType.Troop, 3);
 
         Assert.AreEqual(
             3,
-            faction.GetResearchLevel(ManufacturingType.Troop),
-            "Should set the research level correctly"
+            faction.GetHighestUnlockedOrder(ManufacturingType.Troop),
+            "Should set the unlocked order correctly"
         );
     }
 
     [Test]
-    public void GetResearchLevels_ReturnsAllLevels()
+    public void RebuildResearchQueues_FiltersOwnership()
     {
-        faction.SetResearchLevel(ManufacturingType.Building, 2);
-        faction.SetResearchLevel(ManufacturingType.Ship, 3);
-        faction.SetResearchLevel(ManufacturingType.Troop, 1);
+        Building restrictedBuilding = new Building
+        {
+            DisplayName = "Restricted Building",
+            ResearchOrder = 1,
+            ResearchDifficulty = 24,
+            AllowedOwnerInstanceIDs = new List<string> { "FACTION2" },
+        };
 
-        Dictionary<ManufacturingType, int> levels = faction.GetResearchLevels();
+        building.AllowedOwnerInstanceIDs = new List<string> { "FACTION1" };
 
-        Assert.AreEqual(2, levels[ManufacturingType.Building], "Building level should be 2");
-        Assert.AreEqual(3, levels[ManufacturingType.Ship], "Ship level should be 3");
-        Assert.AreEqual(1, levels[ManufacturingType.Troop], "Troop level should be 1");
+        IManufacturable[] templates = new IManufacturable[] { building, restrictedBuilding };
+        faction.RebuildResearchQueues(templates);
+
+        List<Technology> queue = faction.ResearchQueue[ManufacturingType.Building];
+        Assert.AreEqual(1, queue.Count, "Should only include technologies for this faction");
+    }
+
+    [Test]
+    public void RebuildResearchQueues_SortsByResearchOrder()
+    {
+        Building b1 = new Building { DisplayName = "B1", ResearchOrder = 3, ResearchDifficulty = 60, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
+        Building b2 = new Building { DisplayName = "B2", ResearchOrder = 1, ResearchDifficulty = 24, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
+        Building b3 = new Building { DisplayName = "B3", ResearchOrder = 0, ResearchDifficulty = 0, AllowedOwnerInstanceIDs = new List<string> { "FACTION1" } };
+
+        faction.RebuildResearchQueues(new IManufacturable[] { b1, b2, b3 });
+
+        List<Technology> queue = faction.ResearchQueue[ManufacturingType.Building];
+        Assert.AreEqual(0, queue[0].GetResearchOrder());
+        Assert.AreEqual(1, queue[1].GetResearchOrder());
+        Assert.AreEqual(3, queue[2].GetResearchOrder());
     }
 
     [Test]
@@ -312,7 +328,7 @@ public class FactionTests
     //[Test]
     public void SerializeAndDeserialize_MaintainsState_DISABLED()
     {
-        faction.SetResearchLevel(ManufacturingType.Ship, 3);
+        faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 3);
         faction.AddOwnedUnit(planet1);
         faction.AddMessage(new Message(MessageType.Resource, "Test message"));
 
@@ -335,9 +351,9 @@ public class FactionTests
             "PlayerID should be correctly deserialized."
         );
         Assert.AreEqual(
-            faction.GetResearchLevel(ManufacturingType.Ship),
-            deserialized.GetResearchLevel(ManufacturingType.Ship),
-            "Research levels should be correctly deserialized."
+            faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+            deserialized.GetHighestUnlockedOrder(ManufacturingType.Ship),
+            "Research orders should be correctly deserialized."
         );
     }
 
