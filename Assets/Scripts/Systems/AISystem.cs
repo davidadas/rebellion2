@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
@@ -13,11 +12,11 @@ namespace Rebellion.Systems
 {
     public class AISystem
     {
-        private readonly GameRoot game;
-        private readonly MissionSystem missionManager;
-        private readonly MovementSystem movementManager;
-        private readonly ManufacturingSystem manufacturingManager;
-        private readonly IRandomNumberProvider randomProvider;
+        private readonly GameRoot _game;
+        private readonly MissionSystem _missionManager;
+        private readonly MovementSystem _movementManager;
+        private readonly ManufacturingSystem _manufacturingManager;
+        private readonly IRandomNumberProvider _randomProvider;
 
         /// <summary>
         /// Creates a new AISystem.
@@ -30,11 +29,11 @@ namespace Rebellion.Systems
             IRandomNumberProvider randomProvider
         )
         {
-            this.game = game;
-            this.missionManager = missionManager;
-            this.movementManager = movementManager;
-            this.manufacturingManager = manufacturingManager;
-            this.randomProvider = randomProvider;
+            _game = game;
+            _missionManager = missionManager;
+            _movementManager = movementManager;
+            _manufacturingManager = manufacturingManager;
+            _randomProvider = randomProvider;
         }
 
         /// <summary>
@@ -43,10 +42,10 @@ namespace Rebellion.Systems
         /// </summary>
         public void ProcessTick()
         {
-            if (game.CurrentTick % game.Config.AI.TickInterval != 0)
+            if (_game.CurrentTick % _game.Config.AI.TickInterval != 0)
                 return;
 
-            foreach (Faction faction in game.Factions.Where(f => f.IsAIControlled()))
+            foreach (Faction faction in _game.Factions.Where(f => f.IsAIControlled()))
             {
                 UpdateFaction(faction);
             }
@@ -97,7 +96,7 @@ namespace Rebellion.Systems
                 if (leader == null)
                     break;
 
-                missionManager.InitiateMission(MissionType.SubdueUprising, leader, planet, randomProvider);
+                _missionManager.InitiateMission(MissionType.SubdueUprising, leader, planet, _randomProvider);
             }
         }
 
@@ -130,7 +129,7 @@ namespace Rebellion.Systems
                 if (relief == null)
                     break;
 
-                movementManager.RequestMove(relief, planet);
+                _movementManager.RequestMove(relief, planet);
                 dispatched.Add(relief.GetInstanceID());
             }
         }
@@ -183,7 +182,7 @@ namespace Rebellion.Systems
 
             Building templateBuilding = (Building)tech.GetReference();
 
-            if (game.GetRefinedMaterials(faction) < tech.GetReference().GetConstructionCost())
+            if (_game.GetRefinedMaterials(faction) < tech.GetReference().GetConstructionCost())
                 return false;
 
             // Find planets that have both an idle construction yard AND energy capacity
@@ -207,7 +206,7 @@ namespace Rebellion.Systems
             IManufacturable item = tech.GetReferenceCopy();
             item.SetOwnerInstanceID(faction.GetInstanceID());
 
-            manufacturingManager.Enqueue(target, item, target, ignoreCost: false);
+            _manufacturingManager.Enqueue(target, item, target, ignoreCost: false);
             return true;
         }
 
@@ -232,7 +231,7 @@ namespace Rebellion.Systems
 
             while (shipyards.Count > 0)
             {
-                int index = randomProvider.NextInt(0, shipyards.Count);
+                int index = _randomProvider.NextInt(0, shipyards.Count);
                 Planet shipyard = shipyards[index];
                 shipyards.RemoveAt(index);
 
@@ -241,11 +240,11 @@ namespace Rebellion.Systems
                     continue;
 
                 // Random ship type selection per shipyard
-                Technology tech = availableTechs[randomProvider.NextInt(0, availableTechs.Count)];
+                Technology tech = availableTechs[_randomProvider.NextInt(0, availableTechs.Count)];
                 IManufacturable item = tech.GetReferenceCopy();
                 item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                if (!manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
+                if (!_manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false))
                     continue;
             }
         }
@@ -269,8 +268,8 @@ namespace Rebellion.Systems
                 return existing;
 
             // Create a new fleet at this planet for the ship to be built into
-            Fleet newFleet = faction.CreateFleet(game, roleType: FleetRoleType.Battle);
-            game.AttachNode(newFleet, planet);
+            Fleet newFleet = faction.CreateFleet(roleType: FleetRoleType.Battle);
+            _game.AttachNode(newFleet, planet);
             return newFleet;
         }
 
@@ -293,12 +292,12 @@ namespace Rebellion.Systems
                 return;
 
             IManufacturable prototype = starfighterTech.GetReference();
-            if (game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
+            if (_game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
                 return;
 
             while (idleShipyards.Count > 0)
             {
-                int index = randomProvider.NextInt(0, idleShipyards.Count);
+                int index = _randomProvider.NextInt(0, idleShipyards.Count);
                 Planet shipyard = idleShipyards[index];
                 idleShipyards.RemoveAt(index);
 
@@ -326,14 +325,14 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in fleetsWithCapacity)
             {
                 if (
-                    game.GetRefinedMaterials(faction)
+                    _game.GetRefinedMaterials(faction)
                     > starfighterTech.GetReference().GetConstructionCost()
                 )
                 {
                     IManufacturable item = starfighterTech.GetReferenceCopy();
                     item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                    manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false);
+                    _manufacturingManager.Enqueue(shipyard, item, fleet, ignoreCost: false);
                 }
                 else
                 {
@@ -361,12 +360,12 @@ namespace Rebellion.Systems
                 return;
 
             IManufacturable prototype = regimentTech.GetReference();
-            if (game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
+            if (_game.GetRefinedMaterials(faction) <= prototype.GetConstructionCost())
                 return;
 
             while (idleTrainingFacilities.Count > 0)
             {
-                int index = randomProvider.NextInt(0, idleTrainingFacilities.Count);
+                int index = _randomProvider.NextInt(0, idleTrainingFacilities.Count);
                 Planet trainingFacility = idleTrainingFacilities[index];
                 idleTrainingFacilities.RemoveAt(index);
 
@@ -394,14 +393,14 @@ namespace Rebellion.Systems
             foreach (Fleet fleet in fleetsWithCapacity)
             {
                 if (
-                    game.GetRefinedMaterials(faction)
+                    _game.GetRefinedMaterials(faction)
                     > regimentTech.GetReference().GetConstructionCost()
                 )
                 {
                     IManufacturable item = regimentTech.GetReferenceCopy();
                     item.SetOwnerInstanceID(faction.GetInstanceID());
 
-                    manufacturingManager.Enqueue(trainingFacility, item, fleet, ignoreCost: false);
+                    _manufacturingManager.Enqueue(trainingFacility, item, fleet, ignoreCost: false);
                 }
                 else
                 {
@@ -419,7 +418,7 @@ namespace Rebellion.Systems
         private void ManageGarrisons(Faction faction)
         {
             string factionId = faction.InstanceID;
-            GameConfig.GarrisonConfig garrisonConfig = game.Config.AI.Garrison;
+            GameConfig.GarrisonConfig garrisonConfig = _game.Config.AI.Garrison;
 
             foreach (Planet planet in faction.GetOwnedUnitsByType<Planet>())
             {
@@ -453,8 +452,8 @@ namespace Rebellion.Systems
                         if (deficit <= 0)
                             break;
 
-                        game.DetachNode(regiment);
-                        game.AttachNode(regiment, planet);
+                        _game.DetachNode(regiment);
+                        _game.AttachNode(regiment, planet);
                         deficit--;
 
                         GameLogger.Debug(
@@ -480,26 +479,25 @@ namespace Rebellion.Systems
             HashSet<string> dispatched = new HashSet<string>();
 
             // HQ defense priority
-            Planet hqPlanet = game.GetSceneNodeByInstanceID<Planet>(faction.GetHQInstanceID());
+            Planet hqPlanet = _game.GetSceneNodeByInstanceID<Planet>(faction.GetHQInstanceID());
             bool hqNeedsRelief =
-                hqPlanet != null
-                && hqPlanet.IsContested()
+                hqPlanet?.IsContested() == true
                 && !faction
                     .GetOwnedUnitsByType<Fleet>()
                     .Any(f => f.GetParentOfType<Planet>() == hqPlanet);
 
             // Enemy planets (cached once per evaluation)
-            List<Planet> allEnemyPlanets = game.GetSceneNodesByType<Planet>(p =>
+            List<Planet> allEnemyPlanets = _game.GetSceneNodesByType<Planet>(p =>
                 p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
             );
 
             if (!allEnemyPlanets.Any() && !hqNeedsRelief)
                 return;
 
-            int gateLow = game.Config.AI.DeploymentGateLow;
-            int gateHigh = game.Config.AI.DeploymentGateHigh;
+            int gateLow = _game.Config.AI.DeploymentGateLow;
+            int gateHigh = _game.Config.AI.DeploymentGateHigh;
 
-            foreach (PlanetSystem system in game.GetGalaxyMap().PlanetSystems)
+            foreach (PlanetSystem system in _game.GetGalaxyMap().PlanetSystems)
             {
                 // Collect idle battle fleets at this system
                 List<Fleet> idleFleets = system
@@ -565,7 +563,7 @@ namespace Rebellion.Systems
                         continue;
 
                     // Probabilistic gate: roll must be below net strength to proceed
-                    int roll = randomProvider.NextInt(gateLow, gateHigh + 1);
+                    int roll = _randomProvider.NextInt(gateLow, gateHigh + 1);
                     if (roll >= netStrength)
                         continue;
 
@@ -581,7 +579,7 @@ namespace Rebellion.Systems
                         if (deployedStrength > targetDefense)
                             break;
 
-                        movementManager.RequestMove(fleet, target);
+                        _movementManager.RequestMove(fleet, target);
                         dispatched.Add(fleet.GetInstanceID());
                         deployedStrength += CalculateFleetAssaultStrength(fleet);
                         remainingFleets.Remove(fleet);
@@ -638,7 +636,7 @@ namespace Rebellion.Systems
             if (!available.Any())
                 return;
 
-            CachedMissionTables tables = new CachedMissionTables(game.Config.AI.MissionTables);
+            CachedMissionTables tables = new CachedMissionTables(_game.Config.AI.MissionTables);
 
             foreach (Officer officer in available)
             {
@@ -656,11 +654,11 @@ namespace Rebellion.Systems
                         GameLogger.Log(
                             $"Sending {officer.GetDisplayName()} on {missionType} mission to {friendlyTarget.GetDisplayName()}."
                         );
-                        missionManager.InitiateMission(
+                        _missionManager.InitiateMission(
                             missionType.Value,
                             officer,
                             friendlyTarget,
-                            randomProvider
+                            _randomProvider
                         );
                         continue;
                     }
@@ -682,7 +680,7 @@ namespace Rebellion.Systems
                 GameLogger.Log(
                     $"Sending {officer.GetDisplayName()} on {enemyMissionType} mission to {enemyTarget.GetDisplayName()}."
                 );
-                missionManager.InitiateMission(enemyMissionType.Value, officer, enemyTarget, randomProvider);
+                _missionManager.InitiateMission(enemyMissionType.Value, officer, enemyTarget, _randomProvider);
             }
         }
 
@@ -694,14 +692,14 @@ namespace Rebellion.Systems
         private Planet FindMissionTarget(Faction faction)
         {
             string factionId = faction.GetInstanceID();
-            List<Planet> candidates = game.GetSceneNodesByType<Planet>(p =>
+            List<Planet> candidates = _game.GetSceneNodesByType<Planet>(p =>
                 p.IsColonized && (p.GetOwnerInstanceID() == factionId || p.GetOwnerInstanceID() == null)
             );
 
             if (candidates.Count == 0)
                 return null;
 
-            return candidates[randomProvider.NextInt(0, candidates.Count)];
+            return candidates[_randomProvider.NextInt(0, candidates.Count)];
         }
 
         /// <summary>
@@ -712,14 +710,14 @@ namespace Rebellion.Systems
         private Planet FindEnemyMissionTarget(Faction faction)
         {
             string factionId = faction.GetInstanceID();
-            List<Planet> candidates = game.GetSceneNodesByType<Planet>(p =>
+            List<Planet> candidates = _game.GetSceneNodesByType<Planet>(p =>
                 p.IsColonized && p.GetOwnerInstanceID() != null && p.GetOwnerInstanceID() != factionId
             );
 
             if (candidates.Count == 0)
                 return null;
 
-            return candidates[randomProvider.NextInt(0, candidates.Count)];
+            return candidates[_randomProvider.NextInt(0, candidates.Count)];
         }
 
         /// <summary>
@@ -862,7 +860,7 @@ namespace Rebellion.Systems
             // Diplomacy: owned or neutral planet with room for support growth
             if (
                 (owner == null || owner == factionId)
-                && popularSupport < game.Config.Planet.MaxPopularSupport
+                && popularSupport < _game.Config.Planet.MaxPopularSupport
             )
             {
                 int score =
@@ -874,7 +872,7 @@ namespace Rebellion.Systems
             }
 
             // Recruitment: owned planet with unrecruited officers available
-            if (owner == factionId && game.GetUnrecruitedOfficers(factionId).Any())
+            if (owner == factionId && _game.GetUnrecruitedOfficers(factionId).Any())
                 return MissionType.Recruitment;
 
             return null;
@@ -917,7 +915,7 @@ namespace Rebellion.Systems
             // Execute all 4 variants for each active system
             foreach (PlanetSystem system in activeSystems)
             {
-                CapitalShipProductionIssue.ExecuteAllVariants(game, faction, system, randomProvider);
+                CapitalShipProductionIssue.ExecuteAllVariants(_game, faction, system, _randomProvider);
             }
         }
 
@@ -928,8 +926,8 @@ namespace Rebellion.Systems
         /// </summary>
         private void ProcessResourceRebalancing(Faction faction)
         {
-            int maxEnergy = game.Config.ResourceRebalance.MaxEnergy;
-            int maxRawMaterials = game.Config.ResourceRebalance.MaxRawMaterials;
+            int maxEnergy = _game.Config.ResourceRebalance.MaxEnergy;
+            int maxRawMaterials = _game.Config.ResourceRebalance.MaxRawMaterials;
 
             // Pick a random owned core system
             List<Planet> corePlanets = faction
@@ -944,7 +942,7 @@ namespace Rebellion.Systems
             if (corePlanets.Count == 0)
                 return;
 
-            Planet planet = corePlanets[randomProvider.NextInt(0, corePlanets.Count)];
+            Planet planet = corePlanets[_randomProvider.NextInt(0, corePlanets.Count)];
 
             int mines = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
             int facilities =
@@ -956,7 +954,7 @@ namespace Rebellion.Systems
             int energy = planet.EnergyCapacity;
 
             // RESRC_TABLE: [{0,1},{25,2},{50,3},{75,4}] — equal 25% probability per case
-            switch (randomProvider.NextInt(1, 5))
+            switch (_randomProvider.NextInt(1, 5))
             {
                 case 1:
                     if (mines > 0 && rawMaterials > 0)
@@ -1080,7 +1078,7 @@ namespace Rebellion.Systems
             Officer commander = fleet.GetOfficers().FirstOrDefault();
             int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
 
-            int divisor = game.Config.Combat.AssaultPersonnelDivisor;
+            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
             int assaultStrength = (personnel / divisor + 1) * fleetCombatValue;
 
             return assaultStrength;

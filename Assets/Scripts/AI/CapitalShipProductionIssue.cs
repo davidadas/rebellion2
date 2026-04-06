@@ -84,24 +84,24 @@ public class CapitalShipProductionIssue
     }
 
     // Pipeline stage flags (derived from variant, see Section 1.3)
-    private readonly bool enableSetup; // uVar3 / this+0x44: Stage 1 main body
-    private readonly bool enableContribution; // local_3c / this+0x3c: Stage 2 main body
-    private readonly bool enableAssault; // local_38 / this+0x38: Stage 3 main body
-    private readonly bool enableMinorChars; // local_34 / this+0x40: minor char processing in Stage 1
-    private readonly bool enableFinalize; // local_30 / this+0x34: Stage 4 + Death Star path in Stage 1
+    private readonly bool _enableSetup; // uVar3 / this+0x44: Stage 1 main body
+    private readonly bool _enableContribution; // local_3c / this+0x3c: Stage 2 main body
+    private readonly bool _enableAssault; // local_38 / this+0x38: Stage 3 main body
+    private readonly bool _enableMinorChars; // local_34 / this+0x40: minor char processing in Stage 1
+    private readonly bool _enableFinalize; // local_30 / this+0x34: Stage 4 + Death Star path in Stage 1
 
     // Context
-    private readonly Variant variant;
-    private readonly GameRoot game;
-    private readonly Faction faction;
-    private readonly PlanetSystem system;
-    private readonly IRandomNumberProvider provider;
+    private readonly Variant _variant;
+    private readonly GameRoot _game;
+    private readonly Faction _faction;
+    private readonly PlanetSystem _system;
+    private readonly IRandomNumberProvider _provider;
 
     // State built during pipeline
-    private List<CapitalShip> shipsInProgress;
-    private List<StrikeTarget> strikeTargets;
-    private int initialStrikeTargetCount; // this+0x20: stored during setup, used as roll denominator in assault
-    private bool productionComplete; // this+0x30: set when capacity full or targets exhausted
+    private List<CapitalShip> _shipsInProgress;
+    private List<StrikeTarget> _strikeTargets;
+    private int _initialStrikeTargetCount; // this+0x20: stored during setup, used as roll denominator in assault
+    private bool _productionComplete; // this+0x30: set when capacity full or targets exhausted
 
     public CapitalShipProductionIssue(
         Variant variant,
@@ -111,31 +111,31 @@ public class CapitalShipProductionIssue
         IRandomNumberProvider provider
     )
     {
-        this.variant = variant;
-        this.game = game;
-        this.faction = faction;
-        this.system = system;
-        this.provider = provider;
+        _variant = variant;
+        _game = game;
+        _faction = faction;
+        _system = system;
+        _provider = provider;
 
         switch (variant)
         {
             case Variant.SetupMinorChars:
-                enableSetup = true;
-                enableMinorChars = true;
+                _enableSetup = true;
+                _enableMinorChars = true;
                 break;
             case Variant.ContributionOnly:
-                enableContribution = true;
+                _enableContribution = true;
                 break;
             case Variant.SetupContributionAssault:
-                enableSetup = true;
-                enableContribution = true;
-                enableAssault = true;
+                _enableSetup = true;
+                _enableContribution = true;
+                _enableAssault = true;
                 break;
             case Variant.FullPipeline:
-                enableSetup = true;
-                enableContribution = true;
-                enableAssault = true;
-                enableFinalize = true;
+                _enableSetup = true;
+                _enableContribution = true;
+                _enableAssault = true;
+                _enableFinalize = true;
                 break;
         }
     }
@@ -179,7 +179,7 @@ public class CapitalShipProductionIssue
     /// </summary>
     public bool Execute()
     {
-        if (system == null || faction == null)
+        if (_system == null || _faction == null)
             return false;
 
         // All 4 stages run unconditionally, results AND-chained (FUN_0058bd90):
@@ -209,11 +209,11 @@ public class CapitalShipProductionIssue
     /// </summary>
     private bool ExecuteSetup()
     {
-        if (!enableSetup)
+        if (!_enableSetup)
             return true;
 
-        shipsInProgress = EnumerateShipsInProgress();
-        if (shipsInProgress.Count == 0)
+        _shipsInProgress = EnumerateShipsInProgress();
+        if (_shipsInProgress.Count == 0)
             return false;
 
         // Death Star special handling (variant 223 / enableFinalize flag)
@@ -224,11 +224,11 @@ public class CapitalShipProductionIssue
         // enableFinalizePackage will be set here and finalize will apply support shifts.
 
         // Build strike target list (FUN_0058b1e0_enumerate_capital_strike_target_lanes)
-        strikeTargets = EnumerateStrikeTargets();
-        initialStrikeTargetCount = strikeTargets.Count; // Stored at this+0x20 for assault roll denominator
+        _strikeTargets = EnumerateStrikeTargets();
+        _initialStrikeTargetCount = _strikeTargets.Count; // Stored at this+0x20 for assault roll denominator
 
         // Minor character processing (variant 220 / enableMinorChars flag)
-        if (enableMinorChars)
+        if (_enableMinorChars)
         {
             // Original: FUN_0056db30 finds minor characters (type 0x38) at the system,
             // then FUN_0055d1b0 rolls GENERAL_PARAM_1542 (50%) chance for each
@@ -261,18 +261,18 @@ public class CapitalShipProductionIssue
     /// </summary>
     private bool ExecuteContribution()
     {
-        if (!enableContribution)
+        if (!_enableContribution)
             return true;
 
         // Variant 221 skips setup; enumerate ships directly
-        if (shipsInProgress == null)
-            shipsInProgress = EnumerateShipsInProgress();
+        if (_shipsInProgress == null)
+            _shipsInProgress = EnumerateShipsInProgress();
 
-        if (shipsInProgress.Count == 0)
+        if (_shipsInProgress.Count == 0)
             return true;
 
-        string factionId = faction.InstanceID;
-        int divisor = game.Config.AI.CapitalShipProduction.FacilityPersonnelDivisor;
+        string factionId = _faction.InstanceID;
+        int divisor = _game.Config.AI.CapitalShipProduction.FacilityPersonnelDivisor;
 
         // Personnel lookup is system-wide, first-match (FUN_005084a0 with type=3).
         // Original calls this per-facility but always returns the same character
@@ -282,7 +282,7 @@ public class CapitalShipProductionIssue
         // Phase 1: KDY facilities contribute to ship KDY pools (FUN_00526700 loop)
         // Each facility independently picks a random ship and adds its contribution
         // to that ship's persistent KDY pool (FUN_004ff8c0 read, FUN_00500d60 write).
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             if (planet.GetOwnerInstanceID() != factionId)
                 continue;
@@ -293,8 +293,8 @@ public class CapitalShipProductionIssue
                     continue;
                 if (building.DefenseFacilityClass == DefenseFacilityClass.KDY)
                 {
-                    CapitalShip target = shipsInProgress[
-                        provider.NextInt(0, shipsInProgress.Count)
+                    CapitalShip target = _shipsInProgress[
+                        _provider.NextInt(0, _shipsInProgress.Count)
                     ];
                     // FUN_0055d100: (personnel / GENERAL_PARAM_1536 + 1) * facility_value
                     int contribution = (personnelSkill / divisor + 1) * building.ProductionModifier;
@@ -304,7 +304,7 @@ public class CapitalShipProductionIssue
         }
 
         // Phase 2: LNR facilities contribute to ship LNR pools (FUN_00526490 loop)
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             if (planet.GetOwnerInstanceID() != factionId)
                 continue;
@@ -315,8 +315,8 @@ public class CapitalShipProductionIssue
                     continue;
                 if (building.DefenseFacilityClass == DefenseFacilityClass.LNR)
                 {
-                    CapitalShip target = shipsInProgress[
-                        provider.NextInt(0, shipsInProgress.Count)
+                    CapitalShip target = _shipsInProgress[
+                        _provider.NextInt(0, _shipsInProgress.Count)
                     ];
                     int contribution = (personnelSkill / divisor + 1) * building.ProductionModifier;
                     target.LnrPool += contribution;
@@ -327,7 +327,7 @@ public class CapitalShipProductionIssue
         // Phase 3: Apply accumulated pools per-ship using two-resource consumption
         // (FUN_0058bb60 called via FUN_0058b0b0 iterator with PTR_00667490 callback)
         bool anyShipProcessed = false;
-        foreach (CapitalShip ship in shipsInProgress)
+        foreach (CapitalShip ship in _shipsInProgress)
         {
             ApplyContributions(ship);
             anyShipProcessed = true;
@@ -335,7 +335,7 @@ public class CapitalShipProductionIssue
             // Check completion (FUN_00500ca0): ship completes when capacity is full
             if (ship.ProductionCapacityUsed >= ship.ProductionCapacity)
             {
-                productionComplete = true;
+                _productionComplete = true;
             }
         }
 
@@ -417,8 +417,8 @@ public class CapitalShipProductionIssue
     /// </summary>
     private int GetPersonnelSkill()
     {
-        string factionId = faction.InstanceID;
-        foreach (Planet planet in system.Planets)
+        string factionId = _faction.InstanceID;
+        foreach (Planet planet in _system.Planets)
         {
             foreach (Officer officer in planet.GetAllOfficers())
             {
@@ -441,23 +441,23 @@ public class CapitalShipProductionIssue
     /// </summary>
     private bool ExecuteAssault()
     {
-        if (!enableAssault)
+        if (!_enableAssault)
             return true;
 
         // Original: if (*(int *)((int)this + 0x30) == 0) — skip if production complete
-        if (productionComplete)
+        if (_productionComplete)
             return true;
 
-        if (strikeTargets == null)
+        if (_strikeTargets == null)
         {
-            strikeTargets = EnumerateStrikeTargets();
-            initialStrikeTargetCount = strikeTargets.Count;
+            _strikeTargets = EnumerateStrikeTargets();
+            _initialStrikeTargetCount = _strikeTargets.Count;
         }
 
-        if (strikeTargets.Count == 0)
+        if (_strikeTargets.Count == 0)
             return true;
 
-        string factionId = faction.InstanceID;
+        string factionId = _faction.InstanceID;
 
         // 1. Sum fleet assault strength (FUN_004fc870 + FUN_004fc950)
         // Original checks fleet 0x40 flag (bit 6 of offset 0x58) and only sums combat
@@ -465,9 +465,9 @@ public class CapitalShipProductionIssue
         // are in planet manufacturing queues, not in fleets, so there's no direct equivalent
         // of "production fleet." We sum all friendly fleets at the system instead.
         // Formula: FUN_0055d120: (commander_skill / GENERAL_PARAM_1537 + 1) * fleet_combat_value
-        int assaultDivisor = game.Config.Combat.AssaultPersonnelDivisor;
+        int assaultDivisor = _game.Config.Combat.AssaultPersonnelDivisor;
         int totalAssaultStrength = 0;
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             foreach (Fleet fleet in planet.GetFleets())
             {
@@ -484,7 +484,7 @@ public class CapitalShipProductionIssue
 
         // 2. Sum enemy defensive core values (FUN_00526b00 + FUN_0051fd40)
         int totalDefense = 0;
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             if (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == factionId)
                 continue;
@@ -496,30 +496,30 @@ public class CapitalShipProductionIssue
         if (netStrength <= 0)
             return true;
 
-        int thresholdLow = game.Config.AI.CapitalShipProduction.StrikeThresholdLow;
-        int thresholdHigh = game.Config.AI.CapitalShipProduction.StrikeThresholdHigh;
+        int thresholdLow = _game.Config.AI.CapitalShipProduction.StrikeThresholdLow;
+        int thresholdHigh = _game.Config.AI.CapitalShipProduction.StrikeThresholdHigh;
 
         // 4. First strike gate (effectively dead code — see below)
         // Original: roll_dice(this+0x20 - 1 + minor_chars_flag) < minor_chars_flag
-        // Uses initialStrikeTargetCount (this+0x20), NOT current count.
-        // When enableMinorChars=0: roll < 0, always false.
-        // When enableMinorChars=1: no variant has both enableAssault and enableMinorChars.
+        // Uses _initialStrikeTargetCount (this+0x20), NOT current count.
+        // When _enableMinorChars=0: roll < 0, always false.
+        // When _enableMinorChars=1: no variant has both _enableAssault and _enableMinorChars.
         // So this gate never fires. Included for structural completeness.
-        if (enableMinorChars && netStrength > 0 && strikeTargets.Count > 0)
+        if (_enableMinorChars && netStrength > 0 && _strikeTargets.Count > 0)
         {
             int minorFlag = 1;
-            int roll = provider.NextInt(0, initialStrikeTargetCount - 1 + minorFlag + 1);
+            int roll = _provider.NextInt(0, _initialStrikeTargetCount - 1 + minorFlag + 1);
             if (roll < minorFlag)
             {
-                int targetIndex = provider.NextInt(0, strikeTargets.Count);
-                StrikeTarget target = strikeTargets[targetIndex];
-                int resistance = target.GetResistance(game.Config);
+                int targetIndex = _provider.NextInt(0, _strikeTargets.Count);
+                StrikeTarget target = _strikeTargets[targetIndex];
+                int resistance = target.GetResistance(_game.Config);
                 // FUN_0055d140: random_in_range(PARAM_1538, PARAM_1539)
-                int threshold = provider.NextInt(thresholdLow, thresholdHigh + 1);
+                int threshold = _provider.NextInt(thresholdLow, thresholdHigh + 1);
                 if (resistance < threshold)
                 {
                     ApplyStrike(target);
-                    strikeTargets = EnumerateStrikeTargets();
+                    _strikeTargets = EnumerateStrikeTargets();
                 }
             }
         }
@@ -533,36 +533,36 @@ public class CapitalShipProductionIssue
         //   3. Select Nth target from new list — if index >= current count, target is NULL → skip
         //   This creates probability dampening: as targets are destroyed, some rolls
         //   exceed the shrinking list and become no-ops.
-        for (int i = 0; i < netStrength && !productionComplete; i++)
+        for (int i = 0; i < netStrength && !_productionComplete; i++)
         {
             // Roll using stored count from setup (FUN_0053c9f0_roll_dice(this+0x20 - 1))
-            int targetIndex = provider.NextInt(0, initialStrikeTargetCount);
+            int targetIndex = _provider.NextInt(0, _initialStrikeTargetCount);
 
             // Re-enumerate targets every iteration (FUN_0058b1e0 called at line 121)
-            strikeTargets = EnumerateStrikeTargets();
+            _strikeTargets = EnumerateStrikeTargets();
 
             // If rolled index >= current count, target is NULL → skip (FUN_0058b990 returns NULL)
-            if (strikeTargets.Count == 0)
+            if (_strikeTargets.Count == 0)
             {
-                productionComplete = true;
+                _productionComplete = true;
                 break;
             }
-            if (targetIndex >= strikeTargets.Count)
+            if (targetIndex >= _strikeTargets.Count)
                 continue;
 
-            StrikeTarget target = strikeTargets[targetIndex];
-            int resistance = target.GetResistance(game.Config);
+            StrikeTarget target = _strikeTargets[targetIndex];
+            int resistance = target.GetResistance(_game.Config);
             // FUN_0055d140: strike_allowed = resistance < random_in_range(PARAM_1538, PARAM_1539)
-            int threshold = provider.NextInt(thresholdLow, thresholdHigh + 1);
+            int threshold = _provider.NextInt(thresholdLow, thresholdHigh + 1);
 
             if (resistance < threshold)
             {
                 ApplyStrike(target);
                 // Re-enumerate after strike to check if targets exhausted (line 136)
-                strikeTargets = EnumerateStrikeTargets();
+                _strikeTargets = EnumerateStrikeTargets();
                 // Original sets this+0x30 = 1 when re-enumeration finds no targets (line 143-144)
-                if (strikeTargets.Count == 0)
-                    productionComplete = true;
+                if (_strikeTargets.Count == 0)
+                    _productionComplete = true;
             }
         }
 
@@ -589,7 +589,7 @@ public class CapitalShipProductionIssue
     /// </summary>
     private bool ExecuteFinalize()
     {
-        if (!enableFinalize)
+        if (!_enableFinalize)
             return true;
 
         // enableFinalizePackage is set in ExecuteSetup only when Death Star is found.
@@ -607,10 +607,10 @@ public class CapitalShipProductionIssue
     /// </summary>
     private List<CapitalShip> EnumerateShipsInProgress()
     {
-        string factionId = faction.InstanceID;
+        string factionId = _faction.InstanceID;
         List<CapitalShip> ships = new List<CapitalShip>();
 
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             if (planet.GetOwnerInstanceID() != factionId)
                 continue;
@@ -636,10 +636,10 @@ public class CapitalShipProductionIssue
     /// </summary>
     private List<StrikeTarget> EnumerateStrikeTargets()
     {
-        string factionId = faction.InstanceID;
+        string factionId = _faction.InstanceID;
         List<StrikeTarget> targets = new List<StrikeTarget>();
 
-        foreach (Planet planet in system.Planets)
+        foreach (Planet planet in _system.Planets)
         {
             string owner = planet.GetOwnerInstanceID();
             if (owner == null || owner == factionId)
@@ -707,10 +707,10 @@ public class CapitalShipProductionIssue
         switch (target.Type)
         {
             case StrikeTargetType.Troop:
-                game.DetachNode((ISceneNode)target.Target);
+                _game.DetachNode((ISceneNode)target.Target);
                 break;
             case StrikeTargetType.Fighter:
-                game.DetachNode((ISceneNode)target.Target);
+                _game.DetachNode((ISceneNode)target.Target);
                 break;
             case StrikeTargetType.SystemEnergy:
                 if (target.Planet.EnergyCapacity > 0)

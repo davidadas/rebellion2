@@ -5,7 +5,6 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 /// <summary>
@@ -29,13 +28,13 @@ public enum MissionType
 /// </summary>
 public class MissionFactory
 {
-    private readonly GameRoot game;
-    private readonly FogOfWarSystem fogOfWar;
+    private readonly GameRoot _game;
+    private readonly FogOfWarSystem _fogOfWar;
 
     public MissionFactory(GameRoot game, FogOfWarSystem fogOfWar = null)
     {
-        this.game = game;
-        this.fogOfWar = fogOfWar;
+        _game = game;
+        _fogOfWar = fogOfWar;
     }
 
     /// <summary>
@@ -51,7 +50,7 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
-        GameConfig.MissionProbabilityTablesConfig missionTables = game.Config
+        GameConfig.MissionProbabilityTablesConfig missionTables = _game.Config
             ?.ProbabilityTables
             ?.Mission;
 
@@ -95,7 +94,7 @@ public class MissionFactory
                 target,
                 mainParticipants,
                 decoyParticipants,
-                fogOfWar
+                _fogOfWar
             ),
             MissionType.Sabotage => new SabotageMission(
                 ownerInstanceId,
@@ -151,7 +150,7 @@ public class MissionFactory
         );
 
         Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
-        game.AttachNode(mission, closestPlanet);
+        _game.AttachNode(mission, closestPlanet);
 
         return mission;
     }
@@ -185,7 +184,7 @@ public class MissionFactory
 
     private string SelectRecruitmentTarget(string ownerInstanceId, IRandomNumberProvider provider)
     {
-        List<Officer> unrecruited = game.GetUnrecruitedOfficers(ownerInstanceId);
+        List<Officer> unrecruited = _game.GetUnrecruitedOfficers(ownerInstanceId);
         if (unrecruited.Count == 0 || provider == null)
             return null;
         return unrecruited.RandomElement(provider).InstanceID;
@@ -199,7 +198,7 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
+        List<Officer> enemies = _game.GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() != ownerInstanceId
                 && o.GetParentOfType<Planet>() == planet
@@ -217,7 +216,7 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
+        List<Officer> enemies = _game.GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() != ownerInstanceId
                 && o.GetParentOfType<Planet>() == planet
@@ -236,7 +235,7 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> captured = game.GetSceneNodesByType<Officer>()
+        List<Officer> captured = _game.GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() == ownerInstanceId
                 && o.IsCaptured

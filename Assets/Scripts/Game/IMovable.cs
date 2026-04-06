@@ -1,4 +1,3 @@
-using System.Drawing;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game

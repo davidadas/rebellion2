@@ -682,7 +682,7 @@ namespace Rebellion.Game
         /// <returns>A list of faction instance IDs.</returns>
         public List<string> GetMissionFactionInstanceIDs()
         {
-            return Missions.Select(mission => mission.GetOwnerInstanceID()).ToList();
+            return Missions.ConvertAll(mission => mission.GetOwnerInstanceID());
         }
 
         /// <summary>

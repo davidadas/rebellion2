@@ -12,11 +12,11 @@ namespace Rebellion.Systems
     /// </summary>
     public class UprisingSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public UprisingSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace Rebellion.Systems
         /// <param name="provider">Random number provider for dice rolls.</param>
         public void ProcessTick(IRandomNumberProvider provider)
         {
-            List<Planet> planets = game.GetSceneNodesByType<Planet>();
+            List<Planet> planets = _game.GetSceneNodesByType<Planet>();
 
             foreach (Planet planet in planets)
             {
@@ -35,7 +35,7 @@ namespace Rebellion.Systems
                 if (planet.IsInUprising)
                     continue;
 
-                Faction faction = game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+                Faction faction = _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
                 if (faction == null)
                     continue;
 
@@ -46,7 +46,7 @@ namespace Rebellion.Systems
                 int garrisonRequired = CalculateGarrisonRequirement(
                     planet,
                     faction,
-                    game.Config.AI.Garrison
+                    _game.Config.AI.Garrison
                 );
 
                 int garrisonSurplus = troopCount - garrisonRequired;
@@ -83,7 +83,7 @@ namespace Rebellion.Systems
 
                     if (opposingFactionId != null)
                     {
-                        game.ChangeUnitOwnership(planet, opposingFactionId);
+                        _game.ChangeUnitOwnership(planet, opposingFactionId);
                         planet.BeginUprising();
                     }
                 }
@@ -107,7 +107,7 @@ namespace Rebellion.Systems
             upris1Result = 0;
             upris2Result = 0;
 
-            GameConfig.UprisingConfig config = game.Config.Uprising;
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
 
             // Two independent dice rolls: each is random(0..range-1) + addend
             int rollA = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
@@ -185,7 +185,7 @@ namespace Rebellion.Systems
         /// </summary>
         private int CalculateUprisingThreshold(int supportForController)
         {
-            GameConfig.GarrisonConfig config = game.Config.AI.Garrison;
+            GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
 
             if (supportForController >= config.SupportThreshold)
                 return 0;

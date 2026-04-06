@@ -74,10 +74,10 @@ namespace Rebellion.Util.Common
         }
 
         /// <summary>
-        ///
+        /// Determines whether the specified type is a class.
         /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if the type is a class; otherwise, false.</returns>
         public static bool IsClass(Type type)
         {
             return type.IsClass;

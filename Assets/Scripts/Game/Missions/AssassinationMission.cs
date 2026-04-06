@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -55,8 +54,7 @@ public class AssassinationMission : Mission
     protected override bool IsTargetValid(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-        return target != null
-            && !target.IsKilled
+        return target?.IsKilled == false
             && target.GetParentOfType<Planet>() == GetParent() as Planet;
     }
 

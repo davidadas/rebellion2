@@ -19,22 +19,22 @@ namespace Rebellion.Systems
 {
     public class JediSystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
 
         public JediSystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
         /// Processes Force tier advancement and detection for all officers.
         /// Logs each event, applies effects directly to officer state, and returns all results.
         /// </summary>
-        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
+        public List<GameResult> ProcessTick(IRandomNumberProvider rng)
         {
             List<JediResult> events = new List<JediResult>();
 
-            foreach (Officer officer in game.GetSceneNodesByType<Officer>())
+            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 // Skip officers with no Force potential
                 if (officer.ForceExperience == 0 && officer.ForceTier == ForceTier.None)
@@ -54,7 +54,7 @@ namespace Rebellion.Systems
                             Officer = officer,
                             OldTier = oldTier,
                             NewTier = newTier,
-                            Tick = game.CurrentTick,
+                            Tick = _game.CurrentTick,
                         }
                     );
 
@@ -68,7 +68,7 @@ namespace Rebellion.Systems
                                 Officer = officer,
                                 OldTier = oldTier,
                                 NewTier = newTier,
-                                Tick = game.CurrentTick,
+                                Tick = _game.CurrentTick,
                             }
                         );
                     }
@@ -76,7 +76,7 @@ namespace Rebellion.Systems
 
                 // 2. Detection check (every DetectionCheckInterval ticks)
                 if (
-                    game.CurrentTick % game.Config.Jedi.DetectionCheckInterval == 0
+                    _game.CurrentTick % _game.Config.Jedi.DetectionCheckInterval == 0
                     && !officer.IsDiscoveredJedi
                     && officer.ForceTier != ForceTier.None
                 )
@@ -92,7 +92,7 @@ namespace Rebellion.Systems
                                 Officer = officer,
                                 OldTier = officer.ForceTier,
                                 NewTier = officer.ForceTier,
-                                Tick = game.CurrentTick,
+                                Tick = _game.CurrentTick,
                             }
                         );
                     }
@@ -111,9 +111,9 @@ namespace Rebellion.Systems
 
         private ForceTier TierForXP(int xp)
         {
-            if (xp >= game.Config.Jedi.XpToExperienced)
+            if (xp >= _game.Config.Jedi.XpToExperienced)
                 return ForceTier.Experienced;
-            if (xp >= game.Config.Jedi.XpToTraining)
+            if (xp >= _game.Config.Jedi.XpToTraining)
                 return ForceTier.Training;
             if (xp > 0)
                 return ForceTier.Aware;
@@ -123,9 +123,9 @@ namespace Rebellion.Systems
         private double DetectionProbability(ForceTier tier) =>
             tier switch
             {
-                ForceTier.Aware => game.Config.Jedi.DetectProbAware,
-                ForceTier.Training => game.Config.Jedi.DetectProbTraining,
-                ForceTier.Experienced => game.Config.Jedi.DetectProbExperienced,
+                ForceTier.Aware => _game.Config.Jedi.DetectProbAware,
+                ForceTier.Training => _game.Config.Jedi.DetectProbTraining,
+                ForceTier.Experienced => _game.Config.Jedi.DetectProbExperienced,
                 _ => 0.0,
             };
     }

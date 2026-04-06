@@ -24,7 +24,7 @@ namespace Rebellion.Core.Simulation
     /// </summary>
     public class SystemRandomProvider : IRandomNumberProvider
     {
-        private readonly Random rng;
+        private readonly Random _rng;
 
         /// <summary>
         /// Creates a random provider with the specified seed.
@@ -32,12 +32,12 @@ namespace Rebellion.Core.Simulation
         /// <param name="seed">Seed value for deterministic output.</param>
         public SystemRandomProvider(int seed)
         {
-            rng = new Random(seed);
+            _rng = new Random(seed);
         }
 
-        public double NextDouble() => rng.NextDouble();
+        public double NextDouble() => _rng.NextDouble();
 
-        public int NextInt(int min, int max) => rng.Next(min, max);
+        public int NextInt(int min, int max) => _rng.Next(min, max);
     }
 
     /// <summary>
@@ -46,8 +46,8 @@ namespace Rebellion.Core.Simulation
     /// </summary>
     public class FixedRandomProvider : IRandomNumberProvider
     {
-        private readonly double[] values;
-        private int index = 0;
+        private readonly double[] _values;
+        private int _index;
 
         /// <summary>
         /// Creates a fixed random provider with the specified value sequence.
@@ -55,10 +55,10 @@ namespace Rebellion.Core.Simulation
         /// <param name="fixedValues">Array of values to return in sequence.</param>
         public FixedRandomProvider(double[] fixedValues)
         {
-            values = fixedValues;
+            _values = fixedValues;
         }
 
-        public double NextDouble() => values[index++ % values.Length];
+        public double NextDouble() => _values[_index++ % _values.Length];
 
         public int NextInt(int min, int max) => (int)(NextDouble() * (max - min)) + min;
     }

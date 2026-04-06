@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Util.Attributes;
-using Rebellion.Util.Common;
 
 /// <summary>
 /// Runtime simulation configuration.

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Game
 {
@@ -28,12 +27,14 @@ namespace Rebellion.Game
         public GameSummary Summary { get; set; }
         public GameMetadata Metadata { get; set; } = new GameMetadata();
 
+        /// <summary>
         /// Runtime simulation configuration.
+        /// </summary>
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
 
         // Game State
-        public int CurrentTick = 0;
+        public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Medium;
 
         // Game Events
@@ -527,7 +528,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Checks if a game event has been completed.
         /// </summary>
-        /// <param name="eventID">The ID of the game event to check.</param>
+        /// <param name="eventInstanceId">The ID of the game event to check.</param>
         /// <returns>True if the game event has been completed; false otherwise.</returns>
         public bool IsEventComplete(string eventInstanceId)
         {

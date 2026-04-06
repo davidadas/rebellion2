@@ -10,9 +10,9 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public sealed class GameRuntime
 {
-    private GameManager activeGameSession;
+    private GameManager _activeGameSession;
 
-    public bool HasActiveGame => activeGameSession != null;
+    public bool HasActiveGame => _activeGameSession != null;
 
     public event Action ToggleSettingsMenuRequested;
 
@@ -22,7 +22,7 @@ public sealed class GameRuntime
     /// <returns></returns>
     public GameRoot GetActiveGame()
     {
-        return activeGameSession?.GetGame();
+        return _activeGameSession?.GetGame();
     }
 
     /// <summary>
@@ -33,15 +33,15 @@ public sealed class GameRuntime
     /// <returns>The created GameManager.</returns>
     public GameManager StartGame(GameRoot game)
     {
-        if (activeGameSession != null)
+        if (_activeGameSession != null)
         {
             EndGame();
         }
 
-        activeGameSession = new GameManager(game);
-        // activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures (queues, caches, etc.)
+        _activeGameSession = new GameManager(game);
+        // _activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures (queues, caches, etc.)
 
-        return activeGameSession;
+        return _activeGameSession;
     }
 
     /// <summary>
@@ -50,11 +50,11 @@ public sealed class GameRuntime
     /// </summary>
     public void EndGame()
     {
-        if (activeGameSession == null)
+        if (_activeGameSession == null)
             return;
 
-        activeGameSession.SetGameSpeed(TickSpeed.Paused);
-        activeGameSession = null;
+        _activeGameSession.SetGameSpeed(TickSpeed.Paused);
+        _activeGameSession = null;
 
         // @TODO: Notify UI systems, unload scene state, cleanup resources
     }
@@ -70,7 +70,7 @@ public sealed class GameRuntime
             return;
         }
 
-        GameRoot game = activeGameSession.GetGame();
+        GameRoot game = _activeGameSession.GetGame();
         if (game == null)
         {
             return;
@@ -99,17 +99,17 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    ///
+    /// Loads the quicksave into the current active game session without reloading the scene.
     /// </summary>
     private void HotReloadGame()
     {
         GameRoot loadedGame = SaveGameManager.Instance.LoadGameData("quicksave");
-        activeGameSession.ReplaceGame(loadedGame);
-        // activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures after load
+        _activeGameSession.ReplaceGame(loadedGame);
+        // _activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures after load
     }
 
     /// <summary>
-    ///
+    /// Loads the quicksave by setting the launch context and transitioning to the strategy scene.
     /// </summary>
     private void ColdStartFromSave()
     {

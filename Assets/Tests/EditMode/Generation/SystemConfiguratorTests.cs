@@ -6,15 +6,15 @@ using Rebellion.Generation;
 [TestFixture]
 public class SystemConfiguratorTests
 {
-    private GalaxyClassificationSection gc;
-    private SystemSupportSection sup;
-    private SystemResourcesSection res;
-    private string[] factionIds;
+    private GalaxyClassificationSection _gc;
+    private SystemSupportSection _sup;
+    private SystemResourcesSection _res;
+    private string[] _factionIds;
 
     [SetUp]
     public void SetUp()
     {
-        gc = new GalaxyClassificationSection
+        _gc = new GalaxyClassificationSection
         {
             FactionSetups = new List<FactionSetup>
             {
@@ -77,7 +77,7 @@ public class SystemConfiguratorTests
             },
         };
 
-        sup = new SystemSupportSection
+        _sup = new SystemSupportSection
         {
             Strong = new SupportFormula { Base = 60, Random = 30 },
             Weak = new SupportFormula { Base = 20, Random = 30 },
@@ -85,7 +85,7 @@ public class SystemConfiguratorTests
             RimSupportRandom = 0,
         };
 
-        res = new SystemResourcesSection
+        _res = new SystemResourcesSection
         {
             CoreEnergy = new DiceFormula { Base = 10, Random1 = 4 },
             RimEnergy = new DiceFormula
@@ -103,16 +103,16 @@ public class SystemConfiguratorTests
             RimColonizationPct = 31,
         };
 
-        factionIds = new[] { "FNALL1", "FNEMP1" };
+        _factionIds = new[] { "FNALL1", "FNEMP1" };
     }
 
     private GameGenerationRules CreateRules()
     {
         return new GameGenerationRules
         {
-            GalaxyClassification = gc,
-            SystemSupport = sup,
-            SystemResources = res,
+            GalaxyClassification = _gc,
+            SystemSupport = _sup,
+            SystemResources = _res,
         };
     }
 
@@ -147,7 +147,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -179,7 +179,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -210,7 +210,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -236,7 +236,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -268,7 +268,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -301,7 +301,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -333,7 +333,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -368,7 +368,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -407,7 +407,7 @@ public class SystemConfiguratorTests
         };
 
         SystemConfigurator configurator = new SystemConfigurator();
-        configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
+        configurator.Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
 
         Assert.AreEqual(10, planet.EnergyCapacity);
         Assert.LessOrEqual(planet.NumRawResourceNodes, planet.EnergyCapacity);
@@ -436,7 +436,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -462,7 +462,7 @@ public class SystemConfiguratorTests
             new[] { system },
             classification,
             CreateRules(),
-            factionIds,
+            _factionIds,
             new StubRNG()
         );
 
@@ -494,7 +494,7 @@ public class SystemConfiguratorTests
         GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
         SystemConfigurator configurator = new SystemConfigurator();
-        configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
+        configurator.Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
 
         Assert.IsFalse(planet.IsColonized);
     }
@@ -516,7 +516,7 @@ public class SystemConfiguratorTests
         GalaxyClassificationResult classification = new GalaxyClassificationResult();
 
         SystemConfigurator configurator = new SystemConfigurator();
-        configurator.Configure(new[] { system }, classification, CreateRules(), factionIds, rng);
+        configurator.Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
 
         Assert.IsTrue(planet.IsColonized);
     }

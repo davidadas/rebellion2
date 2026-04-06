@@ -4,10 +4,9 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
-using Rebellion.Util.Common;
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when all child conditions are met.
 /// </summary>
 [PersistableObject(Name = "And")]
 public class AndConditional : GameConditional
@@ -25,7 +24,7 @@ public class AndConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when any child condition is met.
 /// </summary>
 [PersistableObject(Name = "Or")]
 public class OrConditional : GameConditional
@@ -43,7 +42,7 @@ public class OrConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when none of the child conditions are met.
 /// </summary>
 [PersistableObject(Name = "Not")]
 public class NotConditional : GameConditional
@@ -61,7 +60,7 @@ public class NotConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when exactly one child condition is met.
 /// </summary>
 [PersistableObject(Name = "Xor")]
 public class XorConditional : GameConditional
@@ -79,7 +78,7 @@ public class XorConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when all specified units are located on the same planet.
 /// </summary>
 [PersistableObject(Name = "AreOnSamePlanet")]
 public class AreOnSamePlanetConditional : GameConditional
@@ -117,7 +116,7 @@ public class AreOnSamePlanetConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when exactly two units belong to different factions.
 /// </summary>
 [PersistableObject(Name = "AreOnOpposingFactions")]
 public class AreOnOpposingFactionsConditional : GameConditional
@@ -139,9 +138,8 @@ public class AreOnOpposingFactionsConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when the specified unit is currently assigned to a mission.
 /// </summary>
-///
 [PersistableObject(Name = "IsOnMission")]
 public class IsOnMissionConditional : GameConditional
 {
@@ -153,12 +151,12 @@ public class IsOnMissionConditional : GameConditional
         string instanceId = this.GetConditionalValue();
         ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
         // Check if the unit is on a mission.
-        return sceneNode != null && sceneNode.GetParent() is Mission;
+        return sceneNode?.GetParent() is Mission;
     }
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when the specified unit implements <see cref="IMovable"/> and is currently movable.
 /// </summary>
 [PersistableObject(Name = "IsMovable")]
 public class IsMovableConditional : GameConditional
@@ -182,9 +180,8 @@ public class IsMovableConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when all specified units are located on any planet.
 /// </summary>
-///
 [PersistableObject(Name = "AreOnPlanet")]
 public class AreOnPlanetConditional : GameConditional
 {
@@ -204,7 +201,7 @@ public class AreOnPlanetConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when the current tick count satisfies a comparison against a target value.
 /// </summary>
 [PersistableObject(Name = "TickCount")]
 public class TickCountConditional : GameConditional
@@ -244,7 +241,7 @@ public class TickCountConditional : GameConditional
 }
 
 /// <summary>
-///
+/// A <see cref="GameConditional"/> that is met when the specified game event has been completed.
 /// </summary>
 [PersistableObject(Name = "IsEventComplete")]
 public class IsEventCompleteConditional : GameConditional

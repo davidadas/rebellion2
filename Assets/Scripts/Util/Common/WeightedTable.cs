@@ -10,11 +10,14 @@ namespace Rebellion.Util.Common
     /// </summary>
     public class WeightedTable<T>
     {
-        private readonly List<(int cumulativeWeight, T item)> entries;
-        private readonly int rollMin;
-        private readonly int rollMax;
-        private readonly bool fallbackToLast;
+        private readonly List<(int cumulativeWeight, T item)> _entries;
+        private readonly int _rollMin;
+        private readonly int _rollMax;
+        private readonly bool _fallbackToLast;
 
+        /// <summary>
+        /// Initializes a new weighted table with the given entries and roll range.
+        /// </summary>
         /// <param name="entries">Table entries with cumulative weights.</param>
         /// <param name="rollMin">Minimum roll value (inclusive). Default 0 for facility tables.</param>
         /// <param name="rollMax">Maximum roll value (exclusive upper bound for NextInt). Default 101.</param>
@@ -29,28 +32,28 @@ namespace Rebellion.Util.Common
             bool fallbackToLast = false
         )
         {
-            this.entries = entries;
-            this.rollMin = rollMin;
-            this.rollMax = rollMax;
-            this.fallbackToLast = fallbackToLast;
+            _entries = entries;
+            _rollMin = rollMin;
+            _rollMax = rollMax;
+            _fallbackToLast = fallbackToLast;
         }
 
         public T Roll(IRandomNumberProvider rng)
         {
-            if (entries.Count == 0)
+            if (_entries.Count == 0)
                 return default;
 
-            int roll = rng.NextInt(rollMin, rollMax);
+            int roll = rng.NextInt(_rollMin, _rollMax);
 
-            foreach ((int cumulativeWeight, T item) entry in entries)
+            foreach ((int cumulativeWeight, T item) entry in _entries)
             {
                 if (roll < entry.cumulativeWeight)
                     return entry.item;
             }
 
             // Roll exceeds all entries
-            if (fallbackToLast)
-                return entries[entries.Count - 1].item;
+            if (_fallbackToLast)
+                return _entries[_entries.Count - 1].item;
 
             return default;
         }

@@ -9,17 +9,49 @@ end_of_line = crlf
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-# Roslynator: unused member detection
-# Enabled globally so game logic (Systems, Game, Generation, AI) is checked.
-dotnet_diagnostic.RCS1213.severity = warning
+# Private field naming: must be _camelCase
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.symbols  = private_fields
+dotnet_naming_rule.private_fields_underscore.style    = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds          = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization   = camel_case
+
+# Roslynator diagnostics
+dotnet_diagnostic.RCS1046.severity = error    # async method name must end with Async
+dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not end with Async
+dotnet_diagnostic.RCS1129.severity = error    # remove redundant field initialization
+dotnet_diagnostic.RCS1163.severity = warning  # unused parameter (some intentional)
+dotnet_diagnostic.RCS1164.severity = error    # unused type parameter
+dotnet_diagnostic.RCS1077.severity = error    # optimize LINQ method call
+dotnet_diagnostic.RCS1146.severity = error    # use conditional access
+dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
 
 # Unity MonoBehaviour classes call Awake/Start/Update/OnDestroy via reflection.
 # Suppress false positives in UI and MonoBehaviour-heavy layers.
+# Also suppress naming rule: [SerializeField] fields use camelCase (Unity convention).
 [Assets/Scripts/UI/**/*.cs]
+dotnet_diagnostic.RCS1046.severity = none
+dotnet_diagnostic.RCS1047.severity = none
+dotnet_diagnostic.RCS1077.severity = none
+dotnet_diagnostic.RCS1129.severity = none
+dotnet_diagnostic.RCS1146.severity = none
+dotnet_diagnostic.RCS1163.severity = none
+dotnet_diagnostic.RCS1164.severity = none
 dotnet_diagnostic.RCS1213.severity = none
+dotnet_naming_rule.private_fields_underscore.severity = none
 
 [Assets/Scripts/Managers/AudioManager.cs]
+dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
+dotnet_naming_rule.private_fields_underscore.severity = none
 
 [Assets/Scripts/Core/AppBootstrap.cs]
+dotnet_diagnostic.RCS1077.severity = none
+dotnet_diagnostic.RCS1146.severity = none
+dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
+dotnet_naming_rule.private_fields_underscore.severity = none

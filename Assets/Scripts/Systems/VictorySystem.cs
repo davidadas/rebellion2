@@ -11,7 +11,7 @@ namespace Rebellion.Systems
 {
     public class VictorySystem
     {
-        private readonly GameRoot game;
+        private readonly GameRoot _game;
         private const int MIN_VICTORY_TICK = 200;
 
         /// <summary>
@@ -20,7 +20,7 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         public VictorySystem(GameRoot game)
         {
-            this.game = game;
+            _game = game;
         }
 
         /// <summary>
@@ -29,10 +29,10 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             // Grace period: don't check victory until the game has had time to develop
-            if (game.CurrentTick < MIN_VICTORY_TICK)
+            if (_game.CurrentTick < MIN_VICTORY_TICK)
                 return new List<GameResult>();
 
-            foreach (Faction faction in game.Factions)
+            foreach (Faction faction in _game.Factions)
             {
                 VictoryResult outcome = CheckHQCapture(faction);
                 if (outcome != null)
@@ -59,7 +59,7 @@ namespace Rebellion.Systems
             if (string.IsNullOrEmpty(hqInstanceId))
                 return null;
 
-            Planet hqPlanet = game.GetSceneNodeByInstanceID<Planet>(hqInstanceId);
+            Planet hqPlanet = _game.GetSceneNodeByInstanceID<Planet>(hqInstanceId);
             if (hqPlanet == null)
                 return null;
 
@@ -73,12 +73,12 @@ namespace Rebellion.Systems
             }
 
             // HQ has been captured - find the capturing faction
-            Faction attacker = game.Factions.FirstOrDefault(f => f.InstanceID == currentOwner);
+            Faction attacker = _game.Factions.FirstOrDefault(f => f.InstanceID == currentOwner);
             if (attacker == null)
                 return null;
 
             // Check victory mode
-            GameVictoryCondition victoryMode = game.Summary.VictoryCondition;
+            GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
 
             if (victoryMode == GameVictoryCondition.Conquest)
             {
@@ -95,7 +95,7 @@ namespace Rebellion.Systems
                 Winner = attacker,
                 Loser = defender,
                 GameMode = victoryMode,
-                Tick = game.CurrentTick,
+                Tick = _game.CurrentTick,
             };
         }
 
@@ -104,7 +104,7 @@ namespace Rebellion.Systems
         /// </summary>
         private bool CheckAllMainCharactersCaptured(Faction faction)
         {
-            List<Officer> mainCharacters = game.GetSceneNodesByType<Officer>()
+            List<Officer> mainCharacters = _game.GetSceneNodesByType<Officer>()
                 .Where(o => o.GetOwnerInstanceID() == faction.InstanceID && o.IsMain)
                 .ToList();
 

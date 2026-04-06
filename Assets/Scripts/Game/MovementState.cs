@@ -1,5 +1,4 @@
 using System.Drawing;
-using Rebellion.Systems;
 using Rebellion.Util.Attributes;
 
 namespace Rebellion.Game

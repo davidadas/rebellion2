@@ -8,38 +8,38 @@ using Rebellion.SceneGraph;
 [TestFixture]
 public class FactionTests
 {
-    private Faction faction;
-    private Planet planet1;
-    private Planet planet2;
-    private Fleet fleet;
-    private Officer officer;
-    private Building building;
-    private Technology technology;
+    private Faction _faction;
+    private Planet _planet1;
+    private Planet _planet2;
+    private Fleet _fleet;
+    private Officer _officer;
+    private Building _building;
+    private Technology _technology;
 
     [SetUp]
     public void SetUp()
     {
-        faction = new Faction
+        _faction = new Faction
         {
             InstanceID = "FACTION1",
             DisplayName = "Rebel Alliance",
             PlayerID = "PLAYER1",
         };
 
-        planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
+        _planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
 
-        planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
+        _planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
 
-        fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
+        _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
-        officer = new Officer
+        _officer = new Officer
         {
             InstanceID = "OFFICER1",
             OwnerInstanceID = "FACTION1",
             Movement = null,
         };
 
-        building = new Building
+        _building = new Building
         {
             InstanceID = "BUILDING1",
             DisplayName = "Mine",
@@ -47,13 +47,13 @@ public class FactionTests
             RequiredResearchLevel = 1,
         };
 
-        technology = new Technology(building);
+        _technology = new Technology(_building);
     }
 
     [Test]
     public void IsAIControlled_WithPlayerID_ReturnsFalse()
     {
-        bool isAI = faction.IsAIControlled();
+        bool isAI = _faction.IsAIControlled();
 
         Assert.IsFalse(isAI, "Faction with PlayerID should not be AI controlled");
     }
@@ -61,9 +61,9 @@ public class FactionTests
     [Test]
     public void IsAIControlled_WithoutPlayerID_ReturnsTrue()
     {
-        faction.PlayerID = null;
+        _faction.PlayerID = null;
 
-        bool isAI = faction.IsAIControlled();
+        bool isAI = _faction.IsAIControlled();
 
         Assert.IsTrue(isAI, "Faction without PlayerID should be AI controlled");
     }
@@ -71,68 +71,68 @@ public class FactionTests
     [Test]
     public void AddOwnedUnit_AddsPlanet()
     {
-        faction.AddOwnedUnit(planet1);
+        _faction.AddOwnedUnit(_planet1);
 
-        List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
+        List<Planet> planets = _faction.GetOwnedUnitsByType<Planet>();
 
-        Assert.Contains(planet1, planets, "Faction should contain the added planet");
+        Assert.Contains(_planet1, planets, "Faction should contain the added planet");
     }
 
     [Test]
     public void RemoveOwnedUnit_RemovesPlanet()
     {
-        faction.AddOwnedUnit(planet1);
+        _faction.AddOwnedUnit(_planet1);
 
-        faction.RemoveOwnedUnit(planet1);
+        _faction.RemoveOwnedUnit(_planet1);
 
-        List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
+        List<Planet> planets = _faction.GetOwnedUnitsByType<Planet>();
 
-        Assert.IsFalse(planets.Contains(planet1), "Faction should not contain removed planet");
+        Assert.IsFalse(planets.Contains(_planet1), "Faction should not contain removed planet");
     }
 
     [Test]
     public void GetOwnedUnitsByType_ReturnsCorrectUnits()
     {
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
-        faction.AddOwnedUnit(fleet);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
+        _faction.AddOwnedUnit(_fleet);
 
-        List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
-        List<Fleet> fleets = faction.GetOwnedUnitsByType<Fleet>();
+        List<Planet> planets = _faction.GetOwnedUnitsByType<Planet>();
+        List<Fleet> fleets = _faction.GetOwnedUnitsByType<Fleet>();
 
         Assert.AreEqual(2, planets.Count, "Should return correct number of planets");
-        Assert.Contains(planet1, planets, "Should contain planet1");
-        Assert.Contains(planet2, planets, "Should contain planet2");
+        Assert.Contains(_planet1, planets, "Should contain planet1");
+        Assert.Contains(_planet2, planets, "Should contain planet2");
         Assert.AreEqual(1, fleets.Count, "Should return correct number of fleets");
-        Assert.Contains(fleet, fleets, "Should contain fleet");
+        Assert.Contains(_fleet, fleets, "Should contain fleet");
     }
 
     [Test]
     public void GetAllOwnedNodes_ReturnsAllUnits()
     {
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(fleet);
-        faction.AddOwnedUnit(officer);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_fleet);
+        _faction.AddOwnedUnit(_officer);
 
-        List<ISceneNode> allNodes = faction.GetAllOwnedNodes();
+        List<ISceneNode> allNodes = _faction.GetAllOwnedNodes();
 
         Assert.AreEqual(3, allNodes.Count, "Should return all owned nodes");
-        Assert.Contains(planet1, allNodes, "Should contain planet");
-        Assert.Contains(fleet, allNodes, "Should contain fleet");
-        Assert.Contains(officer, allNodes, "Should contain officer");
+        Assert.Contains(_planet1, allNodes, "Should contain planet");
+        Assert.Contains(_fleet, allNodes, "Should contain fleet");
+        Assert.Contains(_officer, allNodes, "Should contain officer");
     }
 
     [Test]
     public void AddTechnologyNode_AddsTechnology()
     {
-        faction.SetResearchLevel(ManufacturingType.Building, 1);
-        faction.AddTechnologyNode(1, technology);
+        _faction.SetResearchLevel(ManufacturingType.Building, 1);
+        _faction.AddTechnologyNode(1, _technology);
 
-        List<Technology> technologies = faction.GetResearchedTechnologies(
+        List<Technology> technologies = _faction.GetResearchedTechnologies(
             ManufacturingType.Building
         );
 
-        Assert.Contains(technology, technologies, "Should contain the added technology");
+        Assert.Contains(_technology, technologies, "Should contain the added technology");
     }
 
     [Test]
@@ -147,7 +147,7 @@ public class FactionTests
         Technology restrictedTech = new Technology(restrictedBuilding);
 
         Assert.Throws<InvalidOperationException>(
-            () => faction.AddTechnologyNode(1, restrictedTech),
+            () => _faction.AddTechnologyNode(1, restrictedTech),
             "Should throw exception when owner IDs do not match"
         );
     }
@@ -155,8 +155,8 @@ public class FactionTests
     [Test]
     public void GetResearchedTechnologies_ReturnsCorrectTechnologies()
     {
-        faction.SetResearchLevel(ManufacturingType.Building, 2);
-        faction.AddTechnologyNode(1, technology);
+        _faction.SetResearchLevel(ManufacturingType.Building, 2);
+        _faction.AddTechnologyNode(1, _technology);
 
         Building advancedBuilding = new Building
         {
@@ -164,7 +164,7 @@ public class FactionTests
             RequiredResearchLevel = 2,
         };
         Technology advancedTech = new Technology(advancedBuilding);
-        faction.AddTechnologyNode(2, advancedTech);
+        _faction.AddTechnologyNode(2, advancedTech);
 
         Building futureBuilding = new Building
         {
@@ -172,16 +172,16 @@ public class FactionTests
             RequiredResearchLevel = 3,
         };
         Technology futureTech = new Technology(futureBuilding);
-        faction.AddTechnologyNode(3, futureTech);
+        _faction.AddTechnologyNode(3, futureTech);
 
-        List<Technology> researched = faction.GetResearchedTechnologies(ManufacturingType.Building);
+        List<Technology> researched = _faction.GetResearchedTechnologies(ManufacturingType.Building);
 
         Assert.AreEqual(
             2,
             researched.Count,
             "Should only return technologies at or below research level"
         );
-        Assert.Contains(technology, researched, "Should contain level 1 technology");
+        Assert.Contains(_technology, researched, "Should contain level 1 technology");
         Assert.Contains(advancedTech, researched, "Should contain level 2 technology");
         Assert.IsFalse(researched.Contains(futureTech), "Should not contain level 3 technology");
     }
@@ -189,9 +189,9 @@ public class FactionTests
     [Test]
     public void GetResearchLevel_ReturnsCorrectLevel()
     {
-        faction.SetResearchLevel(ManufacturingType.Ship, 5);
+        _faction.SetResearchLevel(ManufacturingType.Ship, 5);
 
-        int level = faction.GetResearchLevel(ManufacturingType.Ship);
+        int level = _faction.GetResearchLevel(ManufacturingType.Ship);
 
         Assert.AreEqual(5, level, "Should return the correct research level");
     }
@@ -199,11 +199,11 @@ public class FactionTests
     [Test]
     public void SetResearchLevel_SetsLevel()
     {
-        faction.SetResearchLevel(ManufacturingType.Troop, 3);
+        _faction.SetResearchLevel(ManufacturingType.Troop, 3);
 
         Assert.AreEqual(
             3,
-            faction.GetResearchLevel(ManufacturingType.Troop),
+            _faction.GetResearchLevel(ManufacturingType.Troop),
             "Should set the research level correctly"
         );
     }
@@ -211,11 +211,11 @@ public class FactionTests
     [Test]
     public void GetResearchLevels_ReturnsAllLevels()
     {
-        faction.SetResearchLevel(ManufacturingType.Building, 2);
-        faction.SetResearchLevel(ManufacturingType.Ship, 3);
-        faction.SetResearchLevel(ManufacturingType.Troop, 1);
+        _faction.SetResearchLevel(ManufacturingType.Building, 2);
+        _faction.SetResearchLevel(ManufacturingType.Ship, 3);
+        _faction.SetResearchLevel(ManufacturingType.Troop, 1);
 
-        Dictionary<ManufacturingType, int> levels = faction.GetResearchLevels();
+        Dictionary<ManufacturingType, int> levels = _faction.GetResearchLevels();
 
         Assert.AreEqual(2, levels[ManufacturingType.Building], "Building level should be 2");
         Assert.AreEqual(3, levels[ManufacturingType.Ship], "Ship level should be 3");
@@ -227,11 +227,11 @@ public class FactionTests
     {
         Message message = new Message(MessageType.Conflict, "Battle occurred");
 
-        faction.AddMessage(message);
+        _faction.AddMessage(message);
 
         Assert.Contains(
             message,
-            faction.Messages[MessageType.Conflict],
+            _faction.Messages[MessageType.Conflict],
             "Should add message to correct type list"
         );
     }
@@ -240,12 +240,12 @@ public class FactionTests
     public void RemoveMessage_RemovesMessage()
     {
         Message message = new Message(MessageType.Mission, "Mission completed");
-        faction.AddMessage(message);
+        _faction.AddMessage(message);
 
-        faction.RemoveMessage(message);
+        _faction.RemoveMessage(message);
 
         Assert.IsFalse(
-            faction.Messages[MessageType.Mission].Contains(message),
+            _faction.Messages[MessageType.Mission].Contains(message),
             "Should remove message from list"
         );
     }
@@ -261,10 +261,10 @@ public class FactionTests
             Movement = new MovementState(),
         };
 
-        faction.AddOwnedUnit(availableOfficer);
-        faction.AddOwnedUnit(unavailableOfficer);
+        _faction.AddOwnedUnit(availableOfficer);
+        _faction.AddOwnedUnit(unavailableOfficer);
 
-        List<Officer> available = faction.GetAvailableOfficers(faction);
+        List<Officer> available = _faction.GetAvailableOfficers(_faction);
 
         Assert.AreEqual(1, available.Count, "Should return only movable officers");
         Assert.Contains(availableOfficer, available, "Should contain available officer");
@@ -277,13 +277,13 @@ public class FactionTests
     [Test]
     public void GetTotalRawResourceNodes_ReturnsSumAcrossPlanets()
     {
-        planet1.NumRawResourceNodes = 10;
-        planet2.NumRawResourceNodes = 15;
+        _planet1.NumRawResourceNodes = 10;
+        _planet2.NumRawResourceNodes = 15;
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalRawResourceNodes();
+        int total = _faction.GetTotalRawResourceNodes();
 
         Assert.AreEqual(25, total, "Should sum raw resource nodes across all planets");
     }
@@ -291,18 +291,18 @@ public class FactionTests
     [Test]
     public void GetTotalAvailableResourceNodes_ReturnsSumAcrossPlanets()
     {
-        planet1.NumRawResourceNodes = 10;
+        _planet1.NumRawResourceNodes = 10;
         // planet1 is not blockaded by default (no enemy fleets)
 
-        planet2.NumRawResourceNodes = 15;
+        _planet2.NumRawResourceNodes = 15;
         // Add an enemy fleet to planet2 to blockade it
         Fleet enemyFleet = new Fleet { InstanceID = "ENEMYFLEET1", OwnerInstanceID = "FACTION2" };
-        planet2.Fleets.Add(enemyFleet);
+        _planet2.Fleets.Add(enemyFleet);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalAvailableResourceNodes();
+        int total = _faction.GetTotalAvailableResourceNodes();
 
         Assert.AreEqual(10, total, "Should only count non-blockaded planets");
     }
@@ -312,30 +312,30 @@ public class FactionTests
     //[Test]
     public void SerializeAndDeserialize_MaintainsState_DISABLED()
     {
-        faction.SetResearchLevel(ManufacturingType.Ship, 3);
-        faction.AddOwnedUnit(planet1);
-        faction.AddMessage(new Message(MessageType.Resource, "Test message"));
+        _faction.SetResearchLevel(ManufacturingType.Ship, 3);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
 
-        string serialized = SerializationHelper.Serialize(faction);
+        string serialized = SerializationHelper.Serialize(_faction);
         Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
 
         Assert.AreEqual(
-            faction.InstanceID,
+            _faction.InstanceID,
             deserialized.InstanceID,
             "InstanceID should be correctly deserialized."
         );
         Assert.AreEqual(
-            faction.DisplayName,
+            _faction.DisplayName,
             deserialized.DisplayName,
             "DisplayName should be correctly deserialized."
         );
         Assert.AreEqual(
-            faction.PlayerID,
+            _faction.PlayerID,
             deserialized.PlayerID,
             "PlayerID should be correctly deserialized."
         );
         Assert.AreEqual(
-            faction.GetResearchLevel(ManufacturingType.Ship),
+            _faction.GetResearchLevel(ManufacturingType.Ship),
             deserialized.GetResearchLevel(ManufacturingType.Ship),
             "Research levels should be correctly deserialized."
         );
@@ -344,9 +344,9 @@ public class FactionTests
     [Test]
     public void GetHQInstanceID_ReturnsHQID()
     {
-        faction.HQInstanceID = "HQ1";
+        _faction.HQInstanceID = "HQ1";
 
-        string hqID = faction.GetHQInstanceID();
+        string hqID = _faction.GetHQInstanceID();
 
         Assert.AreEqual("HQ1", hqID, "Should return the HQ instance ID");
     }
@@ -354,9 +354,9 @@ public class FactionTests
     [Test]
     public void GetHQInstanceID_WithNullHQ_ReturnsNull()
     {
-        faction.HQInstanceID = null;
+        _faction.HQInstanceID = null;
 
-        string hqID = faction.GetHQInstanceID();
+        string hqID = _faction.GetHQInstanceID();
 
         Assert.IsNull(hqID, "Should return null when HQ is not set");
     }
@@ -364,9 +364,9 @@ public class FactionTests
     [Test]
     public void GetTotalRawMinedResources_ReturnsSumAcrossPlanets()
     {
-        planet1.NumRawResourceNodes = 25;
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.NumRawResourceNodes = 25;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 20; i++)
         {
             Building mine = new Building
@@ -375,12 +375,12 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(mine);
+            _planet1.AddChild(mine);
         }
 
-        planet2.NumRawResourceNodes = 35;
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 50;
+        _planet2.NumRawResourceNodes = 35;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 50;
         for (int i = 0; i < 30; i++)
         {
             Building mine = new Building
@@ -389,13 +389,13 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(mine);
+            _planet2.AddChild(mine);
         }
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalRawMinedResources();
+        int total = _faction.GetTotalRawMinedResources();
 
         Assert.AreEqual(50, total, "Should sum raw mined resources across all planets");
     }
@@ -403,9 +403,9 @@ public class FactionTests
     [Test]
     public void GetTotalAvailableMinedResources_ReturnsSumAcrossPlanets()
     {
-        planet1.NumRawResourceNodes = 25;
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.NumRawResourceNodes = 25;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 20; i++)
         {
             Building mine = new Building
@@ -414,12 +414,12 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(mine);
+            _planet1.AddChild(mine);
         }
 
-        planet2.NumRawResourceNodes = 35;
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 50;
+        _planet2.NumRawResourceNodes = 35;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 50;
         for (int i = 0; i < 30; i++)
         {
             Building mine = new Building
@@ -428,15 +428,15 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(mine);
+            _planet2.AddChild(mine);
         }
         Fleet enemyFleet = new Fleet { InstanceID = "ENEMYFLEET1", OwnerInstanceID = "FACTION2" };
-        planet2.Fleets.Add(enemyFleet);
+        _planet2.Fleets.Add(enemyFleet);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalAvailableMinedResources();
+        int total = _faction.GetTotalAvailableMinedResources();
 
         Assert.AreEqual(20, total, "Should only count non-blockaded planets");
     }
@@ -444,8 +444,8 @@ public class FactionTests
     [Test]
     public void GetTotalRawRefinementCapacity_ReturnsSumAcrossPlanets()
     {
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 5; i++)
         {
             Building refinery = new Building
@@ -454,11 +454,11 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(refinery);
+            _planet1.AddChild(refinery);
         }
 
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 50;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 50;
         for (int i = 0; i < 10; i++)
         {
             Building refinery = new Building
@@ -467,13 +467,13 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(refinery);
+            _planet2.AddChild(refinery);
         }
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalRawRefinementCapacity();
+        int total = _faction.GetTotalRawRefinementCapacity();
 
         Assert.AreEqual(15, total, "Should sum raw refinement capacity across all planets");
     }
@@ -481,8 +481,8 @@ public class FactionTests
     [Test]
     public void GetTotalAvailableRefinementCapacity_ReturnsSumAcrossPlanets()
     {
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 5; i++)
         {
             Building refinery = new Building
@@ -491,11 +491,11 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(refinery);
+            _planet1.AddChild(refinery);
         }
 
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 50;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 50;
         for (int i = 0; i < 10; i++)
         {
             Building refinery = new Building
@@ -504,15 +504,15 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(refinery);
+            _planet2.AddChild(refinery);
         }
         Fleet enemyFleet = new Fleet { InstanceID = "ENEMYFLEET1", OwnerInstanceID = "FACTION2" };
-        planet2.Fleets.Add(enemyFleet);
+        _planet2.Fleets.Add(enemyFleet);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalAvailableRefinementCapacity();
+        int total = _faction.GetTotalAvailableRefinementCapacity();
 
         Assert.AreEqual(5, total, "Should only count non-blockaded planets");
     }
@@ -520,9 +520,9 @@ public class FactionTests
     [Test]
     public void GetTotalRawMaterials_CalculatesCorrectly()
     {
-        planet1.NumRawResourceNodes = 10;
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.NumRawResourceNodes = 10;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
@@ -531,7 +531,7 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(mine);
+            _planet1.AddChild(mine);
         }
         for (int i = 0; i < 5; i++)
         {
@@ -541,12 +541,12 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(refinery);
+            _planet1.AddChild(refinery);
         }
 
-        faction.AddOwnedUnit(planet1);
+        _faction.AddOwnedUnit(_planet1);
 
-        int total = faction.GetTotalRawMaterialsRaw();
+        int total = _faction.GetTotalRawMaterialsRaw();
 
         // Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
         Assert.AreEqual(5, total, "Should calculate raw materials correctly");
@@ -555,9 +555,9 @@ public class FactionTests
     [Test]
     public void GetTotalAvailableMaterials_CalculatesCorrectly()
     {
-        planet1.NumRawResourceNodes = 10;
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.NumRawResourceNodes = 10;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
@@ -566,7 +566,7 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(mine);
+            _planet1.AddChild(mine);
         }
         for (int i = 0; i < 5; i++)
         {
@@ -576,12 +576,12 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(refinery);
+            _planet1.AddChild(refinery);
         }
 
-        faction.AddOwnedUnit(planet1);
+        _faction.AddOwnedUnit(_planet1);
 
-        int total = faction.GetTotalAvailableMaterialsRaw();
+        int total = _faction.GetTotalAvailableMaterialsRaw();
 
         // Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
         Assert.AreEqual(5, total, "Should calculate available materials correctly");
@@ -590,9 +590,9 @@ public class FactionTests
     [Test]
     public void GetTotalAvailableMaterials_ExcludesBlockadedPlanets()
     {
-        planet1.NumRawResourceNodes = 10;
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 50;
+        _planet1.NumRawResourceNodes = 10;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 50;
         for (int i = 0; i < 8; i++)
         {
             Building mine = new Building
@@ -601,7 +601,7 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(mine);
+            _planet1.AddChild(mine);
         }
         for (int i = 0; i < 5; i++)
         {
@@ -611,12 +611,12 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet1.AddChild(refinery);
+            _planet1.AddChild(refinery);
         }
 
-        planet2.NumRawResourceNodes = 15;
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 50;
+        _planet2.NumRawResourceNodes = 15;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 50;
         for (int i = 0; i < 12; i++)
         {
             Building mine = new Building
@@ -625,7 +625,7 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(mine);
+            _planet2.AddChild(mine);
         }
         for (int i = 0; i < 8; i++)
         {
@@ -635,15 +635,15 @@ public class FactionTests
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            planet2.AddChild(refinery);
+            _planet2.AddChild(refinery);
         }
         Fleet enemyFleet = new Fleet { InstanceID = "ENEMYFLEET1", OwnerInstanceID = "FACTION2" };
-        planet2.Fleets.Add(enemyFleet);
+        _planet2.Fleets.Add(enemyFleet);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        int total = faction.GetTotalAvailableMaterialsRaw();
+        int total = _faction.GetTotalAvailableMaterialsRaw();
 
         // Only planet1 should count: Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
         Assert.AreEqual(5, total, "Should exclude blockaded planets from calculation");
@@ -654,22 +654,22 @@ public class FactionTests
     {
         Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION1" };
 
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 10;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 10;
 
         Building testBuilding = new Building
         {
             InstanceID = "TESTBUILDING",
             OwnerInstanceID = "FACTION1",
         };
-        planet1.AddChild(testBuilding);
-        testBuilding.SetParent(planet1);
+        _planet1.AddChild(testBuilding);
+        testBuilding.SetParent(_planet1);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
-        faction.AddOwnedUnit(planet3);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
+        _faction.AddOwnedUnit(planet3);
 
-        Planet nearest = faction.GetNearestFriendlyPlanetTo(testBuilding);
+        Planet nearest = _faction.GetNearestFriendlyPlanetTo(testBuilding);
 
         Assert.AreEqual("PLANET1", nearest.InstanceID, "Should return the nearest planet");
     }
@@ -679,10 +679,10 @@ public class FactionTests
     {
         Fleet floatingFleet = new Fleet { InstanceID = "FLEET2", OwnerInstanceID = "FACTION1" };
 
-        faction.AddOwnedUnit(planet1);
+        _faction.AddOwnedUnit(_planet1);
 
         Assert.Throws<ArgumentException>(
-            () => faction.GetNearestFriendlyPlanetTo(floatingFleet),
+            () => _faction.GetNearestFriendlyPlanetTo(floatingFleet),
             "Should throw exception when node is not on a planet"
         );
     }
@@ -690,10 +690,10 @@ public class FactionTests
     [Test]
     public void GetIdleFacilities_ReturnsOnlyPlanetsWithIdleFacilities()
     {
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 5;
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 5;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 5;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 5;
 
         // Add a shipyard to planet1 (idle facility)
         Building shipyard = new Building
@@ -702,19 +702,19 @@ public class FactionTests
             OwnerInstanceID = "FACTION1",
             ManufacturingStatus = ManufacturingStatus.Complete,
         };
-        planet1.AddChild(shipyard);
+        _planet1.AddChild(shipyard);
 
         // planet2 has no buildings, so no idle facilities
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        List<Planet> idleFacilities = faction.GetIdleFacilities(ManufacturingType.Ship);
+        List<Planet> idleFacilities = _faction.GetIdleFacilities(ManufacturingType.Ship);
 
         Assert.AreEqual(1, idleFacilities.Count, "Should return only planets with idle facilities");
-        Assert.Contains(planet1, idleFacilities, "Should contain planet1");
+        Assert.Contains(_planet1, idleFacilities, "Should contain planet1");
         Assert.IsFalse(
-            idleFacilities.Contains(planet2),
+            idleFacilities.Contains(_planet2),
             "Should not contain planet2 with no idle facilities"
         );
     }
@@ -722,10 +722,10 @@ public class FactionTests
     [Test]
     public void GetIdleFacilities_WithNoIdleFacilities_ReturnsEmptyList()
     {
-        planet1.IsColonized = true;
-        planet1.EnergyCapacity = 5;
-        planet2.IsColonized = true;
-        planet2.EnergyCapacity = 5;
+        _planet1.IsColonized = true;
+        _planet1.EnergyCapacity = 5;
+        _planet2.IsColonized = true;
+        _planet2.EnergyCapacity = 5;
 
         // Add buildings with different production types (Ship, Troop) but not Building type
         Building shipyard = new Building
@@ -733,19 +733,19 @@ public class FactionTests
             ProductionType = ManufacturingType.Ship,
             OwnerInstanceID = "FACTION1",
         };
-        planet1.AddChild(shipyard);
+        _planet1.AddChild(shipyard);
 
         Building trainingFacility = new Building
         {
             ProductionType = ManufacturingType.Troop,
             OwnerInstanceID = "FACTION1",
         };
-        planet2.AddChild(trainingFacility);
+        _planet2.AddChild(trainingFacility);
 
-        faction.AddOwnedUnit(planet1);
-        faction.AddOwnedUnit(planet2);
+        _faction.AddOwnedUnit(_planet1);
+        _faction.AddOwnedUnit(_planet2);
 
-        List<Planet> idleFacilities = faction.GetIdleFacilities(ManufacturingType.Building);
+        List<Planet> idleFacilities = _faction.GetIdleFacilities(ManufacturingType.Building);
 
         Assert.AreEqual(
             0,

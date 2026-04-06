@@ -10,11 +10,11 @@ namespace Rebellion.Util.Common
     /// </summary>
     public class ProbabilityTable
     {
-        private readonly Dictionary<int, int> table;
+        private readonly Dictionary<int, int> _table;
 
         public ProbabilityTable(Dictionary<int, int> entries)
         {
-            this.table = entries;
+            _table = entries;
         }
 
         /// <summary>
@@ -27,10 +27,10 @@ namespace Rebellion.Util.Common
         /// <returns>Probability percentage (0-100)</returns>
         public int Lookup(int value)
         {
-            if (table.Count == 0)
+            if (_table.Count == 0)
                 return 0;
 
-            List<int> sortedKeys = table.Keys.OrderBy(k => k).ToList();
+            List<int> sortedKeys = _table.Keys.OrderBy(k => k).ToList();
 
             // Value below all thresholds
             if (value < sortedKeys[0])
@@ -38,7 +38,7 @@ namespace Rebellion.Util.Common
 
             // Value at or above highest threshold
             if (value >= sortedKeys[sortedKeys.Count - 1])
-                return table[sortedKeys[sortedKeys.Count - 1]];
+                return _table[sortedKeys[sortedKeys.Count - 1]];
 
             // Find the two thresholds we're between
             for (int i = 0; i < sortedKeys.Count - 1; i++)
@@ -48,8 +48,8 @@ namespace Rebellion.Util.Common
 
                 if (value >= lowerThreshold && value < upperThreshold)
                 {
-                    int lowerValue = table[lowerThreshold];
-                    int upperValue = table[upperThreshold];
+                    int lowerValue = _table[lowerThreshold];
+                    int upperValue = _table[upperThreshold];
 
                     // Linear interpolation
                     double ratio =

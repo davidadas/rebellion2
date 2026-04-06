@@ -8,7 +8,7 @@ using Rebellion.Util.Common;
 
 public class EspionageMission : Mission
 {
-    private readonly FogOfWarSystem fogOfWar;
+    private readonly FogOfWarSystem _fogOfWar;
 
     public override bool CanceledOnOwnershipChange => false;
 
@@ -49,7 +49,7 @@ public class EspionageMission : Mission
                 $"Espionage target planet '{planet.DisplayName}' is an own planet."
             );
 
-        this.fogOfWar = fogOfWar;
+        _fogOfWar = fogOfWar;
     }
 
     /// <summary>
@@ -67,12 +67,12 @@ public class EspionageMission : Mission
     {
         Planet planet = GetParent() as Planet;
 
-        if (fogOfWar != null)
+        if (_fogOfWar != null)
         {
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
             if (faction != null && system != null)
-                fogOfWar.CaptureSnapshot(faction, planet, system, game.CurrentTick);
+                _fogOfWar.CaptureSnapshot(faction, planet, system, game.CurrentTick);
         }
 
         return new List<GameResult>();
