@@ -11,8 +11,8 @@ public class SubdueUprisingMission : Mission
     public SubdueUprisingMission()
         : base()
     {
-        Name = "Subdue Uprising";
-        DisplayName = Name;
+        ConfigKey = "SubdueUprising";
+        DisplayName = "Subdue Uprising";
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
@@ -24,7 +24,7 @@ public class SubdueUprisingMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Subdue Uprising",
+            "SubdueUprising",
             ownerInstanceId,
             RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
             mainParticipants,
@@ -33,6 +33,7 @@ public class SubdueUprisingMission : Mission
             successProbabilityTable
         )
     {
+        DisplayName = "Subdue Uprising";
         Planet planet = (Planet)target;
 
         if (!planet.IsInUprising)
@@ -90,14 +91,6 @@ public class SubdueUprisingMission : Mission
     /// Subdue Uprising missions are never foiled — they target own planets.
     /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.SubdueUprising);
-        BaseTicks = tables.TickRanges.SubdueUprising.Base;
-        SpreadTicks = tables.TickRanges.SubdueUprising.Spread;
-    }
 
     /// <summary>
     /// Subdue Uprising missions do not repeat — one attempt per mission.

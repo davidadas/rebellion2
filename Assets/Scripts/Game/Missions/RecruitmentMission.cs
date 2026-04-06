@@ -13,8 +13,8 @@ public class RecruitmentMission : Mission
     public RecruitmentMission()
         : base()
     {
-        Name = "Recruitment";
-        DisplayName = Name;
+        ConfigKey = "Recruitment";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
@@ -84,14 +84,6 @@ public class RecruitmentMission : Mission
     /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
     /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Recruitment);
-        BaseTicks = tables.TickRanges.Recruitment.Base;
-        SpreadTicks = tables.TickRanges.Recruitment.Spread;
-    }
 
     /// <summary>
     /// Returns true while there are still unrecruited officers available for this faction.

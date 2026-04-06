@@ -15,8 +15,8 @@ public class AssassinationMission : Mission
     public AssassinationMission()
         : base()
     {
-        Name = "Assassination";
-        DisplayName = Name;
+        ConfigKey = "Assassination";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
@@ -80,14 +80,6 @@ public class AssassinationMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Assassination);
-        BaseTicks = tables.TickRanges.Assassination.Base;
-        SpreadTicks = tables.TickRanges.Assassination.Spread;
     }
 
     /// <summary>

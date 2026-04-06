@@ -13,7 +13,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
-                Name = "Recruitment",
+                ConfigKey = "Recruitment",
                 DisplayName = "Recruitment",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Diplomacy,
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
                 SerializationHelper.Deserialize<RecruitmentMission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
-            Assert.AreEqual("Recruitment", deserialized.Name);
+            Assert.AreEqual("Recruitment", deserialized.ConfigKey);
             Assert.AreEqual("OFFICER4", deserialized.TargetOfficerInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
         }

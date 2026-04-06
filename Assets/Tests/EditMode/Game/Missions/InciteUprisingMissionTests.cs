@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
-                Name = "Incite Uprising",
+                ConfigKey = "InciteUprising",
                 DisplayName = "Incite Uprising",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Diplomacy,
@@ -266,7 +266,7 @@ namespace Rebellion.Tests.Game.Missions
                 SerializationHelper.Deserialize<InciteUprisingMission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
-            Assert.AreEqual("Incite Uprising", deserialized.Name);
+            Assert.AreEqual("InciteUprising", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
             Assert.IsFalse(deserialized.HasInitiated);

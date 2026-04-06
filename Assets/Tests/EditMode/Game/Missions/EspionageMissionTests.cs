@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
-                Name = "Espionage",
+                ConfigKey = "Espionage",
                 DisplayName = "Espionage",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Espionage,
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Game.Missions
             EspionageMission deserialized = SerializationHelper.Deserialize<EspionageMission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
-            Assert.AreEqual("Espionage", deserialized.Name);
+            Assert.AreEqual("Espionage", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Espionage, deserialized.ParticipantSkill);
             Assert.IsTrue(deserialized.HasInitiated);

@@ -18,8 +18,8 @@ public class ResearchMission : Mission
     public ResearchMission()
         : base()
     {
-        Name = "Research";
-        DisplayName = Name;
+        ConfigKey = "Research";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
@@ -31,7 +31,7 @@ public class ResearchMission : Mission
         ManufacturingType researchType
     )
         : base(
-            GetMissionName(researchType),
+            "Research",
             ownerInstanceId,
             RequirePlanetTarget(target, "Research").GetInstanceID(),
             mainParticipants,
@@ -41,6 +41,7 @@ public class ResearchMission : Mission
         )
     {
         ResearchType = researchType;
+        DisplayName = GetMissionName(researchType);
 
         Planet planet = (Planet)target;
         if (planet.GetOwnerInstanceID() != ownerInstanceId)
@@ -71,13 +72,20 @@ public class ResearchMission : Mission
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// Research missions only improve research skill (handled in OnSuccess),
-    /// not the ParticipantSkill (Leadership). Matches original game behavior.
+    /// Improves the officer's research skill for this mission's manufacturing type
+    /// instead of the base ParticipantSkill (Leadership).
     /// </summary>
-    protected override void ImproveMissionParticipantsSkill() { }
+    protected override void ImproveMissionParticipantsSkill()
+    {
+        foreach (IMissionParticipant participant in MainParticipants)
+        {
+            if (participant is Officer officer)
+                officer.IncrementResearchSkill(ResearchType);
+        }
+    }
 
     /// <summary>
-    /// Awards research capacity points to the faction and increments the officer's skill.
+    /// Awards research capacity points to the faction's research pool.
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>An empty list (no additional results).</returns>
@@ -96,12 +104,6 @@ public class ResearchMission : Mission
         if (faction.ResearchCapacity.ContainsKey(ResearchType))
             faction.ResearchCapacity[ResearchType] += reward;
 
-        foreach (IMissionParticipant participant in MainParticipants)
-        {
-            if (participant is Officer officer)
-                officer.IncrementResearchSkill(ResearchType);
-        }
-
         return new List<GameResult>();
     }
 
@@ -114,20 +116,6 @@ public class ResearchMission : Mission
     {
         return GetParent() is Planet p
             && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
-
-    /// <summary>
-    /// Applies tick range configuration for research missions.
-    /// </summary>
-    /// <param name="tables">The mission probability tables config.</param>
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        if (tables.TickRanges.Research != null)
-        {
-            BaseTicks = tables.TickRanges.Research.Base;
-            SpreadTicks = tables.TickRanges.Research.Spread;
-        }
     }
 
     /// <summary>

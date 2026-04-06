@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Missions
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
-                Name = "Ship Design",
+                ConfigKey = "Research",
                 DisplayName = "Ship Design",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Leadership,
@@ -258,7 +258,7 @@ namespace Rebellion.Tests.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
-            Assert.AreEqual("Ship Design", deserialized.Name);
+            Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Leadership, deserialized.ParticipantSkill);
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.Missions
             {
                 InstanceID = "MISSION2",
                 OwnerInstanceID = "FACTION1",
-                Name = "Troop Training",
+                ConfigKey = "Research",
                 DisplayName = "Troop Training",
                 TargetInstanceID = "PLANET1",
                 ResearchType = ManufacturingType.Troop,
@@ -284,7 +284,7 @@ namespace Rebellion.Tests.Missions
             string xml = SerializationHelper.Serialize(mission);
             ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
 
-            Assert.AreEqual("Troop Training", deserialized.Name);
+            Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Troop Training", deserialized.DisplayName);
             Assert.AreEqual(ManufacturingType.Troop, deserialized.ResearchType);
         }
@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Missions
             {
                 InstanceID = "MISSION3",
                 OwnerInstanceID = "FACTION1",
-                Name = "Facility Design",
+                ConfigKey = "Research",
                 DisplayName = "Facility Design",
                 TargetInstanceID = "PLANET1",
                 ResearchType = ManufacturingType.Building,
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.Missions
             string xml = SerializationHelper.Serialize(mission);
             ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
 
-            Assert.AreEqual("Facility Design", deserialized.Name);
+            Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Facility Design", deserialized.DisplayName);
             Assert.AreEqual(ManufacturingType.Building, deserialized.ResearchType);
         }

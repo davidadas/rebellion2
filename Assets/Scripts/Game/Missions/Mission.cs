@@ -11,7 +11,7 @@ using Rebellion.Util.Extensions;
 
 public abstract class Mission : ContainerNode
 {
-    public string Name { get; set; }
+    public string ConfigKey { get; set; }
     public string TargetInstanceID { get; set; }
 
     [PersistableIgnore]
@@ -21,6 +21,7 @@ public abstract class Mission : ContainerNode
     public List<IMissionParticipant> DecoyParticipants { get; set; }
 
     public MissionParticipantSkill ParticipantSkill { get; set; }
+
     public bool HasInitiated = false;
 
     [PersistableIgnore]
@@ -67,7 +68,7 @@ public abstract class Mission : ContainerNode
     /// Initializes a mission with all required parameters.
     /// </summary>
     protected Mission(
-        string name,
+        string configKey,
         string ownerInstanceId,
         string targetInstanceId,
         List<IMissionParticipant> mainParticipants,
@@ -76,8 +77,8 @@ public abstract class Mission : ContainerNode
         ProbabilityTable successProbabilityTable
     )
     {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        DisplayName = Name;
+        ConfigKey = configKey ?? throw new ArgumentNullException(nameof(configKey));
+        DisplayName = configKey;
         AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
@@ -91,13 +92,23 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Applies shared probability tables from config. Override to set mission-specific
-    /// tables and tick ranges; always call base first.
+    /// Applies probability tables and tick ranges from config, keyed by ConfigKey.
     /// </summary>
     public virtual void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
         FoilProbabilityTable = new ProbabilityTable(tables.Foil);
+
+        Dictionary<int, int> successTable = tables.GetSuccessTable(ConfigKey);
+        if (successTable != null)
+            SuccessProbabilityTable = new ProbabilityTable(successTable);
+
+        GameConfig.MissionTickConfig tickConfig = tables.TickRanges.GetTickConfig(ConfigKey);
+        if (tickConfig != null)
+        {
+            BaseTicks = tickConfig.Base;
+            SpreadTicks = tickConfig.Spread;
+        }
     }
 
     /// <summary>
@@ -318,13 +329,13 @@ public abstract class Mission : ContainerNode
         );
         string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
         string targetStr = string.IsNullOrEmpty(targetName) ? "" : $" at {targetName}";
-        GameLogger.Log($"{Name} mission by {agents}{targetStr}: {outcome}");
+        GameLogger.Log($"{DisplayName} mission by {agents}{targetStr}: {outcome}");
 
         results.Add(
             new MissionCompletedResult
             {
                 MissionInstanceID = InstanceID,
-                MissionName = Name,
+                MissionName = DisplayName,
                 TargetName = targetName,
                 ParticipantInstanceIDs = allParticipants.Select(p => p.GetInstanceID()).ToList(),
                 ParticipantNames = allParticipants

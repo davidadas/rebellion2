@@ -11,8 +11,8 @@ public class DiplomacyMission : Mission
     public DiplomacyMission()
         : base()
     {
-        Name = "Diplomacy";
-        DisplayName = Name;
+        ConfigKey = "Diplomacy";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
@@ -135,14 +135,6 @@ public class DiplomacyMission : Mission
     public override bool IsCanceled(GameRoot game)
     {
         return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Diplomacy);
-        BaseTicks = tables.TickRanges.Diplomacy.Base;
-        SpreadTicks = tables.TickRanges.Diplomacy.Spread;
     }
 
     /// <summary>

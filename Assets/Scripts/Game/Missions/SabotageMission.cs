@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class SabotageMission : Mission
 {
@@ -12,8 +14,8 @@ public class SabotageMission : Mission
     public SabotageMission()
         : base()
     {
-        Name = "Sabotage";
-        DisplayName = Name;
+        ConfigKey = "Sabotage";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
@@ -67,12 +69,22 @@ public class SabotageMission : Mission
         };
     }
 
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
+    /// <summary>
+    /// Sabotage awards both Combat +1 and Espionage +1 on success.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill()
     {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Sabotage);
-        BaseTicks = tables.TickRanges.Sabotage.Base;
-        SpreadTicks = tables.TickRanges.Sabotage.Spread;
+        base.ImproveMissionParticipantsSkill();
+        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+        {
+            if (participant.CanImproveMissionSkill)
+            {
+                participant.SetMissionSkillValue(
+                    MissionParticipantSkill.Espionage,
+                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
+                );
+            }
+        }
     }
 
     /// <summary>

@@ -14,8 +14,8 @@ public class InciteUprisingMission : Mission
     public InciteUprisingMission()
         : base()
     {
-        Name = "Incite Uprising";
-        DisplayName = Name;
+        ConfigKey = "InciteUprising";
+        DisplayName = "Incite Uprising";
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
@@ -27,7 +27,7 @@ public class InciteUprisingMission : Mission
         ProbabilityTable successProbabilityTable = null
     )
         : base(
-            "Incite Uprising",
+            "InciteUprising",
             ownerInstanceId,
             RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
             mainParticipants,
@@ -36,6 +36,7 @@ public class InciteUprisingMission : Mission
             successProbabilityTable
         )
     {
+        DisplayName = "Incite Uprising";
         Planet planet = (Planet)target;
 
         if (planet.GetOwnerInstanceID() == ownerInstanceId)
@@ -108,14 +109,6 @@ public class InciteUprisingMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.InciteUprising);
-        BaseTicks = tables.TickRanges.InciteUprising.Base;
-        SpreadTicks = tables.TickRanges.InciteUprising.Spread;
     }
 
     /// <summary>

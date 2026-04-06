@@ -515,6 +515,27 @@ public class GameConfig
         public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
         public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
+
+        /// <summary>
+        /// Returns the success probability table for the given mission config key, or null.
+        /// </summary>
+        public Dictionary<int, int> GetSuccessTable(string key)
+        {
+            return key switch
+            {
+                "Abduction" => Abduction,
+                "Assassination" => Assassination,
+                "Diplomacy" => Diplomacy,
+                "DeathStarSabotage" => DeathStarSabotage,
+                "Espionage" => Espionage,
+                "InciteUprising" => InciteUprising,
+                "Recruitment" => Recruitment,
+                "Rescue" => Rescue,
+                "Sabotage" => Sabotage,
+                "SubdueUprising" => SubdueUprising,
+                _ => null,
+            };
+        }
     }
 
     [PersistableObject]
@@ -540,6 +561,27 @@ public class GameConfig
         public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
         public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
         public MissionTickConfig Research { get; set; } = new MissionTickConfig();
+
+        /// <summary>
+        /// Returns the tick config for the given mission config key, or null.
+        /// </summary>
+        public MissionTickConfig GetTickConfig(string key)
+        {
+            return key switch
+            {
+                "Abduction" => Abduction,
+                "Assassination" => Assassination,
+                "Diplomacy" => Diplomacy,
+                "Espionage" => Espionage,
+                "InciteUprising" => InciteUprising,
+                "Recruitment" => Recruitment,
+                "Rescue" => Rescue,
+                "Sabotage" => Sabotage,
+                "SubdueUprising" => SubdueUprising,
+                "Research" => Research,
+                _ => null,
+            };
+        }
     }
 
     /// <summary>

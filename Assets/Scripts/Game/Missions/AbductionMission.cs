@@ -15,8 +15,8 @@ public class AbductionMission : Mission
     public AbductionMission()
         : base()
     {
-        Name = "Abduction";
-        DisplayName = Name;
+        ConfigKey = "Abduction";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
@@ -80,14 +80,6 @@ public class AbductionMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Abduction);
-        BaseTicks = tables.TickRanges.Abduction.Base;
-        SpreadTicks = tables.TickRanges.Abduction.Spread;
     }
 
     /// <summary>

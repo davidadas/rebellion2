@@ -16,8 +16,8 @@ public class EspionageMission : Mission
     public EspionageMission()
         : base()
     {
-        Name = "Espionage";
-        DisplayName = Name;
+        ConfigKey = "Espionage";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
@@ -76,14 +76,6 @@ public class EspionageMission : Mission
         }
 
         return new List<GameResult>();
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Espionage);
-        BaseTicks = tables.TickRanges.Espionage.Base;
-        SpreadTicks = tables.TickRanges.Espionage.Spread;
     }
 
     /// <summary>

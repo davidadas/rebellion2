@@ -4,11 +4,11 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Manages research and technology advancement during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages research and technology advancement during each game tick.
+    /// </summary>
     public class ResearchSystem
     {
         /// <summary>

@@ -281,7 +281,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
-                Name = "Assassination",
+                ConfigKey = "Assassination",
                 DisplayName = "Assassination",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Combat,
@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Game.Missions
                 SerializationHelper.Deserialize<AssassinationMission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
-            Assert.AreEqual("Assassination", deserialized.Name);
+            Assert.AreEqual("Assassination", deserialized.ConfigKey);
             Assert.AreEqual("OFFICER1", deserialized.TargetOfficerInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Combat, deserialized.ParticipantSkill);
             Assert.IsTrue(deserialized.HasInitiated);

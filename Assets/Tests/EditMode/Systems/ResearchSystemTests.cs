@@ -55,20 +55,6 @@ namespace Rebellion.Tests.Systems
             };
         }
 
-        private Building CreateTrainingFacility(string id)
-        {
-            return new Building
-            {
-                InstanceID = id,
-                OwnerInstanceID = "FNALL1",
-                BuildingType = BuildingType.TrainingFacility,
-
-                ProductionType = ManufacturingType.Troop,
-                ProcessRate = 10,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-        }
-
         private void SetupShipResearchQueue(params (string name, int order, int difficulty)[] techs)
         {
             IManufacturable[] templates = techs.Select(t => (IManufacturable)new CapitalShip

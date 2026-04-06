@@ -15,8 +15,8 @@ public class RescueMission : Mission
     public RescueMission()
         : base()
     {
-        Name = "Rescue";
-        DisplayName = Name;
+        ConfigKey = "Rescue";
+        DisplayName = ConfigKey;
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
@@ -80,14 +80,6 @@ public class RescueMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    public override void Configure(GameConfig.MissionProbabilityTablesConfig tables)
-    {
-        base.Configure(tables);
-        SuccessProbabilityTable = new ProbabilityTable(tables.Rescue);
-        BaseTicks = tables.TickRanges.Rescue.Base;
-        SpreadTicks = tables.TickRanges.Rescue.Spread;
     }
 
     /// <summary>
