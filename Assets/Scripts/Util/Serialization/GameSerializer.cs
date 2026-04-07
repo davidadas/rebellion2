@@ -1032,13 +1032,18 @@ namespace Rebellion.Util.Serialization
             return attributeMap;
         }
 
+        private static IDictionary<string, Type> _persistableObjectMap;
+
         /// <summary>
         /// Gets a dictionary mapping type names to Type objects for all persistable types in the current AppDomain.
         /// </summary>
         /// <returns>A dictionary mapping type names to Type objects.</returns>
         public static IDictionary<string, Type> GetPersistableObjectMap()
         {
-            return AppDomain.CurrentDomain
+            if (_persistableObjectMap != null)
+                return _persistableObjectMap;
+
+            _persistableObjectMap = AppDomain.CurrentDomain
                 .GetAssemblies()
                 .SelectMany(a =>
                 {
@@ -1063,6 +1068,8 @@ namespace Rebellion.Util.Serialization
                     ?? type.Name
                 )
                 .ToDictionary(g => g.Key, g => g.First());
+
+            return _persistableObjectMap;
         }
 
         /// <summary>
