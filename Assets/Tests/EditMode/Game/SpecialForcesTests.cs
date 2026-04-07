@@ -42,11 +42,11 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SetMissionSkillValue_DoesNothing()
+        public void SetMissionSkillValue_SetsSkillValue()
         {
-            Assert.DoesNotThrow(() =>
-                _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50)
-            );
+            _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 99);
+
+            Assert.AreEqual(99, _specialForces.Skills[MissionParticipantSkill.Combat]);
         }
 
         [Test]

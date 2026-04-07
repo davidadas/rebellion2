@@ -50,7 +50,8 @@ namespace Rebellion.Game
             return ManufacturingType.Troop;
         }
 
-        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) { }
+        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
+            Skills[skill] = value;
 
         /// <summary>
         /// Returns whether the special forces unit can be ordered to move.
