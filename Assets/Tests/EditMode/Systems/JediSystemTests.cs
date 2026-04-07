@@ -5,21 +5,22 @@ using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
+using Rebellion.Core.Simulation;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
 {
     /// <summary>
-    /// Tests for JediSystem tier advancement and detection mechanics.
-    /// Tests validate Force tier progression (Aware → Training → Experienced) and
-    /// periodic detection checks against original REBEXE.EXE behavior.
-    /// XP accumulation is currently unimplemented - tests manually set ForceExperience.
+    /// Tests for JediSystem force discovery, mission growth, training catch-up,
+    /// and force user discovery scanning.
+    /// Validates deterministic threshold-based discovery and two-tier Jedi mechanics
+    /// matching REBEXE.EXE.
     /// </summary>
     [TestFixture]
     public class JediSystemTests
     {
         private GameRoot _game;
-        private JediSystem _manager;
+        private JediSystem _system;
         private Faction _alliance;
         private Planet _tatooine;
 
@@ -27,15 +28,8 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             GameConfig config = ConfigLoader.LoadGameConfig();
-            config.Jedi.XpToTraining = 50;
-            config.Jedi.XpToExperienced = 150;
-            config.Jedi.DetectionCheckInterval = 30;
-            config.Jedi.DetectProbAware = 0.05;
-            config.Jedi.DetectProbTraining = 0.15;
-            config.Jedi.DetectProbExperienced = 0.30;
-
             _game = new GameRoot(config);
-            _manager = new JediSystem(_game);
+            _system = new JediSystem(_game);
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.Factions.Add(_alliance);
@@ -57,296 +51,532 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_tatooine, system);
         }
 
-        [Test]
-        public void ProcessTick_NoviceJediWithTrainingPlanet_AdvancesToTraining()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
+        // --- Discovery state tests ---
 
-            List<JediResult> results = _manager
+        [Test]
+        public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 85);
+
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(ForceTier.Training, luke.ForceTier);
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
             Assert.AreEqual(1, results.Count);
-            Assert.AreEqual(JediEventType.TierAdvanced, results[0].EventType);
-            Assert.AreEqual(ForceTier.Aware, results[0].OldTier);
-            Assert.AreEqual(ForceTier.Training, results[0].NewTier);
+            Assert.AreEqual(ForceEventType.DiscoveringForceUser, results[0].EventType);
+            Assert.AreEqual(85, results[0].ForceRank);
         }
 
         [Test]
-        public void ProcessTick_TrainingJediWithTrainingPlanet_AdvancesToExperienced()
+        public void ProcessTick_ForceRankExactlyAtThreshold_EntersDiscoveringState()
         {
-            Officer luke = CreateOfficer("LUKE", 100, 150, ForceTier.Training);
+            // Default threshold is 80
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 80);
 
-            List<JediResult> results = _manager
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(ForceTier.Experienced, luke.ForceTier);
-            Assert.AreEqual(2, results.Count);
-            Assert.IsTrue(results.Any(r => r.EventType == JediEventType.TierAdvanced));
-            Assert.IsTrue(results.Any(r => r.EventType == JediEventType.TrainingComplete));
-        }
-
-        [Test]
-        public void ProcessTick_BelowThreshold_NoAdvancement()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 49, ForceTier.Aware);
-
-            List<JediResult> results = _manager
-                .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
-                .ToList();
-
-            Assert.AreEqual(ForceTier.Aware, luke.ForceTier);
-            Assert.AreEqual(0, results.Count);
-        }
-
-        [Test]
-        public void ProcessTick_ExactThreshold_Advances()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
-
-            List<JediResult> results = _manager
-                .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
-                .ToList();
-
-            Assert.AreEqual(ForceTier.Training, luke.ForceTier);
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
             Assert.AreEqual(1, results.Count);
         }
 
         [Test]
-        public void ProcessTick_NoviceJediWithHighSkillPlanet_JumpsToExperienced()
+        public void ProcessTick_ForceRankBelowThreshold_NoDiscovery()
         {
-            // Palpatine starts at 150 XP from None
-            Officer palpatine = CreateOfficer("PALPATINE", 100, 150, ForceTier.None);
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 79);
 
-            List<JediResult> results = _manager
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(ForceTier.Experienced, palpatine.ForceTier);
-            Assert.AreEqual(2, results.Count);
-            Assert.IsTrue(results.Any(r => r.EventType == JediEventType.TierAdvanced));
-            Assert.IsTrue(results.Any(r => r.EventType == JediEventType.TrainingComplete));
-        }
-
-        [Test]
-        public void ProcessTick_NoForceUser_NoEvents()
-        {
-            Officer palpatine = CreateOfficer("PALPATINE", 0, 0, ForceTier.None);
-
-            List<JediResult> results = _manager
-                .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
-                .ToList();
-
-            Assert.AreEqual(ForceTier.None, palpatine.ForceTier);
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ProcessTick_MultipleOfficers_AllAdvance()
+        public void ProcessTick_CapturedOfficer_NoDiscoveringState()
         {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
-            Officer leia = CreateOfficer("LEIA", 100, 150, ForceTier.Training);
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
+            luke.IsCaptured = true;
 
-            List<JediResult> results = _manager
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(ForceTier.Training, luke.ForceTier);
-            Assert.AreEqual(ForceTier.Experienced, leia.ForceTier);
-            Assert.AreEqual(3, results.Count); // Luke: 1 TierAdvanced, Leia: 1 TierAdvanced + 1 TrainingComplete
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
+            Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ProcessTick_JediOnEnemyPlanet_TriggersDetection()
+        public void ProcessTick_AlreadyDiscovering_NoRepeatedEvent()
         {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            _game.CurrentTick = 30; // Detection interval
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
+            luke.IsDiscoveringForceUser = true;
 
-            FixedRNG rng = new FixedRNG(0.01); // Roll < 0.15 (DetectProbTraining)
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsTrue(luke.IsDiscoveredJedi);
-            Assert.IsTrue(results.Any(r => r.EventType == JediEventType.JediDiscovered));
-        }
-
-        [Test]
-        public void ProcessTick_JediOnEnemyPlanetWithHighRoll_DetectionFails()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            _game.CurrentTick = 30;
-
-            FixedRNG rng = new FixedRNG(0.99); // Roll > 0.15
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsFalse(luke.IsDiscoveredJedi);
-            Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
-        }
-
-        [Test]
-        public void ProcessTick_AlreadyDiscovered_NoRecheck()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            luke.IsDiscoveredJedi = true;
-            _game.CurrentTick = 60; // Multiple intervals passed
-
-            FixedRNG rng = new FixedRNG(0.01); // Low roll
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
-        }
-
-        [Test]
-        public void ProcessTick_NotDetectionInterval_NoCheck()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            _game.CurrentTick = 29; // One tick before interval
-
-            FixedRNG rng = new FixedRNG(0.01);
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsFalse(luke.IsDiscoveredJedi);
-            Assert.IsFalse(results.Any(r => r.EventType == JediEventType.JediDiscovered));
-        }
-
-        [Test]
-        public void ProcessTick_AwareTier_LowerDetectionRate()
-        {
-            Officer luke = CreateOfficer("LUKE", 100, 10, ForceTier.Aware);
-            _game.CurrentTick = 30;
-
-            // Roll 0.04 < 0.05 (DetectProbAware) → should detect
-            FixedRNG rng = new FixedRNG(0.04);
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsTrue(luke.IsDiscoveredJedi);
-        }
-
-        [Test]
-        public void ProcessTick_ExperiencedTier_HigherDetectionRate()
-        {
-            Officer palpatine = CreateOfficer("PALPATINE", 100, 150, ForceTier.Experienced);
-            _game.CurrentTick = 30;
-
-            // Roll 0.29 < 0.30 (DetectProbExperienced) → should detect
-            FixedRNG rng = new FixedRNG(0.29);
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsTrue(palpatine.IsDiscoveredJedi);
-        }
-
-        [Test]
-        public void ProcessTick_NoneTier_NeverDetected()
-        {
-            Officer palpatine = CreateOfficer("PALPATINE", 0, 0, ForceTier.None);
-            _game.CurrentTick = 30;
-
-            FixedRNG rng = new FixedRNG(0.0); // Guaranteed roll
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsFalse(palpatine.IsDiscoveredJedi);
-        }
-
-        [Test]
-        public void ProcessTick_CustomConfig_UsesCustomThresholds()
-        {
-            _game.Config.Jedi.XpToTraining = 100; // Custom threshold
-            _game.Config.Jedi.XpToExperienced = 200;
-
-            Officer luke = CreateOfficer("LUKE", 100, 99, ForceTier.Aware);
-            List<JediResult> results = _manager
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(ForceTier.Aware, luke.ForceTier); // Still Aware at 99 XP
-
-            luke.ForceExperience = 100;
-            results = _manager.ProcessTick(new FixedRNG()).OfType<JediResult>().ToList();
-
-            Assert.AreEqual(ForceTier.Training, luke.ForceTier); // Advances at 100 XP
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
+            Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ProcessTick_CustomDetectionInterval_Honored()
+        public void ProcessTick_ForceRankDropsBelowThreshold_ClearsDiscoveringState()
         {
-            _game.Config.Jedi.DetectionCheckInterval = 50;
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+            luke.IsDiscoveringForceUser = true; // Was set previously
 
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            _game.CurrentTick = 30;
+            _system.ProcessTick(new FixedRNG());
 
-            FixedRNG rng = new FixedRNG(0.01);
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsFalse(luke.IsDiscoveredJedi); // 30 % 50 != 0
-
-            _game.CurrentTick = 50;
-            results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
-
-            Assert.IsTrue(luke.IsDiscoveredJedi); // 50 % 50 == 0
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
         }
 
         [Test]
-        public void ProcessTick_CustomDetectionProb_Honored()
+        public void ProcessTick_NonJediOfficer_Skipped()
         {
-            _game.Config.Jedi.DetectProbTraining = 0.50; // Custom 50% rate
+            Officer han = new Officer
+            {
+                InstanceID = "HAN",
+                DisplayName = "Han",
+                OwnerInstanceID = _alliance.InstanceID,
+                IsJedi = false,
+                ForceValue = 100,
+            };
+            _game.AttachNode(han, _tatooine);
 
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Training);
-            _game.CurrentTick = 30;
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG())
+                .OfType<ForceDiscoveryResult>()
+                .ToList();
 
-            FixedRNG rng = new FixedRNG(0.49); // Just below threshold
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
+            Assert.AreEqual(0, results.Count);
+        }
 
-            Assert.IsTrue(luke.IsDiscoveredJedi);
+        [Test]
+        public void ProcessTick_DormantJedi_NotForceEligible_Skipped()
+        {
+            Officer leia = CreateDormantJedi("LEIA");
+
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG())
+                .OfType<ForceDiscoveryResult>()
+                .ToList();
+
+            Assert.IsFalse(leia.IsDiscoveringForceUser);
+            Assert.AreEqual(0, results.Count);
         }
 
         [Test]
         public void ProcessTick_EmptyGame_NoEvents()
         {
-            List<JediResult> results = _manager
+            List<ForceDiscoveryResult> results = _system
                 .ProcessTick(new FixedRNG())
-                .OfType<JediResult>()
+                .OfType<ForceDiscoveryResult>()
                 .ToList();
 
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ProcessTick_TierAndDetection_BothFire()
+        public void ProcessTick_MultipleOfficers_AllProcessed()
         {
-            Officer luke = CreateOfficer("LUKE", 100, 50, ForceTier.Aware);
-            _game.CurrentTick = 30;
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 85);
+            Officer vader = CreateKnownJedi("VADER", forceValue: 120);
 
-            FixedRNG rng = new FixedRNG(0.01); // Low roll for detection
-            List<JediResult> results = _manager.ProcessTick(rng).OfType<JediResult>().ToList();
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG())
+                .OfType<ForceDiscoveryResult>()
+                .ToList();
 
-            Assert.AreEqual(ForceTier.Training, luke.ForceTier);
-            Assert.IsTrue(luke.IsDiscoveredJedi);
-            Assert.AreEqual(2, results.Count); // TierAdvanced + JediDiscovered
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
+            Assert.IsTrue(vader.IsDiscoveringForceUser);
+            Assert.AreEqual(2, results.Count);
         }
 
-        private Officer CreateOfficer(string id, int jediProb, int forceXP, ForceTier tier)
+        [Test]
+        public void ProcessTick_ForceRankIncludesTrainingAdjustment()
+        {
+            // ForceValue 70 alone is below threshold 80, but with adjustment of 15 => rank 85
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 70);
+            luke.ForceTrainingAdjustment = 15;
+
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG())
+                .OfType<ForceDiscoveryResult>()
+                .ToList();
+
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual(85, results[0].ForceRank);
+        }
+
+        // --- Mission force growth tests ---
+
+        [Test]
+        public void AwardMissionForceGrowth_ForceEligibleJedi_IncreasesForceValue()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+
+            _system.AwardMissionForceGrowth(luke);
+
+            Assert.AreEqual(50 + _game.Config.Jedi.ForceGrowthPerMission, luke.ForceValue);
+        }
+
+        [Test]
+        public void AwardMissionForceGrowth_DormantJedi_NoChange()
+        {
+            Officer leia = CreateDormantJedi("LEIA");
+
+            _system.AwardMissionForceGrowth(leia);
+
+            Assert.AreEqual(0, leia.ForceValue);
+        }
+
+        [Test]
+        public void AwardMissionForceGrowth_NonJedi_NoChange()
+        {
+            Officer han = new Officer
+            {
+                InstanceID = "HAN",
+                DisplayName = "Han",
+                IsJedi = false,
+                ForceValue = 0,
+            };
+
+            _system.AwardMissionForceGrowth(han);
+
+            Assert.AreEqual(0, han.ForceValue);
+        }
+
+        // --- Training catch-up tests ---
+
+        [Test]
+        public void ApplyTrainingCatchUp_TraineeBelowTeacher_GainsAdjustment()
+        {
+            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 50);
+            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
+
+            // Gap = 50, catch-up range = 50 * 50 / 100 = 25
+            // FixedRNG.NextInt(0, 26) returns 0 (min)
+            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
+
+            // With min-returning RNG, bonus is 0
+            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
+        }
+
+        [Test]
+        public void ApplyTrainingCatchUp_TraineeAboveTeacher_NoGain()
+        {
+            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 120);
+            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
+
+            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
+
+            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
+        }
+
+        [Test]
+        public void ApplyTrainingCatchUp_TraineeEqualsTeacher_NoGain()
+        {
+            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 100);
+            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
+
+            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
+
+            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
+        }
+
+        [Test]
+        public void ApplyTrainingCatchUp_WithMaxRoll_GainsFullCatchUp()
+        {
+            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 50);
+            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
+
+            // Gap = 50, catch-up range = 50 * 50 / 100 = 25
+            // MaxRNG returns max-1, so NextInt(0, 26) = 25
+            _system.ApplyTrainingCatchUp(trainee, teacher, new MaxRNG());
+
+            Assert.AreEqual(25, trainee.ForceTrainingAdjustment);
+        }
+
+        // --- ForceRankLabel tests ---
+
+        [Test]
+        public void GetForceRankLabel_BelowTen_ReturnsNone()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 9 };
+            Assert.AreEqual(ForceRankLabel.None, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void GetForceRankLabel_AtTen_ReturnsNovice()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 10 };
+            Assert.AreEqual(ForceRankLabel.Novice, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void GetForceRankLabel_AtTwenty_ReturnsTrainee()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 20 };
+            Assert.AreEqual(ForceRankLabel.Trainee, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void GetForceRankLabel_AtEighty_ReturnsForceStudent()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 80 };
+            Assert.AreEqual(ForceRankLabel.ForceStudent, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void GetForceRankLabel_AtHundred_ReturnsForceKnight()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 100 };
+            Assert.AreEqual(ForceRankLabel.ForceKnight, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void GetForceRankLabel_AtOneTwenty_ReturnsForceMaster()
+        {
+            Officer officer = new Officer { IsJedi = true, ForceValue = 120 };
+            Assert.AreEqual(ForceRankLabel.ForceMaster, officer.GetForceRankLabel());
+        }
+
+        [Test]
+        public void ForceRank_IsForceValuePlusTrainingAdjustment()
+        {
+            Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 30 };
+            Assert.AreEqual(80, officer.ForceRank);
+        }
+
+        // --- Force user discovery scan tests ---
+
+        [Test]
+        public void ScanForForceUsers_DiscoveringJediDiscoversDormant()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer leia = CreateDormantJedi("LEIA");
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            // Probability = 120 + 0 - 100 = 20%. FixedRNG returns 0.0 which is < 20%.
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.Greater(leia.ForceValue, 0);
+            Assert.AreEqual(1, results.OfType<ForceDiscoveryResult>().Count());
+            Assert.AreEqual(
+                ForceEventType.ForceUserDiscovered,
+                results.OfType<ForceDiscoveryResult>().First().EventType
+            );
+        }
+
+        [Test]
+        public void ScanForForceUsers_LowRank_CannotDiscover()
+        {
+            // Rank 50 + 0 - 100 = -50% -> impossible
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer leia = CreateDormantJedi("LEIA");
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.AreEqual(0, leia.ForceValue);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_NonDiscoveringJedi_NoScan()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = false; // Not in discovering state
+
+            Officer leia = CreateDormantJedi("LEIA");
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_AlreadyEligible_Skipped()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer vader = CreateKnownJedi("VADER", forceValue: 100);
+
+            Mission mission = CreateMissionWithParticipants(luke, vader);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            // Vader is already force-eligible, so no discovery event
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_CapturedCandidate_Skipped()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer leia = CreateDormantJedi("LEIA");
+            leia.IsCaptured = true;
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_ScansLocalOfficersOnPlanet()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+
+            // Leia is NOT on the mission but stationed on Tatooine
+            Officer leia = CreateDormantJedi("LEIA");
+
+            // Mission only has Luke
+            Mission mission = CreateMissionWithParticipants(luke);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            // Luke should still find Leia at the planet
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreEqual(1, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_HighRoll_DiscoveryFails()
+        {
+            // Rank 101 + 0 - 100 = 1%. MaxRNG returns 0.99 -> roll = 99.0 >= 1%
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 101);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer leia = CreateDormantJedi("LEIA");
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            _system.ScanForForceUsers(mission, new MaxRNG(), results);
+
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ScanForForceUsers_InitializesForceValueFromTemplate()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+
+            Officer leia = CreateDormantJedi("LEIA");
+            leia.JediLevel = 10;
+            leia.JediLevelVariance = 5;
+
+            Mission mission = CreateMissionWithParticipants(luke, leia);
+
+            List<GameResult> results = new List<GameResult>();
+            // FixedRNG: NextInt(0, 6) = 0, so ForceValue = 10 + 0 = 10
+            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreEqual(10, leia.ForceValue);
+        }
+
+        // --- Helper methods ---
+
+        private Officer CreateKnownJedi(string id, int forceValue)
         {
             Officer officer = new Officer
             {
                 InstanceID = id,
                 DisplayName = id,
                 OwnerInstanceID = _alliance.InstanceID,
-                JediProbability = jediProb,
-                ForceExperience = forceXP,
-                ForceTier = tier,
-                IsDiscoveredJedi = false,
+                IsJedi = true,
+                IsForceEligible = true,
+                ForceValue = forceValue,
+                ForceTrainingAdjustment = 0,
             };
             _game.AttachNode(officer, _tatooine);
             return officer;
         }
+
+        private Officer CreateDormantJedi(string id)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = _alliance.InstanceID,
+                IsJedi = true,
+                IsForceEligible = false,
+                ForceValue = 0,
+                ForceTrainingAdjustment = 0,
+                JediLevel = 10,
+                JediLevelVariance = 0,
+            };
+            _game.AttachNode(officer, _tatooine);
+            return officer;
+        }
+
+        private Mission CreateMissionWithParticipants(params Officer[] participants)
+        {
+            List<IMissionParticipant> mainParticipants =
+                participants.Cast<IMissionParticipant>().ToList();
+
+            Mission mission = new DiplomacyMission(
+                _alliance.InstanceID,
+                _tatooine,
+                mainParticipants,
+                new List<IMissionParticipant>()
+            );
+            _game.AttachNode(mission, _tatooine);
+
+            foreach (Officer officer in participants)
+            {
+                _game.MoveNode(officer, mission);
+            }
+
+            return mission;
+        }
+    }
+
+    /// <summary>
+    /// RNG that always returns max - 1 from NextInt, used for testing max-roll paths.
+    /// </summary>
+    internal class MaxRNG : IRandomNumberProvider
+    {
+        public double NextDouble() => 0.99;
+
+        public int NextInt(int min, int max) => max > min ? max - 1 : min;
     }
 }

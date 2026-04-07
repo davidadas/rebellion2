@@ -10,11 +10,11 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
-    public enum JediEventType
+    public enum ForceEventType
     {
-        TierAdvanced,
-        TrainingComplete,
-        JediDiscovered,
+        DiscoveringForceUser,
+        ForceGrowth,
+        ForceUserDiscovered,
     }
 
     public class MissionCompletedResult : GameResult
@@ -117,12 +117,11 @@ namespace Rebellion.Game.Results
         public List<string> DefenderInstanceIDs { get; set; } = new List<string>();
     }
 
-    public class JediResult : GameResult
+    public class ForceDiscoveryResult : GameResult
     {
-        public JediEventType EventType { get; set; }
+        public ForceEventType EventType { get; set; }
         public Officer Officer { get; set; }
-        public ForceTier OldTier { get; set; }
-        public ForceTier NewTier { get; set; }
+        public int ForceRank { get; set; }
     }
 
     public class PlanetaryAssaultResult : GameResult

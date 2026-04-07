@@ -445,23 +445,35 @@ public class GameConfig
     [PersistableObject]
     public class JediConfig
     {
-        /// <summary>XP required to advance from Aware to Training tier (default: 50)</summary>
-        public int XpToTraining { get; set; }
+        /// <summary>ForceRank threshold to enter "discovering force user" state (GP_2580 = 80).</summary>
+        public int DiscoveringForceUserThreshold { get; set; }
 
-        /// <summary>XP required to advance from Training to Experienced tier.</summary>
-        public int XpToExperienced { get; set; }
+        /// <summary>ForceRank threshold for full Jedi qualification (GP_2581 = 100).</summary>
+        public int ForceQualifiedThreshold { get; set; }
 
-        /// <summary>Ticks between Jedi detection checks.</summary>
-        public int DetectionCheckInterval { get; set; }
+        /// <summary>ForceRank threshold for Force-based fast healing (GP_2560 = 80).</summary>
+        public int FastHealThreshold { get; set; }
 
-        /// <summary>Detection probability per check for Aware tier.</summary>
-        public double DetectProbAware { get; set; }
+        /// <summary>ForceValue increment per successful mission (GP_3081 = 1).</summary>
+        public int ForceGrowthPerMission { get; set; }
 
-        /// <summary>Detection probability per check for Training tier.</summary>
-        public double DetectProbTraining { get; set; }
+        /// <summary>Percent of rank gap used as catch-up range in training (GP_6173 = 50).</summary>
+        public int TrainingCatchUpPercent { get; set; }
 
-        /// <summary>Detection probability per check for Experienced tier.</summary>
-        public double DetectProbExperienced { get; set; }
+        /// <summary>ForceRank threshold for Luke to learn heritage (GP_3078 = 60).</summary>
+        public int HeritageThreshold { get; set; }
+
+        /// <summary>Percent bonus to force_rank on Dagobah completion (GP_6174 = 60).</summary>
+        public int DagobahCompletionBonusPercent { get; set; }
+
+        /// <summary>Local force user minimum rank for encounter eligibility (GP_3585 = 1).</summary>
+        public int EncounterLocalMinRank { get; set; }
+
+        /// <summary>Cross-side force user minimum rank for encounter eligibility (GP_3586 = 60).</summary>
+        public int EncounterCrossSideMinRank { get; set; }
+
+        /// <summary>Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587 = -100).</summary>
+        public int EncounterProbabilityOffset { get; set; }
     }
 
     /// <summary>
@@ -560,6 +572,7 @@ public class GameConfig
         public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
         public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
         public MissionTickConfig Research { get; set; } = new MissionTickConfig();
+        public MissionTickConfig JediTraining { get; set; } = new MissionTickConfig();
 
         /// <summary>
         /// Returns the tick config for the given mission config key, or null.
@@ -578,6 +591,7 @@ public class GameConfig
                 "Sabotage" => Sabotage,
                 "SubdueUprising" => SubdueUprising,
                 "Research" => Research,
+                "JediTraining" => JediTraining,
                 _ => null,
             };
         }

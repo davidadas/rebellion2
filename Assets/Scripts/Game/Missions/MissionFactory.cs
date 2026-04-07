@@ -24,6 +24,7 @@ public enum MissionType
     ShipDesignResearch,
     TroopTrainingResearch,
     FacilityDesignResearch,
+    JediTraining,
 }
 
 /// <summary>
@@ -140,6 +141,13 @@ public class MissionFactory
                 decoyParticipants,
                 ManufacturingType.Building
             ),
+            MissionType.JediTraining => new JediTrainingMission(
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                SelectJediTeacher(ownerInstanceId, target)
+            ),
             _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
         };
 
@@ -252,6 +260,22 @@ public class MissionFactory
             )
             .ToList();
         return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
+    }
+
+    private string SelectJediTeacher(string ownerInstanceId, ISceneNode target)
+    {
+        if (!(target is Planet planet))
+            return null;
+        Officer teacher = _game.GetSceneNodesByType<Officer>()
+            .FirstOrDefault(o =>
+                o.GetOwnerInstanceID() == ownerInstanceId
+                && o.IsJediTeacher
+                && o.IsForceEligible
+                && o.GetParentOfType<Planet>() == planet
+                && !o.IsCaptured
+                && !o.IsOnMission()
+            );
+        return teacher?.InstanceID;
     }
 
     private string SelectRescueTarget(
