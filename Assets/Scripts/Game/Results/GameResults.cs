@@ -13,11 +13,11 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
-    public enum JediEventType
+    public enum ForceEventType
     {
-        TierAdvanced,
-        TrainingComplete,
-        JediDiscovered,
+        DiscoveringForceUser,
+        ForceGrowth,
+        ForceUserDiscovered,
     }
 
     public enum CombatSide
@@ -126,6 +126,13 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Fleet Fleet { get; set; }
         public bool IsNewlyExplored { get; set; }
+    }
+
+    public class ForceDiscoveryResult : GameResult
+    {
+        public ForceEventType EventType { get; set; }
+        public Officer Officer { get; set; }
+        public int ForceRank { get; set; }
     }
 
     /// <summary>

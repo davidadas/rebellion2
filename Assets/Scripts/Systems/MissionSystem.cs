@@ -17,21 +17,24 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly MovementSystem _movementManager;
         private readonly OwnershipSystem _ownershipSystem;
+        private readonly JediSystem _jediSystem;
         private readonly MissionFactory _missionFactory;
 
         /// <summary>
-        /// Creates a MissionSystem wired to the given game, movement, and ownership systems.
+        /// Creates a MissionSystem wired to the given game, movement, ownership, and jedi systems.
         /// </summary>
         public MissionSystem(
             GameRoot game,
             MovementSystem movementManager,
             OwnershipSystem ownershipSystem,
+            JediSystem jediSystem = null,
             FogOfWarSystem fogOfWar = null
         )
         {
             _game = game;
             _movementManager = movementManager;
             _ownershipSystem = ownershipSystem;
+            _jediSystem = jediSystem;
             _missionFactory = new MissionFactory(game, fogOfWar);
         }
 
@@ -101,6 +104,9 @@ namespace Rebellion.Systems
                 return results;
 
             results.AddRange(mission.Execute(_game, provider));
+
+            // Force user discovery scan at mission completion
+            _jediSystem?.ScanForForceUsers(mission, provider, results);
 
             foreach (GameResult result in results)
             {

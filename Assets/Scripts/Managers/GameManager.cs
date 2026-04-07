@@ -215,7 +215,7 @@ public class GameManager
         // 12. Research: applies tech upgrades
         ProcessResults(_researchManager.ProcessTick(_game));
 
-        // 13. Jedi: advances Force tiers
+        // 13. Jedi: refreshes force discovery state
         ProcessResults(_jediManager.ProcessTick(_randomProvider));
 
         // 14. Victory: terminal check last
@@ -238,17 +238,18 @@ public class GameManager
             _movementManager,
             _manufacturingManager
         );
+        _jediManager = new JediSystem(_game);
         _missionManager = new MissionSystem(
             _game,
             _movementManager,
             ownershipSystem,
+            _jediManager,
             _fogOfWarManager
         );
         _combatManager = new CombatSystem(_game, _randomProvider, _movementManager);
         _blockadeManager = new BlockadeSystem(_game);
         _deathStarManager = new DeathStarSystem(_game);
         _researchManager = new ResearchSystem();
-        _jediManager = new JediSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
         _supportShiftManager = new SupportShiftSystem(_game);
         _uprisingManager = new UprisingSystem(_game);
@@ -317,6 +318,21 @@ public class GameManager
                 AttackerFleetInstanceID = result.AttackerFleet?.GetInstanceID(),
                 DefenderFleetInstanceID = result.DefenderFleet?.GetInstanceID(),
             };
+        }
+
+        foreach (
+            MissionCompletedResult result in results.OfType<MissionCompletedResult>()
+        )
+        {
+            if (result.Outcome == MissionOutcome.Success)
+            {
+                foreach (string participantId in result.ParticipantInstanceIDs)
+                {
+                    Officer officer = _game.GetSceneNodeByInstanceID<Officer>(participantId);
+                    if (officer != null)
+                        _jediManager.AwardMissionForceGrowth(officer);
+                }
+            }
         }
 
         foreach (

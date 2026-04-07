@@ -129,20 +129,24 @@ namespace Rebellion.Generation
                 officer.TroopResearch += rng.NextInt(0, officer.TroopResearchVariance);
                 officer.FacilityResearch += rng.NextInt(0, officer.FacilityResearchVariance);
 
-                // Force sensitivity
-                officer.ForceExperience = officer.JediLevel;
-
-                if (officer.JediProbability > 0)
+                // Force sensitivity: known Jedi get full init, others are dormant potentials
+                if (officer.IsKnownJedi)
+                {
+                    officer.IsJedi = true;
+                    officer.IsForceEligible = true;
+                    officer.ForceValue =
+                        officer.JediLevel + rng.NextInt(0, officer.JediLevelVariance + 1);
+                }
+                else if (officer.JediProbability > 0)
                 {
                     double jediProbability = officer.JediProbability / 100.0;
                     if (rng.NextDouble() < jediProbability)
-                        officer.ForceTier = ForceTier.Aware;
+                    {
+                        officer.IsJedi = true;
+                        officer.IsForceEligible = false;
+                        officer.ForceValue = 0;
+                    }
                 }
-
-                if (officer.ForceExperience >= 150)
-                    officer.ForceTier = ForceTier.Experienced;
-                else if (officer.ForceExperience >= 50)
-                    officer.ForceTier = ForceTier.Training;
             }
         }
 
