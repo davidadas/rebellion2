@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetManufacturingType_ReturnsTroop()
+        public void GetManufacturingType_ForSpecialForces_ReturnsTroop()
         {
             ManufacturingType type = _specialForces.GetManufacturingType();
 
