@@ -701,6 +701,13 @@
 
     <!-- Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587) -->
     <EncounterProbabilityOffset>-100</EncounterProbabilityOffset>
+
+    <!-- Force rank label thresholds -->
+    <RankLabelNovice>10</RankLabelNovice>
+    <RankLabelTrainee>20</RankLabelTrainee>
+    <RankLabelForceStudent>80</RankLabelForceStudent>
+    <RankLabelForceKnight>100</RankLabelForceKnight>
+    <RankLabelForceMaster>120</RankLabelForceMaster>
   </Jedi>
   <!-- Research System Configuration -->
   <!-- Controls technology advancement from idle facilities and officer research missions.

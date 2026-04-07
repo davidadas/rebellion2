@@ -222,27 +222,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the display label for this officer's current force rank.
-        /// Thresholds match original REBEXE.EXE: 0-9=None, 10-19=Novice,
-        /// 20-79=Trainee, 80-99=ForceStudent, 100-119=ForceKnight, 120+=ForceMaster.
-        /// </summary>
-        public ForceRankLabel GetForceRankLabel()
-        {
-            int rank = ForceRank;
-            if (rank >= 120)
-                return ForceRankLabel.ForceMaster;
-            if (rank >= 100)
-                return ForceRankLabel.ForceKnight;
-            if (rank >= 80)
-                return ForceRankLabel.ForceStudent;
-            if (rank >= 20)
-                return ForceRankLabel.Trainee;
-            if (rank >= 10)
-                return ForceRankLabel.Novice;
-            return ForceRankLabel.None;
-        }
-
-        /// <summary>
         /// Returns whether the officer is currently assigned to a mission.
         /// </summary>
         /// <returns>True if the officer's parent is a <see cref="Mission"/>; otherwise, false.</returns>
