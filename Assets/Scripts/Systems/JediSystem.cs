@@ -7,26 +7,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
-/// Processes Force state updates each tick and force user discovery at mission completion.
-///
-/// FORCE RANK:
-/// ForceRank = ForceValue + ForceTrainingAdjustment.
-/// ForceValue grows by +1 per successful mission (gated by IsForceEligible).
-/// ForceTrainingAdjustment grows via Jedi training missions (teacher/student).
-///
-/// TWO-TIER JEDI:
-/// Known Jedi (IsKnownJedi=true in template): IsForceEligible=true at start, ForceValue
-/// initialized from template. These are visible force users (Luke, Vader, Emperor).
-/// Potential Jedi (pass JediProbability roll): IsJedi=true but IsForceEligible=false,
-/// ForceValue=0. Dormant until discovered by a known Jedi during a mission.
-///
-/// DISCOVERY:
-/// When ForceRank >= DiscoveringForceUserThreshold (80), a force-eligible Jedi enters
-/// "discovering force user" state — meaning they can scan for hidden force users.
-/// At mission completion, discovering Jedi scan co-participants and local officers.
-/// Discovery probability = scanner.ForceRank + candidate.ForceRank + EncounterProbabilityOffset(-100).
-///
-/// Matches original REBEXE.EXE mechanics.
+/// Manages Force state updates, force user discovery, and Jedi training each tick.
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -55,10 +36,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Deterministic discovery-state check. When a force-eligible Jedi's ForceRank
-        /// crosses the threshold, they enter "discovering force user" state — meaning
-        /// they can scan for hidden force users at mission completion.
-        /// Matches REBEXE.EXE refresh_character_discovering_force_user_state.
+        /// Updates discovery state based on ForceRank vs threshold.
         /// </summary>
         private void RefreshDiscoveringForceUserState(Officer officer, List<GameResult> results)
         {
@@ -92,11 +70,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Scans for hidden force users at mission completion.
-        /// Called by MissionSystem after mission.Execute(). Any mission participant
-        /// with IsDiscoveringForceUser scans co-participants and officers at the
-        /// mission's planet for dormant force-sensitives (IsJedi but not IsForceEligible).
-        /// Probability = scanner.ForceRank + candidate.ForceRank + EncounterProbabilityOffset.
-        /// Matches REBEXE.EXE scan_local_personnel_for_force_user_discovery.
         /// </summary>
         public void ScanForForceUsers(
             Mission mission,
@@ -185,9 +158,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Awards force growth after a successful mission.
-        /// Called by the mission system when an eligible officer completes a mission.
-        /// Only force-eligible Jedi gain growth — dormant potentials do not.
-        /// Matches REBEXE.EXE get_luke_skywalker_force_increment / get_leia_organa_force_param.
         /// </summary>
         public void AwardMissionForceGrowth(Officer officer)
         {
@@ -203,10 +173,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies Jedi training catch-up mechanic.
-        /// If trainee's rank is below teacher's rank, trainee gains a random bonus
-        /// up to TrainingCatchUpPercent of the gap.
-        /// Matches REBEXE.EXE roll_jedi_training_force_rank_catch_up.
+        /// Applies Jedi training catch-up mechanic based on the rank gap.
         /// </summary>
         public void ApplyTrainingCatchUp(
             Officer trainee,
@@ -233,7 +200,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Returns the display label for an officer's current force rank.
-        /// Thresholds are driven by JediConfig.
         /// </summary>
         public ForceRankLabel GetForceRankLabel(Officer officer)
         {

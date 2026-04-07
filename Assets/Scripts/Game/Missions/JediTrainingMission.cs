@@ -5,7 +5,6 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 /// <summary>
@@ -53,7 +52,6 @@ public class JediTrainingMission : Mission
 
     /// <summary>
     /// Success probability is based on the student's jedi probability value.
-    /// Matches REBEXE.EXE scoreOrPrepareResolution for jedi training.
     /// </summary>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
@@ -68,8 +66,7 @@ public class JediTrainingMission : Mission
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// On success, applies the training catch-up mechanic from JediSystem.
-    /// Both student and teacher must be force-eligible (discovered/known Jedi).
+    /// On success, applies the training catch-up mechanic.
     /// </summary>
     protected override List<GameResult> OnSuccess(
         GameRoot game,
@@ -85,8 +82,21 @@ public class JediTrainingMission : Mission
         if (!student.IsForceEligible || !teacher.IsForceEligible)
             return new List<GameResult>();
 
-        JediSystem jediSystem = new JediSystem(game);
-        jediSystem.ApplyTrainingCatchUp(student, teacher, provider);
+        if (student.ForceRank < teacher.ForceRank)
+        {
+            int gap = teacher.ForceRank - student.ForceRank;
+            int catchUpRange = gap * game.Config.Jedi.TrainingCatchUpPercent / 100;
+
+            if (catchUpRange > 0)
+            {
+                int bonus = provider.NextInt(0, catchUpRange + 1);
+                student.ForceTrainingAdjustment += bonus;
+
+                GameLogger.Log(
+                    $"{student.GetDisplayName()} gained {bonus} training adjustment from {teacher.GetDisplayName()} (rank {student.ForceRank})"
+                );
+            }
+        }
 
         return new List<GameResult>();
     }

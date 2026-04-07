@@ -60,6 +60,7 @@ public class MissionFactory
             MissionType.Diplomacy =>
                 planet.IsColonized
                 && !planet.IsInUprising
+                && planet.WasVisitedBy(ownerInstanceId)
                 && planet.GetPopularSupport(ownerInstanceId) < 100
                 && (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == ownerInstanceId),
 
@@ -77,7 +78,8 @@ public class MissionFactory
                 SelectAssassinationTarget(ownerInstanceId, target, provider) != null,
 
             MissionType.Espionage =>
-                planet.GetOwnerInstanceID() != ownerInstanceId,
+                planet.WasVisitedBy(ownerInstanceId)
+                && planet.GetOwnerInstanceID() != ownerInstanceId,
 
             MissionType.Sabotage => true,
 

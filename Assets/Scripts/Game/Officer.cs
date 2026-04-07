@@ -17,7 +17,6 @@ namespace Rebellion.Game
 
     /// <summary>
     /// Force rank display labels derived from force_rank thresholds.
-    /// Matches original REBEXE.EXE get_character_str_force_ranking.
     /// </summary>
     public enum ForceRankLabel
     {

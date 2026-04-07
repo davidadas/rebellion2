@@ -690,7 +690,7 @@
     <MinVictoryTick>200</MinVictoryTick>
   </Victory>
 
-  <!-- Jedi / Force System Configuration (values from REBEXE.EXE GENERAL_PARAMs) -->
+  <!-- Jedi / Force System Configuration -->
   <Jedi>
     <!-- ForceRank threshold to enter "discovering force user" state (GP_2580) -->
     <DiscoveringForceUserThreshold>80</DiscoveringForceUserThreshold>

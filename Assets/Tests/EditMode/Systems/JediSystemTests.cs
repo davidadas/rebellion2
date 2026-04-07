@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Systems
     /// Tests for JediSystem force discovery, mission growth, training catch-up,
     /// and force user discovery scanning.
     /// Validates deterministic threshold-based discovery and two-tier Jedi mechanics
-    /// matching REBEXE.EXE.
+    /// matching original game behavior.
     /// </summary>
     [TestFixture]
     public class JediSystemTests
