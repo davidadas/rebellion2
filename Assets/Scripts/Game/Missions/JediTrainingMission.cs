@@ -11,7 +11,7 @@ using Rebellion.Util.Common;
 /// <summary>
 /// Jedi training mission where a teacher trains a student in the Force.
 /// The student (mission leader) gains ForceTrainingAdjustment based on the rank gap
-/// to the teacher. Matches REBEXE.EXE mission type 0x58.
+/// to the teacher.
 /// </summary>
 public class JediTrainingMission : Mission
 {

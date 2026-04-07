@@ -47,6 +47,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "TATOOINE",
                 DisplayName = "Tatooine",
                 OwnerInstanceID = "FNALL1",
+                IsColonized = true,
             };
             _game.AttachNode(_tatooine, system);
         }
@@ -313,42 +314,42 @@ namespace Rebellion.Tests.Systems
         public void GetForceRankLabel_BelowTen_ReturnsNone()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 9 };
-            Assert.AreEqual(ForceRankLabel.None, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.None, _system.GetForceRankLabel(officer));
         }
 
         [Test]
         public void GetForceRankLabel_AtTen_ReturnsNovice()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 10 };
-            Assert.AreEqual(ForceRankLabel.Novice, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.Novice, _system.GetForceRankLabel(officer));
         }
 
         [Test]
         public void GetForceRankLabel_AtTwenty_ReturnsTrainee()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 20 };
-            Assert.AreEqual(ForceRankLabel.Trainee, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.Trainee, _system.GetForceRankLabel(officer));
         }
 
         [Test]
         public void GetForceRankLabel_AtEighty_ReturnsForceStudent()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 80 };
-            Assert.AreEqual(ForceRankLabel.ForceStudent, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.ForceStudent, _system.GetForceRankLabel(officer));
         }
 
         [Test]
         public void GetForceRankLabel_AtHundred_ReturnsForceKnight()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 100 };
-            Assert.AreEqual(ForceRankLabel.ForceKnight, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.ForceKnight, _system.GetForceRankLabel(officer));
         }
 
         [Test]
         public void GetForceRankLabel_AtOneTwenty_ReturnsForceMaster()
         {
             Officer officer = new Officer { IsJedi = true, ForceValue = 120 };
-            Assert.AreEqual(ForceRankLabel.ForceMaster, officer.GetForceRankLabel());
+            Assert.AreEqual(ForceRankLabel.ForceMaster, _system.GetForceRankLabel(officer));
         }
 
         [Test]

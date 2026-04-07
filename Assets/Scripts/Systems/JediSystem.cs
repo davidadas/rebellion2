@@ -230,5 +230,27 @@ namespace Rebellion.Systems
                 );
             }
         }
+
+        /// <summary>
+        /// Returns the display label for an officer's current force rank.
+        /// Thresholds are driven by JediConfig.
+        /// </summary>
+        public ForceRankLabel GetForceRankLabel(Officer officer)
+        {
+            int rank = officer.ForceRank;
+            GameConfig.JediConfig config = _game.Config.Jedi;
+
+            if (rank >= config.RankLabelForceMaster)
+                return ForceRankLabel.ForceMaster;
+            if (rank >= config.RankLabelForceKnight)
+                return ForceRankLabel.ForceKnight;
+            if (rank >= config.RankLabelForceStudent)
+                return ForceRankLabel.ForceStudent;
+            if (rank >= config.RankLabelTrainee)
+                return ForceRankLabel.Trainee;
+            if (rank >= config.RankLabelNovice)
+                return ForceRankLabel.Novice;
+            return ForceRankLabel.None;
+        }
     }
 }

@@ -474,6 +474,21 @@ public class GameConfig
 
         /// <summary>Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587 = -100).</summary>
         public int EncounterProbabilityOffset { get; set; }
+
+        /// <summary>ForceRank threshold for Novice label (default 10).</summary>
+        public int RankLabelNovice { get; set; }
+
+        /// <summary>ForceRank threshold for Trainee label (default 20).</summary>
+        public int RankLabelTrainee { get; set; }
+
+        /// <summary>ForceRank threshold for ForceStudent label (default 80).</summary>
+        public int RankLabelForceStudent { get; set; }
+
+        /// <summary>ForceRank threshold for ForceKnight label (default 100).</summary>
+        public int RankLabelForceKnight { get; set; }
+
+        /// <summary>ForceRank threshold for ForceMaster label (default 120).</summary>
+        public int RankLabelForceMaster { get; set; }
     }
 
     /// <summary>
