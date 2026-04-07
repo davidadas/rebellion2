@@ -1043,8 +1043,8 @@ namespace Rebellion.Util.Serialization
             if (_persistableObjectMap != null)
                 return _persistableObjectMap;
 
-            _persistableObjectMap = AppDomain.CurrentDomain
-                .GetAssemblies()
+            _persistableObjectMap = AppDomain
+                .CurrentDomain.GetAssemblies()
                 .SelectMany(a =>
                 {
                     try
@@ -1060,10 +1060,7 @@ namespace Rebellion.Util.Serialization
                 .GroupBy(type =>
                     (
                         (PersistableObjectAttribute)
-                            Attribute.GetCustomAttribute(
-                                type,
-                                typeof(PersistableObjectAttribute)
-                            )
+                            Attribute.GetCustomAttribute(type, typeof(PersistableObjectAttribute))
                     )?.Name
                     ?? type.Name
                 )
