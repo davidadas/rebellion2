@@ -372,8 +372,8 @@ namespace Rebellion.Tests.Systems
             Mission mission = CreateMissionWithParticipants(luke, leia);
 
             List<GameResult> results = new List<GameResult>();
-            // Probability = 120 + 0 - 100 = 20%. FixedRNG returns 0.0 which is < 20%.
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+            // Probability = 120 + 0 - 100 = 20%. Roll = 0.0 * 100 = 0% < 20%.
+            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.Greater(leia.ForceValue, 0);
@@ -468,7 +468,7 @@ namespace Rebellion.Tests.Systems
             Mission mission = CreateMissionWithParticipants(luke);
 
             List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
 
             // Luke should still find Leia at the planet
             Assert.IsTrue(leia.IsForceEligible);
@@ -506,8 +506,8 @@ namespace Rebellion.Tests.Systems
             Mission mission = CreateMissionWithParticipants(luke, leia);
 
             List<GameResult> results = new List<GameResult>();
-            // FixedRNG: NextInt(0, 6) = 0, so ForceValue = 10 + 0 = 10
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+            // FixedRNG(0.0): NextDouble()=0.0 for discovery roll, NextInt(0, 6)=0 for ForceValue
+            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);

@@ -42,6 +42,70 @@ public class MissionFactory
     }
 
     /// <summary>
+    /// Returns whether a mission of the given type can be created with the specified parameters.
+    /// Checks the same preconditions that constructors enforce, but returns false instead of throwing.
+    /// </summary>
+    public bool CanCreateMission(
+        MissionType missionType,
+        string ownerInstanceId,
+        ISceneNode target,
+        IRandomNumberProvider provider = null
+    )
+    {
+        if (!(target is Planet planet))
+            return missionType == MissionType.Recruitment;
+
+        return missionType switch
+        {
+            MissionType.Diplomacy =>
+                planet.IsColonized
+                && !planet.IsInUprising
+                && planet.GetPopularSupport(ownerInstanceId) < 100
+                && (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == ownerInstanceId),
+
+            MissionType.Recruitment =>
+                SelectRecruitmentTarget(ownerInstanceId, provider) != null,
+
+            MissionType.SubdueUprising =>
+                planet.IsInUprising
+                && planet.GetOwnerInstanceID() == ownerInstanceId,
+
+            MissionType.Abduction =>
+                SelectAbductionTarget(ownerInstanceId, target, provider) != null,
+
+            MissionType.Assassination =>
+                SelectAssassinationTarget(ownerInstanceId, target, provider) != null,
+
+            MissionType.Espionage =>
+                planet.GetOwnerInstanceID() != ownerInstanceId,
+
+            MissionType.Sabotage => true,
+
+            MissionType.InciteUprising =>
+                planet.GetOwnerInstanceID() != ownerInstanceId
+                && !planet.IsInUprising,
+
+            MissionType.Rescue =>
+                SelectRescueTarget(ownerInstanceId, target, provider) != null,
+
+            MissionType.ShipDesignResearch =>
+                planet.GetOwnerInstanceID() == ownerInstanceId,
+
+            MissionType.TroopTrainingResearch =>
+                planet.GetOwnerInstanceID() == ownerInstanceId,
+
+            MissionType.FacilityDesignResearch =>
+                planet.GetOwnerInstanceID() == ownerInstanceId,
+
+            MissionType.JediTraining =>
+                planet.GetOwnerInstanceID() == ownerInstanceId
+                && SelectJediTeacher(ownerInstanceId, target) != null,
+
+            _ => false,
+        };
+    }
+
+    /// <summary>
     /// Creates a mission based on the specified type and parameters.
     /// For targeted missions (Recruitment), target selection requires a provider.
     /// </summary>
