@@ -50,24 +50,15 @@ namespace Rebellion.Game
             return ManufacturingType.Troop;
         }
 
-        /// <summary>
-        /// Always throws because special forces units do not support setting mission skills.
-        /// </summary>
-        /// <param name="skill"></param>
-        /// <param name="value"></param>
-        /// <exception cref="InvalidOperationException"></exception>
-        public void SetMissionSkillValue(MissionParticipantSkill skill, int value)
-        {
-            throw new InvalidOperationException("Special forces units cannot set mission skills.");
-        }
+        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) { }
 
         /// <summary>
         /// Returns whether the special forces unit can be ordered to move.
         /// </summary>
-        /// <returns>True if the unit has an active movement state and is not on a mission; otherwise, false.</returns>
+        /// <returns>True if the unit is not in transit and not on a mission; otherwise, false.</returns>
         public bool IsMovable()
         {
-            return Movement != null && !IsOnMission();
+            return Movement == null && !IsOnMission();
         }
 
         /// <summary>

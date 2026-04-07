@@ -315,7 +315,7 @@ namespace Rebellion.Tests.Game
             _faction.AddOwnedUnit(availableOfficer);
             _faction.AddOwnedUnit(unavailableOfficer);
 
-            List<Officer> available = _faction.GetAvailableOfficers(_faction);
+            List<Officer> available = _faction.GetAvailableOfficers();
 
             Assert.AreEqual(1, available.Count, "Should return only movable officers");
             Assert.Contains(availableOfficer, available, "Should contain available officer");

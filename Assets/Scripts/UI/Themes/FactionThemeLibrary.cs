@@ -14,17 +14,9 @@ public sealed class FactionThemeLibrary
     /// <summary>
     /// Constructs the theme library and loads all faction themes.
     /// </summary>
-    /// <param name="resourceManager">
-    /// Resource manager used to deserialize FactionThemes.xml.
-    /// </param>
-    public FactionThemeLibrary(IResourceManager resourceManager)
+    public FactionThemeLibrary()
     {
-        if (resourceManager == null)
-        {
-            throw new ArgumentNullException(nameof(resourceManager));
-        }
-
-        FactionThemes themes = resourceManager.GetConfig<FactionThemes>();
+        FactionThemes themes = ResourceManager.GetConfig<FactionThemes>();
 
         themesByFactionId = new Dictionary<string, FactionTheme>();
 

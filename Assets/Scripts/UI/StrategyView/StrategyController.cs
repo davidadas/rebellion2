@@ -184,7 +184,7 @@ public sealed class StrategyController : MonoBehaviour
                 "FactionTheme missing TacticalHUDLayout ImagePath."
             );
 
-        Sprite background = ResourceManager.Instance.GetSprite(theme.TacticalHUDLayout.ImagePath);
+        Sprite background = ResourceManager.GetSprite(theme.TacticalHUDLayout.ImagePath);
         factionBackground.sprite = background;
     }
 
@@ -196,7 +196,7 @@ public sealed class StrategyController : MonoBehaviour
         if (string.IsNullOrEmpty(galaxy.ImagePath))
             throw new InvalidOperationException("GalaxyBackground missing ImagePath.");
 
-        Sprite sprite = ResourceManager.Instance.GetSprite(galaxy.ImagePath);
+        Sprite sprite = ResourceManager.GetSprite(galaxy.ImagePath);
         galaxyBackground.sprite = sprite;
 
         galaxy.ImageLayout.Apply(galaxyBackground.rectTransform);

@@ -88,7 +88,7 @@ public sealed class BuildingsPane : MonoBehaviour
         if (string.IsNullOrEmpty(path))
             return;
 
-        Sprite sprite = ResourceManager.Instance.GetSprite(path);
+        Sprite sprite = ResourceManager.GetSprite(path);
 
         if (sprite == null)
             return;
@@ -107,13 +107,13 @@ public sealed class BuildingsPane : MonoBehaviour
         if (tab == null || productionTab == null)
             return;
 
-        Sprite normal = ResourceManager.Instance.GetSprite(tab.NormalImagePath);
-        Sprite selected = ResourceManager.Instance.GetSprite(tab.SelectedImagePath);
+        Sprite normal = ResourceManager.GetSprite(tab.NormalImagePath);
+        Sprite selected = ResourceManager.GetSprite(tab.SelectedImagePath);
 
         Sprite disabled = null;
 
         if (!string.IsNullOrEmpty(tab.DisabledImagePath))
-            disabled = ResourceManager.Instance.GetSprite(tab.DisabledImagePath);
+            disabled = ResourceManager.GetSprite(tab.DisabledImagePath);
 
         productionTab.SetSprites(
             normalSprite: normal,

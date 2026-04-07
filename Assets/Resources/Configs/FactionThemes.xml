@@ -8,45 +8,15 @@
     <!-- Faction UI Images/Placements -->
     <TacticalHUDLayout>
       <ImagePath>Art/UI/StrategyView/ui_strategyview_rebel_background</ImagePath>
-      <TickCounterTextLayout
-        AnchorMinX="0.1581894"
-        AnchorMinY="0.9351363"
-        AnchorMaxX="0.256695"
-        AnchorMaxY="0.965625"
-      />
-      <RawMaterialsTextLayout
-        AnchorMinX="0.3759779"
-        AnchorMinY="0.9351389"
-        AnchorMaxX="0.5205845"
-        AnchorMaxY="0.965625"
-      />
-      <RefinedMaterialsTextLayout
-        AnchorMinX="0.5254592"
-        AnchorMinY="0.9351389"
-        AnchorMaxX="0.670872"
-        AnchorMaxY="0.965625"
-      />
-      <MaintenanceTextLayout
-        AnchorMinX="0.6800317"
-        AnchorMinY="0.9351389"
-        AnchorMaxX="0.828346"
-        AnchorMaxY="0.965625"
-      />
+      <TickCounterTextLayout AnchorMinX="0.1581894" AnchorMinY="0.9351363" AnchorMaxX="0.256695" AnchorMaxY="0.965625"/>
+      <RawMaterialsTextLayout AnchorMinX="0.3759779" AnchorMinY="0.9351389" AnchorMaxX="0.5205845" AnchorMaxY="0.965625"/>
+      <RefinedMaterialsTextLayout AnchorMinX="0.5254592" AnchorMinY="0.9351389" AnchorMaxX="0.670872" AnchorMaxY="0.965625"/>
+      <MaintenanceTextLayout AnchorMinX="0.6800317" AnchorMinY="0.9351389" AnchorMaxX="0.828346" AnchorMaxY="0.965625"/>
     </TacticalHUDLayout>
     <GalaxyBackground>
       <ImagePath>Art/UI/StrategyView/ui_strategyview_galaxy_background</ImagePath>
-      <ImageLayout
-        AnchorMinX="0.0806"
-        AnchorMinY="0.1345"
-        AnchorMaxX="0.9634"
-        AnchorMaxY="0.9384"
-      />
-      <MapViewportLayout
-        AnchorMinX="0.0950521"
-        AnchorMinY="0.1736111"
-        AnchorMaxX="0.8565104"
-        AnchorMaxY="0.9273148"
-      />
+      <ImageLayout AnchorMinX="0.0806" AnchorMinY="0.1345" AnchorMaxX="0.9634" AnchorMaxY="0.9384"/>
+      <MapViewportLayout AnchorMinX="0.0950521" AnchorMinY="0.1736111" AnchorMaxX="0.8565104" AnchorMaxY="0.9273148"/>
       <PlanetIcons>
         <Small>Art/UI/StrategyView/ui_strategyview_planet_icon_rebel_small</Small>
         <Medium>Art/UI/StrategyView/ui_strategyview_planet_icon_rebel_medium</Medium>
@@ -161,45 +131,15 @@
     <!-- Faction UI Images/Placements -->
     <TacticalHUDLayout>
       <ImagePath>Art/UI/StrategyView/ui_strategyview_background_empire</ImagePath>
-      <TickCounterTextLayout
-        AnchorMinX="0.256"
-        AnchorMinY="0.687"
-        AnchorMaxX="0.256"
-        AnchorMaxY="0.687"
-      />
-      <RawMaterialsTextLayout
-        AnchorMinX="0.483"
-        AnchorMinY="0.688"
-        AnchorMaxX="0.483"
-        AnchorMaxY="0.688"
-      />
-      <RefinedMaterialsTextLayout
-        AnchorMinX="0.546"
-        AnchorMinY="0.688"
-        AnchorMaxX="0.546"
-        AnchorMaxY="0.688"
-      />
-      <MaintenanceTextLayout
-        AnchorMinX="0.609"
-        AnchorMinY="0.687"
-        AnchorMaxX="0.609"
-        AnchorMaxY="0.687"
-      />
+      <TickCounterTextLayout AnchorMinX="0.256" AnchorMinY="0.687" AnchorMaxX="0.256" AnchorMaxY="0.687"/>
+      <RawMaterialsTextLayout AnchorMinX="0.483" AnchorMinY="0.688" AnchorMaxX="0.483" AnchorMaxY="0.688"/>
+      <RefinedMaterialsTextLayout AnchorMinX="0.546" AnchorMinY="0.688" AnchorMaxX="0.546" AnchorMaxY="0.688"/>
+      <MaintenanceTextLayout AnchorMinX="0.609" AnchorMinY="0.687" AnchorMaxX="0.609" AnchorMaxY="0.687"/>
     </TacticalHUDLayout>
     <GalaxyBackground>
       <ImagePath>Art/UI/StrategyView/ui_strategyview_galaxy_background</ImagePath>
-      <ImageLayout
-        AnchorMinX="0.1591562"
-        AnchorMinY="0.1286944"
-        AnchorMaxX="0.9653895"
-        AnchorMaxY="0.9419651"
-      />
-      <MapViewportLayout
-        AnchorMinX="0.1846642"
-        AnchorMinY="0.1716883"
-        AnchorMaxX="0.9466141"
-        AnchorMaxY="0.9178701"
-      />
+      <ImageLayout AnchorMinX="0.1591562" AnchorMinY="0.1286944" AnchorMaxX="0.9653895" AnchorMaxY="0.9419651"/>
+      <MapViewportLayout AnchorMinX="0.1846642" AnchorMinY="0.1716883" AnchorMaxX="0.9466141" AnchorMaxY="0.9178701"/>
       <PlanetIcons>
         <Small>Art/UI/StrategyView/ui_strategyview_planet_icon_empire_small</Small>
         <Medium>Art/UI/StrategyView/ui_strategyview_planet_icon_empire_medium</Medium>
@@ -311,30 +251,10 @@
     <FactionPrimaryColorHex>1CECF9</FactionPrimaryColorHex>
     <TacticalHUDLayout>
       <ImagePath>Art/UI/StrategyView/ui_strategyview_rebel_background</ImagePath>
-      <TickCounterTextLayout
-        AnchorMinX="0.256"
-        AnchorMinY="0.687"
-        AnchorMaxX="0.256"
-        AnchorMaxY="0.687"
-      />
-      <RawMaterialsTextLayout
-        AnchorMinX="0.483"
-        AnchorMinY="0.688"
-        AnchorMaxX="0.483"
-        AnchorMaxY="0.688"
-      />
-      <RefinedMaterialsTextLayout
-        AnchorMinX="0.546"
-        AnchorMinY="0.688"
-        AnchorMaxX="0.546"
-        AnchorMaxY="0.688"
-      />
-      <MaintenanceTextLayout
-        AnchorMinX="0.609"
-        AnchorMinY="0.687"
-        AnchorMaxX="0.609"
-        AnchorMaxY="0.687"
-      />
+      <TickCounterTextLayout AnchorMinX="0.256" AnchorMinY="0.687" AnchorMaxX="0.256" AnchorMaxY="0.687"/>
+      <RawMaterialsTextLayout AnchorMinX="0.483" AnchorMinY="0.688" AnchorMaxX="0.483" AnchorMaxY="0.688"/>
+      <RefinedMaterialsTextLayout AnchorMinX="0.546" AnchorMinY="0.688" AnchorMaxX="0.546" AnchorMaxY="0.688"/>
+      <MaintenanceTextLayout AnchorMinX="0.609" AnchorMinY="0.687" AnchorMaxX="0.609" AnchorMaxY="0.687"/>
     </TacticalHUDLayout>
     <!-- Faction Cutscenes -->
     <GalaxyBackground>

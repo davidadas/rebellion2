@@ -34,16 +34,19 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly MovementSystem _movement;
 
         /// <summary>
         /// Creates a new CombatSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for combat resolution.</param>
-        public CombatSystem(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="movement">Movement system used to evacuate officers from destroyed ships.</param>
+        public CombatSystem(GameRoot game, IRandomNumberProvider provider, MovementSystem movement)
         {
             _game = game;
             _provider = provider;
+            _movement = movement;
         }
 
         /// <summary>
@@ -814,6 +817,7 @@ namespace Rebellion.Systems
 
                     if (damage.HullAfter <= 0)
                     {
+                        EvacuateOfficers(ship, damage.Fleet);
                         _game.DetachNode(ship);
                         GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                     }
@@ -848,6 +852,36 @@ namespace Rebellion.Systems
                         _game.DetachNode(fighter);
                         GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves officers off a destroyed ship before it is removed from the scene graph.
+        /// Prefers another surviving ship in the same fleet; falls back to the nearest friendly planet.
+        /// </summary>
+        private void EvacuateOfficers(CapitalShip ship, Fleet fleet)
+        {
+            List<Officer> officers = ship.Officers.ToList();
+            if (officers.Count == 0)
+                return;
+
+            CapitalShip survivingShip = fleet.CapitalShips.FirstOrDefault(s =>
+                !ReferenceEquals(s, ship)
+            );
+
+            foreach (Officer officer in officers)
+            {
+                if (survivingShip != null)
+                {
+                    _movement.RequestMove(officer, survivingShip);
+                    GameLogger.Log(
+                        $"{officer.GetDisplayName()} evacuated to {survivingShip.GetDisplayName()} after {ship.GetDisplayName()} destroyed."
+                    );
+                }
+                else
+                {
+                    _movement.EvacuateToNearestFriendlyPlanet(officer);
                 }
             }
         }

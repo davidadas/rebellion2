@@ -61,10 +61,10 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns whether the starfighter squadron can be ordered to move.
         /// </summary>
-        /// <returns>True if the squadron has an active movement state; otherwise, false.</returns>
+        /// <returns>True if the squadron is not currently in transit; otherwise, false.</returns>
         public bool IsMovable()
         {
-            return Movement != null;
+            return Movement == null;
         }
     }
 }

@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetManufacturingType_ForSpecialForces_ReturnsTroop()
+        public void GetManufacturingType_ReturnsTroop()
         {
             ManufacturingType type = _specialForces.GetManufacturingType();
 
@@ -42,11 +42,10 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SetMissionSkillValue_Always_ThrowsInvalidOperationException()
+        public void SetMissionSkillValue_DoesNothing()
         {
-            Assert.Throws<InvalidOperationException>(
-                () => _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50),
-                "Special forces should not allow setting mission skills"
+            Assert.DoesNotThrow(() =>
+                _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 50)
             );
         }
 
@@ -73,26 +72,23 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void IsMovable_WhenInTransitAndNotOnMission_ReturnsTrue()
+        public void IsMovable_WhenInTransit_ReturnsFalse()
         {
             _specialForces.Movement = new MovementState();
 
             bool isMovable = _specialForces.IsMovable();
 
-            Assert.IsTrue(
-                isMovable,
-                "SpecialForces should be movable when in transit and not on mission"
-            );
+            Assert.IsFalse(isMovable, "SpecialForces should not be movable when in transit");
         }
 
         [Test]
-        public void IsMovable_WhenIdle_ReturnsFalse()
+        public void IsMovable_WhenIdle_ReturnsTrue()
         {
             _specialForces.Movement = null;
 
             bool isMovable = _specialForces.IsMovable();
 
-            Assert.IsFalse(isMovable, "SpecialForces should not be movable when idle");
+            Assert.IsTrue(isMovable, "SpecialForces should be movable when idle");
         }
 
         [Test]

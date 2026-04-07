@@ -307,13 +307,12 @@ namespace Rebellion.Tests.Systems
 
         private IManufacturable[] LoadTemplates()
         {
-            IResourceManager resourceManager = ResourceManager.Instance;
-            return resourceManager
+            return ResourceManager
                 .GetGameData<Building>()
                 .Cast<IManufacturable>()
-                .Concat(resourceManager.GetGameData<CapitalShip>())
-                .Concat(resourceManager.GetGameData<Starfighter>())
-                .Concat(resourceManager.GetGameData<Regiment>())
+                .Concat(ResourceManager.GetGameData<CapitalShip>())
+                .Concat(ResourceManager.GetGameData<Starfighter>())
+                .Concat(ResourceManager.GetGameData<Regiment>())
                 .ToArray();
         }
 

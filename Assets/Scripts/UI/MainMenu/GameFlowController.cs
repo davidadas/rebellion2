@@ -20,7 +20,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void Start()
     {
-        themeLibrary = new FactionThemeLibrary(ResourceManager.Instance);
+        themeLibrary = new FactionThemeLibrary();
 
         if (GameLaunchContext.IsLoadGame)
         {
@@ -94,7 +94,7 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        VideoClip clip = ResourceManager.Instance.GetVideo(theme.IntroCutscenePath);
+        VideoClip clip = ResourceManager.GetVideo(theme.IntroCutscenePath);
 
         CutsceneManager.Instance.Play(clip, EnterGameplay);
     }
@@ -118,7 +118,7 @@ public sealed class GameFlowController : MonoBehaviour
         GameRuntime runtime = bootstrap.GetRuntime();
         GameManager gameManager = runtime.StartGame(game);
 
-        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(ResourceManager.Instance);
+        FactionThemeLibrary themeLibrary = new FactionThemeLibrary();
 
         UIContext uiContext = new UIContext(gameManager.GetGame(), themeLibrary);
 

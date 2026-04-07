@@ -133,7 +133,7 @@ public sealed class GarrisonPane : MonoBehaviour
         if (string.IsNullOrEmpty(path))
             return null;
 
-        return ResourceManager.Instance.GetSprite(path);
+        return ResourceManager.GetSprite(path);
     }
 
     private void SelectTab(GarrisonTabType tab)

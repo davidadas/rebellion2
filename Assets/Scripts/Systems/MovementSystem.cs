@@ -295,6 +295,34 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Moves a unit to the nearest planet owned by its faction.
+        /// Used when a unit's parent is being destroyed and it has no other refuge.
+        /// Clears movement state if no friendly planet exists.
+        /// </summary>
+        public void EvacuateToNearestFriendlyPlanet(IMovable unit)
+        {
+            string ownerID = unit.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerID))
+            {
+                GameLogger.Warning($"{unit.GetDisplayName()} has no owner — cannot evacuate.");
+                return;
+            }
+
+            Planet fallback = FindNearestFactionPlanet(ownerID, unit.GetPosition());
+            if (fallback != null)
+            {
+                RequestMove(unit, fallback);
+            }
+            else
+            {
+                unit.Movement = null;
+                GameLogger.Warning(
+                    $"{unit.GetDisplayName()} has no friendly planet to evacuate to."
+                );
+            }
+        }
+
+        /// <summary>
         /// Redirects a unit to the nearest friendly planet when its destination is unavailable.
         /// Clears movement state if no valid fallback exists.
         /// </summary>
@@ -380,9 +408,12 @@ namespace Rebellion.Systems
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
             if (originPlanet == null)
-                throw new InvalidOperationException(
-                    $"Unit {unit.GetDisplayName()} is not at a planet location."
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
                 );
+                return;
+            }
 
             // If the unit is mid-flight, start the new journey from its current visual position.
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();

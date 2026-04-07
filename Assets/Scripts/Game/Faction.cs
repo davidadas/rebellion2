@@ -417,9 +417,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns all officers owned by this faction that are not currently in transit.
         /// </summary>
-        /// <param name="faction">Unused — reserved for future filtering by faction relationship.</param>
         /// <returns>A list of movable officers belonging to this faction.</returns>
-        public List<Officer> GetAvailableOfficers(Faction faction)
+        public List<Officer> GetAvailableOfficers()
         {
             return GetOwnedUnitsByType<Officer>().FindAll(o => o.IsMovable());
         }

@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_WhenUnitNotAtAnyPlanet_Throws()
+        public void RequestMove_WhenUnitNotAtAnyPlanet_IsIgnored()
         {
             (
                 GameRoot game,
@@ -181,9 +181,8 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
             game.DetachNode(officer);
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                movement.RequestMove(officer, destination)
-            );
+            Assert.DoesNotThrow(() => movement.RequestMove(officer, destination));
+            Assert.IsNull(officer.Movement, "Orphaned unit must not be given a movement state");
         }
 
         [Test]
@@ -998,6 +997,61 @@ namespace Rebellion.Tests.Systems
                 originPlanet,
                 regiment.GetParent(),
                 "Regiment should reroute to nearest friendly planet."
+            );
+        }
+
+        [Test]
+        public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, system);
+
+            Planet missionPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(missionPlanet, system);
+
+            Fleet fleet = new Fleet { InstanceID = "fl1", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, origin);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, ship);
+
+            StubMission mission = EntityFactory.CreateMission("m1", "empire", "p2");
+            game.AttachNode(mission, missionPlanet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+
+            Assert.DoesNotThrow(
+                () => movement.RequestMove(officer, mission),
+                "Officer on a CapitalShip should be movable to a mission"
             );
         }
     }

@@ -33,14 +33,18 @@ The game's art, audio, and video assets are **not included** in this repository.
 All commands are available via `build.sh`:
 
 ```bash
-./build.sh lint    # Run Roslynator static analysis
-./build.sh test    # Run EditMode tests via Unity
-./build.sh build   # Build standalone player
-./build.sh clean   # Remove build artifacts
-./build.sh all     # Run lint + test
+./build.sh format     # Check C# formatting with CSharpier
+./build.sh xmlformat  # Format XML data files in-place with xmllint
+./build.sh lint       # Run Roslynator static analysis
+./build.sh test       # Run EditMode tests via Unity
+./build.sh build      # Build standalone player
+./build.sh clean      # Remove build artifacts
+./build.sh all        # Run format + lint + test
 ```
 
 The Unity editor path defaults to `C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe`. Override it with the `UNITY` environment variable if your installation differs.
+
+> **Note (Windows):** `xmllint` is not available on Windows by default. Install it via Chocolatey: `choco install xsltproc`
 
 > **Note:** If `dotnet build` fails with a missing .NET Framework 4.7.1 reference assemblies error, ensure the Developer Pack is installed and update `FrameworkPathOverride` in `Directory.Build.props` to match your local installation path.
 
