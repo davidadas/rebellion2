@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
@@ -20,7 +19,7 @@ namespace Rebellion.Systems
             _game = game;
         }
 
-        public List<GameResult> ProcessTick(IRandomNumberProvider _)
+        public List<GameResult> ProcessTick(IRandomNumberProvider rng)
         {
             List<GameResult> results = new List<GameResult>();
 
@@ -31,6 +30,8 @@ namespace Rebellion.Systems
 
                 RefreshDiscoveringForceUserState(officer, results);
             }
+
+            ScanForForceUsers(rng, results);
 
             return results;
         }
@@ -69,53 +70,31 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Scans for hidden force users at mission completion.
+        /// Scans for hidden force users each tick at the scanner's location.
         /// </summary>
-        public void ScanForForceUsers(
-            Mission mission,
-            IRandomNumberProvider rng,
-            List<GameResult> results
-        )
+        private void ScanForForceUsers(IRandomNumberProvider rng, List<GameResult> results)
         {
-            Planet planet = mission.GetParent() as Planet;
-            if (planet == null)
-                return;
-
-            // Find scanners: mission participants who are actively discovering force users
-            List<Officer> scanners = mission
-                .GetAllParticipants()
-                .OfType<Officer>()
+            List<Officer> scanners = _game
+                .GetSceneNodesByType<Officer>()
                 .Where(o => o.IsDiscoveringForceUser)
                 .ToList();
 
             if (scanners.Count == 0)
                 return;
 
-            // Build candidate pool: co-participants + officers stationed at this planet
-            // Candidates must be dormant force-sensitives (IsJedi but not yet IsForceEligible)
-            HashSet<string> candidateIds = new HashSet<string>();
-            List<Officer> candidates = new List<Officer>();
-
-            // Co-participants on this mission
-            foreach (Officer coParticipant in mission.GetAllParticipants().OfType<Officer>())
-            {
-                if (IsDiscoveryCandidate(coParticipant) && candidateIds.Add(coParticipant.InstanceID))
-                    candidates.Add(coParticipant);
-            }
-
-            // Officers stationed at the planet (not on a mission, not captured)
-            foreach (Officer local in planet.GetChildren<Officer>(_ => true, recurse: true))
-            {
-                if (IsDiscoveryCandidate(local) && candidateIds.Add(local.InstanceID))
-                    candidates.Add(local);
-            }
-
             int probabilityOffset = _game.Config.Jedi.EncounterProbabilityOffset;
 
             foreach (Officer scanner in scanners)
             {
-                foreach (Officer candidate in candidates)
+                Planet planet = scanner.GetParentOfType<Planet>();
+                if (planet == null)
+                    continue;
+
+                foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
                 {
+                    if (!IsDiscoveryCandidate(candidate))
+                        continue;
+
                     int probability = scanner.ForceRank + candidate.ForceRank + probabilityOffset;
 
                     if (probability <= 0)
@@ -125,7 +104,6 @@ namespace Rebellion.Systems
                     if (roll >= probability)
                         continue;
 
-                    // Discovery success — activate this force user
                     candidate.IsForceEligible = true;
                     candidate.ForceValue = candidate.JediLevel
                         + rng.NextInt(0, candidate.JediLevelVariance + 1);
@@ -141,9 +119,6 @@ namespace Rebellion.Systems
                     GameLogger.Log(
                         $"{scanner.GetDisplayName()} discovered {candidate.GetDisplayName()}'s Force potential (rank {candidate.ForceRank})"
                     );
-
-                    // Once discovered, don't let another scanner re-discover
-                    break;
                 }
             }
         }
@@ -153,7 +128,8 @@ namespace Rebellion.Systems
             return officer.IsJedi
                 && !officer.IsForceEligible
                 && !officer.IsCaptured
-                && !officer.IsKilled;
+                && !officer.IsKilled
+                && !officer.IsOnMission();
         }
 
         /// <summary>
