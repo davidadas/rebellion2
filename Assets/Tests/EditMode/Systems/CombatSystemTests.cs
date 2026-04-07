@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Systems
 
     /// <summary>
     /// Tests for CombatSystem.
-    /// Validates the 7-phase combat pipeline against reverse-engineered REBEXE.EXE behavior.
+    /// Validates the 7-phase combat pipeline.
     /// </summary>
     [TestFixture]
     public class CombatSystemTests : CombatTestBase

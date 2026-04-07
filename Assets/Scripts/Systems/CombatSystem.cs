@@ -28,7 +28,7 @@ namespace Rebellion.Systems
 
     /// <summary>
     /// Manages space combat, planetary assault, and orbital bombardment.
-    /// Space combat implements the 7-phase pipeline reverse-engineered from REBEXE.EXE.
+    /// Space combat implements a 7-phase pipeline.
     /// </summary>
     public class CombatSystem
     {
@@ -1042,7 +1042,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Executes orbital bombardment against a planet.
-        /// Pipeline from FUN_0058c580 in REBEXE.EXE: shield gate, fleet strength calculation,
+        /// Pipeline: shield gate, fleet strength calculation,
         /// defense value, net strikes, strike loop with lane targeting, popular support shift.
         /// </summary>
         /// <param name="attackingFleets">Fleets performing the bombardment.</param>

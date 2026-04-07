@@ -32,6 +32,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "empire",
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             _game.AttachNode(_ownPlanet, system);
 
@@ -41,6 +42,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
+                VisitingFactionIDs = new List<string> { "empire", "rebels" },
             };
             _game.AttachNode(_enemyPlanet, system);
 
@@ -89,6 +91,13 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Diplomacy, "empire", _ownPlanet));
         }
 
+        [Test]
+        public void CanCreateMission_Diplomacy_NotVisited_ReturnsFalse()
+        {
+            _ownPlanet.VisitingFactionIDs.Clear();
+            Assert.IsFalse(_factory.CanCreateMission(MissionType.Diplomacy, "empire", _ownPlanet));
+        }
+
         // --- SubdueUprising ---
 
         [Test]
@@ -129,6 +138,13 @@ namespace Rebellion.Tests.Game.Missions
         public void CanCreateMission_Espionage_OwnPlanet_ReturnsFalse()
         {
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Espionage, "empire", _ownPlanet));
+        }
+
+        [Test]
+        public void CanCreateMission_Espionage_NotVisited_ReturnsFalse()
+        {
+            _enemyPlanet.VisitingFactionIDs.Remove("empire");
+            Assert.IsFalse(_factory.CanCreateMission(MissionType.Espionage, "empire", _enemyPlanet));
         }
 
         // --- InciteUprising ---
