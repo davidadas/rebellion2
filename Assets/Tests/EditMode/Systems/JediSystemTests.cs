@@ -362,30 +362,27 @@ namespace Rebellion.Tests.Systems
         // --- Force user discovery scan tests ---
 
         [Test]
-        public void ScanForForceUsers_DiscoveringJediDiscoversDormant()
+        public void ProcessTick_DiscoveringJediDiscoversDormant()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
-
-            List<GameResult> results = new List<GameResult>();
             // Probability = 120 + 0 - 100 = 20%. Roll = 0.0 * 100 = 0% < 20%.
-            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG(0.0))
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.Greater(leia.ForceValue, 0);
-            Assert.AreEqual(1, results.OfType<ForceDiscoveryResult>().Count());
-            Assert.AreEqual(
-                ForceEventType.ForceUserDiscovered,
-                results.OfType<ForceDiscoveryResult>().First().EventType
-            );
+            Assert.AreEqual(1, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_LowRank_CannotDiscover()
+        public void ProcessTick_LowRankScanner_CannotDiscover()
         {
             // Rank 50 + 0 - 100 = -50% -> impossible
             Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
@@ -393,10 +390,11 @@ namespace Rebellion.Tests.Systems
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
-
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG())
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
             Assert.IsFalse(leia.IsForceEligible);
             Assert.AreEqual(0, leia.ForceValue);
@@ -404,41 +402,43 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ScanForForceUsers_NonDiscoveringJedi_NoScan()
+        public void ProcessTick_BelowThresholdJedi_NoScan()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
-            luke.IsDiscoveringForceUser = false; // Not in discovering state
+            // ForceRank 50 is below threshold 80, so no discovering state
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG(0.0))
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
-
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
             Assert.IsFalse(leia.IsForceEligible);
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_AlreadyEligible_Skipped()
+        public void ProcessTick_AlreadyEligibleCandidate_Skipped()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer vader = CreateKnownJedi("VADER", forceValue: 100);
 
-            Mission mission = CreateMissionWithParticipants(luke, vader);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG(0.0))
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
-
-            // Vader is already force-eligible, so no discovery event
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_CapturedCandidate_Skipped()
+        public void ProcessTick_CapturedCandidate_Skipped()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
@@ -446,37 +446,41 @@ namespace Rebellion.Tests.Systems
             Officer leia = CreateDormantJedi("LEIA");
             leia.IsCaptured = true;
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
-
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(), results);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG(0.0))
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
             Assert.IsFalse(leia.IsForceEligible);
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_ScansLocalOfficersOnPlanet()
+        public void ProcessTick_OnMissionCandidate_Skipped()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
-            // Leia is NOT on the mission but stationed on Tatooine
             Officer leia = CreateDormantJedi("LEIA");
 
-            // Mission only has Luke
-            Mission mission = CreateMissionWithParticipants(luke);
+            // Put Leia on a mission — she should be skipped
+            StubMission mission = new StubMission(_alliance.InstanceID, _tatooine.InstanceID);
+            _game.AttachNode(mission, _tatooine);
+            _game.MoveNode(leia, mission);
 
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new FixedRNG(0.0))
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
-            // Luke should still find Leia at the planet
-            Assert.IsTrue(leia.IsForceEligible);
-            Assert.AreEqual(1, results.Count);
+            Assert.IsFalse(leia.IsForceEligible);
+            Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_HighRoll_DiscoveryFails()
+        public void ProcessTick_HighRoll_DiscoveryFails()
         {
             // Rank 101 + 0 - 100 = 1%. MaxRNG returns 0.99 -> roll = 99.0 >= 1%
             Officer luke = CreateKnownJedi("LUKE", forceValue: 101);
@@ -484,17 +488,18 @@ namespace Rebellion.Tests.Systems
 
             Officer leia = CreateDormantJedi("LEIA");
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
-
-            List<GameResult> results = new List<GameResult>();
-            _system.ScanForForceUsers(mission, new MaxRNG(), results);
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick(new MaxRNG())
+                .OfType<ForceDiscoveryResult>()
+                .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
 
             Assert.IsFalse(leia.IsForceEligible);
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ScanForForceUsers_InitializesForceValueFromTemplate()
+        public void ProcessTick_InitializesForceValueFromTemplate()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
@@ -503,11 +508,8 @@ namespace Rebellion.Tests.Systems
             leia.JediLevel = 10;
             leia.JediLevelVariance = 5;
 
-            Mission mission = CreateMissionWithParticipants(luke, leia);
-
-            List<GameResult> results = new List<GameResult>();
             // FixedRNG(0.0): NextDouble()=0.0 for discovery roll, NextInt(0, 6)=0 for ForceValue
-            _system.ScanForForceUsers(mission, new FixedRNG(0.0), results);
+            _system.ProcessTick(new FixedRNG(0.0));
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
@@ -547,27 +549,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(officer, _tatooine);
             return officer;
-        }
-
-        private Mission CreateMissionWithParticipants(params Officer[] participants)
-        {
-            List<IMissionParticipant> mainParticipants =
-                participants.Cast<IMissionParticipant>().ToList();
-
-            Mission mission = new DiplomacyMission(
-                _alliance.InstanceID,
-                _tatooine,
-                mainParticipants,
-                new List<IMissionParticipant>()
-            );
-            _game.AttachNode(mission, _tatooine);
-
-            foreach (Officer officer in participants)
-            {
-                _game.MoveNode(officer, mission);
-            }
-
-            return mission;
         }
     }
 

@@ -243,7 +243,6 @@ public class GameManager
             _game,
             _movementManager,
             ownershipSystem,
-            _jediManager,
             _fogOfWarManager
         );
         _combatManager = new CombatSystem(_game, _randomProvider, _movementManager);
