@@ -46,7 +46,7 @@ namespace Rebellion.Systems
         {
             _game = game;
             _provider = provider;
-            _movement = movement;
+            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
 
         /// <summary>
@@ -867,14 +867,15 @@ namespace Rebellion.Systems
                 return;
 
             CapitalShip survivingShip = fleet.CapitalShips.FirstOrDefault(s =>
-                !ReferenceEquals(s, ship)
+                !ReferenceEquals(s, ship) && s.HullStrength > 0
             );
 
             foreach (Officer officer in officers)
             {
                 if (survivingShip != null)
                 {
-                    _movement.RequestMove(officer, survivingShip);
+                    _game.DetachNode(officer);
+                    _game.AttachNode(officer, survivingShip);
                     GameLogger.Log(
                         $"{officer.GetDisplayName()} evacuated to {survivingShip.GetDisplayName()} after {ship.GetDisplayName()} destroyed."
                     );

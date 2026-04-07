@@ -304,6 +304,7 @@ namespace Rebellion.Systems
             string ownerID = unit.GetOwnerInstanceID();
             if (string.IsNullOrEmpty(ownerID))
             {
+                unit.Movement = null;
                 GameLogger.Warning($"{unit.GetDisplayName()} has no owner — cannot evacuate.");
                 return;
             }
