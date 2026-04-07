@@ -3,7 +3,7 @@
   <Faction>
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
-    <HQInstanceID/>
+    <HQInstanceID />
     <Modifiers>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>

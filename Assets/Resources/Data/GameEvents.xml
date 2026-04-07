@@ -6,11 +6,11 @@
     <InstanceID>LUKE_VISITS_YODA</InstanceID>
     <IsRepeatable>false</IsRepeatable>
     <Conditionals>
-      <TickCount Type="GreaterThan" Value="30"/>
-      <IsMovable Value="LUKE_SKYWALKER"/>
+      <TickCount Type="GreaterThan" Value="30" />
+      <IsMovable Value="LUKE_SKYWALKER" />
       <Not>
         <Conditionals>
-          <IsOnMission Value="LUKE_SKYWALKER"/>
+          <IsOnMission Value="LUKE_SKYWALKER" />
         </Conditionals>
       </Not>
     </Conditionals>
@@ -29,8 +29,8 @@
       </AreOnSamePlanet>
       <Xor>
         <Conditionals>
-          <IsOnMission Value="LUKE_SKYWALKER"/>
-          <IsOnMission Value="DARTH_VADER"/>
+          <IsOnMission Value="LUKE_SKYWALKER" />
+          <IsOnMission Value="DARTH_VADER" />
         </Conditionals>
       </Xor>
     </Conditionals>
