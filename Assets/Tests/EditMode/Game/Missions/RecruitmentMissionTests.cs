@@ -7,7 +7,7 @@ namespace Rebellion.Tests.Game.Missions
     public class RecruitmentMissionTests
     {
         [Test]
-        public void SerializesAndDeserializes()
+        public void SerializeAndDeserialize_PopulatedMission_RetainsAllProperties()
         {
             RecruitmentMission mission = new RecruitmentMission
             {
@@ -21,8 +21,9 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            RecruitmentMission deserialized =
-                SerializationHelper.Deserialize<RecruitmentMission>(xml);
+            RecruitmentMission deserialized = SerializationHelper.Deserialize<RecruitmentMission>(
+                xml
+            );
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);

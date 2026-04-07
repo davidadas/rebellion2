@@ -104,25 +104,37 @@ namespace Rebellion.Systems
 
             foreach (Regiment regiment in faction.GetOwnedUnitsByType<Regiment>())
             {
-                if (regiment.ManufacturingStatus == ManufacturingStatus.Complete && regiment.Movement == null)
+                if (
+                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                )
                     candidates.Add(regiment);
             }
 
             foreach (Starfighter fighter in faction.GetOwnedUnitsByType<Starfighter>())
             {
-                if (fighter.ManufacturingStatus == ManufacturingStatus.Complete && fighter.Movement == null)
+                if (
+                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && fighter.Movement == null
+                )
                     candidates.Add(fighter);
             }
 
             foreach (CapitalShip ship in faction.GetOwnedUnitsByType<CapitalShip>())
             {
-                if (ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null)
+                if (
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                )
                     candidates.Add(ship);
             }
 
             foreach (Building building in faction.GetOwnedUnitsByType<Building>())
             {
-                if (building.GetManufacturingStatus() == ManufacturingStatus.Complete && building.Movement == null)
+                if (
+                    building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && building.Movement == null
+                )
                     candidates.Add(building);
             }
 

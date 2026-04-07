@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SupportBelowThreshold_NoOwnershipChange()
+        public void Execute_SupportBelowThreshold_NoOwnershipChange()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
@@ -60,7 +60,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -70,7 +71,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SupportCrossesThreshold_EmitsOwnershipChange()
+        public void Execute_SupportCrossesThreshold_EmitsOwnershipChange()
         {
             // Support at 60 — one increment pushes it to 61, crossing the threshold
             GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
@@ -81,7 +82,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             PlanetOwnershipChangedResult ownershipResult = results
                 .OfType<PlanetOwnershipChangedResult>()
@@ -92,7 +94,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_AlreadyOwned_NoOwnershipChangeEmitted()
+        public void Execute_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
         {
             // Support already above threshold, planet already owned by empire
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
@@ -103,7 +105,8 @@ namespace Rebellion.Tests.Game.Missions
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
             );
             List<GameResult> results =
-                (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+                (List<GameResult>)
+                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -112,7 +115,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_AlreadyOwned_NoRedundantChangeUnitOwnershipCall()
+        public void Execute_PlanetAlreadyOwned_NoRedundantChangeUnitOwnershipCall()
         {
             // Verify support still increments even when no ownership event fires
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
@@ -146,7 +149,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetNotColonized_Throws()
+        public void Constructor_UncolonizedPlanet_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             planet.IsColonized = false;
@@ -162,7 +165,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_SupportAtMax_Throws()
+        public void Constructor_PlanetSupportAtMax_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 100);
 
@@ -177,7 +180,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetOwnedByEnemy_Throws()
+        public void Constructor_EnemyOwnedPlanet_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "rebels");
 
@@ -192,7 +195,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetInUprising_Throws()
+        public void Constructor_PlanetInUprising_ThrowsInvalidOperationException()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             planet.BeginUprising();
@@ -208,7 +211,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SupportReachesMaxBeforeExecution_ReturnsFailed()
+        public void Execute_SupportReachedMaxBeforeExecution_ReturnsFailed()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
 
@@ -239,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_SupportAtMax_ReturnsFalse()
+        public void CanContinue_SupportReachedMax_ReturnsFalse()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);

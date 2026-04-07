@@ -21,11 +21,13 @@
       Unity runtime APIs (MonoBehaviour subclasses, UnityEngine.Debug, Resources, etc.).
       The UI layer is fully excluded — RCS1213 is already suppressed there via .editorconfig.
     -->
-    <Compile Include="Assets/Scripts/**/*.cs"
-             Exclude="Assets/Scripts/UI/**/*.cs;
+    <Compile
+      Include="Assets/Scripts/**/*.cs"
+      Exclude="Assets/Scripts/UI/**/*.cs;
                       Assets/Scripts/Core/AppBootstrap.cs;
                       Assets/Scripts/Managers/AudioManager.cs;
                       Assets/Scripts/Managers/ResourceManager.cs;
-                      Assets/Scripts/Util/Common/GameLogger.cs" />
+                      Assets/Scripts/Util/Common/GameLogger.cs"
+    />
   </ItemGroup>
 </Project>

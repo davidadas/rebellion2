@@ -3,7 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 
-namespace Rebellion.Tests.Missions
+namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
     public class ResearchMissionTests
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
-        public void GetAgentProbability_ReturnsResearchSkill()
+        public void GetAgentProbability_OfficerWithSkill_ReturnsSkillBasedProbability()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
             ResearchMission mission = CreateMission(officer, ManufacturingType.Ship);
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
-        public void Execute_NeverFoiled()
+        public void Execute_MaxSkillOfficer_NeverFoiled()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
@@ -201,7 +201,10 @@ namespace Rebellion.Tests.Missions
 
             mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after successful research");
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Mission should continue after successful research"
+            );
         }
 
         [Test]
@@ -213,11 +216,14 @@ namespace Rebellion.Tests.Missions
             // RNG=0.99 → 99 > 10 → failure
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.IsTrue(mission.CanContinue(game), "Mission should continue after failed research");
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Mission should continue after failed research"
+            );
         }
 
         [Test]
-        public void Constructor_EnemyPlanet_Throws()
+        public void Constructor_EnemyPlanet_ThrowsInvalidOperationException()
         {
             Officer officer = CreateOfficer();
 
@@ -237,7 +243,7 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
-        public void ShipDesign_SerializesAndDeserializes()
+        public void SerializeAndDeserialize_ShipDesignMission_RetainsAllProperties()
         {
             ResearchMission mission = new ResearchMission
             {
@@ -269,7 +275,7 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
-        public void TroopTraining_SerializesAndDeserializes()
+        public void SerializeAndDeserialize_TroopTrainingMission_RetainsAllProperties()
         {
             ResearchMission mission = new ResearchMission
             {
@@ -290,7 +296,7 @@ namespace Rebellion.Tests.Missions
         }
 
         [Test]
-        public void FacilityDesign_SerializesAndDeserializes()
+        public void SerializeAndDeserialize_FacilityDesignMission_RetainsAllProperties()
         {
             ResearchMission mission = new ResearchMission
             {

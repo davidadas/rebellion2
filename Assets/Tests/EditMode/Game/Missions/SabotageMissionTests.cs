@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Missions
     public class SabotageMissionTests
     {
         [Test]
-        public void OnSuccess_RemovesBuilding()
+        public void Execute_BuildingOnEnemyPlanet_RemovesBuilding()
         {
             (
                 GameRoot game,
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsBuildingSabotagedResult()
+        public void Execute_BuildingOnEnemyPlanet_ReturnsBuildingSabotagedResult()
         {
             (
                 GameRoot game,
@@ -86,7 +86,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_BuildingRemovedBeforeExecution_ReturnsFailed()
+        public void Execute_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
             (
                 GameRoot game,

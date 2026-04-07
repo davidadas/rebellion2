@@ -83,7 +83,13 @@ namespace Rebellion.Tests.Managers
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
 
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, rng ?? new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                rng ?? new FixedRNG()
+            );
             return (game, planet, officer, ai);
         }
 
@@ -171,7 +177,13 @@ namespace Rebellion.Tests.Managers
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new LastIndexRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new LastIndexRNG()
+            );
 
             ai.ProcessTick();
 
@@ -273,7 +285,13 @@ namespace Rebellion.Tests.Managers
             );
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, rng ?? new StubRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                rng ?? new StubRNG()
+            );
 
             return (game, empPlanet, enemyPlanet, officer, ai);
         }
@@ -525,7 +543,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void CalculateFleetAssaultStrength_AppliesPersonnelModifier()
+        public void CalculateFleetAssaultStrength_FleetWithPersonnel_AppliesPersonnelModifier()
         {
             // Formula: (personnel / divisor + 1) * fleet_combat_value
             GameConfig config = TestConfig.Create();
@@ -579,7 +597,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             System.Reflection.MethodInfo method = typeof(AISystem).GetMethod(
                 "CalculateFleetAssaultStrength",
@@ -646,7 +670,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             System.Reflection.MethodInfo method = typeof(AISystem).GetMethod(
                 "CalculateFleetAssaultStrength",
@@ -663,7 +693,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void CalculatePlanetDefenseStrength_SumsDefensiveBuildings()
+        public void CalculatePlanetDefenseStrength_PlanetWithDefensiveBuildings_SumsDefensiveBuildings()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -771,24 +801,35 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(yard, planet);
 
             // Add a mine tech so the AI has something to try to build
-            empire.RebuildResearchQueues(new IManufacturable[]
-            {
-                new Building
+            empire.RebuildResearchQueues(
+                new IManufacturable[]
                 {
-                    InstanceID = "mine_template",
-                    OwnerInstanceID = "empire",
-                    BuildingType = BuildingType.Mine,
-                    ConstructionCost = 1,
-                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                    new Building
+                    {
+                        InstanceID = "mine_template",
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Mine,
+                        ConstructionCost = 1,
+                        AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string>
+                        {
+                            "empire",
+                        },
+                    },
                 }
-            });
+            );
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             // Should not throw — planet is full, AI should skip gracefully
             Assert.DoesNotThrow(
@@ -822,7 +863,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EvaluateFleetDeployment_SendsFleetToEnemyPlanet()
+        public void EvaluateFleetDeployment_SingleEnemyPlanet_SendsFleetToEnemyPlanet()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -884,7 +925,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 
@@ -901,7 +948,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EvaluateFleetDeployment_DoesNotStackFleets()
+        public void EvaluateFleetDeployment_PlanetAlreadyWithFleet_DoesNotStackFleets()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -969,7 +1016,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 
@@ -1041,7 +1094,13 @@ namespace Rebellion.Tests.Managers
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
             // LastIndexRNG returns max-1 from NextInt. Gate bounds (20, 80):
             // roll = NextInt(20, 81) = 80. Net strength = 50. 80 >= 50, gate blocks.
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new LastIndexRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new LastIndexRNG()
+            );
 
             ai.ProcessTick();
 
@@ -1052,7 +1111,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EvaluateFleetDeployment_DeploysMultipleFleets()
+        public void EvaluateFleetDeployment_MultipleEnemyPlanets_DeploysMultipleFleets()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1147,7 +1206,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             // FixedRNG: roll = 20. Defense = 200 (rebel fleet). Both empire fleets = 400 total.
             // Net strength = 200. 20 < 200, gate passes.
@@ -1162,7 +1227,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EvaluateFleetDeployment_PrioritizesNearestEnemy()
+        public void EvaluateFleetDeployment_MultipleEnemyPlanets_PrioritizesNearestEnemy()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1253,7 +1318,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 
@@ -1266,7 +1337,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void EvaluateFleetDeployment_DefendsContestedHQ()
+        public void EvaluateFleetDeployment_ContestedHQPlanet_DefendsHQ()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1365,7 +1436,13 @@ namespace Rebellion.Tests.Managers
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 
@@ -1444,23 +1521,34 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(stationaryFleet, planet);
 
-            empire.RebuildResearchQueues(new IManufacturable[]
-            {
-                new CapitalShip
+            empire.RebuildResearchQueues(
+                new IManufacturable[]
                 {
-                    InstanceID = "ship_template",
-                    ConstructionCost = 1,
-                    BaseBuildSpeed = 1,
-                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                    new CapitalShip
+                    {
+                        InstanceID = "ship_template",
+                        ConstructionCost = 1,
+                        BaseBuildSpeed = 1,
+                        AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string>
+                        {
+                            "empire",
+                        },
+                    },
                 }
-            });
+            );
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 
@@ -1534,23 +1622,34 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(refinery, planet);
 
-            empire.RebuildResearchQueues(new IManufacturable[]
-            {
-                new CapitalShip
+            empire.RebuildResearchQueues(
+                new IManufacturable[]
                 {
-                    InstanceID = "ship_template",
-                    ConstructionCost = 1,
-                    BaseBuildSpeed = 1,
-                    AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string> { "empire" },
+                    new CapitalShip
+                    {
+                        InstanceID = "ship_template",
+                        ConstructionCost = 1,
+                        BaseBuildSpeed = 1,
+                        AllowedOwnerInstanceIDs = new System.Collections.Generic.List<string>
+                        {
+                            "empire",
+                        },
+                    },
                 }
-            });
+            );
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
             MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
-            AISystem ai = new AISystem(game, missionSystem, movement, manufacturing, new FixedRNG());
+            AISystem ai = new AISystem(
+                game,
+                missionSystem,
+                movement,
+                manufacturing,
+                new FixedRNG()
+            );
 
             ai.ProcessTick();
 

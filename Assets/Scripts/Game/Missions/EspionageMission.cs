@@ -60,10 +60,7 @@ public class EspionageMission : Mission
     /// <summary>
     /// Captures a fog-of-war snapshot of the target planet for the owning faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
 

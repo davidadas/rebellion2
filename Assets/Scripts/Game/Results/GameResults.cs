@@ -154,7 +154,8 @@ namespace Rebellion.Game.Results
         public bool ShieldBlocked { get; set; }
         public int EnergyDamage { get; set; }
         public int PopularSupportShift { get; set; }
-        public List<BombardmentStrikeEvent> Strikes { get; set; } = new List<BombardmentStrikeEvent>();
+        public List<BombardmentStrikeEvent> Strikes { get; set; } =
+            new List<BombardmentStrikeEvent>();
         public List<string> DestroyedRegimentInstanceIDs { get; set; } = new List<string>();
         public List<string> DestroyedStarfighterInstanceIDs { get; set; } = new List<string>();
         public List<string> DestroyedBuildingInstanceIDs { get; set; } = new List<string>();

@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     public class InciteUprisingMissionTests
     {
         [Test]
-        public void OnSuccess_StartsUprising()
+        public void Execute_EnemyPlanetTarget_StartsUprising()
         {
             (
                 GameRoot game,
@@ -40,7 +40,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsPlanetUprisingStartedResult()
+        public void Execute_EnemyPlanetTarget_ReturnsPlanetUprisingStartedResult()
         {
             (
                 GameRoot game,
@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetAlreadyInUprising_Throws()
+        public void Constructor_PlanetAlreadyInUprising_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,
@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_OwnPlanetTarget_Throws()
+        public void Constructor_OwnedPlanetTarget_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_MissionCompletedResult_HasHumanReadableName()
+        public void Execute_SuccessfulMission_CompletedResultHasHumanReadableName()
         {
             (
                 GameRoot game,
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_WhenUprisingAlreadyStarted_ReturnsTrue()
+        public void IsCanceled_UprisingAlreadyStarted_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -173,7 +173,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_UprisingAlreadyStarted_ReturnsFailed()
+        public void Execute_UprisingAlreadyStarted_ReturnsFailed()
         {
             (
                 GameRoot game,

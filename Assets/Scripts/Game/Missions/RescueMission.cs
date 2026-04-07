@@ -58,10 +58,7 @@ public class RescueMission : Mission
     /// <summary>
     /// Clears the captured state and captor from the rescued officer.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)

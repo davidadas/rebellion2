@@ -42,19 +42,31 @@ namespace Rebellion.Generation
             (
                 List<Planet> corePlanets,
                 List<Planet> rimPlanets,
-                List<(Planet planet, FactionSetup setup, StartingPlanet config)> resolvedStartingPlanets,
+                List<(
+                    Planet planet,
+                    FactionSetup setup,
+                    StartingPlanet config
+                )> resolvedStartingPlanets,
                 int preassignedCoreCount
             ) = PartitionPlanets(systems, config, rng);
 
             AssignStartingPlanets(
-                systems, resolvedStartingPlanets, factionMap, result,
+                systems,
+                resolvedStartingPlanets,
+                factionMap,
+                result,
                 out Dictionary<string, int> strongCountAdjustments
             );
 
             DifficultyProfile profile = ResolveDifficultyProfile(config, summary);
 
             AssignCoreBuckets(
-                corePlanets, profile, preassignedCoreCount, strongCountAdjustments, result, rng
+                corePlanets,
+                profile,
+                preassignedCoreCount,
+                strongCountAdjustments,
+                result,
+                rng
             );
 
             AssignStrongPlanetOwnership(result);
@@ -98,7 +110,11 @@ namespace Rebellion.Generation
         private (
             List<Planet> corePlanets,
             List<Planet> rimPlanets,
-            List<(Planet planet, FactionSetup setup, StartingPlanet config)> resolvedStartingPlanets,
+            List<(
+                Planet planet,
+                FactionSetup setup,
+                StartingPlanet config
+            )> resolvedStartingPlanets,
             int preassignedCoreCount
         ) PartitionPlanets(
             PlanetSystem[] systems,
@@ -122,14 +138,20 @@ namespace Rebellion.Generation
 
             List<Planet> corePlanets = new List<Planet>();
             List<Planet> rimPlanets = new List<Planet>();
-            List<(Planet, FactionSetup, StartingPlanet)> resolved = new List<(Planet, FactionSetup, StartingPlanet)>();
+            List<(Planet, FactionSetup, StartingPlanet)> resolved =
+                new List<(Planet, FactionSetup, StartingPlanet)>();
             int preassignedCoreCount = 0;
 
             foreach (PlanetSystem system in systems)
             {
                 foreach (Planet planet in system.Planets)
                 {
-                    if (staticStartingPlanets.TryGetValue(planet.InstanceID, out (FactionSetup setup, StartingPlanet config) entry))
+                    if (
+                        staticStartingPlanets.TryGetValue(
+                            planet.InstanceID,
+                            out (FactionSetup setup, StartingPlanet config) entry
+                        )
+                    )
                     {
                         resolved.Add((planet, entry.setup, entry.config));
                         if (system.SystemType == PlanetSystemType.CoreSystem)
@@ -176,7 +198,11 @@ namespace Rebellion.Generation
         /// starting planets, used to adjust bucket sizes later.</param>
         private void AssignStartingPlanets(
             PlanetSystem[] systems,
-            List<(Planet planet, FactionSetup setup, StartingPlanet config)> resolvedStartingPlanets,
+            List<(
+                Planet planet,
+                FactionSetup setup,
+                StartingPlanet config
+            )> resolvedStartingPlanets,
             Dictionary<string, Faction> factionMap,
             GalaxyClassificationResult result,
             out Dictionary<string, int> strongCountAdjustments
@@ -184,7 +210,13 @@ namespace Rebellion.Generation
         {
             strongCountAdjustments = new Dictionary<string, int>();
 
-            foreach ((Planet planet, FactionSetup setup, StartingPlanet spConfig) in resolvedStartingPlanets)
+            foreach (
+                (
+                    Planet planet,
+                    FactionSetup setup,
+                    StartingPlanet spConfig
+                ) in resolvedStartingPlanets
+            )
             {
                 Faction faction = factionMap[setup.FactionID];
 
@@ -265,7 +297,8 @@ namespace Rebellion.Generation
             // calculation, then subtracts them afterward.
             int totalCore = corePlanets.Count + preassignedCoreCount;
 
-            List<(string factionID, int strongCount, int weakCount)> factionBucketCounts = new List<(string factionID, int strongCount, int weakCount)>();
+            List<(string factionID, int strongCount, int weakCount)> factionBucketCounts =
+                new List<(string factionID, int strongCount, int weakCount)>();
             foreach (FactionBucketConfig fb in profile.FactionBuckets)
             {
                 int strong = totalCore * fb.StrongPct / 100;

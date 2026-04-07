@@ -46,7 +46,8 @@ namespace Rebellion.Systems
 
         private void CancelCompetingMissions(Planet planet, string newOwnerID)
         {
-            List<Mission> competing = _game.GetSceneNodesByType<Mission>()
+            List<Mission> competing = _game
+                .GetSceneNodesByType<Mission>()
                 .Where(m =>
                     m.CanceledOnOwnershipChange
                     && m.OwnerInstanceID != newOwnerID
@@ -98,7 +99,8 @@ namespace Rebellion.Systems
 
             Planet current = unit.GetParentOfType<Planet>();
 
-            return _game.GetSceneNodesByType<Planet>()
+            return _game
+                .GetSceneNodesByType<Planet>()
                 .Where(p => p.GetOwnerInstanceID() == ownerID && p != current)
                 .OrderBy(p =>
                 {

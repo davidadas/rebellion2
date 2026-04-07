@@ -238,7 +238,12 @@ public class GameManager
             _movementManager,
             _manufacturingManager
         );
-        _missionManager = new MissionSystem(_game, _movementManager, ownershipSystem, _fogOfWarManager);
+        _missionManager = new MissionSystem(
+            _game,
+            _movementManager,
+            ownershipSystem,
+            _fogOfWarManager
+        );
         _combatManager = new CombatSystem(_game, _randomProvider);
         _blockadeManager = new BlockadeSystem(_game);
         _deathStarManager = new DeathStarSystem(_game);
@@ -248,7 +253,13 @@ public class GameManager
         _supportShiftManager = new SupportShiftSystem(_game);
         _uprisingManager = new UprisingSystem(_game);
         _victoryManager = new VictorySystem(_game);
-        _aiSystem = new AISystem(_game, _missionManager, _movementManager, _manufacturingManager, _randomProvider);
+        _aiSystem = new AISystem(
+            _game,
+            _missionManager,
+            _movementManager,
+            _manufacturingManager,
+            _randomProvider
+        );
     }
 
     /// <summary>
@@ -258,7 +269,8 @@ public class GameManager
     private void RebuildDerivedState()
     {
         IResourceManager resourceManager = ResourceManager.Instance;
-        IManufacturable[] templates = resourceManager.GetGameData<Building>()
+        IManufacturable[] templates = resourceManager
+            .GetGameData<Building>()
             .Cast<IManufacturable>()
             .Concat(resourceManager.GetGameData<CapitalShip>())
             .Concat(resourceManager.GetGameData<Starfighter>())
@@ -277,7 +289,8 @@ public class GameManager
     /// </summary>
     private void RehydrateMissions()
     {
-        GameConfig.MissionProbabilityTablesConfig missionTables = _game.Config
+        GameConfig.MissionProbabilityTablesConfig missionTables = _game
+            .Config
             ?.ProbabilityTables
             ?.Mission;
         if (missionTables == null)

@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Missions
     public class RescueMissionTests
     {
         [Test]
-        public void OnSuccess_FreesOfficer()
+        public void Execute_CapturedOfficerOnTargetPlanet_FreesOfficer()
         {
             (
                 GameRoot game,
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsOfficerRescuedResult()
+        public void Execute_CapturedOfficerOnTargetPlanet_ReturnsOfficerRescuedResult()
         {
             (
                 GameRoot game,
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_OfficerNotCaptured_ReturnsFailed()
+        public void Execute_OfficerNotCaptured_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -114,7 +114,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetAlreadyFreed_ReturnsFailed()
+        public void Execute_TargetOfficerAlreadyFreed_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -154,7 +154,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -194,7 +194,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_TargetRemovedFromScene_ReturnsFailed()
+        public void Execute_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -234,7 +234,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NullTarget_Throws()
+        public void Constructor_NullTarget_ThrowsArgumentException()
         {
             (
                 GameRoot game,
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NonPlanetTarget_Throws()
+        public void Constructor_NonPlanetTarget_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,
@@ -278,7 +278,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NullTargetOfficerInstanceId_Throws()
+        public void Constructor_NullTargetOfficerInstanceId_ThrowsArgumentException()
         {
             (
                 GameRoot game,

@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_ImmediatelyReparentsUnitToDestination()
+        public void RequestMove_ValidDestination_ImmediatelyReparentsUnit()
         {
             (
                 GameRoot game,
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_UnitIsNoLongerAtOrigin()
+        public void RequestMove_ValidDestination_UnitIsNoLongerAtOrigin()
         {
             (
                 GameRoot game,
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_SetsMovementStateWithDestination()
+        public void RequestMove_ValidDestination_SetsMovementStateWithDestination()
         {
             (
                 GameRoot game,
@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_SetsOriginPositionFromDeparturePlanet()
+        public void RequestMove_ValidDestination_SetsOriginPositionFromDeparturePlanet()
         {
             (
                 GameRoot game,
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_SetsTransitTicksGreaterThanZero()
+        public void RequestMove_ValidDestination_SetsTransitTicksGreaterThanZero()
         {
             (
                 GameRoot game,
@@ -672,7 +672,21 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_FleetArrivesBeforeChildren()
         {
-            (GameRoot game, MovementSystem movement, Fleet fleet, CapitalShip cs1, CapitalShip cs2, Starfighter sf, Regiment reg, Officer officer, Planet planetA, Planet planetB, Planet planetC, int fleetTransit, int cs2Transit) scene = BuildFleetWithInTransitChildrenScene();
+            (
+                GameRoot game,
+                MovementSystem movement,
+                Fleet fleet,
+                CapitalShip cs1,
+                CapitalShip cs2,
+                Starfighter sf,
+                Regiment reg,
+                Officer officer,
+                Planet planetA,
+                Planet planetB,
+                Planet planetC,
+                int fleetTransit,
+                int cs2Transit
+            ) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
                 scene.cs2Transit,
@@ -705,7 +719,21 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_InTransitFleetWithInTransitChildren_ChildrenArriveAfterFleet()
         {
-            (GameRoot game, MovementSystem movement, Fleet fleet, CapitalShip cs1, CapitalShip cs2, Starfighter sf, Regiment reg, Officer officer, Planet planetA, Planet planetB, Planet planetC, int fleetTransit, int cs2Transit) scene = BuildFleetWithInTransitChildrenScene();
+            (
+                GameRoot game,
+                MovementSystem movement,
+                Fleet fleet,
+                CapitalShip cs1,
+                CapitalShip cs2,
+                Starfighter sf,
+                Regiment reg,
+                Officer officer,
+                Planet planetA,
+                Planet planetB,
+                Planet planetC,
+                int fleetTransit,
+                int cs2Transit
+            ) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
                 scene.cs2Transit,
@@ -966,7 +994,11 @@ namespace Rebellion.Tests.Systems
                 movement.ProcessTick();
 
             // Regiment should be rerouted to nearest friendly planet (originPlanet).
-            Assert.AreEqual(originPlanet, regiment.GetParent(), "Regiment should reroute to nearest friendly planet.");
+            Assert.AreEqual(
+                originPlanet,
+                regiment.GetParent(),
+                "Regiment should reroute to nearest friendly planet."
+            );
         }
     }
 }

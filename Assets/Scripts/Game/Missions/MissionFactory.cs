@@ -53,7 +53,8 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
-        GameConfig.MissionProbabilityTablesConfig missionTables = _game.Config
+        GameConfig.MissionProbabilityTablesConfig missionTables = _game
+            .Config
             ?.ProbabilityTables
             ?.Mission;
 
@@ -222,7 +223,8 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> enemies = _game.GetSceneNodesByType<Officer>()
+        List<Officer> enemies = _game
+            .GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() != ownerInstanceId
                 && o.GetParentOfType<Planet>() == planet
@@ -240,7 +242,8 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> enemies = _game.GetSceneNodesByType<Officer>()
+        List<Officer> enemies = _game
+            .GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() != ownerInstanceId
                 && o.GetParentOfType<Planet>() == planet
@@ -259,7 +262,8 @@ public class MissionFactory
     {
         if (!(target is Planet planet) || provider == null)
             return null;
-        List<Officer> captured = _game.GetSceneNodesByType<Officer>()
+        List<Officer> captured = _game
+            .GetSceneNodesByType<Officer>()
             .Where(o =>
                 o.GetOwnerInstanceID() == ownerInstanceId
                 && o.IsCaptured

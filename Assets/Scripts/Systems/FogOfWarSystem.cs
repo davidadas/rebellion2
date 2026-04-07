@@ -81,11 +81,7 @@ namespace Rebellion.Systems
             foreach (Building building in planet.Buildings)
             {
                 planetSnapshot.Buildings.Add(building.GetShallowCopy(CloneMode.Full));
-                InvalidateEntityFromOtherSnapshots(
-                    faction,
-                    building.InstanceID,
-                    planet.InstanceID
-                );
+                InvalidateEntityFromOtherSnapshots(faction, building.InstanceID, planet.InstanceID);
             }
 
             foreach (Starfighter starfighter in planet.Starfighters)

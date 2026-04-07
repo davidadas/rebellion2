@@ -58,10 +58,7 @@ public class AbductionMission : Mission
     /// <summary>
     /// Marks the target officer as captured and assigns the captor faction.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         if (target == null)

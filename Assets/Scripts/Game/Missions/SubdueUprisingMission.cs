@@ -66,10 +66,7 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Ends the uprising on the target planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)

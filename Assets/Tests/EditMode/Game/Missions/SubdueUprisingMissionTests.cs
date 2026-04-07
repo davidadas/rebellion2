@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Missions
     public class SubdueUprisingMissionTests
     {
         [Test]
-        public void OnSuccess_EndsUprising()
+        public void Execute_ActiveUprising_EndsUprising()
         {
             (
                 GameRoot game,
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_ReturnsPlanetUprisingEndedResult()
+        public void Execute_ActiveUprising_ReturnsPlanetUprisingEndedResult()
         {
             (
                 GameRoot game,
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_MissionCompletedResult_HasHumanReadableName()
+        public void Execute_SuccessfulMission_CompletedResultHasHumanReadableName()
         {
             (
                 GameRoot game,
@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_WhenUprisingEnded_ReturnsTrue()
+        public void IsCanceled_UprisingEndedBeforeExecution_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_UprisingAlreadyEnded_ReturnsFailed()
+        public void Execute_UprisingAlreadyEnded_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -173,7 +173,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetNotInUprising_Throws()
+        public void Constructor_PlanetNotInUprising_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EnemyPlanetTarget_Throws()
+        public void Constructor_EnemyOwnedPlanet_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,

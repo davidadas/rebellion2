@@ -17,7 +17,8 @@ namespace Rebellion.SceneGraph
             Accessee = accessee;
         }
 
-        public SceneAccessException() : base() { }
+        public SceneAccessException()
+            : base() { }
 
         public SceneAccessException(string message)
             : base(message) { }

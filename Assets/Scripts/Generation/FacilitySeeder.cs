@@ -48,8 +48,15 @@ namespace Rebellion.Generation
                     if (!ShouldSeedPlanet(planet, isCore))
                         continue;
 
-                    SeedPlanet(planet, isCore, config, templateMap,
-                        isCore ? coreTable : rimTable, rng, deployedBuildings);
+                    SeedPlanet(
+                        planet,
+                        isCore,
+                        config,
+                        templateMap,
+                        isCore ? coreTable : rimTable,
+                        rng,
+                        deployedBuildings
+                    );
                 }
             }
 
@@ -99,7 +106,12 @@ namespace Rebellion.Generation
                     break;
 
                 string typeID = RollFacilityType(
-                    planet, config, facilityTable, rng, mineMultiplier, ref mineCount
+                    planet,
+                    config,
+                    facilityTable,
+                    rng,
+                    mineMultiplier,
+                    ref mineCount
                 );
 
                 // Original terminates the loop on first failure (null table
@@ -157,7 +169,9 @@ namespace Rebellion.Generation
         /// <returns>A WeightedTable that maps rolls to facility TypeIDs.</returns>
         private WeightedTable<string> BuildTable(List<WeightedFacilityEntry> entries)
         {
-            List<(int, string)> tableEntries = entries.ConvertAll(e => (e.CumulativeWeight, e.TypeID));
+            List<(int, string)> tableEntries = entries.ConvertAll(e =>
+                (e.CumulativeWeight, e.TypeID)
+            );
             return new WeightedTable<string>(tableEntries);
         }
     }

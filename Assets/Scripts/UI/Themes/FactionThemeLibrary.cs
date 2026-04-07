@@ -32,7 +32,10 @@ public sealed class FactionThemeLibrary
         {
             if (
                 string.IsNullOrEmpty(theme.FactionInstanceID)
-                || theme.FactionInstanceID.Equals("default", System.StringComparison.OrdinalIgnoreCase)
+                || theme.FactionInstanceID.Equals(
+                    "default",
+                    System.StringComparison.OrdinalIgnoreCase
+                )
             )
             {
                 defaultTheme = theme;

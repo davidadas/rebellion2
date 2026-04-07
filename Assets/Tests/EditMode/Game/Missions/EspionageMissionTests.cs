@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     public class EspionageMissionTests
     {
         [Test]
-        public void OnSuccess_CapturesSnapshotForFaction()
+        public void Execute_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
             (
                 GameRoot game,
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_NullFogOfWar_DoesNotThrow()
+        public void Execute_NullFogOfWar_DoesNotThrow()
         {
             (
                 GameRoot game,
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_PlanetBecameOwnedBeforeExecution_ReturnsFailed()
+        public void Execute_PlanetBecameOwnedBeforeExecution_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_OwnPlanetTarget_Throws()
+        public void Constructor_OwnedPlanetTarget_ThrowsInvalidOperationException()
         {
             (
                 GameRoot game,

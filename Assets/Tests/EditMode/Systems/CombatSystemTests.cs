@@ -711,7 +711,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TryStartCombat_SetsIsInCombatOnBothFleets()
+        public void TryStartCombat_TwoHostileFleets_SetsIsInCombatOnBothFleets()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -737,7 +737,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_ClearsIsInCombatOnSurvivingFleets()
+        public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -1110,7 +1110,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_DestroysTroops()
+        public void Bombardment_RegimentsOnPlanet_DestroysTroops()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
@@ -1146,7 +1146,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_ReducesEnergy()
+        public void Bombardment_PlanetWithEnergy_ReducesEnergy()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 3);
@@ -1182,7 +1182,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_DestroysBuildings()
+        public void Bombardment_BuildingsOnPlanet_DestroysBuildings()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 5);
@@ -1211,7 +1211,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_ShiftsPopularSupport()
+        public void Bombardment_PlanetWithSupport_ShiftsPopularSupport()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");

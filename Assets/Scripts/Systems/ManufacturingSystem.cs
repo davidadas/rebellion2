@@ -35,7 +35,7 @@ namespace Rebellion.Systems
                 ProcessPlanetManufacturing(planet, movementSystem, provider);
             }
         }
-        
+
         /// <summary>
         /// Enqueues an item for production at <paramref name="planet"/>, delivering to
         /// <paramref name="destination"/> on completion. Capital ships are placed in a new
@@ -209,7 +209,11 @@ namespace Rebellion.Systems
                     progressIncrement = (progressIncrement * modifier) / 100;
                 }
 
-                List<IManufacturable> completed = DistributeProgress(items, progressIncrement, provider);
+                List<IManufacturable> completed = DistributeProgress(
+                    items,
+                    progressIncrement,
+                    provider
+                );
                 foreach (IManufacturable item in completed)
                     CompleteManufacturing(planet, item, movementSystem);
             }
@@ -363,10 +367,7 @@ namespace Rebellion.Systems
                     _game.DetachNode((ISceneNode)item);
 
                     // Clean up empty fleet after cancelling last capital ship.
-                    if (
-                        parentFleet?.CapitalShips.Count == 0
-                        && parentFleet.GetParent() != null
-                    )
+                    if (parentFleet?.CapitalShips.Count == 0 && parentFleet.GetParent() != null)
                     {
                         _game.DetachNode(parentFleet);
                     }
@@ -402,7 +403,8 @@ namespace Rebellion.Systems
             }
 
             // Scan all scene nodes for manufacturable items in Building status
-            _game.GetGalaxyMap()
+            _game
+                .GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IManufacturable manufacturable)

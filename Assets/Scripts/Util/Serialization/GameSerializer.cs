@@ -49,7 +49,9 @@ namespace Rebellion.Util.Serialization
         /// <param name="obj">The object to serialize.</param>
         public void Serialize(TextWriter textWriter, object obj)
         {
-            using (XmlWriter writer = XmlWriter.Create(textWriter, _settings.CreateWriterSettings()))
+            using (
+                XmlWriter writer = XmlWriter.Create(textWriter, _settings.CreateWriterSettings())
+            )
             {
                 SerializeToXmlWriter(writer, obj);
             }
@@ -75,7 +77,9 @@ namespace Rebellion.Util.Serialization
         /// <returns>The deserialized object.</returns>
         public object Deserialize(TextReader textReader)
         {
-            using (XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings()))
+            using (
+                XmlReader reader = XmlReader.Create(textReader, _settings.CreateReaderSettings())
+            )
             {
                 return DeserializeFromXmlReader(reader);
             }
@@ -1028,28 +1032,41 @@ namespace Rebellion.Util.Serialization
             return attributeMap;
         }
 
+        private static IDictionary<string, Type> _persistableObjectMap;
+
         /// <summary>
         /// Gets a dictionary mapping type names to Type objects for all persistable types in the current AppDomain.
         /// </summary>
         /// <returns>A dictionary mapping type names to Type objects.</returns>
         public static IDictionary<string, Type> GetPersistableObjectMap()
         {
-            return Assembly
-                .GetExecutingAssembly()
-                .GetTypes()
+            if (_persistableObjectMap != null)
+                return _persistableObjectMap;
+
+            _persistableObjectMap = AppDomain
+                .CurrentDomain.GetAssemblies()
+                .SelectMany(a =>
+                {
+                    try
+                    {
+                        return a.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException e)
+                    {
+                        return e.Types.Where(t => t != null);
+                    }
+                })
                 .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
-                .ToDictionary(
-                    type =>
-                        (
-                            (PersistableObjectAttribute)
-                                Attribute.GetCustomAttribute(
-                                    type,
-                                    typeof(PersistableObjectAttribute)
-                                )
-                        )?.Name
-                        ?? type.Name,
-                    type => type
-                );
+                .GroupBy(type =>
+                    (
+                        (PersistableObjectAttribute)
+                            Attribute.GetCustomAttribute(type, typeof(PersistableObjectAttribute))
+                    )?.Name
+                    ?? type.Name
+                )
+                .ToDictionary(g => g.Key, g => g.First());
+
+            return _persistableObjectMap;
         }
 
         /// <summary>

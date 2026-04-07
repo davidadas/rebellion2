@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CaptureSnapshot_EntityCopiedWithSameInstanceID()
+        public void CaptureSnapshot_SingleEntity_CopiesEntityWithSameInstanceID()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
@@ -667,7 +667,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_NoDuplicateEntitiesAcrossPlanets()
+        public void BuildFactionView_PlanetsWithSharedEntities_NoDuplicateEntitiesAcrossPlanets()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
@@ -691,7 +691,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CaptureSnapshot_EntityLastSeenIndexUpdatedCorrectly()
+        public void CaptureSnapshot_EntityOnPlanet_UpdatesLastSeenIndex()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
@@ -708,7 +708,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetToSystemMappingCorrect()
+        public void CaptureSnapshot_PlanetInPlanetSystem_MapsPlanetToSystem()
         {
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
@@ -802,7 +802,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_EntitiesPreserveInstanceIDInView()
+        public void BuildFactionView_EntitiesOnMultiplePlanets_PreservesInstanceIDs()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             Fleet fleet = CreateFleet("DEATHSTAR", _empire);

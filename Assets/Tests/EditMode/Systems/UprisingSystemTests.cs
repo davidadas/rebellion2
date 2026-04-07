@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Systems
         [TestCase(20, 4)]
         [TestCase(10, 5)]
         [TestCase(0, 6)]
-        public void CalculateGarrisonRequirement_MatchesOriginalFormula(
+        public void CalculateGarrisonRequirement_StandardPlanet_MatchesOriginalFormula(
             int support,
             int expectedGarrison
         )

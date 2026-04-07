@@ -54,10 +54,7 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         Planet planet = GetParent() as Planet;
