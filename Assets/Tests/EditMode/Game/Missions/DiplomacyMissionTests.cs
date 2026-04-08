@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game.Missions
                 .OfType<PlanetOwnershipChangedResult>()
                 .SingleOrDefault();
             Assert.IsNotNull(ownershipResult, "Should emit PlanetOwnershipChangedResult");
-            Assert.AreEqual("empire", ownershipResult.NewOwner?.InstanceID);
+            Assert.AreEqual("empire", ownershipResult.NewOwner.InstanceID);
             Assert.IsNull(ownershipResult.PreviousOwner);
         }
 

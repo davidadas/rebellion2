@@ -1612,7 +1612,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(result.OwnershipChanged);
-            Assert.AreEqual("empire", result.NewOwner?.InstanceID);
+            Assert.AreEqual("empire", result.NewOwner.InstanceID);
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
     }
