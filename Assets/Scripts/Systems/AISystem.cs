@@ -88,7 +88,7 @@ namespace Rebellion.Systems
                     continue;
 
                 Officer leader = faction
-                    .GetAvailableOfficers(faction)
+                    .GetAvailableOfficers()
                     .Where(o => o.IsMovable())
                     .OrderByDescending(o => o.GetSkillValue(MissionParticipantSkill.Leadership))
                     .FirstOrDefault();
@@ -641,7 +641,7 @@ namespace Rebellion.Systems
         private void UpdateOfficerMissions(Faction faction)
         {
             List<Officer> available = faction
-                .GetAvailableOfficers(faction)
+                .GetAvailableOfficers()
                 .Where(o => o.IsMovable())
                 .ToList();
 

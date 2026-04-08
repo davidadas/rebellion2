@@ -36,16 +36,36 @@ usage() {
     echo "Usage: ./build.sh [command]"
     echo ""
     echo "Commands:"
+    echo "  format    Check formatting with CSharpier"
+    echo "  xmlformat Format XML data files in-place with xmllint"
     echo "  lint      Run Roslynator static analysis"
     echo "  test      Run EditMode tests via Unity"
     echo "  coverage  Run EditMode tests with code coverage report"
     echo "  build     Build standalone player"
     echo "  clean     Remove build artifacts"
-    echo "  all       Run lint + test"
+    echo "  all       Run format + lint + test"
     exit 1
 }
 
 ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
+
+do_format() {
+    echo "=== Format ==="
+    dotnet tool restore
+    dotnet csharpier check Assets/
+    echo ""
+    echo "Format check complete."
+}
+
+do_xmlformat() {
+    echo "=== XML Format ==="
+    find Assets/Resources -name "*.xml" | while read -r f; do
+        xmllint --format "$f" --output "$f"
+        echo "Formatted $f"
+    done
+    echo ""
+    echo "XML format complete."
+}
 
 do_lint() {
     local extra_args=()
@@ -123,12 +143,14 @@ do_clean() {
 }
 
 case "${1:-}" in
-    lint)     do_lint ;;
+    format)    do_format ;;
+    xmlformat) do_xmlformat ;;
+    lint)      do_lint ;;
     test)     do_test ;;
     coverage) do_coverage ;;
     build)    do_build ;;
     clean)    do_clean ;;
-    all)      do_lint; do_test ;;
-    "")       do_lint; do_test ;;
+    all)      do_format; do_lint; do_test ;;
+    "")       do_format; do_lint; do_test ;;
     *)        usage ;;
 esac

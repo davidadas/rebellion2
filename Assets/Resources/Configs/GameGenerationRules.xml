@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <GameGenerationRules>
   <Officers>
     <NumInitialOfficers>
@@ -177,7 +177,6 @@
       </DifficultyProfile>
     </Profiles>
   </GalaxyClassification>
-
   <!-- System Resources: dice formulas from original disassembly.
        Core energy: roll(4) + 10, clamp(0,15)
        Rim energy: roll(9) + roll(4) + 1, clamp(0,15)
@@ -211,7 +210,6 @@
     <RawMaterialsMax>15</RawMaterialsMax>
     <RimColonizationPct>31</RimColonizationPct>
   </SystemResources>
-
   <!-- System Support: formulas from original disassembly.
        StrongAlliance: roll(random) + base (SIDE_PARAM_CAT15_7682/7683_ALLIANCE)
        StrongEmpire: 100 - (roll(random) + base) (SIDE_PARAM_CAT15_7682/7683_EMPIRE) — inverted
@@ -245,7 +243,6 @@
     </Neutral>
     <RimSupportRandom>0</RimSupportRandom>
   </SystemSupport>
-
   <!-- Facility Generation: from original disassembly.
        Core mine multiplier = 4 (GENERAL_PARAM_CAT15_7766)
        Rim mine multiplier = 2 (GENERAL_PARAM_CAT15_7767)
@@ -337,7 +334,6 @@
       <!-- No HQ-specific facility overrides for now; facilities placed by normal tables -->
     </HQLoadouts>
   </FacilityGeneration>
-
   <!-- Unit Deployment: from original disassembly.
        Uprising prevention: support < 60 triggers garrison placement
        Fixed garrisons from disassembly:

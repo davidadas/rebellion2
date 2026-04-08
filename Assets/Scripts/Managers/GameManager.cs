@@ -111,7 +111,7 @@ public class GameManager
         switch (speed)
         {
             case TickSpeed.Fast:
-                _tickInterval = 1f;
+                _tickInterval = 0.1f;
                 break;
             case TickSpeed.Medium:
                 _tickInterval = 10f;
@@ -244,7 +244,7 @@ public class GameManager
             ownershipSystem,
             _fogOfWarManager
         );
-        _combatManager = new CombatSystem(_game, _randomProvider);
+        _combatManager = new CombatSystem(_game, _randomProvider, _movementManager);
         _blockadeManager = new BlockadeSystem(_game);
         _deathStarManager = new DeathStarSystem(_game);
         _researchManager = new ResearchSystem();
@@ -268,13 +268,12 @@ public class GameManager
     /// </summary>
     private void RebuildDerivedState()
     {
-        IResourceManager resourceManager = ResourceManager.Instance;
-        IManufacturable[] templates = resourceManager
+        IManufacturable[] templates = ResourceManager
             .GetGameData<Building>()
             .Cast<IManufacturable>()
-            .Concat(resourceManager.GetGameData<CapitalShip>())
-            .Concat(resourceManager.GetGameData<Starfighter>())
-            .Concat(resourceManager.GetGameData<Regiment>())
+            .Concat(ResourceManager.GetGameData<CapitalShip>())
+            .Concat(ResourceManager.GetGameData<Starfighter>())
+            .Concat(ResourceManager.GetGameData<Regiment>())
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())

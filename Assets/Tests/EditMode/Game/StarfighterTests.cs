@@ -50,23 +50,23 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void IsMovable_WhenInTransit_ReturnsTrue()
+        public void IsMovable_WhenInTransit_ReturnsFalse()
         {
             _starfighter.Movement = new MovementState();
 
             bool isMovable = _starfighter.IsMovable();
 
-            Assert.IsTrue(isMovable, "Starfighter should be movable when in transit");
+            Assert.IsFalse(isMovable, "Starfighter should not be movable when in transit");
         }
 
         [Test]
-        public void IsMovable_WhenIdle_ReturnsFalse()
+        public void IsMovable_WhenIdle_ReturnsTrue()
         {
             _starfighter.Movement = null;
 
             bool isMovable = _starfighter.IsMovable();
 
-            Assert.IsFalse(isMovable, "Starfighter should not be movable when idle");
+            Assert.IsTrue(isMovable, "Starfighter should be movable when idle");
         }
 
         [Test]

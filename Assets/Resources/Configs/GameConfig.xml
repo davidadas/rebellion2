@@ -14,7 +14,6 @@
   <AI>
     <!-- Tick interval between AI decision cycles (default: 7) -->
     <TickInterval>7</TickInterval>
-
     <!-- Mission dispatch tables (from original MSTB .DAT files)
          Each table maps a score to a dispatch probability.
          Score formula: (officer_skill - planet_state) + officer_leadership_rank
@@ -480,7 +479,6 @@
         </Entry>
       </Recruitment>
     </MissionTables>
-
     <!-- Garrison requirement parameters -->
     <Garrison>
       <!-- Popular support threshold below which garrison troops are required -->
@@ -490,12 +488,10 @@
       <!-- Multiplier applied to garrison requirement during an uprising -->
       <UprisingMultiplier>2</UprisingMultiplier>
     </Garrison>
-
     <!-- Fleet deployment probability gate bounds (PARAM_1538, PARAM_1539) -->
     <!-- AI rolls random(low, high); deploys only if roll < net_strength_ratio -->
     <DeploymentGateLow>20</DeploymentGateLow>
     <DeploymentGateHigh>80</DeploymentGateHigh>
-
     <!-- Capital ship production pipeline parameters -->
     <CapitalShipProduction>
       <!-- Personnel divisor for facility contribution: (skill / divisor + 1) * modifier -->
@@ -512,24 +508,19 @@
       <OrbitalStrikeSupportShift>-20</OrbitalStrikeSupportShift>
     </CapitalShipProduction>
   </AI>
-
   <!-- Movement System Configuration -->
   <Movement>
     <!-- Distance scaling factor for transit time calculation (default: 2) -->
     <DistanceScale>2</DistanceScale>
-
     <!-- Minimum transit ticks regardless of distance (default: 10) -->
     <MinTransitTicks>10</MinTransitTicks>
-
     <!-- Default hyperdrive rating for fighters/troops (default: 60) -->
     <DefaultFighterHyperdrive>60</DefaultFighterHyperdrive>
   </Movement>
-
   <!-- Production System Configuration -->
   <Production>
     <!-- Multiplier for raw materials to refined materials (default: 50) -->
     <RefinementMultiplier>50</RefinementMultiplier>
-
     <!-- CSCRHT: Capital Ship Construction Rate Hit Table -->
     <!-- Maps roll threshold to progress increment (original: 0->2, 16->3, 31->4, 41->5, 46->6) -->
     <CapitalShipProgressTable>
@@ -554,23 +545,19 @@
         <Value>6</Value>
       </Entry>
     </CapitalShipProgressTable>
-
     <!-- CSCRHT roll parameters (original GENERAL_PARAM 2049-2051, all 50) -->
     <CapitalShipProgressRollRange>50</CapitalShipProgressRollRange>
     <CapitalShipSuccessThreshold>50</CapitalShipSuccessThreshold>
     <CapitalShipSuccessRollRange>50</CapitalShipSuccessRollRange>
-
     <!-- Production penalty per hostile capital ship during blockade -->
     <BlockadeCapitalShipPenalty>5</BlockadeCapitalShipPenalty>
     <!-- Production penalty per hostile fighter during blockade -->
     <BlockadeFighterPenalty>2</BlockadeFighterPenalty>
-
     <!-- Popular support shift on manufacturing completion -->
     <CapitalShipCompletionSupportShift>3</CapitalShipCompletionSupportShift>
     <BuildingCompletionSupportShift>1</BuildingCompletionSupportShift>
     <TroopCompletionSupportShift>1</TroopCompletionSupportShift>
   </Production>
-
   <!-- Resource Rebalance Configuration (GENERAL_PARAM 7712-7720) -->
   <ResourceRebalance>
     <!-- Probability multiplier for per-unit resource decay (PARAM_7715) -->
@@ -585,19 +572,15 @@
     <MaxEnergy>15</MaxEnergy>
     <MaxRawMaterials>15</MaxRawMaterials>
   </ResourceRebalance>
-
   <!-- Planet Mechanics Configuration -->
   <Planet>
     <!-- Distance divisor for planet formula calculations (default: 5) -->
     <DistanceDivisor>5</DistanceDivisor>
-
     <!-- Base value for distance calculations (default: 100) -->
     <DistanceBase>100</DistanceBase>
-
     <!-- Maximum popular support value (default: 100) -->
     <MaxPopularSupport>100</MaxPopularSupport>
   </Planet>
-
   <!-- Combat System Configuration -->
   <Combat>
     <!-- Personnel divisor for assault strength: (personnel / divisor + 1) * fleet_combat_value -->
@@ -614,7 +597,6 @@
     <!-- Number of Shield facilities required to block bombardment entirely -->
     <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
   </Combat>
-
   <!-- Uprising System Configuration -->
   <Uprising>
     <!-- Dice roll range (random 0..N) -->
@@ -656,7 +638,6 @@
       </Entry>
     </Upris2Table>
   </Uprising>
-
   <!-- Support Shift Configuration -->
   <!-- Controls periodic popular support recovery and hostile force penalties -->
   <SupportShift>
@@ -683,45 +664,35 @@
     <!-- Support shift when blockading fleet opposes popular support side -->
     <BlockadeOpposeShift>-1</BlockadeOpposeShift>
   </SupportShift>
-
   <!-- Victory System Configuration -->
   <Victory>
     <!-- Minimum tick before victory conditions can trigger (default: 200) -->
     <MinVictoryTick>200</MinVictoryTick>
   </Victory>
-
   <!-- Jedi / Force Training System Configuration -->
   <Jedi>
     <!-- XP required to advance from Aware to Training tier (default: 50) -->
     <XpToTraining>50</XpToTraining>
-
     <!-- XP required to advance from Training to Experienced tier (default: 150) -->
     <XpToExperienced>150</XpToExperienced>
-
     <!-- Ticks between Jedi detection checks (default: 30) -->
     <DetectionCheckInterval>30</DetectionCheckInterval>
-
     <!-- Detection probability per check for Aware tier (0.0-1.0, default: 0.05 = 5%) -->
     <DetectProbAware>0.05</DetectProbAware>
-
     <!-- Detection probability per check for Training tier (0.0-1.0, default: 0.15 = 15%) -->
     <DetectProbTraining>0.15</DetectProbTraining>
-
     <!-- Detection probability per check for Experienced tier (0.0-1.0, default: 0.30 = 30%) -->
     <DetectProbExperienced>0.30</DetectProbExperienced>
   </Jedi>
-
   <!-- Research System Configuration -->
   <!-- Controls technology advancement from idle facilities and officer research missions.
        Per-unit unlock costs are defined by ResearchDifficulty in the unit data XMLs. -->
   <Research>
     <!-- Base research points per successful research mission (GENERAL_PARAM_6171) -->
     <BaseResearchPoints>1</BaseResearchPoints>
-
     <!-- Random bonus range: award random(0, DiceRange) extra points (GENERAL_PARAM_6172) -->
     <ResearchDiceRange>6</ResearchDiceRange>
   </Research>
-
   <!-- Probability Tables -->
   <!-- All probability tables live together, grouped by data type not usage -->
   <ProbabilityTables>
@@ -740,7 +711,6 @@
         <Value>2</Value>
       </Entry>
     </UprisingStart>
-
     <!-- Mission-related probability tables -->
     <Mission>
       <Abduction>
@@ -793,7 +763,6 @@
           <Value>99</Value>
         </Entry>
       </Abduction>
-
       <Assassination>
         <Entry>
           <Key>-100</Key>
@@ -844,7 +813,6 @@
           <Value>55</Value>
         </Entry>
       </Assassination>
-
       <Diplomacy>
         <Entry>
           <Key>-39</Key>
@@ -887,7 +855,6 @@
           <Value>70</Value>
         </Entry>
       </Diplomacy>
-
       <DeathStarSabotage>
         <Entry>
           <Key>-1</Key>
@@ -938,7 +905,6 @@
           <Value>99</Value>
         </Entry>
       </DeathStarSabotage>
-
       <Espionage>
         <Entry>
           <Key>-1</Key>
@@ -989,7 +955,6 @@
           <Value>99</Value>
         </Entry>
       </Espionage>
-
       <InciteUprising>
         <Entry>
           <Key>-20</Key>
@@ -1044,7 +1009,6 @@
           <Value>99</Value>
         </Entry>
       </InciteUprising>
-
       <Recruitment>
         <Entry>
           <Key>0</Key>
@@ -1091,7 +1055,6 @@
           <Value>80</Value>
         </Entry>
       </Recruitment>
-
       <Rescue>
         <Entry>
           <Key>-1</Key>
@@ -1142,7 +1105,6 @@
           <Value>99</Value>
         </Entry>
       </Rescue>
-
       <Sabotage>
         <Entry>
           <Key>-1</Key>
@@ -1193,7 +1155,6 @@
           <Value>99</Value>
         </Entry>
       </Sabotage>
-
       <SubdueUprising>
         <Entry>
           <Key>-20</Key>
@@ -1248,7 +1209,6 @@
           <Value>99</Value>
         </Entry>
       </SubdueUprising>
-
       <!-- Decoy: score = decoy_espionage - (best_defender_espionage * 0.35). Source: TDECOYTB.json -->
       <Decoy>
         <Entry>
@@ -1308,7 +1268,6 @@
           <Value>99</Value>
         </Entry>
       </Decoy>
-
       <!-- Tick ranges: Base + random(0, Spread) inclusive. Source: MISSNSD.json -->
       <TickRanges>
         <Abduction>
@@ -1352,7 +1311,6 @@
           <Spread>10</Spread>
         </Research>
       </TickRanges>
-
       <!-- Foil: regiment defense score (derived from original FoilQuadratic: -0.001999x²+0.8879x+84.61) -->
       <Foil>
         <Entry>

@@ -127,7 +127,7 @@ public sealed class PlanetView : MonoBehaviour
     private void ApplyBaseVisuals()
     {
         planetNameText.text = planet.GetDisplayName();
-        planetImage.sprite = ResourceManager.Instance.GetSprite(planet.GetPlanetIconPath());
+        planetImage.sprite = ResourceManager.GetSprite(planet.GetPlanetIconPath());
 
         FactionTheme ownerTheme = uiContext.GetTheme(planet.GetOwnerInstanceID());
         planetNameText.color = ownerTheme.GetPrimaryColor();
@@ -175,11 +175,11 @@ public sealed class PlanetView : MonoBehaviour
             return;
         }
 
-        Sprite normal = ResourceManager.Instance.GetSprite(iconTheme.NormalImagePath);
+        Sprite normal = ResourceManager.GetSprite(iconTheme.NormalImagePath);
 
         Sprite hover = null;
         if (!string.IsNullOrEmpty(iconTheme.HoverImagePath))
-            hover = ResourceManager.Instance.GetSprite(iconTheme.HoverImagePath);
+            hover = ResourceManager.GetSprite(iconTheme.HoverImagePath);
 
         button.SetSprites(normal, hover, null, null, null);
         button.gameObject.SetActive(true);

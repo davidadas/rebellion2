@@ -112,9 +112,7 @@ public sealed class PlanetSystemIcon
         rect.offsetMax = Vector2.zero;
 
         Image hoverImage = hoverOverlay.AddComponent<Image>();
-        hoverImage.sprite = ResourceManager.Instance.GetSprite(
-            "Art/UI/StrategyView/planet_system_hover"
-        );
+        hoverImage.sprite = ResourceManager.GetSprite("Art/UI/StrategyView/planet_system_hover");
 
         hoverImage.raycastTarget = false;
 

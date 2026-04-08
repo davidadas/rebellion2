@@ -26,30 +26,29 @@ namespace Rebellion.Generation
     public sealed class GameBuilder
     {
         private readonly GameSummary _summary;
-        private readonly IResourceManager _resourceManager;
         private readonly IRandomNumberProvider _randomProvider;
 
         public GameBuilder(GameSummary summary)
         {
             _summary = summary;
-            _resourceManager = ResourceManager.Instance;
             _randomProvider = new SystemRandomProvider(Environment.TickCount);
         }
 
         public GameRoot BuildGame()
         {
             GameConfig gameConfig = ConfigLoader.LoadGameConfig();
-            GameGenerationRules rules = _resourceManager.GetConfig<GameGenerationRules>();
+            GameGenerationRules rules = ResourceManager.GetConfig<GameGenerationRules>();
 
             // Phase 0: Load templates and filter systems by galaxy size
-            PlanetSystem[] allSystems = _resourceManager.GetGameData<PlanetSystem>();
+            PlanetSystem[] allSystems = ResourceManager.GetGameData<PlanetSystem>();
             PlanetSystem[] systems = FilterSystemsByGalaxySize(allSystems);
-            Faction[] factions = _resourceManager.GetGameData<Faction>();
-            Building[] buildingTemplates = _resourceManager.GetGameData<Building>();
-            CapitalShip[] shipTemplates = _resourceManager.GetGameData<CapitalShip>();
-            Starfighter[] fighterTemplates = _resourceManager.GetGameData<Starfighter>();
-            Regiment[] regimentTemplates = _resourceManager.GetGameData<Regiment>();
-            GameEvent[] gameEvents = _resourceManager.GetGameData<GameEvent>();
+            Faction[] factions = ResourceManager.GetGameData<Faction>();
+            Building[] buildingTemplates = ResourceManager.GetGameData<Building>();
+            CapitalShip[] shipTemplates = ResourceManager.GetGameData<CapitalShip>();
+            Starfighter[] fighterTemplates = ResourceManager.GetGameData<Starfighter>();
+            Regiment[] regimentTemplates = ResourceManager.GetGameData<Regiment>();
+            Officer[] officerTemplates = ResourceManager.GetGameData<Officer>();
+            GameEvent[] gameEvents = ResourceManager.GetGameData<GameEvent>();
 
             // Phase 1: Galaxy classification
             GalaxyClassifier classifier = new GalaxyClassifier();
@@ -109,6 +108,7 @@ namespace Rebellion.Generation
             // Phase 6: Officers
             OfficerGenerator officerGenerator = new OfficerGenerator();
             OfficerGenerator.OfficerResults officerResults = officerGenerator.Deploy(
+                officerTemplates,
                 systems,
                 rules,
                 _summary,
@@ -130,7 +130,14 @@ namespace Rebellion.Generation
             );
 
             // Create the game
-            return CreateGame(systems, factions, gameEvents, unrecruitedOfficers, gameConfig);
+            return CreateGame(
+                systems,
+                factions,
+                gameEvents,
+                unrecruitedOfficers,
+                gameConfig,
+                rules
+            );
         }
 
         private PlanetSystem[] FilterSystemsByGalaxySize(PlanetSystem[] allSystems)
@@ -171,9 +178,8 @@ namespace Rebellion.Generation
             }
         }
 
-        private void InitializeFogOfWar(GameRoot game)
+        private void InitializeFogOfWar(GameRoot game, GameGenerationRules rules)
         {
-            GameGenerationRules rules = _resourceManager.GetConfig<GameGenerationRules>();
             FogOfWarSystem fogSystem = new FogOfWarSystem(game);
 
             // Build set of (planetID, factionID) visibility overrides from config
@@ -227,7 +233,8 @@ namespace Rebellion.Generation
             Faction[] factions,
             GameEvent[] gameEvents,
             Officer[] unrecruitedOfficers,
-            GameConfig gameConfig
+            GameConfig gameConfig,
+            GameGenerationRules rules
         )
         {
             GalaxyMap galaxy = new GalaxyMap { PlanetSystems = galaxyMap.ToList() };
@@ -242,7 +249,7 @@ namespace Rebellion.Generation
             };
             game.SetConfig(gameConfig);
 
-            InitializeFogOfWar(game);
+            InitializeFogOfWar(game, rules);
 
             return game;
         }

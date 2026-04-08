@@ -61,7 +61,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public void PlayTrack(string resourcePath, bool loop = false)
     {
-        AudioClip clip = ResourceManager.Instance.GetAudio(resourcePath);
+        AudioClip clip = ResourceManager.GetAudio(resourcePath);
         PlayTrack(clip, loop);
     }
 
@@ -199,7 +199,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     public void PlaySFX(string resourcePath)
     {
-        AudioClip clip = ResourceManager.Instance.GetAudio(resourcePath);
+        AudioClip clip = ResourceManager.GetAudio(resourcePath);
         // TODO: Pull volume from config.
         PlaySFX(clip, 1f);
     }
@@ -271,7 +271,7 @@ public class AudioManager : MonoBehaviour
         }
 
         string path = _currentPlaylistPaths[_playlistIndex];
-        AudioClip clip = ResourceManager.Instance.GetAudio(path);
+        AudioClip clip = ResourceManager.GetAudio(path);
 
         if (clip == null)
         {

@@ -40,7 +40,7 @@ public sealed class PlanetIcon : MonoBehaviour
             throw new InvalidOperationException("Planet icon path missing.");
 
         Image img = gameObject.AddComponent<Image>();
-        img.sprite = ResourceManager.Instance.GetSprite(path);
+        img.sprite = ResourceManager.GetSprite(path);
         img.raycastTarget = false;
     }
 }
