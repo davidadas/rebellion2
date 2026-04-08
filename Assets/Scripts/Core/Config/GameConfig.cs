@@ -445,49 +445,49 @@ public class GameConfig
     [PersistableObject]
     public class JediConfig
     {
-        /// <summary>ForceRank threshold to enter "discovering force user" state (GP_2580 = 80).</summary>
+        /// <summary>ForceRank threshold to enter "discovering force user" state.</summary>
         public int DiscoveringForceUserThreshold { get; set; }
 
-        /// <summary>ForceRank threshold for full Jedi qualification (GP_2581 = 100).</summary>
+        /// <summary>ForceRank threshold for full Jedi qualification.</summary>
         public int ForceQualifiedThreshold { get; set; }
 
-        /// <summary>ForceRank threshold for Force-based fast healing (GP_2560 = 80).</summary>
+        /// <summary>ForceRank threshold for Force-based fast healing.</summary>
         public int FastHealThreshold { get; set; }
 
-        /// <summary>ForceValue increment per successful mission (GP_3081 = 1).</summary>
+        /// <summary>ForceValue increment per successful mission.</summary>
         public int ForceGrowthPerMission { get; set; }
 
-        /// <summary>Percent of rank gap used as catch-up range in training (GP_6173 = 50).</summary>
+        /// <summary>Percent of rank gap used as catch-up range in training.</summary>
         public int TrainingCatchUpPercent { get; set; }
 
-        /// <summary>ForceRank threshold for Luke to learn heritage (GP_3078 = 60).</summary>
+        /// <summary>ForceRank threshold for Luke to learn heritage.</summary>
         public int HeritageThreshold { get; set; }
 
-        /// <summary>Percent bonus to force_rank on Dagobah completion (GP_6174 = 60).</summary>
+        /// <summary>Percent bonus to ForceRank on Dagobah mission completion.</summary>
         public int DagobahCompletionBonusPercent { get; set; }
 
-        /// <summary>Local force user minimum rank for encounter eligibility (GP_3585 = 1).</summary>
+        /// <summary>Local force user minimum rank for encounter eligibility.</summary>
         public int EncounterLocalMinRank { get; set; }
 
-        /// <summary>Cross-side force user minimum rank for encounter eligibility (GP_3586 = 60).</summary>
+        /// <summary>Cross-side force user minimum rank for encounter eligibility.</summary>
         public int EncounterCrossSideMinRank { get; set; }
 
-        /// <summary>Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587 = -100).</summary>
+        /// <summary>Offset applied to encounter probability calculation.</summary>
         public int EncounterProbabilityOffset { get; set; }
 
-        /// <summary>ForceRank threshold for Novice label (default 10).</summary>
+        /// <summary>ForceRank threshold for Novice label.</summary>
         public int RankLabelNovice { get; set; }
 
-        /// <summary>ForceRank threshold for Trainee label (default 20).</summary>
+        /// <summary>ForceRank threshold for Trainee label.</summary>
         public int RankLabelTrainee { get; set; }
 
-        /// <summary>ForceRank threshold for ForceStudent label (default 80).</summary>
+        /// <summary>ForceRank threshold for ForceStudent label.</summary>
         public int RankLabelForceStudent { get; set; }
 
-        /// <summary>ForceRank threshold for ForceKnight label (default 100).</summary>
+        /// <summary>ForceRank threshold for ForceKnight label.</summary>
         public int RankLabelForceKnight { get; set; }
 
-        /// <summary>ForceRank threshold for ForceMaster label (default 120).</summary>
+        /// <summary>ForceRank threshold for ForceMaster label.</summary>
         public int RankLabelForceMaster { get; set; }
     }
 

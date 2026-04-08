@@ -309,7 +309,6 @@ public abstract class Mission : ContainerNode
                 outcome = MissionOutcome.Success;
                 results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
-                AwardMissionForceGrowth(game);
             }
         }
         else if (CheckMissionFoiled(provider, foilProbability))
@@ -389,25 +388,6 @@ public abstract class Mission : ContainerNode
     /// </summary>
     protected virtual List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
-
-    /// <summary>
-    /// Awards force growth to force-eligible officers on mission success.
-    /// Override to suppress for missions with their own force mechanics (e.g. Jedi Training).
-    /// </summary>
-    protected virtual void AwardMissionForceGrowth(GameRoot game)
-    {
-        int growth = game.Config.Jedi.ForceGrowthPerMission;
-        foreach (IMissionParticipant participant in MainParticipants)
-        {
-            if (participant is Officer officer && officer.IsJedi && officer.IsForceEligible)
-            {
-                officer.ForceValue += growth;
-                GameLogger.Log(
-                    $"{officer.GetDisplayName()} gained {growth} force value from mission (rank {officer.ForceRank})"
-                );
-            }
-        }
-    }
 
     /// <summary>
     /// Returns all mission participants as children of the mission.

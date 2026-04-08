@@ -49,8 +49,6 @@ namespace Rebellion.Tests.Game.Missions
             _factory = new MissionFactory(_game);
         }
 
-        // --- Diplomacy ---
-
         [Test]
         public void CanCreateMission_Diplomacy_OwnPlanet_ReturnsTrue()
         {
@@ -100,8 +98,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Diplomacy, "empire", _ownPlanet));
         }
 
-        // --- SubdueUprising ---
-
         [Test]
         public void CanCreateMission_SubdueUprising_OwnPlanetInUprising_ReturnsTrue()
         {
@@ -128,8 +124,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        // --- Espionage ---
-
         [Test]
         public void CanCreateMission_Espionage_EnemyPlanet_ReturnsTrue()
         {
@@ -150,8 +144,6 @@ namespace Rebellion.Tests.Game.Missions
                 _factory.CanCreateMission(MissionType.Espionage, "empire", _enemyPlanet)
             );
         }
-
-        // --- InciteUprising ---
 
         [Test]
         public void CanCreateMission_InciteUprising_EnemyPlanet_ReturnsTrue()
@@ -178,8 +170,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        // --- Research ---
-
         [Test]
         public void CanCreateMission_Research_OwnPlanet_ReturnsTrue()
         {
@@ -201,8 +191,6 @@ namespace Rebellion.Tests.Game.Missions
                 _factory.CanCreateMission(MissionType.ShipDesignResearch, "empire", _enemyPlanet)
             );
         }
-
-        // --- JediTraining ---
 
         [Test]
         public void CanCreateMission_JediTraining_OwnPlanetWithTeacher_ReturnsTrue()
@@ -234,16 +222,12 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        // --- Sabotage ---
-
         [Test]
         public void CanCreateMission_Sabotage_AnyPlanet_ReturnsTrue()
         {
             Assert.IsTrue(_factory.CanCreateMission(MissionType.Sabotage, "empire", _ownPlanet));
             Assert.IsTrue(_factory.CanCreateMission(MissionType.Sabotage, "empire", _enemyPlanet));
         }
-
-        // --- Target selection missions ---
 
         [Test]
         public void CanCreateMission_Assassination_EnemyOfficerPresent_ReturnsTrue()
@@ -293,8 +277,6 @@ namespace Rebellion.Tests.Game.Missions
                 _factory.CanCreateMission(MissionType.Rescue, "empire", _enemyPlanet, new StubRNG())
             );
         }
-
-        // --- Non-planet target ---
 
         [Test]
         public void CanCreateMission_NonPlanetTarget_ReturnsFalse()

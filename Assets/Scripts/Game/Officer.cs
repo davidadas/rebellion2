@@ -71,9 +71,8 @@ namespace Rebellion.Game
 
         /// <summary>
         /// True if this character's Force ability has been discovered/activated.
-        /// Maps to original force-eligible flag (bit 0x10). Known Jedi have this at start.
-        /// Potential Jedi gain this when discovered by a known Jedi during a mission.
-        /// Gates ForceValue initialization and mission force growth.
+        /// Known Jedi have this at start. Potential Jedi gain this when discovered
+        /// by a scanning Jedi during JediSystem.ScanForForceUsers().
         /// </summary>
         public bool IsForceEligible { get; set; }
 

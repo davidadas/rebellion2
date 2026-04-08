@@ -24,6 +24,11 @@ public class JediTrainingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
+    /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+    /// <param name="target">Target planet (must be owned by the faction).</param>
+    /// <param name="mainParticipants">The student officer(s) being trained.</param>
+    /// <param name="decoyParticipants">Decoy participants for the mission.</param>
+    /// <param name="teacherInstanceId">InstanceID of the teaching officer.</param>
     public JediTrainingMission(
         string ownerInstanceId,
         ISceneNode target,
@@ -41,6 +46,12 @@ public class JediTrainingMission : Mission
             null
         )
     {
+        if (string.IsNullOrEmpty(teacherInstanceId))
+            throw new ArgumentException(
+                "Jedi Training requires a valid teacher.",
+                nameof(teacherInstanceId)
+            );
+
         TeacherInstanceID = teacherInstanceId;
 
         Planet planet = (Planet)target;
@@ -51,8 +62,10 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Success probability is based on the student's jedi probability value.
+    /// Success probability is based on the student's JediProbability value.
     /// </summary>
+    /// <param name="agent">The mission participant to evaluate.</param>
+    /// <returns>The agent's JediProbability, or 0 if not an officer.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (agent is Officer officer)
@@ -63,11 +76,17 @@ public class JediTrainingMission : Mission
     /// <summary>
     /// Jedi training targets own planets and is never foiled.
     /// </summary>
+    /// <param name="defenseScore">Ignored.</param>
+    /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// On success, applies the training catch-up mechanic.
+    /// On success, applies the training catch-up mechanic. The student gains
+    /// ForceTrainingAdjustment based on the rank gap to the teacher.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for rolling the catch-up bonus.</param>
+    /// <returns>Empty list; training results are applied directly.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
@@ -99,13 +118,15 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Jedi Training has its own catch-up mechanic; suppress base force growth.
+    /// Jedi Training does not award mission skill improvements.
     /// </summary>
-    protected override void AwardMissionForceGrowth(GameRoot game) { }
+    protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
     /// Training continues as long as the planet remains owned by this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet is still owned by this faction.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
@@ -114,6 +135,8 @@ public class JediTrainingMission : Mission
     /// <summary>
     /// Validates that the target planet is still owned by this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet is still owned by this faction.</returns>
     protected override bool IsTargetValid(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;

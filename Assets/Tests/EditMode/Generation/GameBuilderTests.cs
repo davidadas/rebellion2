@@ -270,7 +270,7 @@ public class GameBuilderTests
         foreach (List<Planet> planets in factionPlanets.Values)
         {
             // Ensure the faction has at least one planet.
-            Assert.Greater(planets.Count, 1, "Faction should have at least one planet.");
+            Assert.GreaterOrEqual(planets.Count, 1, "Faction should have at least one planet.");
         }
     }
 
@@ -289,7 +289,7 @@ public class GameBuilderTests
         });
 
         // Ensure the game has at least two officers.
-        Assert.Greater(officers.Count, 2, "Game should have at least two officers.");
+        Assert.GreaterOrEqual(officers.Count, 2, "Game should have at least two officers.");
     }
 
     [Test, TestCaseSource(nameof(GameTestCases))]
@@ -386,7 +386,7 @@ public class GameBuilderTests
         Assert.GreaterOrEqual(
             game.GetEventPool().Count,
             1,
-            "Game should have at most one event in the event pool."
+            "Game should have at least one event in the event pool."
         );
     }
 
