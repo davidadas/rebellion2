@@ -8,6 +8,9 @@ using Rebellion.Util.Common;
 
 public class DiplomacyMission : Mission
 {
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public DiplomacyMission()
         : base()
     {
@@ -110,9 +113,11 @@ public class DiplomacyMission : Mission
             results.Add(
                 new PlanetOwnershipChangedResult
                 {
-                    PlanetInstanceID = planet.InstanceID,
-                    PreviousOwnerInstanceID = previousOwner,
-                    NewOwnerInstanceID = OwnerInstanceID,
+                    Planet = planet,
+                    PreviousOwner = string.IsNullOrEmpty(previousOwner)
+                        ? null
+                        : game.GetFactionByOwnerInstanceID(previousOwner),
+                    NewOwner = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
                     Tick = game.CurrentTick,
                 }
             );

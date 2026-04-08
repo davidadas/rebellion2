@@ -195,7 +195,7 @@ namespace Rebellion.Tests.Systems
                 .OfType<TechnologyUnlockedResult>()
                 .FirstOrDefault();
             Assert.IsNotNull(result, "Should emit a TechnologyUnlockedResult");
-            Assert.AreEqual(faction.InstanceID, result.FactionInstanceID);
+            Assert.AreEqual(faction.InstanceID, result.Faction?.InstanceID);
             Assert.AreEqual(ManufacturingType.Ship, result.ResearchType);
             Assert.AreEqual("Frigate", result.TechnologyName);
             Assert.AreEqual(1, result.ResearchOrder);

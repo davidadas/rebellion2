@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Game.Missions
 
             CharacterKilledResult killed = results.OfType<CharacterKilledResult>().FirstOrDefault();
             Assert.IsNotNull(killed, "Should return CharacterKilledResult on success");
-            Assert.AreEqual("target", killed.OfficerInstanceID);
+            Assert.AreEqual("target", killed.Victim?.InstanceID);
         }
 
         [Test]

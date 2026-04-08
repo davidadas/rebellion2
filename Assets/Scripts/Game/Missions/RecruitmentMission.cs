@@ -11,6 +11,9 @@ public class RecruitmentMission : Mission
 {
     public string TargetOfficerInstanceID { get; set; }
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public RecruitmentMission()
         : base()
     {

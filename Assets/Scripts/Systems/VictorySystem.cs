@@ -4,11 +4,11 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Manages victory condition checking during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages victory condition checking during each game tick.
+    /// </summary>
     public class VictorySystem
     {
         private readonly GameRoot _game;

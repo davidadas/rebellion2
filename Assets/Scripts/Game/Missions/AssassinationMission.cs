@@ -12,6 +12,9 @@ public class AssassinationMission : Mission
 
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public AssassinationMission()
         : base()
     {
@@ -70,9 +73,8 @@ public class AssassinationMission : Mission
         {
             new CharacterKilledResult
             {
-                OfficerInstanceID = TargetOfficerInstanceID,
-                KillingFactionInstanceID = OwnerInstanceID,
-                LocationInstanceID = (GetParent() as Planet)?.InstanceID,
+                Victim = target,
+                Context = GetParent() as Planet,
                 Tick = game.CurrentTick,
             },
         };

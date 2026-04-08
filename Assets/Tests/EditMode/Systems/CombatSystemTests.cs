@@ -1258,7 +1258,7 @@ namespace Rebellion.Tests.Systems
                 planet
             );
 
-            Assert.Contains("reg1", result.DestroyedRegimentInstanceIDs);
+            Assert.IsTrue(result.DestroyedRegiments.Any(r => r.InstanceID == "reg1"));
             Assert.AreEqual(0, planet.GetAllRegiments().Count);
         }
 
@@ -1324,7 +1324,7 @@ namespace Rebellion.Tests.Systems
                 planet
             );
 
-            Assert.Contains("mine1", result.DestroyedBuildingInstanceIDs);
+            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == "mine1"));
         }
 
         [Test]
@@ -1588,7 +1588,9 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(result.Success);
-            Assert.Contains(defBuilding.InstanceID, result.DestroyedBuildingInstanceIDs);
+            Assert.IsTrue(
+                result.DestroyedBuildings.Any(b => b.InstanceID == defBuilding.InstanceID)
+            );
         }
 
         [Test]
@@ -1610,7 +1612,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(result.OwnershipChanged);
-            Assert.AreEqual("empire", result.NewOwnerInstanceID);
+            Assert.AreEqual("empire", result.NewOwner?.InstanceID);
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
     }

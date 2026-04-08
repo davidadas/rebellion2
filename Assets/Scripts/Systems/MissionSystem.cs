@@ -106,12 +106,8 @@ namespace Rebellion.Systems
             {
                 if (result is PlanetOwnershipChangedResult ownershipResult)
                 {
-                    Planet planet = _game.GetSceneNodeByInstanceID<Planet>(
-                        ownershipResult.PlanetInstanceID
-                    );
-                    Faction newOwner = _game.GetFactionByOwnerInstanceID(
-                        ownershipResult.NewOwnerInstanceID
-                    );
+                    Planet planet = ownershipResult.Planet;
+                    Faction newOwner = ownershipResult.NewOwner;
                     if (planet != null && newOwner != null)
                         _ownershipSystem.TransferPlanet(planet, newOwner);
                 }

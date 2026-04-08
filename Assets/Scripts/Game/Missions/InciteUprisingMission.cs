@@ -11,6 +11,9 @@ public class InciteUprisingMission : Mission
 {
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public InciteUprisingMission()
         : base()
     {
@@ -101,8 +104,8 @@ public class InciteUprisingMission : Mission
         {
             new PlanetUprisingStartedResult
             {
-                PlanetInstanceID = planet.InstanceID,
-                InstigatorFactionInstanceID = OwnerInstanceID,
+                Planet = planet,
+                InstigatorFaction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
                 Tick = game.CurrentTick,
             },
         };

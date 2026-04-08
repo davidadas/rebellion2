@@ -4,19 +4,19 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Processes Jedi Force tier advancement and detection checks each tick.
-///
-/// TIER ADVANCEMENT:
-/// Reads officer.ForceExperience and promotes ForceTier when XP crosses config thresholds.
-/// XP accumulation is unimplemented - reserved for future mission integration.
-///
-/// DETECTION:
-/// Every DetectionCheckInterval ticks, undiscovered Force users roll against a per-tier
-/// probability. A successful roll sets IsDiscoveredJedi = true.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Processes Jedi Force tier advancement and detection checks each tick.
+    ///
+    /// TIER ADVANCEMENT:
+    /// Reads officer.ForceExperience and promotes ForceTier when XP crosses config thresholds.
+    /// XP accumulation is unimplemented - reserved for future mission integration.
+    ///
+    /// DETECTION:
+    /// Every DetectionCheckInterval ticks, undiscovered Force users roll against a per-tier
+    /// probability. A successful roll sets IsDiscoveredJedi = true.
+    /// </summary>
     public class JediSystem
     {
         private readonly GameRoot _game;

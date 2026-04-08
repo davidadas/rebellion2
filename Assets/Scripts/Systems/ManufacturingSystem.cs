@@ -6,11 +6,11 @@ using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Manages unit and facility production during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages unit and facility production during each game tick.
+    /// </summary>
     public class ManufacturingSystem
     {
         private readonly GameRoot _game;

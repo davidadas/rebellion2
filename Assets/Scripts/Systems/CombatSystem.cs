@@ -95,8 +95,8 @@ namespace Rebellion.Systems
                     results.Add(
                         new PendingCombatResult
                         {
-                            AttackerFleetInstanceID = decision.AttackerFleetInstanceID,
-                            DefenderFleetInstanceID = decision.DefenderFleetInstanceID,
+                            AttackerFleet = attackerFleet,
+                            DefenderFleet = defenderFleet,
                             Tick = game.CurrentTick,
                         }
                     );
@@ -221,7 +221,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                RunManualCombat(game, decision);
+                RunManualCombat();
             }
 
             Fleet attacker = game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
@@ -287,7 +287,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Placeholder for manual/interactive combat resolution.
         /// </summary>
-        private void RunManualCombat(GameRoot _, CombatDecisionContext __)
+        private void RunManualCombat()
         {
             // TODO: Implement manual combat resolution
         }
@@ -739,8 +739,7 @@ namespace Rebellion.Systems
                     results.Add(
                         new ShipDamageResult
                         {
-                            Fleet = fleet,
-                            ShipIndex = i,
+                            Ship = fleet.CapitalShips[i],
                             HullBefore = ships[i].HullMax,
                             HullAfter = ships[i].HullCurrent,
                         }
@@ -763,6 +762,7 @@ namespace Rebellion.Systems
             List<int> initialFighters
         )
         {
+            List<Starfighter> allFighters = fleet.GetStarfighters().ToList();
             for (int i = 0; i < fighters.Count; i++)
             {
                 if (fighters[i] < initialFighters[i])
@@ -770,8 +770,7 @@ namespace Rebellion.Systems
                     results.Add(
                         new FighterLossResult
                         {
-                            Fleet = fleet,
-                            FighterIndex = i,
+                            Fighter = i < allFighters.Count ? allFighters[i] : null,
                             SquadsBefore = initialFighters[i],
                             SquadsAfter = fighters[i],
                         }
@@ -803,24 +802,20 @@ namespace Rebellion.Systems
         /// <param name="damageResults">Ship damage results to apply.</param>
         private void ApplyShipDamage(List<ShipDamageResult> damageResults)
         {
-            foreach (
-                IGrouping<Fleet, ShipDamageResult> fleetGroup in damageResults.GroupBy(d => d.Fleet)
-            )
+            foreach (ShipDamageResult damage in damageResults)
             {
-                foreach (ShipDamageResult damage in fleetGroup.OrderByDescending(d => d.ShipIndex))
+                CapitalShip ship = damage.Ship;
+                if (ship == null)
+                    continue;
+
+                ship.HullStrength = damage.HullAfter;
+
+                if (damage.HullAfter <= 0)
                 {
-                    if (damage.ShipIndex >= damage.Fleet.CapitalShips.Count)
-                        continue;
-
-                    CapitalShip ship = damage.Fleet.CapitalShips[damage.ShipIndex];
-                    ship.HullStrength = damage.HullAfter;
-
-                    if (damage.HullAfter <= 0)
-                    {
-                        EvacuateOfficers(ship, damage.Fleet);
-                        _game.DetachNode(ship);
-                        GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
-                    }
+                    Fleet fleet = ship.GetParentOfType<Fleet>();
+                    EvacuateOfficers(ship, fleet);
+                    _game.DetachNode(ship);
+                    GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
             }
         }
@@ -832,26 +827,18 @@ namespace Rebellion.Systems
         /// <param name="lossResults">Fighter loss results to apply.</param>
         private void ApplyFighterSquadronLosses(List<FighterLossResult> lossResults)
         {
-            foreach (
-                IGrouping<Fleet, FighterLossResult> fleetGroup in lossResults.GroupBy(l => l.Fleet)
-            )
+            foreach (FighterLossResult loss in lossResults)
             {
-                foreach (
-                    FighterLossResult loss in fleetGroup.OrderByDescending(l => l.FighterIndex)
-                )
+                Starfighter fighter = loss.Fighter;
+                if (fighter == null)
+                    continue;
+
+                fighter.SquadronSize = loss.SquadsAfter;
+
+                if (loss.SquadsAfter <= 0)
                 {
-                    List<Starfighter> fighters = loss.Fleet.GetStarfighters().ToList();
-                    if (loss.FighterIndex >= fighters.Count)
-                        continue;
-
-                    Starfighter fighter = fighters[loss.FighterIndex];
-                    fighter.SquadronSize = loss.SquadsAfter;
-
-                    if (loss.SquadsAfter <= 0)
-                    {
-                        _game.DetachNode(fighter);
-                        GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
-                    }
+                    _game.DetachNode(fighter);
+                    GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                 }
             }
         }
@@ -912,7 +899,7 @@ namespace Rebellion.Systems
         {
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
-                PlanetInstanceID = defendingPlanet.GetInstanceID(),
+                Planet = defendingPlanet,
                 Tick = _game.CurrentTick,
             };
 
@@ -932,7 +919,7 @@ namespace Rebellion.Systems
                 return result;
             }
 
-            result.AttackingFactionInstanceID = attackerFactionID;
+            result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerFactionID);
 
             // Phase 1: Calculate total assault strength from all fleets
             int totalAssaultStrength = 0;
@@ -972,7 +959,7 @@ namespace Rebellion.Systems
             ExecuteCapitalStrikes(defendingPlanet, excessAssaultStrength, result);
 
             // Phase 6: Transfer ownership if all defenses destroyed
-            if (totalDefenseStrength > 0 && result.DestroyedBuildingInstanceIDs.Count > 0)
+            if (totalDefenseStrength > 0 && result.DestroyedBuildings.Count > 0)
             {
                 int remainingDefense = defendingPlanet.GetDefenseStrength();
                 if (remainingDefense == 0)
@@ -1022,7 +1009,7 @@ namespace Rebellion.Systems
                 if (strikesRemaining <= 0)
                     break;
 
-                result.DestroyedBuildingInstanceIDs.Add(building.GetInstanceID());
+                result.DestroyedBuildings.Add(building);
                 _game.DetachNode(building);
                 strikesRemaining--;
 
@@ -1048,7 +1035,7 @@ namespace Rebellion.Systems
             _game.ChangeUnitOwnership(planet, newOwnerID);
 
             result.OwnershipChanged = true;
-            result.NewOwnerInstanceID = newOwnerID;
+            result.NewOwner = _game.GetFactionByOwnerInstanceID(newOwnerID);
 
             GameLogger.Log(
                 $"Planet {planet.GetDisplayName()} captured! {oldOwnerID} -> {newOwnerID}"
@@ -1070,7 +1057,7 @@ namespace Rebellion.Systems
         {
             BombardmentResult result = new BombardmentResult
             {
-                PlanetInstanceID = targetPlanet.GetInstanceID(),
+                Planet = targetPlanet,
                 Tick = _game.CurrentTick,
             };
 
@@ -1085,7 +1072,7 @@ namespace Rebellion.Systems
                 );
                 return result;
             }
-            result.AttackingFactionInstanceID = attackerFactionID;
+            result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerFactionID);
 
             // Shield gate
             if (IsShieldBlocking(targetPlanet))
@@ -1326,9 +1313,9 @@ namespace Rebellion.Systems
                     if (lane.TargetIndex < regiments.Count)
                     {
                         Regiment target = regiments[lane.TargetIndex];
-                        strike.TargetInstanceID = target.GetInstanceID();
+                        strike.Target = target;
                         strike.TargetName = target.GetDisplayName();
-                        result.DestroyedRegimentInstanceIDs.Add(target.GetInstanceID());
+                        result.DestroyedRegiments.Add(target);
                         _game.DetachNode(target);
                     }
                     break;
@@ -1339,9 +1326,9 @@ namespace Rebellion.Systems
                     if (lane.TargetIndex < fighters.Count)
                     {
                         Starfighter target = fighters[lane.TargetIndex];
-                        strike.TargetInstanceID = target.GetInstanceID();
+                        strike.Target = target;
                         strike.TargetName = target.GetDisplayName();
-                        result.DestroyedStarfighterInstanceIDs.Add(target.GetInstanceID());
+                        result.DestroyedStarfighters.Add(target);
                         _game.DetachNode(target);
                     }
                     break;
@@ -1362,9 +1349,9 @@ namespace Rebellion.Systems
                     if (lane.TargetIndex < buildings.Count)
                     {
                         Building target = buildings[lane.TargetIndex];
-                        strike.TargetInstanceID = target.GetInstanceID();
+                        strike.Target = target;
                         strike.TargetName = target.GetDisplayName();
-                        result.DestroyedBuildingInstanceIDs.Add(target.GetInstanceID());
+                        result.DestroyedBuildings.Add(target);
                         _game.DetachNode(target);
                     }
                     break;

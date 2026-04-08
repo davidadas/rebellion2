@@ -80,8 +80,8 @@ namespace Rebellion.Tests.Game.Missions
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
             Assert.IsTrue(
-                results.OfType<BuildingSabotagedResult>().Any(),
-                "Sabotage success should return BuildingSabotagedResult"
+                results.OfType<GameObjectSabotagedResult>().Any(),
+                "Sabotage success should return GameObjectSabotagedResult"
             );
         }
 

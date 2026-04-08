@@ -74,7 +74,7 @@ namespace Rebellion.Systems
                         new TechnologyUnlockedResult
                         {
                             Tick = game.CurrentTick,
-                            FactionInstanceID = faction.InstanceID,
+                            Faction = faction,
                             ResearchType = type,
                             TechnologyName = techName,
                             ResearchOrder = target.GetResearchOrder(),

@@ -210,7 +210,7 @@ namespace Rebellion.Game
         /// Gets the available refinement capacity that is not blockaded and excludes refineries under construction.
         /// If the location is blockaded, no refinement capacity is available.
         /// </summary>
-        /// <returns>The available refinement capacity, or 0 if blockaded.
+        /// <returns>The available refinement capacity, or 0 if blockaded.</returns>
         public int GetAvailableRefinementCapacity()
         {
             if (IsBlockaded())

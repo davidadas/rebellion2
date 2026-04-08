@@ -63,8 +63,12 @@ public class TriggerDuelAction : GameAction
         {
             new DuelTriggeredResult
             {
-                AttackerInstanceIDs = AttackerInstanceIDs,
-                DefenderInstanceIDs = DefenderInstanceIDs,
+                Attackers = AttackerInstanceIDs.ConvertAll(id =>
+                    game.GetSceneNodeByInstanceID<Officer>(id)
+                ),
+                Defenders = DefenderInstanceIDs.ConvertAll(id =>
+                    game.GetSceneNodeByInstanceID<Officer>(id)
+                ),
                 Tick = game.CurrentTick,
             },
         };

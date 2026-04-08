@@ -334,13 +334,10 @@ public abstract class Mission : ContainerNode
         results.Add(
             new MissionCompletedResult
             {
-                MissionInstanceID = InstanceID,
+                Mission = this,
                 MissionName = DisplayName,
                 TargetName = targetName,
-                ParticipantInstanceIDs = allParticipants.ConvertAll(p => p.GetInstanceID()),
-                ParticipantNames = allParticipants.ConvertAll(p =>
-                    ((ISceneNode)p).GetDisplayName()
-                ),
+                Participants = allParticipants.OfType<Officer>().ToList(),
                 Outcome = outcome,
                 Tick = game.CurrentTick,
             }
@@ -353,6 +350,7 @@ public abstract class Mission : ContainerNode
     /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
     /// Call at the top of each mission constructor before mission-specific validation.
     /// </summary>
+    /// <param name="target">The scene node to validate as a Planet.</param>
     /// <param name="missionName">Human-readable mission name used in the error message.</param>
     /// <exception cref="ArgumentNullException">target is null.</exception>
     /// <exception cref="InvalidOperationException">target is not a Planet.</exception>

@@ -5,11 +5,11 @@ using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Manages AI behavior for factions in the game.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages AI behavior for factions in the game.
+    /// </summary>
     public class AISystem
     {
         private readonly GameRoot _game;

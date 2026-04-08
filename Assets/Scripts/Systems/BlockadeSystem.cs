@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 
-/// <summary>
-/// Manages blockade mechanics during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages blockade mechanics during each game tick.
+    /// </summary>
     public class BlockadeSystem
     {
         private readonly GameRoot _game;
@@ -65,7 +65,7 @@ namespace Rebellion.Systems
                     Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
-                        OnBlockadeEnded(planet);
+                        OnBlockadeEnded();
                     }
                 }
             }
@@ -92,7 +92,7 @@ namespace Rebellion.Systems
             }
         }
 
-        private void OnBlockadeEnded(Planet _)
+        private void OnBlockadeEnded()
         {
             // No special action needed on blockade end
             // Just the transition is tracked

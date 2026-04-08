@@ -8,6 +8,9 @@ using Rebellion.Util.Common;
 
 public class SubdueUprisingMission : Mission
 {
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public SubdueUprisingMission()
         : base()
     {
@@ -77,8 +80,8 @@ public class SubdueUprisingMission : Mission
         {
             new PlanetUprisingEndedResult
             {
-                PlanetInstanceID = planet.InstanceID,
-                FactionInstanceID = OwnerInstanceID,
+                Planet = planet,
+                Faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
                 Tick = game.CurrentTick,
             },
         };

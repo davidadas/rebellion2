@@ -11,6 +11,9 @@ public class SabotageMission : Mission
 {
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public SabotageMission()
         : base()
     {
@@ -56,11 +59,10 @@ public class SabotageMission : Mission
 
         return new List<GameResult>
         {
-            new BuildingSabotagedResult
+            new GameObjectSabotagedResult
             {
-                PlanetInstanceID = planet.InstanceID,
-                BuildingType = target.BuildingType.ToString(),
-                FactionInstanceID = OwnerInstanceID,
+                SabotagedObject = target,
+                Context = planet,
                 Tick = game.CurrentTick,
             },
         };
