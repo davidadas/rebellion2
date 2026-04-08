@@ -74,6 +74,7 @@ public class AssassinationMission : Mission
             new OfficerKilledResult
             {
                 TargetOfficer = target,
+                Assassin = MainParticipants.Count > 0 ? MainParticipants[0] : null,
                 Context = GetParent() as Planet,
                 Tick = game.CurrentTick,
             },

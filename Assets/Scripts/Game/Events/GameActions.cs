@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
@@ -63,12 +64,14 @@ public class TriggerDuelAction : GameAction
         {
             new DuelTriggeredResult
             {
-                Attackers = AttackerInstanceIDs.ConvertAll(id =>
-                    game.GetSceneNodeByInstanceID<Officer>(id)
-                ),
-                Defenders = DefenderInstanceIDs.ConvertAll(id =>
-                    game.GetSceneNodeByInstanceID<Officer>(id)
-                ),
+                Attackers = AttackerInstanceIDs
+                    .ConvertAll(id => game.GetSceneNodeByInstanceID<Officer>(id))
+                    .Where(o => o != null)
+                    .ToList(),
+                Defenders = DefenderInstanceIDs
+                    .ConvertAll(id => game.GetSceneNodeByInstanceID<Officer>(id))
+                    .Where(o => o != null)
+                    .ToList(),
                 Tick = game.CurrentTick,
             },
         };

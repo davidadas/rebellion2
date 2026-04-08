@@ -76,6 +76,42 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_TargetOnEnemyPlanet_SetsAssassinOnResult()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = new AssassinationMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                "target"
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().First();
+            Assert.AreEqual(
+                officer.InstanceID,
+                killed.Assassin.InstanceID,
+                "Assassin should be the main participant"
+            );
+        }
+
+        [Test]
         public void Execute_TargetOnEnemyPlanet_DetachesTargetFromSceneGraph()
         {
             (

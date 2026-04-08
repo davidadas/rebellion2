@@ -86,6 +86,48 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_BuildingOnEnemyPlanet_SetsSaboteurOnResult()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(building, enemyPlanet);
+
+            SabotageMission mission = new SabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            GameObjectSabotagedResult sabotaged = results
+                .OfType<GameObjectSabotagedResult>()
+                .First();
+            Assert.AreEqual(
+                officer.InstanceID,
+                sabotaged.Saboteur.InstanceID,
+                "Saboteur should be the main participant"
+            );
+        }
+
+        [Test]
         public void Execute_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
             (

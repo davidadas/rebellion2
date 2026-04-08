@@ -62,6 +62,7 @@ public class SabotageMission : Mission
             new GameObjectSabotagedResult
             {
                 SabotagedObject = target,
+                Saboteur = MainParticipants.Count > 0 ? MainParticipants[0] : null,
                 Context = planet,
                 Tick = game.CurrentTick,
             },

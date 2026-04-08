@@ -134,7 +134,10 @@ namespace Rebellion.Tests.Systems
                 "Should not throw when faction owns no planets"
             );
 
-            Assert.IsNotNull(results);
+            Assert.IsNull(
+                officer.Movement,
+                "Officer should not have movement queued when no valid destination exists"
+            );
         }
 
         [Test]
@@ -528,6 +531,42 @@ namespace Rebellion.Tests.Systems
                 planetA,
                 officer.GetParent(),
                 "Officer should return to the nearest friendly planet when the origin fleet has moved"
+            );
+        }
+
+        [Test]
+        public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+
+            SpecialForces sf = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(sf);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionCompletedResult completedResult = results
+                .OfType<MissionCompletedResult>()
+                .First();
+
+            Assert.IsTrue(
+                completedResult.Participants.Any(p => p.InstanceID == "sf1"),
+                "SpecialForces participant must appear in Participants"
             );
         }
 

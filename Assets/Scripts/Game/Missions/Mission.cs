@@ -337,7 +337,7 @@ public abstract class Mission : ContainerNode
                 Mission = this,
                 MissionName = DisplayName,
                 TargetName = targetName,
-                Participants = allParticipants.OfType<Officer>().ToList(),
+                Participants = allParticipants,
                 Outcome = outcome,
                 Tick = game.CurrentTick,
             }

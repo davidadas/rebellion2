@@ -796,8 +796,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies ship damage results to the game world. Processes in reverse index order
-        /// per fleet so removals don't invalidate earlier indices.
+        /// Applies ship damage results to the game world.
         /// </summary>
         /// <param name="damageResults">Ship damage results to apply.</param>
         private void ApplyShipDamage(List<ShipDamageResult> damageResults)
@@ -821,8 +820,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies fighter loss results to the game world. Processes in reverse index order
-        /// per fleet so removals don't invalidate earlier indices.
+        /// Applies fighter loss results to the game world.
         /// </summary>
         /// <param name="lossResults">Fighter loss results to apply.</param>
         private void ApplyFighterSquadronLosses(List<FighterLossResult> lossResults)
