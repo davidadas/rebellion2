@@ -908,8 +908,12 @@ namespace Rebellion.Systems
                     return MissionType.Diplomacy;
             }
 
-            // Recruitment: owned planet with unrecruited officers available
-            if (owner == factionId && _game.GetUnrecruitedOfficers(factionId).Any())
+            // Recruitment: main characters only, owned planet, unrecruited officers available
+            if (
+                officer.IsMain
+                && owner == factionId
+                && _game.GetUnrecruitedOfficers(factionId).Any()
+            )
                 return MissionType.Recruitment;
 
             // Research: fallback for officers whose best skill isn't research

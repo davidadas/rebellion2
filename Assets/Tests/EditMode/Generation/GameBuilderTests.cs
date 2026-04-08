@@ -519,5 +519,24 @@ namespace Rebellion.Tests.Generation
                 }
             }
         }
+
+        [Test]
+        public void BuildGame_FogOfWar_OuterRimOwnedPlanet_OwnerIsInVisitingFactionIDs()
+        {
+            foreach (
+                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
+                    s.SystemType == PlanetSystemType.OuterRim
+                )
+            )
+            {
+                foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
+                {
+                    Assert.IsTrue(
+                        planet.WasVisitedBy(planet.OwnerInstanceID),
+                        $"Outer rim planet '{planet.GetDisplayName()}' is owned by '{planet.OwnerInstanceID}' but that faction is not in VisitingFactionIDs"
+                    );
+                }
+            }
+        }
     }
 }

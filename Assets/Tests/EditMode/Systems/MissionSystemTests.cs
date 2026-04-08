@@ -75,32 +75,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_WithFriendlyPlanet_EmitsCharacterMovedResult()
-        {
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
-            StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, movement, ownership);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            List<GameResult> results = system.UpdateMission(mission, new StubRNG());
-
-            List<CharacterMovedResult> moveResults = results
-                .OfType<CharacterMovedResult>()
-                .ToList();
-            Assert.AreEqual(1, moveResults.Count, "Should emit one CharacterMovedResult");
-            Assert.AreEqual("o1", moveResults[0].OfficerInstanceID);
-            Assert.AreEqual(planet.InstanceID, moveResults[0].ToLocationInstanceID);
-        }
-
-        [Test]
         public void UpdateMission_OnCompletion_NoFriendlyPlanet_SkipsMovement()
         {
             // Faction owns no planets and mission planet is unowned — no valid destination,
@@ -167,35 +141,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_NoNearestPlanet_FallsBackToOwnedMissionPlanet()
-        {
-            // Faction owns the mission's planet but GetNearestFriendlyPlanetTo still returns it
-            // (it's in the owned list), so this is effectively the same as the happy path.
-            // Distinct scenario: simulate GetNearestFriendlyPlanetTo returning null by having
-            // the faction own the mission planet — fallback path lands on same planet.
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
-            StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, movement, ownership);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            List<GameResult> results = system.UpdateMission(mission, new StubRNG());
-
-            List<CharacterMovedResult> moveResults = results
-                .OfType<CharacterMovedResult>()
-                .ToList();
-            Assert.AreEqual(1, moveResults.Count, "Should emit CharacterMovedResult");
-            Assert.AreEqual(planet.InstanceID, moveResults[0].ToLocationInstanceID);
-        }
-
-        [Test]
         public void UpdateMission_OnCompletion_ParticipantParentedToMission_DoesNotThrow()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
@@ -219,35 +164,6 @@ namespace Rebellion.Tests.Systems
                 mission.IncrementProgress();
 
             Assert.DoesNotThrow(() => system.UpdateMission(mission, new StubRNG()));
-        }
-
-        [Test]
-        public void UpdateMission_OnCompletion_ParticipantParentedToMission_EmitsCharacterMoved()
-        {
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
-            StubMission mission = CreateMission(game, planet, officer);
-
-            game.DetachNode(officer);
-            officer.SetParent(mission);
-
-            MissionSystem system = new MissionSystem(game, movement, ownership);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-
-            List<GameResult> results = system.UpdateMission(mission, new StubRNG());
-
-            Assert.AreEqual(
-                1,
-                results.OfType<CharacterMovedResult>().Count(),
-                "Should emit CharacterMovedResult even when officer was parented to the mission"
-            );
         }
 
         [Test]
@@ -467,6 +383,156 @@ namespace Rebellion.Tests.Systems
                 0,
                 game.GetSceneNodesByType<DiplomacyMission>().Count,
                 "DiplomacyMission should be canceled immediately when uprising fires before its turn"
+            );
+        }
+
+        [Test]
+        public void TearDownMission_ParticipantAttachedToMissionViaSceneGraph_DoesNotThrow()
+        {
+            // Regression: when BeginMission reparents an officer to the mission via
+            // game.AttachNode, TearDownMission previously threw "cannot attach node because
+            // it already has a parent" because it called AttachNode without DetachNode first.
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+            StubMission mission = CreateMission(game, planet, officer);
+
+            // Simulate BeginMission: move officer to mission via scene graph (not SetParent).
+            game.DetachNode(officer);
+            game.AttachNode(officer, mission);
+
+            MissionSystem system = new MissionSystem(game, movement, ownership);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            Assert.DoesNotThrow(() => system.UpdateMission(mission, new StubRNG()));
+            Assert.AreEqual(
+                planet,
+                officer.GetParent(),
+                "Officer should be reparented to the mission planet on teardown"
+            );
+        }
+
+        [Test]
+        public void TearDownMission_OriginIsCapitalShipInFleet_ParticipantsReturnToShip()
+        {
+            // When the officer's recorded origin is a capital ship (i.e. they boarded from a fleet),
+            // teardown should return them to that ship, not to the planet directly.
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+
+            Fleet fleet = new Fleet { InstanceID = "fleet1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            // Move officer from planet onto the capital ship (pre-mission state).
+            game.DetachNode(officer);
+            game.AttachNode(officer, ship);
+
+            StubMission mission = CreateMission(game, planet, officer);
+
+            // Simulate BeginMission: record the ship as origin, then move officer to mission.
+            mission.OriginInstanceID = ship.InstanceID;
+            game.DetachNode(officer);
+            game.AttachNode(officer, mission);
+
+            MissionSystem system = new MissionSystem(game, movement, ownership);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            system.UpdateMission(mission, new StubRNG());
+
+            Assert.AreEqual(
+                ship,
+                officer.GetParent(),
+                "Officer should return to the capital ship they came from"
+            );
+        }
+
+        [Test]
+        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToNearestFriendlyPlanet()
+        {
+            // Officer came from a fleet at planet A. The fleet moved to planet B before the
+            // mission ended. On teardown the officer should return to planet A (the nearest
+            // friendly planet at the mission site) rather than chase the fleet to planet B.
+            (
+                GameRoot game,
+                Planet planetA,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+
+            PlanetSystem systemB = new PlanetSystem
+            {
+                InstanceID = "sys2",
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(systemB, game.Galaxy);
+            Planet planetB = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+            };
+            game.AttachNode(planetB, systemB);
+
+            Fleet fleet = new Fleet { InstanceID = "fleet1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planetA);
+            game.AttachNode(ship, fleet);
+
+            game.DetachNode(officer);
+            game.AttachNode(officer, ship);
+
+            StubMission mission = CreateMission(game, planetA, officer);
+            mission.OriginInstanceID = ship.InstanceID;
+            game.DetachNode(officer);
+            game.AttachNode(officer, mission);
+
+            // Fleet moves away from planet A to planet B while the mission is in progress.
+            game.DetachNode(ship);
+            game.DetachNode(fleet);
+            game.AttachNode(fleet, planetB);
+            game.AttachNode(ship, fleet);
+
+            MissionSystem system = new MissionSystem(game, movement, ownership);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            system.UpdateMission(mission, new StubRNG());
+
+            Assert.AreEqual(
+                planetA,
+                officer.GetParent(),
+                "Officer should return to the nearest friendly planet when the origin fleet has moved"
             );
         }
 

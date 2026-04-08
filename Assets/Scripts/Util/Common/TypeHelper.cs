@@ -8,7 +8,7 @@ namespace Rebellion.Util.Common
     /// <summary>
     /// Provides helper methods for type-related operations.
     /// </summary>
-    static class TypeHelper
+    public static class TypeHelper
     {
         /// <summary>
         /// Determines whether the specified type is a primitive type.
