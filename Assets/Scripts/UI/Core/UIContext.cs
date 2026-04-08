@@ -70,13 +70,13 @@ public sealed class UIContext
             if (string.IsNullOrEmpty(path))
                 throw new InvalidOperationException("FleetsTab.NormalImagePath missing.");
 
-            return ResourceManager.Instance.GetSprite(path);
+            return ResourceManager.GetSprite(path);
         }
 
         string nodePath = node.GetDisplayImagePath();
 
         if (!string.IsNullOrEmpty(nodePath))
-            return ResourceManager.Instance.GetSprite(nodePath);
+            return ResourceManager.GetSprite(nodePath);
 
         throw new InvalidOperationException(
             $"No sprite mapping defined for '{node.GetDisplayName()}'."

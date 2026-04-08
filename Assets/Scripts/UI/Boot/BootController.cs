@@ -38,7 +38,7 @@ public sealed class BootController : MonoBehaviour
         string path = BootVideoPaths[currentIndex];
         currentIndex++;
 
-        VideoClip clip = ResourceManager.Instance.GetVideo(path);
+        VideoClip clip = ResourceManager.GetVideo(path);
 
         CutsceneManager.Instance.Play(clip, PlayNext);
     }

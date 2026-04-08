@@ -24,7 +24,7 @@ namespace Rebellion.Util.Serialization
         /// <returns>A new instance of the <see cref="XmlWriterSettings"/> class.</returns>
         public XmlWriterSettings CreateWriterSettings()
         {
-            return new XmlWriterSettings { Indent = true };
+            return new XmlWriterSettings { Indent = true, NewLineChars = "\n" };
         }
 
         /// <summary>

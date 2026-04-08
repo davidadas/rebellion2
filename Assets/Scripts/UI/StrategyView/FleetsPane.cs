@@ -169,7 +169,7 @@ public sealed class FleetsPane : MonoBehaviour
             return;
         }
 
-        fleetImage.sprite = ResourceManager.Instance.GetSprite(path);
+        fleetImage.sprite = ResourceManager.GetSprite(path);
     }
 
     private void ApplyFleetTabSprites(FactionTheme theme)
@@ -211,7 +211,7 @@ public sealed class FleetsPane : MonoBehaviour
         if (string.IsNullOrEmpty(path))
             return null;
 
-        return ResourceManager.Instance.GetSprite(path);
+        return ResourceManager.GetSprite(path);
     }
 
     public void Refresh()

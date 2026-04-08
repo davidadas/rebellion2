@@ -19,15 +19,13 @@ namespace Rebellion.Generation
         }
 
         public OfficerResults Deploy(
+            Officer[] allOfficers,
             PlanetSystem[] systems,
             GameGenerationRules rules,
             GameSummary summary,
             IRandomNumberProvider rng
         )
         {
-            IResourceManager resourceManager = ResourceManager.Instance;
-            Officer[] allOfficers = resourceManager.GetGameData<Officer>();
-
             Officer[] selected = SelectOfficers(allOfficers, rules, summary, rng);
             DecorateOfficers(selected, rng);
             DeployOfficers(selected, systems, rng);

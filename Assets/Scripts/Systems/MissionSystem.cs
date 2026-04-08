@@ -91,7 +91,7 @@ namespace Rebellion.Systems
             // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
             if (mission.IsCanceled(_game))
             {
-                TearDownMission(mission, results);
+                TearDownMission(mission);
                 return results;
             }
 
@@ -123,72 +123,46 @@ namespace Rebellion.Systems
             }
             else
             {
-                TearDownMission(mission, results);
+                TearDownMission(mission);
             }
 
             return results;
         }
 
         /// <summary>
-        /// Moves all participants to the nearest friendly planet and detaches the mission.
-        /// Called both when CanContinue returns false after completion and when IsCanceled
-        /// fires as a pre-tick guard.
+        /// Moves all participants back to their recorded origin (planet or fleet), falling back to
+        /// the nearest friendly planet if the origin has moved away or no longer exists, then
+        /// detaches the mission. Called when CanContinue returns false or IsCanceled fires.
         /// </summary>
-        private void TearDownMission(Mission mission, List<GameResult> results)
+        private void TearDownMission(Mission mission)
         {
             Planet missionPlanet = mission.GetParent() as Planet;
             Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
-            Planet nearestPlanet = faction.GetNearestFriendlyPlanetTo(mission);
-            if (nearestPlanet == null)
+
+            // Resolve the recorded origin (planet or fleet). If the origin has moved away from
+            // the mission planet since the mission started, don't chase it — fall back instead.
+            ISceneNode origin =
+                mission.OriginInstanceID != null
+                    ? _game.GetSceneNodeByInstanceID<ISceneNode>(mission.OriginInstanceID)
+                    : null;
+            if (origin != null)
             {
-                if (missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
-                    nearestPlanet = missionPlanet;
+                Planet originPlanet = origin is Planet p ? p : origin.GetParentOfType<Planet>();
+                if (originPlanet != missionPlanet)
+                    origin = null;
             }
+
+            if (origin == null)
+                origin = faction.GetNearestFriendlyPlanetTo(mission);
+            if (origin == null && missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
+                origin = missionPlanet;
 
             List<IMissionParticipant> allParticipants = mission.GetAllParticipants();
 
             foreach (IMovable movable in allParticipants.Cast<IMovable>())
             {
-                ISceneNode participantNode = (ISceneNode)movable;
-
-                if (nearestPlanet != null)
-                {
-                    // RequestMove reparents the participant to nearestPlanet on success,
-                    // which calls mission.RemoveChild and drains the participant lists.
-                    // It silently returns (without reparenting) for captured officers or on
-                    // SceneAccessException. Check the parent to confirm the move succeeded.
-                    _movementManager.RequestMove(movable, nearestPlanet);
-                    if (participantNode.GetParent() == nearestPlanet)
-                    {
-                        results.Add(
-                            new CharacterMovedResult
-                            {
-                                OfficerInstanceID = participantNode.GetInstanceID(),
-                                FromLocationInstanceID = mission.InstanceID,
-                                ToLocationInstanceID = nearestPlanet.InstanceID,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
-                    else if (
-                        missionPlanet != null
-                        && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
-                    )
-                    {
-                        // RequestMove was rejected; reparent to the mission planet so the
-                        // participant is not orphaned when DetachNode(mission) runs below.
-                        _game.AttachNode(participantNode, missionPlanet);
-                    }
-                }
-                else if (
-                    missionPlanet != null
-                    && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
-                )
-                {
-                    // No friendly planet; keep participant at the current planet rather than
-                    // losing them when the mission node is detached.
-                    _game.AttachNode(participantNode, missionPlanet);
-                }
+                if (origin != null)
+                    _movementManager.RequestMove(movable, origin);
             }
 
             _game.DetachNode(mission);
@@ -205,6 +179,8 @@ namespace Rebellion.Systems
             {
                 if (participant.GetParent() != mission)
                 {
+                    if (mission.OriginInstanceID == null)
+                        mission.OriginInstanceID = participant.GetParent()?.GetInstanceID();
                     _movementManager.RequestMove(participant, mission);
                 }
             }

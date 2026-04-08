@@ -88,7 +88,7 @@ namespace Rebellion.Systems
                     continue;
 
                 Officer leader = faction
-                    .GetAvailableOfficers(faction)
+                    .GetAvailableOfficers()
                     .Where(o => o.IsMovable())
                     .OrderByDescending(o => o.GetSkillValue(MissionParticipantSkill.Leadership))
                     .FirstOrDefault();
@@ -641,7 +641,7 @@ namespace Rebellion.Systems
         private void UpdateOfficerMissions(Faction faction)
         {
             List<Officer> available = faction
-                .GetAvailableOfficers(faction)
+                .GetAvailableOfficers()
                 .Where(o => o.IsMovable())
                 .ToList();
 
@@ -908,8 +908,12 @@ namespace Rebellion.Systems
                     return MissionType.Diplomacy;
             }
 
-            // Recruitment: owned planet with unrecruited officers available
-            if (owner == factionId && _game.GetUnrecruitedOfficers(factionId).Any())
+            // Recruitment: main characters only, owned planet, unrecruited officers available
+            if (
+                officer.IsMain
+                && owner == factionId
+                && _game.GetUnrecruitedOfficers(factionId).Any()
+            )
                 return MissionType.Recruitment;
 
             // Research: fallback for officers whose best skill isn't research

@@ -74,13 +74,18 @@ namespace Rebellion.Generation
                     // Popular support
                     SetPopularSupport(planet, isCore, classification, sup, factionIds, rng);
 
-                    // Core systems are always visited by all factions
+                    // Core systems are always visited by all factions.
+                    // Outer rim owned planets are visited by their owner.
                     if (isCore)
                     {
                         foreach (string factionId in factionIds)
                         {
                             planet.AddVisitor(factionId);
                         }
+                    }
+                    else if (planet.OwnerInstanceID != null)
+                    {
+                        planet.AddVisitor(planet.OwnerInstanceID);
                     }
                 }
             }

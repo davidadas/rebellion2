@@ -13,6 +13,7 @@ public abstract class Mission : ContainerNode
 {
     public string ConfigKey { get; set; }
     public string TargetInstanceID { get; set; }
+    public string OriginInstanceID { get; set; }
 
     [PersistableIgnore]
     public List<IMissionParticipant> MainParticipants { get; set; }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
@@ -39,15 +40,24 @@ public class RecruitmentMission : Mission
         if (string.IsNullOrEmpty(targetOfficerInstanceId))
             throw new ArgumentNullException(nameof(targetOfficerInstanceId));
 
+        if (mainParticipants.OfType<Officer>().Any(o => !o.IsMain))
+            throw new ArgumentException(
+                "Only main characters may lead a recruitment mission.",
+                nameof(mainParticipants)
+            );
+
         TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
     /// <summary>
-    /// Returns false if the target officer no longer exists or has already joined this faction.
+    /// Returns false if the target officer no longer exists in the unrecruited pool or has
+    /// already joined this faction.
     /// </summary>
     protected override bool IsTargetValid(GameRoot game)
     {
-        Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+        Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
+            o.InstanceID == TargetOfficerInstanceID
+        );
         return target != null && target.OwnerInstanceID != OwnerInstanceID;
     }
 
@@ -56,7 +66,9 @@ public class RecruitmentMission : Mission
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
-        Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+        Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
+            o.InstanceID == TargetOfficerInstanceID
+        );
         Planet planet = GetParent() as Planet;
         if (target == null || planet == null)
             return new List<GameResult>();
@@ -65,16 +77,9 @@ public class RecruitmentMission : Mission
         game.RemoveUnrecruitedOfficer(target);
         game.AttachNode(target, planet);
 
-        return new List<GameResult>
-        {
-            new CharacterMovedResult
-            {
-                OfficerInstanceID = target.InstanceID,
-                FromLocationInstanceID = "UNRECRUITED_POOL",
-                ToLocationInstanceID = planet?.InstanceID,
-                Tick = game.CurrentTick,
-            },
-        };
+        GameLogger.Log($"Recruited {target.GetDisplayName()} to {OwnerInstanceID}");
+
+        return new List<GameResult>();
     }
 
     /// <summary>

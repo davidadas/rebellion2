@@ -1420,6 +1420,54 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(42, simpleItem.Value);
         }
 
+        [Test]
+        public void DeserializeNode_StreamContainingMatchingElement_ReturnsDeserializedObject()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            SimpleItem original = new SimpleItem { Name = "NodeTest", Value = 7 };
+            string xml = SerializeToString(serializer, original);
+
+            SimpleItem result;
+            using (MemoryStream stream = new MemoryStream())
+            using (StreamWriter writer = new StreamWriter(stream))
+            {
+                writer.Write(xml);
+                writer.Flush();
+                stream.Seek(0, SeekOrigin.Begin);
+                result = serializer.DeserializeNode<SimpleItem>(stream);
+            }
+
+            Assert.AreEqual("NodeTest", result.Name);
+            Assert.AreEqual(7, result.Value);
+        }
+
+        [Test]
+        public void DeserializeNode_ElementNotFound_ThrowsInvalidDataException()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xml = "<?xml version=\"1.0\"?><UnrelatedRoot><Child/></UnrelatedRoot>";
+
+            Assert.Throws<System.IO.InvalidDataException>(() =>
+            {
+                using MemoryStream stream = new MemoryStream();
+                using StreamWriter writer = new StreamWriter(stream);
+                writer.Write(xml);
+                writer.Flush();
+                stream.Seek(0, SeekOrigin.Begin);
+                serializer.DeserializeNode<SimpleItem>(stream);
+            });
+        }
+
+        [Test]
+        public void Deserialize_UnknownElement_ThrowsInvalidOperationException()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem));
+            string xml =
+                "<?xml version=\"1.0\"?><SimpleItem><Name>x</Name><UnknownField>oops</UnknownField></SimpleItem>";
+
+            Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
+        }
+
         private string SerializeToString(GameSerializer serializer, object obj)
         {
             using (MemoryStream stream = new MemoryStream())

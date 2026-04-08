@@ -61,10 +61,14 @@ jobs:
           restore-keys: |
             Library-
 
-      - name: Install Roslynator CLI
+      - name: Install tools
         run: |
+          dotnet tool restore
           dotnet tool install -g roslynator.dotnet.cli
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Format check
+        run: dotnet csharpier check Assets/
 
       - name: Lint
         run: bash build.sh lint
