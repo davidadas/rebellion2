@@ -2,19 +2,16 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
+using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Core.Simulation;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
 {
     /// <summary>
-    /// Tests for JediSystem force discovery, mission growth, training catch-up,
-    /// and force user discovery scanning.
-    /// Validates deterministic threshold-based discovery and two-tier Jedi mechanics
-    /// matching original game behavior.
+    /// Tests for JediSystem force discovery state and force user discovery scanning.
     /// </summary>
     [TestFixture]
     public class JediSystemTests
@@ -51,8 +48,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(_tatooine, system);
         }
-
-        // --- Discovery state tests ---
 
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
@@ -219,148 +214,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(85, results[0].ForceRank);
         }
 
-        // --- Mission force growth tests ---
-
-        [Test]
-        public void AwardMissionForceGrowth_ForceEligibleJedi_IncreasesForceValue()
-        {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
-
-            _system.AwardMissionForceGrowth(luke);
-
-            Assert.AreEqual(50 + _game.Config.Jedi.ForceGrowthPerMission, luke.ForceValue);
-        }
-
-        [Test]
-        public void AwardMissionForceGrowth_DormantJedi_NoChange()
-        {
-            Officer leia = CreateDormantJedi("LEIA");
-
-            _system.AwardMissionForceGrowth(leia);
-
-            Assert.AreEqual(0, leia.ForceValue);
-        }
-
-        [Test]
-        public void AwardMissionForceGrowth_NonJedi_NoChange()
-        {
-            Officer han = new Officer
-            {
-                InstanceID = "HAN",
-                DisplayName = "Han",
-                IsJedi = false,
-                ForceValue = 0,
-            };
-
-            _system.AwardMissionForceGrowth(han);
-
-            Assert.AreEqual(0, han.ForceValue);
-        }
-
-        // --- Training catch-up tests ---
-
-        [Test]
-        public void ApplyTrainingCatchUp_TraineeBelowTeacher_GainsAdjustment()
-        {
-            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 50);
-            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
-
-            // Gap = 50, catch-up range = 50 * 50 / 100 = 25
-            // FixedRNG.NextInt(0, 26) returns 0 (min)
-            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
-
-            // With min-returning RNG, bonus is 0
-            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
-        }
-
-        [Test]
-        public void ApplyTrainingCatchUp_TraineeAboveTeacher_NoGain()
-        {
-            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 120);
-            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
-
-            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
-
-            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
-        }
-
-        [Test]
-        public void ApplyTrainingCatchUp_TraineeEqualsTeacher_NoGain()
-        {
-            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 100);
-            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
-
-            _system.ApplyTrainingCatchUp(trainee, teacher, new FixedRNG());
-
-            Assert.AreEqual(0, trainee.ForceTrainingAdjustment);
-        }
-
-        [Test]
-        public void ApplyTrainingCatchUp_WithMaxRoll_GainsFullCatchUp()
-        {
-            Officer trainee = CreateKnownJedi("TRAINEE", forceValue: 50);
-            Officer teacher = CreateKnownJedi("TEACHER", forceValue: 100);
-
-            // Gap = 50, catch-up range = 50 * 50 / 100 = 25
-            // MaxRNG returns max-1, so NextInt(0, 26) = 25
-            _system.ApplyTrainingCatchUp(trainee, teacher, new MaxRNG());
-
-            Assert.AreEqual(25, trainee.ForceTrainingAdjustment);
-        }
-
-        // --- ForceRankLabel tests ---
-
-        [Test]
-        public void GetForceRankLabel_BelowTen_ReturnsNone()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 9 };
-            Assert.AreEqual(ForceRankLabel.None, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void GetForceRankLabel_AtTen_ReturnsNovice()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 10 };
-            Assert.AreEqual(ForceRankLabel.Novice, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void GetForceRankLabel_AtTwenty_ReturnsTrainee()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 20 };
-            Assert.AreEqual(ForceRankLabel.Trainee, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void GetForceRankLabel_AtEighty_ReturnsForceStudent()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 80 };
-            Assert.AreEqual(ForceRankLabel.ForceStudent, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void GetForceRankLabel_AtHundred_ReturnsForceKnight()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 100 };
-            Assert.AreEqual(ForceRankLabel.ForceKnight, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void GetForceRankLabel_AtOneTwenty_ReturnsForceMaster()
-        {
-            Officer officer = new Officer { IsJedi = true, ForceValue = 120 };
-            Assert.AreEqual(ForceRankLabel.ForceMaster, _system.GetForceRankLabel(officer));
-        }
-
-        [Test]
-        public void ForceRank_IsForceValuePlusTrainingAdjustment()
-        {
-            Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 30 };
-            Assert.AreEqual(80, officer.ForceRank);
-        }
-
-        // --- Force user discovery scan tests ---
-
         [Test]
         public void ProcessTick_DiscoveringJediDiscoversDormant()
         {
@@ -514,8 +367,6 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
         }
-
-        // --- Helper methods ---
 
         private Officer CreateKnownJedi(string id, int forceValue)
         {

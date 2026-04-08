@@ -119,11 +119,7 @@ public class OfficerTests
             deserializedOfficer.Movement,
             "MovementStatus mismatch"
         );
-        Assert.AreEqual(
-            originalOfficer.IsJedi,
-            deserializedOfficer.IsJedi,
-            "IsJedi mismatch"
-        );
+        Assert.AreEqual(originalOfficer.IsJedi, deserializedOfficer.IsJedi, "IsJedi mismatch");
         Assert.AreEqual(
             originalOfficer.IsForceEligible,
             deserializedOfficer.IsForceEligible,

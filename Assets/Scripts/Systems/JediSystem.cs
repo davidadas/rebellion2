@@ -6,7 +6,7 @@ using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
 /// <summary>
-/// Manages Force state updates, force user discovery, and Jedi training each tick.
+/// Manages Force discovery state and force user scanning each tick.
 /// </summary>
 namespace Rebellion.Systems
 {
@@ -45,7 +45,8 @@ namespace Rebellion.Systems
         private void RefreshDiscoveringForceUserState(Officer officer, List<GameResult> results)
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
-            bool shouldDiscover = officer.ForceRank >= threshold
+            bool shouldDiscover =
+                officer.ForceRank >= threshold
                 && !officer.IsCaptured
                 && !officer.IsKilled
                 && !officer.IsOnMission();
@@ -54,13 +55,15 @@ namespace Rebellion.Systems
             {
                 officer.IsDiscoveringForceUser = true;
 
-                results.Add(new ForceDiscoveryResult
-                {
-                    EventType = ForceEventType.DiscoveringForceUser,
-                    Officer = officer,
-                    ForceRank = officer.ForceRank,
-                    Tick = _game.CurrentTick,
-                });
+                results.Add(
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.DiscoveringForceUser,
+                        Officer = officer,
+                        ForceRank = officer.ForceRank,
+                        Tick = _game.CurrentTick,
+                    }
+                );
 
                 GameLogger.Log(
                     $"{officer.GetDisplayName()} is discovering Force abilities (rank {officer.ForceRank})"
@@ -108,16 +111,18 @@ namespace Rebellion.Systems
                         continue;
 
                     candidate.IsForceEligible = true;
-                    candidate.ForceValue = candidate.JediLevel
-                        + rng.NextInt(0, candidate.JediLevelVariance + 1);
+                    candidate.ForceValue =
+                        candidate.JediLevel + rng.NextInt(0, candidate.JediLevelVariance + 1);
 
-                    results.Add(new ForceDiscoveryResult
-                    {
-                        EventType = ForceEventType.ForceUserDiscovered,
-                        Officer = candidate,
-                        ForceRank = candidate.ForceRank,
-                        Tick = _game.CurrentTick,
-                    });
+                    results.Add(
+                        new ForceDiscoveryResult
+                        {
+                            EventType = ForceEventType.ForceUserDiscovered,
+                            Officer = candidate,
+                            ForceRank = candidate.ForceRank,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
 
                     GameLogger.Log(
                         $"{scanner.GetDisplayName()} discovered {candidate.GetDisplayName()}'s Force potential (rank {candidate.ForceRank})"
@@ -133,69 +138,6 @@ namespace Rebellion.Systems
                 && !officer.IsCaptured
                 && !officer.IsKilled
                 && !officer.IsOnMission();
-        }
-
-        /// <summary>
-        /// Awards force growth after a successful mission.
-        /// </summary>
-        public void AwardMissionForceGrowth(Officer officer)
-        {
-            if (!officer.IsJedi || !officer.IsForceEligible)
-                return;
-
-            int growth = _game.Config.Jedi.ForceGrowthPerMission;
-            officer.ForceValue += growth;
-
-            GameLogger.Log(
-                $"{officer.GetDisplayName()} gained {growth} force value from mission (rank {officer.ForceRank})"
-            );
-        }
-
-        /// <summary>
-        /// Applies Jedi training catch-up mechanic based on the rank gap.
-        /// </summary>
-        public void ApplyTrainingCatchUp(
-            Officer trainee,
-            Officer teacher,
-            IRandomNumberProvider rng
-        )
-        {
-            if (trainee.ForceRank >= teacher.ForceRank)
-                return;
-
-            int gap = teacher.ForceRank - trainee.ForceRank;
-            int catchUpRange = gap * _game.Config.Jedi.TrainingCatchUpPercent / 100;
-
-            if (catchUpRange > 0)
-            {
-                int bonus = rng.NextInt(0, catchUpRange + 1);
-                trainee.ForceTrainingAdjustment += bonus;
-
-                GameLogger.Log(
-                    $"{trainee.GetDisplayName()} gained {bonus} training adjustment from {teacher.GetDisplayName()} (rank {trainee.ForceRank})"
-                );
-            }
-        }
-
-        /// <summary>
-        /// Returns the display label for an officer's current force rank.
-        /// </summary>
-        public ForceRankLabel GetForceRankLabel(Officer officer)
-        {
-            int rank = officer.ForceRank;
-            GameConfig.JediConfig config = _game.Config.Jedi;
-
-            if (rank >= config.RankLabelForceMaster)
-                return ForceRankLabel.ForceMaster;
-            if (rank >= config.RankLabelForceKnight)
-                return ForceRankLabel.ForceKnight;
-            if (rank >= config.RankLabelForceStudent)
-                return ForceRankLabel.ForceStudent;
-            if (rank >= config.RankLabelTrainee)
-                return ForceRankLabel.Trainee;
-            if (rank >= config.RankLabelNovice)
-                return ForceRankLabel.Novice;
-            return ForceRankLabel.None;
         }
     }
 }

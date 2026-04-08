@@ -68,10 +68,7 @@ public class JediTrainingMission : Mission
     /// <summary>
     /// On success, applies the training catch-up mechanic.
     /// </summary>
-    protected override List<GameResult> OnSuccess(
-        GameRoot game,
-        IRandomNumberProvider provider
-    )
+    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
         Officer teacher = game.GetSceneNodeByInstanceID<Officer>(TeacherInstanceID);
@@ -100,6 +97,11 @@ public class JediTrainingMission : Mission
 
         return new List<GameResult>();
     }
+
+    /// <summary>
+    /// Jedi Training has its own catch-up mechanic; suppress base force growth.
+    /// </summary>
+    protected override void AwardMissionForceGrowth(GameRoot game) { }
 
     /// <summary>
     /// Training continues as long as the planet remains owned by this faction.

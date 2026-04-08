@@ -67,7 +67,9 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void CanCreateMission_Diplomacy_EnemyPlanet_ReturnsFalse()
         {
-            Assert.IsFalse(_factory.CanCreateMission(MissionType.Diplomacy, "empire", _enemyPlanet));
+            Assert.IsFalse(
+                _factory.CanCreateMission(MissionType.Diplomacy, "empire", _enemyPlanet)
+            );
         }
 
         [Test]
@@ -144,7 +146,9 @@ namespace Rebellion.Tests.Game.Missions
         public void CanCreateMission_Espionage_NotVisited_ReturnsFalse()
         {
             _enemyPlanet.VisitingFactionIDs.Remove("empire");
-            Assert.IsFalse(_factory.CanCreateMission(MissionType.Espionage, "empire", _enemyPlanet));
+            Assert.IsFalse(
+                _factory.CanCreateMission(MissionType.Espionage, "empire", _enemyPlanet)
+            );
         }
 
         // --- InciteUprising ---
@@ -278,12 +282,7 @@ namespace Rebellion.Tests.Game.Missions
             _game.AttachNode(captured, _enemyPlanet);
 
             Assert.IsTrue(
-                _factory.CanCreateMission(
-                    MissionType.Rescue,
-                    "empire",
-                    _enemyPlanet,
-                    new StubRNG()
-                )
+                _factory.CanCreateMission(MissionType.Rescue, "empire", _enemyPlanet, new StubRNG())
             );
         }
 
@@ -291,12 +290,7 @@ namespace Rebellion.Tests.Game.Missions
         public void CanCreateMission_Rescue_NoCapturedOfficer_ReturnsFalse()
         {
             Assert.IsFalse(
-                _factory.CanCreateMission(
-                    MissionType.Rescue,
-                    "empire",
-                    _enemyPlanet,
-                    new StubRNG()
-                )
+                _factory.CanCreateMission(MissionType.Rescue, "empire", _enemyPlanet, new StubRNG())
             );
         }
 

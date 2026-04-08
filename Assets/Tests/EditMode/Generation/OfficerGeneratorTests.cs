@@ -223,64 +223,6 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_WithJediLevelAbove150_SetsForceTierExperienced()
-        {
-            Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.JediLevel = 200;
-            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
-
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
-
-            Assert.AreEqual(ForceTier.Experienced, officer.ForceTier);
-        }
-
-        [Test]
-        public void Deploy_WithJediLevelBetween50And149_SetsForceTierTraining()
-        {
-            Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.JediLevel = 80;
-            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
-
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
-
-            Assert.AreEqual(ForceTier.Training, officer.ForceTier);
-        }
-
-        [Test]
-        public void Deploy_WithHighJediProbabilityAndLowRoll_SetsForceTierAware()
-        {
-            Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.JediLevel = 0;
-            officer.JediProbability = 100;
-            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
-
-            // StubRNG.NextDouble() = 0.01, which is < 1.0 (100 / 100.0)
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
-
-            Assert.AreEqual(ForceTier.Aware, officer.ForceTier);
-        }
-
-        [Test]
-        public void Deploy_WithLowJediProbabilityAndHighRoll_ForceTierRemainsNone()
-        {
-            Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.JediLevel = 0;
-            officer.JediProbability = 1;
-            PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
-
-            // FixedRNG(0.99): 0.99 >= 0.01 → no Aware
-            _generator.Deploy(
-                new[] { officer },
-                new[] { sys },
-                _rules,
-                _summary,
-                new FixedRNG(0.99)
-            );
-
-            Assert.AreEqual(ForceTier.None, officer.ForceTier);
-        }
-
-        [Test]
         public void Deploy_WithOwnedPlanet_OfficerAddedToPlanet()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");

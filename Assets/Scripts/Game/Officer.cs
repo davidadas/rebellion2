@@ -111,7 +111,6 @@ namespace Rebellion.Game
         /// </summary>
         public bool IsDiscoveringForceUser { get; set; }
 
-
         // Rank Info
         public OfficerRank[] AllowedRanks { get; set; }
         public OfficerRank CurrentRank { get; set; }

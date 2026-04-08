@@ -57,50 +57,46 @@ public class MissionFactory
 
         return missionType switch
         {
-            MissionType.Diplomacy =>
-                planet.IsColonized
+            MissionType.Diplomacy => planet.IsColonized
                 && !planet.IsInUprising
                 && planet.WasVisitedBy(ownerInstanceId)
                 && planet.GetPopularSupport(ownerInstanceId) < 100
-                && (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == ownerInstanceId),
+                && (
+                    planet.GetOwnerInstanceID() == null
+                    || planet.GetOwnerInstanceID() == ownerInstanceId
+                ),
 
-            MissionType.Recruitment =>
-                SelectRecruitmentTarget(ownerInstanceId, provider) != null,
+            MissionType.Recruitment => SelectRecruitmentTarget(ownerInstanceId, provider) != null,
 
-            MissionType.SubdueUprising =>
-                planet.IsInUprising
+            MissionType.SubdueUprising => planet.IsInUprising
                 && planet.GetOwnerInstanceID() == ownerInstanceId,
 
-            MissionType.Abduction =>
-                SelectAbductionTarget(ownerInstanceId, target, provider) != null,
+            MissionType.Abduction => SelectAbductionTarget(ownerInstanceId, target, provider)
+                != null,
 
-            MissionType.Assassination =>
-                SelectAssassinationTarget(ownerInstanceId, target, provider) != null,
+            MissionType.Assassination => SelectAssassinationTarget(
+                ownerInstanceId,
+                target,
+                provider
+            ) != null,
 
-            MissionType.Espionage =>
-                planet.WasVisitedBy(ownerInstanceId)
+            MissionType.Espionage => planet.WasVisitedBy(ownerInstanceId)
                 && planet.GetOwnerInstanceID() != ownerInstanceId,
 
             MissionType.Sabotage => true,
 
-            MissionType.InciteUprising =>
-                planet.GetOwnerInstanceID() != ownerInstanceId
+            MissionType.InciteUprising => planet.GetOwnerInstanceID() != ownerInstanceId
                 && !planet.IsInUprising,
 
-            MissionType.Rescue =>
-                SelectRescueTarget(ownerInstanceId, target, provider) != null,
+            MissionType.Rescue => SelectRescueTarget(ownerInstanceId, target, provider) != null,
 
-            MissionType.ShipDesignResearch =>
-                planet.GetOwnerInstanceID() == ownerInstanceId,
+            MissionType.ShipDesignResearch => planet.GetOwnerInstanceID() == ownerInstanceId,
 
-            MissionType.TroopTrainingResearch =>
-                planet.GetOwnerInstanceID() == ownerInstanceId,
+            MissionType.TroopTrainingResearch => planet.GetOwnerInstanceID() == ownerInstanceId,
 
-            MissionType.FacilityDesignResearch =>
-                planet.GetOwnerInstanceID() == ownerInstanceId,
+            MissionType.FacilityDesignResearch => planet.GetOwnerInstanceID() == ownerInstanceId,
 
-            MissionType.JediTraining =>
-                planet.GetOwnerInstanceID() == ownerInstanceId
+            MissionType.JediTraining => planet.GetOwnerInstanceID() == ownerInstanceId
                 && SelectJediTeacher(ownerInstanceId, target) != null,
 
             _ => false,
@@ -332,7 +328,8 @@ public class MissionFactory
     {
         if (!(target is Planet planet))
             return null;
-        Officer teacher = _game.GetSceneNodesByType<Officer>()
+        Officer teacher = _game
+            .GetSceneNodesByType<Officer>()
             .FirstOrDefault(o =>
                 o.GetOwnerInstanceID() == ownerInstanceId
                 && o.IsJediTeacher
