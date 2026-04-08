@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Rebellion.Util.Common
@@ -151,11 +152,11 @@ namespace Rebellion.Util.Common
             if (targetType == typeof(int))
                 return int.Parse(content);
             if (targetType == typeof(double))
-                return double.Parse(content);
+                return double.Parse(content, CultureInfo.InvariantCulture);
             if (targetType == typeof(bool))
                 return bool.Parse(content);
             if (targetType == typeof(float))
-                return float.Parse(content);
+                return float.Parse(content, CultureInfo.InvariantCulture);
             if (targetType == typeof(long))
                 return long.Parse(content);
 

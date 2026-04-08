@@ -130,9 +130,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves all participants to the nearest friendly planet and detaches the mission.
-        /// Called both when CanContinue returns false after completion and when IsCanceled
-        /// fires as a pre-tick guard.
+        /// Moves all participants back to their recorded origin (planet or fleet), falling back to
+        /// the nearest friendly planet if the origin has moved away or no longer exists, then
+        /// detaches the mission. Called when CanContinue returns false or IsCanceled fires.
         /// </summary>
         private void TearDownMission(Mission mission)
         {
