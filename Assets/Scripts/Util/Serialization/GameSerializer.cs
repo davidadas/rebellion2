@@ -100,13 +100,13 @@ namespace Rebellion.Util.Serialization
 
             string elementName = typeof(T).Name;
 
-            while (reader.Read())
+            do
             {
                 if (reader.NodeType == XmlNodeType.Element && reader.Name == elementName)
                 {
                     return (T)XmlDeserializer.ReadValue(typeof(T), reader);
                 }
-            }
+            } while (reader.Read());
 
             throw new InvalidDataException($"Element '{elementName}' not found.");
         }
