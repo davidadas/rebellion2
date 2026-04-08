@@ -469,9 +469,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToNearestFriendlyPlanet()
         {
-            // Officer came from a fleet at planet A. The fleet moved to planet B before the
-            // mission ended. On teardown the officer should return to planet A (the nearest
-            // friendly planet at the mission site) rather than chase the fleet to planet B.
+            // Fleet moved away mid-mission — officer falls back to nearest friendly planet.
             (
                 GameRoot game,
                 Planet planetA,

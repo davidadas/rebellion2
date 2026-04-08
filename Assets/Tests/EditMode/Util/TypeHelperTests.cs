@@ -22,8 +22,6 @@ namespace Rebellion.Tests.Util
 
         private class UntaggedClass { }
 
-        // IsPrimitive
-
         [Test]
         public void IsPrimitive_Int_ReturnsTrue()
         {
@@ -42,8 +40,6 @@ namespace Rebellion.Tests.Util
             Assert.IsFalse(TypeHelper.IsPrimitive(typeof(UntaggedClass)));
         }
 
-        // IsValueType
-
         [Test]
         public void IsValueType_Struct_ReturnsTrue()
         {
@@ -61,8 +57,6 @@ namespace Rebellion.Tests.Util
         {
             Assert.IsFalse(TypeHelper.IsValueType(typeof(UntaggedClass)));
         }
-
-        // IsStruct
 
         [Test]
         public void IsStruct_ValueTypeNonEnum_ReturnsTrue()
@@ -88,8 +82,6 @@ namespace Rebellion.Tests.Util
             Assert.IsFalse(TypeHelper.IsStruct(typeof(UntaggedClass)));
         }
 
-        // IsEnumerable
-
         [Test]
         public void IsEnumerable_List_ReturnsTrue()
         {
@@ -108,8 +100,6 @@ namespace Rebellion.Tests.Util
             Assert.IsFalse(TypeHelper.IsEnumerable(typeof(int)));
         }
 
-        // IsDictionary
-
         [Test]
         public void IsDictionary_GenericDictionary_ReturnsTrue()
         {
@@ -122,8 +112,6 @@ namespace Rebellion.Tests.Util
             Assert.IsFalse(TypeHelper.IsDictionary(typeof(List<int>)));
         }
 
-        // IsClass
-
         [Test]
         public void IsClass_Class_ReturnsTrue()
         {
@@ -135,8 +123,6 @@ namespace Rebellion.Tests.Util
         {
             Assert.IsFalse(TypeHelper.IsClass(typeof(DateTime)));
         }
-
-        // IsTuple
 
         [Test]
         public void IsTuple_Tuple2_ReturnsTrue()
@@ -156,8 +142,6 @@ namespace Rebellion.Tests.Util
             Assert.IsFalse(TypeHelper.IsTuple(typeof(List<int>)));
         }
 
-        // HasAttribute<T>
-
         [Test]
         public void HasAttribute_Generic_TypeHasAttribute_ReturnsTrue()
         {
@@ -169,8 +153,6 @@ namespace Rebellion.Tests.Util
         {
             Assert.IsFalse(TypeHelper.HasAttribute<SampleAttribute>(typeof(UntaggedClass)));
         }
-
-        // HasAttribute(Type, Type)
 
         [Test]
         public void HasAttribute_NonGeneric_TypeHasAttribute_ReturnsTrue()
@@ -185,8 +167,6 @@ namespace Rebellion.Tests.Util
                 TypeHelper.HasAttribute(typeof(TaggedClass), typeof(string))
             );
         }
-
-        // ConvertToPrimitive
 
         [Test]
         public void ConvertToPrimitive_Int_ReturnsParsedValue()
@@ -241,8 +221,6 @@ namespace Rebellion.Tests.Util
                 TypeHelper.ConvertToPrimitive("x", typeof(DateTime))
             );
         }
-
-        // ConvertToString
 
         [Test]
         public void ConvertToString_Null_ReturnsEmptyString()
