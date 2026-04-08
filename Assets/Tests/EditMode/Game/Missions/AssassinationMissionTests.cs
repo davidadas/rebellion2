@@ -70,9 +70,9 @@ namespace Rebellion.Tests.Game.Missions
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
-            CharacterKilledResult killed = results.OfType<CharacterKilledResult>().FirstOrDefault();
-            Assert.IsNotNull(killed, "Should return CharacterKilledResult on success");
-            Assert.AreEqual("target", killed.Victim.InstanceID);
+            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().FirstOrDefault();
+            Assert.IsNotNull(killed, "Should return OfficerKilledResult on success");
+            Assert.AreEqual("target", killed.TargetOfficer.InstanceID);
         }
 
         [Test]

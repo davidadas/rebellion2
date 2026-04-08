@@ -71,9 +71,9 @@ public class AbductionMission : Mission
 
         return new List<GameResult>
         {
-            new CharacterCaptureStateResult
+            new OfficerCaptureStateResult
             {
-                Character = target,
+                TargetOfficer = target,
                 IsCaptured = true,
                 Context = GetParent() as Planet,
                 Tick = game.CurrentTick,

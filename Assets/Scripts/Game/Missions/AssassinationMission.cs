@@ -71,9 +71,9 @@ public class AssassinationMission : Mission
 
         return new List<GameResult>
         {
-            new CharacterKilledResult
+            new OfficerKilledResult
             {
-                Victim = target,
+                TargetOfficer = target,
                 Context = GetParent() as Planet,
                 Tick = game.CurrentTick,
             },

@@ -83,7 +83,7 @@ namespace Rebellion.Game.Results
     /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
     /// Covers SystemEnergyEventRecord, SystemLoyaltyEventRecord, SystemRawMaterialEventRecord,
     /// SystemProductionModifierEventRecord, SystemSmugglingPercentEventRecord,
-    /// SystemTroopRegiment* and SystemControlKindUprisingEventRecord.
+    /// and SystemTroopRegiment* variants.
     /// </summary>
     public class PlanetStatChangedResult : GameResult
     {
@@ -289,7 +289,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class RoleEnrouteActiveResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public bool IsActive { get; set; }
     }
 
@@ -299,25 +299,25 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class RoleMissionKeyResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public Mission Mission { get; set; }
     }
 
     #endregion
 
-    #region Character
+    #region Officer
 
     /// <summary>
     /// A character's capture state changed (captured or released).
     /// Covers CharacterCaptureStateEventRecord — the one event type with extra fields
     /// beyond the standard dual-value layout.
     /// </summary>
-    public class CharacterCaptureStateResult : GameResult
+    public class OfficerCaptureStateResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer TargetOfficer { get; set; }
         public bool IsCaptured { get; set; }
-        public Officer CapturedCharacter { get; set; }
-        public Officer LinkedCharacter { get; set; }
+        public Officer CapturedOfficer { get; set; }
+        public Officer LinkedOfficer { get; set; }
         public IGameEntity Context { get; set; }
         public int Detail { get; set; }
     }
@@ -326,9 +326,9 @@ namespace Rebellion.Game.Results
     /// A character was killed.
     /// Covers GameObjectDestroyedAssassinationEventRecord.
     /// </summary>
-    public class CharacterKilledResult : GameResult
+    public class OfficerKilledResult : GameResult
     {
-        public Officer Victim { get; set; }
+        public Officer TargetOfficer { get; set; }
         public IGameEntity Assassin { get; set; }
         public IGameEntity Context { get; set; }
     }
@@ -347,9 +347,9 @@ namespace Rebellion.Game.Results
     /// A character was injured.
     /// Covers CharacterInjuryEventRecord.
     /// </summary>
-    public class CharacterInjuredResult : GameResult
+    public class OfficerInjuredResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }
     }
@@ -360,7 +360,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class CommandKindChangedResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public int CommandKind { get; set; }
         public int Detail { get; set; }
     }
@@ -369,9 +369,9 @@ namespace Rebellion.Game.Results
     /// A character is now commanding a target.
     /// Covers CharacterCommandingEventRecord.
     /// </summary>
-    public class CharacterCommandingResult : GameResult
+    public class OfficerCommandingResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public IGameEntity CommandTarget { get; set; }
         public IGameEntity Context { get; set; }
     }
@@ -380,9 +380,9 @@ namespace Rebellion.Game.Results
     /// Two factions' characters encountered each other.
     /// Covers CharacterEncounterEventRecord.
     /// </summary>
-    public class CharacterEncounterResult : GameResult
+    public class OfficerEncounterResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public Faction FactionA { get; set; }
         public Faction FactionB { get; set; }
     }
@@ -393,7 +393,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class TraitorDiscoveredResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public IGameEntity DiscoveredBy { get; set; }
         public IGameEntity Context { get; set; }
     }
@@ -404,7 +404,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class ForceChangedResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public int ForceLevel { get; set; }
         public int Detail { get; set; }
     }
@@ -415,7 +415,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class ForceTrainingResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public int Progress { get; set; }
         public int Detail { get; set; }
     }
@@ -426,7 +426,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class ForceExperienceResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public int ExperienceGained { get; set; }
         public int Detail { get; set; }
     }
@@ -448,7 +448,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class DagobahCompletedResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class HeritageRevealedResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
     }
 
     /// <summary>
@@ -466,7 +466,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class BountyAttackResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
     }
 
     /// <summary>
@@ -475,7 +475,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SeatOfPowerChangedResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public bool IsAtSeat { get; set; }
     }
 
@@ -483,9 +483,9 @@ namespace Rebellion.Game.Results
     /// A character pickup/retrieval operation changed state.
     /// Covers CharacterMgrPickupInProgressEventRecord.
     /// </summary>
-    public class CharacterPickupResult : GameResult
+    public class OfficerPickupResult : GameResult
     {
-        public Officer Character { get; set; }
+        public Officer Officer { get; set; }
         public bool InProgress { get; set; }
     }
 
@@ -565,12 +565,14 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The controlling faction of a game object changed.
-    /// Covers GameObjectControlKindEventRecord.
+    /// Covers GameObjectControlKindEventRecord (0x100) and subtypes: battle victory,
+    /// withdrawal, uprising (SystemControlKindUprisingEventRecord, 0x151), loyalty-shift.
     /// </summary>
     public class GameObjectControlChangedResult : GameResult
     {
         public IGameEntity GameObject { get; set; }
-        public int ControlKind { get; set; }
+        public Faction PreviousOwner { get; set; }
+        public Faction NewOwner { get; set; }
         public IGameEntity Context { get; set; }
     }
 
