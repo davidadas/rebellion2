@@ -49,17 +49,10 @@ namespace Rebellion.Game
         public int Loyalty { get; set; }
         public int HyperdriveModifier { get; set; } // Han Solo speed bonus (subtracts from transit time)
 
-        // Jedi / Force Info (data record fields, not persisted in saves)
-        [PersistableIgnore]
+        // Jedi / Force Info
         public int JediProbability { get; set; }
-
-        [PersistableIgnore]
         public int JediLevel { get; set; }
-
-        [PersistableIgnore]
         public int JediLevelVariance { get; set; }
-
-        [PersistableIgnore]
         public bool IsJediTeacher { get; set; }
 
         /// <summary>
