@@ -79,16 +79,7 @@ public class RecruitmentMission : Mission
 
         GameLogger.Log($"Recruited {target.GetDisplayName()} to {OwnerInstanceID}");
 
-        return new List<GameResult>
-        {
-            new CharacterMovedResult
-            {
-                OfficerInstanceID = target.InstanceID,
-                FromLocationInstanceID = "UNRECRUITED_POOL",
-                ToLocationInstanceID = planet?.InstanceID,
-                Tick = game.CurrentTick,
-            },
-        };
+        return new List<GameResult>();
     }
 
     /// <summary>

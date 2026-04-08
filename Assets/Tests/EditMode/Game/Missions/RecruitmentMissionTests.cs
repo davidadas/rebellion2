@@ -88,27 +88,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetInUnrecruitedPool_ReturnsCharacterMovedResult()
-        {
-            (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
-
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer, "target");
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            CharacterMovedResult moved = results.OfType<CharacterMovedResult>().FirstOrDefault();
-            Assert.IsNotNull(moved, "Should return CharacterMovedResult on success");
-            Assert.AreEqual("target", moved.OfficerInstanceID);
-            Assert.AreEqual("UNRECRUITED_POOL", moved.FromLocationInstanceID);
-        }
-
-        [Test]
         public void Execute_TargetAlreadyJoinedFaction_ReturnsFailed()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
