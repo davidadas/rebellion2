@@ -8,14 +8,17 @@ using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
-/// Jedi training mission where a teacher trains a student in the Force.
+/// Jedi training mission where a trainer trains a student in the Force.
 /// The student (mission leader) gains ForceTrainingAdjustment based on the rank gap
-/// to the teacher.
+/// to the trainer.
 /// </summary>
 public class JediTrainingMission : Mission
 {
-    public string TeacherInstanceID { get; set; }
+    public string TrainerInstanceID { get; set; }
 
+    /// <summary>
+    /// Parameterless constructor for deserialization.
+    /// </summary>
     public JediTrainingMission()
         : base()
     {
@@ -24,17 +27,20 @@ public class JediTrainingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
+    /// <summary>
+    /// Creates a Jedi Training mission at the target planet with the specified trainer.
+    /// </summary>
     /// <param name="ownerInstanceId">Faction that owns the mission.</param>
     /// <param name="target">Target planet (must be owned by the faction).</param>
     /// <param name="mainParticipants">The student officer(s) being trained.</param>
     /// <param name="decoyParticipants">Decoy participants for the mission.</param>
-    /// <param name="teacherInstanceId">InstanceID of the teaching officer.</param>
+    /// <param name="trainerInstanceId">InstanceID of the trainer officer.</param>
     public JediTrainingMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        string teacherInstanceId
+        string trainerInstanceId
     )
         : base(
             "JediTraining",
@@ -46,13 +52,21 @@ public class JediTrainingMission : Mission
             null
         )
     {
-        if (string.IsNullOrEmpty(teacherInstanceId))
+        if (string.IsNullOrEmpty(trainerInstanceId))
             throw new ArgumentException(
-                "Jedi Training requires a valid teacher.",
-                nameof(teacherInstanceId)
+                "Jedi Training requires a valid trainer.",
+                nameof(trainerInstanceId)
             );
 
-        TeacherInstanceID = teacherInstanceId;
+        foreach (IMissionParticipant participant in mainParticipants)
+        {
+            if (participant is Officer officer && (!officer.IsJedi || !officer.IsForceEligible))
+                throw new InvalidOperationException(
+                    $"Jedi Training student '{officer.DisplayName}' must be a force-eligible Jedi."
+                );
+        }
+
+        TrainerInstanceID = trainerInstanceId;
 
         Planet planet = (Planet)target;
         if (planet.GetOwnerInstanceID() != ownerInstanceId)
@@ -82,7 +96,7 @@ public class JediTrainingMission : Mission
 
     /// <summary>
     /// On success, applies the training catch-up mechanic. The student gains
-    /// ForceTrainingAdjustment based on the rank gap to the teacher.
+    /// ForceTrainingAdjustment based on the rank gap to the trainer.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <param name="provider">RNG provider for rolling the catch-up bonus.</param>
@@ -90,17 +104,17 @@ public class JediTrainingMission : Mission
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
-        Officer teacher = game.GetSceneNodeByInstanceID<Officer>(TeacherInstanceID);
+        Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
 
-        if (student == null || teacher == null)
+        if (student == null || trainer == null)
             return new List<GameResult>();
 
-        if (!student.IsForceEligible || !teacher.IsForceEligible)
+        if (!student.IsForceEligible || !trainer.IsForceEligible)
             return new List<GameResult>();
 
-        if (student.ForceRank < teacher.ForceRank)
+        if (student.ForceRank < trainer.ForceRank)
         {
-            int gap = teacher.ForceRank - student.ForceRank;
+            int gap = trainer.ForceRank - student.ForceRank;
             int catchUpRange = gap * game.Config.Jedi.TrainingCatchUpPercent / 100;
 
             if (catchUpRange > 0)
@@ -109,7 +123,7 @@ public class JediTrainingMission : Mission
                 student.ForceTrainingAdjustment += bonus;
 
                 GameLogger.Log(
-                    $"{student.GetDisplayName()} gained {bonus} training adjustment from {teacher.GetDisplayName()} (rank {student.ForceRank})"
+                    $"{student.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {student.ForceRank})"
                 );
             }
         }

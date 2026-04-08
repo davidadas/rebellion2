@@ -28,7 +28,7 @@ public enum MissionType
 }
 
 /// <summary>
-/// Factory class responsible for creating and initializing missions.
+/// Factory class for creating missions based on type and parameters.
 /// </summary>
 public class MissionFactory
 {
@@ -43,8 +43,12 @@ public class MissionFactory
 
     /// <summary>
     /// Returns whether a mission of the given type can be created with the specified parameters.
-    /// Checks the same preconditions that constructors enforce, but returns false instead of throwing.
     /// </summary>
+    /// <param name="missionType">The type of mission to check.</param>
+    /// <param name="ownerInstanceId">The faction that would own the mission.</param>
+    /// <param name="target">The target scene node (usually a planet).</param>
+    /// <param name="provider">RNG provider for missions that require random target selection.</param>
+    /// <returns>True if the mission can be created with these parameters.</returns>
     public bool CanCreateMission(
         MissionType missionType,
         string ownerInstanceId,
@@ -97,7 +101,7 @@ public class MissionFactory
             MissionType.FacilityDesignResearch => planet.GetOwnerInstanceID() == ownerInstanceId,
 
             MissionType.JediTraining => planet.GetOwnerInstanceID() == ownerInstanceId
-                && SelectJediTeacher(ownerInstanceId, target) != null,
+                && SelectJediTrainer(ownerInstanceId, target) != null,
 
             _ => false,
         };
@@ -105,8 +109,14 @@ public class MissionFactory
 
     /// <summary>
     /// Creates a mission based on the specified type and parameters.
-    /// For targeted missions (Recruitment), target selection requires a provider.
     /// </summary>
+    /// <param name="missionType">The type of mission to create.</param>
+    /// <param name="ownerInstanceId">The faction that owns the mission.</param>
+    /// <param name="mainParticipants">Officers assigned to the mission.</param>
+    /// <param name="decoyParticipants">Decoy officers for the mission.</param>
+    /// <param name="target">The target scene node (usually a planet).</param>
+    /// <param name="provider">RNG provider for missions that require random target selection.</param>
+    /// <returns>A configured Mission instance ready to be attached to the scene graph.</returns>
     public Mission CreateMission(
         MissionType missionType,
         string ownerInstanceId,
@@ -208,7 +218,7 @@ public class MissionFactory
                 target,
                 mainParticipants,
                 decoyParticipants,
-                SelectJediTeacher(ownerInstanceId, target)
+                SelectJediTrainer(ownerInstanceId, target)
             ),
             _ => throw new ArgumentException($"Unhandled mission type: {missionType}"),
         };
@@ -220,63 +230,11 @@ public class MissionFactory
     }
 
     /// <summary>
-    /// Creates a mission and attaches it to the scene graph at the target planet.
-    /// Participant movement and mission initiation are handled by MissionSystem.
+    /// Picks a random unrecruited officer for the given faction, or null if none available.
     /// </summary>
-    public Mission CreateAndAttachMission(
-        MissionType missionType,
-        string ownerInstanceId,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ISceneNode target,
-        IRandomNumberProvider provider
-    )
-    {
-        if (mainParticipants.Count == 0)
-            throw new ArgumentException("Main participants list cannot be empty.");
-
-        Mission mission = CreateMission(
-            missionType,
-            ownerInstanceId,
-            mainParticipants,
-            decoyParticipants,
-            target,
-            provider
-        );
-
-        Planet closestPlanet = target is Planet ? (Planet)target : target.GetParentOfType<Planet>();
-        _game.AttachNode(mission, closestPlanet);
-
-        return mission;
-    }
-
-    /// <summary>
-    /// Creates and attaches a mission from a string mission type.
-    /// </summary>
-    public Mission CreateAndAttachMission(
-        string missionTypeString,
-        string ownerInstanceId,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ISceneNode target,
-        IRandomNumberProvider provider
-    )
-    {
-        if (Enum.TryParse(missionTypeString, true, out MissionType missionType))
-        {
-            return CreateAndAttachMission(
-                missionType,
-                ownerInstanceId,
-                mainParticipants,
-                decoyParticipants,
-                target,
-                provider
-            );
-        }
-
-        throw new ArgumentException($"Invalid mission type: {missionTypeString} .");
-    }
-
+    /// <param name="ownerInstanceId">The faction recruiting.</param>
+    /// <param name="provider">RNG provider for random selection.</param>
+    /// <returns>The InstanceID of the selected officer, or null.</returns>
     private string SelectRecruitmentTarget(string ownerInstanceId, IRandomNumberProvider provider)
     {
         List<Officer> unrecruited = _game.GetUnrecruitedOfficers(ownerInstanceId);
@@ -285,6 +243,13 @@ public class MissionFactory
         return unrecruited.RandomElement(provider).InstanceID;
     }
 
+    /// <summary>
+    /// Picks a random non-captured enemy officer on the target planet, or null if none available.
+    /// </summary>
+    /// <param name="ownerInstanceId">The faction performing the abduction.</param>
+    /// <param name="target">The target scene node (must be a planet).</param>
+    /// <param name="provider">RNG provider for random selection.</param>
+    /// <returns>The InstanceID of the selected enemy officer, or null.</returns>
     private string SelectAbductionTarget(
         string ownerInstanceId,
         ISceneNode target,
@@ -304,6 +269,13 @@ public class MissionFactory
         return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
     }
 
+    /// <summary>
+    /// Picks a random living, non-captured enemy officer on the target planet, or null if none available.
+    /// </summary>
+    /// <param name="ownerInstanceId">The faction performing the assassination.</param>
+    /// <param name="target">The target scene node (must be a planet).</param>
+    /// <param name="provider">RNG provider for random selection.</param>
+    /// <returns>The InstanceID of the selected enemy officer, or null.</returns>
     private string SelectAssassinationTarget(
         string ownerInstanceId,
         ISceneNode target,
@@ -324,23 +296,36 @@ public class MissionFactory
         return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
     }
 
-    private string SelectJediTeacher(string ownerInstanceId, ISceneNode target)
+    /// <summary>
+    /// Finds an available friendly Jedi trainer on the target planet, or null if none available.
+    /// </summary>
+    /// <param name="ownerInstanceId">The faction that owns the trainer.</param>
+    /// <param name="target">The target scene node (must be a planet).</param>
+    /// <returns>The InstanceID of the selected trainer, or null.</returns>
+    private string SelectJediTrainer(string ownerInstanceId, ISceneNode target)
     {
         if (!(target is Planet planet))
             return null;
-        Officer teacher = _game
+        Officer trainer = _game
             .GetSceneNodesByType<Officer>()
             .FirstOrDefault(o =>
                 o.GetOwnerInstanceID() == ownerInstanceId
-                && o.IsJediTeacher
+                && o.IsJediTrainer
                 && o.IsForceEligible
                 && o.GetParentOfType<Planet>() == planet
                 && !o.IsCaptured
                 && !o.IsOnMission()
             );
-        return teacher?.InstanceID;
+        return trainer?.InstanceID;
     }
 
+    /// <summary>
+    /// Picks a random captured friendly officer on the target planet, or null if none available.
+    /// </summary>
+    /// <param name="ownerInstanceId">The faction performing the rescue.</param>
+    /// <param name="target">The target scene node (must be a planet).</param>
+    /// <param name="provider">RNG provider for random selection.</param>
+    /// <returns>The InstanceID of the selected captured officer, or null.</returns>
     private string SelectRescueTarget(
         string ownerInstanceId,
         ISceneNode target,

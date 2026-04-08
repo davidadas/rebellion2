@@ -53,7 +53,7 @@ namespace Rebellion.Game
         public int JediProbability { get; set; }
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
-        public bool IsJediTeacher { get; set; }
+        public bool IsJediTrainer { get; set; }
 
         /// <summary>
         /// Template flag: true for characters who start the game as known Jedi

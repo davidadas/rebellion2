@@ -52,7 +52,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
             string ownerInstanceId = participant.OwnerInstanceID;
 
-            Mission mission = _missionFactory.CreateAndAttachMission(
+            Mission mission = _missionFactory.CreateMission(
                 missionType,
                 ownerInstanceId,
                 mainParticipants,
@@ -60,6 +60,9 @@ namespace Rebellion.Systems
                 target,
                 provider
             );
+
+            Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();
+            _game.AttachNode(mission, planet);
 
             BeginMission(mission, provider);
         }

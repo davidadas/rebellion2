@@ -193,13 +193,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_JediTraining_OwnPlanetWithTeacher_ReturnsTrue()
+        public void CanCreateMission_JediTraining_OwnPlanetWithTrainer_ReturnsTrue()
         {
-            Officer teacher = EntityFactory.CreateOfficer("teacher", "empire");
-            teacher.IsJedi = true;
-            teacher.IsJediTeacher = true;
-            teacher.IsForceEligible = true;
-            _game.AttachNode(teacher, _ownPlanet);
+            Officer trainer = EntityFactory.CreateOfficer("trainer", "empire");
+            trainer.IsJedi = true;
+            trainer.IsJediTrainer = true;
+            trainer.IsForceEligible = true;
+            _game.AttachNode(trainer, _ownPlanet);
 
             Assert.IsTrue(
                 _factory.CanCreateMission(MissionType.JediTraining, "empire", _ownPlanet)
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_JediTraining_OwnPlanetNoTeacher_ReturnsFalse()
+        public void CanCreateMission_JediTraining_OwnPlanetNoTrainer_ReturnsFalse()
         {
             Assert.IsFalse(
                 _factory.CanCreateMission(MissionType.JediTraining, "empire", _ownPlanet)

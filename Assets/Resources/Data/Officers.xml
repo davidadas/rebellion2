@@ -94,7 +94,7 @@
     <JediLevel>120</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
     <IsKnownJedi>true</IsKnownJedi>
-    <IsJediTeacher>true</IsJediTeacher>
+    <IsJediTrainer>true</IsJediTrainer>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1550,7 +1550,7 @@
     <JediLevel>50</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
     <IsKnownJedi>true</IsKnownJedi>
-    <IsJediTeacher>true</IsJediTeacher>
+    <IsJediTrainer>true</IsJediTrainer>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
