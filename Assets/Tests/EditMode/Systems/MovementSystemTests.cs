@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -23,7 +22,7 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement
         ) BuildScene()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -476,7 +475,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -573,7 +572,7 @@ namespace Rebellion.Tests.Systems
             int cs2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -1009,7 +1008,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 

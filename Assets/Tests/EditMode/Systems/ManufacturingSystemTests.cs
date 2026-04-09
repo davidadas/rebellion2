@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -25,7 +24,7 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             // Create game with galaxy
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             _game = new GameRoot(config);
             GalaxyMap galaxy = _game.Galaxy;
 
@@ -75,7 +74,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_EmptyGame_DoesNotCrash()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot emptyGame = new GameRoot(config);
             ManufacturingSystem emptyManager = new ManufacturingSystem(emptyGame);
 

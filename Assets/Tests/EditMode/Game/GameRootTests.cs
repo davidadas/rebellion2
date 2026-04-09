@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 
@@ -44,7 +43,7 @@ namespace Rebellion.Tests.Game
             _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
             // Initialize the _game.
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             _game = new GameRoot(_summary, config);
             _game.Factions.Add(_faction1);
             _game.Factions.Add(_faction2);
@@ -494,7 +493,7 @@ namespace Rebellion.Tests.Game
         {
             // Create game with summary but no player faction ID.
             GameSummary summaryWithoutPlayer = new GameSummary();
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot gameWithoutPlayerID = new GameRoot(summaryWithoutPlayer, config);
 
             // Attempt to get player faction.
@@ -512,7 +511,7 @@ namespace Rebellion.Tests.Game
             {
                 PlayerFactionID = "NONEXISTENT",
             };
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
             gameWithInvalidPlayer.Factions.Add(_faction1);
 

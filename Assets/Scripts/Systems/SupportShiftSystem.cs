@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Systems
 {
@@ -21,7 +23,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes support shifts for all owned planets.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
@@ -58,6 +60,8 @@ namespace Rebellion.Systems
                     );
                 }
             }
+
+            return new List<GameResult>();
         }
 
         /// <summary>

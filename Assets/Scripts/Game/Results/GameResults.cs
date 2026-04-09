@@ -569,7 +569,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A unit completed transit and arrived at its destination planet.
-    /// Covers FUN_00497560 (fleet arrival) and FUN_00494940 (personnel arrival).
     /// </summary>
     public class UnitArrivedResult : GameResult
     {

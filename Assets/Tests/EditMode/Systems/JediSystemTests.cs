@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -26,7 +25,7 @@ namespace Rebellion.Tests.Systems
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.XpToTraining = 50;
             config.Jedi.XpToExperienced = 150;
             config.Jedi.DetectionCheckInterval = 30;

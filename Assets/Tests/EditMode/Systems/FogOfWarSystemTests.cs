@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Systems
@@ -26,7 +25,7 @@ namespace Rebellion.Tests.Systems
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             _game = new GameRoot(config);
             _fogSystem = new FogOfWarSystem(_game);
 
