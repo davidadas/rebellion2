@@ -71,6 +71,13 @@ public class RescueMission : Mission
 
         return new List<GameResult>
         {
+            new OfficerCaptureStateResult
+            {
+                TargetOfficer = target,
+                IsCaptured = false,
+                Context = GetParent() as Planet,
+                Tick = game.CurrentTick,
+            },
             new OfficerRescuedResult
             {
                 Officer = target,
