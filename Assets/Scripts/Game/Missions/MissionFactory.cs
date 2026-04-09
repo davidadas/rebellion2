@@ -36,6 +36,10 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
+        Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
+        if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
+            return false;
+
         if (!(target is Planet planet))
             return missionType == MissionType.Recruitment;
 
@@ -106,6 +110,12 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
+        if (mainParticipants == null || mainParticipants.Count == 0)
+            throw new ArgumentException(
+                "At least one main participant is required.",
+                nameof(mainParticipants)
+            );
+
         Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
         if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
             throw new InvalidOperationException(
@@ -302,14 +312,17 @@ public class MissionFactory
             return null;
         Officer trainer = _game
             .GetSceneNodesByType<Officer>()
-            .FirstOrDefault(o =>
+            .Where(o =>
                 o.GetOwnerInstanceID() == ownerInstanceId
+                && o.IsJedi
                 && o.IsJediTrainer
                 && o.IsForceEligible
                 && o.GetParentOfType<Planet>() == planet
                 && !o.IsCaptured
                 && !o.IsOnMission()
-            );
+            )
+            .OrderByDescending(o => o.ForceRank)
+            .FirstOrDefault();
         return trainer?.InstanceID;
     }
 

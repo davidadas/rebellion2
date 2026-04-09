@@ -266,4 +266,14 @@ public class OfficerTests
         string ownerInstanceID = officer.GetOwnerInstanceID();
         Assert.IsNull(ownerInstanceID);
     }
+
+    [Test]
+    public void CanPerformMission_AnyMissionType_ReturnsTrue()
+    {
+        Officer officer = new Officer();
+
+        Assert.IsTrue(officer.CanPerformMission(MissionType.Sabotage));
+        Assert.IsTrue(officer.CanPerformMission(MissionType.Espionage));
+        Assert.IsTrue(officer.CanPerformMission(MissionType.Assassination));
+    }
 }

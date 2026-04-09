@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_NullTrainerInstanceId_Throws()
+        public void Constructor_NullTrainerInstanceId_ThrowsError()
         {
             Assert.Throws<ArgumentException>(() =>
                 new JediTrainingMission(
@@ -86,7 +86,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EmptyTrainerInstanceId_Throws()
+        public void Constructor_EmptyTrainerInstanceId_ThrowsError()
         {
             Assert.Throws<ArgumentException>(() =>
                 new JediTrainingMission(
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_StudentNotJedi_Throws()
+        public void Constructor_StudentNotJedi_ThrowsError()
         {
             Officer nonJedi = EntityFactory.CreateOfficer("nonjedi", "rebels");
             nonJedi.IsJedi = false;
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_StudentNotForceEligible_Throws()
+        public void Constructor_StudentNotForceEligible_ThrowsError()
         {
             Officer dormant = EntityFactory.CreateOfficer("dormant", "rebels");
             dormant.IsJedi = true;
@@ -122,7 +122,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EnemyPlanet_Throws()
+        public void Constructor_EnemyPlanet_ThrowsError()
         {
             _planet.OwnerInstanceID = "empire";
 
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_DoesNotAwardSkillImprovements()
+        public void Execute_Success_DoesNotAwardSkillImprovements()
         {
             int diplomacyBefore = _student.Skills[MissionParticipantSkill.Diplomacy];
             JediTrainingMission mission = CreateMission();
@@ -236,6 +236,145 @@ namespace Rebellion.Tests.Game.Missions
             JediTrainingMission mission = CreateMission();
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
             Assert.IsTrue(mission.CanContinue(_game));
+        }
+
+        [Test]
+        public void Constructor_EmptyParticipants_ThrowsError()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new JediTrainingMission(
+                    "rebels",
+                    _planet,
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>(),
+                    _trainer.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_NonOfficerParticipant_ThrowsError()
+        {
+            SpecialForces spec = new SpecialForces { InstanceID = "sf1", DisplayName = "TestSpec" };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                new JediTrainingMission(
+                    "rebels",
+                    _planet,
+                    new List<IMissionParticipant> { spec },
+                    new List<IMissionParticipant>(),
+                    _trainer.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void OnSuccess_StudentBelowTrainer_ReturnsForceTrainingResult()
+        {
+            JediTrainingMission mission = CreateMission();
+            mission.Initiate(new FixedRNG());
+            mission.SetExecutionTick(0);
+
+            List<GameResult> results = mission.Execute(_game, new QueueRNG(0.0, 0.99));
+
+            Assert.IsTrue(
+                results.Any(r => r is ForceTrainingResult),
+                "Should return a ForceTrainingResult on successful training"
+            );
+
+            ForceTrainingResult trainingResult = results.OfType<ForceTrainingResult>().First();
+            Assert.AreEqual(_student, trainingResult.Officer);
+            Assert.Greater(trainingResult.Progress, 0);
+        }
+
+        [Test]
+        public void OnSuccess_MultipleStudents_TrainsAll()
+        {
+            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
+            student2.IsJedi = true;
+            student2.IsForceEligible = true;
+            student2.ForceValue = 30;
+            student2.JediProbability = 100;
+            _game.AttachNode(student2, _planet);
+
+            JediTrainingMission mission = new JediTrainingMission(
+                "rebels",
+                _planet,
+                new List<IMissionParticipant> { _student, student2 },
+                new List<IMissionParticipant>(),
+                _trainer.InstanceID
+            );
+            _game.AttachNode(mission, _planet);
+            mission.Initiate(new FixedRNG());
+            mission.SetExecutionTick(0);
+
+            // 0.0 passes the success roll (first student triggers early return),
+            // 0.5 gives mid-range catch-up for student1,
+            // 0.5 gives mid-range catch-up for student2
+            mission.Execute(_game, new QueueRNG(0.0, 0.5, 0.5));
+
+            Assert.Greater(
+                _student.ForceTrainingAdjustment,
+                0,
+                "First student should gain training adjustment"
+            );
+            Assert.Greater(
+                student2.ForceTrainingAdjustment,
+                0,
+                "Second student should gain training adjustment"
+            );
+        }
+
+        [Test]
+        public void CanContinue_MultipleStudents_OneQualified_ReturnsTrue()
+        {
+            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
+            student2.IsJedi = true;
+            student2.IsForceEligible = true;
+            student2.ForceValue = 10;
+            _game.AttachNode(student2, _planet);
+
+            JediTrainingMission mission = new JediTrainingMission(
+                "rebels",
+                _planet,
+                new List<IMissionParticipant> { _student, student2 },
+                new List<IMissionParticipant>(),
+                _trainer.InstanceID
+            );
+            _game.AttachNode(mission, _planet);
+
+            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+
+            Assert.IsTrue(
+                mission.CanContinue(_game),
+                "Should continue while any student is below threshold"
+            );
+        }
+
+        [Test]
+        public void CanContinue_MultipleStudents_AllQualified_ReturnsFalse()
+        {
+            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
+            student2.IsJedi = true;
+            student2.IsForceEligible = true;
+            student2.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+            _game.AttachNode(student2, _planet);
+
+            JediTrainingMission mission = new JediTrainingMission(
+                "rebels",
+                _planet,
+                new List<IMissionParticipant> { _student, student2 },
+                new List<IMissionParticipant>(),
+                _trainer.InstanceID
+            );
+            _game.AttachNode(mission, _planet);
+
+            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+
+            Assert.IsFalse(
+                mission.CanContinue(_game),
+                "Should stop when all students are qualified"
+            );
         }
     }
 }

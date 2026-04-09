@@ -372,36 +372,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanPerformMission_Officer_ReturnsTrue()
-        {
-            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            _game.AttachNode(officer, _ownPlanet);
-
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Sabotage));
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Espionage));
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Assassination));
-        }
-
-        [Test]
-        public void CanPerformMission_SpecialForces_RespectsAllowedList()
-        {
-            SpecialForces spec = new SpecialForces
-            {
-                InstanceID = "sf1",
-                AllowedMissionTypes = new List<MissionType>
-                {
-                    MissionType.Espionage,
-                    MissionType.Sabotage,
-                },
-            };
-
-            Assert.IsTrue(spec.CanPerformMission(MissionType.Espionage));
-            Assert.IsTrue(spec.CanPerformMission(MissionType.Sabotage));
-            Assert.IsFalse(spec.CanPerformMission(MissionType.Assassination));
-            Assert.IsFalse(spec.CanPerformMission(MissionType.Rescue));
-        }
-
-        [Test]
         public void CreateMission_DecoySpecialForcesNotAllowed_ThrowsError()
         {
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -420,6 +390,46 @@ namespace Rebellion.Tests.Game.Missions
                     "empire",
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant> { decoy },
+                    _ownPlanet
+                )
+            );
+        }
+
+        [Test]
+        public void CanCreateMission_FactionDisallowedMissionType_ReturnsFalse()
+        {
+            Faction faction = _game.Factions.Find(f => f.InstanceID == "empire");
+            faction.DisallowedMissionTypes.Add(MissionType.Sabotage);
+
+            Assert.IsFalse(
+                _factory.CanCreateMission(MissionType.Sabotage, "empire", _ownPlanet),
+                "CanCreateMission should return false for disallowed mission types"
+            );
+        }
+
+        [Test]
+        public void CreateMission_EmptyMainParticipants_ThrowsError()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                _factory.CreateMission(
+                    MissionType.Sabotage,
+                    "empire",
+                    new List<IMissionParticipant>(),
+                    new List<IMissionParticipant>(),
+                    _ownPlanet
+                )
+            );
+        }
+
+        [Test]
+        public void CreateMission_NullMainParticipants_ThrowsError()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                _factory.CreateMission(
+                    MissionType.Sabotage,
+                    "empire",
+                    null,
+                    new List<IMissionParticipant>(),
                     _ownPlanet
                 )
             );

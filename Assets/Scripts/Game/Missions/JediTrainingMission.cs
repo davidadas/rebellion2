@@ -58,11 +58,19 @@ public class JediTrainingMission : Mission
                 nameof(trainerInstanceId)
             );
 
+        if (mainParticipants == null || mainParticipants.Count == 0)
+            throw new ArgumentException(
+                "Jedi Training requires at least one student.",
+                nameof(mainParticipants)
+            );
+
         foreach (IMissionParticipant participant in mainParticipants)
         {
-            if (participant is Officer officer && (!officer.IsJedi || !officer.IsForceEligible))
+            if (!(participant is Officer officer))
+                throw new InvalidOperationException("Jedi Training participants must be officers.");
+            if (!officer.IsJedi || !officer.IsForceEligible)
                 throw new InvalidOperationException(
-                    $"Jedi Training student '{officer.DisplayName}' must be a force-eligible Jedi."
+                    $"Jedi Training student '{officer.DisplayName}' must be a discovered, force-eligible Jedi."
                 );
         }
 
@@ -116,32 +124,45 @@ public class JediTrainingMission : Mission
     /// <returns>Empty list; training results are applied directly.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
-        Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
+        List<GameResult> results = new List<GameResult>();
         Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
 
-        if (student == null || trainer == null)
-            return new List<GameResult>();
+        if (trainer?.IsForceEligible != true)
+            return results;
 
-        if (!student.IsForceEligible || !trainer.IsForceEligible)
-            return new List<GameResult>();
-
-        if (student.ForceRank < trainer.ForceRank)
+        foreach (Officer student in MainParticipants.OfType<Officer>())
         {
+            if (!student.IsForceEligible)
+                continue;
+
+            if (student.ForceRank >= trainer.ForceRank)
+                continue;
+
             int gap = trainer.ForceRank - student.ForceRank;
             int catchUpRange = gap * game.Config.Jedi.TrainingCatchUpPercent / 100;
 
-            if (catchUpRange > 0)
-            {
-                int bonus = provider.NextInt(0, catchUpRange + 1);
-                student.ForceTrainingAdjustment += bonus;
+            if (catchUpRange <= 0)
+                continue;
 
-                GameLogger.Log(
-                    $"{student.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {student.ForceRank})"
-                );
-            }
+            int bonus = provider.NextInt(0, catchUpRange + 1);
+            student.ForceTrainingAdjustment += bonus;
+
+            results.Add(
+                new ForceTrainingResult
+                {
+                    Officer = student,
+                    Progress = bonus,
+                    Detail = trainer.ForceRank,
+                    Tick = game.CurrentTick,
+                }
+            );
+
+            GameLogger.Log(
+                $"{student.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {student.ForceRank})"
+            );
         }
 
-        return new List<GameResult>();
+        return results;
     }
 
     /// <summary>
@@ -160,11 +181,10 @@ public class JediTrainingMission : Mission
         if (!(GetParent() is Planet p) || p.GetOwnerInstanceID() != OwnerInstanceID)
             return false;
 
-        Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
-        if (student != null && student.ForceRank >= game.Config.Jedi.ForceQualifiedThreshold)
-            return false;
+        int threshold = game.Config.Jedi.ForceQualifiedThreshold;
+        bool allQualified = MainParticipants.OfType<Officer>().All(s => s.ForceRank >= threshold);
 
-        return true;
+        return !allQualified;
     }
 
     /// <summary>
