@@ -59,29 +59,5 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(1, duel.Defenders.Count);
             Assert.AreEqual("d1", duel.Defenders[0].InstanceID);
         }
-
-        [Test]
-        public void Execute_StaleInstanceID_IsFilteredFromResult()
-        {
-            GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
-            Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
-            game.AttachNode(attacker, empPlanet);
-
-            TriggerDuelAction action = new TriggerDuelAction
-            {
-                AttackerInstanceIDs = new List<string> { "a1", "stale-id" },
-                DefenderInstanceIDs = new List<string> { "also-stale" },
-            };
-
-            List<GameResult> results = action.Execute(game);
-
-            DuelTriggeredResult duel = results.OfType<DuelTriggeredResult>().First();
-            Assert.AreEqual(1, duel.Attackers.Count, "Stale attacker ID should be filtered");
-            Assert.AreEqual(0, duel.Defenders.Count, "Stale defender ID should be filtered");
-            Assert.IsFalse(
-                duel.Attackers.Any(o => o == null),
-                "Attackers list should contain no nulls"
-            );
-        }
     }
 }

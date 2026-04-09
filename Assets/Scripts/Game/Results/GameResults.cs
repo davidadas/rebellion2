@@ -735,16 +735,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Summary of which faction won a combat engagement at a system.
-    /// </summary>
-    public class CombatResolvedResult : GameResult
-    {
-        public Faction WinningFaction { get; set; }
-        public Faction LosingFaction { get; set; }
-        public Planet Planet { get; set; }
-    }
-
-    /// <summary>
     /// Emitted when a combat encounter requires player input before the tick can continue.
     /// GameManager holds this as the pending combat decision until the player resolves it.
     /// </summary>
@@ -803,6 +793,19 @@ namespace Rebellion.Game.Results
     {
         public List<Officer> Attackers { get; set; } = new List<Officer>();
         public List<Officer> Defenders { get; set; } = new List<Officer>();
+    }
+
+    /// <summary>
+    /// Units were lost during an evacuation.
+    /// Covers EvacuationLossesEventRecord.
+    /// </summary>
+    public class EvacuationLossesResult : GameResult
+    {
+        public Faction Faction { get; set; }
+        public Planet Location { get; set; }
+        public List<CapitalShip> LostShips { get; set; } = new List<CapitalShip>();
+        public List<Starfighter> LostStarfighters { get; set; } = new List<Starfighter>();
+        public List<Regiment> LostRegiments { get; set; } = new List<Regiment>();
     }
 
     #endregion

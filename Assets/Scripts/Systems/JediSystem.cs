@@ -7,15 +7,7 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Processes Jedi Force tier advancement and detection checks each tick.
-    ///
-    /// TIER ADVANCEMENT:
-    /// Reads officer.ForceExperience and promotes ForceTier when XP crosses config thresholds.
-    /// XP accumulation is unimplemented - reserved for future mission integration.
-    ///
-    /// DETECTION:
-    /// Every DetectionCheckInterval ticks, undiscovered Force users roll against a per-tier
-    /// probability. A successful roll sets IsDiscoveredJedi = true.
+    /// Manages Force discovery state and force user scanning each tick.
     /// </summary>
     public class JediSystem
     {

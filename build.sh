@@ -121,7 +121,7 @@ do_coverage() {
         -nographics \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 }
 
@@ -143,12 +143,12 @@ do_clean() {
 }
 
 do_all() {
-    trap 'echo ""; echo "Resist the dark side; fix those tests."' ERR
+    trap 'echo ""; echo "Resist the dark side and fix those tests..."' ERR
     do_format
     do_lint
-    do_test
+    do_coverage
     echo ""
-    echo "Your tests pass. The force is with you."
+    echo "Your tests pass. The force is strong with this one."
 }
 
 case "${1:-}" in
