@@ -143,7 +143,7 @@ do_clean() {
 }
 
 do_all() {
-    trap 'echo ""; echo "Resist the dark side; fix those tests.."' ERR
+    trap 'echo ""; echo "Resist the dark side; fix those tests."' ERR
     do_format
     do_lint
     do_test

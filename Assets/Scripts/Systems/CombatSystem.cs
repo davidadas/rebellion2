@@ -697,7 +697,7 @@ namespace Rebellion.Systems
             {
                 AttackerFleet = attackerFleet,
                 DefenderFleet = defenderFleet,
-                System = planet,
+                Planet = planet,
                 Winner = DetermineWinner(atkShips, defShips, atkFighters, defFighters),
                 Tick = tick,
             };

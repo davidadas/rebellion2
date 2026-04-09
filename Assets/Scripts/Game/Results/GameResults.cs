@@ -87,7 +87,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PlanetStatChangedResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public Faction Faction { get; set; }
         public PlanetStatType Stat { get; set; }
         public int OldValue { get; set; }
@@ -100,7 +100,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SystemCombatStateResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public Fleet Fleet { get; set; }
         public SystemCombatStateType CombatState { get; set; }
         public bool IsActive { get; set; }
@@ -112,7 +112,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class BlockadeChangedResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public Fleet BlockadingFleet { get; set; }
         public bool Blockaded { get; set; }
     }
@@ -123,7 +123,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SystemExploredResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public Fleet Fleet { get; set; }
         public bool IsNewlyExplored { get; set; }
     }
@@ -134,7 +134,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SystemPopulationChangedResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public bool IsDepopulated { get; set; }
         public int Population { get; set; }
     }
@@ -145,7 +145,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SystemFirstControlResult : GameResult
     {
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public bool IsFirstControl { get; set; }
         public IGameEntity ControlRef { get; set; }
     }
@@ -203,7 +203,7 @@ namespace Rebellion.Game.Results
     public class MaintenanceRequiredResult : GameResult
     {
         public Faction Faction { get; set; }
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public int Amount { get; set; }
     }
 
@@ -657,7 +657,7 @@ namespace Rebellion.Game.Results
     public class FleetStateChangedResult : GameResult
     {
         public Fleet Fleet { get; set; }
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public FleetStateType State { get; set; }
         public bool IsActive { get; set; }
     }
@@ -728,7 +728,7 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
-        public Planet System { get; set; }
+        public Planet Planet { get; set; }
         public CombatSide Winner { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
