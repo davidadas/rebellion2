@@ -12,6 +12,9 @@ public class AbductionMission : Mission
 
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public AbductionMission()
         : base()
     {
@@ -68,11 +71,11 @@ public class AbductionMission : Mission
 
         return new List<GameResult>
         {
-            new CharacterCapturedResult
+            new OfficerCaptureStateResult
             {
-                OfficerInstanceID = target.InstanceID,
-                CapturingFactionInstanceID = OwnerInstanceID,
-                LocationInstanceID = (GetParent() as Planet)?.InstanceID,
+                TargetOfficer = target,
+                IsCaptured = true,
+                Context = GetParent() as Planet,
                 Tick = game.CurrentTick,
             },
         };

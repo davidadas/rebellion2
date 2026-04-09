@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eE
 
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
@@ -121,7 +121,7 @@ do_coverage() {
         -nographics \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 }
 
@@ -142,6 +142,15 @@ do_clean() {
     echo "Clean complete."
 }
 
+do_all() {
+    trap 'echo ""; echo "Resist the dark side and fix those tests..."' ERR
+    do_format
+    do_lint
+    do_coverage
+    echo ""
+    echo "Your tests pass. The force is strong with this one."
+}
+
 case "${1:-}" in
     format)    do_format ;;
     xmlformat) do_xmlformat ;;
@@ -150,7 +159,7 @@ case "${1:-}" in
     coverage) do_coverage ;;
     build)    do_build ;;
     clean)    do_clean ;;
-    all)      do_format; do_lint; do_test ;;
-    "")       do_format; do_lint; do_test ;;
+    all)      do_all ;;
+    "")       do_all ;;
     *)        usage ;;
 esac

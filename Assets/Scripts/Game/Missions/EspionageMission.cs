@@ -13,6 +13,9 @@ public class EspionageMission : Mission
 
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public EspionageMission()
         : base()
     {

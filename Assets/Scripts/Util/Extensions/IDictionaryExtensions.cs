@@ -11,6 +11,7 @@ namespace Rebellion.Util.Extensions
         /// <typeparam name="TValue"></typeparam>
         /// <param name="source"></param>
         /// <param name="key"></param>
+        /// <param name="value">The value to insert if the key is not present.</param>
         /// <returns>The existing or newly inserted value.</returns>
         public static TValue GetOrAddValue<TKey, TValue>(
             this IDictionary<TKey, TValue> source,

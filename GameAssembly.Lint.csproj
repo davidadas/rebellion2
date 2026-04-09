@@ -10,24 +10,28 @@
     <AssemblyName>GameAssembly</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultItems>false</EnableDefaultItems>
+    <UnityVersion>6000.4.0f1</UnityVersion>
     <!-- CS8019: unnecessary using directive (stray Unity/Drawing usings in game files) -->
-    <!-- CS0234/CS0246: unresolved namespace from those usings -->
-    <NoWarn>0169;0649;1701;1702;8019;0234;0246</NoWarn>
+    <NoWarn>0169;0649;1701;1702;8019;1591</NoWarn>
+    <!-- CS1573: param tag has no matching parameter; CS1587: comment not on valid element -->
+    <WarningsAsErrors>CS1573;CS1587</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Unity3D" Version="3.1.1" />
+  </ItemGroup>
+  <ItemGroup>
     <!--
-      Include all game source files. Exclude only the files that directly call into
-      Unity runtime APIs (MonoBehaviour subclasses, UnityEngine.Debug, Resources, etc.).
-      The UI layer is fully excluded — RCS1213 is already suppressed there via .editorconfig.
+      Include all game source files. Exclude the UI layer and its entry points — UI scripts
+      reference UnityEngine.UI and TMPro which are not available without Unity installed.
+      Unity compilation and tests in the CI pipeline prove those files compile correctly.
     -->
-    <Compile
-      Include="Assets/Scripts/**/*.cs"
-      Exclude="Assets/Scripts/UI/**/*.cs;
-                      Assets/Scripts/Core/AppBootstrap.cs;
-                      Assets/Scripts/Managers/AudioManager.cs;
-                      Assets/Scripts/Managers/ResourceManager.cs;
-                      Assets/Scripts/Util/Common/GameLogger.cs"
-    />
+    <Compile Include="Assets/Scripts/**/*.cs" />
+    <Compile Remove="Assets/Scripts/UI/**/*.cs" />
+    <!-- AppBootstrap references GlobalInputHandler (UI), which is excluded above -->
+    <Compile Remove="Assets/Scripts/Core/AppBootstrap.cs" />
+    <!-- GameRuntime references GameLaunchContext (UI), which is excluded above -->
+    <Compile Remove="Assets/Scripts/Core/GameRuntime.cs" />
   </ItemGroup>
 </Project>

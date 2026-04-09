@@ -12,6 +12,9 @@ public class RescueMission : Mission
 
     public override bool CanceledOnOwnershipChange => false;
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public RescueMission()
         : base()
     {
@@ -68,11 +71,18 @@ public class RescueMission : Mission
 
         return new List<GameResult>
         {
+            new OfficerCaptureStateResult
+            {
+                TargetOfficer = target,
+                IsCaptured = false,
+                Context = GetParent() as Planet,
+                Tick = game.CurrentTick,
+            },
             new OfficerRescuedResult
             {
-                OfficerInstanceID = target.InstanceID,
-                RescuingFactionInstanceID = OwnerInstanceID,
-                LocationInstanceID = (GetParent() as Planet)?.InstanceID,
+                Officer = target,
+                RescuingFaction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
+                Location = GetParent() as Planet,
                 Tick = game.CurrentTick,
             },
         };

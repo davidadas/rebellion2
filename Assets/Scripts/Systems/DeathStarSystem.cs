@@ -1,10 +1,10 @@
 using Rebellion.Game;
 
-/// <summary>
-/// Manages Death Star construction and destruction during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages Death Star construction and destruction during each game tick.
+    /// </summary>
     public class DeathStarSystem
     {
         private readonly GameRoot _game;

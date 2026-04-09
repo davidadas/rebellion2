@@ -314,8 +314,8 @@ public class GameManager
         {
             _pendingCombatDecision = new CombatDecisionContext
             {
-                AttackerFleetInstanceID = result.AttackerFleetInstanceID,
-                DefenderFleetInstanceID = result.DefenderFleetInstanceID,
+                AttackerFleetInstanceID = result.AttackerFleet?.GetInstanceID(),
+                DefenderFleetInstanceID = result.DefenderFleet?.GetInstanceID(),
             };
         }
 
@@ -323,7 +323,7 @@ public class GameManager
             PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
         )
         {
-            Planet changedPlanet = _game.GetSceneNodeByInstanceID<Planet>(result.PlanetInstanceID);
+            Planet changedPlanet = result.Planet;
             PlanetSystem changedSystem = changedPlanet?.GetParentOfType<PlanetSystem>();
             if (changedPlanet != null && changedSystem != null)
             {

@@ -15,6 +15,9 @@ public class ResearchMission : Mission
 {
     public ManufacturingType ResearchType { get; set; }
 
+    /// <summary>
+    /// Default constructor used for deserialization.
+    /// </summary>
     public ResearchMission()
         : base()
     {
@@ -88,6 +91,7 @@ public class ResearchMission : Mission
     /// Awards research capacity points to the faction's research pool.
     /// </summary>
     /// <param name="game">The game instance.</param>
+    /// <param name="provider">The random number provider.</param>
     /// <returns>An empty list (no additional results).</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {

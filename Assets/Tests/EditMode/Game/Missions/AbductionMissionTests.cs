@@ -70,11 +70,11 @@ namespace Rebellion.Tests.Game.Missions
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
-            CharacterCapturedResult captured = results
-                .OfType<CharacterCapturedResult>()
+            OfficerCaptureStateResult captured = results
+                .OfType<OfficerCaptureStateResult>()
                 .FirstOrDefault();
-            Assert.IsNotNull(captured, "Should return CharacterCapturedResult on success");
-            Assert.AreEqual("target", captured.OfficerInstanceID);
+            Assert.IsNotNull(captured, "Should return OfficerCaptureStateResult on success");
+            Assert.AreEqual("target", captured.TargetOfficer.InstanceID);
         }
 
         [Test]

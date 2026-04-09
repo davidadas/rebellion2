@@ -134,9 +134,9 @@ namespace Rebellion.Tests.Systems
                 "Should not throw when faction owns no planets"
             );
 
-            Assert.IsFalse(
-                results.OfType<CharacterMovedResult>().Any(),
-                "Should not emit CharacterMovedResult when no valid destination exists"
+            Assert.IsNull(
+                officer.Movement,
+                "Officer should not have movement queued when no valid destination exists"
             );
         }
 
@@ -535,11 +535,45 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Execute_WithDecoyParticipant_ParticipantNamesCountMatchesParticipantInstanceIDsCount()
+        public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
         {
-            // Bug: ParticipantNames is populated from MainParticipants only,
-            // but ParticipantInstanceIDs uses GetAllParticipants() (main + decoy).
-            // After the fix both lists must have the same length.
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+
+            SpecialForces sf = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                Movement = null,
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(sf);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new StubRNG());
+            MissionCompletedResult completedResult = results
+                .OfType<MissionCompletedResult>()
+                .First();
+
+            Assert.IsTrue(
+                completedResult.Participants.Any(p => p.InstanceID == "sf1"),
+                "SpecialForces participant must appear in Participants"
+            );
+        }
+
+        [Test]
+        public void Execute_WithDecoyParticipant_DecoyAppearsInParticipants()
+        {
+            // Both main and decoy participants should appear in MissionCompletedResult.Participants.
             (
                 GameRoot game,
                 Planet planet,
@@ -569,18 +603,9 @@ namespace Rebellion.Tests.Systems
                 .OfType<MissionCompletedResult>()
                 .First();
 
-            Assert.AreEqual(
-                completedResult.ParticipantInstanceIDs.Count,
-                completedResult.ParticipantNames.Count,
-                "ParticipantNames and ParticipantInstanceIDs must have the same count"
-            );
             Assert.IsTrue(
-                completedResult.ParticipantInstanceIDs.Contains("o2"),
-                "Decoy instance ID must appear in ParticipantInstanceIDs"
-            );
-            Assert.IsTrue(
-                completedResult.ParticipantNames.Contains("o2"),
-                "Decoy must appear in ParticipantNames"
+                completedResult.Participants.Any(p => p.InstanceID == "o2"),
+                "Decoy must appear in Participants"
             );
         }
     }

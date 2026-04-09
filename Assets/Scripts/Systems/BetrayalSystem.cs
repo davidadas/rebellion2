@@ -1,10 +1,10 @@
 using Rebellion.Game;
 
-/// <summary>
-/// Manages character betrayal mechanics during each game tick.
-/// </summary>
 namespace Rebellion.Systems
 {
+    /// <summary>
+    /// Manages character betrayal mechanics during each game tick.
+    /// </summary>
     public class BetrayalSystem
     {
         private readonly GameRoot _game;

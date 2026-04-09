@@ -73,7 +73,44 @@ namespace Rebellion.Tests.Game.Missions
                 .OfType<OfficerRescuedResult>()
                 .FirstOrDefault();
             Assert.IsNotNull(rescueResult, "Should return OfficerRescuedResult on success");
-            Assert.AreEqual("captive", rescueResult.OfficerInstanceID);
+            Assert.AreEqual("captive", rescueResult.Officer.InstanceID);
+        }
+
+        [Test]
+        public void Execute_CapturedOfficerOnTargetPlanet_EmitsCaptureStateReleased()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            game.AttachNode(captive, enemyPlanet);
+
+            RescueMission mission = new RescueMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                "captive"
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            OfficerCaptureStateResult captureState = results
+                .OfType<OfficerCaptureStateResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(captureState, "Should emit OfficerCaptureStateResult on rescue");
+            Assert.AreEqual("captive", captureState.TargetOfficer.InstanceID);
+            Assert.IsFalse(captureState.IsCaptured, "IsCaptured should be false on release");
         }
 
         [Test]
