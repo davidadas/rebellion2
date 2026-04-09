@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Managers
 {
@@ -761,7 +760,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void BuildOneOf_PlanetAtCapacity_DoesNotThrow()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
             game.Factions.Add(empire);

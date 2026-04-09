@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -131,10 +134,11 @@ namespace Rebellion.Tests.Systems
             // RNG returns 0, so first candidate is selected
             FixedRNG rng = new FixedRNG();
 
-            maintenanceSystem.ProcessTick(rng);
+            List<GameResult> results = maintenanceSystem.ProcessTick(rng);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
+            Assert.IsTrue(results.OfType<GameObjectAutoscrappedResult>().Any());
         }
 
         [Test]

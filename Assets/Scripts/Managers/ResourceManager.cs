@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Xml;
+using System.Xml.Schema;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 using UnityEngine;
@@ -13,6 +15,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads and deserializes a strongly-typed configuration object
     /// from the Resources/Configs folder using the custom XML serializer.
+    /// If a matching schema file exists at Configs/{TypeName}Schema.xml,
+    /// it is applied for inline validation during deserialization.
     /// </summary>
     public static T GetConfig<T>()
         where T : class
@@ -21,24 +25,30 @@ public static class ResourceManager
         string filePath = Path.Combine("Configs", typeName);
 
         TextAsset asset = Resources.Load<TextAsset>(filePath);
-
         if (asset == null)
-        {
             throw new Exception($"Config not found at: {filePath}");
-        }
 
         GameSerializerSettings settings = new GameSerializerSettings { RootName = typeName };
+
+        TextAsset schemaAsset = Resources.Load<TextAsset>(
+            Path.Combine("Configs", $"{typeName}Schema")
+        );
+        if (schemaAsset != null)
+        {
+            XmlSchemaSet schemas = new XmlSchemaSet();
+            schemas.Add(null, XmlReader.Create(new StringReader(schemaAsset.text)));
+            settings.Schemas = schemas;
+        }
+
         GameSerializer serializer = new GameSerializer(typeof(T), settings);
 
         using MemoryStream stream = new MemoryStream(asset.bytes);
         object result = serializer.Deserialize(stream);
 
         if (result == null)
-        {
             throw new Exception($"Failed to deserialize config: {typeName}");
-        }
 
-        return result as T;
+        return (T)result;
     }
 
     /// <summary>
@@ -69,7 +79,7 @@ public static class ResourceManager
             throw new Exception($"Failed to deserialize game data: {pluralizedType}");
         }
 
-        return result as T[];
+        return (T[])result;
     }
 
     /// <summary>

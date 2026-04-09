@@ -568,6 +568,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A unit completed transit and arrived at its destination planet.
+    /// </summary>
+    public class UnitArrivedResult : GameResult
+    {
+        public IGameEntity Unit { get; set; }
+        public Planet Destination { get; set; }
+    }
+
+    /// <summary>
     /// A game object was damaged.
     /// Covers GameObjectDamagedEventRecord.
     /// </summary>
@@ -824,17 +833,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// The completed production point count for a manufacturing queue changed.
-    /// Covers ManufacturingMgrCompletedPointCountEventRecord.
-    /// </summary>
-    public class ManufacturingPointsCompletedResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public int Points { get; set; }
-        public IGameEntity Context { get; set; }
-    }
-
-    /// <summary>
     /// The required production point count for a manufacturing queue changed.
     /// Covers ManufacturingMgrRequiredPointCountEventRecord.
     /// </summary>
@@ -842,6 +840,17 @@ namespace Rebellion.Game.Results
     {
         public Faction Faction { get; set; }
         public int RequiredPoints { get; set; }
+        public IGameEntity Context { get; set; }
+    }
+
+    /// <summary>
+    /// The completed production point count for a manufacturing queue changed.
+    /// Covers ManufacturingMgrCompletedPointCountEventRecord.
+    /// </summary>
+    public class ManufacturingPointsCompletedResult : GameResult
+    {
+        public Faction Faction { get; set; }
+        public int Points { get; set; }
         public IGameEntity Context { get; set; }
     }
 

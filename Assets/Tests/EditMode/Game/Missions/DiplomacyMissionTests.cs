@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;

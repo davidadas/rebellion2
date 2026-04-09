@@ -1,4 +1,5 @@
 using System.Xml;
+using System.Xml.Schema;
 
 namespace Rebellion.Util.Serialization
 {
@@ -11,6 +12,12 @@ namespace Rebellion.Util.Serialization
         public bool Idendent { get; set; } = true;
         public bool IgnoreComments { get; set; } = true;
         public bool IgnoreWhitespace { get; set; } = true;
+
+        /// <summary>
+        /// Optional schema set for inline validation during deserialization.
+        /// When set, the XmlReader validates against the schema as it reads.
+        /// </summary>
+        public XmlSchemaSet Schemas { get; set; }
 
         /// <summary>
         /// Default constructor.
@@ -34,11 +41,24 @@ namespace Rebellion.Util.Serialization
         /// <returns>A new instance of the <see cref="XmlReaderSettings"/> class.</returns>
         public XmlReaderSettings CreateReaderSettings()
         {
-            return new XmlReaderSettings
+            XmlReaderSettings settings = new XmlReaderSettings
             {
                 IgnoreComments = IgnoreComments,
                 IgnoreWhitespace = IgnoreWhitespace,
             };
+
+            if (Schemas != null)
+            {
+                settings.Schemas = Schemas;
+                settings.ValidationType = ValidationType.Schema;
+                settings.ValidationEventHandler += (_, args) =>
+                {
+                    if (args.Severity == XmlSeverityType.Error)
+                        throw new XmlSchemaValidationException(args.Message, args.Exception);
+                };
+            }
+
+            return settings;
         }
     }
 }

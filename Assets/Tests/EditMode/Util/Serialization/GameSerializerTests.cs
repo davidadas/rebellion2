@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml;
+using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Util.Attributes;
 using Rebellion.Util.Serialization;
@@ -1466,6 +1468,73 @@ namespace Rebellion.Tests.Util.Serialization
                 "<?xml version=\"1.0\"?><SimpleItem><Name>x</Name><UnknownField>oops</UnknownField></SimpleItem>";
 
             Assert.Throws<InvalidOperationException>(() => DeserializeFromString(serializer, xml));
+        }
+
+        [Test]
+        public void Deserialize_WithSchema_ValidXml_Succeeds()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                Schemas = BuildSimpleItemSchema(),
+            };
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem), settings);
+            string xml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItem>
+  <Name>Valid</Name>
+  <Value>1</Value>
+</SimpleItem>";
+
+            Assert.DoesNotThrow(() => DeserializeFromString(serializer, xml));
+        }
+
+        [Test]
+        public void Deserialize_WithSchema_InvalidXml_ThrowsXmlSchemaValidationException()
+        {
+            GameSerializerSettings settings = new GameSerializerSettings
+            {
+                Schemas = BuildSimpleItemSchema(),
+            };
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItem), settings);
+            string xml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItem>
+  <Name>Invalid</Name>
+  <Value>0</Value>
+</SimpleItem>";
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                DeserializeFromString(serializer, xml)
+            );
+        }
+
+        private static XmlSchemaSet BuildSimpleItemSchema()
+        {
+            string schemaXml =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<xs:schema xmlns:xs=""http://www.w3.org/2001/XMLSchema"">
+  <xs:element name=""SimpleItem"">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name=""Name"" type=""xs:string"" minOccurs=""0""/>
+        <xs:element name=""Value"" minOccurs=""0"">
+          <xs:simpleType>
+            <xs:restriction base=""xs:integer"">
+              <xs:minInclusive value=""1""/>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
+        <xs:element name=""EnumValue"" type=""xs:string"" minOccurs=""0""/>
+        <xs:element name=""PublicVariable"" type=""xs:string"" minOccurs=""0""/>
+        <xs:element name=""IgnoredPublicVariable"" type=""xs:string"" minOccurs=""0""/>
+      </xs:sequence>
+      <xs:attribute name=""AttributeVariable"" type=""xs:string""/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>";
+            XmlSchemaSet schemas = new XmlSchemaSet();
+            schemas.Add(null, XmlReader.Create(new StringReader(schemaXml)));
+            return schemas;
         }
 
         private string SerializeToString(GameSerializer serializer, object obj)

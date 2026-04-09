@@ -1,6 +1,6 @@
 using System;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Generation
 {

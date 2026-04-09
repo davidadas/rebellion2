@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Systems
 {
@@ -21,9 +23,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes Death Star mechanics for the current tick.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
             // TODO: Implement Death Star logic
+            return new List<GameResult>();
         }
     }
 }

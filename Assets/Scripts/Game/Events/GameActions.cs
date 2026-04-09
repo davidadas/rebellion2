@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Attributes;
+using Rebellion.Util.Common;
 
 [PersistableObject(Name = "RandomOutcome")]
 public class RandomOutcomeAction : GameAction

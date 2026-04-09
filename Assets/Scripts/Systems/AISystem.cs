@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -40,15 +40,17 @@ namespace Rebellion.Systems
         /// Advances AI logic for all AI-controlled factions by one tick.
         /// Only runs every TickInterval ticks, matching the original game.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
             if (_game.CurrentTick % _game.Config.AI.TickInterval != 0)
-                return;
+                return new List<GameResult>();
 
             foreach (Faction faction in _game.Factions.Where(f => f.IsAIControlled()))
             {
                 UpdateFaction(faction);
             }
+
+            return new List<GameResult>();
         }
 
         /// <summary>

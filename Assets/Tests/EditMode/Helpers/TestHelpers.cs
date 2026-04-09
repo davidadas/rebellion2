@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Core.Simulation;
+using System.Xml;
+using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
@@ -148,14 +149,44 @@ public static class TestConfig
         "GameConfig.xml"
     );
 
+    private static readonly string SchemaPath = Path.Combine(
+        UnityEngine.Application.dataPath,
+        "Resources",
+        "Configs",
+        "GameConfigSchema.xml"
+    );
+
     public static GameConfig Create()
     {
         string xml = File.ReadAllText(ConfigPath);
         GameSerializer serializer = new GameSerializer(typeof(GameConfig));
         using StringReader reader = new StringReader(xml);
         GameConfig config = (GameConfig)serializer.Deserialize(reader);
-        config.Validate();
         return config;
+    }
+
+    public static GameConfig CreateWithSchema()
+    {
+        string xml = File.ReadAllText(ConfigPath);
+        GameSerializerSettings settings = BuildSchemaSettings();
+        GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
+        using StringReader reader = new StringReader(xml);
+        return (GameConfig)serializer.Deserialize(reader);
+    }
+
+    public static void DeserializeWithSchema(string xml)
+    {
+        GameSerializerSettings settings = BuildSchemaSettings();
+        GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
+        using StringReader reader = new StringReader(xml);
+        serializer.Deserialize(reader);
+    }
+
+    private static GameSerializerSettings BuildSchemaSettings()
+    {
+        XmlSchemaSet schemas = new XmlSchemaSet();
+        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(SchemaPath))));
+        return new GameSerializerSettings { Schemas = schemas };
     }
 }
 

@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
@@ -47,7 +45,7 @@ public class GameManager
         _game = game;
 
         if (_game.Config == null)
-            _game.SetConfig(ConfigLoader.LoadGameConfig());
+            _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
 
         // TODO: Make seed configurable from game settings
         _randomProvider = new SystemRandomProvider(0);
@@ -70,7 +68,7 @@ public class GameManager
         _game = newGame;
 
         if (_game.Config == null)
-            _game.SetConfig(ConfigLoader.LoadGameConfig());
+            _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
 
         InitializeSystems();
         RebuildDerivedState();
@@ -175,13 +173,13 @@ public class GameManager
         _resourceRebalanceManager.ProcessTick(_randomProvider);
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        _manufacturingManager.ProcessTick(_movementManager, _randomProvider);
+        ProcessResults(_manufacturingManager.ProcessTick(_movementManager, _randomProvider));
 
         // 1b. Maintenance: scrap units if maintenance cost exceeds capacity
-        _maintenanceManager.ProcessTick(_randomProvider);
+        ProcessResults(_maintenanceManager.ProcessTick(_randomProvider));
 
         // 2. Movement: updates positions before combat needs them
-        _movementManager.ProcessTick();
+        ProcessResults(_movementManager.ProcessTick());
 
         // 3. Combat: auto-resolves AI encounters; freezes tick if player is involved
         ProcessResults(_combatManager.ProcessTick(_game, _randomProvider));
@@ -195,22 +193,22 @@ public class GameManager
         _eventManager.ProcessEvents(_game.GetEventPool(), _randomProvider);
 
         // 6. AI: observes fog/combat/events, directly mutates manager states
-        _aiSystem.ProcessTick();
+        ProcessResults(_aiSystem.ProcessTick());
 
         // 7. Blockade: checks fleet presence after AI decisions
-        _blockadeManager.ProcessTick();
+        ProcessResults(_blockadeManager.ProcessTick());
 
         // 8. Support shift: adjusts popular support based on hostile forces
-        _supportShiftManager.ProcessTick();
+        ProcessResults(_supportShiftManager.ProcessTick());
 
         // 9. Uprising: checks garrison vs. support, rolls dice for uprising
-        _uprisingManager.ProcessTick(_randomProvider);
+        ProcessResults(_uprisingManager.ProcessTick(_randomProvider));
 
         // 10. Betrayal: loyalty checks after uprising
-        _betrayalManager.ProcessTick();
+        ProcessResults(_betrayalManager.ProcessTick());
 
         // 11. Death Star: construction countdown and planet destruction
-        _deathStarManager.ProcessTick();
+        ProcessResults(_deathStarManager.ProcessTick());
 
         // 12. Research: applies tech upgrades
         ProcessResults(_researchManager.ProcessTick(_game));

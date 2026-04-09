@@ -1,6 +1,6 @@
 using System;
 
-namespace Rebellion.Core.Simulation
+namespace Rebellion.Util.Common
 {
     /// <summary>
     /// Provides random number generation for simulation systems.

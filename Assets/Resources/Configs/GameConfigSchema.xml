@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <!-- Integer > 0 -->
+  <xs:simpleType name="PositiveIntType">
+    <xs:restriction base="xs:integer">
+      <xs:minExclusive value="0" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Decimal in [0.0, 1.0] for probabilities -->
+  <xs:simpleType name="ProbabilityType">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0" />
+      <xs:maxInclusive value="1" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Single integer key-value entry used in all lookup tables -->
+  <xs:complexType name="IntEntryType">
+    <xs:sequence>
+      <xs:element name="Key" type="xs:integer" />
+      <xs:element name="Value" type="xs:integer" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Lookup table: zero or more int key-value entries -->
+  <xs:complexType name="IntTableType">
+    <xs:sequence>
+      <xs:element name="Entry" type="IntEntryType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Mission tick range: base ticks + random spread -->
+  <xs:complexType name="MissionTickConfigType">
+    <xs:all>
+      <xs:element name="Base" type="xs:nonNegativeInteger" />
+      <xs:element name="Spread" type="xs:nonNegativeInteger" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="GameConfig">
+    <xs:complexType>
+      <xs:all>
+        <xs:element name="AI">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="TickInterval" type="PositiveIntType" />
+              <xs:element name="MissionTables">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="Diplomacy" type="IntTableType" />
+                    <xs:element name="SubdueUprising" type="IntTableType" />
+                    <xs:element name="Espionage" type="IntTableType" />
+                    <xs:element name="InciteUprising" type="IntTableType" />
+                    <xs:element name="Rescue" type="IntTableType" />
+                    <xs:element name="Sabotage" type="IntTableType" />
+                    <xs:element name="Abduction" type="IntTableType" />
+                    <xs:element name="Assassination" type="IntTableType" />
+                    <xs:element name="Recruitment" type="IntTableType" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Garrison">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="SupportThreshold" type="xs:nonNegativeInteger" />
+                    <xs:element name="GarrisonDivisor" type="PositiveIntType" />
+                    <xs:element name="UprisingMultiplier" type="PositiveIntType" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="DeploymentGateLow" type="xs:nonNegativeInteger" />
+              <xs:element name="DeploymentGateHigh" type="xs:nonNegativeInteger" />
+              <xs:element name="CapitalShipProduction">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="FacilityPersonnelDivisor" type="PositiveIntType" />
+                    <xs:element name="StrikeThresholdLow" type="xs:nonNegativeInteger" />
+                    <xs:element name="StrikeThresholdHigh" type="xs:nonNegativeInteger" />
+                    <xs:element name="EnergyStrikeResistance" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="AllocatedEnergyStrikeResistance"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="OrbitalStrikeSupportShift" type="xs:integer" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Movement">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="DistanceScale" type="PositiveIntType" />
+              <xs:element name="MinTransitTicks" type="xs:nonNegativeInteger" />
+              <xs:element name="DefaultFighterHyperdrive" type="PositiveIntType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Production">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="RefinementMultiplier" type="PositiveIntType" />
+              <xs:element name="CapitalShipProgressTable" type="IntTableType" />
+              <xs:element name="CapitalShipProgressRollRange" type="PositiveIntType" />
+              <xs:element name="CapitalShipSuccessThreshold" type="PositiveIntType" />
+              <xs:element name="CapitalShipSuccessRollRange" type="PositiveIntType" />
+              <xs:element name="BlockadeCapitalShipPenalty" type="xs:nonNegativeInteger" />
+              <xs:element name="BlockadeFighterPenalty" type="xs:nonNegativeInteger" />
+              <xs:element name="CapitalShipCompletionSupportShift" type="xs:integer" />
+              <xs:element name="BuildingCompletionSupportShift" type="xs:integer" />
+              <xs:element name="TroopCompletionSupportShift" type="xs:integer" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="ResourceRebalance">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="DecayMultiplier" type="PositiveIntType" />
+              <xs:element name="RebalanceTimerBase" type="PositiveIntType" />
+              <xs:element name="RebalanceTimerSpread" type="PositiveIntType" />
+              <xs:element name="ResourceWalkTimerBase" type="PositiveIntType" />
+              <xs:element name="ResourceWalkTimerSpread" type="PositiveIntType" />
+              <xs:element name="MaxEnergy" type="PositiveIntType" />
+              <xs:element name="MaxRawMaterials" type="PositiveIntType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Planet">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="DistanceDivisor" type="PositiveIntType" />
+              <xs:element name="DistanceBase" type="xs:nonNegativeInteger" />
+              <xs:element name="MaxPopularSupport" type="PositiveIntType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Combat">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="AssaultPersonnelDivisor" type="PositiveIntType" />
+              <xs:element name="AssaultSuccessThreshold" type="PositiveIntType" />
+              <xs:element name="AssaultRollRange" type="PositiveIntType" />
+              <xs:element name="BombardmentStrikeThresholdLow" type="xs:nonNegativeInteger" />
+              <xs:element name="BombardmentStrikeThresholdHigh" type="xs:nonNegativeInteger" />
+              <xs:element name="BombardmentEnergyResistance" type="xs:nonNegativeInteger" />
+              <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Uprising">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="DiceRange" type="PositiveIntType" />
+              <xs:element name="DiceAddend" type="xs:integer" />
+              <xs:element name="Upris1Table" type="IntTableType" />
+              <xs:element name="Upris2Table" type="IntTableType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="SupportShift">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="ShiftThreshold" type="xs:nonNegativeInteger" />
+              <xs:element name="LowBracketCeiling" type="xs:nonNegativeInteger" />
+              <xs:element name="MidBracketCeiling" type="xs:nonNegativeInteger" />
+              <xs:element name="LowBracketShift" type="xs:integer" />
+              <xs:element name="MidBracketShift" type="xs:integer" />
+              <xs:element name="HighBracketShift" type="xs:integer" />
+              <xs:element name="FleetPenalty" type="xs:integer" />
+              <xs:element name="FighterPenalty" type="xs:integer" />
+              <xs:element name="TroopPenalty" type="xs:integer" />
+              <xs:element name="BlockadeMatchShift" type="xs:integer" />
+              <xs:element name="BlockadeOpposeShift" type="xs:integer" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Victory">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="MinVictoryTick" type="xs:nonNegativeInteger" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Jedi">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="XpToTraining" type="PositiveIntType" />
+              <xs:element name="XpToExperienced" type="PositiveIntType" />
+              <xs:element name="DetectionCheckInterval" type="PositiveIntType" />
+              <xs:element name="DetectProbAware" type="ProbabilityType" />
+              <xs:element name="DetectProbTraining" type="ProbabilityType" />
+              <xs:element name="DetectProbExperienced" type="ProbabilityType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Research">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="BaseResearchPoints" type="PositiveIntType" />
+              <xs:element name="ResearchDiceRange" type="xs:nonNegativeInteger" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="ProbabilityTables">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="UprisingStart" type="IntTableType" />
+              <xs:element name="Mission">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="Abduction" type="IntTableType" />
+                    <xs:element name="Assassination" type="IntTableType" />
+                    <xs:element name="Decoy" type="IntTableType" />
+                    <xs:element name="Diplomacy" type="IntTableType" />
+                    <xs:element name="DeathStarSabotage" type="IntTableType" />
+                    <xs:element name="Espionage" type="IntTableType" />
+                    <xs:element name="Foil" type="IntTableType" />
+                    <xs:element name="InciteUprising" type="IntTableType" />
+                    <xs:element name="Recruitment" type="IntTableType" />
+                    <xs:element name="Rescue" type="IntTableType" />
+                    <xs:element name="Sabotage" type="IntTableType" />
+                    <xs:element name="SubdueUprising" type="IntTableType" />
+                    <xs:element name="TickRanges">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="Abduction" type="MissionTickConfigType" />
+                          <xs:element name="Assassination" type="MissionTickConfigType" />
+                          <xs:element name="Diplomacy" type="MissionTickConfigType" />
+                          <xs:element name="Espionage" type="MissionTickConfigType" />
+                          <xs:element name="InciteUprising" type="MissionTickConfigType" />
+                          <xs:element name="Recruitment" type="MissionTickConfigType" />
+                          <xs:element name="Rescue" type="MissionTickConfigType" />
+                          <xs:element name="Sabotage" type="MissionTickConfigType" />
+                          <xs:element name="SubdueUprising" type="MissionTickConfigType" />
+                          <xs:element name="Research" type="MissionTickConfigType" />
+                        </xs:all>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
