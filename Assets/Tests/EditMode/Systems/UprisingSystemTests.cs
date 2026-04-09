@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -83,10 +84,14 @@ namespace Rebellion.Tests.Systems
             );
 
             // Two NextInt calls for dice (each returns 0 → roll = 0+1 = 1)
-            system.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 0, 0 })
+            );
 
             Assert.IsTrue(planet.IsInUprising, "No garrison + low dice should trigger uprising");
             Assert.AreEqual("rebels", planet.OwnerInstanceID);
+            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
+            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
         [Test]
@@ -100,9 +105,13 @@ namespace Rebellion.Tests.Systems
                 troopCount: 0
             );
 
-            system.ProcessTick(new SequenceRNG(intValues: new[] { 8, 8 }));
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 8, 8 })
+            );
 
             Assert.IsTrue(planet.IsInUprising, "High dice + no garrison should trigger uprising");
+            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
+            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
         [Test]

@@ -175,13 +175,13 @@ public class GameManager
         _resourceRebalanceManager.ProcessTick(_randomProvider);
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        _manufacturingManager.ProcessTick(_movementManager, _randomProvider);
+        ProcessResults(_manufacturingManager.ProcessTick(_movementManager, _randomProvider));
 
         // 1b. Maintenance: scrap units if maintenance cost exceeds capacity
-        _maintenanceManager.ProcessTick(_randomProvider);
+        ProcessResults(_maintenanceManager.ProcessTick(_randomProvider));
 
         // 2. Movement: updates positions before combat needs them
-        _movementManager.ProcessTick();
+        ProcessResults(_movementManager.ProcessTick());
 
         // 3. Combat: auto-resolves AI encounters; freezes tick if player is involved
         ProcessResults(_combatManager.ProcessTick(_game, _randomProvider));
@@ -198,13 +198,13 @@ public class GameManager
         _aiSystem.ProcessTick();
 
         // 7. Blockade: checks fleet presence after AI decisions
-        _blockadeManager.ProcessTick();
+        ProcessResults(_blockadeManager.ProcessTick());
 
         // 8. Support shift: adjusts popular support based on hostile forces
         _supportShiftManager.ProcessTick();
 
         // 9. Uprising: checks garrison vs. support, rolls dice for uprising
-        _uprisingManager.ProcessTick(_randomProvider);
+        ProcessResults(_uprisingManager.ProcessTick(_randomProvider));
 
         // 10. Betrayal: loyalty checks after uprising
         _betrayalManager.ProcessTick();

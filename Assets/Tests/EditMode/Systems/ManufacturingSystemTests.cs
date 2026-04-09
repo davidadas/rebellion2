@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -186,12 +187,14 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.IsTrue(results.OfType<ManufacturingCompletedResult>().Any());
+            Assert.IsTrue(results.OfType<ManufacturingDeployedResult>().Any());
         }
 
         [Test]
@@ -3135,6 +3138,216 @@ namespace Rebellion.Tests.Systems
                 _game.GetSceneNodeByInstanceID<Building>("m3"),
                 "Mine 3 should remain in the scene when no valid placement is found."
             );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_EmitsDeployedResult()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            Assert.IsTrue(results.OfType<ManufacturingDeployedResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_DeployedResultHasCorrectFactionAndObject()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            ManufacturingDeployedResult deployed = results
+                .OfType<ManufacturingDeployedResult>()
+                .First();
+            Assert.AreEqual(_empire, deployed.Faction);
+            Assert.AreEqual(mine, deployed.DeployedObject);
+        }
+
+        [Test]
+        public void ProcessTick_LastItemCompletes_EmitsCompletedResult()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            Assert.IsTrue(results.OfType<ManufacturingCompletedResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_FirstOfTwoItemsCompletes_DoesNotEmitCompletedResult()
+        {
+            Building mine1 = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Building mine2 = new Building
+            {
+                InstanceID = "MINE2",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1000,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            Assert.IsTrue(
+                results.OfType<ManufacturingDeployedResult>().Any(),
+                "deployed should fire for completed item"
+            );
+            Assert.IsFalse(
+                results.OfType<ManufacturingCompletedResult>().Any(),
+                "completed should not fire while queue still has items"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_EmitsRemainingResult()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            Assert.IsTrue(results.OfType<ManufacturingRemainingResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_FirstOfTwoItemsCompletes_RemainingCountIsOne()
+        {
+            Building mine1 = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Building mine2 = new Building
+            {
+                InstanceID = "MINE2",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1000,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            ManufacturingRemainingResult remaining = results
+                .OfType<ManufacturingRemainingResult>()
+                .First();
+            Assert.AreEqual(1, remaining.RemainingCount);
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_EmitsPointsRequiredResult()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            Assert.IsTrue(results.OfType<ManufacturingPointsRequiredResult>().Any());
+        }
+
+        [Test]
+        public void ProcessTick_FirstOfTwoItemsCompletes_PointsRequiredMatchesRemainingItem()
+        {
+            Building mine1 = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Building mine2 = new Building
+            {
+                InstanceID = "MINE2",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 50,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+
+            ManufacturingPointsRequiredResult pointsResult = results
+                .OfType<ManufacturingPointsRequiredResult>()
+                .First();
+            Assert.AreEqual(50, pointsResult.RequiredPoints);
         }
     }
 }

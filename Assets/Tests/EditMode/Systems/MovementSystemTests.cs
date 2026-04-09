@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -306,9 +309,10 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.ProcessTick();
+            List<GameResult> results = movement.ProcessTick();
 
             Assert.IsNull(officer.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any());
         }
 
         [Test]
@@ -934,13 +938,15 @@ namespace Rebellion.Tests.Systems
             destPlanet.OwnerInstanceID = "rebels";
 
             int transit = mine.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
             for (int i = 0; i < transit; i++)
-                movement.ProcessTick();
+                allResults.AddRange(movement.ProcessTick());
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Building>("mine1"),
                 "Building should be destroyed when destination changes sides during transit."
             );
+            Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]

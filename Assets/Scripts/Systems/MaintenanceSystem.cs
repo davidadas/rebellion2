@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -48,8 +49,10 @@ namespace Rebellion.Systems
         /// Checks each faction for maintenance shortfall and scraps one random
         /// eligible unit per faction per tick if over capacity.
         /// </summary>
-        public void ProcessTick(IRandomNumberProvider provider)
+        public List<GameResult> ProcessTick(IRandomNumberProvider provider)
         {
+            List<GameResult> results = new List<GameResult>();
+
             foreach (Faction faction in _game.GetFactions())
             {
                 int capacity = GetMaintenanceCapacity(faction);
@@ -57,9 +60,13 @@ namespace Rebellion.Systems
 
                 if (required > capacity)
                 {
-                    ScrapRandomUnit(faction, provider);
+                    GameObjectAutoscrappedResult result = ScrapRandomUnit(faction, provider);
+                    if (result != null)
+                        results.Add(result);
                 }
             }
+
+            return results;
         }
 
         /// <summary>
@@ -68,15 +75,19 @@ namespace Rebellion.Systems
         /// Regiments, Starfighters, CapitalShips (not in transit), and Buildings.
         /// Units currently under construction are excluded.
         /// </summary>
-        private void ScrapRandomUnit(Faction faction, IRandomNumberProvider provider)
+        private GameObjectAutoscrappedResult ScrapRandomUnit(
+            Faction faction,
+            IRandomNumberProvider provider
+        )
         {
             List<ISceneNode> candidates = GetScrapCandidates(faction);
 
             if (candidates.Count == 0)
-                return;
+                return null;
 
             int index = provider.NextInt(0, candidates.Count);
             ISceneNode victim = candidates[index];
+            Planet location = victim.GetParentOfType<Planet>();
 
             // Track parent fleet before detaching — may need cleanup if last ship removed.
             Fleet parentFleet = victim is CapitalShip ? victim.GetParent() as Fleet : null;
@@ -92,6 +103,13 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"Maintenance shortfall: scrapped {victim.GetDisplayName()} from {faction.DisplayName}"
             );
+
+            return new GameObjectAutoscrappedResult
+            {
+                DestroyedObject = victim as IGameEntity,
+                Context = location,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>

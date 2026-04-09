@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -33,15 +34,17 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes movement for the current tick.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
+            List<GameResult> results = new List<GameResult>();
             _game
                 .GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IMovable movable)
-                        UpdateMovement(movable);
+                        results.AddRange(UpdateMovement(movable));
                 });
+            return results;
         }
 
         /// <summary>
@@ -162,16 +165,16 @@ namespace Rebellion.Systems
         /// <summary>
         /// Advances the movement of a single unit by one tick and handles arrival.
         /// </summary>
-        private void UpdateMovement(IMovable movable)
+        private List<GameResult> UpdateMovement(IMovable movable)
         {
             if (movable.Movement == null)
-                return;
+                return new List<GameResult>();
 
             if (
                 movable is IManufacturable m
                 && m.GetManufacturingStatus() == ManufacturingStatus.Building
             )
-                return;
+                return new List<GameResult>();
 
             Planet destinationPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
             if (destinationPlanet == null)
@@ -189,7 +192,9 @@ namespace Rebellion.Systems
             );
 
             if (movable.Movement.IsComplete())
-                CheckArrival(movable, destination, destinationPlanet);
+                return CheckArrival(movable, destination, destinationPlanet);
+
+            return new List<GameResult>();
         }
 
         /// <summary>
@@ -214,7 +219,7 @@ namespace Rebellion.Systems
         /// Handles unit arrival at its destination. Destroys buildings if destination changed
         /// sides; reroutes other units. Falls back to HandleArrivalRejection on scene rejection.
         /// </summary>
-        private void CheckArrival(
+        private List<GameResult> CheckArrival(
             IMovable movable,
             ISceneNode destination,
             Planet destinationPlanet
@@ -238,24 +243,33 @@ namespace Rebellion.Systems
                         CurrentPosition = currentPos,
                     };
                 }
-                return;
+                return new List<GameResult>();
             }
 
             // Destination changed sides since dispatch.
             if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
             {
-                if (movable is Building)
+                if (movable is Building building)
                 {
                     _game.DetachNode((ISceneNode)movable);
                     GameLogger.Log(
                         $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
                     );
+                    return new List<GameResult>
+                    {
+                        new GameObjectDestroyedOnArrivalResult
+                        {
+                            DestroyedObject = building,
+                            Context = destinationPlanet,
+                            Tick = _game.CurrentTick,
+                        },
+                    };
                 }
                 else
                 {
                     HandleArrivalRejection(movable, destinationPlanet);
                 }
-                return;
+                return new List<GameResult>();
             }
 
             try
@@ -283,6 +297,16 @@ namespace Rebellion.Systems
                             );
                     }
                 }
+
+                return new List<GameResult>
+                {
+                    new UnitArrivedResult
+                    {
+                        Unit = movable as IGameEntity,
+                        Destination = destinationPlanet,
+                        Tick = _game.CurrentTick,
+                    },
+                };
             }
             catch (SceneAccessException ex)
             {
@@ -291,6 +315,7 @@ namespace Rebellion.Systems
                         + "Attempting fallback to nearest friendly planet."
                 );
                 HandleArrivalRejection(movable, destinationPlanet);
+                return new List<GameResult>();
             }
         }
 

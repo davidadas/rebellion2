@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Systems
 {
@@ -23,8 +24,9 @@ namespace Rebellion.Systems
         /// Processes uprising checks for all owned, populated planets.
         /// </summary>
         /// <param name="provider">Random number provider for dice rolls.</param>
-        public void ProcessTick(IRandomNumberProvider provider)
+        public List<GameResult> ProcessTick(IRandomNumberProvider provider)
         {
+            List<GameResult> results = new List<GameResult>();
             List<Planet> planets = _game.GetSceneNodesByType<Planet>();
 
             foreach (Planet planet in planets)
@@ -83,11 +85,33 @@ namespace Rebellion.Systems
 
                     if (opposingFactionId != null)
                     {
+                        Faction previousOwner = faction;
+                        Faction newOwner = _game.GetFactionByOwnerInstanceID(opposingFactionId);
                         _game.ChangeUnitOwnership(planet, opposingFactionId);
                         planet.BeginUprising();
+
+                        results.Add(
+                            new GameObjectControlChangedResult
+                            {
+                                GameObject = planet,
+                                PreviousOwner = previousOwner,
+                                NewOwner = newOwner,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                        results.Add(
+                            new PlanetUprisingStartedResult
+                            {
+                                Planet = planet,
+                                InstigatorFaction = newOwner,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
                     }
                 }
             }
+
+            return results;
         }
 
         /// <summary>
