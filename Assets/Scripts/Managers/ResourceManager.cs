@@ -48,7 +48,7 @@ public static class ResourceManager
         if (result == null)
             throw new Exception($"Failed to deserialize config: {typeName}");
 
-        return result as T;
+        return (T)result;
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ public static class ResourceManager
             throw new Exception($"Failed to deserialize game data: {pluralizedType}");
         }
 
-        return result as T[];
+        return (T[])result;
     }
 
     /// <summary>

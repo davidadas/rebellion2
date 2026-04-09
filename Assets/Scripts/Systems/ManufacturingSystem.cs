@@ -351,6 +351,7 @@ namespace Rebellion.Systems
                     Faction = faction,
                     DeployedObject = item as IGameEntity,
                     Location = dest as IGameEntity,
+                    Tick = _game.CurrentTick,
                 },
                 new ManufacturingRemainingResult
                 {

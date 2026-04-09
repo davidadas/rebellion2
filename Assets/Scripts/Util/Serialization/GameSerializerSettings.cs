@@ -54,7 +54,7 @@ namespace Rebellion.Util.Serialization
                 settings.ValidationEventHandler += (_, args) =>
                 {
                     if (args.Severity == XmlSeverityType.Error)
-                        throw new XmlSchemaValidationException(args.Message);
+                        throw new XmlSchemaValidationException(args.Message, args.Exception);
                 };
             }
 
