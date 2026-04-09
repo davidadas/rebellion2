@@ -11,6 +11,27 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class EspionageMissionTests
     {
+        private static EspionageMission CreateMission(
+            GameRoot game,
+            string owner,
+            Planet target,
+            List<IMissionParticipant> main,
+            List<IMissionParticipant> decoy,
+            FogOfWarSystem fogOfWar
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = owner,
+                Target = target,
+                MainParticipants = main,
+                DecoyParticipants = decoy,
+                FogOfWar = fogOfWar,
+            };
+            return EspionageMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
@@ -22,7 +43,10 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            EspionageMission mission = new EspionageMission(
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            EspionageMission mission = CreateMission(
+                game,
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -52,7 +76,10 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            EspionageMission mission = new EspionageMission(
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            EspionageMission mission = CreateMission(
+                game,
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -76,7 +103,10 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            EspionageMission mission = new EspionageMission(
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            EspionageMission mission = CreateMission(
+                game,
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -101,7 +131,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_OwnedPlanetTarget_ThrowsInvalidOperationException()
+        public void TryCreate_OwnedPlanetTarget_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -111,15 +141,16 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new EspionageMission(
-                    "empire",
-                    empPlanet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>(),
-                    fog
-                )
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                fog
             );
+
+            Assert.IsNull(mission, "TryCreate should return null for an owned planet target");
         }
 
         [Test]

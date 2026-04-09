@@ -295,20 +295,30 @@ namespace Rebellion.Tests.Systems
             Officer empireOfficer = EntityFactory.CreateOfficer("empire_o1", "empire");
             game.AttachNode(empireOfficer, empirePlanet);
 
-            DiplomacyMission diplomacyMission = new DiplomacyMission(
-                "rebels",
-                rebelsPlanet,
-                new List<IMissionParticipant> { rebelsOfficer },
-                new List<IMissionParticipant>()
+            rebelsPlanet.AddVisitor("rebels");
+
+            DiplomacyMission diplomacyMission = DiplomacyMission.TryCreate(
+                new MissionContext
+                {
+                    OwnerInstanceId = "rebels",
+                    Target = rebelsPlanet,
+                    MainParticipants = new List<IMissionParticipant> { rebelsOfficer },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
             );
             game.AttachNode(diplomacyMission, rebelsPlanet);
 
-            InciteUprisingMission inciteMission = new InciteUprisingMission(
-                "empire",
-                rebelsPlanet,
-                new List<IMissionParticipant> { empireOfficer },
-                new List<IMissionParticipant>(),
-                new ProbabilityTable(new Dictionary<int, int> { { -200, 100 } })
+            InciteUprisingMission inciteMission = InciteUprisingMission.TryCreate(
+                new MissionContext
+                {
+                    OwnerInstanceId = "empire",
+                    Target = rebelsPlanet,
+                    MainParticipants = new List<IMissionParticipant> { empireOfficer },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
+            );
+            inciteMission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
             );
             game.AttachNode(inciteMission, rebelsPlanet);
 

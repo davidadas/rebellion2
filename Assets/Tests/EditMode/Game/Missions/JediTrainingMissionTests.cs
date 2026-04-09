@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -50,95 +49,44 @@ namespace Rebellion.Tests.Game.Missions
             _game.AttachNode(_student, _planet);
         }
 
-        private JediTrainingMission CreateMission(
-            Officer student = null,
-            Officer trainer = null,
-            Planet planet = null
-        )
+        private JediTrainingMission CreateMission(Officer student = null, Planet planet = null)
         {
             student = student ?? _student;
-            trainer = trainer ?? _trainer;
             planet = planet ?? _planet;
 
-            JediTrainingMission mission = new JediTrainingMission(
-                "rebels",
-                planet,
-                new List<IMissionParticipant> { student },
-                new List<IMissionParticipant>(),
-                trainer.InstanceID
-            );
-            _game.AttachNode(mission, planet);
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = "rebels",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { student },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
+            if (mission != null)
+                _game.AttachNode(mission, planet);
             return mission;
         }
 
         [Test]
-        public void Constructor_NullTrainerInstanceId_ThrowsError()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                new JediTrainingMission(
-                    "rebels",
-                    _planet,
-                    new List<IMissionParticipant> { _student },
-                    new List<IMissionParticipant>(),
-                    null
-                )
-            );
-        }
-
-        [Test]
-        public void Constructor_EmptyTrainerInstanceId_ThrowsError()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                new JediTrainingMission(
-                    "rebels",
-                    _planet,
-                    new List<IMissionParticipant> { _student },
-                    new List<IMissionParticipant>(),
-                    ""
-                )
-            );
-        }
-
-        [Test]
-        public void Constructor_StudentNotJedi_ThrowsError()
-        {
-            Officer nonJedi = EntityFactory.CreateOfficer("nonjedi", "rebels");
-            nonJedi.IsJedi = false;
-            nonJedi.IsForceEligible = true;
-            _game.AttachNode(nonJedi, _planet);
-
-            Assert.Throws<InvalidOperationException>(() => CreateMission(student: nonJedi));
-        }
-
-        [Test]
-        public void Constructor_StudentNotForceEligible_ThrowsError()
-        {
-            Officer dormant = EntityFactory.CreateOfficer("dormant", "rebels");
-            dormant.IsJedi = true;
-            dormant.IsForceEligible = false;
-            _game.AttachNode(dormant, _planet);
-
-            Assert.Throws<InvalidOperationException>(() => CreateMission(student: dormant));
-        }
-
-        [Test]
-        public void Constructor_EnemyPlanet_ThrowsError()
+        public void TryCreate_EnemyPlanet_ReturnsNull()
         {
             _planet.OwnerInstanceID = "empire";
 
-            Assert.Throws<InvalidOperationException>(() =>
-                new JediTrainingMission(
-                    "rebels",
-                    _planet,
-                    new List<IMissionParticipant> { _student },
-                    new List<IMissionParticipant>(),
-                    _trainer.InstanceID
-                )
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = "rebels",
+                Target = _planet,
+                MainParticipants = new List<IMissionParticipant> { _student },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
+            Assert.IsNull(mission);
         }
 
         [Test]
-        public void Constructor_ValidArgs_SetsTrainerInstanceID()
+        public void TryCreate_ValidArgs_SetsTrainerInstanceID()
         {
             JediTrainingMission mission = CreateMission();
             Assert.AreEqual(_trainer.InstanceID, mission.TrainerInstanceID);
@@ -239,36 +187,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EmptyParticipants_ThrowsError()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                new JediTrainingMission(
-                    "rebels",
-                    _planet,
-                    new List<IMissionParticipant>(),
-                    new List<IMissionParticipant>(),
-                    _trainer.InstanceID
-                )
-            );
-        }
-
-        [Test]
-        public void Constructor_NonOfficerParticipant_ThrowsError()
-        {
-            SpecialForces spec = new SpecialForces { InstanceID = "sf1", DisplayName = "TestSpec" };
-
-            Assert.Throws<InvalidOperationException>(() =>
-                new JediTrainingMission(
-                    "rebels",
-                    _planet,
-                    new List<IMissionParticipant> { spec },
-                    new List<IMissionParticipant>(),
-                    _trainer.InstanceID
-                )
-            );
-        }
-
-        [Test]
         public void OnSuccess_StudentBelowTrainer_ReturnsForceTrainingResult()
         {
             JediTrainingMission mission = CreateMission();
@@ -297,13 +215,15 @@ namespace Rebellion.Tests.Game.Missions
             student2.JediProbability = 100;
             _game.AttachNode(student2, _planet);
 
-            JediTrainingMission mission = new JediTrainingMission(
-                "rebels",
-                _planet,
-                new List<IMissionParticipant> { _student, student2 },
-                new List<IMissionParticipant>(),
-                _trainer.InstanceID
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = "rebels",
+                Target = _planet,
+                MainParticipants = new List<IMissionParticipant> { _student, student2 },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
             _game.AttachNode(mission, _planet);
             mission.Initiate(new FixedRNG());
             mission.SetExecutionTick(0);
@@ -334,13 +254,15 @@ namespace Rebellion.Tests.Game.Missions
             student2.ForceValue = 10;
             _game.AttachNode(student2, _planet);
 
-            JediTrainingMission mission = new JediTrainingMission(
-                "rebels",
-                _planet,
-                new List<IMissionParticipant> { _student, student2 },
-                new List<IMissionParticipant>(),
-                _trainer.InstanceID
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = "rebels",
+                Target = _planet,
+                MainParticipants = new List<IMissionParticipant> { _student, student2 },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
             _game.AttachNode(mission, _planet);
 
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
@@ -360,13 +282,15 @@ namespace Rebellion.Tests.Game.Missions
             student2.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
             _game.AttachNode(student2, _planet);
 
-            JediTrainingMission mission = new JediTrainingMission(
-                "rebels",
-                _planet,
-                new List<IMissionParticipant> { _student, student2 },
-                new List<IMissionParticipant>(),
-                _trainer.InstanceID
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = "rebels",
+                Target = _planet,
+                MainParticipants = new List<IMissionParticipant> { _student, student2 },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
             _game.AttachNode(mission, _planet);
 
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -12,6 +13,23 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
+        private static SabotageMission CreateSabotageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return SabotageMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_MissionWithDecoy_UsesDecoyParticipantSkill()
         {
@@ -52,14 +70,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant> { decoy }
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.DecoyParticipantSkill = MissionParticipantSkill.Combat;
             mission.DecoyProbabilityTable = new ProbabilityTable(
@@ -94,7 +112,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -122,7 +140,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -150,7 +168,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -180,7 +198,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -218,14 +236,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant>()
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
@@ -267,14 +285,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant> { decoy }
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
@@ -326,7 +344,7 @@ namespace Rebellion.Tests.Game.Missions
 
             int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Combat);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -370,7 +388,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -414,7 +432,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -458,7 +476,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -494,7 +512,7 @@ namespace Rebellion.Tests.Game.Missions
             officer.ForceValue = 10;
             int before = officer.ForceValue;
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -528,7 +546,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             game.AttachNode(decoy, empPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },

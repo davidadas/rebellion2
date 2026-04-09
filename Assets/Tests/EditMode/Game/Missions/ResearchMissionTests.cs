@@ -47,13 +47,15 @@ namespace Rebellion.Tests.Game.Missions
             ManufacturingType type = ManufacturingType.Ship
         )
         {
-            ResearchMission mission = new ResearchMission(
-                "empire",
-                planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                type
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, type);
             game.AttachNode(mission, planet);
             return mission;
         }
@@ -223,23 +225,24 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EnemyPlanet_ThrowsInvalidOperationException()
+        public void TryCreate_EnemyPlanet_ReturnsNull()
         {
             Officer officer = CreateOfficer();
 
             // Change ownership after officer is already placed
             planet.OwnerInstanceID = "rebels";
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            MissionContext ctx = new MissionContext
             {
-                new ResearchMission(
-                    "empire",
-                    planet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>(),
-                    ManufacturingType.Ship
-                );
-            });
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+
+            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
 
         [Test]

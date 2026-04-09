@@ -19,12 +19,30 @@ public class SubdueUprisingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public SubdueUprisingMission(
+    /// <summary>
+    /// Returns a new SubdueUprisingMission if the target is an own planet in uprising, or null.
+    /// </summary>
+    public static SubdueUprisingMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (!planet.IsInUprising || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            return null;
+
+        return new SubdueUprisingMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private SubdueUprisingMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "SubdueUprising",
@@ -33,21 +51,10 @@ public class SubdueUprisingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable
+            null
         )
     {
         DisplayName = "Subdue Uprising";
-        Planet planet = (Planet)target;
-
-        if (!planet.IsInUprising)
-            throw new InvalidOperationException(
-                $"Subdue Uprising target planet '{planet.DisplayName}' is not in uprising."
-            );
-
-        if (planet.GetOwnerInstanceID() != ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Subdue Uprising target planet '{planet.DisplayName}' is owned by another faction."
-            );
     }
 
     /// <summary>

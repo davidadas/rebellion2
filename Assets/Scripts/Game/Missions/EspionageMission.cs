@@ -24,13 +24,35 @@ public class EspionageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
-    public EspionageMission(
+    /// <summary>
+    /// Returns a new EspionageMission if the target is a visited enemy planet, or null.
+    /// </summary>
+    public static EspionageMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (
+            !planet.WasVisitedBy(ctx.OwnerInstanceId)
+            || planet.GetOwnerInstanceID() == ctx.OwnerInstanceId
+        )
+            return null;
+
+        return new EspionageMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            ctx.FogOfWar
+        );
+    }
+
+    private EspionageMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        FogOfWarSystem fogOfWar,
-        ProbabilityTable successProbabilityTable = null
+        FogOfWarSystem fogOfWar
     )
         : base(
             "Espionage",
@@ -39,16 +61,9 @@ public class EspionageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable
+            null
         )
     {
-        Planet planet = (Planet)target;
-
-        if (planet.GetOwnerInstanceID() == ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Espionage target planet '{planet.DisplayName}' is an own planet."
-            );
-
         _fogOfWar = fogOfWar;
     }
 

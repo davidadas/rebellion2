@@ -22,12 +22,27 @@ public class SabotageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
-    public SabotageMission(
+    /// <summary>
+    /// Returns a new SabotageMission if the target is a planet, or null.
+    /// </summary>
+    public static SabotageMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet))
+            return null;
+
+        return new SabotageMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private SabotageMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "Sabotage",
@@ -36,7 +51,7 @@ public class SabotageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable
+            null
         ) { }
 
     /// <summary>

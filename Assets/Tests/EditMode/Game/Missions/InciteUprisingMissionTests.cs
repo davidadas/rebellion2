@@ -11,6 +11,23 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class InciteUprisingMissionTests
     {
+        private InciteUprisingMission CreateInciteUprisingMission(
+            string ownerInstanceId,
+            Planet target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return InciteUprisingMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_EnemyPlanetTarget_StartsUprising()
         {
@@ -22,7 +39,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -50,7 +67,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -70,7 +87,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetAlreadyInUprising_ThrowsInvalidOperationException()
+        public void TryCreate_PlanetAlreadyInUprising_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -81,18 +98,19 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             enemyPlanet.BeginUprising();
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new InciteUprisingMission(
+            Assert.IsNull(
+                CreateInciteUprisingMission(
                     "empire",
                     enemyPlanet,
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant>()
-                )
+                ),
+                "TryCreate should return null when target planet is already in uprising"
             );
         }
 
         [Test]
-        public void Constructor_OwnedPlanetTarget_ThrowsInvalidOperationException()
+        public void TryCreate_OwnedPlanetTarget_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -102,13 +120,14 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new InciteUprisingMission(
+            Assert.IsNull(
+                CreateInciteUprisingMission(
                     "empire",
                     empPlanet,
                     new List<IMissionParticipant> { officer },
                     new List<IMissionParticipant>()
-                )
+                ),
+                "TryCreate should return null when target planet is owned by the mission owner"
             );
         }
 
@@ -123,7 +142,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -155,7 +174,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -183,7 +202,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -225,12 +244,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            InciteUprisingMission mission = new InciteUprisingMission(
+            InciteUprisingMission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                new ProbabilityTable(new Dictionary<int, int> { { -200, 1 }, { 100, 99 } })
+                new List<IMissionParticipant>()
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 1 }, { 100, 99 } }
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());

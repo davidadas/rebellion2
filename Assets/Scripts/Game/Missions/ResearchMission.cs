@@ -26,7 +26,27 @@ public class ResearchMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public ResearchMission(
+    /// <summary>
+    /// Returns a new ResearchMission if the target is an own planet, or null.
+    /// </summary>
+    public static ResearchMission TryCreate(MissionContext ctx, ManufacturingType researchType)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            return null;
+
+        return new ResearchMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            researchType
+        );
+    }
+
+    private ResearchMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
@@ -45,12 +65,6 @@ public class ResearchMission : Mission
     {
         ResearchType = researchType;
         DisplayName = GetMissionName(researchType);
-
-        Planet planet = (Planet)target;
-        if (planet.GetOwnerInstanceID() != ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Research target planet '{planet.DisplayName}' is not owned by this faction."
-            );
     }
 
     /// <summary>

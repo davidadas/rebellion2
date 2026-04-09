@@ -22,12 +22,30 @@ public class InciteUprisingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
-    public InciteUprisingMission(
+    /// <summary>
+    /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.
+    /// </summary>
+    public static InciteUprisingMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (planet.GetOwnerInstanceID() == ctx.OwnerInstanceId || planet.IsInUprising)
+            return null;
+
+        return new InciteUprisingMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private InciteUprisingMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "InciteUprising",
@@ -36,20 +54,10 @@ public class InciteUprisingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable
+            null
         )
     {
         DisplayName = "Incite Uprising";
-        Planet planet = (Planet)target;
-
-        if (planet.GetOwnerInstanceID() == ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Incite Uprising target planet '{planet.DisplayName}' is an own planet."
-            );
-        if (planet.IsInUprising)
-            throw new InvalidOperationException(
-                $"Incite Uprising target planet '{planet.DisplayName}' is already in uprising."
-            );
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class RecruitmentMission : Mission
 {
@@ -22,13 +23,35 @@ public class RecruitmentMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public RecruitmentMission(
+    /// <summary>
+    /// Returns a new RecruitmentMission targeting a random unrecruited officer, or null.
+    /// </summary>
+    public static RecruitmentMission TryCreate(MissionContext ctx)
+    {
+        if (ctx.RNG == null)
+            return null;
+
+        List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
+        if (unrecruited.Count == 0)
+            return null;
+
+        string targetId = unrecruited.RandomElement(ctx.RNG).InstanceID;
+
+        return new RecruitmentMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            targetId
+        );
+    }
+
+    private RecruitmentMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId,
-        ProbabilityTable successProbabilityTable = null
+        string targetOfficerInstanceId
     )
         : base(
             "Recruitment",
@@ -37,12 +60,9 @@ public class RecruitmentMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable
+            null
         )
     {
-        if (string.IsNullOrEmpty(targetOfficerInstanceId))
-            throw new ArgumentNullException(nameof(targetOfficerInstanceId));
-
         if (mainParticipants.OfType<Officer>().Any(o => !o.IsMain))
             throw new ArgumentException(
                 "Only main characters may lead a recruitment mission.",

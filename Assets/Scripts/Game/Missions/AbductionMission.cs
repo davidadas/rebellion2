@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class AbductionMission : Mission
 {
@@ -23,13 +25,50 @@ public class AbductionMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
-    public AbductionMission(
+    /// <summary>
+    /// Returns a new AbductionMission targeting a random non-captured enemy officer, or null.
+    /// </summary>
+    public static AbductionMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet) || ctx.RNG == null)
+            return null;
+
+        string targetId = SelectTarget(ctx.Game, ctx.OwnerInstanceId, planet, ctx.RNG);
+        if (targetId == null)
+            return null;
+
+        return new AbductionMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            targetId
+        );
+    }
+
+    private static string SelectTarget(
+        GameRoot game,
+        string ownerInstanceId,
+        Planet planet,
+        IRandomNumberProvider provider
+    )
+    {
+        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
+            .Where(o =>
+                o.GetOwnerInstanceID() != ownerInstanceId
+                && o.GetParentOfType<Planet>() == planet
+                && !o.IsCaptured
+            )
+            .ToList();
+        return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
+    }
+
+    private AbductionMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId,
-        ProbabilityTable successProbabilityTable = null
+        string targetOfficerInstanceId
     )
         : base(
             "Abduction",
@@ -38,12 +77,9 @@ public class AbductionMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable
+            null
         )
     {
-        if (string.IsNullOrEmpty(targetOfficerInstanceId))
-            throw new ArgumentNullException(nameof(targetOfficerInstanceId));
-
         TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 

@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Game.Missions
@@ -10,6 +11,23 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SabotageMissionTests
     {
+        private static SabotageMission CreateSabotageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return SabotageMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_BuildingOnEnemyPlanet_RemovesBuilding()
         {
@@ -29,7 +47,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -66,7 +84,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -104,7 +122,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -146,7 +164,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },

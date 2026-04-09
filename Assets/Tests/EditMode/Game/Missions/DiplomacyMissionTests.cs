@@ -5,6 +5,7 @@ using Rebellion.Core.Configuration;
 using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
@@ -12,6 +13,23 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class DiplomacyMissionTests
     {
+        private static DiplomacyMission CreateDiplomacyMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return DiplomacyMission.TryCreate(ctx);
+        }
+
         private GameRoot BuildGame(
             out Planet planet,
             int empireSupport,
@@ -32,6 +50,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = planetOwner,
                 IsColonized = true,
                 PopularSupport = new Dictionary<string, int> { { "empire", empireSupport } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             game.AttachNode(planet, system);
             return game;
@@ -39,7 +58,7 @@ namespace Rebellion.Tests.Game.Missions
 
         private DiplomacyMission CreateAndAttachMission(GameRoot game, Planet planet)
         {
-            DiplomacyMission mission = new DiplomacyMission(
+            DiplomacyMission mission = CreateDiplomacyMission(
                 "empire",
                 planet,
                 new List<IMissionParticipant>(),
@@ -149,13 +168,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_UncolonizedPlanet_ThrowsInvalidOperationException()
+        public void TryCreate_UncolonizedPlanet_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             planet.IsColonized = false;
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new DiplomacyMission(
+            Assert.IsNull(
+                CreateDiplomacyMission(
                     "empire",
                     planet,
                     new List<IMissionParticipant>(),
@@ -165,12 +184,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetSupportAtMax_ThrowsInvalidOperationException()
+        public void TryCreate_PlanetSupportAtMax_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 100);
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new DiplomacyMission(
+            Assert.IsNull(
+                CreateDiplomacyMission(
                     "empire",
                     planet,
                     new List<IMissionParticipant>(),
@@ -180,12 +199,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EnemyOwnedPlanet_ThrowsInvalidOperationException()
+        public void TryCreate_EnemyOwnedPlanet_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "rebels");
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new DiplomacyMission(
+            Assert.IsNull(
+                CreateDiplomacyMission(
                     "empire",
                     planet,
                     new List<IMissionParticipant>(),
@@ -195,13 +214,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetInUprising_ThrowsInvalidOperationException()
+        public void TryCreate_PlanetInUprising_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             planet.BeginUprising();
 
-            Assert.Throws<System.InvalidOperationException>(() =>
-                new DiplomacyMission(
+            Assert.IsNull(
+                CreateDiplomacyMission(
                     "empire",
                     planet,
                     new List<IMissionParticipant>(),
@@ -218,7 +237,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, planet);
 
-            DiplomacyMission mission = new DiplomacyMission(
+            DiplomacyMission mission = CreateDiplomacyMission(
                 "empire",
                 planet,
                 new List<IMissionParticipant> { officer },

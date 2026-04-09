@@ -19,12 +19,39 @@ public class DiplomacyMission : Mission
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
-    public DiplomacyMission(
+    /// <summary>
+    /// Returns a new DiplomacyMission if the target is a valid planet, or null.
+    /// </summary>
+    public static DiplomacyMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (
+            !planet.IsColonized
+            || planet.IsInUprising
+            || !planet.WasVisitedBy(ctx.OwnerInstanceId)
+            || planet.GetPopularSupport(ctx.OwnerInstanceId) >= 100
+        )
+            return null;
+
+        string planetOwner = planet.GetOwnerInstanceID();
+        if (planetOwner != null && planetOwner != ctx.OwnerInstanceId)
+            return null;
+
+        return new DiplomacyMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private DiplomacyMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "Diplomacy",
@@ -33,32 +60,8 @@ public class DiplomacyMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Diplomacy,
-            successProbabilityTable
-        )
-    {
-        Planet planet = (Planet)target;
-
-        if (!planet.IsColonized)
-            throw new InvalidOperationException(
-                $"Diplomacy target planet '{planet.DisplayName}' is not colonized."
-            );
-
-        if (planet.GetPopularSupport(ownerInstanceId) == 100)
-            throw new InvalidOperationException(
-                $"Diplomacy target planet '{planet.DisplayName}' already has maximum popular support."
-            );
-
-        string planetOwner = planet.GetOwnerInstanceID();
-        if (planetOwner != null && planetOwner != ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Diplomacy target planet '{planet.DisplayName}' is owned by another faction."
-            );
-
-        if (planet.IsInUprising)
-            throw new InvalidOperationException(
-                $"Diplomacy target planet '{planet.DisplayName}' is in an uprising."
-            );
-    }
+            null
+        ) { }
 
     /// <summary>
     /// Returns false if the planet's state makes further diplomacy invalid at execution time.

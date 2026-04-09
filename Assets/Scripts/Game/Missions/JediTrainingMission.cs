@@ -28,14 +28,48 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Creates a Jedi Training mission at the target planet with the specified trainer.
+    /// Returns a new JediTrainingMission if an eligible trainer exists on an own planet, or null.
+    /// Selects the highest-ranked available trainer automatically.
     /// </summary>
-    /// <param name="ownerInstanceId">Faction that owns the mission.</param>
-    /// <param name="target">Target planet (must be owned by the faction).</param>
-    /// <param name="mainParticipants">The student officer(s) being trained.</param>
-    /// <param name="decoyParticipants">Decoy participants for the mission.</param>
-    /// <param name="trainerInstanceId">InstanceID of the trainer officer.</param>
-    public JediTrainingMission(
+    public static JediTrainingMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            return null;
+
+        string trainerId = SelectTrainer(ctx.Game, ctx.OwnerInstanceId, planet);
+        if (trainerId == null)
+            return null;
+
+        return new JediTrainingMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            trainerId
+        );
+    }
+
+    private static string SelectTrainer(GameRoot game, string ownerInstanceId, Planet planet)
+    {
+        Officer trainer = game.GetSceneNodesByType<Officer>()
+            .Where(o =>
+                o.GetOwnerInstanceID() == ownerInstanceId
+                && o.IsJedi
+                && o.IsJediTrainer
+                && o.IsForceEligible
+                && o.GetParentOfType<Planet>() == planet
+                && !o.IsCaptured
+                && !o.IsOnMission()
+            )
+            .OrderByDescending(o => o.ForceRank)
+            .FirstOrDefault();
+        return trainer?.InstanceID;
+    }
+
+    private JediTrainingMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
@@ -52,36 +86,8 @@ public class JediTrainingMission : Mission
             null
         )
     {
-        if (string.IsNullOrEmpty(trainerInstanceId))
-            throw new ArgumentException(
-                "Jedi Training requires a valid trainer.",
-                nameof(trainerInstanceId)
-            );
-
-        if (mainParticipants == null || mainParticipants.Count == 0)
-            throw new ArgumentException(
-                "Jedi Training requires at least one student.",
-                nameof(mainParticipants)
-            );
-
-        foreach (IMissionParticipant participant in mainParticipants)
-        {
-            if (!(participant is Officer officer))
-                throw new InvalidOperationException("Jedi Training participants must be officers.");
-            if (!officer.IsJedi || !officer.IsForceEligible)
-                throw new InvalidOperationException(
-                    $"Jedi Training student '{officer.DisplayName}' must be a discovered, force-eligible Jedi."
-                );
-        }
-
         TrainerInstanceID = trainerInstanceId;
         DisplayName = "Jedi Training";
-
-        Planet planet = (Planet)target;
-        if (planet.GetOwnerInstanceID() != ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Jedi Training target planet '{planet.DisplayName}' is not owned by this faction."
-            );
     }
 
     /// <summary>

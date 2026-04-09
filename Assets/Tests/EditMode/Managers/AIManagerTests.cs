@@ -59,6 +59,7 @@ namespace Rebellion.Tests.Managers
                 PositionX = 0,
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", popularSupport } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             game.AttachNode(planet, system);
 
@@ -144,6 +145,7 @@ namespace Rebellion.Tests.Managers
                 PositionX = 0,
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             game.AttachNode(planet1, system);
 
@@ -155,6 +157,7 @@ namespace Rebellion.Tests.Managers
                 PositionX = 10,
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             game.AttachNode(planet2, system);
 
@@ -270,6 +273,7 @@ namespace Rebellion.Tests.Managers
                 PositionY = 0,
                 EnergyCapacity = 5,
                 PopularSupport = new Dictionary<string, int> { { "rebels", 20 } },
+                VisitingFactionIDs = new List<string> { "empire" },
             };
             game.AttachNode(enemyPlanet, system);
 
