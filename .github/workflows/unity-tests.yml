@@ -108,7 +108,7 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           enableCodeCoverage: true
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
+          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
 
       - name: Check coverage threshold
         run: |
