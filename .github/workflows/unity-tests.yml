@@ -108,41 +108,31 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           enableCodeCoverage: true
-          coverageOptions: "generateAdditionalMetrics;assemblyFilters:+GameAssembly"
+          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
 
       - name: Check coverage threshold
         run: |
           python3 - <<'EOF'
           import xml.etree.ElementTree as ET, glob, sys
 
-          THRESHOLD = 50.0
+          THRESHOLD = 61.0
 
-          files = glob.glob("artifacts/**/TestCoverageResults_*.xml", recursive=True)
+          files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
           if not files:
-              print("No coverage XML found — skipping threshold check")
+              print("No Summary.xml found — skipping threshold check")
               sys.exit(0)
 
-          total_covered = 0
-          total_coverable = 0
-          for path in files:
-              root = ET.parse(path).getroot()
-              summary = root.find("Summary")
-              if summary is None:
-                  print(f"No top-level Summary found in {path} — skipping file")
-                  continue
-              total_covered   += int(summary.get("visitedSequencePoints", 0))
-              total_coverable += int(summary.get("numSequencePoints", 0))
+          root = ET.parse(files[0]).getroot()
+          summary = root.find("Summary")
+          covered  = int(summary.findtext("Coveredmethods", 0))
+          total    = int(summary.findtext("Totalmethods", 0))
+          pct      = float(summary.findtext("Methodcoverage", 0))
 
-          if total_coverable == 0:
-              print("No coverable lines found — skipping threshold check")
-              sys.exit(0)
-
-          pct = total_covered / total_coverable * 100
-          print(f"Line coverage: {pct:.1f}% ({total_covered}/{total_coverable})")
+          print(f"Method coverage: {pct:.1f}% ({covered}/{total})")
 
           if pct < THRESHOLD:
-              print(f"FAIL: coverage {pct:.1f}% is below threshold {THRESHOLD}%")
+              print(f"FAIL: {pct:.1f}% is below threshold {THRESHOLD}%")
               sys.exit(1)
 
-          print(f"OK: coverage {pct:.1f}% meets threshold {THRESHOLD}%")
+          print(f"OK: {pct:.1f}% meets threshold {THRESHOLD}%")
           EOF

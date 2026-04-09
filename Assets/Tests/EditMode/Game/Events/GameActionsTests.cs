@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public class GameActionsTests
     {
-        private GameRoot BuildGame(out Planet planet)
+        private GameRoot BuildGame(out Planet empPlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -19,24 +19,31 @@ namespace Rebellion.Tests.Game.Events
             game.Factions.Add(new Faction { InstanceID = "rebels" });
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
-            planet = new Planet
+            empPlanet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
             };
-            game.AttachNode(planet, system);
+            game.AttachNode(empPlanet, system);
+            rebelPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(rebelPlanet, system);
             return game;
         }
 
         [Test]
         public void Execute_ValidIDs_PopulatesAttackersAndDefenders()
         {
-            GameRoot game = BuildGame(out Planet planet);
+            GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
             Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
             Officer defender = EntityFactory.CreateOfficer("d1", "rebels");
-            game.AttachNode(attacker, planet);
-            game.AttachNode(defender, planet);
+            game.AttachNode(attacker, empPlanet);
+            game.AttachNode(defender, rebelPlanet);
 
             TriggerDuelAction action = new TriggerDuelAction
             {
@@ -56,9 +63,9 @@ namespace Rebellion.Tests.Game.Events
         [Test]
         public void Execute_StaleInstanceID_IsFilteredFromResult()
         {
-            GameRoot game = BuildGame(out Planet planet);
+            GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
             Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
-            game.AttachNode(attacker, planet);
+            game.AttachNode(attacker, empPlanet);
 
             TriggerDuelAction action = new TriggerDuelAction
             {
