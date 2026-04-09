@@ -221,6 +221,19 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A research cycle completed at a facility (success or failure).
+    /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
+    /// SideConstructionYardResearchDoneEventRecord.
+    /// </summary>
+    public class ResearchCompletedResult : GameResult
+    {
+        public Faction Faction { get; set; }
+        public ManufacturingType FacilityType { get; set; }
+        public bool Success { get; set; }
+        public int ResultCode { get; set; }
+    }
+
+    /// <summary>
     /// A faction's victory condition state changed.
     /// Covers SideVictoryConditionsEventRecord.
     /// </summary>

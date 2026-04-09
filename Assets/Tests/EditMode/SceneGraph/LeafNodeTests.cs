@@ -235,8 +235,8 @@ namespace Rebellion.Tests.SceneGraph
         {
             int callCount = 0;
 
-            _leafNode.Traverse(node => callCount++);
-            _leafNode.Traverse(node => callCount++);
+            _leafNode.Traverse(_ => callCount++);
+            _leafNode.Traverse(_ => callCount++);
 
             Assert.AreEqual(2, callCount);
         }
