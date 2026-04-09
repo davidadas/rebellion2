@@ -151,10 +151,11 @@ namespace Rebellion.Tests.Game.Missions
             mission.Initiate(new FixedRNG());
             mission.SetExecutionTick(0);
 
-            // FixedRNG(0.0): success roll passes, NextInt returns 0 for catch-up
-            List<GameResult> results = mission.Execute(_game, new FixedRNG(0.0));
+            // QueueRNG(0.0, 0.99): first value passes the success roll,
+            // second value (0.99) makes NextInt return near-max of catch-up range
+            mission.Execute(_game, new QueueRNG(0.0, 0.99));
 
-            Assert.GreaterOrEqual(_student.ForceTrainingAdjustment, 0);
+            Assert.Greater(_student.ForceTrainingAdjustment, 0);
         }
 
         [Test]
@@ -184,6 +185,29 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void IsCanceled_TrainerCaptured_ReturnsTrue()
+        {
+            JediTrainingMission mission = CreateMission();
+            _trainer.IsCaptured = true;
+            Assert.IsTrue(mission.IsCanceled(_game));
+        }
+
+        [Test]
+        public void IsCanceled_TrainerKilled_ReturnsTrue()
+        {
+            JediTrainingMission mission = CreateMission();
+            _trainer.IsKilled = true;
+            Assert.IsTrue(mission.IsCanceled(_game));
+        }
+
+        [Test]
+        public void IsCanceled_TrainerAlive_ReturnsFalse()
+        {
+            JediTrainingMission mission = CreateMission();
+            Assert.IsFalse(mission.IsCanceled(_game));
+        }
+
+        [Test]
         public void CanContinue_OwnPlanet_ReturnsTrue()
         {
             JediTrainingMission mission = CreateMission();
@@ -196,6 +220,22 @@ namespace Rebellion.Tests.Game.Missions
             JediTrainingMission mission = CreateMission();
             _planet.OwnerInstanceID = "empire";
             Assert.IsFalse(mission.CanContinue(_game));
+        }
+
+        [Test]
+        public void CanContinue_StudentForceQualified_ReturnsFalse()
+        {
+            JediTrainingMission mission = CreateMission();
+            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+            Assert.IsFalse(mission.CanContinue(_game));
+        }
+
+        [Test]
+        public void CanContinue_StudentBelowForceQualified_ReturnsTrue()
+        {
+            JediTrainingMission mission = CreateMission();
+            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
+            Assert.IsTrue(mission.CanContinue(_game));
         }
     }
 }

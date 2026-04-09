@@ -54,6 +54,7 @@ namespace Rebellion.Game
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
         public bool IsJediTrainer { get; set; }
+        public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
         /// Template flag: true for characters who start the game as known Jedi
@@ -77,15 +78,15 @@ namespace Rebellion.Game
         public bool IsForceEligible { get; set; }
 
         /// <summary>
-        /// Base force power. Grows by +1 per successful mission (GENERAL_PARAM_3081).
-        /// Only initialized when IsForceEligible is true.
+        /// Base force power. Characters with GrowsForceOnMission gain ForceGrowthPerMission
+        /// per successful mission. Only initialized when IsForceEligible is true.
         /// Known Jedi: set at game start from JediLevel + roll(JediLevelVariance).
         /// Potential Jedi: set to 0 until discovered, then initialized from template.
         /// </summary>
         public int ForceValue { get; set; }
 
         /// <summary>
-        /// Bonus from Jedi training missions (teacher/student catch-up mechanic).
+        /// Bonus from Jedi training missions (trainer/student catch-up mechanic).
         /// </summary>
         public int ForceTrainingAdjustment { get; set; }
 

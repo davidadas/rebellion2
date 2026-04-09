@@ -67,12 +67,25 @@ public class JediTrainingMission : Mission
         }
 
         TrainerInstanceID = trainerInstanceId;
+        DisplayName = "Jedi Training";
 
         Planet planet = (Planet)target;
         if (planet.GetOwnerInstanceID() != ownerInstanceId)
             throw new InvalidOperationException(
                 $"Jedi Training target planet '{planet.DisplayName}' is not owned by this faction."
             );
+    }
+
+    /// <summary>
+    /// Cancels if any main participant or the trainer is captured or killed.
+    /// </summary>
+    public override bool IsCanceled(GameRoot game)
+    {
+        if (base.IsCanceled(game))
+            return true;
+
+        Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
+        return trainer?.IsCaptured != false || trainer?.IsKilled != false;
     }
 
     /// <summary>
@@ -137,13 +150,21 @@ public class JediTrainingMission : Mission
     protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
-    /// Training continues as long as the planet remains owned by this faction.
+    /// Training continues as long as the planet remains owned by this faction
+    /// and the student has not yet reached force qualification.
     /// </summary>
     /// <param name="game">The current game state.</param>
-    /// <returns>True if the planet is still owned by this faction.</returns>
+    /// <returns>True if training should continue.</returns>
     public override bool CanContinue(GameRoot game)
     {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
+        if (!(GetParent() is Planet p) || p.GetOwnerInstanceID() != OwnerInstanceID)
+            return false;
+
+        Officer student = MainParticipants.OfType<Officer>().FirstOrDefault();
+        if (student != null && student.ForceRank >= game.Config.Jedi.ForceQualifiedThreshold)
+            return false;
+
+        return true;
     }
 
     /// <summary>

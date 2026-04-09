@@ -1504,6 +1504,7 @@
     <JediProbability>100</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
+    <GrowsForceOnMission>true</GrowsForceOnMission>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1551,6 +1552,7 @@
     <JediLevelVariance>0</JediLevelVariance>
     <IsKnownJedi>true</IsKnownJedi>
     <IsJediTrainer>true</IsJediTrainer>
+    <GrowsForceOnMission>true</GrowsForceOnMission>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>

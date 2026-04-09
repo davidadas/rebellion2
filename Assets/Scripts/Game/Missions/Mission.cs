@@ -283,6 +283,31 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
+    /// Grants ForceGrowthPerMission to eligible main participants.
+    /// </summary>
+    private void ApplyForceGrowth(GameRoot game)
+    {
+        int growth = game.Config.Jedi.ForceGrowthPerMission;
+        if (growth <= 0)
+            return;
+
+        foreach (IMissionParticipant participant in MainParticipants)
+        {
+            if (
+                participant is Officer officer
+                && officer.GrowsForceOnMission
+                && officer.IsForceEligible
+            )
+            {
+                officer.ForceValue += growth;
+                GameLogger.Log(
+                    $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
+                );
+            }
+        }
+    }
+
+    /// <summary>
     /// Executes the mission, determines the outcome, and returns all results.
     /// MissionCompletedResult is always the last item in the list.
     /// </summary>
@@ -309,6 +334,7 @@ public abstract class Mission : ContainerNode
                 outcome = MissionOutcome.Success;
                 results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
+                ApplyForceGrowth(game);
             }
         }
         else if (CheckMissionFoiled(provider, foilProbability))

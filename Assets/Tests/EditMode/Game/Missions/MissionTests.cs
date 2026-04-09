@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Systems;
@@ -342,6 +343,174 @@ namespace Rebellion.Tests.Game.Missions
                 skillBefore + 1,
                 officer.GetSkillValue(MissionParticipantSkill.Combat),
                 "Officer skill should improve by 1 on mission success"
+            );
+        }
+
+        [Test]
+        public void Execute_Success_GrowsForceOnMissionOfficer()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            int before = officer.ForceValue;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(building, enemyPlanet);
+
+            SabotageMission mission = new SabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                before + game.Config.Jedi.ForceGrowthPerMission,
+                officer.ForceValue,
+                "Officer with GrowsForceOnMission should gain ForceValue on success"
+            );
+        }
+
+        [Test]
+        public void Execute_Success_DoesNotGrowForce_WhenFlagFalse()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            officer.GrowsForceOnMission = false;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            int before = officer.ForceValue;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(building, enemyPlanet);
+
+            SabotageMission mission = new SabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                before,
+                officer.ForceValue,
+                "Officer without GrowsForceOnMission should not gain ForceValue"
+            );
+        }
+
+        [Test]
+        public void Execute_Success_DoesNotGrowForce_WhenNotForceEligible()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = false;
+            officer.ForceValue = 10;
+            int before = officer.ForceValue;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(building, enemyPlanet);
+
+            SabotageMission mission = new SabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(
+                before,
+                officer.ForceValue,
+                "Officer not force-eligible should not gain ForceValue even with GrowsForceOnMission"
+            );
+        }
+
+        [Test]
+        public void Execute_Failure_DoesNotGrowForce()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            officer.GrowsForceOnMission = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            int before = officer.ForceValue;
+
+            SabotageMission mission = new SabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            mission.Execute(game, new FixedRNG(0.99));
+
+            Assert.AreEqual(
+                before,
+                officer.ForceValue,
+                "Force growth should not apply on mission failure"
             );
         }
 

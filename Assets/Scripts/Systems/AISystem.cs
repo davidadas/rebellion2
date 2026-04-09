@@ -908,6 +908,15 @@ namespace Rebellion.Systems
                     return MissionType.Diplomacy;
             }
 
+            // JediTraining: force-eligible Jedi below qualification threshold on owned planet
+            if (
+                owner == factionId
+                && officer.IsJedi
+                && officer.IsForceEligible
+                && officer.ForceRank < _game.Config.Jedi.ForceQualifiedThreshold
+            )
+                return MissionType.JediTraining;
+
             // Recruitment: main characters only, owned planet, unrecruited officers available
             if (
                 officer.IsMain

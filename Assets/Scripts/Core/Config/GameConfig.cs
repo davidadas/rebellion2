@@ -90,6 +90,38 @@ public class GameConfig
             );
         }
 
+        // Jedi validation
+        if (Jedi.ForceQualifiedThreshold <= 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Jedi.ForceQualifiedThreshold must be positive"
+            );
+        }
+        if (Jedi.DiscoveringForceUserThreshold <= 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Jedi.DiscoveringForceUserThreshold must be positive"
+            );
+        }
+        if (Jedi.DiscoveringForceUserThreshold >= Jedi.ForceQualifiedThreshold)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Jedi.DiscoveringForceUserThreshold must be less than ForceQualifiedThreshold"
+            );
+        }
+        if (Jedi.TrainingCatchUpPercent < 0 || Jedi.TrainingCatchUpPercent > 100)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Jedi.TrainingCatchUpPercent must be between 0 and 100"
+            );
+        }
+        if (Jedi.FastHealThreshold <= 0)
+        {
+            throw new InvalidOperationException(
+                "GameConfig.Jedi.FastHealThreshold must be positive"
+            );
+        }
+
         // Research validation
         if (Research.BaseResearchPoints <= 0)
         {

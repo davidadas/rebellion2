@@ -113,6 +113,54 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
+        public void Validate_Jedi_ZeroForceQualifiedThreshold_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.ForceQualifiedThreshold = 0;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
+        public void Validate_Jedi_ZeroDiscoveringThreshold_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.DiscoveringForceUserThreshold = 0;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
+        public void Validate_Jedi_DiscoveringThresholdAboveQualified_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.DiscoveringForceUserThreshold = config.Jedi.ForceQualifiedThreshold;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
+        public void Validate_Jedi_CatchUpPercentOutOfRange_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.TrainingCatchUpPercent = 101;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
+        public void Validate_Jedi_NegativeCatchUpPercent_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.TrainingCatchUpPercent = -1;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
+        public void Validate_Jedi_ZeroFastHealThreshold_Throws()
+        {
+            GameConfig config = ConfigLoader.LoadGameConfig();
+            config.Jedi.FastHealThreshold = 0;
+            Assert.Throws<InvalidOperationException>(() => config.Validate());
+        }
+
+        [Test]
         public void GameManager_InjectsConfig_WhenGameHasNone()
         {
             GameRoot game = new GameRoot();
