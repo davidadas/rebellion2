@@ -160,7 +160,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode1.AddChild(_nodeA1);
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: false
             );
 
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_nodeA2);
 
             IEnumerable<MockContainerNodeA> result = _rootNode.GetChildren<MockContainerNodeA>(
-                _ => true,
+                null,
                 recurse: false
             );
 
@@ -210,7 +210,7 @@ namespace Rebellion.Tests.SceneGraph
         public void GetChildren_NonRecursiveEmptyChildren_ReturnsEmptyCollection()
         {
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: false
             );
 
@@ -223,7 +223,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode1);
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: false
             );
 
@@ -244,7 +244,7 @@ namespace Rebellion.Tests.SceneGraph
             _childNode2.AddChild(_nodeB1);
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -287,7 +287,7 @@ namespace Rebellion.Tests.SceneGraph
             _nodeB1.AddChild(_nodeA2);
 
             IEnumerable<MockContainerNodeA> result = _rootNode.GetChildren<MockContainerNodeA>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -306,7 +306,7 @@ namespace Rebellion.Tests.SceneGraph
             _nodeA1.AddChild(_nodeB1);
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.SceneGraph
             }
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -420,7 +420,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_childNode1);
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -444,7 +444,7 @@ namespace Rebellion.Tests.SceneGraph
             rootA.AddChild(_nodeA2);
 
             IEnumerable<MockContainerNodeA> result = rootA.GetChildren<MockContainerNodeA>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -654,7 +654,7 @@ namespace Rebellion.Tests.SceneGraph
         public void GetChildren_RecursiveEmptyHierarchy_ReturnsEmptyCollection()
         {
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -686,7 +686,7 @@ namespace Rebellion.Tests.SceneGraph
             _rootNode.AddChild(_nodeA2);
 
             IEnumerable<MockContainerNodeB> result = _rootNode.GetChildren<MockContainerNodeB>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -739,7 +739,7 @@ namespace Rebellion.Tests.SceneGraph
             }
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: false
             );
 
@@ -770,7 +770,7 @@ namespace Rebellion.Tests.SceneGraph
             }
 
             IEnumerable<MockContainerNode> result = _rootNode.GetChildren<MockContainerNode>(
-                _ => true,
+                null,
                 recurse: true
             );
 
@@ -790,17 +790,17 @@ namespace Rebellion.Tests.SceneGraph
             _nodeB1.AddChild(_nodeA2);
 
             IEnumerable<MockContainerNodeA> resultA = _rootNode.GetChildren<MockContainerNodeA>(
-                _ => true,
+                null,
                 recurse: true
             );
 
             IEnumerable<MockContainerNodeB> resultB = _rootNode.GetChildren<MockContainerNodeB>(
-                _ => true,
+                null,
                 recurse: true
             );
 
             IEnumerable<MockContainerNodeC> resultC = _rootNode.GetChildren<MockContainerNodeC>(
-                _ => true,
+                null,
                 recurse: true
             );
 
