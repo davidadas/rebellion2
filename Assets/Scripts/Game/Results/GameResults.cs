@@ -453,17 +453,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A Jedi-related event: tier advancement, training completion, or discovery.
-    /// </summary>
-    public class JediResult : GameResult
-    {
-        public JediEventType EventType { get; set; }
-        public Officer Officer { get; set; }
-        public ForceTier OldTier { get; set; }
-        public ForceTier NewTier { get; set; }
-    }
-
-    /// <summary>
     /// Luke completed Dagobah training.
     /// Covers LukeDagobahCompletedEventRecord.
     /// </summary>

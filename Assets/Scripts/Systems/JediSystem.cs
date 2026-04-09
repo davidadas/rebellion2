@@ -5,9 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Manages Force discovery state and force user scanning each tick.
-/// </summary>
 namespace Rebellion.Systems
 {
     /// <summary>
