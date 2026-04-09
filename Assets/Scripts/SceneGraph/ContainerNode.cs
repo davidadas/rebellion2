@@ -25,6 +25,7 @@ namespace Rebellion.SceneGraph
         public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recurse = true)
         {
             List<T> matchingChildren = new List<T>();
+            predicate ??= _ => true;
 
             if (recurse)
             {
