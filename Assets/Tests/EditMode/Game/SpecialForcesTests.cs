@@ -262,6 +262,31 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void CanImproveMissionSkill_Always_ReturnsFalse()
+        {
+            Assert.IsFalse(
+                _specialForces.CanImproveMissionSkill,
+                "SpecialForces should not gain skills from missions"
+            );
+        }
+
+        [Test]
+        public void CanPerformMission_AllowedType_ReturnsTrue()
+        {
+            _specialForces.AllowedMissionTypes.Add(MissionType.Espionage);
+
+            Assert.IsTrue(_specialForces.CanPerformMission(MissionType.Espionage));
+        }
+
+        [Test]
+        public void CanPerformMission_DisallowedType_ReturnsFalse()
+        {
+            _specialForces.AllowedMissionTypes.Add(MissionType.Espionage);
+
+            Assert.IsFalse(_specialForces.CanPerformMission(MissionType.Sabotage));
+        }
+
+        [Test]
         public void SerializeAndDeserialize_WithPopulatedSpecialForces_MaintainsState()
         {
             string serialized = SerializationHelper.Serialize(_specialForces);

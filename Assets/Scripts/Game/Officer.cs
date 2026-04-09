@@ -150,6 +150,8 @@ namespace Rebellion.Game
             };
         public bool CanImproveMissionSkill => true;
 
+        public bool CanPerformMission(MissionType missionType) => true;
+
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
             Skills[skill] = value;
 

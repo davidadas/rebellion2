@@ -8,26 +8,6 @@ using Rebellion.Systems;
 using Rebellion.Util.Extensions;
 
 /// <summary>
-/// Identifies the type of covert mission to create.
-/// </summary>
-public enum MissionType
-{
-    Diplomacy,
-    Recruitment,
-    SubdueUprising,
-    Abduction,
-    Assassination,
-    Espionage,
-    Sabotage,
-    InciteUprising,
-    Rescue,
-    ShipDesignResearch,
-    TroopTrainingResearch,
-    FacilityDesignResearch,
-    JediTraining,
-}
-
-/// <summary>
 /// Factory class for creating missions based on type and parameters.
 /// </summary>
 public class MissionFactory
@@ -126,6 +106,20 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
+        Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
+        if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
+            throw new InvalidOperationException(
+                $"Faction '{ownerInstanceId}' cannot perform {missionType} missions."
+            );
+
+        foreach (IMissionParticipant participant in mainParticipants.Concat(decoyParticipants))
+        {
+            if (!participant.CanPerformMission(missionType))
+                throw new InvalidOperationException(
+                    $"Participant '{((ISceneNode)participant).GetDisplayName()}' cannot perform {missionType} missions."
+                );
+        }
+
         GameConfig.MissionProbabilityTablesConfig missionTables = _game
             .Config
             ?.ProbabilityTables

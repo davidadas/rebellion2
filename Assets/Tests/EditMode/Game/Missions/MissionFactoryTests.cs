@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Core.Configuration;
@@ -287,6 +288,141 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Diplomacy, "empire", officer));
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Espionage, "empire", officer));
             Assert.IsFalse(_factory.CanCreateMission(MissionType.Sabotage, "empire", officer));
+        }
+
+        [Test]
+        public void CreateMission_FactionDisallowedMissionType_ThrowsError()
+        {
+            Faction faction = _game.Factions.Find(f => f.InstanceID == "empire");
+            faction.DisallowedMissionTypes.Add(MissionType.Sabotage);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            _game.AttachNode(officer, _ownPlanet);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _factory.CreateMission(
+                    MissionType.Sabotage,
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>(),
+                    _ownPlanet
+                )
+            );
+        }
+
+        [Test]
+        public void CreateMission_FactionAllowedMissionType_CreatesMission()
+        {
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            _game.AttachNode(officer, _ownPlanet);
+
+            Mission mission = _factory.CreateMission(
+                MissionType.Sabotage,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                _ownPlanet
+            );
+
+            Assert.IsNotNull(mission);
+            Assert.IsInstanceOf<SabotageMission>(mission);
+        }
+
+        [Test]
+        public void CreateMission_SpecialForcesNotAllowedForMissionType_ThrowsError()
+        {
+            SpecialForces spec = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "TestSpec",
+                AllowedMissionTypes = new List<MissionType> { MissionType.Espionage },
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _factory.CreateMission(
+                    MissionType.Sabotage,
+                    "empire",
+                    new List<IMissionParticipant> { spec },
+                    new List<IMissionParticipant>(),
+                    _ownPlanet
+                )
+            );
+        }
+
+        [Test]
+        public void CreateMission_SpecialForcesAllowedForMissionType_CreatesMission()
+        {
+            SpecialForces spec = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "TestSpec",
+                AllowedMissionTypes = new List<MissionType> { MissionType.Sabotage },
+            };
+
+            Mission mission = _factory.CreateMission(
+                MissionType.Sabotage,
+                "empire",
+                new List<IMissionParticipant> { spec },
+                new List<IMissionParticipant>(),
+                _ownPlanet
+            );
+
+            Assert.IsNotNull(mission);
+            Assert.IsInstanceOf<SabotageMission>(mission);
+        }
+
+        [Test]
+        public void CanPerformMission_Officer_ReturnsTrue()
+        {
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            _game.AttachNode(officer, _ownPlanet);
+
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Sabotage));
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Espionage));
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Assassination));
+        }
+
+        [Test]
+        public void CanPerformMission_SpecialForces_RespectsAllowedList()
+        {
+            SpecialForces spec = new SpecialForces
+            {
+                InstanceID = "sf1",
+                AllowedMissionTypes = new List<MissionType>
+                {
+                    MissionType.Espionage,
+                    MissionType.Sabotage,
+                },
+            };
+
+            Assert.IsTrue(spec.CanPerformMission(MissionType.Espionage));
+            Assert.IsTrue(spec.CanPerformMission(MissionType.Sabotage));
+            Assert.IsFalse(spec.CanPerformMission(MissionType.Assassination));
+            Assert.IsFalse(spec.CanPerformMission(MissionType.Rescue));
+        }
+
+        [Test]
+        public void CreateMission_DecoySpecialForcesNotAllowed_ThrowsError()
+        {
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            _game.AttachNode(officer, _ownPlanet);
+
+            SpecialForces decoy = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "DecoySpec",
+                AllowedMissionTypes = new List<MissionType> { MissionType.Espionage },
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _factory.CreateMission(
+                    MissionType.Sabotage,
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant> { decoy },
+                    _ownPlanet
+                )
+            );
         }
     }
 }

@@ -13,6 +13,7 @@ namespace Rebellion.Game
     {
         // Faction Info
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
+        public List<MissionType> DisallowedMissionTypes { get; set; } = new List<MissionType>();
 
         /// <summary>
         /// Faction-specific gameplay modifiers.
