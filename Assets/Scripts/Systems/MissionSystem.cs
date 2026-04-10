@@ -42,8 +42,8 @@ namespace Rebellion.Systems
             MissionType missionType,
             string ownerInstanceId,
             ISceneNode target,
-            IRandomNumberProvider provider = null
-        ) => _missionFactory.CanCreateMission(missionType, ownerInstanceId, target, provider);
+            Officer targetOfficer = null
+        ) => _missionFactory.CanCreateMission(missionType, ownerInstanceId, target, targetOfficer);
 
         /// <summary>
         /// Initiates a mission with a single participant and target.
@@ -52,7 +52,8 @@ namespace Rebellion.Systems
             MissionType missionType,
             IMissionParticipant participant,
             ISceneNode target,
-            IRandomNumberProvider provider
+            IRandomNumberProvider provider,
+            Officer targetOfficer = null
         )
         {
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>
@@ -68,7 +69,8 @@ namespace Rebellion.Systems
                 mainParticipants,
                 decoyParticipants,
                 target,
-                provider
+                provider,
+                targetOfficer
             );
 
             Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();

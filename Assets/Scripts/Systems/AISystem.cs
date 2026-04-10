@@ -102,8 +102,7 @@ namespace Rebellion.Systems
                     !_missionManager.CanCreateMission(
                         MissionType.SubdueUprising,
                         faction.InstanceID,
-                        planet,
-                        _randomProvider
+                        planet
                     )
                 )
                     continue;
@@ -683,8 +682,7 @@ namespace Rebellion.Systems
                             !_missionManager.CanCreateMission(
                                 missionType.Value,
                                 faction.InstanceID,
-                                friendlyTarget,
-                                _randomProvider
+                                friendlyTarget
                             )
                         )
                             continue;
@@ -706,33 +704,34 @@ namespace Rebellion.Systems
                 if (enemyTarget == null)
                     continue;
 
-                MissionType? enemyMissionType = SelectEnemyMissionType(
+                (MissionType Type, Officer TargetOfficer)? enemySelection = SelectEnemyMissionType(
                     faction,
                     officer,
                     enemyTarget,
                     tables
                 );
-                if (enemyMissionType == null)
+                if (enemySelection == null)
                     continue;
 
                 if (
                     !_missionManager.CanCreateMission(
-                        enemyMissionType.Value,
+                        enemySelection.Value.Type,
                         faction.InstanceID,
                         enemyTarget,
-                        _randomProvider
+                        enemySelection.Value.TargetOfficer
                     )
                 )
                     continue;
 
                 GameLogger.Log(
-                    $"Sending {officer.GetDisplayName()} on {enemyMissionType} mission to {enemyTarget.GetDisplayName()}."
+                    $"Sending {officer.GetDisplayName()} on {enemySelection.Value.Type} mission to {enemyTarget.GetDisplayName()}."
                 );
                 _missionManager.InitiateMission(
-                    enemyMissionType.Value,
+                    enemySelection.Value.Type,
                     officer,
                     enemyTarget,
-                    _randomProvider
+                    _randomProvider,
+                    enemySelection.Value.TargetOfficer
                 );
             }
         }
@@ -784,7 +783,8 @@ namespace Rebellion.Systems
         /// <param name="officer">The officer to assign.</param>
         /// <param name="target">The enemy planet being targeted.</param>
         /// <param name="tables">Cached probability tables for mission dispatch.</param>
-        private MissionType? SelectEnemyMissionType(
+        /// <returns>The chosen mission type and the specific target officer (if applicable), or null.</returns>
+        private (MissionType Type, Officer TargetOfficer)? SelectEnemyMissionType(
             Faction faction,
             Officer officer,
             Planet target,
@@ -809,7 +809,7 @@ namespace Rebellion.Systems
                     - enemySupport
                     - enemyStrength;
                 if (tables.InciteUprising.Lookup(score) > 0)
-                    return MissionType.InciteUprising;
+                    return (MissionType.InciteUprising, null);
             }
 
             // Espionage: any enemy planet
@@ -817,7 +817,7 @@ namespace Rebellion.Systems
             {
                 int score = officer.GetSkillValue(MissionParticipantSkill.Espionage);
                 if (tables.Espionage.Lookup(score) > 0)
-                    return MissionType.Espionage;
+                    return (MissionType.Espionage, null);
             }
 
             // Sabotage: enemy planet with buildings
@@ -832,7 +832,7 @@ namespace Rebellion.Systems
                 int score =
                     (officer.GetSkillValue(MissionParticipantSkill.Espionage) + defenderCombat) / 2;
                 if (tables.Sabotage.Lookup(score) > 0)
-                    return MissionType.Sabotage;
+                    return (MissionType.Sabotage, null);
             }
 
             // Abduction: enemy planet with an un-captured enemy officer
@@ -847,7 +847,7 @@ namespace Rebellion.Systems
                     officer.GetSkillValue(MissionParticipantSkill.Combat)
                     - abductTarget.GetSkillValue(MissionParticipantSkill.Combat);
                 if (tables.Abduction.Lookup(score) > 0)
-                    return MissionType.Abduction;
+                    return (MissionType.Abduction, abductTarget);
             }
 
             // Assassination: enemy planet with a live enemy officer
@@ -864,7 +864,7 @@ namespace Rebellion.Systems
                     officer.GetSkillValue(MissionParticipantSkill.Combat)
                     - assassinTarget.GetSkillValue(MissionParticipantSkill.Combat);
                 if (tables.Assassination.Lookup(score) > 0)
-                    return MissionType.Assassination;
+                    return (MissionType.Assassination, assassinTarget);
             }
 
             // Rescue: enemy planet holding one of our captured officers
@@ -877,7 +877,7 @@ namespace Rebellion.Systems
             {
                 int score = captive.GetSkillValue(MissionParticipantSkill.Combat);
                 if (tables.Rescue.Lookup(score) > 0)
-                    return MissionType.Rescue;
+                    return (MissionType.Rescue, captive);
             }
 
             return null;

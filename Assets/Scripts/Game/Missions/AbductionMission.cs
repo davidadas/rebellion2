@@ -25,15 +25,21 @@ public class AbductionMission : Mission
     }
 
     /// <summary>
-    /// Returns a new AbductionMission targeting a random non-captured enemy officer, or null.
+    /// Returns a new AbductionMission for the specified target officer, or null if the
+    /// target is not a valid abduction target (not an enemy, already captured, wrong planet).
     /// </summary>
     public static AbductionMission TryCreate(MissionContext ctx)
     {
-        if (!(ctx.Target is Planet planet) || ctx.RNG == null)
+        if (!(ctx.Target is Planet planet))
             return null;
 
-        string targetId = SelectTarget(ctx.Game, ctx.OwnerInstanceId, planet, ctx.RNG);
-        if (targetId == null)
+        Officer target = ctx.TargetOfficer;
+        if (
+            target == null
+            || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
+            || target.IsCaptured
+            || target.GetParentOfType<Planet>() != planet
+        )
             return null;
 
         return new AbductionMission(
@@ -41,25 +47,8 @@ public class AbductionMission : Mission
             ctx.Target,
             ctx.MainParticipants,
             ctx.DecoyParticipants,
-            targetId
+            target.InstanceID
         );
-    }
-
-    private static string SelectTarget(
-        GameRoot game,
-        string ownerInstanceId,
-        Planet planet,
-        IRandomNumberProvider provider
-    )
-    {
-        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
-            .Where(o =>
-                o.GetOwnerInstanceID() != ownerInstanceId
-                && o.GetParentOfType<Planet>() == planet
-                && !o.IsCaptured
-            )
-            .ToList();
-        return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
     }
 
     private AbductionMission(

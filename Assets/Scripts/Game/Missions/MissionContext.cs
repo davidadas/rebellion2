@@ -16,4 +16,9 @@ public class MissionContext
     public List<IMissionParticipant> DecoyParticipants { get; set; }
     public IRandomNumberProvider RNG { get; set; }
     public FogOfWarSystem FogOfWar { get; set; }
+
+    /// <summary>
+    /// The specific officer to target for Abduction, Assassination, and Rescue missions.
+    /// </summary>
+    public Officer TargetOfficer { get; set; }
 }

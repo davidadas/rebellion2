@@ -25,15 +25,21 @@ public class RescueMission : Mission
     }
 
     /// <summary>
-    /// Returns a new RescueMission targeting a random captured friendly officer, or null.
+    /// Returns a new RescueMission for the specified captured friendly officer, or null if the
+    /// target is not a valid rescue target (not friendly, not captured, wrong planet).
     /// </summary>
     public static RescueMission TryCreate(MissionContext ctx)
     {
-        if (!(ctx.Target is Planet planet) || ctx.RNG == null)
+        if (!(ctx.Target is Planet planet))
             return null;
 
-        string targetId = SelectTarget(ctx.Game, ctx.OwnerInstanceId, planet, ctx.RNG);
-        if (targetId == null)
+        Officer target = ctx.TargetOfficer;
+        if (
+            target == null
+            || target.GetOwnerInstanceID() != ctx.OwnerInstanceId
+            || !target.IsCaptured
+            || target.GetParentOfType<Planet>() != planet
+        )
             return null;
 
         return new RescueMission(
@@ -41,25 +47,8 @@ public class RescueMission : Mission
             ctx.Target,
             ctx.MainParticipants,
             ctx.DecoyParticipants,
-            targetId
+            target.InstanceID
         );
-    }
-
-    private static string SelectTarget(
-        GameRoot game,
-        string ownerInstanceId,
-        Planet planet,
-        IRandomNumberProvider provider
-    )
-    {
-        List<Officer> captured = game.GetSceneNodesByType<Officer>()
-            .Where(o =>
-                o.GetOwnerInstanceID() == ownerInstanceId
-                && o.IsCaptured
-                && o.GetParentOfType<Planet>() == planet
-            )
-            .ToList();
-        return captured.Count > 0 ? captured.RandomElement(provider).InstanceID : null;
     }
 
     private RescueMission(

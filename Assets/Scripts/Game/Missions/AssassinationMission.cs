@@ -25,15 +25,22 @@ public class AssassinationMission : Mission
     }
 
     /// <summary>
-    /// Returns a new AssassinationMission targeting a random living enemy officer, or null.
+    /// Returns a new AssassinationMission for the specified target officer, or null if the
+    /// target is not a valid assassination target (not an enemy, captured, killed, wrong planet).
     /// </summary>
     public static AssassinationMission TryCreate(MissionContext ctx)
     {
-        if (!(ctx.Target is Planet planet) || ctx.RNG == null)
+        if (!(ctx.Target is Planet planet))
             return null;
 
-        string targetId = SelectTarget(ctx.Game, ctx.OwnerInstanceId, planet, ctx.RNG);
-        if (targetId == null)
+        Officer target = ctx.TargetOfficer;
+        if (
+            target == null
+            || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
+            || target.IsCaptured
+            || target.IsKilled
+            || target.GetParentOfType<Planet>() != planet
+        )
             return null;
 
         return new AssassinationMission(
@@ -41,26 +48,8 @@ public class AssassinationMission : Mission
             ctx.Target,
             ctx.MainParticipants,
             ctx.DecoyParticipants,
-            targetId
+            target.InstanceID
         );
-    }
-
-    private static string SelectTarget(
-        GameRoot game,
-        string ownerInstanceId,
-        Planet planet,
-        IRandomNumberProvider provider
-    )
-    {
-        List<Officer> enemies = game.GetSceneNodesByType<Officer>()
-            .Where(o =>
-                o.GetOwnerInstanceID() != ownerInstanceId
-                && o.GetParentOfType<Planet>() == planet
-                && !o.IsCaptured
-                && !o.IsKilled
-            )
-            .ToList();
-        return enemies.Count > 0 ? enemies.RandomElement(provider).InstanceID : null;
     }
 
     private AssassinationMission(

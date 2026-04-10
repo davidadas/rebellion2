@@ -16,7 +16,8 @@ namespace Rebellion.Tests.Game.Missions
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
+            List<IMissionParticipant> decoyParticipants,
+            Officer targetOfficer
         )
         {
             MissionContext ctx = new MissionContext
@@ -26,7 +27,7 @@ namespace Rebellion.Tests.Game.Missions
                 Target = target,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                RNG = new StubRNG(),
+                TargetOfficer = targetOfficer,
             };
             return RescueMission.TryCreate(ctx);
         }
@@ -51,7 +52,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -81,7 +83,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -117,7 +120,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -155,7 +159,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -195,7 +200,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -235,7 +241,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -275,7 +282,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                captive
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -311,7 +319,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 null,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                null
             );
 
             Assert.IsNull(mission, "TryCreate should return null when target is null");
@@ -333,7 +342,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 officer,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                null
             );
 
             Assert.IsNull(mission, "TryCreate should return null when target is not a Planet");
@@ -350,13 +360,14 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            // No captured friendly officers on enemyPlanet — TryCreate has no valid target
+            // No target officer provided — TryCreate should return null
             RescueMission mission = CreateRescueMission(
                 game,
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                null
             );
 
             Assert.IsNull(

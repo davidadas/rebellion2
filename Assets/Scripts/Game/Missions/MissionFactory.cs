@@ -29,7 +29,7 @@ public class MissionFactory
         MissionType missionType,
         string ownerInstanceId,
         ISceneNode target,
-        IRandomNumberProvider provider = null
+        Officer targetOfficer = null
     )
     {
         Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
@@ -43,8 +43,8 @@ public class MissionFactory
             Target = target,
             MainParticipants = new List<IMissionParticipant>(),
             DecoyParticipants = new List<IMissionParticipant>(),
-            RNG = provider,
             FogOfWar = _fogOfWar,
+            TargetOfficer = targetOfficer,
         };
 
         return RouteToTryCreate(missionType, ctx) != null;
@@ -60,7 +60,8 @@ public class MissionFactory
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         ISceneNode target,
-        IRandomNumberProvider provider = null
+        IRandomNumberProvider provider = null,
+        Officer targetOfficer = null
     )
     {
         if (mainParticipants == null || mainParticipants.Count == 0)
@@ -92,6 +93,7 @@ public class MissionFactory
             DecoyParticipants = decoyParticipants,
             RNG = provider,
             FogOfWar = _fogOfWar,
+            TargetOfficer = targetOfficer,
         };
 
         Mission mission =
