@@ -62,6 +62,24 @@ public class SabotageMission : Mission
     }
 
     /// <summary>
+    /// Sabotage awards both Combat +1 and Espionage +1 on success.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill()
+    {
+        base.ImproveMissionParticipantsSkill();
+        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+        {
+            if (participant.CanImproveMissionSkill)
+            {
+                participant.SetMissionSkillValue(
+                    MissionParticipantSkill.Espionage,
+                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
+                );
+            }
+        }
+    }
+
+    /// <summary>
     /// Destroys the first building on the target planet.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
@@ -81,24 +99,6 @@ public class SabotageMission : Mission
                 Tick = game.CurrentTick,
             },
         };
-    }
-
-    /// <summary>
-    /// Sabotage awards both Combat +1 and Espionage +1 on success.
-    /// </summary>
-    protected override void ImproveMissionParticipantsSkill()
-    {
-        base.ImproveMissionParticipantsSkill();
-        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-        {
-            if (participant.CanImproveMissionSkill)
-            {
-                participant.SetMissionSkillValue(
-                    MissionParticipantSkill.Espionage,
-                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
-                );
-            }
-        }
     }
 
     /// <summary>

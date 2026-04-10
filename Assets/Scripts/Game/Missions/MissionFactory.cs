@@ -22,7 +22,8 @@ public class MissionFactory
     }
 
     /// <summary>
-    /// Returns whether a mission of the given type can be created with the specified parameters.
+    /// Returns whether a mission of the given type can be created for the target.
+    /// Uses the same TryCreate path as CreateMission without requiring participants.
     /// </summary>
     public bool CanCreateMission(
         MissionType missionType,
@@ -31,6 +32,10 @@ public class MissionFactory
         IRandomNumberProvider provider = null
     )
     {
+        Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
+        if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
+            return false;
+
         MissionContext ctx = new MissionContext
         {
             Game = _game,
@@ -41,10 +46,6 @@ public class MissionFactory
             RNG = provider,
             FogOfWar = _fogOfWar,
         };
-
-        Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
-        if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
-            return false;
 
         return RouteToTryCreate(missionType, ctx) != null;
     }

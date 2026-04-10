@@ -60,6 +60,22 @@ public class InciteUprisingMission : Mission
     }
 
     /// <summary>
+    /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
+    /// </summary>
+    public override bool IsCanceled(GameRoot game)
+    {
+        return base.IsCanceled(game) || (GetParent() is Planet p && p.IsInUprising);
+    }
+
+    /// <summary>
+    /// Returns false if an uprising has already started on the target planet before execution.
+    /// </summary>
+    protected override bool IsTargetValid(GameRoot game)
+    {
+        return GetParent() is Planet p && !p.IsInUprising;
+    }
+
+    /// <summary>
     /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
     /// </summary>
     protected override double GetAgentProbability(IMissionParticipant agent)
@@ -81,22 +97,6 @@ public class InciteUprisingMission : Mission
 
         int score = espionageSkill - enemySupport - regimentStrength;
         return SuccessProbabilityTable.Lookup(score);
-    }
-
-    /// <summary>
-    /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
-    /// </summary>
-    public override bool IsCanceled(GameRoot game)
-    {
-        return base.IsCanceled(game) || (GetParent() is Planet p && p.IsInUprising);
-    }
-
-    /// <summary>
-    /// Returns false if an uprising has already started on the target planet before execution.
-    /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
-    {
-        return GetParent() is Planet p && !p.IsInUprising;
     }
 
     /// <summary>

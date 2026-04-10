@@ -2,6 +2,8 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <FrameworkPathOverride>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.1\</FrameworkPathOverride>
+    <!-- Suppress assembly version conflicts from Unity's generated projects vs. the Code Coverage package -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Roslynator.Analyzers" Version="4.12.9">

@@ -36,6 +36,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Returns whether a mission of the given type can be created for the target.
+        /// </summary>
+        public bool CanCreateMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            ISceneNode target,
+            IRandomNumberProvider provider = null
+        ) => _missionFactory.CanCreateMission(missionType, ownerInstanceId, target, provider);
+
+        /// <summary>
         /// Initiates a mission with a single participant and target.
         /// </summary>
         public void InitiateMission(

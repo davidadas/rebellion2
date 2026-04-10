@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -24,7 +23,6 @@ public class JediTrainingMission : Mission
     {
         ConfigKey = "JediTraining";
         DisplayName = "Jedi Training";
-        ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
     /// <summary>
@@ -103,14 +101,24 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Success probability is based on the student's JediProbability value.
+    /// Validates that the target planet is still owned by this faction.
     /// </summary>
-    /// <param name="agent">The mission participant to evaluate.</param>
-    /// <returns>The agent's JediProbability, or 0 if not an officer.</returns>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet is still owned by this faction.</returns>
+    protected override bool IsTargetValid(GameRoot game)
+    {
+        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
+    }
+
+    /// <summary>
+    /// Success probability uses the student's ForceRank as the score.
+    /// The original uses teacher.force_rank_level - trainee.force_rank_level as the gap,
+    /// but that requires game access not available here. Full gap mechanic is applied in OnSuccess.
+    /// </summary>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (agent is Officer officer)
-            return officer.JediProbability;
+            return SuccessProbabilityTable.Lookup(officer.ForceRank);
         return 0;
     }
 
@@ -120,6 +128,12 @@ public class JediTrainingMission : Mission
     /// <param name="defenseScore">Ignored.</param>
     /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
+
+    /// <summary>
+    /// Jedi training does not award mission skill improvements. Force progression
+    /// is handled directly via ForceTrainingAdjustment in OnSuccess.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
     /// On success, applies the training catch-up mechanic. The student gains
@@ -172,11 +186,6 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Jedi Training does not award mission skill improvements.
-    /// </summary>
-    protected override void ImproveMissionParticipantsSkill() { }
-
-    /// <summary>
     /// Training continues as long as the planet remains owned by this faction
     /// and the student has not yet reached force qualification.
     /// </summary>
@@ -191,15 +200,5 @@ public class JediTrainingMission : Mission
         bool allQualified = MainParticipants.OfType<Officer>().All(s => s.ForceRank >= threshold);
 
         return !allQualified;
-    }
-
-    /// <summary>
-    /// Validates that the target planet is still owned by this faction.
-    /// </summary>
-    /// <param name="game">The current game state.</param>
-    /// <returns>True if the planet is still owned by this faction.</returns>
-    protected override bool IsTargetValid(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 }

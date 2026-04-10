@@ -84,6 +84,11 @@ public class RecruitmentMission : Mission
     }
 
     /// <summary>
+    /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
+    /// </summary>
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
+    /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
@@ -113,11 +118,6 @@ public class RecruitmentMission : Mission
             },
         };
     }
-
-    /// <summary>
-    /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
-    /// </summary>
-    protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Returns true while there are still unrecruited officers available for this faction.

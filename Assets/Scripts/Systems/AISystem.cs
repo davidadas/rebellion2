@@ -98,6 +98,16 @@ namespace Rebellion.Systems
                 if (leader == null)
                     break;
 
+                if (
+                    !_missionManager.CanCreateMission(
+                        MissionType.SubdueUprising,
+                        faction.InstanceID,
+                        planet,
+                        _randomProvider
+                    )
+                )
+                    continue;
+
                 _missionManager.InitiateMission(
                     MissionType.SubdueUprising,
                     leader,
@@ -669,6 +679,16 @@ namespace Rebellion.Systems
                     );
                     if (missionType != null)
                     {
+                        if (
+                            !_missionManager.CanCreateMission(
+                                missionType.Value,
+                                faction.InstanceID,
+                                friendlyTarget,
+                                _randomProvider
+                            )
+                        )
+                            continue;
+
                         GameLogger.Log(
                             $"Sending {officer.GetDisplayName()} on {missionType} mission to {friendlyTarget.GetDisplayName()}."
                         );
@@ -693,6 +713,16 @@ namespace Rebellion.Systems
                     tables
                 );
                 if (enemyMissionType == null)
+                    continue;
+
+                if (
+                    !_missionManager.CanCreateMission(
+                        enemyMissionType.Value,
+                        faction.InstanceID,
+                        enemyTarget,
+                        _randomProvider
+                    )
+                )
                     continue;
 
                 GameLogger.Log(

@@ -348,13 +348,7 @@ public abstract class Mission : ContainerNode
         }
 
         List<IMissionParticipant> allParticipants = GetAllParticipants();
-        string agents = string.Join(
-            ", ",
-            allParticipants.Select(p => ((ISceneNode)p).GetDisplayName())
-        );
         string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
-        string targetStr = string.IsNullOrEmpty(targetName) ? "" : $" at {targetName}";
-        GameLogger.Log($"{DisplayName} mission by {agents}{targetStr}: {outcome}");
 
         results.Add(
             new MissionCompletedResult
@@ -426,14 +420,14 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Missions cannot have children added after initialization.
+    /// Only mission participants may be moved into a mission node.
     /// </summary>
-    /// <param name="child">The candidate child node.</param>
-    /// <returns>Always false.</returns>
-    public override bool CanAcceptChild(ISceneNode child) => false;
+    public override bool CanAcceptChild(ISceneNode child) => child is IMissionParticipant;
 
     /// <summary>
-    /// No-op — missions cannot have children added after initialization.
+    /// No-op — participants are pre-populated in MainParticipants/DecoyParticipants at
+    /// construction. AddChild is called by GameRoot.AttachNode but the lists are already set;
+    /// only SetParent (called after this) is needed for scene-graph bookkeeping.
     /// </summary>
     public override void AddChild(ISceneNode child) { }
 

@@ -1006,6 +1006,111 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_CapitalShipInFleetDestinationCaptured_MovementCleared()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet productionPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(productionPlanet, system);
+
+            Planet capturedPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(capturedPlanet, system);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, capturedPlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(ship, fleet, productionPlanet);
+
+            Assert.IsNull(
+                ship.Movement,
+                "Capital ship in a fleet should have movement cleared when destination planet is captured"
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipInFleetDestinationCaptured_ShipRemainsInFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet productionPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(productionPlanet, system);
+
+            Planet capturedPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(capturedPlanet, system);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, capturedPlanet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(ship, fleet, productionPlanet);
+
+            Assert.AreEqual(
+                fleet,
+                ship.GetParent(),
+                "Capital ship should remain in its fleet when destination planet is captured"
+            );
+        }
+
+        [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();

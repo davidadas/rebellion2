@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -530,6 +529,59 @@ namespace Rebellion.Tests.Game.Missions
                 officer.ForceValue,
                 "Force growth should not apply on mission failure"
             );
+        }
+
+        [Test]
+        public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Officer other = EntityFactory.CreateOfficer("o2", "empire");
+
+            Assert.IsTrue(mission.CanAcceptChild(other));
+        }
+
+        [Test]
+        public void CanAcceptChild_NonParticipant_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+            };
+
+            Assert.IsFalse(mission.CanAcceptChild(building));
         }
 
         [Test]

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Bundles all inputs needed to create a mission.

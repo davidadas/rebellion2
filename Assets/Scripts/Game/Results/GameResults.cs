@@ -16,7 +16,6 @@ namespace Rebellion.Game.Results
     public enum ForceEventType
     {
         DiscoveringForceUser,
-        ForceGrowth,
         ForceUserDiscovered,
     }
 

@@ -63,6 +63,14 @@ public class DiplomacyMission : Mission
         ) { }
 
     /// <summary>
+    /// Extends base cancellation to also cancel when the target planet enters uprising.
+    /// </summary>
+    public override bool IsCanceled(GameRoot game)
+    {
+        return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
+    }
+
+    /// <summary>
     /// Returns false if the planet's state makes further diplomacy invalid at execution time.
     /// </summary>
     protected override bool IsTargetValid(GameRoot game)
@@ -73,6 +81,11 @@ public class DiplomacyMission : Mission
             && (p.GetOwnerInstanceID() == null || p.GetOwnerInstanceID() == OwnerInstanceID)
             && p.GetPopularSupport(OwnerInstanceID) < 100;
     }
+
+    /// <summary>
+    /// Diplomacy missions are never foiled — they target own or neutral planets.
+    /// </summary>
+    protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Increments popular support and emits a PlanetOwnershipChangedResult when support
@@ -126,19 +139,6 @@ public class DiplomacyMission : Mission
         }
 
         return results;
-    }
-
-    /// <summary>
-    /// Diplomacy missions are never foiled — they target own or neutral planets.
-    /// </summary>
-    protected override double GetFoilProbability(double defenseScore) => 0;
-
-    /// <summary>
-    /// Extends base cancellation to also cancel when the target planet enters uprising.
-    /// </summary>
-    public override bool IsCanceled(GameRoot game)
-    {
-        return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
     }
 
     /// <summary>

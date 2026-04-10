@@ -73,6 +73,11 @@ public class SubdueUprisingMission : Mission
     }
 
     /// <summary>
+    /// Subdue Uprising missions are never foiled — they target own planets.
+    /// </summary>
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
+    /// <summary>
     /// Ends the uprising on the target planet.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
@@ -92,11 +97,6 @@ public class SubdueUprisingMission : Mission
             },
         };
     }
-
-    /// <summary>
-    /// Subdue Uprising missions are never foiled — they target own planets.
-    /// </summary>
-    protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Subdue Uprising missions do not repeat — one attempt per mission.

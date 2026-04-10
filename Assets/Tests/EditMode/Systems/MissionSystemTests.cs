@@ -544,6 +544,131 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BeginMission_ParticipantAssigned_SetsParticipantParentToMission()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(targetPlanet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, empirePlanet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+
+            missionSystem.InitiateMission(
+                MissionType.Sabotage,
+                officer,
+                targetPlanet,
+                new StubRNG()
+            );
+
+            Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
+            Assert.IsNotNull(mission, "Mission should be created");
+            Assert.AreEqual(
+                mission,
+                officer.GetParent(),
+                "Participant should be parented to the mission after BeginMission"
+            );
+        }
+
+        [Test]
+        public void IsOnMission_AfterBeginMission_ReturnsTrue()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(targetPlanet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, empirePlanet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+
+            missionSystem.InitiateMission(
+                MissionType.Sabotage,
+                officer,
+                targetPlanet,
+                new StubRNG()
+            );
+
+            Assert.IsTrue(
+                officer.IsOnMission(),
+                "Officer should report IsOnMission after BeginMission"
+            );
+        }
+
+        [Test]
         public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (

@@ -45,6 +45,17 @@ public class ResearchMission : Mission
         );
     }
 
+    private static string GetMissionName(ManufacturingType type)
+    {
+        return type switch
+        {
+            ManufacturingType.Ship => "Ship Design",
+            ManufacturingType.Troop => "Troop Training",
+            ManufacturingType.Building => "Facility Design",
+            _ => "Research",
+        };
+    }
+
     private ResearchMission(
         string ownerInstanceId,
         ISceneNode target,
@@ -64,6 +75,16 @@ public class ResearchMission : Mission
     {
         ResearchType = researchType;
         DisplayName = GetMissionName(researchType);
+    }
+
+    /// <summary>
+    /// Checks whether the mission target planet is still owned by the mission's faction.
+    /// </summary>
+    /// <param name="game">The game instance.</param>
+    /// <returns>True if the parent planet is owned by this faction.</returns>
+    protected override bool IsTargetValid(GameRoot game)
+    {
+        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 
     /// <summary>
@@ -122,16 +143,6 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Checks whether the mission target planet is still owned by the mission's faction.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <returns>True if the parent planet is owned by this faction.</returns>
-    protected override bool IsTargetValid(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
-
-    /// <summary>
     /// Research missions repeat as long as the planet remains owned by this faction.
     /// </summary>
     /// <param name="game">The game instance.</param>
@@ -139,21 +150,5 @@ public class ResearchMission : Mission
     public override bool CanContinue(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
-
-    /// <summary>
-    /// Maps a manufacturing type to the display name for the research subtype.
-    /// </summary>
-    /// <param name="type">The manufacturing type.</param>
-    /// <returns>The mission display name.</returns>
-    private static string GetMissionName(ManufacturingType type)
-    {
-        return type switch
-        {
-            ManufacturingType.Ship => "Ship Design",
-            ManufacturingType.Troop => "Troop Training",
-            ManufacturingType.Building => "Facility Design",
-            _ => "Research",
-        };
     }
 }

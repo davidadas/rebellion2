@@ -104,6 +104,12 @@ namespace Rebellion.Systems
             // Destination changed sides since enqueue — same handling as mid-transit rejection.
             if (destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID())
             {
+                // Unit is already inside a fleet — the fleet handles its own routing.
+                if (((ISceneNode)unit).GetParent() is Fleet)
+                {
+                    unit.Movement = null;
+                    return;
+                }
                 HandleArrivalRejection(unit, destinationPlanet);
                 return;
             }
@@ -246,6 +252,13 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
+            // Mission participants are managed by MissionSystem, not by arrival logic.
+            if (destination is Mission)
+            {
+                movable.Movement = null;
+                return new List<GameResult>();
+            }
+
             // Destination changed sides since dispatch.
             if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
             {
@@ -385,9 +398,6 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the nearest planet owned by the specified faction to the given position.
         /// </summary>
-        /// <param name="factionOwnerID"></param>
-        /// <param name="fromPosition"></param>
-        /// <returns>The nearest faction-owned planet, or null if none exists.</returns>
         private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
         {
             return _game

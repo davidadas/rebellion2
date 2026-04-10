@@ -150,6 +150,8 @@ namespace Rebellion.Game
             };
         public bool CanImproveMissionSkill => true;
 
+        // Officers have no mission type restrictions — unlike SpecialForces, any officer
+        // can be assigned to any mission type.
         public bool CanPerformMission(MissionType missionType) => true;
 
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
