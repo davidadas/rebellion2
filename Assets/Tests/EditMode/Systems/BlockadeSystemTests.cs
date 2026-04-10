@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -59,9 +62,15 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(inTransitRegiment.Movement);
 
-            manager.ProcessTick();
+            List<GameResult> results = manager.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            BlockadeChangedResult blockadeResult = results
+                .OfType<BlockadeChangedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(blockadeResult);
+            Assert.IsTrue(blockadeResult.Blockaded);
+            Assert.AreEqual(planet, blockadeResult.Planet);
         }
 
         [Test]
@@ -220,9 +229,15 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defenderFleet, planet);
             Assert.IsFalse(planet.IsBlockaded());
 
-            manager.ProcessTick();
+            List<GameResult> results = manager.ProcessTick();
 
             Assert.IsFalse(planet.IsBlockaded());
+            BlockadeChangedResult endResult = results
+                .OfType<BlockadeChangedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(endResult);
+            Assert.IsFalse(endResult.Blockaded);
+            Assert.AreEqual(planet, endResult.Planet);
         }
 
         [Test]

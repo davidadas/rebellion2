@@ -100,7 +100,6 @@ namespace Rebellion.Game
         /// <summary>
         /// Injects runtime configuration.
         /// Called by GameManager during initialization.
-        /// Validates config before setting.
         /// </summary>
         /// <param name="config">The configuration to inject.</param>
         public void SetConfig(GameConfig config)
@@ -108,7 +107,6 @@ namespace Rebellion.Game
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            config.Validate();
             Config = config;
         }
 

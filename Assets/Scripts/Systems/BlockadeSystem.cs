@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Systems
 {
@@ -26,8 +27,10 @@ namespace Rebellion.Systems
         /// Processes blockades for the current tick.
         /// Detects blockade start/end transitions and destroys in-transit troops on blockade start.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
+            List<GameResult> results = new List<GameResult>();
+
             // Compute current blockade set from world state
             HashSet<string> nowBlockaded = new HashSet<string>();
 
@@ -47,11 +50,21 @@ namespace Rebellion.Systems
             {
                 if (!_blockadedPlanets.Contains(planetId))
                 {
-                    // Blockade started
                     Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
                         OnBlockadeStarted(planet);
+                        results.Add(
+                            new BlockadeChangedResult
+                            {
+                                Planet = planet,
+                                BlockadingFleet = planet.Fleets.FirstOrDefault(f =>
+                                    f.OwnerInstanceID != planet.OwnerInstanceID
+                                ),
+                                Blockaded = true,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
                     }
                 }
             }
@@ -61,11 +74,18 @@ namespace Rebellion.Systems
             {
                 if (!nowBlockaded.Contains(planetId))
                 {
-                    // Blockade ended
                     Planet planet = _game.GetSceneNodeByInstanceID<Planet>(planetId);
                     if (planet != null)
                     {
-                        OnBlockadeEnded();
+                        results.Add(
+                            new BlockadeChangedResult
+                            {
+                                Planet = planet,
+                                BlockadingFleet = null,
+                                Blockaded = false,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
                     }
                 }
             }
@@ -76,6 +96,8 @@ namespace Rebellion.Systems
             {
                 _blockadedPlanets.Add(planetId);
             }
+
+            return results;
         }
 
         private void OnBlockadeStarted(Planet planet)
@@ -90,12 +112,6 @@ namespace Rebellion.Systems
             {
                 _game.DetachNode(regiment);
             }
-        }
-
-        private void OnBlockadeEnded()
-        {
-            // No special action needed on blockade end
-            // Just the transition is tracked
         }
     }
 }

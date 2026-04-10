@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -20,7 +22,7 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement
         ) BuildScene()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -306,9 +308,10 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.ProcessTick();
+            List<GameResult> results = movement.ProcessTick();
 
             Assert.IsNull(officer.Movement);
+            Assert.IsTrue(results.OfType<UnitArrivedResult>().Any());
         }
 
         [Test]
@@ -472,7 +475,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -569,7 +572,7 @@ namespace Rebellion.Tests.Systems
             int cs2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -934,13 +937,15 @@ namespace Rebellion.Tests.Systems
             destPlanet.OwnerInstanceID = "rebels";
 
             int transit = mine.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
             for (int i = 0; i < transit; i++)
-                movement.ProcessTick();
+                allResults.AddRange(movement.ProcessTick());
 
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Building>("mine1"),
                 "Building should be destroyed when destination changes sides during transit."
             );
+            Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
@@ -1003,7 +1008,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 

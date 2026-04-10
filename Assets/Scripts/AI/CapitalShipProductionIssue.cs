@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Strike target types for capital ship assault evaluation (FUN_0058b660).

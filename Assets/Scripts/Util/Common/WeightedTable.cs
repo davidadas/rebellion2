@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Util.Common
 {

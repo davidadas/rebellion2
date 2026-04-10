@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 /// <summary>
 /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.

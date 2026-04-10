@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -28,12 +28,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
         /// <param name="provider">Random number provider for capital ship progress rolls.</param>
-        public void ProcessTick(MovementSystem movementSystem, IRandomNumberProvider provider)
+        public List<GameResult> ProcessTick(
+            MovementSystem movementSystem,
+            IRandomNumberProvider provider
+        )
         {
+            List<GameResult> results = new List<GameResult>();
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
-                ProcessPlanetManufacturing(planet, movementSystem, provider);
+                results.AddRange(ProcessPlanetManufacturing(planet, movementSystem, provider));
             }
+            return results;
         }
 
         /// <summary>
@@ -171,29 +176,26 @@ namespace Rebellion.Systems
             return cscrht.Lookup(progressRoll);
         }
 
-        private void ProcessPlanetManufacturing(
+        private List<GameResult> ProcessPlanetManufacturing(
             Planet planet,
             MovementSystem movementSystem,
             IRandomNumberProvider provider
         )
         {
+            List<GameResult> results = new List<GameResult>();
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
             if (queue == null || queue.Count == 0)
-            {
-                return;
-            }
+                return results;
 
             // Process each manufacturing type queue
-            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue.ToList()) // ToList to avoid modification during iteration
+            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue.ToList())
             {
                 ManufacturingType type = kvp.Key;
                 List<IManufacturable> items = kvp.Value;
 
                 if (items == null || items.Count == 0)
-                {
                     continue;
-                }
 
                 // Calculate progress increment based on planet's production rate
                 int progressIncrement = planet.GetProductionRate(type);
@@ -205,7 +207,6 @@ namespace Rebellion.Systems
                         _game.Config.Production.BlockadeCapitalShipPenalty,
                         _game.Config.Production.BlockadeFighterPenalty
                     );
-                    // modifier is a percentage (0–100); divide by 100 to scale progressIncrement
                     progressIncrement = (progressIncrement * modifier) / 100;
                 }
 
@@ -214,9 +215,39 @@ namespace Rebellion.Systems
                     progressIncrement,
                     provider
                 );
+                IManufacturable lastCompleted = null;
                 foreach (IManufacturable item in completed)
-                    CompleteManufacturing(planet, item, movementSystem);
+                {
+                    results.AddRange(CompleteManufacturing(planet, item, movementSystem));
+                    lastCompleted = item;
+                }
+
+                if (lastCompleted != null)
+                {
+                    List<IManufacturable> remaining = planet
+                        .GetManufacturingQueue()
+                        .TryGetValue(type, out List<IManufacturable> rem)
+                        ? rem
+                        : new List<IManufacturable>();
+                    if (remaining.Count == 0)
+                    {
+                        results.Add(
+                            new ManufacturingCompletedResult
+                            {
+                                GameObject = lastCompleted as IGameEntity,
+                                ProductionPlanet = planet,
+                                Faction = _game.GetFactionByOwnerInstanceID(
+                                    planet.GetOwnerInstanceID()
+                                ),
+                                ProductType = type,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
+                }
             }
+
+            return results;
         }
 
         /// <summary>
@@ -281,7 +312,7 @@ namespace Rebellion.Systems
         /// Completes manufacturing of an item. Marks it complete and hands it off to
         /// MovementSystem to route from the production planet to its destination.
         /// </summary>
-        private void CompleteManufacturing(
+        private List<GameResult> CompleteManufacturing(
             Planet productionPlanet,
             IManufacturable item,
             MovementSystem movementSystem
@@ -295,6 +326,48 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
             );
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(
+                productionPlanet.GetOwnerInstanceID()
+            );
+
+            ManufacturingType type = item.GetManufacturingType();
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                productionPlanet.GetManufacturingQueue();
+            List<IManufacturable> remaining = queue.TryGetValue(
+                type,
+                out List<IManufacturable> list
+            )
+                ? list
+                : new List<IManufacturable>();
+            int remainingPoints = remaining.Sum(i =>
+                i.GetConstructionCost() - i.ManufacturingProgress
+            );
+
+            return new List<GameResult>
+            {
+                new ManufacturingDeployedResult
+                {
+                    Faction = faction,
+                    DeployedObject = item as IGameEntity,
+                    Location = dest as IGameEntity,
+                    Tick = _game.CurrentTick,
+                },
+                new ManufacturingRemainingResult
+                {
+                    Faction = faction,
+                    RemainingCount = remaining.Count,
+                    Context = productionPlanet,
+                    Tick = _game.CurrentTick,
+                },
+                new ManufacturingPointsRequiredResult
+                {
+                    Faction = faction,
+                    RequiredPoints = remainingPoints,
+                    Context = productionPlanet,
+                    Tick = _game.CurrentTick,
+                },
+            };
         }
 
         /// <summary>

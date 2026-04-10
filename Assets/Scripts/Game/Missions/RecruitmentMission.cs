@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -96,13 +95,23 @@ public class RecruitmentMission : Mission
         if (target == null || planet == null)
             return new List<GameResult>();
 
+        Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
         target.OwnerInstanceID = OwnerInstanceID;
         game.RemoveUnrecruitedOfficer(target);
         game.AttachNode(target, planet);
 
         GameLogger.Log($"Recruited {target.GetDisplayName()} to {OwnerInstanceID}");
 
-        return new List<GameResult>();
+        return new List<GameResult>
+        {
+            new OfficerRecruitedResult
+            {
+                Officer = target,
+                Faction = faction,
+                Planet = planet,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 
     /// <summary>

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Core.Configuration;
-using Rebellion.Core.Simulation;
 using Rebellion.Game;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Generation
 {
@@ -36,7 +35,7 @@ namespace Rebellion.Generation
 
         public GameRoot BuildGame()
         {
-            GameConfig gameConfig = ConfigLoader.LoadGameConfig();
+            GameConfig gameConfig = ResourceManager.GetConfig<GameConfig>();
             GameGenerationRules rules = ResourceManager.GetConfig<GameGenerationRules>();
 
             // Phase 0: Load templates and filter systems by galaxy size

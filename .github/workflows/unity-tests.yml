@@ -108,14 +108,14 @@ jobs:
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
           enableCodeCoverage: true
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
+          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
 
       - name: Check coverage threshold
         run: |
           python3 - <<'EOF'
           import xml.etree.ElementTree as ET, glob, sys
 
-          THRESHOLD = 61.0
+          THRESHOLD = 64.1
 
           files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
           if not files:

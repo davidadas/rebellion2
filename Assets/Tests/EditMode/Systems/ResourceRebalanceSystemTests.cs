@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {
@@ -170,7 +171,7 @@ namespace Rebellion.Tests.Systems
         /// Makes probability checks fail (roll >= probability) and
         /// selects last entries in tables.
         /// </summary>
-        private class HighRNG : Rebellion.Core.Simulation.IRandomNumberProvider
+        private class HighRNG : IRandomNumberProvider
         {
             public int NextInt(int min, int max) => max - 1;
 

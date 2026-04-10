@@ -1,6 +1,7 @@
 using System;
+using System.IO;
+using System.Xml.Schema;
 using NUnit.Framework;
-using Rebellion.Core.Configuration;
 using Rebellion.Game;
 
 namespace Rebellion.Tests.Core
@@ -9,9 +10,9 @@ namespace Rebellion.Tests.Core
     public class GameConfigTests
     {
         [Test]
-        public void ConfigLoader_LoadsValidXML_Successfully()
+        public void GetConfig_LoadsValidXML_Successfully()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
 
             Assert.IsNotNull(config, "GameConfig should not be null");
             Assert.IsNotNull(config.AI, "AIConfig should not be null");
@@ -26,9 +27,9 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void ConfigLoader_LoadsDefaultValues_Correctly()
+        public void GetConfig_LoadsDefaultValues_Correctly()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
 
             // AI defaults
             Assert.AreEqual(7, config.AI.TickInterval);
@@ -75,7 +76,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Game_ConfigConstructor_SetsConfigCorrectly()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
             Assert.IsNotNull(game.Config, "Game.Config should not be null");
@@ -88,9 +89,9 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_SetConfig_ValidatesAndSets()
+        public void Game_SetConfig_SetsConfigCorrectly()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot();
 
             game.SetConfig(config);
@@ -115,7 +116,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_ZeroForceQualifiedThreshold_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.ForceQualifiedThreshold = 0;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -123,7 +124,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_ZeroDiscoveringThreshold_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.DiscoveringForceUserThreshold = 0;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -131,7 +132,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_DiscoveringThresholdAboveQualified_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.DiscoveringForceUserThreshold = config.Jedi.ForceQualifiedThreshold;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -139,7 +140,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_CatchUpPercentOutOfRange_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.TrainingCatchUpPercent = 101;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -147,7 +148,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_NegativeCatchUpPercent_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.TrainingCatchUpPercent = -1;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -155,7 +156,7 @@ namespace Rebellion.Tests.Core
         [Test]
         public void Validate_Jedi_ZeroFastHealThreshold_Throws()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
             config.Jedi.FastHealThreshold = 0;
             Assert.Throws<InvalidOperationException>(() => config.Validate());
         }
@@ -171,14 +172,11 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void ConfigLoader_LoadsProbabilityTables_Correctly()
+        public void GetConfig_LoadsProbabilityTables_Correctly()
         {
-            GameConfig config = ConfigLoader.LoadGameConfig();
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
 
-            // Verify ProbabilityTables section loaded
             Assert.IsNotNull(config.ProbabilityTables, "ProbabilityTables should not be null");
-
-            // Verify UprisingStart table has entries
             Assert.IsNotNull(
                 config.ProbabilityTables.UprisingStart,
                 "UprisingStart table should not be null"
@@ -189,112 +187,84 @@ namespace Rebellion.Tests.Core
                 "UprisingStart should have entries"
             );
 
-            // Verify Mission section
             Assert.IsNotNull(
                 config.ProbabilityTables.Mission,
                 "Mission probability tables should not be null"
             );
 
-            // Verify all mission tables are present and have entries
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Abduction,
-                "Abduction table should not be null"
-            );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Abduction.Count,
                 0,
                 "Abduction should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Assassination,
-                "Assassination table should not be null"
             );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Assassination.Count,
                 0,
                 "Assassination should have entries"
             );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Diplomacy,
-                "Diplomacy table should not be null"
-            );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Diplomacy.Count,
                 0,
                 "Diplomacy should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.DeathStarSabotage,
-                "DeathStarSabotage table should not be null"
             );
             Assert.Greater(
                 config.ProbabilityTables.Mission.DeathStarSabotage.Count,
                 0,
                 "DeathStarSabotage should have entries"
             );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Espionage,
-                "Espionage table should not be null"
-            );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Espionage.Count,
                 0,
                 "Espionage should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.InciteUprising,
-                "InciteUprising table should not be null"
             );
             Assert.Greater(
                 config.ProbabilityTables.Mission.InciteUprising.Count,
                 0,
                 "InciteUprising should have entries"
             );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Recruitment,
-                "Recruitment table should not be null"
-            );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Recruitment.Count,
                 0,
                 "Recruitment should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Rescue,
-                "Rescue table should not be null"
             );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Rescue.Count,
                 0,
                 "Rescue should have entries"
             );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.Sabotage,
-                "Sabotage table should not be null"
-            );
             Assert.Greater(
                 config.ProbabilityTables.Mission.Sabotage.Count,
                 0,
                 "Sabotage should have entries"
-            );
-
-            Assert.IsNotNull(
-                config.ProbabilityTables.Mission.SubdueUprising,
-                "SubdueUprising table should not be null"
             );
             Assert.Greater(
                 config.ProbabilityTables.Mission.SubdueUprising.Count,
                 0,
                 "SubdueUprising should have entries"
             );
+        }
+
+        [Test]
+        public void GetConfig_SchemaValidation_RejectsNonPositiveDistanceScale()
+        {
+            string configPath = Path.Combine(
+                UnityEngine.Application.dataPath,
+                "Resources",
+                "Configs",
+                "GameConfig.xml"
+            );
+            string xml = File.ReadAllText(configPath)
+                .Replace("<DistanceScale>2</DistanceScale>", "<DistanceScale>0</DistanceScale>");
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                TestConfig.DeserializeWithSchema(xml)
+            );
+        }
+
+        [Test]
+        public void GetConfig_SchemaValidation_AcceptsValidConfig()
+        {
+            Assert.DoesNotThrow(() => TestConfig.CreateWithSchema());
         }
     }
 }
