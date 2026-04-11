@@ -101,7 +101,10 @@ public class JediTrainingMission : Mission
             return true;
 
         Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
-        return trainer?.IsCaptured != false || trainer?.IsKilled != false;
+        if (trainer == null)
+            return true;
+
+        return trainer.IsCaptured || trainer.IsKilled;
     }
 
     /// <summary>
@@ -132,28 +135,31 @@ public class JediTrainingMission : Mission
     protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
-    /// On success, applies the training catch-up mechanic. The student gains
-    /// ForceTrainingAdjustment based on the rank gap to the trainer.
+    /// On success, applies the training catch-up mechanic. Each eligible student gains
+    /// ForceTrainingAdjustment proportional to their rank gap with the trainer.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <param name="provider">RNG provider for rolling the catch-up bonus.</param>
-    /// <returns>Empty list; training results are applied directly.</returns>
+    /// <returns>One ForceTrainingResult per student who received a bonus.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         List<GameResult> results = new List<GameResult>();
         Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
 
+        // Trainer must still be Force-eligible for training to proceed.
         if (trainer?.IsForceEligible != true)
             return results;
 
         foreach (Officer student in MainParticipants.OfType<Officer>())
         {
+            // Students who lack Force potential or are already at the trainer's rank are skipped.
             if (!student.IsForceEligible)
                 continue;
 
             if (student.ForceRank >= trainer.ForceRank)
                 continue;
 
+            // Catch-up range scales with the rank gap and the configured percentage.
             int gap = trainer.ForceRank - student.ForceRank;
             int catchUpRange = gap * game.Config.Jedi.TrainingCatchUpPercent / 100;
 
@@ -168,7 +174,7 @@ public class JediTrainingMission : Mission
                 {
                     Officer = student,
                     Progress = bonus,
-                    Detail = trainer.ForceRank,
+                    Detail = trainer.ForceRank, // Trainer rank stored for UI display.
                     Tick = game.CurrentTick,
                 }
             );

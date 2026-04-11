@@ -25,10 +25,17 @@ public class MissionFactory
     /// Returns whether a mission of the given type can be created for the target.
     /// Uses the same TryCreate path as CreateMission without requiring participants.
     /// </summary>
+    /// <param name="missionType">The type of mission to check.</param>
+    /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+    /// <param name="target">The target scene node.</param>
+    /// <param name="provider">RNG provider for target selection; pass the game's live provider — missions like Recruitment always need it.</param>
+    /// <param name="targetOfficer">Optional pre-selected officer target.</param>
+    /// <returns>True if the mission can be created with the given parameters.</returns>
     public bool CanCreateMission(
         MissionType missionType,
         string ownerInstanceId,
         ISceneNode target,
+        IRandomNumberProvider provider,
         Officer targetOfficer = null
     )
     {
@@ -43,6 +50,7 @@ public class MissionFactory
             Target = target,
             MainParticipants = new List<IMissionParticipant>(),
             DecoyParticipants = new List<IMissionParticipant>(),
+            RandomProvider = provider,
             FogOfWar = _fogOfWar,
             TargetOfficer = targetOfficer,
         };

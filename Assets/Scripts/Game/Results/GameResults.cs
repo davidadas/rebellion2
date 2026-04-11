@@ -127,6 +127,10 @@ namespace Rebellion.Game.Results
         public bool IsNewlyExplored { get; set; }
     }
 
+    /// <summary>
+    /// A Force discovery state changed — either an officer began scanning for Force users,
+    /// or a hidden Force user was discovered by a scanner.
+    /// </summary>
     public class ForceDiscoveryResult : GameResult
     {
         public ForceEventType EventType { get; set; }

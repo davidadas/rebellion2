@@ -154,15 +154,15 @@ namespace Rebellion.SceneGraph
         public abstract bool CanAcceptChild(ISceneNode child);
 
         /// <summary>
-        /// Called when the scene node is added to the game world.
+        /// Adds a child to this node's child collection.
         /// </summary>
-        /// <param name="child">The scene node to add.</param>
+        /// <param name="child">The child node to add.</param>
         public abstract void AddChild(ISceneNode child);
 
         /// <summary>
-        /// Called when the scene node is removed from the game world.
+        /// Removes a child from this node's child collection.
         /// </summary>
-        /// <param name="child">The scene node to remove.</param>
+        /// <param name="child">The child node to remove.</param>
         public abstract void RemoveChild(ISceneNode child);
 
         /// <summary>

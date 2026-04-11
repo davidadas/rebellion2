@@ -637,6 +637,9 @@
         <Value>5</Value>
       </Entry>
     </Upris2Table>
+    <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
+    <!-- Negative = support erodes while uprising is active (GENERAL_PARAM_7697 = -1) -->
+    <ControllerSupportShift>-1</ControllerSupportShift>
   </Uprising>
   <!-- Support Shift Configuration -->
   <!-- Controls periodic popular support recovery and hostile force penalties -->

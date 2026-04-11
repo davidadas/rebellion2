@@ -22,7 +22,6 @@ namespace Rebellion.Systems
         /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
         /// Called from GameManager.ProcessResults when a MissionCompletedResult with Success is seen.
         /// </summary>
-        /// <param name="participants">Main participants from the completed mission.</param>
         public List<GameResult> ApplyForceGrowth(List<IMissionParticipant> participants)
         {
             List<GameResult> results = new List<GameResult>();
@@ -56,6 +55,9 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Processes Force tier advancement and detection for all officers each tick.
+        /// </summary>
         public List<GameResult> ProcessTick(IRandomNumberProvider rng)
         {
             List<GameResult> results = new List<GameResult>();

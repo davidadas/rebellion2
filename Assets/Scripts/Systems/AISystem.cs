@@ -102,7 +102,8 @@ namespace Rebellion.Systems
                     !_missionManager.CanCreateMission(
                         MissionType.SubdueUprising,
                         faction.InstanceID,
-                        planet
+                        planet,
+                        _randomProvider
                     )
                 )
                     continue;
@@ -682,7 +683,8 @@ namespace Rebellion.Systems
                             !_missionManager.CanCreateMission(
                                 missionType.Value,
                                 faction.InstanceID,
-                                friendlyTarget
+                                friendlyTarget,
+                                _randomProvider
                             )
                         )
                             continue;
@@ -718,6 +720,7 @@ namespace Rebellion.Systems
                         enemySelection.Value.Type,
                         faction.InstanceID,
                         enemyTarget,
+                        _randomProvider,
                         enemySelection.Value.TargetOfficer
                     )
                 )

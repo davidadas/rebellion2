@@ -145,6 +145,13 @@ public class GameConfig
         /// UPRIS2 table: maps combined uprising score to severity.
         /// </summary>
         public Dictionary<int, int> Upris2Table { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>
+        /// Popular support shift applied to the controlling faction each uprising resolution tick.
+        /// Negative = support drops during an uprising.
+        /// Corresponds to GENERAL_PARAM_7697; applied via FUN_0050c1a0 → FUN_0050bb60.
+        /// </summary>
+        public int ControllerSupportShift { get; set; }
     }
 
     /// <summary>

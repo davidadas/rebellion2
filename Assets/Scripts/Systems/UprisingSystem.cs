@@ -81,24 +81,26 @@ namespace Rebellion.Systems
                         ownerSupport,
                         troopCount,
                         provider,
-                        out int upris1Result,
-                        out int upris2Result
+                        out int uprisingEffect,
+                        out int uprisingSeverity
                     );
 
                     ApplyUprisingConsequence(
                         planet,
                         faction.InstanceID,
-                        upris1Result,
+                        uprisingEffect,
                         provider,
                         results
                     );
                     ApplyUprisingConsequence(
                         planet,
                         faction.InstanceID,
-                        upris2Result,
+                        uprisingSeverity,
                         provider,
                         results
                     );
+
+                    ApplyUprisingControllerSupportShift(planet, faction);
                 }
             }
 
@@ -107,7 +109,8 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Resolves uprising using dual dice rolls and UPRIS1/UPRIS2 table lookups.
-        /// Combined score = dice + (garrison_threshold - troop_multiplier * troops).
+        /// Combined score = dice + (garrison_threshold - troop_multiplier * troops)
+        ///                      + (hostile_fleets + hostile_troops - typed_garrison).
         /// Corresponds to FUN_00558460_resolve_uprising_table_results.
         /// </summary>
         private void ResolveUprisingTableResults(
@@ -116,12 +119,12 @@ namespace Rebellion.Systems
             int supportForController,
             int controllerTroopCount,
             IRandomNumberProvider provider,
-            out int upris1Result,
-            out int upris2Result
+            out int uprisingEffect,
+            out int uprisingSeverity
         )
         {
-            upris1Result = 0;
-            upris2Result = 0;
+            uprisingEffect = 0;
+            uprisingSeverity = 0;
 
             GameConfig.UprisingConfig config = _game.Config.Uprising;
 
@@ -140,20 +143,46 @@ namespace Rebellion.Systems
             }
 
             int threshold = CalculateUprisingThreshold(supportForController);
+
+            // FUN_0050c1a0 passes two galaxy-state cache reads to FUN_00558460, both ADDED
+            // to the score: attached_state_74 (FUN_00508c80, cache +0x74) and
+            // attached_state_78 (FUN_00508c90, cache +0x78). Approximated here as hostile
+            // fleet and troop counts; exact values require a galaxy-state cache object.
+            int hostileFleetCount = planet
+                .GetFleets()
+                .Count(f =>
+                    f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != faction.InstanceID
+                );
+            int hostileTroopCount = planet
+                .GetAllRegiments()
+                .Count(r =>
+                    r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != faction.InstanceID
+                );
+
+            // FUN_00508370 counts Empire-side regiments of type 0x10000006 and is SUBTRACTED.
+            // Regiment type metadata is not modelled in C# — this term is zero.
+            int attachedTroopState = 0;
+
             int combinedScore =
-                rollA + rollB + (threshold - troopMultiplier * controllerTroopCount);
+                rollA
+                + rollB
+                + (threshold - troopMultiplier * controllerTroopCount)
+                + (hostileFleetCount + hostileTroopCount - attachedTroopState);
 
-            upris1Result = LookupTable(config.Upris1Table, combinedScore);
+            uprisingEffect = LookupTable(config.Upris1Table, combinedScore);
 
-            if (upris1Result > 0)
-                upris2Result = LookupTable(config.Upris2Table, combinedScore);
+            if (uprisingEffect > 0)
+                uprisingSeverity = LookupTable(config.Upris2Table, combinedScore);
         }
 
         /// <summary>
-        /// Dispatches an uprising consequence to its handler.
-        /// Corresponds to FUN_0050c2c0.
-        /// Cases 0-5 match the original UPRIS1/UPRIS2 table values.
+        /// Dispatches an uprising consequence to its handler based on the table result code.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="consequence">The consequence code from the uprising table (0–5).</param>
+        /// <param name="provider">RNG provider for selecting random targets.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void ApplyUprisingConsequence(
             Planet planet,
             string controllerInstanceId,
@@ -164,124 +193,205 @@ namespace Rebellion.Systems
         {
             switch (consequence)
             {
-                case 0:
-                    return;
-
                 case 1:
-                {
-                    List<Building> facilities = planet
-                        .GetAllBuildings()
-                        .Where(b => b.GetOwnerInstanceID() == controllerInstanceId)
-                        .ToList();
-                    if (facilities.Count == 0)
-                        return;
-                    int index = provider.NextInt(0, facilities.Count);
-                    Building target = facilities[index];
-                    _game.DetachNode(target);
-                    results.Add(
-                        new PlanetIncidentResult
-                        {
-                            Planet = planet,
-                            IncidentType = IncidentType.Uprising,
-                            Severity = consequence,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                    DestroyRandomBuilding(planet, controllerInstanceId, provider, results);
                     return;
-                }
-
                 case 2:
-                {
-                    List<Regiment> regiments = planet
-                        .GetAllRegiments()
-                        .Where(r => r.GetOwnerInstanceID() == controllerInstanceId)
-                        .ToList();
-                    if (regiments.Count == 0)
-                        return;
-                    int index = provider.NextInt(0, regiments.Count);
-                    Regiment target = regiments[index];
-                    _game.DetachNode(target);
-                    results.Add(
-                        new PlanetIncidentResult
-                        {
-                            Planet = planet,
-                            IncidentType = IncidentType.Uprising,
-                            Severity = consequence,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                    DestroyRandomRegiment(planet, controllerInstanceId, provider, results);
                     return;
-                }
-
                 case 3:
-                {
-                    List<Officer> candidates = planet
-                        .GetAllOfficers()
-                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && !o.IsCaptured)
-                        .ToList();
-                    if (candidates.Count == 0)
-                        return;
-                    int index = provider.NextInt(0, candidates.Count);
-                    Officer target = candidates[index];
-                    target.IsCaptured = true;
-                    results.Add(
-                        new OfficerCaptureStateResult
-                        {
-                            TargetOfficer = target,
-                            IsCaptured = true,
-                            Context = planet,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                    CaptureRandomOfficer(planet, controllerInstanceId, provider, results);
                     return;
-                }
-
                 case 4:
-                {
-                    List<Officer> candidates = planet
-                        .GetAllOfficers()
-                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
-                        .ToList();
-                    if (candidates.Count == 0)
-                        return;
-                    int index = provider.NextInt(0, candidates.Count);
-                    Officer target = candidates[index];
-                    target.IsCaptured = false;
-                    target.CaptorInstanceID = null;
-                    results.Add(
-                        new OfficerCaptureStateResult
-                        {
-                            TargetOfficer = target,
-                            IsCaptured = false,
-                            Context = planet,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                    FreeRandomCapturedOfficer(planet, controllerInstanceId, provider, results);
                     return;
-                }
-
                 case 5:
-                {
-                    List<Officer> captured = planet
-                        .GetAllOfficers()
-                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
-                        .ToList();
-                    foreach (Officer target in captured)
-                    {
-                        target.IsCaptured = false;
-                        target.CaptorInstanceID = null;
-                        results.Add(
-                            new OfficerCaptureStateResult
-                            {
-                                TargetOfficer = target,
-                                IsCaptured = false,
-                                Context = planet,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
+                    FreeAllCapturedOfficers(planet, controllerInstanceId, results);
                     return;
+            }
+        }
+
+        /// <summary>
+        /// Destroys a random controller-owned building on the planet.
+        /// </summary>
+        private void DestroyRandomBuilding(
+            Planet planet,
+            string controllerInstanceId,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            List<Building> facilities = planet
+                .GetAllBuildings()
+                .Where(b => b.GetOwnerInstanceID() == controllerInstanceId)
+                .ToList();
+            if (facilities.Count == 0)
+                return;
+            _game.DetachNode(facilities[provider.NextInt(0, facilities.Count)]);
+            results.Add(
+                new PlanetIncidentResult
+                {
+                    Planet = planet,
+                    IncidentType = IncidentType.Uprising,
+                    Severity = 1,
+                    Tick = _game.CurrentTick,
                 }
+            );
+        }
+
+        /// <summary>
+        /// Destroys a random controller-owned regiment on the planet.
+        /// </summary>
+        private void DestroyRandomRegiment(
+            Planet planet,
+            string controllerInstanceId,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            List<Regiment> regiments = planet
+                .GetAllRegiments()
+                .Where(r => r.GetOwnerInstanceID() == controllerInstanceId)
+                .ToList();
+            if (regiments.Count == 0)
+                return;
+            _game.DetachNode(regiments[provider.NextInt(0, regiments.Count)]);
+            results.Add(
+                new PlanetIncidentResult
+                {
+                    Planet = planet,
+                    IncidentType = IncidentType.Uprising,
+                    Severity = 2,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Captures a random uncaptured controller-owned officer on the planet.
+        /// </summary>
+        private void CaptureRandomOfficer(
+            Planet planet,
+            string controllerInstanceId,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            List<Officer> candidates = planet
+                .GetAllOfficers()
+                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && !o.IsCaptured)
+                .ToList();
+            if (candidates.Count == 0)
+                return;
+            Officer target = candidates[provider.NextInt(0, candidates.Count)];
+            target.IsCaptured = true;
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = true,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Frees one randomly selected captured controller-owned officer on the planet.
+        /// </summary>
+        private void FreeRandomCapturedOfficer(
+            Planet planet,
+            string controllerInstanceId,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            List<Officer> candidates = planet
+                .GetAllOfficers()
+                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                .ToList();
+            if (candidates.Count == 0)
+                return;
+            Officer target = candidates[provider.NextInt(0, candidates.Count)];
+            target.IsCaptured = false;
+            target.CaptorInstanceID = null;
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = false,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Frees all captured controller-owned officers on the planet.
+        /// </summary>
+        private void FreeAllCapturedOfficers(
+            Planet planet,
+            string controllerInstanceId,
+            List<GameResult> results
+        )
+        {
+            List<Officer> captured = planet
+                .GetAllOfficers()
+                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                .ToList();
+            foreach (Officer target in captured)
+            {
+                target.IsCaptured = false;
+                target.CaptorInstanceID = null;
+                results.Add(
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = target,
+                        IsCaptured = false,
+                        Context = planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Applies the per-tick popular support shift to the controlling faction during uprising.
+        /// Corresponds to FUN_0050c1a0 → FUN_00508ca0 → FUN_0050bb60_apply_system_popular_support_shift_for_side.
+        /// On core systems the shift is halved when it moves against the faction's favor,
+        /// matching FUN_00558360_get_system_core_weak_support.
+        /// </summary>
+        private void ApplyUprisingControllerSupportShift(Planet planet, Faction faction)
+        {
+            int shift = _game.Config.Uprising.ControllerSupportShift;
+            if (shift == 0)
+                return;
+
+            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            if (parentSystem != null && parentSystem.SystemType == PlanetSystemType.CoreSystem)
+            {
+                bool penaltyApplies = faction.Modifiers.WeakSupportPenaltyTrigger switch
+                {
+                    SupportShiftCondition.Positive => shift > 0,
+                    SupportShiftCondition.Negative => shift < 0,
+                    _ => false,
+                };
+                if (penaltyApplies)
+                    shift /= 2;
+            }
+
+            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
+            int newSupport = Math.Max(
+                0,
+                Math.Min(_game.Config.Planet.MaxPopularSupport, currentSupport + shift)
+            );
+            if (newSupport != currentSupport)
+            {
+                planet.SetPopularSupport(
+                    faction.InstanceID,
+                    newSupport,
+                    _game.Config.Planet.MaxPopularSupport
+                );
             }
         }
 
@@ -290,7 +400,7 @@ namespace Rebellion.Systems
         /// Returns 0 when popular support is at or above the threshold.
         /// Core worlds with a faction GarrisonEfficiency modifier receive a reduced requirement.
         /// Planets in active uprisings apply the uprising multiplier.
-        /// Corresponds to FUN_00508370 / FUN_0050a710_adjust_garrison_requirement.
+        /// Corresponds to FUN_0050a710_adjust_garrison_requirement.
         /// </summary>
         public static int CalculateGarrisonRequirement(
             Planet planet,

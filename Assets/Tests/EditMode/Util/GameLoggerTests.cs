@@ -82,6 +82,20 @@ namespace Rebellion.Tests.Util
         }
 
         [Test]
+        public void Error_FileLoggingEnabled_WritesMessageToFile()
+        {
+            GameLogger.Configure(
+                filePath: _tempFile,
+                enableFileLogging: true,
+                addTimestamps: false
+            );
+
+            GameLogger.Error("something went wrong");
+
+            StringAssert.Contains("something went wrong", File.ReadAllText(_tempFile));
+        }
+
+        [Test]
         public void Configure_FileLoggingEnabled_CreatesNewFile()
         {
             string newPath = Path.Combine(

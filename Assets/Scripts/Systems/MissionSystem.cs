@@ -45,14 +45,23 @@ namespace Rebellion.Systems
         /// <param name="missionType">The type of mission to check.</param>
         /// <param name="ownerInstanceId">The faction attempting the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
+        /// <param name="provider">RNG provider for target selection; pass the game's live provider.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         /// <returns>True if a mission of this type can be created.</returns>
         public bool CanCreateMission(
             MissionType missionType,
             string ownerInstanceId,
             ISceneNode target,
+            IRandomNumberProvider provider,
             Officer targetOfficer = null
-        ) => _missionFactory.CanCreateMission(missionType, ownerInstanceId, target, targetOfficer);
+        ) =>
+            _missionFactory.CanCreateMission(
+                missionType,
+                ownerInstanceId,
+                target,
+                provider,
+                targetOfficer
+            );
 
         /// <summary>
         /// Initiates a mission with a single participant and target.
