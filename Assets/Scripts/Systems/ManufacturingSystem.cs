@@ -273,6 +273,7 @@ namespace Rebellion.Systems
                                     planet.GetOwnerInstanceID()
                                 ),
                                 ProductType = type,
+                                ProductName = lastCompleted.GetDisplayName(),
                                 Tick = _game.CurrentTick,
                             }
                         );

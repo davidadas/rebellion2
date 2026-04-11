@@ -93,9 +93,8 @@ public class GameConfig
 
         /// <summary>
         /// Support shift applied to PRODUCING faction's own popular support (Death Star only).
-        /// GENERAL_PARAM_7705 = -20 (negative = military disruption at construction site).
+        /// Negative = military disruption at construction site.
         /// Only applied when enableFinalizePackage is set (Death Star found in setup stage).
-        /// Original: FUN_00558860 (get_orbital_strike_selected_side_support_shift).
         /// </summary>
         public int OrbitalStrikeSupportShift { get; set; }
     }
@@ -149,7 +148,6 @@ public class GameConfig
         /// <summary>
         /// Popular support shift applied to the controlling faction each uprising resolution tick.
         /// Negative = support drops during an uprising.
-        /// Corresponds to GENERAL_PARAM_7697; applied via FUN_0050c1a0 → FUN_0050bb60.
         /// </summary>
         public int ControllerSupportShift { get; set; }
     }
@@ -271,13 +269,13 @@ public class GameConfig
         public Dictionary<int, int> CapitalShipProgressTable { get; set; } =
             new Dictionary<int, int>();
 
-        /// <summary>Range for the CSCRHT progress roll (GENERAL_PARAM_2051).</summary>
+        /// <summary>Range for the CSCRHT progress roll.</summary>
         public int CapitalShipProgressRollRange { get; set; }
 
-        /// <summary>Threshold for the success check roll (GENERAL_PARAM_2050).</summary>
+        /// <summary>Threshold for the success check roll.</summary>
         public int CapitalShipSuccessThreshold { get; set; }
 
-        /// <summary>Range for the success check roll (GENERAL_PARAM_2049).</summary>
+        /// <summary>Range for the success check roll.</summary>
         public int CapitalShipSuccessRollRange { get; set; }
 
         /// <summary>Popular support shift when a capital ship completes.</summary>
@@ -351,7 +349,6 @@ public class GameConfig
 
         /// <summary>
         /// Minimum number of Shield-class defense facilities required to block bombardment.
-        /// Source: FUN_00506e80 shield gate check.
         /// </summary>
         public int BombardmentShieldBlockThreshold { get; set; }
     }
@@ -423,16 +420,15 @@ public class GameConfig
     /// <summary>
     /// Research system configuration.
     /// Controls technology advancement rates and officer research mechanics.
-    /// Parameters derived from original GENERAL_PARAM_6171 and GENERAL_PARAM_6172.
     /// </summary>
     [Serializable]
     [PersistableObject]
     public class ResearchConfig
     {
-        /// <summary>Base research points awarded per successful research mission (GENERAL_PARAM_6171).</summary>
+        /// <summary>Base research points awarded per successful research mission.</summary>
         public int BaseResearchPoints { get; set; }
 
-        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172).</summary>
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success.</summary>
         public int ResearchDiceRange { get; set; }
     }
 

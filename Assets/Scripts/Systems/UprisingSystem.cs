@@ -22,11 +22,12 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Processes uprising checks for all owned, populated planets.
-        /// Starts new uprisings when garrison is insufficient (FUN_0050a970).
-        /// Applies consequence resolution each tick for planets already in uprising
-        /// (FUN_00510a30_uprising -> FUN_0050c1a0_apply_uprising_resolution_to_system).
+        /// Starts new uprisings when garrison is insufficient.
+        /// Applies consequence resolution each tick for planets already in uprising.
         /// Uprisings are cleared externally by SubdueUprisingMission or OwnershipSystem.
         /// </summary>
+        /// <param name="provider">Random number provider for dice rolls.</param>
+        /// <returns>Game results from uprising starts and consequence resolution.</returns>
         public List<GameResult> ProcessTick(IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -111,8 +112,14 @@ namespace Rebellion.Systems
         /// Resolves uprising using dual dice rolls and UPRIS1/UPRIS2 table lookups.
         /// Combined score = dice + (garrison_threshold - troop_multiplier * troops)
         ///                      + (hostile_fleets + hostile_troops - typed_garrison).
-        /// Corresponds to FUN_00558460_resolve_uprising_table_results.
         /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="supportForController">Popular support value for the controlling faction.</param>
+        /// <param name="controllerTroopCount">Number of controller's troops on the planet.</param>
+        /// <param name="provider">Random number provider for dice rolls.</param>
+        /// <param name="uprisingEffect">Output: UPRIS1 table result (effect code).</param>
+        /// <param name="uprisingSeverity">Output: UPRIS2 table result (severity code).</param>
         private void ResolveUprisingTableResults(
             Planet planet,
             Faction faction,
@@ -144,10 +151,7 @@ namespace Rebellion.Systems
 
             int threshold = CalculateUprisingThreshold(supportForController);
 
-            // FUN_0050c1a0 passes two galaxy-state cache reads to FUN_00558460, both ADDED
-            // to the score: attached_state_74 (FUN_00508c80, cache +0x74) and
-            // attached_state_78 (FUN_00508c90, cache +0x78). Approximated here as hostile
-            // fleet and troop counts; exact values require a galaxy-state cache object.
+            // Hostile fleet and troop presence increases the uprising score.
             int hostileFleetCount = planet
                 .GetFleets()
                 .Count(f =>
@@ -159,8 +163,7 @@ namespace Rebellion.Systems
                     r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != faction.InstanceID
                 );
 
-            // FUN_00508370 counts Empire-side regiments of type 0x10000006 and is SUBTRACTED.
-            // Regiment type metadata is not modelled in C# — this term is zero.
+            // Typed garrison term — regiment type metadata is not modelled, so this is zero.
             int attachedTroopState = 0;
 
             int combinedScore =
@@ -214,6 +217,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Destroys a random controller-owned building on the planet.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="provider">RNG provider for selecting a random building.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void DestroyRandomBuilding(
             Planet planet,
             string controllerInstanceId,
@@ -242,6 +249,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Destroys a random controller-owned regiment on the planet.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="provider">RNG provider for selecting a random regiment.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void DestroyRandomRegiment(
             Planet planet,
             string controllerInstanceId,
@@ -270,6 +281,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Captures a random uncaptured controller-owned officer on the planet.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="provider">RNG provider for selecting a random officer.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void CaptureRandomOfficer(
             Planet planet,
             string controllerInstanceId,
@@ -299,6 +314,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Frees one randomly selected captured controller-owned officer on the planet.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="provider">RNG provider for selecting a random captured officer.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void FreeRandomCapturedOfficer(
             Planet planet,
             string controllerInstanceId,
@@ -329,6 +348,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Frees all captured controller-owned officers on the planet.
         /// </summary>
+        /// <param name="planet">The planet experiencing the uprising.</param>
+        /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
+        /// <param name="results">Result list to append events to.</param>
         private void FreeAllCapturedOfficers(
             Planet planet,
             string controllerInstanceId,
@@ -357,10 +379,10 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Applies the per-tick popular support shift to the controlling faction during uprising.
-        /// Corresponds to FUN_0050c1a0 → FUN_00508ca0 → FUN_0050bb60_apply_system_popular_support_shift_for_side.
-        /// On core systems the shift is halved when it moves against the faction's favor,
-        /// matching FUN_00558360_get_system_core_weak_support.
+        /// On core systems the shift is halved when it moves against the faction's favor.
         /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction whose support is shifted.</param>
         private void ApplyUprisingControllerSupportShift(Planet planet, Faction faction)
         {
             int shift = _game.Config.Uprising.ControllerSupportShift;
@@ -400,8 +422,11 @@ namespace Rebellion.Systems
         /// Returns 0 when popular support is at or above the threshold.
         /// Core worlds with a faction GarrisonEfficiency modifier receive a reduced requirement.
         /// Planets in active uprisings apply the uprising multiplier.
-        /// Corresponds to FUN_0050a710_adjust_garrison_requirement.
         /// </summary>
+        /// <param name="planet">The planet to calculate garrison requirements for.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">Garrison configuration parameters.</param>
+        /// <returns>The number of garrison troops required, or 0 if support is sufficient.</returns>
         public static int CalculateGarrisonRequirement(
             Planet planet,
             Faction faction,
@@ -436,9 +461,10 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Calculates the uprising threshold used in the dice score formula.
-        /// This is the simplified garrison requirement without efficiency or uprising multipliers,
-        /// matching the threshold term in FUN_00558460_resolve_uprising_table_results.
+        /// This is the simplified garrison requirement without efficiency or uprising multipliers.
         /// </summary>
+        /// <param name="supportForController">Popular support for the controlling faction.</param>
+        /// <returns>The uprising threshold value for the score formula.</returns>
         private int CalculateUprisingThreshold(int supportForController)
         {
             GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;

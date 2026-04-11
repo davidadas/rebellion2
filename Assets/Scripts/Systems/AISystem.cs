@@ -1081,7 +1081,6 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Picks a random owned core system and applies one random resource adjustment.
-        /// Matches ai_rebalance_raw_materials_and_energy (FUN_00558660).
         /// RESRC_TABLE has equal 25% probability for each of 4 cases.
         /// </summary>
         private void ProcessResourceRebalancing(Faction faction)

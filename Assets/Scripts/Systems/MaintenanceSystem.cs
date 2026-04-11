@@ -11,7 +11,6 @@ namespace Rebellion.Systems
     /// When a faction's total unit maintenance cost exceeds its maintenance capacity
     /// (refined materials output), one random eligible unit is scrapped per tick.
     ///
-    /// Matches the original game's FUN_0052de60/FUN_0052eb40 behavior:
     /// - Maintenance capacity = min(mines, resources, refineries) * refinement multiplier
     /// - Eligible scrap targets: Regiments, Starfighters, CapitalShips, Buildings
     /// - One unit scrapped per tick per faction while in shortfall
