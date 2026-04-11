@@ -28,6 +28,8 @@ public class RescueMission : Mission
     /// Returns a new RescueMission for the specified captured friendly officer, or null if the
     /// target is not a valid rescue target (not friendly, not captured, wrong planet).
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, participants, and the target officer.</param>
+    /// <returns>A configured mission, or null if the target is ineligible.</returns>
     public static RescueMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -75,6 +77,8 @@ public class RescueMission : Mission
     /// Returns false if the target officer is no longer captured or has moved
     /// away from the mission's planet before execution.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target is still captured and on the mission planet.</returns>
     protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -85,6 +89,9 @@ public class RescueMission : Mission
     /// <summary>
     /// Clears the captured state and captor from the rescued officer.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for rescue).</param>
+    /// <returns>An OfficerCaptureStateResult and an OfficerRescuedResult, or an empty list if the target was already removed.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -115,6 +122,8 @@ public class RescueMission : Mission
     /// <summary>
     /// Rescue missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

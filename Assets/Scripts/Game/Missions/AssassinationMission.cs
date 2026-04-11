@@ -28,6 +28,8 @@ public class AssassinationMission : Mission
     /// Returns a new AssassinationMission for the specified target officer, or null if the
     /// target is not a valid assassination target (not an enemy, captured, killed, wrong planet).
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, participants, and the target officer.</param>
+    /// <returns>A configured mission, or null if the target is ineligible.</returns>
     public static AssassinationMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -76,6 +78,8 @@ public class AssassinationMission : Mission
     /// Returns false if the target officer has already been killed or has moved
     /// away from the mission's planet before execution.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target is still alive and on the mission planet.</returns>
     protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -86,6 +90,9 @@ public class AssassinationMission : Mission
     /// <summary>
     /// Marks the target officer as killed and removes them from the scene graph.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for assassination).</param>
+    /// <returns>One OfficerKilledResult, or an empty list if the target was already removed.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -109,6 +116,8 @@ public class AssassinationMission : Mission
     /// <summary>
     /// Assassination missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

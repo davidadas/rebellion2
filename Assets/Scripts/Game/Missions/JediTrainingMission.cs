@@ -30,7 +30,7 @@ public class JediTrainingMission : Mission
     /// Selects the highest-ranked available trainer automatically.
     /// </summary>
     /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-    /// <returns>A configured mission, or null if no eligible trainer is available.</returns>
+    /// <returns>A configured mission, or null if the planet is not owned by this faction or no eligible trainer is available.</returns>
     public static JediTrainingMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))

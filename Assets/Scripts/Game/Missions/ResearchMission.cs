@@ -28,6 +28,9 @@ public class ResearchMission : Mission
     /// <summary>
     /// Returns a new ResearchMission if the target is an own planet, or null.
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <param name="researchType">The manufacturing category this mission advances.</param>
+    /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
     public static ResearchMission TryCreate(MissionContext ctx, ManufacturingType researchType)
     {
         if (!(ctx.Target is Planet planet))

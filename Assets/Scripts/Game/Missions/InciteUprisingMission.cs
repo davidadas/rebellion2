@@ -24,6 +24,8 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if the planet is neutral, owned by this faction, or already in uprising.</returns>
     public static InciteUprisingMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -63,6 +65,8 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
     public override bool ShouldAbort(GameRoot game)
     {
         return base.ShouldAbort(game) || (GetParent() is Planet p && p.IsInUprising);
@@ -71,6 +75,8 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
     /// </summary>
+    /// <param name="agent">The participant whose espionage skill is evaluated.</param>
+    /// <returns>Success probability 0–100 based on the composite score.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (!(GetParent() is Planet planet))
@@ -95,6 +101,9 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Starts an uprising on the target planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for incite uprising).</param>
+    /// <returns>One PlanetUprisingStartedResult.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -114,6 +123,8 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Incite Uprising missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

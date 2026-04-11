@@ -58,7 +58,9 @@ namespace Rebellion.Tests.Game.Missions
         {
             (_, Planet planet, _, MissionFactory factory) = BuildScene();
 
-            Assert.IsTrue(factory.CanCreateMission(MissionType.Sabotage, "empire", planet));
+            Assert.IsTrue(
+                factory.CanCreateMission(MissionType.Sabotage, "empire", planet, new StubRNG())
+            );
         }
 
         [Test]
@@ -68,7 +70,9 @@ namespace Rebellion.Tests.Game.Missions
             game.Factions.Find(f => f.InstanceID == "empire")
                 .DisallowedMissionTypes.Add(MissionType.Sabotage);
 
-            Assert.IsFalse(factory.CanCreateMission(MissionType.Sabotage, "empire", planet));
+            Assert.IsFalse(
+                factory.CanCreateMission(MissionType.Sabotage, "empire", planet, new StubRNG())
+            );
         }
 
         [Test]

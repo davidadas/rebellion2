@@ -28,6 +28,8 @@ public class AbductionMission : Mission
     /// Returns a new AbductionMission for the specified target officer, or null if the
     /// target is not a valid abduction target (not an enemy, already captured, wrong planet).
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, participants, and the target officer.</param>
+    /// <returns>A configured mission, or null if the target is ineligible.</returns>
     public static AbductionMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -75,6 +77,8 @@ public class AbductionMission : Mission
     /// Returns false if the target officer has already been captured or has moved
     /// away from the mission's planet before execution.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target is still free and on the mission planet.</returns>
     protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -85,6 +89,9 @@ public class AbductionMission : Mission
     /// <summary>
     /// Marks the target officer as captured and assigns the captor faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for abduction).</param>
+    /// <returns>One OfficerCaptureStateResult, or an empty list if the target was already removed.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -108,6 +115,8 @@ public class AbductionMission : Mission
     /// <summary>
     /// Abduction missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

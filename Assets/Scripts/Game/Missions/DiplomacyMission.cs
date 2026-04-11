@@ -21,6 +21,8 @@ public class DiplomacyMission : Mission
     /// <summary>
     /// Returns a new DiplomacyMission if the target is a valid planet, or null.
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if the planet is ineligible.</returns>
     public static DiplomacyMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -66,6 +68,8 @@ public class DiplomacyMission : Mission
     /// Extends base cancellation to also cancel when the target planet enters uprising or
     /// is taken by a third faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
     public override bool ShouldAbort(GameRoot game)
     {
         if (base.ShouldAbort(game))
@@ -84,12 +88,17 @@ public class DiplomacyMission : Mission
     /// <summary>
     /// Diplomacy missions are never foiled — they target own or neutral planets.
     /// </summary>
+    /// <param name="defenseScore">Ignored.</param>
+    /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Increments popular support and emits a PlanetOwnershipChangedResult when support
     /// crosses 60 and the planet is not yet owned by this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for diplomacy).</param>
+    /// <returns>A PlanetOwnershipChangedResult if ownership transfers, otherwise an empty list.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -143,6 +152,8 @@ public class DiplomacyMission : Mission
     /// <summary>
     /// Returns true while the planet remains eligible for further diplomacy attempts.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet is owned or neutral, not in uprising, and support is below 100.</returns>
     public override bool CanContinue(GameRoot game)
     {
         if (GetParent() is Planet planet)

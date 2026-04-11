@@ -124,6 +124,7 @@ namespace Rebellion.Tests.Systems
                 troopCount: 0
             );
             planet.IsInUprising = true;
+            planet.EnergyCapacity = 1;
             Building facility = EntityFactory.CreateBuilding("b1", "empire");
             game.AttachNode(facility, planet);
 

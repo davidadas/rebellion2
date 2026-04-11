@@ -669,6 +669,30 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_WithCompletedMission_ReturnsMissionCompletedResult()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+            StubMission mission = CreateMission(game, planet, officer);
+            MissionSystem system = new MissionSystem(game, movement, ownership);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = system.ProcessTick(game, new StubRNG());
+
+            Assert.IsTrue(
+                results.Any(r => r is MissionCompletedResult),
+                "ProcessTick should aggregate results from all missions and include MissionCompletedResult"
+            );
+        }
+
+        [Test]
         public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (

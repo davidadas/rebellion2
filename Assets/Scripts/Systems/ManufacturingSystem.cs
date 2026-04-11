@@ -405,15 +405,6 @@ namespace Rebellion.Systems
 
             return new List<GameResult>
             {
-                new ManufacturingCompletedResult
-                {
-                    GameObject = item as IGameEntity,
-                    ProductionPlanet = productionPlanet,
-                    Faction = faction,
-                    ProductType = type,
-                    ProductName = item.GetDisplayName(),
-                    Tick = _game.CurrentTick,
-                },
                 new GameObjectDeployedResult
                 {
                     GameObject = item as IGameEntity,

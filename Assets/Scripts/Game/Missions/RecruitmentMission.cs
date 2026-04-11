@@ -77,6 +77,8 @@ public class RecruitmentMission : Mission
     /// Returns false if the target officer no longer exists in the unrecruited pool or has
     /// already joined this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target officer is still unrecruited and not yet affiliated.</returns>
     protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
@@ -88,11 +90,16 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
     /// </summary>
+    /// <param name="defenseScore">Ignored.</param>
+    /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for recruitment).</param>
+    /// <returns>One OfficerRecruitedResult, or an empty list if the target or planet is missing.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
@@ -124,6 +131,8 @@ public class RecruitmentMission : Mission
     /// <summary>
     /// Returns true while there are still unrecruited officers available for this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if at least one unrecruited officer is available for this faction.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;

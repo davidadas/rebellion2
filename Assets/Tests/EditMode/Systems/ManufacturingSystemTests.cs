@@ -924,6 +924,7 @@ namespace Rebellion.Tests.Systems
             _manager.ProcessTick(_movement, _provider);
 
             // Planet captured mid-construction
+            _game.Factions.Add(new Faction { InstanceID = "REBELLION" });
             _coruscant.OwnerInstanceID = "REBELLION";
 
             _manager.ProcessTick(_movement, _provider);

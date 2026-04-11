@@ -29,6 +29,14 @@ namespace Rebellion.Util.Common
         private static bool includeTimestamp = true;
 
         /// <summary>
+        /// Overrides the minimum log level. Messages with a level above this threshold are
+        /// silently dropped. Call with <see cref="LogLevel.Error"/> in test assemblies to
+        /// suppress informational output from production code during test runs.
+        /// </summary>
+        /// <param name="level">The new minimum level.</param>
+        public static void SetMinimumLevel(LogLevel level) => minimumLevel = level;
+
+        /// <summary>
         /// Configures the logger settings.
         /// </summary>
         /// <param name="filePath">Path to the log file. Defaults to Application.persistentDataPath if null.</param>

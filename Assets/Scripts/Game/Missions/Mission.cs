@@ -55,6 +55,8 @@ public abstract class Mission : ContainerNode
     /// Base implementation cancels when any main participant is captured or killed.
     /// Override and call base for missions with additional cancellation conditions.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
     public virtual bool ShouldAbort(GameRoot game) =>
         MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
@@ -308,6 +310,9 @@ public abstract class Mission : ContainerNode
     /// Executes the mission, determines the outcome, and returns all results.
     /// MissionCompletedResult is always the last item in the list.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for all probability rolls.</param>
+    /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
     public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
         List<GameResult> results = new List<GameResult>();
@@ -385,23 +390,34 @@ public abstract class Mission : ContainerNode
     /// Override to validate target state at execution time. Returning false routes a
     /// successful dice roll to <see cref="MissionOutcome.Failed"/> without calling OnSuccess.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission target conditions are still valid; false to force a Failed outcome.</returns>
     protected virtual bool IsMissionSatisfied(GameRoot game) => true;
 
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the success outcome.</returns>
     protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
 
     /// <summary>
     /// Override to apply effects when the mission is foiled by enemy forces.
     /// Default returns no results.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the foiled outcome; empty by default.</returns>
     protected virtual List<GameResult> OnFoiled(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the failed outcome; empty by default.</returns>
     protected virtual List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
@@ -443,5 +459,7 @@ public abstract class Mission : ContainerNode
     /// Return true to repeat the mission at the same target after completion;
     /// return false to tear down and send participants home.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should continue; false to tear down and send participants home.</returns>
     public abstract bool CanContinue(GameRoot game);
 }

@@ -162,6 +162,7 @@
               <xs:element name="DiceAddend" type="xs:integer" />
               <xs:element name="Upris1Table" type="IntTableType" />
               <xs:element name="Upris2Table" type="IntTableType" />
+              <xs:element name="ControllerSupportShift" type="xs:integer" />
             </xs:all>
           </xs:complexType>
         </xs:element>

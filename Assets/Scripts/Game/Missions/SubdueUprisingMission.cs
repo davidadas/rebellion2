@@ -21,6 +21,8 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Returns a new SubdueUprisingMission if the target is an own planet in uprising, or null.
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if the planet is not owned by this faction or not in uprising.</returns>
     public static SubdueUprisingMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -59,6 +61,8 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Extends base cancellation to also cancel when the uprising ends before execution.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
     public override bool ShouldAbort(GameRoot game)
     {
         return base.ShouldAbort(game) || !(GetParent() is Planet p && p.IsInUprising);
@@ -67,6 +71,8 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Returns false if the uprising has ended on the target planet before execution.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet is still in uprising.</returns>
     protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.IsInUprising;
@@ -75,11 +81,16 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Subdue Uprising missions are never foiled — they target own planets.
     /// </summary>
+    /// <param name="defenseScore">Ignored.</param>
+    /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
     /// Ends the uprising on the target planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for subdue uprising).</param>
+    /// <returns>One PlanetUprisingEndedResult, or an empty list if the mission planet is null.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -101,6 +112,8 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Subdue Uprising missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;
