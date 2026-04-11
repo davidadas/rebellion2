@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
-            Building b1 = new Building
+            Building building1 = new Building
             {
                 InstanceID = "B1",
                 OwnerInstanceID = "EMPIRE",
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            Building b2 = new Building
+            Building building2 = new Building
             {
                 InstanceID = "B2",
                 OwnerInstanceID = "EMPIRE",
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 20,
                 BuildingType = BuildingType.Refinery,
             };
-            Building b3 = new Building
+            Building building3 = new Building
             {
                 InstanceID = "B3",
                 OwnerInstanceID = "EMPIRE",
@@ -137,9 +137,9 @@ namespace Rebellion.Tests.Systems
                 BuildingType = BuildingType.Defense,
             };
 
-            _manager.Enqueue(_coruscant, b1, _coruscant, ignoreCost: true);
-            _manager.Enqueue(_coruscant, b2, _coruscant, ignoreCost: true);
-            _manager.Enqueue(_coruscant, b3, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, building1, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, building2, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, building3, _coruscant, ignoreCost: true);
 
             List<IManufacturable> queue = _coruscant.GetManufacturingQueue()[
                 ManufacturingType.Building
@@ -838,10 +838,8 @@ namespace Rebellion.Tests.Systems
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
 
-            // With two production sources:
-            // Source 1 (_shipyard): ProcessRate=10 → contributes 1/10 = 0.1
-            // Source 2 (_shipyard2): ProcessRate=20 → contributes 1/20 = 0.05
-            // Combined: ceiling(0.1 + 0.05) = ceiling(0.15) = 1
+            // Two production sources: shipyard (rate 10, contributes 0.1) and shipyard2
+            // (rate 20, contributes 0.05). Combined rate rounds up to 1 per tick.
             _manager.ProcessTick(_movement, _provider);
 
             // Progress should be exactly 1 (production rate from two sources)
@@ -1609,7 +1607,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipComplete_SamePlanet_NoMovement()
+        public void ProcessTick_CapitalShipCompleteOnSamePlanet_NoMovement()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -1644,7 +1642,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipComplete_DifferentPlanet_ShipsFleet()
+        public void ProcessTick_CapitalShipCompleteOnDifferentPlanet_ShipsFleet()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -1685,7 +1683,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipComplete_DestinationChangedSides_ShipStaysAtFleet()
+        public void ProcessTick_CapitalShipCompleteDestinationChangedSides_ShipStaysAtFleet()
         {
             // Ship queued into fleet at destPlanet. destPlanet captured mid-production.
             // Planet doesn't accept CapitalShips directly, so HandleArrivalRejection finds
@@ -1930,7 +1928,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_RegimentComplete_SamePlanet_AttachedImmediately()
+        public void ProcessTick_RegimentCompleteOnSamePlanet_AttachedImmediately()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2118,7 +2116,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingComplete_DifferentPlanet_ShipsToDestination()
+        public void ProcessTick_BuildingCompleteOnDifferentPlanet_ShipsToDestination()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2160,7 +2158,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingComplete_DestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_BuildingCompleteDestinationChangedSides_RedirectsToProductionPlanet()
         {
             // Mine queued from planetA to planetB. planetB captured before completion.
             // planetA has capacity — mine should redirect there and be in transit.
@@ -2238,7 +2236,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingComplete_DestinationChangedSides_NoCapacityAnywhere_StaysAtHostile()
+        public void ProcessTick_BuildingCompleteDestinationChangedNoCapacity_StaysAtHostile()
         {
             // Mine queued from full planetA to planetB. planetB captured before completion.
             // planetA has no remaining capacity — mine stays at hostile planetB.
@@ -2422,7 +2420,7 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(_game);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
-            // 20 hostile capital ships = 100% penalty → 0 production
+            // 20 hostile capital ships apply a 100% blockade penalty, halting all production.
             Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
             _game.AttachNode(hostileFleet, planet);
             for (int i = 0; i < 20; i++)
@@ -2769,7 +2767,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipComplete_DestinationFleetDestroyed_ShipIsLost()
+        public void ProcessTick_CapitalShipCompleteDestinationFleetDestroyed_ShipIsLost()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2788,7 +2786,7 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(anchor, destFleet);
 
-            CapitalShip cs = new CapitalShip
+            CapitalShip capitalShip = new CapitalShip
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
@@ -2797,13 +2795,16 @@ namespace Rebellion.Tests.Systems
             };
 
             ManufacturingSystem mfg = new ManufacturingSystem(_game);
-            mfg.Enqueue(productionPlanet, cs, destFleet, ignoreCost: true);
+            mfg.Enqueue(productionPlanet, capitalShip, destFleet, ignoreCost: true);
 
-            Assert.IsNotNull(cs.GetParentOfType<Fleet>(), "CS should be in fleet after enqueue.");
+            Assert.IsNotNull(
+                capitalShip.GetParentOfType<Fleet>(),
+                "CS should be in fleet after enqueue."
+            );
 
             // Destroy the fleet mid-production by detaching all ships and the fleet itself.
             _game.DetachNode(anchor);
-            _game.DetachNode(cs);
+            _game.DetachNode(capitalShip);
             _game.DetachNode(destFleet);
 
             // One tick completes manufacturing and triggers the rescue.
@@ -2817,7 +2818,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_StarfighterComplete_DestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_StarfighterCompleteDestinationChangedSides_RedirectsToProductionPlanet()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2866,7 +2867,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_RegimentComplete_DestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_RegimentCompleteDestinationChangedSides_RedirectsToProductionPlanet()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2915,7 +2916,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetHasCapacity_RedirectsAll()
+        public void ProcessTick_BuildingBatchDestinationChangedSidesWithCapacity_RedirectsAll()
         {
             // 3 mines queued from production planet A to destination planet B.
             // B changes sides. A has enough ground slots for all 3.
@@ -2928,7 +2929,8 @@ namespace Rebellion.Tests.Systems
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
 
-            // Production planet A: EnergyCapacity = 10 (3 used by construction yards → 7 available for 3 mines).
+            // Production planet A: EnergyCapacity 10, with 3 construction yards using 3 slots,
+            // leaving 7 available for the 3 mines being built.
             Planet planetA = new Planet
             {
                 InstanceID = "pA",
@@ -2941,7 +2943,7 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetA, sys);
 
-            // 3 construction yards at ProcessRate=1 → production rate = 3/tick, enough to complete 3 mines.
+            // 3 construction yards at ProcessRate=1, giving 3 progress per tick (enough to complete all 3 mines).
             for (int i = 1; i <= 3; i++)
             {
                 Building constructionYard = new Building
@@ -3031,7 +3033,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingBatch_DestinationChangedSides_ProductionPlanetNoCapacity_StaysAtCurrentLocation()
+        public void ProcessTick_BuildingBatchDestinationChangedSidesNoCapacity_StaysAtCurrentLocation()
         {
             // 3 mines queued from production planet A to destination planet B.
             // B changes sides. A has no capacity for redirected mines.
@@ -3045,7 +3047,7 @@ namespace Rebellion.Tests.Systems
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
 
-            // Production planet A: EnergyCapacity = 5, filled with 3 yards + 2 dummies → 0 available.
+            // Production planet A: EnergyCapacity 5, fully occupied by 3 yards + 2 dummies (0 available).
             Planet planetA = new Planet
             {
                 InstanceID = "pA",
@@ -3058,7 +3060,7 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetA, sys);
 
-            // 3 construction yards at ProcessRate=1 → production rate = 3/tick, enough to complete 3 mines.
+            // 3 construction yards at ProcessRate=1, giving 3 progress per tick (enough to complete all 3 mines).
             for (int i = 1; i <= 3; i++)
             {
                 Building constructionYard = new Building

@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Util
         }
 
         [Test]
-        public void Log_MessageContainsLevelTag()
+        public void Log_AnyLevel_MessageContainsLevelTag()
         {
             GameLogger.Configure(
                 filePath: _tempFile,
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Util
         // ── LogFormat ─────────────────────────────────────────────────────────
 
         [Test]
-        public void LogFormat_WritesFormattedMessageToFile()
+        public void LogFormat_FileLoggingEnabled_WritesFormattedMessage()
         {
             GameLogger.Configure(
                 filePath: _tempFile,
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Util
         // ── LogException ──────────────────────────────────────────────────────
 
         [Test]
-        public void LogException_WritesExceptionTypeAndMessage()
+        public void LogException_WithException_WritesTypeAndMessage()
         {
             GameLogger.Configure(
                 filePath: _tempFile,

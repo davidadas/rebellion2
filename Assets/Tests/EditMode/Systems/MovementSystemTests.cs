@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficer_WithEscortFromCaptor_BothMove()
+        public void RequestGroupMove_CapturedOfficerWithEscortFromCaptor_BothMove()
         {
             (
                 GameRoot game,
@@ -456,7 +456,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficer_WithoutEscort_CapturedOfficerNotMoved()
+        public void RequestGroupMove_CapturedOfficerWithoutEscort_NotMoved()
         {
             (
                 GameRoot game,
@@ -489,7 +489,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficer_EscortFromWrongFaction_CapturedOfficerNotMoved()
+        public void RequestGroupMove_CapturedOfficerEscortFromWrongFaction_NotMoved()
         {
             (
                 GameRoot game,
@@ -609,16 +609,16 @@ namespace Rebellion.Tests.Systems
             GameRoot game,
             MovementSystem movement,
             Fleet fleet,
-            CapitalShip cs1,
-            CapitalShip cs2,
-            Starfighter sf,
-            Regiment reg,
+            CapitalShip capitalShip1,
+            CapitalShip capitalShip2,
+            Starfighter starfighter,
+            Regiment regiment,
             Officer officer,
             Planet planetA,
             Planet planetB,
             Planet planetC,
             int fleetTransit,
-            int cs2Transit
+            int capitalShip2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
@@ -658,11 +658,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planetC, system);
 
-            // Fleet at A with CS1 carrying a starfighter, regiment, and officer.
+            // Fleet at A with capitalShip1 carrying a starfighter, regiment, and officer.
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(fleet, planetA);
 
-            CapitalShip cs1 = new CapitalShip
+            CapitalShip capitalShip1 = new CapitalShip
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
@@ -670,28 +670,32 @@ namespace Rebellion.Tests.Systems
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
             };
-            game.AttachNode(cs1, fleet);
+            game.AttachNode(capitalShip1, fleet);
 
-            Starfighter sf = new Starfighter { InstanceID = "sf1", OwnerInstanceID = "empire" };
-            game.AttachNode(sf, cs1);
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+            };
+            game.AttachNode(starfighter, capitalShip1);
 
-            Regiment reg = new Regiment { InstanceID = "reg1", OwnerInstanceID = "empire" };
-            game.AttachNode(reg, cs1);
+            Regiment regiment = new Regiment { InstanceID = "reg1", OwnerInstanceID = "empire" };
+            game.AttachNode(regiment, capitalShip1);
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
-            game.AttachNode(officer, cs1);
+            game.AttachNode(officer, capitalShip1);
 
-            // CS2 at planet C will move to the fleet.
+            // capitalShip2 at planet C will move to the fleet.
             Fleet sourceFleet = EntityFactory.CreateFleet("f2", "empire");
             game.AttachNode(sourceFleet, planetC);
-            CapitalShip cs2 = new CapitalShip
+            CapitalShip capitalShip2 = new CapitalShip
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
                 Hyperdrive = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(cs2, sourceFleet);
+            game.AttachNode(capitalShip2, sourceFleet);
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
 
@@ -699,24 +703,24 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(fleet, planetB);
             int fleetTransit = fleet.Movement.TransitTicks;
 
-            // CS2 moves from C toward fleet (now at B; C is farther from B than A is, so transit > fleetTransit).
-            movement.RequestMove(cs2, fleet);
-            int cs2Transit = cs2.Movement.TransitTicks;
+            // capitalShip2 moves from C toward fleet (now at B; C is farther from B than A is, so transit > fleetTransit).
+            movement.RequestMove(capitalShip2, fleet);
+            int capitalShip2Transit = capitalShip2.Movement.TransitTicks;
 
             return (
                 game,
                 movement,
                 fleet,
-                cs1,
-                cs2,
-                sf,
-                reg,
+                capitalShip1,
+                capitalShip2,
+                starfighter,
+                regiment,
                 officer,
                 planetA,
                 planetB,
                 planetC,
                 fleetTransit,
-                cs2Transit
+                capitalShip2Transit
             );
         }
 
@@ -727,20 +731,20 @@ namespace Rebellion.Tests.Systems
                 GameRoot game,
                 MovementSystem movement,
                 Fleet fleet,
-                CapitalShip cs1,
-                CapitalShip cs2,
-                Starfighter sf,
-                Regiment reg,
+                CapitalShip capitalShip1,
+                CapitalShip capitalShip2,
+                Starfighter starfighter,
+                Regiment regiment,
                 Officer officer,
                 Planet planetA,
                 Planet planetB,
                 Planet planetC,
                 int fleetTransit,
-                int cs2Transit
+                int capitalShip2Transit
             ) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
-                scene.cs2Transit,
+                scene.capitalShip2Transit,
                 scene.fleetTransit,
                 "CS2 must have a longer transit than the fleet for this test to be meaningful."
             );
@@ -752,19 +756,19 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
             Assert.AreEqual(scene.planetB, scene.fleet.GetParent(), "Fleet should be at planet B.");
             Assert.IsNotNull(
-                scene.cs2.Movement,
+                scene.capitalShip2.Movement,
                 "CS2 should still be in transit while fleet has arrived."
             );
 
             // Verify fleet children are intact.
             Assert.AreEqual(
                 scene.fleet,
-                scene.cs1.GetParent(),
+                scene.capitalShip1.GetParent(),
                 "CS1 should still be in the fleet."
             );
-            Assert.AreEqual(scene.cs1, scene.sf.GetParentOfType<CapitalShip>());
-            Assert.AreEqual(scene.cs1, scene.reg.GetParentOfType<CapitalShip>());
-            Assert.AreEqual(scene.cs1, scene.officer.GetParent());
+            Assert.AreEqual(scene.capitalShip1, scene.starfighter.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.capitalShip1, scene.regiment.GetParentOfType<CapitalShip>());
+            Assert.AreEqual(scene.capitalShip1, scene.officer.GetParent());
         }
 
         [Test]
@@ -774,31 +778,35 @@ namespace Rebellion.Tests.Systems
                 GameRoot game,
                 MovementSystem movement,
                 Fleet fleet,
-                CapitalShip cs1,
-                CapitalShip cs2,
-                Starfighter sf,
-                Regiment reg,
+                CapitalShip capitalShip1,
+                CapitalShip capitalShip2,
+                Starfighter starfighter,
+                Regiment regiment,
                 Officer officer,
                 Planet planetA,
                 Planet planetB,
                 Planet planetC,
                 int fleetTransit,
-                int cs2Transit
+                int capitalShip2Transit
             ) scene = BuildFleetWithInTransitChildrenScene();
 
             Assert.Greater(
-                scene.cs2Transit,
+                scene.capitalShip2Transit,
                 scene.fleetTransit,
                 "CS2 must have a longer transit than the fleet for this test to be meaningful."
             );
 
             // Advance until CS2 also arrives (covers fleet arrival + remaining ticks).
-            for (int i = 0; i < scene.cs2Transit; i++)
+            for (int i = 0; i < scene.capitalShip2Transit; i++)
                 scene.movement.ProcessTick();
 
             Assert.IsNull(scene.fleet.Movement, "Fleet should have arrived at planet B.");
-            Assert.IsNull(scene.cs2.Movement, "CS2 should have arrived.");
-            Assert.AreEqual(scene.fleet, scene.cs2.GetParent(), "CS2 should be in the fleet.");
+            Assert.IsNull(scene.capitalShip2.Movement, "CS2 should have arrived.");
+            Assert.AreEqual(
+                scene.fleet,
+                scene.capitalShip2.GetParent(),
+                "CS2 should be in the fleet."
+            );
             Assert.AreEqual(
                 scene.planetB,
                 scene.fleet.GetParent(),
@@ -906,7 +914,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planetB, system);
 
-            CapitalShip cs = new CapitalShip
+            CapitalShip capitalShip = new CapitalShip
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
@@ -915,30 +923,33 @@ namespace Rebellion.Tests.Systems
             };
             Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
             game.AttachNode(sourceFleet, planetA);
-            game.AttachNode(cs, sourceFleet);
+            game.AttachNode(capitalShip, sourceFleet);
 
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(fleet, planetB);
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            movement.RequestMove(cs, fleet);
+            movement.RequestMove(capitalShip, fleet);
 
             // Tick until transit completes.
-            int transit = cs.Movement.TransitTicks;
+            int transit = capitalShip.Movement.TransitTicks;
             for (int i = 0; i < transit; i++)
                 movement.ProcessTick();
 
-            Assert.IsNull(cs.Movement, "Capital ship should have no movement state after arrival.");
+            Assert.IsNull(
+                capitalShip.Movement,
+                "Capital ship should have no movement state after arrival."
+            );
             Assert.AreEqual(
                 fleet,
-                cs.GetParent(),
+                capitalShip.GetParent(),
                 "Capital ship should be in the destination fleet."
             );
             Assert.AreEqual(planetB, fleet.GetParent(), "Fleet should still be at planet B.");
         }
 
         [Test]
-        public void UpdateMovement_BuildingInTransit_DestinationChangedSides_BuildingDestroyed()
+        public void UpdateMovement_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -998,7 +1009,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMovement_NonBuildingInTransit_DestinationChangedSides_UnitRerouted()
+        public void UpdateMovement_NonBuildingInTransitDestinationChangedSides_UnitRerouted()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);

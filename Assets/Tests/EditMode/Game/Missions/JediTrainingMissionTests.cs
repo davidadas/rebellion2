@@ -230,7 +230,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_MultipleStudents_OneQualified_ReturnsTrue()
+        public void CanContinue_MultipleStudentsOneQualified_ReturnsTrue()
         {
             Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
             student2.IsJedi = true;
@@ -258,7 +258,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_MultipleStudents_AllQualified_ReturnsFalse()
+        public void CanContinue_MultipleStudentsAllQualified_ReturnsFalse()
         {
             Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
             student2.IsJedi = true;

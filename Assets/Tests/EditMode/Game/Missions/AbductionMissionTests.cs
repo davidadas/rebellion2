@@ -288,8 +288,6 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-
-            // No target officer provided — TryCreate should return null
             AbductionMission mission = CreateAbductionMission(
                 game,
                 "empire",
@@ -420,7 +418,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void SerializesAndDeserializes()
+        public void Serialize_RoundTrip_PreservesData()
         {
             AbductionMission mission = new AbductionMission
             {

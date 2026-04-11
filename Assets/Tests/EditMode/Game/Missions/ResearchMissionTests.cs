@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // RNG=0.99 → 99 > 10 → failure
+            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
@@ -152,8 +152,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            // Even with high RNG, skill 100 should always succeed since foil = 0
-            // RNG=0.99 → 99 <= 100 → success
+            // Even with a high RNG roll, skill 100 always succeeds since foil is 0.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
@@ -215,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // RNG=0.99 → 99 > 10 → failure
+            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.IsTrue(

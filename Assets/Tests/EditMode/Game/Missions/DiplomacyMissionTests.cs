@@ -298,7 +298,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void SerializesAndDeserializes()
+        public void Serialize_RoundTrip_PreservesData()
         {
             DiplomacyMission mission = new DiplomacyMission
             {

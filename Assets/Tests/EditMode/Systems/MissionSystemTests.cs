@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_NoFriendlyPlanet_SkipsMovement()
+        public void UpdateMission_CompletedNoFriendlyPlanet_SkipsMovement()
         {
             // Faction owns no planets and mission planet is unowned — no valid destination,
             // movement skipped. Officer is not attached to the scene graph so the planet
@@ -140,7 +140,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_ParticipantParentedToMission_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantParentedToMission_DoesNotThrow()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
             // there) caused IsMovable() to return false and RequestMove to throw on teardown.
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_ParticipantParentedToMission_NeutralPlanet_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantOnNeutralPlanet_DoesNotThrow()
         {
             // Regression: neutral planet (null owner) must not be used as reparent target —
             // AddOfficer rejects officers whose faction doesn't match the planet owner.

@@ -115,13 +115,13 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Deploy_WithMoreRecruitableThanLimit_DeploysOnlyAllowed()
         {
-            Officer o1 = MakeOfficer("O1", "FNALL1");
-            Officer o2 = MakeOfficer("O2", "FNALL1");
-            Officer o3 = MakeOfficer("O3", "FNALL1");
+            Officer officer1 = MakeOfficer("O1", "FNALL1");
+            Officer officer2 = MakeOfficer("O2", "FNALL1");
+            Officer officer3 = MakeOfficer("O3", "FNALL1");
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
             OfficerGenerator.OfficerResults results = _generator.Deploy(
-                new[] { o1, o2, o3 },
+                new[] { officer1, officer2, officer3 },
                 new[] { sys },
                 _rules,
                 _summary,
@@ -157,13 +157,13 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Deploy_UnrecruitedOfficers_AreComplementOfDeployed()
         {
-            Officer o1 = MakeOfficer("O1", "FNALL1");
-            Officer o2 = MakeOfficer("O2", "FNALL1");
-            Officer o3 = MakeOfficer("O3", "FNALL1");
+            Officer officer1 = MakeOfficer("O1", "FNALL1");
+            Officer officer2 = MakeOfficer("O2", "FNALL1");
+            Officer officer3 = MakeOfficer("O3", "FNALL1");
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
             OfficerGenerator.OfficerResults results = _generator.Deploy(
-                new[] { o1, o2, o3 },
+                new[] { officer1, officer2, officer3 },
                 new[] { sys },
                 _rules,
                 _summary,
@@ -177,16 +177,16 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Deploy_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
         {
-            Officer a1 = MakeOfficer("A1", "FNALL1");
-            Officer a2 = MakeOfficer("A2", "FNALL1");
-            Officer e1 = MakeOfficer("E1", "FNEMP1");
-            Officer e2 = MakeOfficer("E2", "FNEMP1");
+            Officer allianceOfficer1 = MakeOfficer("A1", "FNALL1");
+            Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
+            Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
+            Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             sys.Planets.Add(new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" });
             sys.Planets.Add(new Planet { InstanceID = "p2", OwnerInstanceID = "FNEMP1" });
 
             OfficerGenerator.OfficerResults results = _generator.Deploy(
-                new[] { a1, a2, e1, e2 },
+                new[] { allianceOfficer1, allianceOfficer2, empireOfficer1, empireOfficer2 },
                 new[] { sys },
                 _rules,
                 _summary,

@@ -18,7 +18,7 @@ public class InciteUprisingMission : Mission
     {
         ConfigKey = "InciteUprising";
         DisplayName = "Incite Uprising";
-        ParticipantSkill = MissionParticipantSkill.Espionage;
+        ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public class InciteUprisingMission : Mission
             RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
-            MissionParticipantSkill.Espionage,
+            MissionParticipantSkill.Leadership,
             null
         )
     {
@@ -73,9 +73,9 @@ public class InciteUprisingMission : Mission
     }
 
     /// <summary>
-    /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
+    /// Composite score: (leadership_skill - enemy_popular_support - enemy_regiment_strength).
     /// </summary>
-    /// <param name="agent">The participant whose espionage skill is evaluated.</param>
+    /// <param name="agent">The participant whose leadership skill is evaluated.</param>
     /// <returns>Success probability 0–100 based on the composite score.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
@@ -84,7 +84,7 @@ public class InciteUprisingMission : Mission
                 "InciteUprisingMission must be attached to a Planet."
             );
 
-        int espionageSkill = agent.GetMissionSkillValue(MissionParticipantSkill.Espionage);
+        int leadershipSkill = agent.GetMissionSkillValue(MissionParticipantSkill.Leadership);
         int enemySupport = planet.GetPopularSupport(planet.OwnerInstanceID);
 
         int regimentStrength = 0;
@@ -94,7 +94,7 @@ public class InciteUprisingMission : Mission
                 regimentStrength += regiment.DefenseRating;
         }
 
-        int score = espionageSkill - enemySupport - regimentStrength;
+        int score = leadershipSkill - enemySupport - regimentStrength;
         return SuccessProbabilityTable.Lookup(score);
     }
 

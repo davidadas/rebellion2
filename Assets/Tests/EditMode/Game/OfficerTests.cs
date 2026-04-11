@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SetSkillValue_UpdatesValueCorrectly()
+        public void SetSkillValue_ValidSkill_UpdatesValue()
         {
             Officer officer = new Officer();
             int updatedValue = officer.SetSkillValue(MissionParticipantSkill.Combat, 15);

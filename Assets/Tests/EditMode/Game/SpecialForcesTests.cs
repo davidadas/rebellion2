@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SetMissionSkillValue_SetsSkillValue()
+        public void SetMissionSkillValue_ValidSkill_SetsValue()
         {
             _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 99);
 

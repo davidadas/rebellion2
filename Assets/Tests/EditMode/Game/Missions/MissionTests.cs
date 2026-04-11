@@ -33,12 +33,10 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_MissionWithDecoy_UsesDecoyParticipantSkill()
         {
             // Decoy has Espionage=0, Combat=80. DecoyParticipantSkill=Combat.
-            // DecoyProbabilityTable requires score >= 50 to pass.
-            // FoilProbabilityTable is 100% so without a working decoy the mission is Foiled.
-            // If DecoyParticipantSkill is respected (Combat=80 → score=80 → passes),
-            // foil is nullified and the mission Succeeds.
-            // If the field is ignored and Espionage=0 is used instead (score=0 → fails),
-            // the mission is Foiled.
+            // DecoyProbabilityTable requires score >= 50 to pass, and FoilProbabilityTable
+            // is 100%, so without a working decoy the mission is always foiled.
+            // The decoy's Combat skill of 80 exceeds the threshold, nullifying the foil.
+            // If DecoyParticipantSkill were ignored and Espionage=0 used instead, it would fail.
             (
                 GameRoot game,
                 Planet empPlanet,
@@ -333,7 +331,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Espionage);
+            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
 
             MissionContext ctx = new MissionContext
             {
@@ -352,8 +350,8 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 skillBefore + 1,
-                officer.GetSkillValue(MissionParticipantSkill.Espionage),
-                "Officer skill should improve by 1 on mission success"
+                officer.GetSkillValue(MissionParticipantSkill.Leadership),
+                "Officer leadership skill should improve by 1 on mission success"
             );
         }
 

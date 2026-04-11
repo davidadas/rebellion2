@@ -180,7 +180,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetFoilProbability_AlwaysReturnsZero()
+        public void GetFoilProbability_AnyInput_ReturnsZero()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 

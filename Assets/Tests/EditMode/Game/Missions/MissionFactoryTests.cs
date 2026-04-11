@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_Recruitment_WithProvider_UnrecruitedExist_ReturnsTrue()
+        public void CanCreateMission_RecruitmentWithProviderAndUnrecruited_ReturnsTrue()
         {
             (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_Recruitment_WithoutProvider_ReturnsFalse()
+        public void CanCreateMission_RecruitmentWithoutProvider_ReturnsFalse()
         {
             (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
@@ -103,7 +103,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_Recruitment_NoUnrecruited_ReturnsFalse()
+        public void CanCreateMission_RecruitmentNoUnrecruited_ReturnsFalse()
         {
             (_, Planet planet, _, MissionFactory factory) = BuildScene();
 
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CreateMission_Recruitment_WithProvider_ReturnsMission()
+        public void CreateMission_RecruitmentWithProvider_ReturnsMission()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             officer.IsMain = true;

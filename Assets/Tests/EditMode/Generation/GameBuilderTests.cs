@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsConsistentOwners()
+        public void BuildGame_ValidConfig_SetsConsistentOwners()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsChildParentRelationships()
+        public void BuildGame_ValidConfig_SetsChildParentRelationships()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsGameSummary()
+        public void BuildGame_ValidConfig_SetsGameSummary()
         {
             Assert.IsNotNull(_game, "Game should not be null.");
             Assert.IsNotNull(_game.Summary, "Game summary should not be null.");
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsFactions()
+        public void BuildGame_ValidConfig_SetsFactions()
         {
             Assert.IsNotNull(_game.Factions, "Factions should not be null.");
 
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsFactionResearchQueues()
+        public void BuildGame_ValidConfig_SetsFactionResearchQueues()
         {
             foreach (Faction faction in _game.Factions)
             {
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_TechnologiesSurviveRebuild()
+        public void BuildGame_AfterRebuild_TechnologiesSurvive()
         {
             IManufacturable[] templates = ResourceManager
                 .GetGameData<Building>()
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsHQs()
+        public void BuildGame_ValidConfig_SetsHQs()
         {
             Assert.IsNotNull(_game.Factions, "Factions should not be null.");
             Assert.IsNotNull(_game.Galaxy, "GalaxyMap should not be null.");
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_AssignsFactionsPlanets()
+        public void BuildGame_ValidConfig_AssignsFactionsPlanets()
         {
             Dictionary<string, List<Planet>> factionPlanets =
                 new Dictionary<string, List<Planet>>();
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_DeploysOfficers()
+        public void BuildGame_ValidConfig_DeploysOfficers()
         {
             List<Officer> officers = new List<Officer>();
 
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_InitializesOfficers()
+        public void BuildGame_ValidConfig_InitializesOfficerSkills()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_DeploysFleets()
+        public void BuildGame_ValidConfig_DeploysFleets()
         {
             Dictionary<string, int> fleetsPerFaction = new Dictionary<string, int>();
 
@@ -327,7 +327,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_DeploysMaxOneFleet()
+        public void BuildGame_ValidConfig_DeploysMaxOneFleetPerPlanet()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -343,7 +343,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_DeploysCapitalShips()
+        public void BuildGame_ValidConfig_DeploysCapitalShips()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -360,7 +360,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_SetsGameEvents()
+        public void BuildGame_ValidConfig_SetsGameEvents()
         {
             Assert.GreaterOrEqual(
                 _game.GetEventPool().Count,

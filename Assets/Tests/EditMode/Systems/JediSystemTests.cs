@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DormantJedi_NotForceEligible_Skipped()
+        public void ProcessTick_DormantJediNotForceEligible_Skipped()
         {
             Officer leia = CreateDormantJedi("LEIA");
 
@@ -197,7 +197,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ForceRankIncludesTrainingAdjustment()
+        public void ProcessTick_OfficerWithTrainingAdjustment_IncludesAdjustmentInRank()
         {
             // ForceValue 70 alone is below threshold 80, but with adjustment of 15 => rank 85
             Officer luke = CreateKnownJedi("LUKE", forceValue: 70);
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DiscoveringJediDiscoversDormant()
+        public void ProcessTick_DiscoveringJediWithDormantCandidate_DiscoversDormant()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_InitializesForceValueFromTemplate()
+        public void ProcessTick_OfficerWithTemplate_InitializesForceValue()
         {
             Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;

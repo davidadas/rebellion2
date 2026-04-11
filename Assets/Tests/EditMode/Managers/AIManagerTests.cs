@@ -319,13 +319,13 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void Update_EnemyPlanet_InciteUprisingTableEmpty_DispatchesEspionage()
+        public void Update_EnemyPlanetInciteUprisingTableEmpty_DispatchesEspionage()
         {
             (GameRoot game, Planet empPlanet, Planet enemyPlanet, Officer officer, AISystem ai) =
                 BuildEnemyScene();
 
-            // InciteUprising table empty → score 0 → skipped
-            // Espionage: score = espionage(50), table passes
+            // InciteUprising table is empty so it scores 0 and gets skipped.
+            // Espionage scores 50 from the officer skill and passes the table check.
             game.Config.AI.MissionTables.Espionage[0] = 5;
 
             ai.ProcessTick();
@@ -351,8 +351,8 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(building, enemyPlanet);
 
-            // InciteUprising and Espionage tables empty → skipped
-            // Sabotage: no defender officer present, so score = (espionage(50) + 0) / 2 = 25
+            // InciteUprising and Espionage tables are empty, so they get skipped.
+            // Sabotage: no defender officer present, so score is espionage(50)/2 = 25.
             game.Config.AI.MissionTables.Sabotage[0] = 5;
 
             ai.ProcessTick();
@@ -378,13 +378,13 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(building, enemyPlanet);
 
-            // Defender officer with combat 100 → score = (espionage(50) + combat(100)) / 2 = 75
+            // Defender officer with combat 100 brings the score to (espionage 50 + combat 100) / 2 = 75.
             Officer defenderOfficer = EntityFactory.CreateOfficer("defender", "rebels");
             defenderOfficer.SetSkillValue(MissionParticipantSkill.Combat, 100);
             game.AttachNode(defenderOfficer, enemyPlanet);
 
-            // InciteUprising and Espionage tables empty → skipped
-            // Sabotage table only passes at score >= 80 — 75 should NOT pass
+            // InciteUprising and Espionage tables are empty, so they get skipped.
+            // Sabotage table only passes at score >= 80; 75 should NOT pass.
             game.Config.AI.MissionTables.Sabotage[80] = 5;
 
             ai.ProcessTick();
@@ -427,9 +427,9 @@ namespace Rebellion.Tests.Managers
             Officer enemyOfficer = EntityFactory.CreateOfficer("enemy_officer", "rebels");
             game.AttachNode(enemyOfficer, enemyPlanet);
 
-            // InciteUprising, Espionage tables empty; no buildings so Sabotage skipped;
-            // Abduction table empty → skipped
-            // Assassination: score = combat(50) - targetCombat(50) = 0, table passes
+            // InciteUprising, Espionage, and Abduction tables are empty, so all get skipped.
+            // No buildings, so Sabotage is also skipped.
+            // Assassination: score is combat(50) - targetCombat(50) = 0, table passes.
             game.Config.AI.MissionTables.Assassination[0] = 5;
 
             ai.ProcessTick();
