@@ -19,6 +19,7 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
+        private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
@@ -37,6 +38,8 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            results.AddRange(_pendingResults);
+            _pendingResults.Clear();
             _game
                 .GetGalaxyMap()
                 .Traverse(node =>
@@ -256,6 +259,18 @@ namespace Rebellion.Systems
             if (destination is Mission)
             {
                 movable.Movement = null;
+                if (movable is Officer missionOfficer)
+                {
+                    return new List<GameResult>
+                    {
+                        new RoleEnrouteActiveResult
+                        {
+                            Officer = missionOfficer,
+                            IsActive = false,
+                            Tick = _game.CurrentTick,
+                        },
+                    };
+                }
                 return new List<GameResult>();
             }
 
@@ -313,6 +328,12 @@ namespace Rebellion.Systems
 
                 return new List<GameResult>
                 {
+                    new GameObjectEnrouteActiveResult
+                    {
+                        GameObject = movable as IGameEntity,
+                        IsActive = false,
+                        Tick = _game.CurrentTick,
+                    },
                     new UnitArrivedResult
                     {
                         Unit = movable as IGameEntity,
@@ -347,7 +368,8 @@ namespace Rebellion.Systems
                 return;
             }
 
-            Planet fallback = FindNearestFactionPlanet(ownerID, unit.GetPosition());
+            Planet currentPlanet = ((ISceneNode)unit).GetParentOfType<Planet>();
+            Planet fallback = FindNearestFactionPlanet(ownerID, unit.GetPosition(), currentPlanet);
             if (fallback != null)
             {
                 RequestMove(unit, fallback);
@@ -398,11 +420,15 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns the nearest planet owned by the specified faction to the given position.
         /// </summary>
-        private Planet FindNearestFactionPlanet(string factionOwnerID, Point fromPosition)
+        private Planet FindNearestFactionPlanet(
+            string factionOwnerID,
+            Point fromPosition,
+            Planet exclude = null
+        )
         {
             return _game
                 .GetSceneNodesByType<Planet>()
-                .Where(p => p.GetOwnerInstanceID() == factionOwnerID)
+                .Where(p => p.GetOwnerInstanceID() == factionOwnerID && p != exclude)
                 .OrderBy(p =>
                 {
                     Point pos = p.GetPosition();
@@ -478,6 +504,34 @@ namespace Rebellion.Systems
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };
+
+            _pendingResults.Add(
+                new GameObjectEnrouteResult
+                {
+                    GameObject = unit as IGameEntity,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            _pendingResults.Add(
+                new GameObjectEnrouteActiveResult
+                {
+                    GameObject = unit as IGameEntity,
+                    IsActive = true,
+                    Tick = _game.CurrentTick,
+                }
+            );
+
+            if (unit is Officer officerEnroute && destination is Mission)
+            {
+                _pendingResults.Add(
+                    new RoleEnrouteActiveResult
+                    {
+                        Officer = officerEnroute,
+                        IsActive = true,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
 
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"

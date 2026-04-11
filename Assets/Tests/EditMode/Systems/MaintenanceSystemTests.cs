@@ -139,6 +139,12 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsTrue(results.OfType<GameObjectAutoscrappedResult>().Any());
+            MaintenanceRequiredResult shortfall = results
+                .OfType<MaintenanceRequiredResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(shortfall);
+            Assert.AreEqual(empire, shortfall.Faction);
+            Assert.Greater(shortfall.Amount, 0);
         }
 
         [Test]

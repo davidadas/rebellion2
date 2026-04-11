@@ -47,7 +47,7 @@ public class MissionFactory
             TargetOfficer = targetOfficer,
         };
 
-        return RouteToTryCreate(missionType, ctx) != null;
+        return TryCreateByType(missionType, ctx) != null;
     }
 
     /// <summary>
@@ -91,13 +91,13 @@ public class MissionFactory
             Target = target,
             MainParticipants = mainParticipants,
             DecoyParticipants = decoyParticipants,
-            RNG = provider,
+            RandomProvider = provider,
             FogOfWar = _fogOfWar,
             TargetOfficer = targetOfficer,
         };
 
         Mission mission =
-            RouteToTryCreate(missionType, ctx)
+            TryCreateByType(missionType, ctx)
             ?? throw new InvalidOperationException(
                 $"Cannot create {missionType} mission with the given parameters."
             );
@@ -114,9 +114,9 @@ public class MissionFactory
     }
 
     /// <summary>
-    /// Routes to the appropriate Mission subclass TryCreate based on mission type.
+    /// Dispatches to the appropriate mission subclass's TryCreate based on mission type.
     /// </summary>
-    private static Mission RouteToTryCreate(MissionType missionType, MissionContext ctx)
+    private static Mission TryCreateByType(MissionType missionType, MissionContext ctx)
     {
         return missionType switch
         {

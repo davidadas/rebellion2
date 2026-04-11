@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SupportReachedMaxBeforeExecution_ReturnsFailed()
+        public void Execute_SupportAlreadyAtMax_ReturnsSuccess()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
 
@@ -266,9 +266,9 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
-                MissionOutcome.Failed,
+                MissionOutcome.Success,
                 completed.Outcome,
-                "Mission should fail when support reaches 100 before execution"
+                "Mission succeeds even when support is already at max; CanContinue tears it down after"
             );
         }
 

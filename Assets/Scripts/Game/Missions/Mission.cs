@@ -61,7 +61,11 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Parameterless constructor for deserialization.
     /// </summary>
-    protected Mission() { }
+    protected Mission()
+    {
+        MainParticipants = new List<IMissionParticipant>();
+        DecoyParticipants = new List<IMissionParticipant>();
+    }
 
     /// <summary>
     /// Initializes a mission with all required parameters.
@@ -93,6 +97,7 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Applies probability tables and tick ranges from config, keyed by ConfigKey.
     /// </summary>
+    /// <param name="tables">The mission probability and tick configuration to apply.</param>
     public virtual void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
@@ -114,6 +119,7 @@ public abstract class Mission : ContainerNode
     /// Randomizes MaxProgress as BaseTicks + random(0..SpreadTicks) inclusive.
     /// Matches original: base_delay + roll_dice(spread).
     /// </summary>
+    /// <param name="provider">RNG provider for rolling the duration spread.</param>
     public void Initiate(IRandomNumberProvider provider)
     {
         CurrentProgress = 0;
@@ -158,6 +164,8 @@ public abstract class Mission : ContainerNode
     /// Looks up the base success probability for an agent using their skill score and the
     /// success table. Override to use a different skill or scoring formula.
     /// </summary>
+    /// <param name="agent">The participant whose skill is evaluated.</param>
+    /// <returns>Success probability 0–100.</returns>
     protected virtual double GetAgentProbability(IMissionParticipant agent)
     {
         int score = (int)agent.GetMissionSkillValue(ParticipantSkill);
@@ -168,6 +176,8 @@ public abstract class Mission : ContainerNode
     /// Calculates the probability that a decoy participant beats enemy detection.
     /// Score is the decoy's espionage skill offset by 35% of the best enemy defender's espionage.
     /// </summary>
+    /// <param name="decoy">The decoy participant to evaluate.</param>
+    /// <returns>Decoy success probability 0–100.</returns>
     protected double GetDecoyProbability(IMissionParticipant decoy)
     {
         int bestDefenderEspionage = 0;
@@ -194,6 +204,8 @@ public abstract class Mission : ContainerNode
     /// Returns 0 for missions targeting the owner's own planets. Override to suppress foiling
     /// entirely (return 0) or apply a custom formula.
     /// </summary>
+    /// <param name="defenseScore">Sum of enemy regiment defense ratings on the target planet.</param>
+    /// <returns>Foil probability 0–100.</returns>
     protected virtual double GetFoilProbability(double defenseScore)
     {
         if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
@@ -223,12 +235,18 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Combines agent success probability and foil probability into a net success chance.
     /// </summary>
+    /// <param name="agentProbability">Raw agent success probability 0–100.</param>
+    /// <param name="foilProbability">Foil probability 0–100 that reduces the net chance.</param>
+    /// <returns>Net success probability 0–100.</returns>
     protected double CalculateTotalSuccess(double agentProbability, double foilProbability) =>
         (agentProbability / 100.0) * (1 - foilProbability / 100.0) * 100.0;
 
     /// <summary>
     /// Returns true if at least one main participant beats the combined success threshold.
     /// </summary>
+    /// <param name="provider">RNG provider for rolling against the success probability.</param>
+    /// <param name="foilProbability">Foil probability 0–100 applied to each participant's roll.</param>
+    /// <returns>True if at least one participant succeeds.</returns>
     protected bool CheckMissionSuccess(IRandomNumberProvider provider, double foilProbability)
     {
         foreach (IMissionParticipant participant in MainParticipants)
@@ -247,6 +265,8 @@ public abstract class Mission : ContainerNode
     /// Returns true if at least one decoy participant beats the detection threshold.
     /// A successful decoy zeroes out the foil probability for this execution.
     /// </summary>
+    /// <param name="provider">RNG provider for rolling against each decoy's probability.</param>
+    /// <returns>True if at least one decoy succeeds.</returns>
     protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
     {
         foreach (IMissionParticipant decoy in DecoyParticipants)
@@ -260,6 +280,9 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Returns true if the foil roll falls within the foil probability, causing a Foiled outcome.
     /// </summary>
+    /// <param name="provider">RNG provider for the foil roll.</param>
+    /// <param name="foilProbability">Foil probability 0–100.</param>
+    /// <returns>True if the mission is foiled.</returns>
     protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability) =>
         provider.NextDouble() * 100 <= foilProbability;
 
@@ -400,8 +423,7 @@ public abstract class Mission : ContainerNode
 
     /// <summary>
     /// No-op — participants are pre-populated in MainParticipants/DecoyParticipants at
-    /// construction. AddChild is called by GameRoot.AttachNode but the lists are already set;
-    /// only SetParent (called after this) is needed for scene-graph bookkeeping.
+    /// construction. Only SetParent is needed for scene-graph bookkeeping.
     /// </summary>
     public override void AddChild(ISceneNode child) { }
 

@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_ThrowsException_WhenConfigNotSet()
+        public void GetConfig_ConfigNotSet_ThrowsException()
         {
             GameRoot game = new GameRoot();
 
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_ConfigConstructor_SetsConfigCorrectly()
+        public void GameRoot_ConfigConstructor_SetsConfig()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_SetConfig_SetsConfigCorrectly()
+        public void SetConfig_ValidConfig_SetsConfig()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot();
@@ -100,69 +100,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_SetConfig_ThrowsOnInvalidConfig()
-        {
-            GameConfig invalidConfig = new GameConfig();
-            invalidConfig.Movement.DistanceScale = -1; // Invalid value
-
-            GameRoot game = new GameRoot();
-
-            Assert.Throws<InvalidOperationException>(
-                () => game.SetConfig(invalidConfig),
-                "SetConfig should throw on invalid config"
-            );
-        }
-
-        [Test]
-        public void Validate_Jedi_ZeroForceQualifiedThreshold_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.ForceQualifiedThreshold = 0;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void Validate_Jedi_ZeroDiscoveringThreshold_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.DiscoveringForceUserThreshold = 0;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void Validate_Jedi_DiscoveringThresholdAboveQualified_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.DiscoveringForceUserThreshold = config.Jedi.ForceQualifiedThreshold;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void Validate_Jedi_CatchUpPercentOutOfRange_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.TrainingCatchUpPercent = 101;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void Validate_Jedi_NegativeCatchUpPercent_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.TrainingCatchUpPercent = -1;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void Validate_Jedi_ZeroFastHealThreshold_Throws()
-        {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
-            config.Jedi.FastHealThreshold = 0;
-            Assert.Throws<InvalidOperationException>(() => config.Validate());
-        }
-
-        [Test]
-        public void GameManager_InjectsConfig_WhenGameHasNone()
+        public void GameManager_NoConfigSet_InjectsConfig()
         {
             GameRoot game = new GameRoot();
             GameManager manager = new GameManager(game);

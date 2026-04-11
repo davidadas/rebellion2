@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
-            game.AttachNode(friendly, enemyPlanet);
+            game.AttachNode(friendly, empPlanet);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -373,7 +373,6 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, empPlanet);
 
             AbductionMission mission = CreateAbductionMission(
                 game,

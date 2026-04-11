@@ -82,18 +82,6 @@ public class DiplomacyMission : Mission
     }
 
     /// <summary>
-    /// Returns false if the planet's state makes further diplomacy invalid at execution time.
-    /// </summary>
-    protected override bool IsMissionSatisfied(GameRoot game)
-    {
-        return GetParent() is Planet p
-            && p.IsColonized
-            && !p.IsInUprising
-            && (p.GetOwnerInstanceID() == null || p.GetOwnerInstanceID() == OwnerInstanceID)
-            && p.GetPopularSupport(OwnerInstanceID) < 100;
-    }
-
-    /// <summary>
     /// Diplomacy missions are never foiled — they target own or neutral planets.
     /// </summary>
     protected override double GetFoilProbability(double defenseScore) => 0;

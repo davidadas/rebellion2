@@ -69,6 +69,11 @@ public class EspionageMission : Mission
     }
 
     /// <summary>
+    /// Espionage does not award mission skill improvements.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill() { }
+
+    /// <summary>
     /// Captures a fog-of-war snapshot of the target planet for the owning faction.
     /// </summary>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)

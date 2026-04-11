@@ -22,8 +22,11 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Processes uprising checks for all owned, populated planets.
+        /// Starts new uprisings when garrison is insufficient (FUN_0050a970).
+        /// Applies consequence resolution each tick for planets already in uprising
+        /// (FUN_00510a30_uprising -> FUN_0050c1a0_apply_uprising_resolution_to_system).
+        /// Uprisings are cleared externally by SubdueUprisingMission or OwnershipSystem.
         /// </summary>
-        /// <param name="provider">Random number provider for dice rolls.</param>
         public List<GameResult> ProcessTick(IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -34,80 +37,68 @@ namespace Rebellion.Systems
                 if (string.IsNullOrEmpty(planet.OwnerInstanceID))
                     continue;
 
-                if (planet.IsInUprising)
+                if (!planet.IsPopulated())
                     continue;
 
                 Faction faction = _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
                 if (faction == null)
                     continue;
 
-                int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
-                int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
-
-                // Check if garrison is insufficient
-                int garrisonRequired = CalculateGarrisonRequirement(
-                    planet,
-                    faction,
-                    _game.Config.AI.Garrison
-                );
-
-                int garrisonSurplus = troopCount - garrisonRequired;
-                if (garrisonSurplus >= 0)
-                    continue;
-
-                // Garrison insufficient — resolve uprising via dice rolls and tables
-                int upris1Result;
-                int upris2Result;
-                ResolveUprisingTableResults(
-                    planet,
-                    faction,
-                    ownerSupport,
-                    troopCount,
-                    provider,
-                    out upris1Result,
-                    out upris2Result
-                );
-
-                // UPRIS1 result > 0 means uprising triggers
-                if (upris1Result > 0)
+                if (!planet.IsInUprising)
                 {
-                    // Find strongest opposing faction
-                    string opposingFactionId = null;
-                    int maxOpposingSupport = 0;
-                    foreach (KeyValuePair<string, int> kvp in planet.PopularSupport)
-                    {
-                        if (kvp.Key != planet.OwnerInstanceID && kvp.Value > maxOpposingSupport)
-                        {
-                            maxOpposingSupport = kvp.Value;
-                            opposingFactionId = kvp.Key;
-                        }
-                    }
+                    int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+                    int garrisonRequired = CalculateGarrisonRequirement(
+                        planet,
+                        faction,
+                        _game.Config.AI.Garrison
+                    );
+                    int garrisonSurplus = troopCount - garrisonRequired;
 
-                    if (opposingFactionId != null)
+                    if (garrisonSurplus < 0)
                     {
-                        Faction previousOwner = faction;
-                        Faction newOwner = _game.GetFactionByOwnerInstanceID(opposingFactionId);
-                        _game.ChangeUnitOwnership(planet, opposingFactionId);
                         planet.BeginUprising();
-
-                        results.Add(
-                            new GameObjectControlChangedResult
-                            {
-                                GameObject = planet,
-                                PreviousOwner = previousOwner,
-                                NewOwner = newOwner,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
                         results.Add(
                             new PlanetUprisingStartedResult
                             {
                                 Planet = planet,
-                                InstigatorFaction = newOwner,
+                                InstigatorFaction = FindLeadingOpposingFaction(
+                                    planet,
+                                    faction.InstanceID
+                                ),
                                 Tick = _game.CurrentTick,
                             }
                         );
                     }
+                }
+                else
+                {
+                    int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
+                    int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+
+                    ResolveUprisingTableResults(
+                        planet,
+                        faction,
+                        ownerSupport,
+                        troopCount,
+                        provider,
+                        out int upris1Result,
+                        out int upris2Result
+                    );
+
+                    ApplyUprisingConsequence(
+                        planet,
+                        faction.InstanceID,
+                        upris1Result,
+                        provider,
+                        results
+                    );
+                    ApplyUprisingConsequence(
+                        planet,
+                        faction.InstanceID,
+                        upris2Result,
+                        provider,
+                        results
+                    );
                 }
             }
 
@@ -117,6 +108,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves uprising using dual dice rolls and UPRIS1/UPRIS2 table lookups.
         /// Combined score = dice + (garrison_threshold - troop_multiplier * troops).
+        /// Corresponds to FUN_00558460_resolve_uprising_table_results.
         /// </summary>
         private void ResolveUprisingTableResults(
             Planet planet,
@@ -133,11 +125,9 @@ namespace Rebellion.Systems
 
             GameConfig.UprisingConfig config = _game.Config.Uprising;
 
-            // Two independent dice rolls: each is random(0..range-1) + addend
             int rollA = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
             int rollB = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
 
-            // Troop effectiveness multiplier — only on core systems (matches original)
             int troopMultiplier = 1;
             PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
             if (
@@ -149,20 +139,149 @@ namespace Rebellion.Systems
                 troopMultiplier = faction.Modifiers.UprisingResistance;
             }
 
-            // Garrison threshold (how many troops we need)
             int threshold = CalculateUprisingThreshold(supportForController);
-
-            // Combined uprising score
             int combinedScore =
                 rollA + rollB + (threshold - troopMultiplier * controllerTroopCount);
 
-            // Look up UPRIS1 table
             upris1Result = LookupTable(config.Upris1Table, combinedScore);
 
-            // Only look up UPRIS2 if UPRIS1 produced a result
             if (upris1Result > 0)
-            {
                 upris2Result = LookupTable(config.Upris2Table, combinedScore);
+        }
+
+        /// <summary>
+        /// Dispatches an uprising consequence to its handler.
+        /// Corresponds to FUN_0050c2c0.
+        /// Cases 0-5 match the original UPRIS1/UPRIS2 table values.
+        /// </summary>
+        private void ApplyUprisingConsequence(
+            Planet planet,
+            string controllerInstanceId,
+            int consequence,
+            IRandomNumberProvider provider,
+            List<GameResult> results
+        )
+        {
+            switch (consequence)
+            {
+                case 0:
+                    return;
+
+                case 1:
+                {
+                    List<Building> facilities = planet
+                        .GetAllBuildings()
+                        .Where(b => b.GetOwnerInstanceID() == controllerInstanceId)
+                        .ToList();
+                    if (facilities.Count == 0)
+                        return;
+                    int index = provider.NextInt(0, facilities.Count);
+                    Building target = facilities[index];
+                    _game.DetachNode(target);
+                    results.Add(
+                        new PlanetIncidentResult
+                        {
+                            Planet = planet,
+                            IncidentType = IncidentType.Uprising,
+                            Severity = consequence,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                    return;
+                }
+
+                case 2:
+                {
+                    List<Regiment> regiments = planet
+                        .GetAllRegiments()
+                        .Where(r => r.GetOwnerInstanceID() == controllerInstanceId)
+                        .ToList();
+                    if (regiments.Count == 0)
+                        return;
+                    int index = provider.NextInt(0, regiments.Count);
+                    Regiment target = regiments[index];
+                    _game.DetachNode(target);
+                    results.Add(
+                        new PlanetIncidentResult
+                        {
+                            Planet = planet,
+                            IncidentType = IncidentType.Uprising,
+                            Severity = consequence,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                    return;
+                }
+
+                case 3:
+                {
+                    List<Officer> candidates = planet
+                        .GetAllOfficers()
+                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && !o.IsCaptured)
+                        .ToList();
+                    if (candidates.Count == 0)
+                        return;
+                    int index = provider.NextInt(0, candidates.Count);
+                    Officer target = candidates[index];
+                    target.IsCaptured = true;
+                    results.Add(
+                        new OfficerCaptureStateResult
+                        {
+                            TargetOfficer = target,
+                            IsCaptured = true,
+                            Context = planet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                    return;
+                }
+
+                case 4:
+                {
+                    List<Officer> candidates = planet
+                        .GetAllOfficers()
+                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                        .ToList();
+                    if (candidates.Count == 0)
+                        return;
+                    int index = provider.NextInt(0, candidates.Count);
+                    Officer target = candidates[index];
+                    target.IsCaptured = false;
+                    target.CaptorInstanceID = null;
+                    results.Add(
+                        new OfficerCaptureStateResult
+                        {
+                            TargetOfficer = target,
+                            IsCaptured = false,
+                            Context = planet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                    return;
+                }
+
+                case 5:
+                {
+                    List<Officer> captured = planet
+                        .GetAllOfficers()
+                        .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                        .ToList();
+                    foreach (Officer target in captured)
+                    {
+                        target.IsCaptured = false;
+                        target.CaptorInstanceID = null;
+                        results.Add(
+                            new OfficerCaptureStateResult
+                            {
+                                TargetOfficer = target,
+                                IsCaptured = false,
+                                Context = planet,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
+                    return;
+                }
             }
         }
 
@@ -171,6 +290,7 @@ namespace Rebellion.Systems
         /// Returns 0 when popular support is at or above the threshold.
         /// Core worlds with a faction GarrisonEfficiency modifier receive a reduced requirement.
         /// Planets in active uprisings apply the uprising multiplier.
+        /// Corresponds to FUN_00508370 / FUN_0050a710_adjust_garrison_requirement.
         /// </summary>
         public static int CalculateGarrisonRequirement(
             Planet planet,
@@ -205,7 +325,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates the uprising threshold: ceil((60 - support) / 10) when support &lt; 60.
+        /// Calculates the uprising threshold used in the dice score formula.
+        /// This is the simplified garrison requirement without efficiency or uprising multipliers,
+        /// matching the threshold term in FUN_00558460_resolve_uprising_table_results.
         /// </summary>
         private int CalculateUprisingThreshold(int supportForController)
         {
@@ -244,6 +366,27 @@ namespace Rebellion.Systems
         private static int CountFriendlyTroops(Planet planet, string factionId)
         {
             return planet.GetAllRegiments().Count(r => r.GetOwnerInstanceID() == factionId);
+        }
+
+        /// <summary>
+        /// Returns the opposing faction with the highest popular support on this planet,
+        /// or null if no opposing faction has any support.
+        /// </summary>
+        private Faction FindLeadingOpposingFaction(Planet planet, string ownerInstanceId)
+        {
+            string opposingFactionId = null;
+            int maxSupport = 0;
+            foreach (KeyValuePair<string, int> kvp in planet.PopularSupport)
+            {
+                if (kvp.Key != ownerInstanceId && kvp.Value > maxSupport)
+                {
+                    maxSupport = kvp.Value;
+                    opposingFactionId = kvp.Key;
+                }
+            }
+            return opposingFactionId != null
+                ? _game.GetFactionByOwnerInstanceID(opposingFactionId)
+                : null;
         }
     }
 }

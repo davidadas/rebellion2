@@ -71,63 +71,130 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_NoGarrison_LowDice_UprisingOccurs()
+        public void ProcessTick_NoGarrison_UprisingStarts()
         {
-            // Support 10 → threshold = 5, 0 troops.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(5-0) = 7.
-            // UPRIS1: score >= 6 → result 1 (uprising).
+            // Support 10 → garrison required = ceil((60-10)/10) = 5.
+            // 0 troops → surplus = -5 < 0 → uprising starts unconditionally.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
             );
 
-            // Two NextInt calls for dice (each returns 0 → roll = 0+1 = 1)
-            List<GameResult> results = system.ProcessTick(
-                new SequenceRNG(intValues: new[] { 0, 0 })
-            );
+            List<GameResult> results = system.ProcessTick(new StubRNG());
 
-            Assert.IsTrue(planet.IsInUprising, "No garrison + low dice should trigger uprising");
-            Assert.AreEqual("rebels", planet.OwnerInstanceID);
-            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
+            Assert.IsTrue(planet.IsInUprising, "Garrison deficit should trigger uprising");
+            Assert.AreEqual(
+                "empire",
+                planet.OwnerInstanceID,
+                "UprisingSystem must not change ownership"
+            );
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
         [Test]
-        public void ProcessTick_NoGarrison_HighDice_UprisingOccurs()
+        public void ProcessTick_ExactGarrison_NoUprising()
         {
-            // Support 10 → threshold = 5, 0 troops.
-            // Dice: rollA = 8+1=9, rollB = 8+1=9. Score = 9+9+(5-0) = 23. (max possible roll is 9+1=10)
-            // UPRIS1: score >= 10 → result 2 (severe uprising).
+            // Support 10 → garrison required = 5. 5 troops → surplus = 0 ≥ 0 → no uprising.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
-                troopCount: 0
+                troopCount: 5
             );
 
-            List<GameResult> results = system.ProcessTick(
-                new SequenceRNG(intValues: new[] { 8, 8 })
-            );
-
-            Assert.IsTrue(planet.IsInUprising, "High dice + no garrison should trigger uprising");
-            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
-            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
-        }
-
-        [Test]
-        public void ProcessTick_PartialGarrison_LowDice_NoUprising()
-        {
-            // Support 10 → threshold = 5, 4 troops (deficit = 1).
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(5-4) = 3.
-            // UPRIS1: score >= 1 → result 0 (no uprising).
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 4
-            );
-
-            system.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+            system.ProcessTick(new StubRNG());
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "Low dice + near-sufficient garrison should not trigger uprising"
+                "Exactly sufficient garrison should not trigger uprising"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprising_ConsequencesApplied_FacilityDestroyed()
+        {
+            // Support 10 → threshold = 5. Planet is already in uprising with no troops.
+            // Dice: rollA = 3+1=4, rollB = 3+1=4. Score = 4+4+(5-0) = 13.
+            // UPRIS1: >= 10 → 2 (destroy troop), but no troops → nothing.
+            // UPRIS2: >= 12 → 5 (free all captured), but no captured → nothing.
+            // Use dice that produce case 1 (facility destroyed): score 7-9 → upris1=1.
+            // rollA=2+1=3, rollB=2+1=3. Score = 3+3+(5-0) = 11.
+            // UPRIS1: >= 10 → 2 (destroy troop). No troops → nothing.
+            // Use score = 7 (just above 6): rollA=0+1=1, rollB=0+1=1. Score=1+1+5=7 → upris1=1.
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            Building facility = EntityFactory.CreateBuilding("b1", "empire");
+            game.AttachNode(facility, planet);
+
+            system.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("b1"),
+                "Facility should be destroyed by uprising case 1"
+            );
+            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprising_OfficerCaptured()
+        {
+            // Score = 7 → upris1=1 (facility). No facility, so nothing.
+            // Score sufficient for case 3 (capture officer): upris2 >= 9 → 3.
+            // Score = 10: rollA=3+1=4, rollB=3+1=4. Score=4+4+(5-0)=13.
+            // UPRIS1: >= 10 → 2 (troop). No troops → nothing.
+            // UPRIS2: >= 12 → 5 (free all captured). No captured → nothing.
+            // Score = 9: rollA=1+1=2, rollB=1+1=2. Score=2+2+5=9.
+            // UPRIS1: >= 6 → 1 (facility). No facility → nothing.
+            // UPRIS2: >= 9 → 3 (capture officer). Officer present → capture!
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
+            game.AttachNode(officer, planet);
+
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 1, 1 })
+            );
+
+            Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
+            Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
+        {
+            // Score = 9 → upris2 = 3 (capture). But officers are all captured → case 3 skips.
+            // Need score >= 11 → upris2 = 4 (free one captured).
+            // rollA=2+1=3, rollB=2+1=3. Score=3+3+5=11.
+            // UPRIS1: >= 10 → 2 (destroy troop). No troops → nothing.
+            // UPRIS2: >= 11 → 4 (free one captured officer).
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            Officer captive = new Officer
+            {
+                InstanceID = "o1",
+                OwnerInstanceID = "empire",
+                IsCaptured = true,
+            };
+            game.AttachNode(captive, planet);
+
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 2, 2 })
+            );
+
+            Assert.IsFalse(
+                captive.IsCaptured,
+                "Captured officer should be freed by uprising case 4"
+            );
+            Assert.IsTrue(
+                results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
+                "Should emit OfficerCaptureStateResult with IsCaptured=false"
             );
         }
 
@@ -147,8 +214,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AlreadyInUprising_Skipped()
+        public void ProcessTick_AlreadyInUprising_ConsequencesFireButNothingToDestroy()
         {
+            // Planet already in uprising with no troops and no facilities.
+            // High dice → upris1=2 (destroy troop), upris2=5 (free all captured).
+            // Both consequences skip because there are no valid targets.
+            // Uprising remains active; ownership does not change.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
@@ -157,12 +228,11 @@ namespace Rebellion.Tests.Systems
 
             system.ProcessTick(new SequenceRNG(intValues: new[] { 8, 8 }));
 
-            // Should still be in uprising (not re-triggered)
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
                 "empire",
                 planet.OwnerInstanceID,
-                "Already-uprising planet should not re-flip"
+                "UprisingSystem must not change ownership"
             );
         }
 
@@ -188,18 +258,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmpireUprisingResistance_CoreSystem_DoublesEffectiveTroops()
+        public void ProcessTick_EmpireGarrisonEfficiency_CoreSystem_HalvesRequirement()
         {
-            // Core system, Support 30 → threshold = 3. Troops = 1.
-            // Empire UprisingResistance = 2 on core: troop_multiplier = 2.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(3 - 2*1) = 3.
-            // UPRIS1: score >= 1 → result 0 (no uprising).
+            // Core system, Support 30 → base garrison = 3. GarrisonEfficiency=2 → halved to 1.
+            // 1 troop → garrison surplus = 1-1 = 0 ≥ 0 → no uprising.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
-                Modifiers = new FactionModifiers { UprisingResistance = 2 },
+                Modifiers = new FactionModifiers { GarrisonEfficiency = 2 },
             };
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
@@ -222,29 +290,25 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(r, planet);
 
             UprisingSystem uprisingSystem = new UprisingSystem(game);
-            uprisingSystem.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+            uprisingSystem.ProcessTick(new StubRNG());
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "Empire UprisingResistance=2 on core system should double troop effectiveness"
+                "GarrisonEfficiency=2 on core system should halve the garrison requirement"
             );
         }
 
         [Test]
-        public void ProcessTick_EmpireUprisingResistance_OuterRim_NoBonus()
+        public void ProcessTick_EmpireGarrisonEfficiency_OuterRim_NoBonus()
         {
-            // Outer rim, Support 30 → threshold = 3. Troops = 1.
-            // Empire UprisingResistance = 2 but NOT core: troop_multiplier = 1.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(3 - 1*1) = 4.
-            // UPRIS1: score >= 1 → result 0 (no uprising, but barely).
-            // With higher dice: rollA=2+1=3, rollB=2+1=3. Score = 3+3+(3-1) = 8.
-            // UPRIS1: score >= 6 → result 1 (uprising!).
+            // Outer rim, Support 30 → garrison = 3. GarrisonEfficiency NOT applied on outer rim.
+            // 1 troop → garrison surplus = 1-3 = -2 < 0 → uprising starts.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
-                Modifiers = new FactionModifiers { UprisingResistance = 2 },
+                Modifiers = new FactionModifiers { GarrisonEfficiency = 2 },
             };
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
@@ -267,12 +331,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(r, planet);
 
             UprisingSystem uprisingSystem = new UprisingSystem(game);
-            // Moderate dice: score = 3+3+(3-1*1) = 8 → UPRIS1 >= 6 → uprising
-            uprisingSystem.ProcessTick(new SequenceRNG(intValues: new[] { 2, 2 }));
+            uprisingSystem.ProcessTick(new StubRNG());
 
             Assert.IsTrue(
                 planet.IsInUprising,
-                "Outer rim should NOT get UprisingResistance bonus — uprising should trigger"
+                "Outer rim should NOT apply GarrisonEfficiency — garrison deficit triggers uprising"
             );
         }
     }

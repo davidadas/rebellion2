@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -62,22 +61,9 @@ public class SabotageMission : Mission
     }
 
     /// <summary>
-    /// Sabotage awards both Combat +1 and Espionage +1 on success.
+    /// Sabotage does not award mission skill improvements.
     /// </summary>
-    protected override void ImproveMissionParticipantsSkill()
-    {
-        base.ImproveMissionParticipantsSkill();
-        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-        {
-            if (participant.CanImproveMissionSkill)
-            {
-                participant.SetMissionSkillValue(
-                    MissionParticipantSkill.Espionage,
-                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
-                );
-            }
-        }
-    }
+    protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
     /// Destroys the first building on the target planet.

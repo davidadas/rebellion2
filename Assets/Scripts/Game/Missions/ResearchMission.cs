@@ -45,6 +45,9 @@ public class ResearchMission : Mission
         );
     }
 
+    /// <summary>
+    /// Returns the display name for a research mission based on the manufacturing type.
+    /// </summary>
     private static string GetMissionName(ManufacturingType type)
     {
         return type switch
@@ -139,7 +142,16 @@ public class ResearchMission : Mission
         if (faction.ResearchCapacity.ContainsKey(ResearchType))
             faction.ResearchCapacity[ResearchType] += reward;
 
-        return new List<GameResult>();
+        return new List<GameResult>
+        {
+            new ResearchCompletedResult
+            {
+                Faction = faction,
+                FacilityType = ResearchType,
+                Success = true,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 
     /// <summary>

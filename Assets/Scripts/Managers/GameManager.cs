@@ -156,7 +156,14 @@ public class GameManager
         if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
-        _combatManager.Resolve(_game, _pendingCombatDecision, autoResolve, _randomProvider);
+        SpaceCombatResult combatResult = _combatManager.Resolve(
+            _game,
+            _pendingCombatDecision,
+            autoResolve,
+            _randomProvider
+        );
+        if (combatResult != null)
+            ProcessResults(combatResult.Events);
         _pendingCombatDecision = null;
     }
 
@@ -338,7 +345,7 @@ public class GameManager
         foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
         {
             if (result.Outcome == MissionOutcome.Success)
-                _jediSystem.ApplyForceGrowth(result.Mission.MainParticipants);
+                ProcessResults(_jediSystem.ApplyForceGrowth(result.Mission.MainParticipants));
         }
     }
 }

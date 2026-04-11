@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Game.Missions
                 Target = target,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
-                RNG = new StubRNG(),
+                RandomProvider = new StubRNG(),
             };
             return RecruitmentMission.TryCreate(ctx);
         }

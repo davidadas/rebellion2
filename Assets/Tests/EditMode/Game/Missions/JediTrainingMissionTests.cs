@@ -155,21 +155,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_OwnPlanet_ReturnsTrue()
-        {
-            JediTrainingMission mission = CreateMission();
-            Assert.IsTrue(mission.CanContinue(_game));
-        }
-
-        [Test]
-        public void CanContinue_PlanetLost_ReturnsFalse()
-        {
-            JediTrainingMission mission = CreateMission();
-            _planet.OwnerInstanceID = "empire";
-            Assert.IsFalse(mission.CanContinue(_game));
-        }
-
-        [Test]
         public void CanContinue_StudentForceQualified_ReturnsFalse()
         {
             JediTrainingMission mission = CreateMission();

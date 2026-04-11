@@ -22,11 +22,13 @@ namespace Rebellion.Systems
         /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
         /// Called from GameManager.ProcessResults when a MissionCompletedResult with Success is seen.
         /// </summary>
-        public void ApplyForceGrowth(List<IMissionParticipant> participants)
+        /// <param name="participants">Main participants from the completed mission.</param>
+        public List<GameResult> ApplyForceGrowth(List<IMissionParticipant> participants)
         {
+            List<GameResult> results = new List<GameResult>();
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
             if (growth <= 0)
-                return;
+                return results;
 
             foreach (IMissionParticipant participant in participants)
             {
@@ -37,11 +39,21 @@ namespace Rebellion.Systems
                 )
                 {
                     officer.ForceValue += growth;
+                    results.Add(
+                        new ForceExperienceResult
+                        {
+                            Officer = officer,
+                            ExperienceGained = growth,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     GameLogger.Log(
                         $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
                     );
                 }
             }
+
+            return results;
         }
 
         public List<GameResult> ProcessTick(IRandomNumberProvider rng)
@@ -53,7 +65,7 @@ namespace Rebellion.Systems
                 if (!officer.IsJedi || !officer.IsForceEligible)
                     continue;
 
-                RefreshDiscoveringForceUserState(officer, results);
+                UpdateForceDiscoveryState(officer, results);
             }
 
             ScanForForceUsers(rng, results);
@@ -62,9 +74,10 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Updates discovery state based on ForceRank vs threshold.
+        /// Sets or clears IsDiscoveringForceUser based on whether the officer meets the
+        /// ForceRank threshold and is available to scan.
         /// </summary>
-        private void RefreshDiscoveringForceUserState(Officer officer, List<GameResult> results)
+        private void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
             bool shouldDiscover =
@@ -120,7 +133,7 @@ namespace Rebellion.Systems
 
                 foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
                 {
-                    if (!IsDiscoveryCandidate(candidate))
+                    if (!IsUndiscoveredForceUser(candidate))
                         continue;
 
                     int probability = scanner.ForceRank + candidate.ForceRank + probabilityOffset;
@@ -135,6 +148,15 @@ namespace Rebellion.Systems
                     candidate.IsForceEligible = true;
                     candidate.ForceValue =
                         candidate.JediLevel + rng.NextInt(0, candidate.JediLevelVariance + 1);
+
+                    results.Add(
+                        new ForceExperienceResult
+                        {
+                            Officer = candidate,
+                            ExperienceGained = candidate.ForceValue,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
 
                     results.Add(
                         new ForceDiscoveryResult
@@ -153,7 +175,10 @@ namespace Rebellion.Systems
             }
         }
 
-        private static bool IsDiscoveryCandidate(Officer officer)
+        /// <summary>
+        /// Returns true if the officer is a Jedi whose Force potential has not yet been revealed.
+        /// </summary>
+        private static bool IsUndiscoveredForceUser(Officer officer)
         {
             return officer.IsJedi
                 && !officer.IsForceEligible

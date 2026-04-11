@@ -43,7 +43,7 @@ namespace Rebellion.Systems
             // Evict enemy units.
             EvictEnemyUnits(planet, newOwner.InstanceID);
 
-            // Finaly, change the planet owner.
+            // Finally, change the planet owner.
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
         }
 

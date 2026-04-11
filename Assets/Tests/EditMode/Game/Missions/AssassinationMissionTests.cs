@@ -382,7 +382,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
-            game.AttachNode(friendly, enemyPlanet);
+            game.AttachNode(friendly, empPlanet);
 
             AssassinationMission mission = CreateAssassinationMission(
                 game,
@@ -465,7 +465,6 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, empPlanet);
 
             AssassinationMission mission = CreateAssassinationMission(
                 game,

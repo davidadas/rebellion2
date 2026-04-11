@@ -85,7 +85,14 @@ namespace Rebellion.Systems
                     && defender.IsAIControlled()
                 )
                 {
-                    Resolve(game, decision, autoResolve: true, rng);
+                    SpaceCombatResult combatResult = Resolve(
+                        game,
+                        decision,
+                        autoResolve: true,
+                        rng
+                    );
+                    if (combatResult != null)
+                        results.AddRange(combatResult.Events);
                     foughtThisTick.Add(decision.AttackerFleetInstanceID);
                     foughtThisTick.Add(decision.DefenderFleetInstanceID);
                 }
@@ -272,7 +279,7 @@ namespace Rebellion.Systems
                 rng,
                 game.CurrentTick
             );
-            ApplyCombatResult(result);
+            result.Events = ApplyCombatResult(result);
 
             GameLogger.Log(
                 $"Combat at {planet.GetDisplayName()}: "
@@ -783,23 +790,27 @@ namespace Rebellion.Systems
         /// removes destroyed ships and depleted fighter squadrons, and cleans up empty fleets.
         /// </summary>
         /// <param name="result">The combat result to apply.</param>
-        private void ApplyCombatResult(SpaceCombatResult result)
+        private List<GameResult> ApplyCombatResult(SpaceCombatResult result)
         {
-            ApplyShipDamage(result.ShipDamage);
+            List<GameResult> events = ApplyShipDamage(result.ShipDamage);
             ApplyFighterSquadronLosses(result.FighterLosses);
 
             if (result.AttackerFleet.CapitalShips.Count == 0)
                 RemoveFleetFromScene(result.AttackerFleet);
             if (result.DefenderFleet.CapitalShips.Count == 0)
                 RemoveFleetFromScene(result.DefenderFleet);
+
+            return events;
         }
 
         /// <summary>
         /// Applies ship damage results to the game world.
         /// </summary>
         /// <param name="damageResults">Ship damage results to apply.</param>
-        private void ApplyShipDamage(List<ShipDamageResult> damageResults)
+        private List<GameResult> ApplyShipDamage(List<ShipDamageResult> damageResults)
         {
+            List<GameResult> events = new List<GameResult>();
+
             foreach (ShipDamageResult damage in damageResults)
             {
                 CapitalShip ship = damage.Ship;
@@ -807,6 +818,15 @@ namespace Rebellion.Systems
                     continue;
 
                 ship.HullStrength = damage.HullAfter;
+
+                events.Add(
+                    new GameObjectDamagedResult
+                    {
+                        GameObject = ship,
+                        DamageValue = damage.HullBefore - damage.HullAfter,
+                        Tick = _game.CurrentTick,
+                    }
+                );
 
                 if (damage.HullAfter <= 0)
                 {
@@ -816,6 +836,8 @@ namespace Rebellion.Systems
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
             }
+
+            return events;
         }
 
         /// <summary>

@@ -27,14 +27,14 @@ public class RecruitmentMission : Mission
     /// </summary>
     public static RecruitmentMission TryCreate(MissionContext ctx)
     {
-        if (ctx.RNG == null)
+        if (ctx.RandomProvider == null)
             return null;
 
         List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
         if (unrecruited.Count == 0)
             return null;
 
-        string targetId = unrecruited.RandomElement(ctx.RNG).InstanceID;
+        string targetId = unrecruited.RandomElement(ctx.RandomProvider).InstanceID;
 
         return new RecruitmentMission(
             ctx.OwnerInstanceId,

@@ -29,6 +29,8 @@ public class JediTrainingMission : Mission
     /// Returns a new JediTrainingMission if an eligible trainer exists on an own planet, or null.
     /// Selects the highest-ranked available trainer automatically.
     /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if no eligible trainer is available.</returns>
     public static JediTrainingMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
@@ -91,6 +93,8 @@ public class JediTrainingMission : Mission
     /// <summary>
     /// Cancels if any main participant or the trainer is captured or killed.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
     public override bool ShouldAbort(GameRoot game)
     {
         if (base.ShouldAbort(game))
@@ -101,20 +105,12 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Validates that the target planet is still owned by this faction.
-    /// </summary>
-    /// <param name="game">The current game state.</param>
-    /// <returns>True if the planet is still owned by this faction.</returns>
-    protected override bool IsMissionSatisfied(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
-
-    /// <summary>
     /// Success probability uses the student's ForceRank as the score.
     /// The original uses teacher.force_rank_level - trainee.force_rank_level as the gap,
     /// but that requires game access not available here. Full gap mechanic is applied in OnSuccess.
     /// </summary>
+    /// <param name="agent">The mission participant (student) to evaluate.</param>
+    /// <returns>Success probability 0–100 based on the student's ForceRank.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (agent is Officer officer)
@@ -186,19 +182,13 @@ public class JediTrainingMission : Mission
     }
 
     /// <summary>
-    /// Training continues as long as the planet remains owned by this faction
-    /// and the student has not yet reached force qualification.
+    /// Returns true while at least one student has not yet reached force qualification.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <returns>True if training should continue.</returns>
     public override bool CanContinue(GameRoot game)
     {
-        if (!(GetParent() is Planet p) || p.GetOwnerInstanceID() != OwnerInstanceID)
-            return false;
-
         int threshold = game.Config.Jedi.ForceQualifiedThreshold;
-        bool allQualified = MainParticipants.OfType<Officer>().All(s => s.ForceRank >= threshold);
-
-        return !allQualified;
+        return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);
     }
 }

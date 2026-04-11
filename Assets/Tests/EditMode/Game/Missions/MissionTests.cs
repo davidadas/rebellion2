@@ -333,22 +333,16 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Building building = new Building
+            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Espionage);
+
+            MissionContext ctx = new MissionContext
             {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
+                OwnerInstanceId = "empire",
+                Target = enemyPlanet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
             };
-            game.AttachNode(building, enemyPlanet);
-
-            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Combat);
-
-            SabotageMission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
+            InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
@@ -358,7 +352,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 skillBefore + 1,
-                officer.GetSkillValue(MissionParticipantSkill.Combat),
+                officer.GetSkillValue(MissionParticipantSkill.Espionage),
                 "Officer skill should improve by 1 on mission success"
             );
         }

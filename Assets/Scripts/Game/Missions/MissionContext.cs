@@ -14,7 +14,7 @@ public class MissionContext
     public ISceneNode Target { get; set; }
     public List<IMissionParticipant> MainParticipants { get; set; }
     public List<IMissionParticipant> DecoyParticipants { get; set; }
-    public IRandomNumberProvider RNG { get; set; }
+    public IRandomNumberProvider RandomProvider { get; set; }
     public FogOfWarSystem FogOfWar { get; set; }
 
     /// <summary>

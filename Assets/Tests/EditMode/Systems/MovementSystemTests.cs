@@ -312,6 +312,13 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNull(officer.Movement);
             Assert.IsTrue(results.OfType<UnitArrivedResult>().Any());
+            GameObjectEnrouteResult enroute = results
+                .OfType<GameObjectEnrouteResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(enroute);
+            Assert.AreEqual(officer, enroute.GameObject);
+            Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => r.IsActive));
+            Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => !r.IsActive));
         }
 
         [Test]
@@ -349,13 +356,15 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
                 TargetInstanceID = destination.InstanceID,
+                HasInitiated = true,
             };
             game.AttachNode(mission, destination);
+            mission.MainParticipants.Add(officer);
 
             movement.RequestMove(officer, mission);
             officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
 
-            movement.ProcessTick();
+            List<GameResult> results = movement.ProcessTick();
 
             Assert.IsNull(officer.Movement, "Movement should be cleared on arrival at a mission");
             Assert.AreEqual(
@@ -363,6 +372,13 @@ namespace Rebellion.Tests.Systems
                 officer.GetParent(),
                 "Officer should remain parented to the mission node, not be rerouted"
             );
+            Assert.IsTrue(results.OfType<GameObjectEnrouteResult>().Any());
+            Assert.IsTrue(results.OfType<RoleEnrouteActiveResult>().Any(r => r.IsActive));
+            RoleEnrouteActiveResult arrived = results
+                .OfType<RoleEnrouteActiveResult>()
+                .FirstOrDefault(r => !r.IsActive);
+            Assert.IsNotNull(arrived);
+            Assert.AreEqual(officer, arrived.Officer);
         }
 
         [Test]

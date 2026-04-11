@@ -419,7 +419,6 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
             captive.IsCaptured = false;
-            game.AttachNode(captive, enemyPlanet);
 
             RescueMission mission = CreateRescueMission(
                 game,

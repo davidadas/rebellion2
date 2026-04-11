@@ -165,10 +165,17 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
 
             Assert.Greater(mine.ManufacturingProgress, 0);
             Assert.AreEqual(ManufacturingStatus.Building, mine.ManufacturingStatus);
+            ManufacturingPointsCompletedResult progress = results
+                .OfType<ManufacturingPointsCompletedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(progress);
+            Assert.AreEqual(_empire, progress.Faction);
+            Assert.Greater(progress.Points, 0);
+            Assert.AreEqual(_coruscant, progress.Context);
         }
 
         [Test]
@@ -192,8 +199,22 @@ namespace Rebellion.Tests.Systems
                 _coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
-            Assert.IsTrue(results.OfType<ManufacturingCompletedResult>().Any());
-            Assert.IsTrue(results.OfType<ManufacturingDeployedResult>().Any());
+            ManufacturingCompletedResult completed = results
+                .OfType<ManufacturingCompletedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(completed);
+            Assert.AreEqual(mine, completed.GameObject);
+            Assert.AreEqual(_empire, completed.Faction);
+            ManufacturingDeployedResult deployed = results
+                .OfType<ManufacturingDeployedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(deployed);
+            Assert.AreEqual(mine, deployed.DeployedObject);
+            GameObjectCreatedResult created = results
+                .OfType<GameObjectCreatedResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(created);
+            Assert.AreEqual(mine, created.GameObject);
         }
 
         [Test]

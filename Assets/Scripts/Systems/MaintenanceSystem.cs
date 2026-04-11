@@ -19,6 +19,7 @@ namespace Rebellion.Systems
     public class MaintenanceSystem
     {
         private readonly GameRoot _game;
+        private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
 
         public MaintenanceSystem(GameRoot game)
         {
@@ -56,8 +57,26 @@ namespace Rebellion.Systems
             {
                 int capacity = GetMaintenanceCapacity(faction);
                 int required = GetMaintenanceRequired(faction);
+                bool inShortfall = required > capacity;
 
-                if (required > capacity)
+                if (inShortfall && !_shortfallFactions.Contains(faction.InstanceID))
+                {
+                    _shortfallFactions.Add(faction.InstanceID);
+                    results.Add(
+                        new MaintenanceRequiredResult
+                        {
+                            Faction = faction,
+                            Amount = required - capacity,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+                else if (!inShortfall)
+                {
+                    _shortfallFactions.Remove(faction.InstanceID);
+                }
+
+                if (inShortfall)
                 {
                     GameObjectAutoscrappedResult result = ScrapRandomUnit(faction, provider);
                     if (result != null)

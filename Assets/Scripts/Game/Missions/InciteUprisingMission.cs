@@ -69,17 +69,6 @@ public class InciteUprisingMission : Mission
     }
 
     /// <summary>
-    /// Returns false if an uprising has already started on the target planet before execution.
-    /// </summary>
-    protected override bool IsMissionSatisfied(GameRoot game)
-    {
-        if (!(GetParent() is Planet p))
-            return false;
-        string owner = p.GetOwnerInstanceID();
-        return !string.IsNullOrEmpty(owner) && owner != OwnerInstanceID && !p.IsInUprising;
-    }
-
-    /// <summary>
     /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
     /// </summary>
     protected override double GetAgentProbability(IMissionParticipant agent)

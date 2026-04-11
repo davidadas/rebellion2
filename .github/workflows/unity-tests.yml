@@ -115,7 +115,8 @@ jobs:
           python3 - <<'EOF'
           import xml.etree.ElementTree as ET, glob, sys
 
-          THRESHOLD = 64.1
+          LINE_THRESHOLD   = 56.0
+          METHOD_THRESHOLD = 65.0
 
           files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
           if not files:
@@ -124,15 +125,28 @@ jobs:
 
           root = ET.parse(files[0]).getroot()
           summary = root.find("Summary")
-          covered  = int(summary.findtext("Coveredmethods", 0))
-          total    = int(summary.findtext("Totalmethods", 0))
-          pct      = float(summary.findtext("Methodcoverage", 0))
 
-          print(f"Method coverage: {pct:.1f}% ({covered}/{total})")
+          covered_lines = int(summary.findtext("Coveredlines", 0))
+          total_lines   = int(summary.findtext("Totallines", 0))
+          line_pct      = float(summary.findtext("Linecoverage", 0))
 
-          if pct < THRESHOLD:
-              print(f"FAIL: {pct:.1f}% is below threshold {THRESHOLD}%")
+          covered_methods = int(summary.findtext("Coveredmethods", 0))
+          total_methods   = int(summary.findtext("Totalmethods", 0))
+          method_pct      = float(summary.findtext("Methodcoverage", 0))
+
+          print(f"Line coverage:   {line_pct:.1f}% ({covered_lines}/{total_lines})")
+          print(f"Method coverage: {method_pct:.1f}% ({covered_methods}/{total_methods})")
+
+          failed = False
+          if line_pct < LINE_THRESHOLD:
+              print(f"FAIL: line coverage {line_pct:.1f}% is below threshold {LINE_THRESHOLD}%")
+              failed = True
+          if method_pct < METHOD_THRESHOLD:
+              print(f"FAIL: method coverage {method_pct:.1f}% is below threshold {METHOD_THRESHOLD}%")
+              failed = True
+
+          if failed:
               sys.exit(1)
 
-          print(f"OK: {pct:.1f}% meets threshold {THRESHOLD}%")
+          print("OK: all coverage thresholds met")
           EOF

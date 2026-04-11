@@ -736,6 +736,7 @@ namespace Rebellion.Game.Results
         public CombatSide Winner { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<GameResult> Events { get; set; } = new List<GameResult>();
     }
 
     /// <summary>
