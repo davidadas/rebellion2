@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Util
         public void TearDown()
         {
             GameLogger.Configure(enableFileLogging: false, addTimestamps: true);
-            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Error);
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             if (File.Exists(_tempFile))
                 File.Delete(_tempFile);
         }
