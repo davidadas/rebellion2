@@ -82,7 +82,7 @@ public class ResearchMission : Mission
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>True if the parent planet is owned by this faction.</returns>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }

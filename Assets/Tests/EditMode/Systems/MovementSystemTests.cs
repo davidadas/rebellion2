@@ -333,6 +333,39 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMovement_OfficerArrivesAtMission_ClearsMovementState()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            // Attach a mission to the destination planet so the officer can be sent to it
+            AbductionMission mission = new AbductionMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                TargetInstanceID = destination.InstanceID,
+            };
+            game.AttachNode(mission, destination);
+
+            movement.RequestMove(officer, mission);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            movement.ProcessTick();
+
+            Assert.IsNull(officer.Movement, "Movement should be cleared on arrival at a mission");
+            Assert.AreEqual(
+                mission,
+                officer.GetParent(),
+                "Officer should remain parented to the mission node, not be rerouted"
+            );
+        }
+
+        [Test]
         public void RequestMove_CapturedOfficer_IsNotMoved()
         {
             (

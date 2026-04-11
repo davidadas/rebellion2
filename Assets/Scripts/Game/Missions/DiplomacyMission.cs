@@ -63,17 +63,28 @@ public class DiplomacyMission : Mission
         ) { }
 
     /// <summary>
-    /// Extends base cancellation to also cancel when the target planet enters uprising.
+    /// Extends base cancellation to also cancel when the target planet enters uprising or
+    /// is taken by a third faction.
     /// </summary>
-    public override bool IsCanceled(GameRoot game)
+    public override bool ShouldAbort(GameRoot game)
     {
-        return base.IsCanceled(game) || (GetParent() is Planet planet && planet.IsInUprising);
+        if (base.ShouldAbort(game))
+            return true;
+        if (GetParent() is Planet planet)
+        {
+            if (planet.IsInUprising)
+                return true;
+            string owner = planet.GetOwnerInstanceID();
+            if (owner != null && owner != OwnerInstanceID)
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
     /// Returns false if the planet's state makes further diplomacy invalid at execution time.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p
             && p.IsColonized

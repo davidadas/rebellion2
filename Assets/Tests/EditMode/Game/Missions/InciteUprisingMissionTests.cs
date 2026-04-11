@@ -132,6 +132,30 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_NeutralPlanetTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.OwnerInstanceID = null;
+
+            Assert.IsNull(
+                CreateInciteUprisingMission(
+                    "empire",
+                    enemyPlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is neutral (no owner to revolt against)"
+            );
+        }
+
+        [Test]
         public void Execute_SuccessfulMission_CompletedResultHasHumanReadableName()
         {
             (
@@ -164,7 +188,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_UprisingAlreadyStarted_ReturnsTrue()
+        public void ShouldAbort_UprisingAlreadyStarted_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -186,7 +210,7 @@ namespace Rebellion.Tests.Game.Missions
             enemyPlanet.BeginUprising();
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when planet is already in uprising"
             );
         }
@@ -222,6 +246,74 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 completed.Outcome,
                 "Mission should fail when uprising already started before execution"
+            );
+        }
+
+        [Test]
+        public void Execute_PlanetBecameNeutralBeforeExecution_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            InciteUprisingMission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            enemyPlanet.OwnerInstanceID = null;
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when target planet became neutral before execution"
+            );
+        }
+
+        [Test]
+        public void Execute_PlanetTakenByMissionOwnerBeforeExecution_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            InciteUprisingMission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            enemyPlanet.OwnerInstanceID = "empire";
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when target planet was captured by the mission owner before execution"
             );
         }
 

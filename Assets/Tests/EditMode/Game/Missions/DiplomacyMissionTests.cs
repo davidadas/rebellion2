@@ -153,15 +153,29 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_WhenUprisingStarts_ReturnsTrue()
+        public void ShouldAbort_WhenUprisingStarts_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
             planet.BeginUprising();
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Diplomacy mission should be canceled when target planet enters uprising"
+            );
+        }
+
+        [Test]
+        public void ShouldAbort_WhenPlanetTakenByThirdFaction_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = "rebels";
+
+            Assert.IsTrue(
+                mission.ShouldAbort(game),
+                "Diplomacy mission should be canceled when target planet is taken by another faction"
             );
         }
 

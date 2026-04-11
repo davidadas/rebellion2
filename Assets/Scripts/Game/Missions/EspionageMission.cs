@@ -24,17 +24,14 @@ public class EspionageMission : Mission
     }
 
     /// <summary>
-    /// Returns a new EspionageMission if the target is a visited enemy planet, or null.
+    /// Returns a new EspionageMission if the target is a visited planet, or null.
     /// </summary>
     public static EspionageMission TryCreate(MissionContext ctx)
     {
         if (!(ctx.Target is Planet planet))
             return null;
 
-        if (
-            !planet.WasVisitedBy(ctx.OwnerInstanceId)
-            || planet.GetOwnerInstanceID() == ctx.OwnerInstanceId
-        )
+        if (!planet.WasVisitedBy(ctx.OwnerInstanceId))
             return null;
 
         return new EspionageMission(
@@ -66,12 +63,9 @@ public class EspionageMission : Mission
         _fogOfWar = fogOfWar;
     }
 
-    /// <summary>
-    /// Returns false if the target planet is no longer owned by an enemy faction at execution time.
-    /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() != OwnerInstanceID;
+        return GetParent() is Planet;
     }
 
     /// <summary>

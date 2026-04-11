@@ -75,7 +75,7 @@ public class RescueMission : Mission
     /// Returns false if the target officer is no longer captured or has moved
     /// away from the mission's planet before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         return captive?.IsCaptured == true

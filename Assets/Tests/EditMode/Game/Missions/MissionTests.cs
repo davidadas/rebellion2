@@ -101,7 +101,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_MainParticipantCaptured_ReturnsTrue()
+        public void ShouldAbort_MainParticipantCaptured_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -123,13 +123,13 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsCaptured = true;
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when main participant is captured"
             );
         }
 
         [Test]
-        public void IsCanceled_MainParticipantKilled_ReturnsTrue()
+        public void ShouldAbort_MainParticipantKilled_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -151,7 +151,7 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsKilled = true;
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when main participant is killed"
             );
         }
@@ -364,174 +364,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_Success_GrowsForceOnMissionOfficer()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            officer.GrowsForceOnMission = true;
-            officer.IsForceEligible = true;
-            officer.ForceValue = 10;
-            int before = officer.ForceValue;
-
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
-            };
-            game.AttachNode(building, enemyPlanet);
-
-            SabotageMission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            mission.Execute(game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                before + game.Config.Jedi.ForceGrowthPerMission,
-                officer.ForceValue,
-                "Officer with GrowsForceOnMission should gain ForceValue on success"
-            );
-        }
-
-        [Test]
-        public void Execute_Success_DoesNotGrowForce_WhenFlagFalse()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            officer.GrowsForceOnMission = false;
-            officer.IsForceEligible = true;
-            officer.ForceValue = 10;
-            int before = officer.ForceValue;
-
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
-            };
-            game.AttachNode(building, enemyPlanet);
-
-            SabotageMission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            mission.Execute(game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                before,
-                officer.ForceValue,
-                "Officer without GrowsForceOnMission should not gain ForceValue"
-            );
-        }
-
-        [Test]
-        public void Execute_Success_DoesNotGrowForce_WhenNotForceEligible()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            officer.GrowsForceOnMission = true;
-            officer.IsForceEligible = false;
-            officer.ForceValue = 10;
-            int before = officer.ForceValue;
-
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
-            };
-            game.AttachNode(building, enemyPlanet);
-
-            SabotageMission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            mission.Execute(game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                before,
-                officer.ForceValue,
-                "Officer not force-eligible should not gain ForceValue even with GrowsForceOnMission"
-            );
-        }
-
-        [Test]
-        public void Execute_Failure_DoesNotGrowForce()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            officer.GrowsForceOnMission = true;
-            officer.IsForceEligible = true;
-            officer.ForceValue = 10;
-            int before = officer.ForceValue;
-
-            SabotageMission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            mission.Execute(game, new FixedRNG(0.99));
-
-            Assert.AreEqual(
-                before,
-                officer.ForceValue,
-                "Force growth should not apply on mission failure"
-            );
-        }
-
-        [Test]
         public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
         {
             (
@@ -585,7 +417,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_DecoyParticipantCaptured_ReturnsFalse()
+        public void ShouldAbort_DecoyParticipantCaptured_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -610,7 +442,7 @@ namespace Rebellion.Tests.Game.Missions
             decoy.IsCaptured = true;
 
             Assert.IsFalse(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should not be canceled when only decoy participant is captured"
             );
         }

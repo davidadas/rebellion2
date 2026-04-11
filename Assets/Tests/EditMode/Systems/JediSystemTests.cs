@@ -400,6 +400,43 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(officer, _tatooine);
             return officer;
         }
+
+        [Test]
+        public void ApplyForceGrowth_EligibleOfficer_GrowsForce()
+        {
+            Officer luke = new Officer
+            {
+                InstanceID = "LUKE",
+                OwnerInstanceID = _alliance.InstanceID,
+                GrowsForceOnMission = true,
+                IsForceEligible = true,
+                ForceValue = 10,
+            };
+            int before = luke.ForceValue;
+            int growth = _game.Config.Jedi.ForceGrowthPerMission;
+
+            _system.ApplyForceGrowth(new List<IMissionParticipant> { luke });
+
+            Assert.AreEqual(before + growth, luke.ForceValue);
+        }
+
+        [Test]
+        public void ApplyForceGrowth_NotForceEligible_NoGrowth()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "O1",
+                OwnerInstanceID = _alliance.InstanceID,
+                GrowsForceOnMission = true,
+                IsForceEligible = false,
+                ForceValue = 10,
+            };
+            int before = officer.ForceValue;
+
+            _system.ApplyForceGrowth(new List<IMissionParticipant> { officer });
+
+            Assert.AreEqual(before, officer.ForceValue);
+        }
     }
 
     /// <summary>

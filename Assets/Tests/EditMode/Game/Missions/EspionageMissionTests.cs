@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetBecameOwnedBeforeExecution_ReturnsFailed()
+        public void Execute_PlanetBecameOwnedByMissionFaction_StillSucceeds()
         {
             (
                 GameRoot game,
@@ -116,6 +116,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
+            // Planet changes hands before execution — espionage is still valid on any visited planet
             enemyPlanet.OwnerInstanceID = "empire";
 
             while (!mission.IsComplete())
@@ -124,14 +125,14 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
-                MissionOutcome.Failed,
+                MissionOutcome.Success,
                 completed.Outcome,
-                "Espionage should fail when target planet is now owned by mission owner"
+                "Espionage should still succeed when planet changed ownership before execution"
             );
         }
 
         [Test]
-        public void TryCreate_OwnedPlanetTarget_ReturnsNull()
+        public void TryCreate_NotVisitedPlanet_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -140,6 +141,32 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+
+            // empPlanet has no VisitingFactionIDs — empire has not visited it
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                fog
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when planet has not been visited");
+        }
+
+        [Test]
+        public void TryCreate_VisitedOwnPlanet_ReturnsNotNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.VisitingFactionIDs.Add("empire");
 
             EspionageMission mission = CreateMission(
                 game,
@@ -150,7 +177,10 @@ namespace Rebellion.Tests.Game.Missions
                 fog
             );
 
-            Assert.IsNull(mission, "TryCreate should return null for an owned planet target");
+            Assert.IsNotNull(
+                mission,
+                "TryCreate should succeed for a visited planet regardless of ownership"
+            );
         }
 
         [Test]

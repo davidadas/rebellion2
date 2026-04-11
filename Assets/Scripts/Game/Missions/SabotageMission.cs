@@ -56,7 +56,7 @@ public class SabotageMission : Mission
     /// <summary>
     /// Returns false if the target planet has no buildings remaining before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.GetAllBuildings().Count > 0;
     }

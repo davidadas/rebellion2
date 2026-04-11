@@ -334,5 +334,11 @@ public class GameManager
                     );
             }
         }
+
+        foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
+        {
+            if (result.Outcome == MissionOutcome.Success)
+                _jediSystem.ApplyForceGrowth(result.Mission.MainParticipants);
+        }
     }
 }

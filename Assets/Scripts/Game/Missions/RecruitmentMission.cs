@@ -75,7 +75,7 @@ public class RecruitmentMission : Mission
     /// Returns false if the target officer no longer exists in the unrecruited pool or has
     /// already joined this faction.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
             o.InstanceID == TargetOfficerInstanceID

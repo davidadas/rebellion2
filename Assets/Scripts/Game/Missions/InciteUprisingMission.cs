@@ -29,7 +29,8 @@ public class InciteUprisingMission : Mission
         if (!(ctx.Target is Planet planet))
             return null;
 
-        if (planet.GetOwnerInstanceID() == ctx.OwnerInstanceId || planet.IsInUprising)
+        string owner = planet.GetOwnerInstanceID();
+        if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId || planet.IsInUprising)
             return null;
 
         return new InciteUprisingMission(
@@ -62,17 +63,20 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
     /// </summary>
-    public override bool IsCanceled(GameRoot game)
+    public override bool ShouldAbort(GameRoot game)
     {
-        return base.IsCanceled(game) || (GetParent() is Planet p && p.IsInUprising);
+        return base.ShouldAbort(game) || (GetParent() is Planet p && p.IsInUprising);
     }
 
     /// <summary>
     /// Returns false if an uprising has already started on the target planet before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
-        return GetParent() is Planet p && !p.IsInUprising;
+        if (!(GetParent() is Planet p))
+            return false;
+        string owner = p.GetOwnerInstanceID();
+        return !string.IsNullOrEmpty(owner) && owner != OwnerInstanceID && !p.IsInUprising;
     }
 
     /// <summary>

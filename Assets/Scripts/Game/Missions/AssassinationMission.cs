@@ -76,7 +76,7 @@ public class AssassinationMission : Mission
     /// Returns false if the target officer has already been killed or has moved
     /// away from the mission's planet before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         return target?.IsKilled == false

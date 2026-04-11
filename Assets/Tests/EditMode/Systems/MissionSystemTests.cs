@@ -348,7 +348,7 @@ namespace Rebellion.Tests.Systems
             // Diplo completes before incite on the same turn: it re-initiates because the
             // uprising hasn't fired yet when its CanContinue is evaluated.
             // Incite then fires, starting the uprising.
-            // On the following UpdateMission, the pre-tick IsCanceled guard cancels diplo.
+            // On the following UpdateMission, the pre-tick ShouldAbort guard cancels diplo.
             (
                 GameRoot game,
                 DiplomacyMission diplomacyMission,
@@ -361,7 +361,7 @@ namespace Rebellion.Tests.Systems
             missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
 
             // Diplo survived this turn (uprising fired after it ran), but is now re-initiated.
-            // The next UpdateMission triggers the IsCanceled pre-tick guard.
+            // The next UpdateMission triggers the ShouldAbort pre-tick guard.
             missionSystem.UpdateMission(diplomacyMission, rng);
 
             Assert.AreEqual(
@@ -375,7 +375,7 @@ namespace Rebellion.Tests.Systems
         public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
         {
             // Incite completes first: uprising fires before diplo gets its turn this turn.
-            // When UpdateMission runs for diplo, the IsCanceled pre-tick guard catches it
+            // When UpdateMission runs for diplo, the ShouldAbort pre-tick guard catches it
             // immediately — diplo never executes.
             (
                 GameRoot game,

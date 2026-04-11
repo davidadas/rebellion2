@@ -371,6 +371,148 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_FriendlyOfficerAsTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
+            game.AttachNode(friendly, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                friendly
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target belongs to the same faction"
+            );
+        }
+
+        [Test]
+        public void TryCreate_TargetAlreadyCaptured_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsCaptured = true;
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is already captured");
+        }
+
+        [Test]
+        public void TryCreate_TargetAlreadyKilled_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.IsKilled = true;
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is already killed");
+        }
+
+        [Test]
+        public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, empPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target is not on the mission target planet"
+            );
+        }
+
+        [Test]
+        public void TryCreate_ValidTarget_ReturnsNotNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNotNull(
+                mission,
+                "TryCreate should succeed with a valid enemy officer on the target planet"
+            );
+            Assert.AreEqual("target", mission.TargetOfficerInstanceID);
+        }
+
+        [Test]
         public void SerializesAndDeserializes()
         {
             AssassinationMission mission = new AssassinationMission

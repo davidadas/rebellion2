@@ -104,7 +104,7 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
 
             // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
-            if (mission.IsCanceled(_game))
+            if (mission.ShouldAbort(_game))
             {
                 TearDownMission(mission);
                 return results;
@@ -143,7 +143,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Moves all participants back to their recorded origin (planet or fleet), falling back to
         /// the nearest friendly planet if the origin has moved away or no longer exists, then
-        /// detaches the mission. Called when CanContinue returns false or IsCanceled fires.
+        /// detaches the mission. Called when CanContinue returns false or ShouldAbort fires.
         /// </summary>
         private void TearDownMission(Mission mission)
         {

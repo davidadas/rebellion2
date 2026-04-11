@@ -91,9 +91,9 @@ public class JediTrainingMission : Mission
     /// <summary>
     /// Cancels if any main participant or the trainer is captured or killed.
     /// </summary>
-    public override bool IsCanceled(GameRoot game)
+    public override bool ShouldAbort(GameRoot game)
     {
-        if (base.IsCanceled(game))
+        if (base.ShouldAbort(game))
             return true;
 
         Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
@@ -105,7 +105,7 @@ public class JediTrainingMission : Mission
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <returns>True if the planet is still owned by this faction.</returns>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }

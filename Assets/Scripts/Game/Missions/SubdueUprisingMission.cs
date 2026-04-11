@@ -59,15 +59,15 @@ public class SubdueUprisingMission : Mission
     /// <summary>
     /// Extends base cancellation to also cancel when the uprising ends before execution.
     /// </summary>
-    public override bool IsCanceled(GameRoot game)
+    public override bool ShouldAbort(GameRoot game)
     {
-        return base.IsCanceled(game) || !(GetParent() is Planet p && p.IsInUprising);
+        return base.ShouldAbort(game) || !(GetParent() is Planet p && p.IsInUprising);
     }
 
     /// <summary>
     /// Returns false if the uprising has ended on the target planet before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.IsInUprising;
     }

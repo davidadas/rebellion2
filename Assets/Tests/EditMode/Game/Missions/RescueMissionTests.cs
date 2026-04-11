@@ -377,6 +377,124 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_EnemyOfficerAsTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer enemy = EntityFactory.CreateOfficer("enemy", "rebels");
+            enemy.IsCaptured = true;
+            game.AttachNode(enemy, enemyPlanet);
+
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                enemy
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target belongs to an enemy faction"
+            );
+        }
+
+        [Test]
+        public void TryCreate_TargetNotCaptured_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = false;
+            game.AttachNode(captive, enemyPlanet);
+
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+
+            Assert.IsNull(mission, "TryCreate should return null when target is not captured");
+        }
+
+        [Test]
+        public void TryCreate_TargetOnWrongPlanet_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            game.AttachNode(captive, empPlanet);
+
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+
+            Assert.IsNull(
+                mission,
+                "TryCreate should return null when target is not on the mission target planet"
+            );
+        }
+
+        [Test]
+        public void TryCreate_ValidTarget_ReturnsNotNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            game.AttachNode(captive, enemyPlanet);
+
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+
+            Assert.IsNotNull(
+                mission,
+                "TryCreate should succeed with a valid captured friendly officer on the target planet"
+            );
+            Assert.AreEqual("captive", mission.TargetOfficerInstanceID);
+        }
+
+        [Test]
         public void SerializesAndDeserializes()
         {
             RescueMission mission = new RescueMission

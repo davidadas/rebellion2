@@ -55,7 +55,7 @@ public abstract class Mission : ContainerNode
     /// Base implementation cancels when any main participant is captured or killed.
     /// Override and call base for missions with additional cancellation conditions.
     /// </summary>
-    public virtual bool IsCanceled(GameRoot game) =>
+    public virtual bool ShouldAbort(GameRoot game) =>
         MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
     /// <summary>
@@ -282,31 +282,6 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Grants ForceGrowthPerMission to eligible main participants.
-    /// </summary>
-    private void ApplyForceGrowth(GameRoot game)
-    {
-        int growth = game.Config.Jedi.ForceGrowthPerMission;
-        if (growth <= 0)
-            return;
-
-        foreach (IMissionParticipant participant in MainParticipants)
-        {
-            if (
-                participant is Officer officer
-                && officer.GrowsForceOnMission
-                && officer.IsForceEligible
-            )
-            {
-                officer.ForceValue += growth;
-                GameLogger.Log(
-                    $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
-                );
-            }
-        }
-    }
-
-    /// <summary>
     /// Executes the mission, determines the outcome, and returns all results.
     /// MissionCompletedResult is always the last item in the list.
     /// </summary>
@@ -323,7 +298,7 @@ public abstract class Mission : ContainerNode
 
         if (CheckMissionSuccess(provider, foilProbability))
         {
-            if (!IsTargetValid(game))
+            if (!IsMissionSatisfied(game))
             {
                 outcome = MissionOutcome.Failed;
                 results.AddRange(OnFailed(game, provider));
@@ -333,7 +308,6 @@ public abstract class Mission : ContainerNode
                 outcome = MissionOutcome.Success;
                 results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
-                ApplyForceGrowth(game);
             }
         }
         else if (CheckMissionFoiled(provider, foilProbability))
@@ -388,7 +362,7 @@ public abstract class Mission : ContainerNode
     /// Override to validate target state at execution time. Returning false routes a
     /// successful dice roll to <see cref="MissionOutcome.Failed"/> without calling OnSuccess.
     /// </summary>
-    protected virtual bool IsTargetValid(GameRoot game) => true;
+    protected virtual bool IsMissionSatisfied(GameRoot game) => true;
 
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.

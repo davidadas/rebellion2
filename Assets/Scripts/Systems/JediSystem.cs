@@ -18,6 +18,32 @@ namespace Rebellion.Systems
             _game = game;
         }
 
+        /// <summary>
+        /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
+        /// Called from GameManager.ProcessResults when a MissionCompletedResult with Success is seen.
+        /// </summary>
+        public void ApplyForceGrowth(List<IMissionParticipant> participants)
+        {
+            int growth = _game.Config.Jedi.ForceGrowthPerMission;
+            if (growth <= 0)
+                return;
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (
+                    participant is Officer officer
+                    && officer.GrowsForceOnMission
+                    && officer.IsForceEligible
+                )
+                {
+                    officer.ForceValue += growth;
+                    GameLogger.Log(
+                        $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
+                    );
+                }
+            }
+        }
+
         public List<GameResult> ProcessTick(IRandomNumberProvider rng)
         {
             List<GameResult> results = new List<GameResult>();
