@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -11,16 +12,31 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
+        private static SabotageMission CreateSabotageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return SabotageMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_MissionWithDecoy_UsesDecoyParticipantSkill()
         {
             // Decoy has Espionage=0, Combat=80. DecoyParticipantSkill=Combat.
-            // DecoyProbabilityTable requires score >= 50 to pass.
-            // FoilProbabilityTable is 100% so without a working decoy the mission is Foiled.
-            // If DecoyParticipantSkill is respected (Combat=80 → score=80 → passes),
-            // foil is nullified and the mission Succeeds.
-            // If the field is ignored and Espionage=0 is used instead (score=0 → fails),
-            // the mission is Foiled.
+            // DecoyProbabilityTable requires score >= 50 to pass, and FoilProbabilityTable
+            // is 100%, so without a working decoy the mission is always foiled.
+            // The decoy's Combat skill of 80 exceeds the threshold, nullifying the foil.
+            // If DecoyParticipantSkill were ignored and Espionage=0 used instead, it would fail.
             (
                 GameRoot game,
                 Planet empPlanet,
@@ -51,14 +67,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant> { decoy }
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.DecoyParticipantSkill = MissionParticipantSkill.Combat;
             mission.DecoyProbabilityTable = new ProbabilityTable(
@@ -83,7 +99,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_MainParticipantCaptured_ReturnsTrue()
+        public void ShouldAbort_MainParticipantCaptured_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -93,7 +109,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -105,13 +121,13 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsCaptured = true;
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when main participant is captured"
             );
         }
 
         [Test]
-        public void IsCanceled_MainParticipantKilled_ReturnsTrue()
+        public void ShouldAbort_MainParticipantKilled_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -121,7 +137,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -133,7 +149,7 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsKilled = true;
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when main participant is killed"
             );
         }
@@ -149,7 +165,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -179,7 +195,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -217,14 +233,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant>()
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
@@ -266,14 +282,14 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                new ProbabilityTable(
-                    new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
-                )
+                new List<IMissionParticipant> { decoy }
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
             );
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new System.Collections.Generic.Dictionary<int, int> { { 0, 100 } }
@@ -315,22 +331,16 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Building building = new Building
+            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
+
+            MissionContext ctx = new MissionContext
             {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
+                OwnerInstanceId = "empire",
+                Target = enemyPlanet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
             };
-            game.AttachNode(building, enemyPlanet);
-
-            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Combat);
-
-            SabotageMission mission = new SabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
+            InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
@@ -340,13 +350,66 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 skillBefore + 1,
-                officer.GetSkillValue(MissionParticipantSkill.Combat),
-                "Officer skill should improve by 1 on mission success"
+                officer.GetSkillValue(MissionParticipantSkill.Leadership),
+                "Officer leadership skill should improve by 1 on mission success"
             );
         }
 
         [Test]
-        public void IsCanceled_DecoyParticipantCaptured_ReturnsFalse()
+        public void CanAcceptChild_WithMissionParticipant_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Officer other = EntityFactory.CreateOfficer("o2", "empire");
+
+            Assert.IsTrue(mission.CanAcceptChild(other));
+        }
+
+        [Test]
+        public void CanAcceptChild_NonParticipant_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+            };
+
+            Assert.IsFalse(mission.CanAcceptChild(building));
+        }
+
+        [Test]
+        public void ShouldAbort_DecoyParticipantCaptured_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -359,7 +422,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             game.AttachNode(decoy, empPlanet);
 
-            SabotageMission mission = new SabotageMission(
+            SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -371,7 +434,7 @@ namespace Rebellion.Tests.Game.Missions
             decoy.IsCaptured = true;
 
             Assert.IsFalse(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should not be canceled when only decoy participant is captured"
             );
         }

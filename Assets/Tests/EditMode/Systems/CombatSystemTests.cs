@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Systems
 
     /// <summary>
     /// Tests for CombatSystem.
-    /// Validates the 7-phase combat pipeline against reverse-engineered REBEXE.EXE behavior.
+    /// Validates the 7-phase combat pipeline.
     /// </summary>
     [TestFixture]
     public class CombatSystemTests : CombatTestBase
@@ -835,7 +835,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_MultipleEncounters_AllAI_ResolvesAll()
+        public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
         {
             GameRoot game = new GameRoot();
             // No PlayerID = IsAIControlled() returns true
@@ -1240,7 +1240,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(reg, planet);
 
-            // Fleet with bombardment=10, no defense → 10 net strikes
+            // Fleet with bombardment=10 and no defense gives 10 net strikes.
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 10);
 
             // SequenceRNG: lane select=0 (troops), threshold roll=10 (max, always hits resistance 0)
@@ -1268,7 +1268,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 3);
 
-            // No troops, fighters, or buildings → only energy lane available
+            // No troops, fighters, or buildings, so only the energy lane is available.
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
 
             // All rolls select lane 0 (energy) and roll high enough to hit
@@ -1364,7 +1364,7 @@ namespace Rebellion.Tests.Systems
             // Planet with energy=1, no other targets
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
 
-            // Fleet with bombardment=100 → 100 net strikes, but only 1 energy to destroy
+            // Fleet with bombardment=100 gives 100 net strikes, but only 1 energy to destroy.
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 100);
 
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 10 });
@@ -1399,7 +1399,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
 
             // Lane 0=energy, lane 1=building. Select lane 1 (building).
-            // Roll = 1 (min threshold), resistance 15 >= 1 → miss
+            // Roll of 1 (min threshold) against resistance 15 is a miss.
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -1509,7 +1509,7 @@ namespace Rebellion.Tests.Systems
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
             CreateDefenseBuilding(game, "def1", "alliance", planet, weaponStrength: 100);
 
-            // Zero-weapon fleet → combat value 0 → assault strength 0 ≤ defense 100
+            // Fleet with zero weapon power cannot overcome defense of 100.
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 0);
 
             CombatSystem combat = MakeCombat(game, new QueueRNG());
@@ -1528,10 +1528,10 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
 
-            // High-weapon fleet with no defense → assault strength > 0
+            // High-weapon fleet with no defense, so assault strength > 0.
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // NextDouble()=0.5 → NextInt(0,150)=75 ≥ threshold(50) → roll fails
+            // RNG seeded to produce a roll above the assault threshold, causing failure.
             QueueRNG rng = new QueueRNG(0.5);
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -1551,7 +1551,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // NextDouble()=0.0 → NextInt(0,150)=0 < threshold(50) → roll succeeds
+            // RNG seeded to produce a roll below the assault threshold, causing success.
             QueueRNG rng = new QueueRNG(0.0);
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -1578,7 +1578,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // 0.0 → roll=0 (success); 0.5 → building ordering
+            // First RNG value produces a successful roll, second is for building selection.
             QueueRNG rng = new QueueRNG(0.0, 0.5);
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -1602,7 +1602,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // 0.0 → roll=0 (success); 0.5 → building ordering
+            // First RNG value produces a successful roll, second is for building selection.
             QueueRNG rng = new QueueRNG(0.0, 0.5);
             CombatSystem combat = MakeCombat(game, rng);
 

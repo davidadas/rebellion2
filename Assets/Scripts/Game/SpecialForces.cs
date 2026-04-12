@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.SceneGraph;
 
@@ -25,6 +24,9 @@ namespace Rebellion.Game
         // Movement Info
         public MovementState Movement { get; set; }
 
+        // Mission Qualification
+        public List<MissionType> AllowedMissionTypes { get; set; } = new List<MissionType>();
+
         // Mission Skill Related
         public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
             new Dictionary<MissionParticipantSkill, int>
@@ -34,7 +36,10 @@ namespace Rebellion.Game
                 { MissionParticipantSkill.Combat, 0 },
                 { MissionParticipantSkill.Leadership, 0 },
             };
-        public bool CanImproveMissionSkill => true;
+        public bool CanImproveMissionSkill => false;
+
+        public bool CanPerformMission(MissionType missionType) =>
+            AllowedMissionTypes.Contains(missionType);
 
         /// <summary>
         /// Default constructor used for deserialization.

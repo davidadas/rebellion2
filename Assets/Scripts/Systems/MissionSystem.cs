@@ -22,6 +22,10 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates a MissionSystem wired to the given game, movement, and ownership systems.
         /// </summary>
+        /// <param name="game">The active game state.</param>
+        /// <param name="movementManager">Used to move participants to and from missions.</param>
+        /// <param name="ownershipSystem">Used to transfer planet ownership on mission success.</param>
+        /// <param name="fogOfWar">Optional fog-of-war system passed to MissionFactory for visibility checks.</param>
         public MissionSystem(
             GameRoot game,
             MovementSystem movementManager,
@@ -36,13 +40,43 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Returns whether a mission of the given type can be created for the target.
+        /// </summary>
+        /// <param name="missionType">The type of mission to check.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="target">The target planet or scene node.</param>
+        /// <param name="provider">RNG provider for target selection; pass the game's live provider.</param>
+        /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
+        /// <returns>True if a mission of this type can be created.</returns>
+        public bool CanCreateMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            ISceneNode target,
+            IRandomNumberProvider provider,
+            Officer targetOfficer = null
+        ) =>
+            _missionFactory.CanCreateMission(
+                missionType,
+                ownerInstanceId,
+                target,
+                provider,
+                targetOfficer
+            );
+
+        /// <summary>
         /// Initiates a mission with a single participant and target.
         /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="participant">The officer or unit performing the mission.</param>
+        /// <param name="target">The target planet or scene node.</param>
+        /// <param name="provider">RNG provider for randomizing mission duration.</param>
+        /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         public void InitiateMission(
             MissionType missionType,
             IMissionParticipant participant,
             ISceneNode target,
-            IRandomNumberProvider provider
+            IRandomNumberProvider provider,
+            Officer targetOfficer = null
         )
         {
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>
@@ -52,14 +86,18 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
             string ownerInstanceId = participant.OwnerInstanceID;
 
-            Mission mission = _missionFactory.CreateAndAttachMission(
+            Mission mission = _missionFactory.CreateMission(
                 missionType,
                 ownerInstanceId,
                 mainParticipants,
                 decoyParticipants,
                 target,
-                provider
+                provider,
+                targetOfficer
             );
+
+            Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();
+            _game.AttachNode(mission, planet);
 
             BeginMission(mission, provider);
         }
@@ -67,6 +105,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes all active missions and returns aggregate results.
         /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for mission execution rolls.</param>
+        /// <returns>All results produced by missions that executed this tick.</returns>
         public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -84,12 +125,15 @@ namespace Rebellion.Systems
         /// Updates a single mission's state for this tick.
         /// Returns results from execution and participant movement on completion.
         /// </summary>
+        /// <param name="mission">The mission to update.</param>
+        /// <param name="provider">RNG provider for mission execution rolls.</param>
+        /// <returns>Results produced if the mission executed this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
 
             // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
-            if (mission.IsCanceled(_game))
+            if (mission.ShouldAbort(_game))
             {
                 TearDownMission(mission);
                 return results;
@@ -128,7 +172,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Moves all participants back to their recorded origin (planet or fleet), falling back to
         /// the nearest friendly planet if the origin has moved away or no longer exists, then
-        /// detaches the mission. Called when CanContinue returns false or IsCanceled fires.
+        /// detaches the mission. Called when CanContinue returns false or ShouldAbort fires.
         /// </summary>
         private void TearDownMission(Mission mission)
         {

@@ -4,6 +4,9 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID />
+    <DisallowedMissionTypes>
+      <MissionType>Assassination</MissionType>
+    </DisallowedMissionTypes>
     <Modifiers>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>
@@ -16,6 +19,7 @@
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID>CORUSCANT</HQInstanceID>
+    <DisallowedMissionTypes />
     <Modifiers>
       <GarrisonEfficiency>2</GarrisonEfficiency>
       <TroopEffectiveness>2</TroopEffectiveness>

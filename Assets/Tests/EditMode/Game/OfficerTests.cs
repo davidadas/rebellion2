@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void SetSkillValue_WithValidSkillAndValue_UpdatesValueCorrectly()
+        public void SetSkillValue_ValidSkill_UpdatesValue()
         {
             Officer officer = new Officer();
             int updatedValue = officer.SetSkillValue(MissionParticipantSkill.Combat, 15);
@@ -103,10 +103,10 @@ namespace Rebellion.Tests.Game
                     { MissionParticipantSkill.Leadership, 25 },
                 },
                 Movement = null,
-                ForceTier = ForceTier.Training,
-                ForceExperience = 75,
-                JediLevel = 5,
-                JediLevelVariance = 2,
+                IsJedi = true,
+                IsForceEligible = true,
+                ForceValue = 75,
+                ForceTrainingAdjustment = 10,
                 CanBetray = false,
             };
 
@@ -124,25 +124,21 @@ namespace Rebellion.Tests.Game
                 deserializedOfficer.Movement,
                 "MovementStatus mismatch"
             );
+            Assert.AreEqual(originalOfficer.IsJedi, deserializedOfficer.IsJedi, "IsJedi mismatch");
             Assert.AreEqual(
-                originalOfficer.ForceTier,
-                deserializedOfficer.ForceTier,
-                "ForceTier mismatch"
+                originalOfficer.IsForceEligible,
+                deserializedOfficer.IsForceEligible,
+                "IsForceEligible mismatch"
             );
             Assert.AreEqual(
-                originalOfficer.ForceExperience,
-                deserializedOfficer.ForceExperience,
-                "ForceExperience mismatch"
+                originalOfficer.ForceValue,
+                deserializedOfficer.ForceValue,
+                "ForceValue mismatch"
             );
             Assert.AreEqual(
-                originalOfficer.JediLevel,
-                deserializedOfficer.JediLevel,
-                "JediLevel mismatch"
-            );
-            Assert.AreEqual(
-                originalOfficer.JediLevelVariance,
-                deserializedOfficer.JediLevelVariance,
-                "JediLevelVariance mismatch"
+                originalOfficer.ForceTrainingAdjustment,
+                deserializedOfficer.ForceTrainingAdjustment,
+                "ForceTrainingAdjustment mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.CanBetray,
@@ -234,22 +230,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void IsForceSensitive_SetToTrue_ReturnsTrue()
-        {
-            Officer officer = new Officer();
-            officer.IsForceSensitive = true;
-            Assert.IsTrue(officer.IsForceSensitive);
-        }
-
-        [Test]
-        public void IsForceSensitive_SetToFalse_ReturnsFalse()
-        {
-            Officer officer = new Officer();
-            officer.IsForceSensitive = false;
-            Assert.IsFalse(officer.IsForceSensitive);
-        }
-
-        [Test]
         public void Loyalty_SetAndGet_ReturnsCorrectValue()
         {
             Officer officer = new Officer();
@@ -291,5 +271,15 @@ namespace Rebellion.Tests.Game
             string ownerInstanceID = officer.GetOwnerInstanceID();
             Assert.IsNull(ownerInstanceID);
         }
+
+        [Test]
+        public void CanPerformMission_AnyMissionType_ReturnsTrue()
+        {
+            Officer officer = new Officer();
+
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Sabotage));
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Espionage));
+            Assert.IsTrue(officer.CanPerformMission(MissionType.Assassination));
+        }
     }
-} // namespace Rebellion.Tests.Game
+}

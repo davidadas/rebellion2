@@ -23,13 +23,34 @@ public class EspionageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
-    public EspionageMission(
+    /// <summary>
+    /// Returns a new EspionageMission if the target is a visited planet, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, participants, and fog-of-war.</param>
+    /// <returns>A configured mission, or null if the planet has not been visited.</returns>
+    public static EspionageMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (!planet.WasVisitedBy(ctx.OwnerInstanceId))
+            return null;
+
+        return new EspionageMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            ctx.FogOfWar
+        );
+    }
+
+    private EspionageMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        FogOfWarSystem fogOfWar,
-        ProbabilityTable successProbabilityTable = null
+        FogOfWarSystem fogOfWar
     )
         : base(
             "Espionage",
@@ -38,30 +59,33 @@ public class EspionageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Espionage,
-            successProbabilityTable
+            null
         )
     {
-        Planet planet = (Planet)target;
-
-        if (planet.GetOwnerInstanceID() == ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Espionage target planet '{planet.DisplayName}' is an own planet."
-            );
-
         _fogOfWar = fogOfWar;
     }
 
     /// <summary>
-    /// Returns false if the target planet is no longer owned by an enemy faction at execution time.
+    /// Returns true as long as the mission is still attached to a planet.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission parent is a planet.</returns>
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() != OwnerInstanceID;
+        return GetParent() is Planet;
     }
+
+    /// <summary>
+    /// Espionage does not award mission skill improvements.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill() { }
 
     /// <summary>
     /// Captures a fog-of-war snapshot of the target planet for the owning faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for espionage).</param>
+    /// <returns>An empty list; the snapshot is applied directly to the fog-of-war system.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -80,6 +104,8 @@ public class EspionageMission : Mission
     /// <summary>
     /// Espionage missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

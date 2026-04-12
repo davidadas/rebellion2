@@ -44,13 +44,10 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>true</IsForceSensitive>
     <JediProbability>100</JediProbability>
     <JediLevel>150</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>3</ForceTier>
-    <ForceExperience>150</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
+    <IsKnownJedi>true</IsKnownJedi>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -93,13 +90,11 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>true</IsForceSensitive>
-    <JediProbability>0</JediProbability>
+    <JediProbability>100</JediProbability>
     <JediLevel>120</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>2</ForceTier>
-    <ForceExperience>120</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
+    <IsKnownJedi>true</IsKnownJedi>
+    <IsJediTrainer>true</IsJediTrainer>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -144,7 +139,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -192,7 +186,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>20</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -240,7 +233,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>20</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -288,7 +280,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -336,7 +327,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -384,7 +374,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -432,7 +421,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -480,7 +468,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -528,7 +515,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -576,7 +562,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -624,7 +609,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -672,7 +656,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -720,7 +703,6 @@
     <FacilityResearchVariance>50</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -768,7 +750,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -816,7 +797,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -864,13 +844,9 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>0</JediProbability>
     <JediLevel>0</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>0</ForceTier>
-    <ForceExperience>0</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -915,7 +891,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -963,7 +938,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1011,7 +985,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1060,7 +1033,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1108,7 +1080,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1156,7 +1127,6 @@
     <FacilityResearchVariance>50</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1204,7 +1174,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1252,7 +1221,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>30</JediLevel>
     <JediLevelVariance>20</JediLevelVariance>
@@ -1300,7 +1268,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1348,7 +1315,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1396,7 +1362,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1444,7 +1409,6 @@
     <FacilityResearchVariance>60</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1495,9 +1459,6 @@
     <JediProbability>0</JediProbability>
     <JediLevel>0</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>0</ForceTier>
-    <ForceExperience>0</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1543,9 +1504,7 @@
     <JediProbability>100</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>0</ForceTier>
-    <ForceExperience>0</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
+    <GrowsForceOnMission>true</GrowsForceOnMission>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1588,13 +1547,12 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>true</IsForceSensitive>
     <JediProbability>100</JediProbability>
     <JediLevel>50</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>2</ForceTier>
-    <ForceExperience>50</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
+    <IsKnownJedi>true</IsKnownJedi>
+    <IsJediTrainer>true</IsJediTrainer>
+    <GrowsForceOnMission>true</GrowsForceOnMission>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1637,13 +1595,9 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>0</JediProbability>
     <JediLevel>0</JediLevel>
     <JediLevelVariance>0</JediLevelVariance>
-    <ForceTier>0</ForceTier>
-    <ForceExperience>0</ForceExperience>
-    <IsDiscoveredJedi>false</IsDiscoveredJedi>
     <CurrentRank>None</CurrentRank>
   </Officer>
   <Officer>
@@ -1688,7 +1642,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1736,7 +1689,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1784,7 +1736,6 @@
     <FacilityResearchVariance>50</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1832,7 +1783,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1880,7 +1830,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1928,7 +1877,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -1976,7 +1924,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2024,7 +1971,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>20</JediLevel>
     <JediLevelVariance>30</JediLevelVariance>
@@ -2072,7 +2018,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2120,7 +2065,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2168,7 +2112,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>20</JediLevel>
     <JediLevelVariance>30</JediLevelVariance>
@@ -2216,7 +2159,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2264,7 +2206,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2312,7 +2253,6 @@
     <FacilityResearchVariance>50</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2360,7 +2300,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2408,7 +2347,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2456,7 +2394,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2504,7 +2441,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>30</JediLevel>
     <JediLevelVariance>20</JediLevelVariance>
@@ -2552,7 +2488,6 @@
     <FacilityResearchVariance>60</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>10</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2600,7 +2535,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2648,7 +2582,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2696,7 +2629,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2744,7 +2676,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>30</JediLevel>
     <JediLevelVariance>20</JediLevelVariance>
@@ -2792,7 +2723,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2840,7 +2770,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>
@@ -2888,7 +2817,6 @@
     <FacilityResearchVariance>0</FacilityResearchVariance>
     <CanBetray>false</CanBetray>
     <IsTraitor>false</IsTraitor>
-    <IsForceSensitive>false</IsForceSensitive>
     <JediProbability>20</JediProbability>
     <JediLevel>10</JediLevel>
     <JediLevelVariance>40</JediLevelVariance>

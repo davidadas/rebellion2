@@ -26,7 +26,7 @@ public class GameManager
     private BlockadeSystem _blockadeManager;
     private DeathStarSystem _deathStarManager;
     private ResearchSystem _researchManager;
-    private JediSystem _jediManager;
+    private JediSystem _jediSystem;
     private BetrayalSystem _betrayalManager;
     private SupportShiftSystem _supportShiftManager;
     private UprisingSystem _uprisingManager;
@@ -156,7 +156,14 @@ public class GameManager
         if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
-        _combatManager.Resolve(_game, _pendingCombatDecision, autoResolve, _randomProvider);
+        SpaceCombatResult combatResult = _combatManager.Resolve(
+            _game,
+            _pendingCombatDecision,
+            autoResolve,
+            _randomProvider
+        );
+        if (combatResult != null)
+            ProcessResults(combatResult.Events);
         _pendingCombatDecision = null;
     }
 
@@ -213,8 +220,8 @@ public class GameManager
         // 12. Research: applies tech upgrades
         ProcessResults(_researchManager.ProcessTick(_game));
 
-        // 13. Jedi: advances Force tiers
-        ProcessResults(_jediManager.ProcessTick(_randomProvider));
+        // 13. Jedi: refreshes force discovery state
+        ProcessResults(_jediSystem.ProcessTick(_randomProvider));
 
         // 14. Victory: terminal check last
         ProcessResults(_victoryManager.ProcessTick());
@@ -236,6 +243,7 @@ public class GameManager
             _movementManager,
             _manufacturingManager
         );
+        _jediSystem = new JediSystem(_game);
         _missionManager = new MissionSystem(
             _game,
             _movementManager,
@@ -246,7 +254,6 @@ public class GameManager
         _blockadeManager = new BlockadeSystem(_game);
         _deathStarManager = new DeathStarSystem(_game);
         _researchManager = new ResearchSystem();
-        _jediManager = new JediSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
         _supportShiftManager = new SupportShiftSystem(_game);
         _uprisingManager = new UprisingSystem(_game);
@@ -333,6 +340,12 @@ public class GameManager
                         _game.CurrentTick
                     );
             }
+        }
+
+        foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
+        {
+            if (result.Outcome == MissionOutcome.Success)
+                ProcessResults(_jediSystem.ApplyForceGrowth(result.Mission.MainParticipants));
         }
     }
 }

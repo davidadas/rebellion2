@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Extensions;
@@ -29,18 +28,22 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Transfers a planet to a new owner.
-        /// Phase 1: Cancel competing missions targeting this planet.
-        /// Phase 2: Transfer buildings to the new owner.
-        /// Phase 3: Clear manufacturing queues.
-        /// Phase 4: Evict all enemy units (including in-transit).
-        /// Phase 5: Change planet owner.
         /// </summary>
         public void TransferPlanet(Planet planet, Faction newOwner)
         {
+            // Cancel competing missions targeting this planet.
             CancelCompetingMissions(planet, newOwner.InstanceID);
+
+            // Transfer buildings to the new owner.
             TransferBuildings(planet, newOwner);
+
+            // Clear Manufacturing queues.
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+
+            // Evict enemy units.
             EvictEnemyUnits(planet, newOwner.InstanceID);
+
+            // Finally, change the planet owner.
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
         }
 
@@ -58,11 +61,7 @@ namespace Rebellion.Systems
             foreach (Mission mission in competing)
             {
                 foreach (IMissionParticipant participant in mission.GetAllParticipants())
-                {
-                    Planet fallback = FindNearestFactionPlanet(participant);
-                    if (fallback != null)
-                        _movementSystem.RequestMove(participant, fallback);
-                }
+                    _movementSystem.EvacuateToNearestFriendlyPlanet(participant);
 
                 _game.DetachNode(mission);
             }
@@ -80,37 +79,15 @@ namespace Rebellion.Systems
         private void EvictEnemyUnits(Planet planet, string newOwnerID)
         {
             List<IMovable> enemies = planet
-                .GetChildren<IMovable>(m => m.GetOwnerInstanceID() != newOwnerID, recurse: false)
+                .GetChildren<IMovable>(
+                    m =>
+                        m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building,
+                    recurse: false
+                )
                 .ToList();
 
             foreach (IMovable unit in enemies)
-            {
-                Planet fallback = FindNearestFactionPlanet(unit);
-                if (fallback != null)
-                    _movementSystem.RequestMove(unit, fallback);
-            }
-        }
-
-        private Planet FindNearestFactionPlanet(IMovable unit)
-        {
-            string ownerID = unit.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerID))
-                return null;
-
-            Planet current = unit.GetParentOfType<Planet>();
-
-            return _game
-                .GetSceneNodesByType<Planet>()
-                .Where(p => p.GetOwnerInstanceID() == ownerID && p != current)
-                .OrderBy(p =>
-                {
-                    Point pos = unit.GetPosition();
-                    Point ppos = p.GetPosition();
-                    double dx = ppos.X - pos.X;
-                    double dy = ppos.Y - pos.Y;
-                    return dx * dx + dy * dy;
-                })
-                .FirstOrDefault();
+                _movementSystem.EvacuateToNearestFriendlyPlanet(unit);
         }
     }
 }

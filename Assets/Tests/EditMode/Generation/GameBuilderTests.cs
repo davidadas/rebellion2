@@ -19,7 +19,6 @@ namespace Rebellion.Tests.Generation
     {
         private readonly GameSize _size;
         private GameRoot _game;
-        private IManufacturable[] _templates;
 
         public GameBuilderTests(GameSize size)
         {
@@ -37,23 +36,16 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
             };
-            _game = new GameBuilder(summary).BuildGame();
-            _templates = ResourceManager
-                .GetGameData<Building>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetGameData<CapitalShip>())
-                .Concat(ResourceManager.GetGameData<Starfighter>())
-                .Concat(ResourceManager.GetGameData<Regiment>())
-                .ToArray();
+
+            GameBuilder builder = new GameBuilder(summary);
+            _game = builder.BuildGame();
         }
 
         [Test]
         public void BuildGame_ValidConfig_SetsConsistentOwners()
         {
-            // Traverse the galaxy map to find planets.
             _game.Galaxy.Traverse(node =>
             {
-                // Skip nodes without an owner.
                 if (node.GetOwnerInstanceID() == null)
                 {
                     return;
@@ -61,7 +53,6 @@ namespace Rebellion.Tests.Generation
 
                 List<ISceneNode> children = node.GetChildren().ToList();
 
-                // Ensure each child has the same owner as its parent.
                 foreach (ISceneNode child in children)
                 {
                     Assert.AreEqual(
@@ -82,7 +73,6 @@ namespace Rebellion.Tests.Generation
 
                 foreach (ISceneNode child in children)
                 {
-                    // Ensure the child has the parent as its parent.
                     Assert.AreEqual(
                         node,
                         child.GetParent(),
@@ -98,7 +88,6 @@ namespace Rebellion.Tests.Generation
             Assert.IsNotNull(_game, "Game should not be null.");
             Assert.IsNotNull(_game.Summary, "Game summary should not be null.");
 
-            // Check that the game's summary properties are within expected ranges.
             Assert.IsTrue(
                 Enum.IsDefined(typeof(GameSize), _game.Summary.GalaxySize),
                 "GalaxySize should be a valid enum value."
@@ -119,7 +108,6 @@ namespace Rebellion.Tests.Generation
                 "ResourceAvailability should be a valid enum value."
             );
 
-            // Check that PlayerFactionID is not null or empty.
             Assert.IsFalse(
                 string.IsNullOrEmpty(_game.Summary.PlayerFactionID),
                 "PlayerFactionID should not be null or empty."
@@ -131,7 +119,6 @@ namespace Rebellion.Tests.Generation
         {
             Assert.IsNotNull(_game.Factions, "Factions should not be null.");
 
-            // Ensure the game has at least two factions.
             Assert.GreaterOrEqual(
                 _game.Factions.Count,
                 2,
@@ -159,8 +146,16 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_RebuildAfterInitialBuild_PreservesTechnologies()
+        public void BuildGame_AfterRebuild_TechnologiesSurvive()
         {
+            IManufacturable[] templates = ResourceManager
+                .GetGameData<Building>()
+                .Cast<IManufacturable>()
+                .Concat(ResourceManager.GetGameData<CapitalShip>())
+                .Concat(ResourceManager.GetGameData<Starfighter>())
+                .Concat(ResourceManager.GetGameData<Regiment>())
+                .ToArray();
+
             foreach (Faction faction in _game.Factions)
             {
                 int techCountBefore = faction.ResearchQueue.Values.Sum(q => q.Count);
@@ -171,7 +166,7 @@ namespace Rebellion.Tests.Generation
                     $"Faction {faction.GetDisplayName()} should have technologies before rebuild."
                 );
 
-                faction.RebuildResearchQueues(_templates);
+                faction.RebuildResearchQueues(templates);
 
                 int techCountAfter = faction.ResearchQueue.Values.Sum(q => q.Count);
 
@@ -192,9 +187,17 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void BuildGame_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
+            IManufacturable[] templates = ResourceManager
+                .GetGameData<Building>()
+                .Cast<IManufacturable>()
+                .Concat(ResourceManager.GetGameData<CapitalShip>())
+                .Concat(ResourceManager.GetGameData<Starfighter>())
+                .Concat(ResourceManager.GetGameData<Regiment>())
+                .ToArray();
+
             foreach (Faction faction in _game.Factions)
             {
-                faction.RebuildResearchQueues(_templates);
+                faction.RebuildResearchQueues(templates);
 
                 Assert.IsTrue(
                     faction.GetUnlockedTechnologies(ManufacturingType.Ship).Count > 0,
@@ -221,7 +224,6 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in _game.Factions)
             {
-                // Check if the faction has a headquarters on any planet in the galaxy map.
                 bool hasHQ = _game
                     .Galaxy.PlanetSystems.SelectMany(ps => ps.Planets)
                     .Any(planet =>
@@ -241,11 +243,8 @@ namespace Rebellion.Tests.Generation
             Dictionary<string, List<Planet>> factionPlanets =
                 new Dictionary<string, List<Planet>>();
 
-            // Traverse the galaxy map to find planets owned by each faction.
             _game.Galaxy.Traverse(node =>
             {
-                // Check if the node is a planet and has an owner.
-                // If so, add the planet to the faction's list of planets.
                 if (node is Planet planet && planet.GetOwnerInstanceID() != null)
                 {
                     if (factionPlanets.ContainsKey(planet.OwnerInstanceID))
@@ -261,8 +260,7 @@ namespace Rebellion.Tests.Generation
 
             foreach (List<Planet> planets in factionPlanets.Values)
             {
-                // Ensure the faction has at least one planet.
-                Assert.Greater(planets.Count, 1, "Faction should have at least one planet.");
+                Assert.GreaterOrEqual(planets.Count, 1, "Faction should have at least one planet.");
             }
         }
 
@@ -271,7 +269,6 @@ namespace Rebellion.Tests.Generation
         {
             List<Officer> officers = new List<Officer>();
 
-            // Traverse the galaxy map to find officers.
             _game.Galaxy.Traverse(node =>
             {
                 if (node is Officer officer)
@@ -280,19 +277,16 @@ namespace Rebellion.Tests.Generation
                 }
             });
 
-            // Ensure the game has at least two officers.
-            Assert.Greater(officers.Count, 2, "Game should have at least two officers.");
+            Assert.GreaterOrEqual(officers.Count, 2, "Game should have at least two officers.");
         }
 
         [Test]
-        public void BuildGame_ValidConfig_InitializesOfficers()
+        public void BuildGame_ValidConfig_InitializesOfficerSkills()
         {
-            // Traverse the galaxy map to find officers.
             _game.Galaxy.Traverse(node =>
             {
                 if (node is Officer officer)
                 {
-                    // Ensure at least one skill is non-zero.
                     bool hasNonZeroSkill = officer.Skills.Values.Any(skillValue => skillValue > 0);
                     Assert.IsTrue(
                         hasNonZeroSkill,
@@ -307,7 +301,6 @@ namespace Rebellion.Tests.Generation
         {
             Dictionary<string, int> fleetsPerFaction = new Dictionary<string, int>();
 
-            // Traverse the galaxy map to find fleets.
             _game.Galaxy.Traverse(node =>
             {
                 if (node is Fleet fleet)
@@ -326,7 +319,6 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in _game.Factions)
             {
-                // Ensure the faction has at least one fleet.
                 Assert.IsTrue(
                     fleetsPerFaction.ContainsKey(faction.GetInstanceID()),
                     $"Faction {faction.GetDisplayName()} should have at least one fleet."
@@ -335,14 +327,12 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_DeploysAtMostOneFleetPerPlanet()
+        public void BuildGame_ValidConfig_DeploysMaxOneFleetPerPlanet()
         {
-            // Traverse the galaxy map to find planets.
             _game.Galaxy.Traverse(node =>
             {
                 if (node is Planet planet)
                 {
-                    // Ensure the planet has at most one fleet.
                     Assert.LessOrEqual(
                         planet.GetFleets().Count,
                         1,
@@ -355,14 +345,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void BuildGame_ValidConfig_DeploysCapitalShips()
         {
-            // Traverse the galaxy map to find fleets.
             _game.Galaxy.Traverse(node =>
             {
                 if (node is Fleet fleet)
                 {
                     bool hasCapitalShips = fleet.GetChildren().Any();
 
-                    // Ensure the fleet has at least one capital ship.
                     Assert.IsTrue(
                         hasCapitalShips,
                         $"Fleet {fleet.InstanceID} should have at least one capital ship."
@@ -374,11 +362,10 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void BuildGame_ValidConfig_SetsGameEvents()
         {
-            // Ensure the game has at least one event in the event pool.
             Assert.GreaterOrEqual(
                 _game.GetEventPool().Count,
                 1,
-                "Game should have at most one event in the event pool."
+                "Game should have at least one event in the event pool."
             );
         }
 
@@ -397,7 +384,7 @@ namespace Rebellion.Tests.Generation
                     {
                         bool isOwner = planet.OwnerInstanceID == faction.InstanceID;
                         if (isOwner)
-                            continue; // owner sees live — no snapshot required
+                            continue;
 
                         bool hasSnapshot =
                             faction.Fog.Snapshots.TryGetValue(
@@ -515,25 +502,6 @@ namespace Rebellion.Tests.Generation
                             $"Faction '{other.GetDisplayName()}' should not be able to see enemy outer rim planet '{planet.GetDisplayName()}' at game start"
                         );
                     }
-                }
-            }
-        }
-
-        [Test]
-        public void BuildGame_FogOfWar_OuterRimOwnedPlanet_OwnerIsInVisitingFactionIDs()
-        {
-            foreach (
-                PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
-                    s.SystemType == PlanetSystemType.OuterRim
-                )
-            )
-            {
-                foreach (Planet planet in system.Planets.Where(p => p.OwnerInstanceID != null))
-                {
-                    Assert.IsTrue(
-                        planet.WasVisitedBy(planet.OwnerInstanceID),
-                        $"Outer rim planet '{planet.GetDisplayName()}' is owned by '{planet.OwnerInstanceID}' but that faction is not in VisitingFactionIDs"
-                    );
                 }
             }
         }

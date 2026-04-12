@@ -162,6 +162,7 @@
               <xs:element name="DiceAddend" type="xs:integer" />
               <xs:element name="Upris1Table" type="IntTableType" />
               <xs:element name="Upris2Table" type="IntTableType" />
+              <xs:element name="ControllerSupportShift" type="xs:integer" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -195,12 +196,28 @@
         <xs:element name="Jedi">
           <xs:complexType>
             <xs:all>
-              <xs:element name="XpToTraining" type="PositiveIntType" />
-              <xs:element name="XpToExperienced" type="PositiveIntType" />
-              <xs:element name="DetectionCheckInterval" type="PositiveIntType" />
-              <xs:element name="DetectProbAware" type="ProbabilityType" />
-              <xs:element name="DetectProbTraining" type="ProbabilityType" />
-              <xs:element name="DetectProbExperienced" type="ProbabilityType" />
+              <xs:element name="DiscoveringForceUserThreshold" type="PositiveIntType" />
+              <xs:element name="ForceQualifiedThreshold" type="PositiveIntType" />
+              <xs:element name="FastHealThreshold" type="PositiveIntType" />
+              <xs:element name="ForceGrowthPerMission" type="xs:nonNegativeInteger" />
+              <xs:element name="TrainingCatchUpPercent">
+                <xs:simpleType>
+                  <xs:restriction base="xs:integer">
+                    <xs:minInclusive value="0" />
+                    <xs:maxInclusive value="100" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="HeritageThreshold" type="PositiveIntType" />
+              <xs:element name="DagobahCompletionBonusPercent" type="xs:nonNegativeInteger" />
+              <xs:element name="EncounterLocalMinRank" type="xs:nonNegativeInteger" />
+              <xs:element name="EncounterCrossSideMinRank" type="xs:nonNegativeInteger" />
+              <xs:element name="EncounterProbabilityOffset" type="xs:integer" />
+              <xs:element name="RankLabelNovice" type="xs:nonNegativeInteger" />
+              <xs:element name="RankLabelTrainee" type="PositiveIntType" />
+              <xs:element name="RankLabelForceStudent" type="PositiveIntType" />
+              <xs:element name="RankLabelForceKnight" type="PositiveIntType" />
+              <xs:element name="RankLabelForceMaster" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -246,6 +263,7 @@
                           <xs:element name="Sabotage" type="MissionTickConfigType" />
                           <xs:element name="SubdueUprising" type="MissionTickConfigType" />
                           <xs:element name="Research" type="MissionTickConfigType" />
+                          <xs:element name="JediTraining" type="MissionTickConfigType" />
                         </xs:all>
                       </xs:complexType>
                     </xs:element>

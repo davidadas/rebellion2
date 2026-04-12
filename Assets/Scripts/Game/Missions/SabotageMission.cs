@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -21,12 +20,29 @@ public class SabotageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
-    public SabotageMission(
+    /// <summary>
+    /// Returns a new SabotageMission if the target is a planet, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if the target is not a planet.</returns>
+    public static SabotageMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet))
+            return null;
+
+        return new SabotageMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private SabotageMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "Sabotage",
@@ -35,20 +51,30 @@ public class SabotageMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable
+            null
         ) { }
 
     /// <summary>
     /// Returns false if the target planet has no buildings remaining before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the planet still has at least one building.</returns>
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         return GetParent() is Planet p && p.GetAllBuildings().Count > 0;
     }
 
     /// <summary>
+    /// Sabotage does not award mission skill improvements.
+    /// </summary>
+    protected override void ImproveMissionParticipantsSkill() { }
+
+    /// <summary>
     /// Destroys the first building on the target planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for sabotage).</param>
+    /// <returns>One GameObjectSabotagedResult.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -69,26 +95,10 @@ public class SabotageMission : Mission
     }
 
     /// <summary>
-    /// Sabotage awards both Combat +1 and Espionage +1 on success.
-    /// </summary>
-    protected override void ImproveMissionParticipantsSkill()
-    {
-        base.ImproveMissionParticipantsSkill();
-        foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-        {
-            if (participant.CanImproveMissionSkill)
-            {
-                participant.SetMissionSkillValue(
-                    MissionParticipantSkill.Espionage,
-                    participant.GetMissionSkillValue(MissionParticipantSkill.Espionage) + 1
-                );
-            }
-        }
-    }
-
-    /// <summary>
     /// Sabotage missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

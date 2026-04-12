@@ -104,15 +104,19 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_PlanetWithEnemyFleets_EvictsEnemyFleets()
+        public void TransferPlanet_FleetAtPlanet_FleetNotEvicted()
         {
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
             _game.AttachNode(empireFleet, _targetPlanet);
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.IsNotNull(empireFleet.Movement, "Evicted fleet should be in transit");
-            Assert.AreEqual(_empirePlanet, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNull(empireFleet.Movement, "Fleet should not be evicted on planet transfer");
+            Assert.AreEqual(
+                _targetPlanet,
+                empireFleet.GetParent(),
+                "Fleet should remain at the captured planet"
+            );
         }
 
         [Test]
@@ -231,7 +235,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_InTransitFleetDestinedForPlanet_EvictsFleet()
+        public void TransferPlanet_InTransitFleetAtPlanet_FleetNotRedirected()
         {
             // Fleet already reparented to target (our immediate-reparent model) but mid-flight.
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
@@ -246,11 +250,10 @@ namespace Rebellion.Tests.Systems
 
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.IsNotNull(empireFleet.Movement, "Evicted in-transit fleet should be redirected");
             Assert.AreEqual(
-                _empirePlanet,
-                empireFleet.GetParentOfType<Planet>(),
-                "In-transit fleet should be redirected to nearest friendly planet"
+                _targetPlanet,
+                empireFleet.GetParent(),
+                "In-transit fleet should not be redirected on planet transfer"
             );
         }
 
@@ -313,7 +316,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TransferPlanet_EvictedFleet_DoesNotChangeFleetOwner()
+        public void TransferPlanet_FleetAtPlanet_FleetOwnershipUnchanged()
         {
             Fleet empireFleet = new Fleet("empire", "Empire Fleet");
             _game.AttachNode(empireFleet, _targetPlanet);
@@ -323,7 +326,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 "empire",
                 empireFleet.GetOwnerInstanceID(),
-                "Evicted fleet must retain its original owner"
+                "Fleet must retain its original owner after planet transfer"
             );
         }
 
@@ -340,6 +343,35 @@ namespace Rebellion.Tests.Systems
                 "empire",
                 officer.GetOwnerInstanceID(),
                 "Evicted officer must retain its original owner"
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_BuildingAtPlanet_BuildingNotEvicted()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, "empire");
+            _targetPlanet.EnergyCapacity = 1;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(building, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsNull(
+                building.Movement,
+                "Building must not be given a movement state on transfer"
+            );
+            Assert.AreEqual(
+                _targetPlanet,
+                building.GetParent(),
+                "Building must remain at the planet after transfer"
             );
         }
 

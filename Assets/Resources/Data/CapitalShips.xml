@@ -589,8 +589,8 @@
   </CapitalShip>
   <CapitalShip>
     <TypeID>CSEM009</TypeID>
-    <DisplayName>Escort Shuttle</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_escort_shuttle_primary</DisplayImagePath>
+    <DisplayName>Assault Transport</DisplayName>
+    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>

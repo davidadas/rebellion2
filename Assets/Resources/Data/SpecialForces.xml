@@ -22,6 +22,10 @@
       <Combat>20</Combat>
       <Leadership>50</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>InciteUprising</MissionType>
+      <MissionType>SubdueUprising</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=2, resid=9537, mission_id=2 -->
   <SpecialForce>
@@ -42,6 +46,11 @@
       <Combat>55</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Rescue</MissionType>
+      <MissionType>Sabotage</MissionType>
+      <MissionType>Abduction</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=3, resid=9538, mission_id=4 -->
   <SpecialForce>
@@ -62,6 +71,9 @@
       <Combat>30</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Espionage</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=4, resid=9539, mission_id=8 -->
   <SpecialForce>
@@ -82,6 +94,9 @@
       <Combat>0</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Espionage</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!--   **************************************************  -->
   <!--   ********************* EMPIRE *********************  -->
@@ -105,6 +120,9 @@
       <Combat>10</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Espionage</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=6, resid=9601, mission_id=512 -->
   <SpecialForce>
@@ -125,6 +143,9 @@
       <Combat>5</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Espionage</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=7, resid=9602, mission_id=1024 -->
   <SpecialForce>
@@ -145,6 +166,11 @@
       <Combat>55</Combat>
       <Leadership>50</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Sabotage</MissionType>
+      <MissionType>InciteUprising</MissionType>
+      <MissionType>SubdueUprising</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=8, resid=9603, mission_id=2048 -->
   <SpecialForce>
@@ -165,5 +191,10 @@
       <Combat>70</Combat>
       <Leadership>0</Leadership>
     </Skills>
+    <AllowedMissionTypes>
+      <MissionType>Rescue</MissionType>
+      <MissionType>Abduction</MissionType>
+      <MissionType>Assassination</MissionType>
+    </AllowedMissionTypes>
   </SpecialForce>
 </SpecialForces>

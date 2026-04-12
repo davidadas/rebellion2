@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_NoFriendlyPlanet_SkipsMovement()
+        public void UpdateMission_CompletedNoFriendlyPlanet_SkipsMovement()
         {
             // Faction owns no planets and mission planet is unowned — no valid destination,
             // movement skipped. Officer is not attached to the scene graph so the planet
@@ -140,7 +140,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_ParticipantParentedToMission_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantParentedToMission_DoesNotThrow()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
             // there) caused IsMovable() to return false and RequestMove to throw on teardown.
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_ParticipantParentedToMission_NeutralPlanet_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantOnNeutralPlanet_DoesNotThrow()
         {
             // Regression: neutral planet (null owner) must not be used as reparent target —
             // AddOfficer rejects officers whose faction doesn't match the planet owner.
@@ -294,20 +294,30 @@ namespace Rebellion.Tests.Systems
             Officer empireOfficer = EntityFactory.CreateOfficer("empire_o1", "empire");
             game.AttachNode(empireOfficer, empirePlanet);
 
-            DiplomacyMission diplomacyMission = new DiplomacyMission(
-                "rebels",
-                rebelsPlanet,
-                new List<IMissionParticipant> { rebelsOfficer },
-                new List<IMissionParticipant>()
+            rebelsPlanet.AddVisitor("rebels");
+
+            DiplomacyMission diplomacyMission = DiplomacyMission.TryCreate(
+                new MissionContext
+                {
+                    OwnerInstanceId = "rebels",
+                    Target = rebelsPlanet,
+                    MainParticipants = new List<IMissionParticipant> { rebelsOfficer },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
             );
             game.AttachNode(diplomacyMission, rebelsPlanet);
 
-            InciteUprisingMission inciteMission = new InciteUprisingMission(
-                "empire",
-                rebelsPlanet,
-                new List<IMissionParticipant> { empireOfficer },
-                new List<IMissionParticipant>(),
-                new ProbabilityTable(new Dictionary<int, int> { { -200, 100 } })
+            InciteUprisingMission inciteMission = InciteUprisingMission.TryCreate(
+                new MissionContext
+                {
+                    OwnerInstanceId = "empire",
+                    Target = rebelsPlanet,
+                    MainParticipants = new List<IMissionParticipant> { empireOfficer },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
+            );
+            inciteMission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
             );
             game.AttachNode(inciteMission, rebelsPlanet);
 
@@ -338,7 +348,7 @@ namespace Rebellion.Tests.Systems
             // Diplo completes before incite on the same turn: it re-initiates because the
             // uprising hasn't fired yet when its CanContinue is evaluated.
             // Incite then fires, starting the uprising.
-            // On the following UpdateMission, the pre-tick IsCanceled guard cancels diplo.
+            // On the following UpdateMission, the pre-tick ShouldAbort guard cancels diplo.
             (
                 GameRoot game,
                 DiplomacyMission diplomacyMission,
@@ -351,7 +361,7 @@ namespace Rebellion.Tests.Systems
             missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
 
             // Diplo survived this turn (uprising fired after it ran), but is now re-initiated.
-            // The next UpdateMission triggers the IsCanceled pre-tick guard.
+            // The next UpdateMission triggers the ShouldAbort pre-tick guard.
             missionSystem.UpdateMission(diplomacyMission, rng);
 
             Assert.AreEqual(
@@ -365,7 +375,7 @@ namespace Rebellion.Tests.Systems
         public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
         {
             // Incite completes first: uprising fires before diplo gets its turn this turn.
-            // When UpdateMission runs for diplo, the IsCanceled pre-tick guard catches it
+            // When UpdateMission runs for diplo, the ShouldAbort pre-tick guard catches it
             // immediately — diplo never executes.
             (
                 GameRoot game,
@@ -530,6 +540,155 @@ namespace Rebellion.Tests.Systems
                 planetA,
                 officer.GetParent(),
                 "Officer should return to the nearest friendly planet when the origin fleet has moved"
+            );
+        }
+
+        [Test]
+        public void BeginMission_ParticipantAssigned_SetsParticipantParentToMission()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(targetPlanet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, empirePlanet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+
+            missionSystem.InitiateMission(
+                MissionType.Sabotage,
+                officer,
+                targetPlanet,
+                new StubRNG()
+            );
+
+            Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
+            Assert.IsNotNull(mission, "Mission should be created");
+            Assert.AreEqual(
+                mission,
+                officer.GetParent(),
+                "Participant should be parented to the mission after BeginMission"
+            );
+        }
+
+        [Test]
+        public void IsOnMission_AfterBeginMission_ReturnsTrue()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet empirePlanet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(empirePlanet, system);
+
+            Planet targetPlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(targetPlanet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, empirePlanet);
+
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog);
+            OwnershipSystem ownership = new OwnershipSystem(
+                game,
+                movement,
+                new ManufacturingSystem(game)
+            );
+            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+
+            missionSystem.InitiateMission(
+                MissionType.Sabotage,
+                officer,
+                targetPlanet,
+                new StubRNG()
+            );
+
+            Assert.IsTrue(
+                officer.IsOnMission(),
+                "Officer should report IsOnMission after BeginMission"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_WithCompletedMission_ReturnsMissionCompletedResult()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer officer,
+                MovementSystem movement,
+                OwnershipSystem ownership
+            ) = BuildScene(factionOwnsPlanet: true);
+            StubMission mission = CreateMission(game, planet, officer);
+            MissionSystem system = new MissionSystem(game, movement, ownership);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = system.ProcessTick(game, new StubRNG());
+
+            Assert.IsTrue(
+                results.Any(r => r is MissionCompletedResult),
+                "ProcessTick should aggregate results from all missions and include MissionCompletedResult"
             );
         }
 

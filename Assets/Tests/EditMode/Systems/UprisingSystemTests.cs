@@ -47,8 +47,8 @@ namespace Rebellion.Tests.Systems
             // Add garrison troops
             for (int i = 0; i < troopCount; i++)
             {
-                Regiment r = EntityFactory.CreateRegiment($"r{i}", "empire");
-                game.AttachNode(r, planet);
+                Regiment regiment = EntityFactory.CreateRegiment($"r{i}", "empire");
+                game.AttachNode(regiment, planet);
             }
 
             UprisingSystem uprisingSystem = new UprisingSystem(game);
@@ -58,8 +58,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_SufficientGarrison_NoUprising()
         {
-            // Support 10 → threshold ceil((60-10)/10) = 5.
-            // 5 troops = garrison met. No uprising regardless of dice.
+            // Garrison requirement is 5 at support 10. Five troops meets it exactly.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 5
@@ -71,70 +70,122 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_NoGarrison_LowDice_UprisingOccurs()
+        public void ProcessTick_NoGarrison_UprisingStarts()
         {
-            // Support 10 → threshold = 5, 0 troops.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(5-0) = 7.
-            // UPRIS1: score >= 6 → result 1 (uprising).
+            // Garrison requirement is 5 at support 10. Zero troops means a deficit, so uprising starts.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
             );
 
-            // Two NextInt calls for dice (each returns 0 → roll = 0+1 = 1)
-            List<GameResult> results = system.ProcessTick(
-                new SequenceRNG(intValues: new[] { 0, 0 })
-            );
+            List<GameResult> results = system.ProcessTick(new StubRNG());
 
-            Assert.IsTrue(planet.IsInUprising, "No garrison + low dice should trigger uprising");
-            Assert.AreEqual("rebels", planet.OwnerInstanceID);
-            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
+            Assert.IsTrue(planet.IsInUprising, "Garrison deficit should trigger uprising");
+            Assert.AreEqual(
+                "empire",
+                planet.OwnerInstanceID,
+                "UprisingSystem must not change ownership"
+            );
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
 
         [Test]
-        public void ProcessTick_NoGarrison_HighDice_UprisingOccurs()
+        public void ProcessTick_ExactGarrison_NoUprising()
         {
-            // Support 10 → threshold = 5, 0 troops.
-            // Dice: rollA = 8+1=9, rollB = 8+1=9. Score = 9+9+(5-0) = 23. (max possible roll is 9+1=10)
-            // UPRIS1: score >= 10 → result 2 (severe uprising).
+            // Garrison requirement is 5 at support 10. Five troops exactly meets it, no uprising.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
-                troopCount: 0
+                troopCount: 5
             );
 
-            List<GameResult> results = system.ProcessTick(
-                new SequenceRNG(intValues: new[] { 8, 8 })
-            );
-
-            Assert.IsTrue(planet.IsInUprising, "High dice + no garrison should trigger uprising");
-            Assert.IsTrue(results.OfType<GameObjectControlChangedResult>().Any());
-            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
-        }
-
-        [Test]
-        public void ProcessTick_PartialGarrison_LowDice_NoUprising()
-        {
-            // Support 10 → threshold = 5, 4 troops (deficit = 1).
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(5-4) = 3.
-            // UPRIS1: score >= 1 → result 0 (no uprising).
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 4
-            );
-
-            system.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+            system.ProcessTick(new StubRNG());
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "Low dice + near-sufficient garrison should not trigger uprising"
+                "Exactly sufficient garrison should not trigger uprising"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
+        {
+            // Planet already in uprising with no troops. Dice produce a score that triggers
+            // consequence case 1 (destroy facility). A building is present, so it gets destroyed.
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("b1", "empire");
+            game.AttachNode(facility, planet);
+
+            system.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("b1"),
+                "Facility should be destroyed by uprising case 1"
+            );
+            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprising_OfficerCaptured()
+        {
+            // Planet in uprising with an officer present. Dice produce a score that triggers
+            // consequence case 3 (capture officer).
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
+            game.AttachNode(officer, planet);
+
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 1, 1 })
+            );
+
+            Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
+            Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
+        {
+            // Planet in uprising with one already-captured officer. Dice produce a score that
+            // triggers consequence case 4 (free one captured officer).
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 0
+            );
+            planet.IsInUprising = true;
+            Officer captive = new Officer
+            {
+                InstanceID = "o1",
+                OwnerInstanceID = "empire",
+                IsCaptured = true,
+            };
+            game.AttachNode(captive, planet);
+
+            List<GameResult> results = system.ProcessTick(
+                new SequenceRNG(intValues: new[] { 2, 2 })
+            );
+
+            Assert.IsFalse(
+                captive.IsCaptured,
+                "Captured officer should be freed by uprising case 4"
+            );
+            Assert.IsTrue(
+                results.OfType<OfficerCaptureStateResult>().Any(r => !r.IsCaptured),
+                "Should emit OfficerCaptureStateResult with IsCaptured=false"
             );
         }
 
         [Test]
         public void ProcessTick_HighSupport_NoUprising()
         {
-            // Support 80 → threshold = 0. Garrison met by definition.
+            // At support 80, garrison requirement is 0. No uprising regardless of troops.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 80,
                 opposingSupport: 20,
@@ -147,8 +198,11 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AlreadyInUprising_Skipped()
+        public void ProcessTick_AlreadyInUprising_ConsequencesFireButNothingToDestroy()
         {
+            // Planet already in uprising with no troops and no facilities.
+            // High dice trigger consequences (destroy troop, free captured), but both skip
+            // because there are no valid targets. Uprising remains active.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
@@ -157,12 +211,11 @@ namespace Rebellion.Tests.Systems
 
             system.ProcessTick(new SequenceRNG(intValues: new[] { 8, 8 }));
 
-            // Should still be in uprising (not re-triggered)
             Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
                 "empire",
                 planet.OwnerInstanceID,
-                "Already-uprising planet should not re-flip"
+                "UprisingSystem must not change ownership"
             );
         }
 
@@ -188,18 +241,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmpireUprisingResistance_CoreSystem_DoublesEffectiveTroops()
+        public void ProcessTick_EmpireGarrisonOnCoreSystem_HalvesRequirement()
         {
-            // Core system, Support 30 → threshold = 3. Troops = 1.
-            // Empire UprisingResistance = 2 on core: troop_multiplier = 2.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(3 - 2*1) = 3.
-            // UPRIS1: score >= 1 → result 0 (no uprising).
+            // On a core system with GarrisonEfficiency=2, the base garrison requirement of 3
+            // is halved to 1. One troop meets it, so no uprising.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
-                Modifiers = new FactionModifiers { UprisingResistance = 2 },
+                Modifiers = new FactionModifiers { GarrisonEfficiency = 2 },
             };
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
@@ -218,33 +269,29 @@ namespace Rebellion.Tests.Systems
                 PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
             };
             game.AttachNode(planet, system);
-            Regiment r = EntityFactory.CreateRegiment("r1", "empire");
-            game.AttachNode(r, planet);
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            game.AttachNode(regiment, planet);
 
             UprisingSystem uprisingSystem = new UprisingSystem(game);
-            uprisingSystem.ProcessTick(new SequenceRNG(intValues: new[] { 0, 0 }));
+            uprisingSystem.ProcessTick(new StubRNG());
 
             Assert.IsFalse(
                 planet.IsInUprising,
-                "Empire UprisingResistance=2 on core system should double troop effectiveness"
+                "GarrisonEfficiency=2 on core system should halve the garrison requirement"
             );
         }
 
         [Test]
-        public void ProcessTick_EmpireUprisingResistance_OuterRim_NoBonus()
+        public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
         {
-            // Outer rim, Support 30 → threshold = 3. Troops = 1.
-            // Empire UprisingResistance = 2 but NOT core: troop_multiplier = 1.
-            // Dice: rollA = 0+1=1, rollB = 0+1=1. Score = 1+1+(3 - 1*1) = 4.
-            // UPRIS1: score >= 1 → result 0 (no uprising, but barely).
-            // With higher dice: rollA=2+1=3, rollB=2+1=3. Score = 3+3+(3-1) = 8.
-            // UPRIS1: score >= 6 → result 1 (uprising!).
+            // On an outer rim planet, GarrisonEfficiency does not apply. Garrison requirement
+            // stays at 3 with one troop, so the deficit triggers an uprising.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
-                Modifiers = new FactionModifiers { UprisingResistance = 2 },
+                Modifiers = new FactionModifiers { GarrisonEfficiency = 2 },
             };
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
@@ -263,16 +310,15 @@ namespace Rebellion.Tests.Systems
                 PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
             };
             game.AttachNode(planet, system);
-            Regiment r = EntityFactory.CreateRegiment("r1", "empire");
-            game.AttachNode(r, planet);
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            game.AttachNode(regiment, planet);
 
             UprisingSystem uprisingSystem = new UprisingSystem(game);
-            // Moderate dice: score = 3+3+(3-1*1) = 8 → UPRIS1 >= 6 → uprising
-            uprisingSystem.ProcessTick(new SequenceRNG(intValues: new[] { 2, 2 }));
+            uprisingSystem.ProcessTick(new StubRNG());
 
             Assert.IsTrue(
                 planet.IsInUprising,
-                "Outer rim should NOT get UprisingResistance bonus — uprising should trigger"
+                "Outer rim should NOT apply GarrisonEfficiency — garrison deficit triggers uprising"
             );
         }
     }
@@ -500,29 +546,29 @@ namespace Rebellion.Tests.Systems
             // Add hostile fleets
             for (int i = 0; i < hostileFleets; i++)
             {
-                Fleet f = EntityFactory.CreateFleet($"hf{i}", "rebels");
-                game.AttachNode(f, planet);
+                Fleet fleet = EntityFactory.CreateFleet($"hf{i}", "rebels");
+                game.AttachNode(fleet, planet);
             }
 
             // Add hostile fighters (loose on planet — placed directly, bypassing ownership check)
             for (int i = 0; i < hostileFighters; i++)
             {
-                Starfighter sf = EntityFactory.CreateStarfighter($"hsf{i}", "rebels");
-                planet.Starfighters.Add(sf);
+                Starfighter starfighter = EntityFactory.CreateStarfighter($"hsf{i}", "rebels");
+                planet.Starfighters.Add(starfighter);
             }
 
             // Add hostile troops (placed directly, bypassing ownership check)
             for (int i = 0; i < hostileTroops; i++)
             {
-                Regiment r = EntityFactory.CreateRegiment($"hr{i}", "rebels");
-                planet.Regiments.Add(r);
+                Regiment regiment = EntityFactory.CreateRegiment($"hr{i}", "rebels");
+                planet.Regiments.Add(regiment);
             }
 
             // Add friendly fleets
             for (int i = 0; i < friendlyFleets; i++)
             {
-                Fleet f = EntityFactory.CreateFleet($"ff{i}", "empire");
-                game.AttachNode(f, planet);
+                Fleet fleet = EntityFactory.CreateFleet($"ff{i}", "empire");
+                game.AttachNode(fleet, planet);
             }
 
             SupportShiftSystem shiftSystem = new SupportShiftSystem(game);
@@ -530,9 +576,9 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LowSupport_NoHostiles_RecoveryApplied()
+        public void ProcessTick_LowSupportNoHostiles_RecoveryApplied()
         {
-            // Support 15 → bracket 0-20 → base shift 75. No hostiles. Shift = 75.
+            // Support 15 falls in the 0-20 bracket with a base shift of 75. No hostiles present.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(support: 15);
 
             system.ProcessTick();
@@ -547,7 +593,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MidBracket_CorrectBaseShift()
         {
-            // Support 25 → bracket 21-30 → base shift 50. No hostiles. Shift = 50.
+            // Support 25 falls in the 21-30 bracket with a base shift of 50. No hostiles present.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(support: 25);
 
             system.ProcessTick();
@@ -562,7 +608,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HighBracket_CorrectBaseShift()
         {
-            // Support 35 → bracket 31-40 → base shift 25. No hostiles. Shift = 25.
+            // Support 35 falls in the 31-40 bracket with a base shift of 25. No hostiles present.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(support: 35);
 
             system.ProcessTick();
@@ -577,7 +623,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_AboveThreshold_NoShift()
         {
-            // Support 50 → above threshold (40). No shift.
+            // Support 50 is above the recovery threshold (40), so no shift occurs.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(support: 50);
 
             system.ProcessTick();
@@ -592,7 +638,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_FriendlyFleetPresent_NoShift()
         {
-            // Support 15 but friendly fleet present → no shift.
+            // Support 15 with a friendly fleet present blocks the shift entirely.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 friendlyFleets: 1
@@ -610,8 +656,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HostileForces_ReduceRecovery()
         {
-            // Support 15 → base 75. 2 hostile fleets (×10=20), 3 fighters (×5=15), 1 troop (×2=2).
-            // Shift = 75 - 20 - 15 - 2 = 38.
+            // Base shift is 75 at support 15. Hostile forces reduce it:
+            // 2 fleets (-20), 3 fighters (-15), 1 troop (-2) = net shift of 38.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 hostileFleets: 2,
@@ -629,11 +675,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_TroopEffectiveness_CoreSystem_DoublesHostileTroopPenalty()
+        public void ProcessTick_TroopEffectivenessOnCoreSystem_DoublesHostileTroopPenalty()
         {
-            // Core system, Support 15 → base 75. 5 hostile troops × TroopEffectiveness=2 = 10.
-            // Penalty = 10 × 2 (troop penalty) = 20.
-            // Shift = 75 - 20 = 55. (WeakSupportPenalty disabled so shift is not halved.)
+            // Base shift is 75 at support 15. On a core system with TroopEffectiveness=2,
+            // 5 hostile troops apply a doubled penalty of 20, resulting in shift of 55.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 hostileTroops: 5,
@@ -652,11 +697,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_TroopEffectiveness_OuterRim_NoBonus()
+        public void ProcessTick_TroopEffectivenessOnOuterRim_NoBonus()
         {
-            // Outer rim, TroopEffectiveness=2 should NOT apply.
-            // Support 15 → base 75. 5 hostile troops × 1 = 5. Penalty = 5×2 = 10.
-            // Shift = 75 - 10 = 65.
+            // On outer rim, TroopEffectiveness bonus does not apply.
+            // Base shift is 75, 5 hostile troops apply the standard penalty of 10, shift is 65.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 hostileTroops: 5,
@@ -676,8 +720,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_InvertSupportShift_NegatesRecovery()
         {
-            // Support 15, InvertSupportShift=true → base 75, negated to -75.
-            // 15 + (-75) = -60, clamped to 0.
+            // With InvertSupportShift=true, the base shift of 75 is negated to -75.
+            // Support drops from 15 to 0 (clamped).
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 invertSupport: true
@@ -695,8 +739,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CoreWorldWeakPenalty_HalvesShift()
         {
-            // Support 15, core system, WeakSupportPenaltyTrigger=Positive.
-            // Base shift = 75 (positive). Penalty applies → 75/2 = 37.
+            // On a core system with WeakSupportPenaltyTrigger=Positive, the positive base
+            // shift of 75 is halved to 37.
             (GameRoot game, Planet planet, _, SupportShiftSystem system) = BuildScene(
                 support: 15,
                 isCoreSystem: true,

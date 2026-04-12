@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_ThrowsException_WhenConfigNotSet()
+        public void GetConfig_ConfigNotSet_ThrowsException()
         {
             GameRoot game = new GameRoot();
 
@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_ConfigConstructor_SetsConfigCorrectly()
+        public void GameRoot_ConfigConstructor_SetsConfig()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void Game_SetConfig_SetsConfigCorrectly()
+        public void SetConfig_ValidConfig_SetsConfig()
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot();
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Core
         }
 
         [Test]
-        public void GameManager_InjectsConfig_WhenGameHasNone()
+        public void GameManager_NoConfigSet_InjectsConfig()
         {
             GameRoot game = new GameRoot();
             GameManager manager = new GameManager(game);

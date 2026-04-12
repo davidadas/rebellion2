@@ -16,14 +16,16 @@ namespace Rebellion.Game
     }
 
     /// <summary>
-    /// Force tier progression: None → Aware → Training → Experienced.
+    /// Force rank display labels derived from force_rank thresholds.
     /// </summary>
-    public enum ForceTier
+    public enum ForceRankLabel
     {
-        None = 0,
-        Aware = 1,
-        Training = 2,
-        Experienced = 3,
+        None,
+        Novice,
+        Trainee,
+        ForceStudent,
+        ForceKnight,
+        ForceMaster,
     }
 
     /// <summary>
@@ -44,34 +46,63 @@ namespace Rebellion.Game
         public bool IsKilled { get; set; }
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
-        public bool IsForceSensitive { get; set; }
         public int Loyalty { get; set; }
         public int HyperdriveModifier { get; set; } // Han Solo speed bonus (subtracts from transit time)
 
-        // Jedi Info
-        [PersistableIgnore]
+        // Jedi / Force Info
         public int JediProbability { get; set; }
-
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
+        public bool IsJediTrainer { get; set; }
+        public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
-        /// Current Force tier. Set at game start based on JediLevel initial value.
-        /// Advances as ForceExperience crosses thresholds (50 XP → Training, 150 XP → Experienced).
+        /// Template flag: true for characters who start the game as known Jedi
+        /// (Luke, Vader, Emperor). Maps to original template jedi=1 field.
+        /// These characters get ForceValue and IsForceEligible at game start.
         /// </summary>
-        public ForceTier ForceTier { get; set; } = ForceTier.None;
+        [PersistableIgnore]
+        public bool IsKnownJedi { get; set; }
 
         /// <summary>
-        /// Accumulated Force experience points. Starts from JediLevel at game initialization.
-        /// XP accumulation mechanism currently unimplemented (reserved for future mission system).
+        /// True if Force potential was activated at game start (passed JediProbability roll).
+        /// Maps to original jedi flag (bit 0x20). Both known and potential Jedi have this set.
         /// </summary>
-        public int ForceExperience { get; set; } = 0;
+        public bool IsJedi { get; set; }
 
         /// <summary>
-        /// True if the opposing faction has detected this officer's Force ability.
-        /// Detection checks run every DetectionCheckInterval ticks with probability based on ForceTier.
+        /// True if this character's Force ability has been discovered/activated.
+        /// Known Jedi have this at start. Potential Jedi gain this when discovered
+        /// by a scanning Jedi during JediSystem.ScanForForceUsers().
         /// </summary>
-        public bool IsDiscoveredJedi { get; set; } = false;
+        public bool IsForceEligible { get; set; }
+
+        /// <summary>
+        /// Base force power. Characters with GrowsForceOnMission gain ForceGrowthPerMission
+        /// per successful mission. Only initialized when IsForceEligible is true.
+        /// Known Jedi: set at game start from JediLevel + roll(JediLevelVariance).
+        /// Potential Jedi: set to 0 until discovered, then initialized from template.
+        /// </summary>
+        public int ForceValue { get; set; }
+
+        /// <summary>
+        /// Bonus from Jedi training missions (trainer/student catch-up mechanic).
+        /// </summary>
+        public int ForceTrainingAdjustment { get; set; }
+
+        /// <summary>
+        /// Derived force rank = ForceValue + ForceTrainingAdjustment.
+        /// Determines tier label and all threshold checks.
+        /// </summary>
+        [PersistableIgnore]
+        public int ForceRank => ForceValue + ForceTrainingAdjustment;
+
+        /// <summary>
+        /// True if this Jedi is actively scanning for hidden force users nearby.
+        /// Set deterministically when ForceRank >= DiscoveringForceUserThreshold (80)
+        /// and the character is force-eligible, not captured, and not on a mission.
+        /// </summary>
+        public bool IsDiscoveringForceUser { get; set; }
 
         // Rank Info
         public OfficerRank[] AllowedRanks { get; set; }
@@ -118,6 +149,10 @@ namespace Rebellion.Game
                 { MissionParticipantSkill.Leadership, 0 },
             };
         public bool CanImproveMissionSkill => true;
+
+        // Officers have no mission type restrictions — unlike SpecialForces, any officer
+        // can be assigned to any mission type.
+        public bool CanPerformMission(MissionType missionType) => true;
 
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
             Skills[skill] = value;

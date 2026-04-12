@@ -25,7 +25,44 @@ public class ResearchMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public ResearchMission(
+    /// <summary>
+    /// Returns a new ResearchMission if the target is an own planet, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <param name="researchType">The manufacturing category this mission advances.</param>
+    /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
+    public static ResearchMission TryCreate(MissionContext ctx, ManufacturingType researchType)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            return null;
+
+        return new ResearchMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            researchType
+        );
+    }
+
+    /// <summary>
+    /// Returns the display name for a research mission based on the manufacturing type.
+    /// </summary>
+    private static string GetMissionName(ManufacturingType type)
+    {
+        return type switch
+        {
+            ManufacturingType.Ship => "Ship Design",
+            ManufacturingType.Troop => "Troop Training",
+            ManufacturingType.Building => "Facility Design",
+            _ => "Research",
+        };
+    }
+
+    private ResearchMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
@@ -44,12 +81,16 @@ public class ResearchMission : Mission
     {
         ResearchType = researchType;
         DisplayName = GetMissionName(researchType);
+    }
 
-        Planet planet = (Planet)target;
-        if (planet.GetOwnerInstanceID() != ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Research target planet '{planet.DisplayName}' is not owned by this faction."
-            );
+    /// <summary>
+    /// Checks whether the mission target planet is still owned by the mission's faction.
+    /// </summary>
+    /// <param name="game">The game instance.</param>
+    /// <returns>True if the parent planet is owned by this faction.</returns>
+    protected override bool IsMissionSatisfied(GameRoot game)
+    {
+        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
     }
 
     /// <summary>
@@ -104,17 +145,16 @@ public class ResearchMission : Mission
         if (faction.ResearchCapacity.ContainsKey(ResearchType))
             faction.ResearchCapacity[ResearchType] += reward;
 
-        return new List<GameResult>();
-    }
-
-    /// <summary>
-    /// Checks whether the mission target planet is still owned by the mission's faction.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <returns>True if the parent planet is owned by this faction.</returns>
-    protected override bool IsTargetValid(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
+        return new List<GameResult>
+        {
+            new ResearchCompletedResult
+            {
+                Faction = faction,
+                FacilityType = ResearchType,
+                Success = true,
+                Tick = game.CurrentTick,
+            },
+        };
     }
 
     /// <summary>
@@ -125,21 +165,5 @@ public class ResearchMission : Mission
     public override bool CanContinue(GameRoot game)
     {
         return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
-
-    /// <summary>
-    /// Maps a manufacturing type to the display name for the research subtype.
-    /// </summary>
-    /// <param name="type">The manufacturing type.</param>
-    /// <returns>The mission display name.</returns>
-    private static string GetMissionName(ManufacturingType type)
-    {
-        return type switch
-        {
-            ManufacturingType.Ship => "Ship Design",
-            ManufacturingType.Troop => "Troop Training",
-            ManufacturingType.Building => "Facility Design",
-            _ => "Research",
-        };
     }
 }

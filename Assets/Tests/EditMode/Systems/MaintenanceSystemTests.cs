@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
 
-            Regiment r1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Systems
                 MaintenanceCost = 1,
                 ConstructionCost = 1,
             };
-            Regiment r2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Snowtroopers",
@@ -127,8 +127,8 @@ namespace Rebellion.Tests.Systems
                 MaintenanceCost = 1,
                 ConstructionCost = 1,
             };
-            game.AttachNode(r1, planet);
-            game.AttachNode(r2, planet);
+            game.AttachNode(regiment1, planet);
+            game.AttachNode(regiment2, planet);
 
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             // RNG returns 0, so first candidate is selected
@@ -139,6 +139,12 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsTrue(results.OfType<GameObjectAutoscrappedResult>().Any());
+            MaintenanceRequiredResult shortfall = results
+                .OfType<MaintenanceRequiredResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(shortfall);
+            Assert.AreEqual(empire, shortfall.Faction);
+            Assert.Greater(shortfall.Amount, 0);
         }
 
         [Test]
@@ -154,7 +160,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
 
-            Regiment r1 = new Regiment
+            Regiment regiment1 = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
@@ -163,7 +169,7 @@ namespace Rebellion.Tests.Systems
                 MaintenanceCost = 1,
                 ConstructionCost = 1,
             };
-            Regiment r2 = new Regiment
+            Regiment regiment2 = new Regiment
             {
                 InstanceID = "r2",
                 DisplayName = "Snowtroopers",
@@ -172,8 +178,8 @@ namespace Rebellion.Tests.Systems
                 MaintenanceCost = 1,
                 ConstructionCost = 1,
             };
-            game.AttachNode(r1, planet);
-            game.AttachNode(r2, planet);
+            game.AttachNode(regiment1, planet);
+            game.AttachNode(regiment2, planet);
 
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
@@ -199,7 +205,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
 
-            Regiment r1 = new Regiment
+            Regiment regiment = new Regiment
             {
                 InstanceID = "r1",
                 DisplayName = "Stormtroopers",
@@ -208,7 +214,7 @@ namespace Rebellion.Tests.Systems
                 MaintenanceCost = 1,
                 ConstructionCost = 10,
             };
-            game.AttachNode(r1, planet);
+            game.AttachNode(regiment, planet);
 
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();

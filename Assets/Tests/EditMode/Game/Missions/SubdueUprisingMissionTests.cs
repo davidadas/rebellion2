@@ -10,6 +10,23 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SubdueUprisingMissionTests
     {
+        private SubdueUprisingMission CreateSubdueUprisingMission(
+            string ownerInstanceId,
+            Planet target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
+        {
+            MissionContext ctx = new MissionContext
+            {
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+            };
+            return SubdueUprisingMission.TryCreate(ctx);
+        }
+
         [Test]
         public void Execute_ActiveUprising_EndsUprising()
         {
@@ -23,7 +40,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -53,7 +70,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -85,7 +102,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -107,7 +124,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void IsCanceled_UprisingEndedBeforeExecution_ReturnsTrue()
+        public void ShouldAbort_UprisingEndedBeforeExecution_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -119,7 +136,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -131,7 +148,7 @@ namespace Rebellion.Tests.Game.Missions
             empPlanet.EndUprising();
 
             Assert.IsTrue(
-                mission.IsCanceled(game),
+                mission.ShouldAbort(game),
                 "Mission should be canceled when uprising ends before mission executes"
             );
         }
@@ -149,7 +166,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = new SubdueUprisingMission(
+            SubdueUprisingMission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -173,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_PlanetNotInUprising_ThrowsInvalidOperationException()
+        public void TryCreate_PlanetNotInUprising_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -183,20 +200,19 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            Assert.Throws<System.InvalidOperationException>(
-                () =>
-                    new SubdueUprisingMission(
-                        "empire",
-                        empPlanet,
-                        new List<IMissionParticipant> { officer },
-                        new List<IMissionParticipant>()
-                    ),
-                "Constructor should throw when target planet is not in uprising"
+            Assert.IsNull(
+                CreateSubdueUprisingMission(
+                    "empire",
+                    empPlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is not in uprising"
             );
         }
 
         [Test]
-        public void Constructor_EnemyOwnedPlanet_ThrowsInvalidOperationException()
+        public void TryCreate_EnemyOwnedPlanet_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -208,20 +224,19 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.BeginUprising();
 
-            Assert.Throws<System.InvalidOperationException>(
-                () =>
-                    new SubdueUprisingMission(
-                        "empire",
-                        enemyPlanet,
-                        new List<IMissionParticipant> { officer },
-                        new List<IMissionParticipant>()
-                    ),
-                "Constructor should throw when target planet is owned by another faction"
+            Assert.IsNull(
+                CreateSubdueUprisingMission(
+                    "empire",
+                    enemyPlanet,
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>()
+                ),
+                "TryCreate should return null when target planet is owned by another faction"
             );
         }
 
         [Test]
-        public void SerializesAndDeserializes()
+        public void Serialize_RoundTrip_PreservesData()
         {
             SubdueUprisingMission mission = new SubdueUprisingMission
             {

@@ -55,13 +55,19 @@ public abstract class Mission : ContainerNode
     /// Base implementation cancels when any main participant is captured or killed.
     /// Override and call base for missions with additional cancellation conditions.
     /// </summary>
-    public virtual bool IsCanceled(GameRoot game) =>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
+    public virtual bool ShouldAbort(GameRoot game) =>
         MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
     /// <summary>
     /// Parameterless constructor for deserialization.
     /// </summary>
-    protected Mission() { }
+    protected Mission()
+    {
+        MainParticipants = new List<IMissionParticipant>();
+        DecoyParticipants = new List<IMissionParticipant>();
+    }
 
     /// <summary>
     /// Initializes a mission with all required parameters.
@@ -93,6 +99,7 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Applies probability tables and tick ranges from config, keyed by ConfigKey.
     /// </summary>
+    /// <param name="tables">The mission probability and tick configuration to apply.</param>
     public virtual void Configure(GameConfig.MissionProbabilityTablesConfig tables)
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
@@ -114,6 +121,7 @@ public abstract class Mission : ContainerNode
     /// Randomizes MaxProgress as BaseTicks + random(0..SpreadTicks) inclusive.
     /// Matches original: base_delay + roll_dice(spread).
     /// </summary>
+    /// <param name="provider">RNG provider for rolling the duration spread.</param>
     public void Initiate(IRandomNumberProvider provider)
     {
         CurrentProgress = 0;
@@ -158,6 +166,8 @@ public abstract class Mission : ContainerNode
     /// Looks up the base success probability for an agent using their skill score and the
     /// success table. Override to use a different skill or scoring formula.
     /// </summary>
+    /// <param name="agent">The participant whose skill is evaluated.</param>
+    /// <returns>Success probability 0–100.</returns>
     protected virtual double GetAgentProbability(IMissionParticipant agent)
     {
         int score = (int)agent.GetMissionSkillValue(ParticipantSkill);
@@ -168,6 +178,8 @@ public abstract class Mission : ContainerNode
     /// Calculates the probability that a decoy participant beats enemy detection.
     /// Score is the decoy's espionage skill offset by 35% of the best enemy defender's espionage.
     /// </summary>
+    /// <param name="decoy">The decoy participant to evaluate.</param>
+    /// <returns>Decoy success probability 0–100.</returns>
     protected double GetDecoyProbability(IMissionParticipant decoy)
     {
         int bestDefenderEspionage = 0;
@@ -194,6 +206,8 @@ public abstract class Mission : ContainerNode
     /// Returns 0 for missions targeting the owner's own planets. Override to suppress foiling
     /// entirely (return 0) or apply a custom formula.
     /// </summary>
+    /// <param name="defenseScore">Sum of enemy regiment defense ratings on the target planet.</param>
+    /// <returns>Foil probability 0–100.</returns>
     protected virtual double GetFoilProbability(double defenseScore)
     {
         if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
@@ -223,12 +237,18 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Combines agent success probability and foil probability into a net success chance.
     /// </summary>
+    /// <param name="agentProbability">Raw agent success probability 0–100.</param>
+    /// <param name="foilProbability">Foil probability 0–100 that reduces the net chance.</param>
+    /// <returns>Net success probability 0–100.</returns>
     protected double CalculateTotalSuccess(double agentProbability, double foilProbability) =>
         (agentProbability / 100.0) * (1 - foilProbability / 100.0) * 100.0;
 
     /// <summary>
     /// Returns true if at least one main participant beats the combined success threshold.
     /// </summary>
+    /// <param name="provider">RNG provider for rolling against the success probability.</param>
+    /// <param name="foilProbability">Foil probability 0–100 applied to each participant's roll.</param>
+    /// <returns>True if at least one participant succeeds.</returns>
     protected bool CheckMissionSuccess(IRandomNumberProvider provider, double foilProbability)
     {
         foreach (IMissionParticipant participant in MainParticipants)
@@ -247,6 +267,8 @@ public abstract class Mission : ContainerNode
     /// Returns true if at least one decoy participant beats the detection threshold.
     /// A successful decoy zeroes out the foil probability for this execution.
     /// </summary>
+    /// <param name="provider">RNG provider for rolling against each decoy's probability.</param>
+    /// <returns>True if at least one decoy succeeds.</returns>
     protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
     {
         foreach (IMissionParticipant decoy in DecoyParticipants)
@@ -260,6 +282,9 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Returns true if the foil roll falls within the foil probability, causing a Foiled outcome.
     /// </summary>
+    /// <param name="provider">RNG provider for the foil roll.</param>
+    /// <param name="foilProbability">Foil probability 0–100.</param>
+    /// <returns>True if the mission is foiled.</returns>
     protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability) =>
         provider.NextDouble() * 100 <= foilProbability;
 
@@ -285,6 +310,9 @@ public abstract class Mission : ContainerNode
     /// Executes the mission, determines the outcome, and returns all results.
     /// MissionCompletedResult is always the last item in the list.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for all probability rolls.</param>
+    /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
     public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
         List<GameResult> results = new List<GameResult>();
@@ -298,7 +326,7 @@ public abstract class Mission : ContainerNode
 
         if (CheckMissionSuccess(provider, foilProbability))
         {
-            if (!IsTargetValid(game))
+            if (!IsMissionSatisfied(game))
             {
                 outcome = MissionOutcome.Failed;
                 results.AddRange(OnFailed(game, provider));
@@ -322,13 +350,7 @@ public abstract class Mission : ContainerNode
         }
 
         List<IMissionParticipant> allParticipants = GetAllParticipants();
-        string agents = string.Join(
-            ", ",
-            allParticipants.Select(p => ((ISceneNode)p).GetDisplayName())
-        );
         string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
-        string targetStr = string.IsNullOrEmpty(targetName) ? "" : $" at {targetName}";
-        GameLogger.Log($"{DisplayName} mission by {agents}{targetStr}: {outcome}");
 
         results.Add(
             new MissionCompletedResult
@@ -368,23 +390,34 @@ public abstract class Mission : ContainerNode
     /// Override to validate target state at execution time. Returning false routes a
     /// successful dice roll to <see cref="MissionOutcome.Failed"/> without calling OnSuccess.
     /// </summary>
-    protected virtual bool IsTargetValid(GameRoot game) => true;
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission target conditions are still valid; false to force a Failed outcome.</returns>
+    protected virtual bool IsMissionSatisfied(GameRoot game) => true;
 
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the success outcome.</returns>
     protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
 
     /// <summary>
     /// Override to apply effects when the mission is foiled by enemy forces.
     /// Default returns no results.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the foiled outcome; empty by default.</returns>
     protected virtual List<GameResult> OnFoiled(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for any randomized effects.</param>
+    /// <returns>Results produced by the failed outcome; empty by default.</returns>
     protected virtual List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
@@ -400,14 +433,13 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Missions cannot have children added after initialization.
+    /// Only mission participants may be moved into a mission node.
     /// </summary>
-    /// <param name="child">The candidate child node.</param>
-    /// <returns>Always false.</returns>
-    public override bool CanAcceptChild(ISceneNode child) => false;
+    public override bool CanAcceptChild(ISceneNode child) => child is IMissionParticipant;
 
     /// <summary>
-    /// No-op — missions cannot have children added after initialization.
+    /// No-op — participants are pre-populated in MainParticipants/DecoyParticipants at
+    /// construction. Only SetParent is needed for scene-graph bookkeeping.
     /// </summary>
     public override void AddChild(ISceneNode child) { }
 
@@ -427,5 +459,7 @@ public abstract class Mission : ContainerNode
     /// Return true to repeat the mission at the same target after completion;
     /// return false to tear down and send participants home.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should continue; false to tear down and send participants home.</returns>
     public abstract bool CanContinue(GameRoot game);
 }

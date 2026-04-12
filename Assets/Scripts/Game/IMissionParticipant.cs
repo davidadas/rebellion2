@@ -25,7 +25,13 @@ namespace Rebellion.Game
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value);
 
         /// <summary>
-        /// Called to determine whether the participant is the main character of the game.
+        /// Returns whether this participant is qualified to perform the given mission type.
+        /// Officers are unrestricted; spec ops check their AllowedMissionTypes.
+        /// </summary>
+        public bool CanPerformMission(MissionType missionType);
+
+        /// <summary>
+        /// Returns whether this participant is currently assigned to a mission.
         /// </summary>
         public bool IsOnMission();
     }

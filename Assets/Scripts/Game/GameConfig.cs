@@ -93,9 +93,8 @@ public class GameConfig
 
         /// <summary>
         /// Support shift applied to PRODUCING faction's own popular support (Death Star only).
-        /// GENERAL_PARAM_7705 = -20 (negative = military disruption at construction site).
+        /// Negative = military disruption at construction site.
         /// Only applied when enableFinalizePackage is set (Death Star found in setup stage).
-        /// Original: FUN_00558860 (get_orbital_strike_selected_side_support_shift).
         /// </summary>
         public int OrbitalStrikeSupportShift { get; set; }
     }
@@ -145,6 +144,12 @@ public class GameConfig
         /// UPRIS2 table: maps combined uprising score to severity.
         /// </summary>
         public Dictionary<int, int> Upris2Table { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>
+        /// Popular support shift applied to the controlling faction each uprising resolution tick.
+        /// Negative = support drops during an uprising.
+        /// </summary>
+        public int ControllerSupportShift { get; set; }
     }
 
     /// <summary>
@@ -264,13 +269,13 @@ public class GameConfig
         public Dictionary<int, int> CapitalShipProgressTable { get; set; } =
             new Dictionary<int, int>();
 
-        /// <summary>Range for the CSCRHT progress roll (GENERAL_PARAM_2051).</summary>
+        /// <summary>Range for the CSCRHT progress roll.</summary>
         public int CapitalShipProgressRollRange { get; set; }
 
-        /// <summary>Threshold for the success check roll (GENERAL_PARAM_2050).</summary>
+        /// <summary>Threshold for the success check roll.</summary>
         public int CapitalShipSuccessThreshold { get; set; }
 
-        /// <summary>Range for the success check roll (GENERAL_PARAM_2049).</summary>
+        /// <summary>Range for the success check roll.</summary>
         public int CapitalShipSuccessRollRange { get; set; }
 
         /// <summary>Popular support shift when a capital ship completes.</summary>
@@ -344,7 +349,6 @@ public class GameConfig
 
         /// <summary>
         /// Minimum number of Shield-class defense facilities required to block bombardment.
-        /// Source: FUN_00506e80 shield gate check.
         /// </summary>
         public int BombardmentShieldBlockThreshold { get; set; }
     }
@@ -367,38 +371,64 @@ public class GameConfig
     [PersistableObject]
     public class JediConfig
     {
-        /// <summary>XP required to advance from Aware to Training tier (default: 50)</summary>
-        public int XpToTraining { get; set; }
+        /// <summary>ForceRank threshold to enter "discovering force user" state.</summary>
+        public int DiscoveringForceUserThreshold { get; set; }
 
-        /// <summary>XP required to advance from Training to Experienced tier.</summary>
-        public int XpToExperienced { get; set; }
+        /// <summary>ForceRank threshold for full Jedi qualification.</summary>
+        public int ForceQualifiedThreshold { get; set; }
 
-        /// <summary>Ticks between Jedi detection checks.</summary>
-        public int DetectionCheckInterval { get; set; }
+        /// <summary>ForceRank threshold for Force-based fast healing.</summary>
+        public int FastHealThreshold { get; set; }
 
-        /// <summary>Detection probability per check for Aware tier.</summary>
-        public double DetectProbAware { get; set; }
+        /// <summary>ForceValue increment per successful mission.</summary>
+        public int ForceGrowthPerMission { get; set; }
 
-        /// <summary>Detection probability per check for Training tier.</summary>
-        public double DetectProbTraining { get; set; }
+        /// <summary>Percent of rank gap used as catch-up range in training.</summary>
+        public int TrainingCatchUpPercent { get; set; }
 
-        /// <summary>Detection probability per check for Experienced tier.</summary>
-        public double DetectProbExperienced { get; set; }
+        /// <summary>ForceRank threshold for Luke to learn heritage.</summary>
+        public int HeritageThreshold { get; set; }
+
+        /// <summary>Percent bonus to ForceRank on Dagobah mission completion.</summary>
+        public int DagobahCompletionBonusPercent { get; set; }
+
+        /// <summary>Local force user minimum rank for encounter eligibility.</summary>
+        public int EncounterLocalMinRank { get; set; }
+
+        /// <summary>Cross-side force user minimum rank for encounter eligibility.</summary>
+        public int EncounterCrossSideMinRank { get; set; }
+
+        /// <summary>Offset applied to encounter probability calculation.</summary>
+        public int EncounterProbabilityOffset { get; set; }
+
+        /// <summary>ForceRank threshold for Novice label.</summary>
+        public int RankLabelNovice { get; set; }
+
+        /// <summary>ForceRank threshold for Trainee label.</summary>
+        public int RankLabelTrainee { get; set; }
+
+        /// <summary>ForceRank threshold for ForceStudent label.</summary>
+        public int RankLabelForceStudent { get; set; }
+
+        /// <summary>ForceRank threshold for ForceKnight label.</summary>
+        public int RankLabelForceKnight { get; set; }
+
+        /// <summary>ForceRank threshold for ForceMaster label.</summary>
+        public int RankLabelForceMaster { get; set; }
     }
 
     /// <summary>
     /// Research system configuration.
     /// Controls technology advancement rates and officer research mechanics.
-    /// Parameters derived from original GENERAL_PARAM_6171 and GENERAL_PARAM_6172.
     /// </summary>
     [Serializable]
     [PersistableObject]
     public class ResearchConfig
     {
-        /// <summary>Base research points awarded per successful research mission (GENERAL_PARAM_6171).</summary>
+        /// <summary>Base research points awarded per successful research mission.</summary>
         public int BaseResearchPoints { get; set; }
 
-        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success (GENERAL_PARAM_6172).</summary>
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success.</summary>
         public int ResearchDiceRange { get; set; }
     }
 
@@ -482,6 +512,7 @@ public class GameConfig
         public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
         public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
         public MissionTickConfig Research { get; set; } = new MissionTickConfig();
+        public MissionTickConfig JediTraining { get; set; } = new MissionTickConfig();
 
         /// <summary>
         /// Returns the tick config for the given mission config key, or null.
@@ -500,6 +531,7 @@ public class GameConfig
                 "Sabotage" => Sabotage,
                 "SubdueUprising" => SubdueUprising,
                 "Research" => Research,
+                "JediTraining" => JediTraining,
                 _ => null,
             };
         }

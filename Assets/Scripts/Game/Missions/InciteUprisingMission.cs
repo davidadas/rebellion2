@@ -18,15 +18,36 @@ public class InciteUprisingMission : Mission
     {
         ConfigKey = "InciteUprising";
         DisplayName = "Incite Uprising";
-        ParticipantSkill = MissionParticipantSkill.Espionage;
+        ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public InciteUprisingMission(
+    /// <summary>
+    /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <returns>A configured mission, or null if the planet is neutral, owned by this faction, or already in uprising.</returns>
+    public static InciteUprisingMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        string owner = planet.GetOwnerInstanceID();
+        if (string.IsNullOrEmpty(owner) || owner == ctx.OwnerInstanceId || planet.IsInUprising)
+            return null;
+
+        return new InciteUprisingMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants
+        );
+    }
+
+    private InciteUprisingMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        ProbabilityTable successProbabilityTable = null
+        List<IMissionParticipant> decoyParticipants
     )
         : base(
             "InciteUprising",
@@ -34,26 +55,28 @@ public class InciteUprisingMission : Mission
             RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
             mainParticipants,
             decoyParticipants,
-            MissionParticipantSkill.Espionage,
-            successProbabilityTable
+            MissionParticipantSkill.Leadership,
+            null
         )
     {
         DisplayName = "Incite Uprising";
-        Planet planet = (Planet)target;
-
-        if (planet.GetOwnerInstanceID() == ownerInstanceId)
-            throw new InvalidOperationException(
-                $"Incite Uprising target planet '{planet.DisplayName}' is an own planet."
-            );
-        if (planet.IsInUprising)
-            throw new InvalidOperationException(
-                $"Incite Uprising target planet '{planet.DisplayName}' is already in uprising."
-            );
     }
 
     /// <summary>
-    /// Composite score: (espionage_skill - enemy_popular_support - enemy_regiment_strength).
+    /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the mission should be aborted.</returns>
+    public override bool ShouldAbort(GameRoot game)
+    {
+        return base.ShouldAbort(game) || (GetParent() is Planet p && p.IsInUprising);
+    }
+
+    /// <summary>
+    /// Composite score: (leadership_skill - enemy_popular_support - enemy_regiment_strength).
+    /// </summary>
+    /// <param name="agent">The participant whose leadership skill is evaluated.</param>
+    /// <returns>Success probability 0–100 based on the composite score.</returns>
     protected override double GetAgentProbability(IMissionParticipant agent)
     {
         if (!(GetParent() is Planet planet))
@@ -61,7 +84,7 @@ public class InciteUprisingMission : Mission
                 "InciteUprisingMission must be attached to a Planet."
             );
 
-        int espionageSkill = agent.GetMissionSkillValue(MissionParticipantSkill.Espionage);
+        int leadershipSkill = agent.GetMissionSkillValue(MissionParticipantSkill.Leadership);
         int enemySupport = planet.GetPopularSupport(planet.OwnerInstanceID);
 
         int regimentStrength = 0;
@@ -71,29 +94,16 @@ public class InciteUprisingMission : Mission
                 regimentStrength += regiment.DefenseRating;
         }
 
-        int score = espionageSkill - enemySupport - regimentStrength;
+        int score = leadershipSkill - enemySupport - regimentStrength;
         return SuccessProbabilityTable.Lookup(score);
-    }
-
-    /// <summary>
-    /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
-    /// </summary>
-    public override bool IsCanceled(GameRoot game)
-    {
-        return base.IsCanceled(game) || (GetParent() is Planet p && p.IsInUprising);
-    }
-
-    /// <summary>
-    /// Returns false if an uprising has already started on the target planet before execution.
-    /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
-    {
-        return GetParent() is Planet p && !p.IsInUprising;
     }
 
     /// <summary>
     /// Starts an uprising on the target planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for incite uprising).</param>
+    /// <returns>One PlanetUprisingStartedResult.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
@@ -113,6 +123,8 @@ public class InciteUprisingMission : Mission
     /// <summary>
     /// Incite Uprising missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

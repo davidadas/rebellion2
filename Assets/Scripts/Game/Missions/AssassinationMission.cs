@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class AssassinationMission : Mission
 {
@@ -22,13 +24,42 @@ public class AssassinationMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
-    public AssassinationMission(
+    /// <summary>
+    /// Returns a new AssassinationMission for the specified target officer, or null if the
+    /// target is not a valid assassination target (not an enemy, captured, killed, wrong planet).
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, participants, and the target officer.</param>
+    /// <returns>A configured mission, or null if the target is ineligible.</returns>
+    public static AssassinationMission TryCreate(MissionContext ctx)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        Officer target = ctx.TargetOfficer;
+        if (
+            target == null
+            || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
+            || target.IsCaptured
+            || target.IsKilled
+            || target.GetParentOfType<Planet>() != planet
+        )
+            return null;
+
+        return new AssassinationMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            target.InstanceID
+        );
+    }
+
+    private AssassinationMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId,
-        ProbabilityTable successProbabilityTable = null
+        string targetOfficerInstanceId
     )
         : base(
             "Assassination",
@@ -37,12 +68,9 @@ public class AssassinationMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Combat,
-            successProbabilityTable
+            null
         )
     {
-        if (string.IsNullOrEmpty(targetOfficerInstanceId))
-            throw new ArgumentNullException(nameof(targetOfficerInstanceId));
-
         TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
@@ -50,7 +78,9 @@ public class AssassinationMission : Mission
     /// Returns false if the target officer has already been killed or has moved
     /// away from the mission's planet before execution.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target is still alive and on the mission planet.</returns>
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
         return target?.IsKilled == false
@@ -60,6 +90,9 @@ public class AssassinationMission : Mission
     /// <summary>
     /// Marks the target officer as killed and removes them from the scene graph.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for assassination).</param>
+    /// <returns>One OfficerKilledResult, or an empty list if the target was already removed.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
@@ -83,6 +116,8 @@ public class AssassinationMission : Mission
     /// <summary>
     /// Assassination missions do not repeat — one attempt per mission.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>Always false.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return false;

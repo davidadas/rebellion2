@@ -13,11 +13,10 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
-    public enum JediEventType
+    public enum ForceEventType
     {
-        TierAdvanced,
-        TrainingComplete,
-        JediDiscovered,
+        DiscoveringForceUser,
+        ForceUserDiscovered,
     }
 
     public enum CombatSide
@@ -126,6 +125,17 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Fleet Fleet { get; set; }
         public bool IsNewlyExplored { get; set; }
+    }
+
+    /// <summary>
+    /// A Force discovery state changed — either an officer began scanning for Force users,
+    /// or a hidden Force user was discovered by a scanner.
+    /// </summary>
+    public class ForceDiscoveryResult : GameResult
+    {
+        public ForceEventType EventType { get; set; }
+        public Officer Officer { get; set; }
+        public int ForceRank { get; set; }
     }
 
     /// <summary>
@@ -446,17 +456,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A Jedi-related event: tier advancement, training completion, or discovery.
-    /// </summary>
-    public class JediResult : GameResult
-    {
-        public JediEventType EventType { get; set; }
-        public Officer Officer { get; set; }
-        public ForceTier OldTier { get; set; }
-        public ForceTier NewTier { get; set; }
-    }
-
-    /// <summary>
     /// Luke completed Dagobah training.
     /// Covers LukeDagobahCompletedEventRecord.
     /// </summary>
@@ -741,6 +740,7 @@ namespace Rebellion.Game.Results
         public CombatSide Winner { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<GameResult> Events { get; set; } = new List<GameResult>();
     }
 
     /// <summary>

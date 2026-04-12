@@ -637,6 +637,9 @@
         <Value>5</Value>
       </Entry>
     </Upris2Table>
+    <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
+    <!-- Negative = support erodes while uprising is active (GENERAL_PARAM_7697 = -1) -->
+    <ControllerSupportShift>-1</ControllerSupportShift>
   </Uprising>
   <!-- Support Shift Configuration -->
   <!-- Controls periodic popular support recovery and hostile force penalties -->
@@ -669,20 +672,45 @@
     <!-- Minimum tick before victory conditions can trigger (default: 200) -->
     <MinVictoryTick>200</MinVictoryTick>
   </Victory>
-  <!-- Jedi / Force Training System Configuration -->
+
+  <!-- Jedi / Force System Configuration -->
   <Jedi>
-    <!-- XP required to advance from Aware to Training tier (default: 50) -->
-    <XpToTraining>50</XpToTraining>
-    <!-- XP required to advance from Training to Experienced tier (default: 150) -->
-    <XpToExperienced>150</XpToExperienced>
-    <!-- Ticks between Jedi detection checks (default: 30) -->
-    <DetectionCheckInterval>30</DetectionCheckInterval>
-    <!-- Detection probability per check for Aware tier (0.0-1.0, default: 0.05 = 5%) -->
-    <DetectProbAware>0.05</DetectProbAware>
-    <!-- Detection probability per check for Training tier (0.0-1.0, default: 0.15 = 15%) -->
-    <DetectProbTraining>0.15</DetectProbTraining>
-    <!-- Detection probability per check for Experienced tier (0.0-1.0, default: 0.30 = 30%) -->
-    <DetectProbExperienced>0.30</DetectProbExperienced>
+    <!-- ForceRank threshold to enter "discovering force user" state (GP_2580) -->
+    <DiscoveringForceUserThreshold>80</DiscoveringForceUserThreshold>
+
+    <!-- ForceRank threshold for full Jedi qualification (GP_2581) -->
+    <ForceQualifiedThreshold>100</ForceQualifiedThreshold>
+
+    <!-- ForceRank threshold for Force-based fast healing (GP_2560) -->
+    <FastHealThreshold>80</FastHealThreshold>
+
+    <!-- ForceValue increment per successful mission (GP_3081) -->
+    <ForceGrowthPerMission>1</ForceGrowthPerMission>
+
+    <!-- Percent of rank gap used as catch-up range in Jedi training (GP_6173) -->
+    <TrainingCatchUpPercent>50</TrainingCatchUpPercent>
+
+    <!-- ForceRank threshold for Luke to learn heritage (GP_3078) -->
+    <HeritageThreshold>60</HeritageThreshold>
+
+    <!-- Percent bonus to force_rank on Dagobah completion (GP_6174) -->
+    <DagobahCompletionBonusPercent>60</DagobahCompletionBonusPercent>
+
+    <!-- Local force user minimum rank for encounter eligibility (GP_3585) -->
+    <EncounterLocalMinRank>1</EncounterLocalMinRank>
+
+    <!-- Cross-side force user minimum rank for encounter eligibility (GP_3586) -->
+    <EncounterCrossSideMinRank>60</EncounterCrossSideMinRank>
+
+    <!-- Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587) -->
+    <EncounterProbabilityOffset>-100</EncounterProbabilityOffset>
+
+    <!-- Force rank label thresholds -->
+    <RankLabelNovice>10</RankLabelNovice>
+    <RankLabelTrainee>20</RankLabelTrainee>
+    <RankLabelForceStudent>80</RankLabelForceStudent>
+    <RankLabelForceKnight>100</RankLabelForceKnight>
+    <RankLabelForceMaster>120</RankLabelForceMaster>
   </Jedi>
   <!-- Research System Configuration -->
   <!-- Controls technology advancement from idle facilities and officer research missions.
@@ -1310,6 +1338,10 @@
           <Base>10</Base>
           <Spread>10</Spread>
         </Research>
+        <JediTraining>
+          <Base>10</Base>
+          <Spread>10</Spread>
+        </JediTraining>
       </TickRanges>
       <!-- Foil: regiment defense score (derived from original FoilQuadratic: -0.001999x²+0.8879x+84.61) -->
       <Foil>

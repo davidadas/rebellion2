@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 public class RecruitmentMission : Mission
 {
@@ -21,13 +22,37 @@ public class RecruitmentMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    public RecruitmentMission(
+    /// <summary>
+    /// Returns a new RecruitmentMission targeting a random unrecruited officer, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context; must include a RandomProvider and a valid target.</param>
+    /// <returns>A configured mission, or null if no unrecruited officers exist or provider is missing.</returns>
+    public static RecruitmentMission TryCreate(MissionContext ctx)
+    {
+        if (ctx.RandomProvider == null)
+            return null;
+
+        List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
+        if (unrecruited.Count == 0)
+            return null;
+
+        string targetId = unrecruited.RandomElement(ctx.RandomProvider).InstanceID;
+
+        return new RecruitmentMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            targetId
+        );
+    }
+
+    private RecruitmentMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId,
-        ProbabilityTable successProbabilityTable = null
+        string targetOfficerInstanceId
     )
         : base(
             "Recruitment",
@@ -36,12 +61,9 @@ public class RecruitmentMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            successProbabilityTable
+            null
         )
     {
-        if (string.IsNullOrEmpty(targetOfficerInstanceId))
-            throw new ArgumentNullException(nameof(targetOfficerInstanceId));
-
         if (mainParticipants.OfType<Officer>().Any(o => !o.IsMain))
             throw new ArgumentException(
                 "Only main characters may lead a recruitment mission.",
@@ -55,7 +77,9 @@ public class RecruitmentMission : Mission
     /// Returns false if the target officer no longer exists in the unrecruited pool or has
     /// already joined this faction.
     /// </summary>
-    protected override bool IsTargetValid(GameRoot game)
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if the target officer is still unrecruited and not yet affiliated.</returns>
+    protected override bool IsMissionSatisfied(GameRoot game)
     {
         Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
             o.InstanceID == TargetOfficerInstanceID
@@ -64,8 +88,18 @@ public class RecruitmentMission : Mission
     }
 
     /// <summary>
+    /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
+    /// </summary>
+    /// <param name="defenseScore">Ignored.</param>
+    /// <returns>Always 0.</returns>
+    protected override double GetFoilProbability(double defenseScore) => 0;
+
+    /// <summary>
     /// Transfers the target officer to this faction and moves them to the mission planet.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider (unused for recruitment).</param>
+    /// <returns>One OfficerRecruitedResult, or an empty list if the target or planet is missing.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Officer target = game.UnrecruitedOfficers.FirstOrDefault(o =>
@@ -95,13 +129,10 @@ public class RecruitmentMission : Mission
     }
 
     /// <summary>
-    /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
-    /// </summary>
-    protected override double GetFoilProbability(double defenseScore) => 0;
-
-    /// <summary>
     /// Returns true while there are still unrecruited officers available for this faction.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if at least one unrecruited officer is available for this faction.</returns>
     public override bool CanContinue(GameRoot game)
     {
         return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;

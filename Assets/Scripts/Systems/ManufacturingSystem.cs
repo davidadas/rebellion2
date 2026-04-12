@@ -14,6 +14,7 @@ namespace Rebellion.Systems
     public class ManufacturingSystem
     {
         private readonly GameRoot _game;
+        private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
         /// Creates a new ManufacturingSystem.
@@ -34,6 +35,8 @@ namespace Rebellion.Systems
         )
         {
             List<GameResult> results = new List<GameResult>();
+            results.AddRange(_pendingResults);
+            _pendingResults.Clear();
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 results.AddRange(ProcessPlanetManufacturing(planet, movementSystem, provider));
@@ -69,6 +72,16 @@ namespace Rebellion.Systems
                 return false;
 
             _game.AttachNode((ISceneNode)item, destination);
+
+            _pendingResults.Add(
+                new ManufacturingDeployedResult
+                {
+                    Faction = faction,
+                    DeployedObject = item as IGameEntity,
+                    Location = destination as IGameEntity,
+                    Tick = _game.CurrentTick,
+                }
+            );
 
             CommitToQueue(planet, item);
             return true;
@@ -114,6 +127,16 @@ namespace Rebellion.Systems
 
             _game.AttachNode((ISceneNode)item, parent);
 
+            _pendingResults.Add(
+                new ManufacturingDeployedResult
+                {
+                    Faction = faction,
+                    DeployedObject = item as IGameEntity,
+                    Location = destination as IGameEntity,
+                    Tick = _game.CurrentTick,
+                }
+            );
+
             CommitToQueue(planet, item);
             return true;
         }
@@ -148,6 +171,14 @@ namespace Rebellion.Systems
             item.ProducerPlanetID = planet.GetInstanceID();
 
             planet.AddToManufacturingQueue(item);
+
+            _pendingResults.Add(
+                new GameObjectCreatedResult
+                {
+                    GameObject = item as IGameEntity,
+                    Tick = _game.CurrentTick,
+                }
+            );
 
             GameLogger.Log(
                 $"Enqueued {item.GetDisplayName()} for production at {planet.GetDisplayName()} (cost: {item.GetConstructionCost()})"
@@ -213,7 +244,9 @@ namespace Rebellion.Systems
                 List<IManufacturable> completed = DistributeProgress(
                     items,
                     progressIncrement,
-                    provider
+                    provider,
+                    planet,
+                    results
                 );
                 IManufacturable lastCompleted = null;
                 foreach (IManufacturable item in completed)
@@ -240,6 +273,7 @@ namespace Rebellion.Systems
                                     planet.GetOwnerInstanceID()
                                 ),
                                 ProductType = type,
+                                ProductName = lastCompleted.GetDisplayName(),
                                 Tick = _game.CurrentTick,
                             }
                         );
@@ -260,13 +294,18 @@ namespace Rebellion.Systems
         /// <param name="items">The ordered list of items in this type's queue.</param>
         /// <param name="progressIncrement">Total progress available this tick.</param>
         /// <param name="provider">Random number provider for capital ship rolls.</param>
+        /// <param name="planet">The planet where production is occurring.</param>
+        /// <param name="results">Result list to append progress events to.</param>
         private List<IManufacturable> DistributeProgress(
             List<IManufacturable> items,
             int progressIncrement,
-            IRandomNumberProvider provider
+            IRandomNumberProvider provider,
+            Planet planet,
+            List<GameResult> results
         )
         {
             List<IManufacturable> completed = new List<IManufacturable>();
+            Faction faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
 
             while (progressIncrement > 0 && items.Count > 0)
             {
@@ -277,7 +316,18 @@ namespace Rebellion.Systems
                 {
                     int csProgress = RollCapitalShipProgress(provider);
                     if (csProgress > 0)
+                    {
                         activeItem.IncrementManufacturingProgress(csProgress);
+                        results.Add(
+                            new ManufacturingPointsCompletedResult
+                            {
+                                Faction = faction,
+                                Points = csProgress,
+                                Context = planet,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
 
                     if (activeItem.IsManufacturingComplete())
                     {
@@ -295,6 +345,16 @@ namespace Rebellion.Systems
                 int appliedProgress = Math.Min(progressIncrement, remainingProgress);
                 activeItem.IncrementManufacturingProgress(appliedProgress);
                 progressIncrement -= appliedProgress;
+
+                results.Add(
+                    new ManufacturingPointsCompletedResult
+                    {
+                        Faction = faction,
+                        Points = appliedProgress,
+                        Context = planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
 
                 if (activeItem.IsManufacturingComplete())
                 {
@@ -346,11 +406,9 @@ namespace Rebellion.Systems
 
             return new List<GameResult>
             {
-                new ManufacturingDeployedResult
+                new GameObjectDeployedResult
                 {
-                    Faction = faction,
-                    DeployedObject = item as IGameEntity,
-                    Location = dest as IGameEntity,
+                    GameObject = item as IGameEntity,
                     Tick = _game.CurrentTick,
                 },
                 new ManufacturingRemainingResult

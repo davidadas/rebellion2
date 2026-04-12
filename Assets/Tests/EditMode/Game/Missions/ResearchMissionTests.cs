@@ -47,13 +47,15 @@ namespace Rebellion.Tests.Game.Missions
             ManufacturingType type = ManufacturingType.Ship
         )
         {
-            ResearchMission mission = new ResearchMission(
-                "empire",
-                planet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                type
-            );
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, type);
             game.AttachNode(mission, planet);
             return mission;
         }
@@ -115,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // RNG=0.99 → 99 > 10 → failure
+            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
@@ -150,8 +152,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            // Even with high RNG, skill 100 should always succeed since foil = 0
-            // RNG=0.99 → 99 <= 100 → success
+            // Even with a high RNG roll, skill 100 always succeeds since foil is 0.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
@@ -213,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // RNG=0.99 → 99 > 10 → failure
+            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.IsTrue(
@@ -223,23 +224,24 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Constructor_EnemyPlanet_ThrowsInvalidOperationException()
+        public void TryCreate_EnemyPlanet_ReturnsNull()
         {
             Officer officer = CreateOfficer();
 
             // Change ownership after officer is already placed
             planet.OwnerInstanceID = "rebels";
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            MissionContext ctx = new MissionContext
             {
-                new ResearchMission(
-                    "empire",
-                    planet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>(),
-                    ManufacturingType.Ship
-                );
-            });
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+
+            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
@@ -18,106 +19,174 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Processes Force tier advancement and detection for all officers.
-        /// Logs each event, applies effects directly to officer state, and returns all results.
+        /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
+        /// Called from GameManager.ProcessResults when a MissionCompletedResult with Success is seen.
+        /// </summary>
+        public List<GameResult> ApplyForceGrowth(List<IMissionParticipant> participants)
+        {
+            List<GameResult> results = new List<GameResult>();
+            int growth = _game.Config.Jedi.ForceGrowthPerMission;
+            if (growth <= 0)
+                return results;
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (
+                    participant is Officer officer
+                    && officer.GrowsForceOnMission
+                    && officer.IsForceEligible
+                )
+                {
+                    officer.ForceValue += growth;
+                    results.Add(
+                        new ForceExperienceResult
+                        {
+                            Officer = officer,
+                            ExperienceGained = growth,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                    GameLogger.Log(
+                        $"{officer.GetDisplayName()} gained {growth} ForceValue from mission success (now {officer.ForceValue})"
+                    );
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Processes Force tier advancement and detection for all officers each tick.
         /// </summary>
         public List<GameResult> ProcessTick(IRandomNumberProvider rng)
         {
-            List<JediResult> events = new List<JediResult>();
+            List<GameResult> results = new List<GameResult>();
 
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
-                // Skip officers with no Force potential
-                if (officer.ForceExperience == 0 && officer.ForceTier == ForceTier.None)
+                if (!officer.IsJedi || !officer.IsForceEligible)
                     continue;
 
-                // 1. Check tier advancement
-                ForceTier newTier = TierForXP(officer.ForceExperience);
-                if (newTier > officer.ForceTier)
-                {
-                    ForceTier oldTier = officer.ForceTier;
-                    officer.ForceTier = newTier;
+                UpdateForceDiscoveryState(officer, results);
+            }
 
-                    events.Add(
-                        new JediResult
+            ScanForForceUsers(rng, results);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Sets or clears IsDiscoveringForceUser based on whether the officer meets the
+        /// ForceRank threshold and is available to scan.
+        /// </summary>
+        private void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
+        {
+            int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
+            bool shouldDiscover =
+                officer.ForceRank >= threshold
+                && !officer.IsCaptured
+                && !officer.IsKilled
+                && !officer.IsOnMission();
+
+            if (shouldDiscover && !officer.IsDiscoveringForceUser)
+            {
+                officer.IsDiscoveringForceUser = true;
+
+                results.Add(
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.DiscoveringForceUser,
+                        Officer = officer,
+                        ForceRank = officer.ForceRank,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+
+                GameLogger.Log(
+                    $"{officer.GetDisplayName()} is discovering Force abilities (rank {officer.ForceRank})"
+                );
+            }
+            else if (!shouldDiscover && officer.IsDiscoveringForceUser)
+            {
+                officer.IsDiscoveringForceUser = false;
+            }
+        }
+
+        /// <summary>
+        /// Scans for hidden force users each tick at the scanner's location.
+        /// </summary>
+        private void ScanForForceUsers(IRandomNumberProvider rng, List<GameResult> results)
+        {
+            List<Officer> scanners = _game
+                .GetSceneNodesByType<Officer>()
+                .Where(o => o.IsDiscoveringForceUser)
+                .ToList();
+
+            if (scanners.Count == 0)
+                return;
+
+            int probabilityOffset = _game.Config.Jedi.EncounterProbabilityOffset;
+
+            foreach (Officer scanner in scanners)
+            {
+                Planet planet = scanner.GetParentOfType<Planet>();
+                if (planet == null)
+                    continue;
+
+                foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
+                {
+                    if (!IsUndiscoveredForceUser(candidate))
+                        continue;
+
+                    int probability = scanner.ForceRank + candidate.ForceRank + probabilityOffset;
+
+                    if (probability <= 0)
+                        continue;
+
+                    double roll = rng.NextDouble() * 100.0;
+                    if (roll >= probability)
+                        continue;
+
+                    candidate.IsForceEligible = true;
+                    candidate.ForceValue =
+                        candidate.JediLevel + rng.NextInt(0, candidate.JediLevelVariance + 1);
+
+                    results.Add(
+                        new ForceExperienceResult
                         {
-                            EventType = JediEventType.TierAdvanced,
-                            Officer = officer,
-                            OldTier = oldTier,
-                            NewTier = newTier,
+                            Officer = candidate,
+                            ExperienceGained = candidate.ForceValue,
                             Tick = _game.CurrentTick,
                         }
                     );
 
-                    // Training complete when reaching Experienced tier
-                    if (newTier == ForceTier.Experienced)
-                    {
-                        events.Add(
-                            new JediResult
-                            {
-                                EventType = JediEventType.TrainingComplete,
-                                Officer = officer,
-                                OldTier = oldTier,
-                                NewTier = newTier,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
-                }
+                    results.Add(
+                        new ForceDiscoveryResult
+                        {
+                            EventType = ForceEventType.ForceUserDiscovered,
+                            Officer = candidate,
+                            ForceRank = candidate.ForceRank,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
 
-                // 2. Detection check (every DetectionCheckInterval ticks)
-                if (
-                    _game.CurrentTick % _game.Config.Jedi.DetectionCheckInterval == 0
-                    && !officer.IsDiscoveredJedi
-                    && officer.ForceTier != ForceTier.None
-                )
-                {
-                    double detectProb = DetectionProbability(officer.ForceTier);
-                    if (rng.NextDouble() < detectProb)
-                    {
-                        officer.IsDiscoveredJedi = true;
-                        events.Add(
-                            new JediResult
-                            {
-                                EventType = JediEventType.JediDiscovered,
-                                Officer = officer,
-                                OldTier = officer.ForceTier,
-                                NewTier = officer.ForceTier,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
+                    GameLogger.Log(
+                        $"{scanner.GetDisplayName()} discovered {candidate.GetDisplayName()}'s Force potential (rank {candidate.ForceRank})"
+                    );
                 }
             }
-
-            foreach (JediResult result in events)
-            {
-                GameLogger.Log(
-                    $"{result.Officer.GetDisplayName()} {result.EventType}: {result.NewTier}"
-                );
-            }
-
-            return new List<GameResult>(events);
         }
 
-        private ForceTier TierForXP(int xp)
+        /// <summary>
+        /// Returns true if the officer is a Jedi whose Force potential has not yet been revealed.
+        /// </summary>
+        private static bool IsUndiscoveredForceUser(Officer officer)
         {
-            if (xp >= _game.Config.Jedi.XpToExperienced)
-                return ForceTier.Experienced;
-            if (xp >= _game.Config.Jedi.XpToTraining)
-                return ForceTier.Training;
-            if (xp > 0)
-                return ForceTier.Aware;
-            return ForceTier.None;
+            return officer.IsJedi
+                && !officer.IsForceEligible
+                && !officer.IsCaptured
+                && !officer.IsKilled
+                && !officer.IsOnMission();
         }
-
-        private double DetectionProbability(ForceTier tier) =>
-            tier switch
-            {
-                ForceTier.Aware => _game.Config.Jedi.DetectProbAware,
-                ForceTier.Training => _game.Config.Jedi.DetectProbTraining,
-                ForceTier.Experienced => _game.Config.Jedi.DetectProbExperienced,
-                _ => 0.0,
-            };
     }
 }
