@@ -52,6 +52,14 @@ public class GameConfig
         /// <summary>Capital ship production pipeline parameters.</summary>
         public CapitalShipProductionConfig CapitalShipProduction { get; set; } =
             new CapitalShipProductionConfig();
+
+        /// <summary>
+        /// Target fleet fill percentage used by the local shortage issue pipeline.
+        /// The AI will attempt to fill each fleet to this percentage of its total
+        /// regiment and starfighter capacity. Matches the percentage threshold stored
+        /// at issue object +0x24 in the original binary.
+        /// </summary>
+        public int FleetFillTargetPercentage { get; set; } = 50;
     }
 
     /// <summary>

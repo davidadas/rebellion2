@@ -42,6 +42,9 @@ namespace Rebellion.Game
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
+        public int MinProductionCount { get; set; }
+        public int MaxProductionCount { get; set; }
+        public int ProductionPriority { get; set; }
 
         // Building Info
         public BuildingType BuildingType { get; set; }

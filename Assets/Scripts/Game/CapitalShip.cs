@@ -25,6 +25,9 @@ namespace Rebellion.Game
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
+        public int MinProductionCount { get; set; }
+        public int MaxProductionCount { get; set; }
+        public int ProductionPriority { get; set; }
 
         // Hull, Shield, and Repair Info
         public int HullStrength;

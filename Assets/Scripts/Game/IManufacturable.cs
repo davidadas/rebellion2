@@ -34,6 +34,14 @@ namespace Rebellion.Game
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
 
+        // Production catalog — AI scheduling parameters loaded from unit data files.
+        // MinProductionCount/MaxProductionCount: the production-queue-count range [min, max)
+        //   within which the AI considers this unit type eligible to produce.
+        // ProductionPriority: strategic priority score; higher = more urgently needed.
+        public int MinProductionCount { get; set; }
+        public int MaxProductionCount { get; set; }
+        public int ProductionPriority { get; set; }
+
         // Manufacturing Info
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
