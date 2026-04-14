@@ -83,7 +83,7 @@ namespace Rebellion.Systems
             if (!_workers.TryGetValue(faction.InstanceID, out HeavyAIWorker worker))
             {
                 int ownerSide = GetFactionSide(faction);
-                worker = new HeavyAIWorker(faction, ownerSide);
+                worker = new HeavyAIWorker(faction, ownerSide, _game, _manufacturingManager);
                 _workers[faction.InstanceID] = worker;
             }
 

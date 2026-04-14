@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.SceneGraph;
 
 // Corresponds to LargeSelectionRecord (astruct_423), the "heavy AI worker" that drives
 // all galaxy analysis and strategy record processing for one faction side.
@@ -99,6 +100,12 @@ public class HeavyAIWorker
     // The faction this worker serves (used when dispatching work items).
     private readonly Faction _faction;
 
+    // The game root — used by RouteWorkItemToManager to access game systems and config.
+    private readonly GameRoot _game;
+
+    // Manufacturing system — used to queue production when a ProductionWorkItem is dispatched.
+    private readonly Rebellion.Systems.ManufacturingSystem _manufacturingManager;
+
     /// <summary>
     /// True while the worker is still running the two-phase startup sequence
     /// (states 1 and 2).  Once AtStartSetupMissions() returns true, startup is
@@ -106,11 +113,18 @@ public class HeavyAIWorker
     /// </summary>
     public bool IsInStartup => _missionCycleState == 1 || _missionCycleState == 2;
 
-    public HeavyAIWorker(Faction faction, int ownerSide)
+    public HeavyAIWorker(
+        Faction faction,
+        int ownerSide,
+        GameRoot game,
+        Rebellion.Systems.ManufacturingSystem manufacturingManager = null
+    )
     {
         _faction = faction;
+        _game = game;
+        _manufacturingManager = manufacturingManager;
         OwnerSide = ownerSide;
-        Workspace = new AIWorkspace { Owner = faction };
+        Workspace = new AIWorkspace { Owner = faction, GameRoot = game };
         _strategyRecordList = new StrategyRecordList();
         _missionCycleState = 1;
     }
@@ -324,12 +338,186 @@ public class HeavyAIWorker
         return false;
     }
 
-    // FUN_00489ee0 equivalent: routes a completed work item to whatever system
-    // should act on it (manufacturing, missions, fleet movement, etc.).
+    /// <summary>
+    /// Routes a completed work item to the game system that executes its action.
+    /// Corresponds to FUN_00489ee0 → FUN_0041c690 → FUN_00435770 in the original,
+    /// which routes items through the AI manager to per-faction handlers.
+    ///
+    /// In the original, routing enqueues items in inter-worker queues for deferred
+    /// execution. In C# each worker is standalone so work items are executed directly.
+    /// </summary>
     private void RouteWorkItemToManager(AIWorkItem workItem)
     {
-        // TODO: dispatch to the appropriate game system based on workItem type.
-        // In the original this calls through the AI manager's routing table.
+        if (workItem is CapitalShipNameWorkItem nameItem)
+        {
+            ApplyCapitalShipName(nameItem);
+            return;
+        }
+
+        if (workItem is FleetShortageWorkItem shortageItem)
+        {
+            ApplyFleetShortage(shortageItem);
+            return;
+        }
+
+        if (workItem is AgentShortageWorkItem agentItem)
+        {
+            ApplyAgentShortage(agentItem);
+            return;
+        }
+
+        if (workItem is ProductionWorkItem productionItem)
+        {
+            ApplyProduction(productionItem);
+            return;
+        }
+
+        if (workItem is MissionExecutionWorkItem missionItem)
+        {
+            ApplyMissionExecution(missionItem);
+            return;
+        }
+
+        // Other TypeCodes: implemented as the remaining strategy records are completed.
+    }
+
+    /// <summary>
+    /// Handles a mission execution work item (TypeCode 0x201/0x240/0x250).
+    ///
+    /// In the original, this routes through the AI manager to the opposing worker's
+    /// mission scheduling pipeline, which calls FUN_0042ecc0 to create mission instances
+    /// or FUN_0042ed10 to cancel them.
+    ///
+    /// Current implementation: no-op pending MissionSystem.CreateMission() integration.
+    /// The MissionAssignmentEntry.Dispatch() 8-state machine is now wired, but the
+    /// final mission creation call requires reading FUN_0042ecc0's full call chain.
+    /// </summary>
+    private void ApplyMissionExecution(MissionExecutionWorkItem item)
+    {
+        // No-op until MissionSystem.CreateMission() is integrated.
+        // The work item carries EntityRef and Workspace for when this is implemented.
+    }
+
+    /// <summary>
+    /// Handles a production work item (TypeCode 0x201).
+    /// Calls ManufacturingSystem.Enqueue() to queue the unit at the target planet.
+    /// </summary>
+    private void ApplyProduction(ProductionWorkItem item)
+    {
+        if (item.TargetPlanet == null || item.Unit == null)
+            return;
+
+        _manufacturingManager?.Enqueue(
+            item.TargetPlanet,
+            item.Unit,
+            item.Destination ?? item.TargetPlanet
+        );
+    }
+
+    /// <summary>
+    /// Handles an agent shortage work item (TypeCode 0x210/0x214).
+    ///
+    /// In the original, the work item is routed through the AI manager to the opposing
+    /// worker's processing pipeline, which eventually creates mission assignments via
+    /// FUN_0042ecc0 (create mission entry). This requires the mission assignment
+    /// infrastructure (MissionAssignmentEntry.Dispatch, FUN_004bc170).
+    ///
+    /// BLOCKED: MissionAssignmentEntry.Dispatch (FUN_004bc170, the 8-state machine)
+    /// is not yet implemented. Agent shortage work items are acknowledged but have no
+    /// game effect until that infrastructure is built.
+    /// </summary>
+    private void ApplyAgentShortage(AgentShortageWorkItem item)
+    {
+        // No-op until MissionAssignmentEntry.Dispatch is implemented.
+    }
+
+    /// <summary>
+    /// Handles a fleet shortage work item (TypeCode 0x200).
+    ///
+    /// In the original binary (FUN_00489ee0 → FUN_0041c690 → FUN_00435770), the work
+    /// item is routed to the AI manager which enqueues it for the opposing worker's
+    /// processing pipeline. The fleet assignment sub-machine (MissionTargetEntry.Dispatch)
+    /// then handles the actual unit deployment.
+    ///
+    /// BLOCKED: the fleet assignment pipeline (workspace FleetAssignmentTable /
+    /// FleetAvailabilityTable / MissionTargetEntry dispatch chain) is not yet fully
+    /// implemented. Until it is, fleet shortage work items are acknowledged but have
+    /// no game effect.
+    /// </summary>
+    private void ApplyFleetShortage(FleetShortageWorkItem item)
+    {
+        // No-op until fleet assignment pipeline is implemented.
+        // The original enqueues this into the inter-worker routing queue for deferred
+        // processing by MissionTargetEntry.Dispatch.
+    }
+
+    /// <summary>
+    /// Applies a capital ship name assignment.
+    /// Resolves the resource ID to a name string from config and sets DisplayName.
+    /// If the name pool array is empty (data not yet loaded), the ship is left unnamed.
+    /// </summary>
+    private void ApplyCapitalShipName(CapitalShipNameWorkItem item)
+    {
+        if (item.Ship == null || _game?.Config?.AI?.ShipNaming == null)
+            return;
+
+        string name = ResolveShipName(item.NameResourceId, item.Side, _game.Config.AI.ShipNaming);
+        if (name != null)
+            item.Ship.DisplayName = name;
+    }
+
+    /// <summary>
+    /// Maps a text resource ID from the original binary to a name string using the
+    /// configured name pools. Returns null if the ID is out of range or the pool
+    /// array for that range is empty.
+    ///
+    /// Resource-ID ranges (from FUN_004d1ea0):
+    ///   Empire  pool 1: 0x5100..0x5126 (39 entries)
+    ///   Empire  pool 2: 0x5160..0x5181 (34 entries)
+    ///   Empire  pool 3: 0x51c0..0x51df (32 entries)
+    ///   Alliance pool 1: 0x5200..0x5213 (20 entries)
+    ///   Alliance pool 2: 0x5260..0x5282 (35 entries)
+    ///   Alliance pool 3: 0x52c0..0x52cf (16 entries)
+    /// </summary>
+    private static string ResolveShipName(int nameResId, int side, GameConfig.ShipNamingConfig pools)
+    {
+        if (side == 1) // Alliance
+        {
+            if (nameResId >= 0x5200 && nameResId < 0x5214)
+            {
+                int idx = nameResId - 0x5200;
+                return idx < pools.AlliancePool1.Length ? pools.AlliancePool1[idx] : null;
+            }
+            if (nameResId >= 0x5260 && nameResId < 0x5283)
+            {
+                int idx = nameResId - 0x5260;
+                return idx < pools.AlliancePool2.Length ? pools.AlliancePool2[idx] : null;
+            }
+            if (nameResId >= 0x52c0 && nameResId < 0x52d0)
+            {
+                int idx = nameResId - 0x52c0;
+                return idx < pools.AlliancePool3.Length ? pools.AlliancePool3[idx] : null;
+            }
+        }
+        else // Empire (side == 0)
+        {
+            if (nameResId >= 0x5100 && nameResId < 0x5127)
+            {
+                int idx = nameResId - 0x5100;
+                return idx < pools.EmpirePool1.Length ? pools.EmpirePool1[idx] : null;
+            }
+            if (nameResId >= 0x5160 && nameResId < 0x5182)
+            {
+                int idx = nameResId - 0x5160;
+                return idx < pools.EmpirePool2.Length ? pools.EmpirePool2[idx] : null;
+            }
+            if (nameResId >= 0x51c0 && nameResId < 0x51e0)
+            {
+                int idx = nameResId - 0x51c0;
+                return idx < pools.EmpirePool3.Length ? pools.EmpirePool3[idx] : null;
+            }
+        }
+        return null;
     }
 
     /// <summary>

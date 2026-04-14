@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 // Faithful reconstitution of the galaxy analysis scoring pipeline.
 // Source: FUN_00417cb0 (calibration state 5), calling:
 //   FUN_0041af90 - per-system accumulator
@@ -9,14 +12,41 @@
 // Field names derived from AI.md Sections 135-139 and the per-system
 // analysis record field table.
 
-using System;
-
 // ================================================================
 // PER-SYSTEM STATS (sub-object at node+0x70 in the system analysis list)
 // Offsets are relative to sub-object start. Add +0x70 for node-level offset.
 // ================================================================
 public class PerSystemStats
 {
+    // Index accessor for FUN_004191b0 / FUN_00430eb0:
+    // (&node->field40_0x70)[param_7] — DWORD at byte offset (param_7 * 4) from PerSystemStats start.
+    // Byte offsets: 0x0c=FacilityCount, 0x10=EnemyTroopSurplus, 0x14=FriendlyTroopSurplus,
+    //   0x24=NetCapitalShipSurplus, 0x28=NetFighterSurplus, 0x2c=SystemPriority,
+    //   0x30=EntityClassification, 0x38=FightersAboveThreshold, 0x3c=AvailableFighters.
+    // DWORD index 4 (offset 0x10) = EnemyTroopSurplus
+    // DWORD index 8 (offset 0x20) = unlisted (returns 0 until FUN_004319d0 fully implemented)
+    // DWORD index 9 (offset 0x24) = NetCapitalShipSurplus
+    // DWORD index 10 (offset 0x28) = NetFighterSurplus
+    // DWORD index 21 (offset 0x54) = unlisted (returns 0 until FUN_004319d0 fully implemented)
+    public int GetStatByIndex(int index)
+    {
+        return (index * 4) switch
+        {
+            0x0c => FacilityCount,
+            0x10 => EnemyTroopSurplus,
+            0x14 => FriendlyTroopSurplus,
+            0x24 => NetCapitalShipSurplus,
+            0x28 => NetFighterSurplus,
+            0x2c => SystemPriority,
+            0x30 => EntityClassification,
+            0x38 => FightersAboveThreshold,
+            0x3c => AvailableFighters,
+            0x7c => FacilityCountOwned,
+            0x80 => EnemyShipCount,
+            _ => 0, // unlisted fields return 0 until FUN_004319d0 fully implemented
+        };
+    }
+
     public int FacilityCount; // +0x0c  (node+0x7c)
     public int EnemyTroopSurplus; // +0x10  (node+0x80)
     public int FriendlyTroopSurplus; // +0x14  (node+0x84)
@@ -123,17 +153,64 @@ public class GalaxyAnalysisScorer
     private uint _stateFlags;
 
     // ================================================================
-    // ANALYSIS LISTS (sentinel heads; real nodes via linked list)
+    // ANALYSIS LISTS
+    // Original: singly-linked lists traversed via Prev pointers.
+    // C#: simple List<T> — same accumulator logic, no pointer chasing.
     // ================================================================
-    private SystemAnalysisNode _systemListHead;
-    private FleetAnalysisNode _fleetListHead;
-    private CharacterAnalysisNode _characterListHead;
+    private readonly List<SystemAnalysisNode> _systemNodes = new List<SystemAnalysisNode>();
+    private readonly List<FleetAnalysisNode> _fleetNodes = new List<FleetAnalysisNode>();
+    private readonly List<CharacterAnalysisNode> _characterNodes = new List<CharacterAnalysisNode>();
 
     // ================================================================
     // PRE-ACCUMULATION HOOKS (vtable slot 1, called before accumulation)
     // ================================================================
     private Action _hookA; // +0xc0
     private Action _hookB; // +0x104
+
+    // ================================================================
+    // PUBLIC POPULATION API
+    // ================================================================
+
+    /// <summary>Clears all node lists and state flags. Call before rebuilding each cycle.</summary>
+    public void Clear()
+    {
+        _systemNodes.Clear();
+        _fleetNodes.Clear();
+        _characterNodes.Clear();
+        _stateFlags = 0;
+    }
+
+    /// <summary>Adds a system analysis node to the scoring pass.</summary>
+    public void AddSystemNode(SystemAnalysisNode node) => _systemNodes.Add(node);
+
+    /// <summary>Adds a fleet unit analysis node to the scoring pass.</summary>
+    public void AddFleetNode(FleetAnalysisNode node) => _fleetNodes.Add(node);
+
+    /// <summary>Adds a character analysis node to the scoring pass.</summary>
+    public void AddCharacterNode(CharacterAnalysisNode node) => _characterNodes.Add(node);
+
+    /// <summary>Marks system data as ready for accumulation on next Score() call.</summary>
+    public void MarkSystemsReady() => _stateFlags |= 0xa0000000u; // bits 31+29
+
+    /// <summary>Marks fleet data as ready for accumulation on next Score() call.</summary>
+    public void MarkFleetsReady() => _stateFlags |= 0xc0000000u; // bits 31+30
+
+    /// <summary>Marks character data as ready for accumulation on next Score() call.</summary>
+    public void MarkCharactersReady() => _stateFlags |= 0x90000000u; // bits 31+28
+
+    // ================================================================
+    // PUBLIC ACCUMULATED RESULT ACCESSORS
+    // Strategy records read these after Score() runs.
+    // ================================================================
+    public int OwnControlledSystemCount => _ownControlledSystemCount;
+    public int ContestedSystemCount => _contestedSystemCount;
+    public int NeutralSystemCount => _neutralSystemCount;
+    public int TotalFriendlyTroopSurplus => _totalFriendlyTroopSurplus;
+    public int TotalEnemyTroopSurplus => _totalEnemyTroopSurplus;
+    public int TotalFleetSurplus => _totalFleetSurplus;
+    public int TotalFacilityCount => _totalFacilityCount;
+    public int OwnFleetCombatStrength => _ownFleetCombatStrength;
+    public int EnemyFleetCombatStrength => _enemyFleetCombatStrength;
 
     // ================================================================
     // SYSTEM ACCUMULATORS (40 dwords at +0x1ac, zeroed each pass)
@@ -300,8 +377,7 @@ public class GalaxyAnalysisScorer
 
         _stateFlags &= 0xFFFFFA6F;
 
-        var node = GetTailNode(_systemListHead);
-        while (node != null)
+        foreach (SystemAnalysisNode node in _systemNodes)
         {
             AccumulateOneSystem(
                 node.Stats,
@@ -309,7 +385,6 @@ public class GalaxyAnalysisScorer
                 node.StatusFlags,
                 node.CapabilityFlags
             );
-            node = node.Prev;
         }
 
         if (_charGarrisonAccumA > 0)
@@ -442,12 +517,8 @@ public class GalaxyAnalysisScorer
 
         _stateFlags &= 0xFFFFFFF3;
 
-        var node = GetTailNode(_fleetListHead);
-        while (node != null)
-        {
+        foreach (FleetAnalysisNode node in _fleetNodes)
             AccumulateOneFleet(node.Stats, node.OwnershipFlags);
-            node = node.Prev;
-        }
     }
 
     // FUN_0041b230 - own-side (flags & 1) vs enemy, with capital ship sub-tracking.
@@ -524,12 +595,8 @@ public class GalaxyAnalysisScorer
 
         _stateFlags &= 0xFFFFFDFF;
 
-        var node = GetTailNode(_characterListHead);
-        while (node != null)
-        {
+        foreach (CharacterAnalysisNode node in _characterNodes)
             AccumulateOneCharacter(node.Stats, node.EngagementFlags, node.CategoryFlags);
-            node = node.Prev;
-        }
     }
 
     // FUN_0041b3c0 - gates on in-combat (bit 1), then space vs ground branch.
@@ -595,19 +662,4 @@ public class GalaxyAnalysisScorer
         }
     }
 
-    // ================================================================
-    // LIST TRAVERSAL
-    // FUN_005f35d0_get_last_node_in_list: walks next pointers from
-    // sentinel head to find the tail node. Caller then walks Prev
-    // pointers back to head.
-    // ================================================================
-    private static T GetTailNode<T>(T sentinelHead)
-        where T : class
-    {
-        // The original walks sentinelHead.next, then follows .next
-        // until null, returning the last non-null node.
-        // Actual linked-list infrastructure not modeled here;
-        // this is a placeholder for the list traversal entry point.
-        return sentinelHead;
-    }
 }

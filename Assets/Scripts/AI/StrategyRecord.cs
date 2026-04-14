@@ -196,6 +196,141 @@ public abstract class AIWorkItem
 }
 
 /// <summary>
+/// TypeCode 0x200 work item produced by Type 1 (LocalShortageGeneratorType1Record).
+/// Represents a fleet shortage issue for a specific system: the AI needs to send
+/// units (regiments, capital ships, or starfighters) to cover the shortage there.
+///
+/// In the original binary this is the result of FUN_004db1e0 / FUN_004dab90:
+/// a package of unit reference nodes pointing to available fleet assets.
+/// RouteWorkItemToManager dispatches this to the fleet movement / mission system.
+/// </summary>
+public class FleetShortageWorkItem : AIWorkItem
+{
+    public override int TypeCode => 0x200;
+
+    /// <summary>The system that has a fleet/troop shortage.</summary>
+    public PlanetSystem TargetSystem { get; }
+
+    /// <summary>Faction side (0=Empire, 1=Alliance) that owns the shortage.</summary>
+    public int Side { get; }
+
+    public FleetShortageWorkItem(PlanetSystem target, int side)
+    {
+        TargetSystem = target;
+        Side = side;
+    }
+
+    public override bool Dispatch(out AIDispatchResult result)
+    {
+        result = new AIDispatchResult();
+        return true; // route to manager for fleet assignment
+    }
+}
+
+/// <summary>
+/// Work item produced by MissionAssignmentEntry.Dispatch() (vtable[11] in original).
+/// TypeCode 0x201 = AssembleFinalWorkItem (FUN_004bc810).
+/// TypeCode 0x240 = ProcessTerminalWorkItem (FUN_0047a7b0).
+/// TypeCode 0x250 = ProcessReturnWorkItemPhase (FUN_0047a6a0).
+/// Carries the mission entity reference and workspace for RouteWorkItemToManager.
+/// </summary>
+public class MissionExecutionWorkItem : AIWorkItem
+{
+    // TypeCode 0x201 for standard mission dispatch; other codes for specific paths.
+    public override int TypeCode => 0x201;
+
+    /// <summary>Entity reference for the mission assignment (+0x18 from MissionAssignmentEntry).</summary>
+    public int EntityRef { get; }
+
+    /// <summary>Workspace reference for mission creation.</summary>
+    public AIWorkspace Workspace { get; }
+
+    public MissionExecutionWorkItem(int entityRef, AIWorkspace workspace)
+    {
+        EntityRef = entityRef;
+        Workspace = workspace;
+    }
+
+    public override bool Dispatch(out AIDispatchResult result)
+    {
+        result = new AIDispatchResult();
+        return true; // route to manager for mission creation
+    }
+}
+
+/// <summary>
+/// Work item produced by ProductionTrackingEntry.Dispatch() (vtable+0x14 in original).
+/// Carries the manufacturing request: which unit to build, at which planet, for which faction.
+/// RouteWorkItemToManager dispatches this to ManufacturingSystem.Enqueue().
+/// TypeCode 0x201 matches the original production work item type.
+/// </summary>
+public class ProductionWorkItem : AIWorkItem
+{
+    public override int TypeCode => 0x201;
+
+    /// <summary>Planet where production should be queued.</summary>
+    public Planet TargetPlanet { get; }
+
+    /// <summary>Unit template to manufacture.</summary>
+    public IManufacturable Unit { get; }
+
+    /// <summary>Destination planet for the completed unit.</summary>
+    public Planet Destination { get; }
+
+    public ProductionWorkItem(Planet planet, IManufacturable unit, Planet destination)
+    {
+        TargetPlanet = planet;
+        Unit = unit;
+        Destination = destination;
+    }
+
+    public override bool Dispatch(out AIDispatchResult result)
+    {
+        result = new AIDispatchResult();
+        return true; // route to manager for manufacturing
+    }
+}
+
+/// <summary>
+/// TypeCode 0x210/0x214 work item produced by Type 1 agent shortage methods.
+/// 0x214 = CreateAgentShortageItem (FUN_004dbd60): agent assignment request.
+/// 0x210 = FinalizeAgentShortageItem (FUN_004dbea0): agent finalization with count.
+/// In the original, these carry agent entity references and target system data.
+/// RouteWorkItemToManager dispatches to the mission/character assignment system.
+/// </summary>
+// TypeCode 0x211 = entity transfer follow-up (FUN_004cd800 for Type 10 PhaseB).
+// Uses same class as AgentShortageWorkItem — TypeCode stored dynamically.
+
+public class AgentShortageWorkItem : AIWorkItem
+{
+    private readonly int _typeCode;
+    public override int TypeCode => _typeCode;
+
+    /// <summary>Target system for the shortage.</summary>
+    public PlanetSystem TargetSystem { get; }
+
+    /// <summary>Number of agents requested for the assignment.</summary>
+    public int AgentCount { get; }
+
+    /// <summary>Faction side (0=Empire, 1=Alliance).</summary>
+    public int Side { get; }
+
+    public AgentShortageWorkItem(int typeCode, PlanetSystem target, int agentCount, int side)
+    {
+        _typeCode = typeCode;
+        TargetSystem = target;
+        AgentCount = agentCount;
+        Side = side;
+    }
+
+    public override bool Dispatch(out AIDispatchResult result)
+    {
+        result = new AIDispatchResult();
+        return true; // route to manager for agent assignment
+    }
+}
+
+/// <summary>
 /// Result record populated during dispatch. Corresponds to astruct_608 (local_result)
 /// in the mission-cycle batch loop. Initialized by FUN_0051f750 before each dispatch call.
 /// </summary>

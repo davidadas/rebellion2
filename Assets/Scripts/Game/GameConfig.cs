@@ -37,6 +37,9 @@ public class GameConfig
         /// <summary>Ticks between AI decision cycles.</summary>
         public int TickInterval { get; set; }
 
+        /// <summary>Capital ship name pools used by the AI naming system (Type 14 strategy record).</summary>
+        public ShipNamingConfig ShipNaming { get; set; } = new ShipNamingConfig();
+
         /// <summary>Mission dispatch probability tables.</summary>
         public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
 
@@ -67,6 +70,43 @@ public class GameConfig
     /// Controls KDY/LNR facility contribution scaling and strike target evaluation.
     /// Source: GNPRTB params 1537, and strike evaluation constants from disassembly.
     /// </summary>
+    /// <summary>
+    /// Per-faction name pools for the capital ship naming system (Type 14 strategy record).
+    ///
+    /// Each pool is an ordered array of names. The AI naming record tracks a cursor into each
+    /// pool and selects the next unused name. The cursor is NOT reset between batches — names
+    /// are consumed sequentially across the whole game.
+    ///
+    /// Resource-ID ranges from the original binary (for reference):
+    ///   Empire  pool 1: 0x5100..0x5126 (39 entries, "Hydra"-class)
+    ///   Empire  pool 2: 0x5160..0x5181 (34 entries, "Master"-class)
+    ///   Empire  pool 3: 0x51c0..0x51df (32 entries, "Judicator"-class)
+    ///   Alliance pool 1: 0x5200..0x5213 (20 entries, "Swift"-class)
+    ///   Alliance pool 2: 0x5260..0x5282 (35 entries, "Deliverance"-class)
+    ///   Alliance pool 3: 0x52c0..0x52cf (16 entries, "Liberty"-class)
+    /// </summary>
+    [PersistableObject]
+    public class ShipNamingConfig
+    {
+        /// <summary>Empire pool 1 names (Hydra-class). 39 entries in the original.</summary>
+        public string[] EmpirePool1 { get; set; } = Array.Empty<string>();
+
+        /// <summary>Empire pool 2 names (Master-class). 34 entries in the original.</summary>
+        public string[] EmpirePool2 { get; set; } = Array.Empty<string>();
+
+        /// <summary>Empire pool 3 names (Judicator-class). 32 entries in the original.</summary>
+        public string[] EmpirePool3 { get; set; } = Array.Empty<string>();
+
+        /// <summary>Alliance pool 1 names (Swift-class). 20 entries in the original.</summary>
+        public string[] AlliancePool1 { get; set; } = Array.Empty<string>();
+
+        /// <summary>Alliance pool 2 names (Deliverance-class). 35 entries in the original.</summary>
+        public string[] AlliancePool2 { get; set; } = Array.Empty<string>();
+
+        /// <summary>Alliance pool 3 names (Liberty-class). 16 entries in the original.</summary>
+        public string[] AlliancePool3 { get; set; } = Array.Empty<string>();
+    }
+
     [PersistableObject]
     public class CapitalShipProductionConfig
     {
