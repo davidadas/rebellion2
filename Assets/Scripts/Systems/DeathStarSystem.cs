@@ -23,6 +23,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes Death Star mechanics for the current tick.
         /// </summary>
+        /// <returns>Any Death Star results generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             // TODO: Implement Death Star logic

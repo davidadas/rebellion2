@@ -70,6 +70,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the research order of the referenced manufacturable.
         /// </summary>
+        /// <returns>Research unlock order index from the referenced manufacturable.</returns>
         public int GetResearchOrder()
         {
             return Manufacturable.GetResearchOrder();
@@ -78,6 +79,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the research difficulty of the referenced manufacturable.
         /// </summary>
+        /// <returns>Research capacity cost from the referenced manufacturable.</returns>
         public int GetResearchDifficulty()
         {
             return Manufacturable.GetResearchDifficulty();

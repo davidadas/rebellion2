@@ -12,7 +12,6 @@ namespace Rebellion.Systems
     public class VictorySystem
     {
         private readonly GameRoot _game;
-        private const int MIN_VICTORY_TICK = 200;
 
         /// <summary>
         /// Creates a new VictoryManager.
@@ -26,12 +25,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Checks victory conditions for the current tick and returns any triggered results.
         /// </summary>
+        /// <returns>Any victory results triggered this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            // Grace period: don't check victory until the game has had time to develop
-            if (_game.CurrentTick < MIN_VICTORY_TICK)
-                return new List<GameResult>();
-
             foreach (Faction faction in _game.Factions)
             {
                 VictoryResult outcome = CheckHQCapture(faction);
@@ -52,6 +48,8 @@ namespace Rebellion.Systems
         /// HQ capture = planet ownership changed to enemy faction.
         /// For Conquest mode, also requires all main characters to be captured.
         /// </summary>
+        /// <param name="defender">The faction to check for HQ capture.</param>
+        /// <returns>A victory result if the HQ was captured, or null.</returns>
         private VictoryResult CheckHQCapture(Faction defender)
         {
             // Get the defender's HQ planet via Faction.HQInstanceID
@@ -102,6 +100,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Checks if all main characters (IsMain == true) of a faction are captured.
         /// </summary>
+        /// <param name="faction">The faction whose main characters to check.</param>
+        /// <returns>True if all main characters are captured or none exist.</returns>
         private bool CheckAllMainCharactersCaptured(Faction faction)
         {
             List<Officer> mainCharacters = _game

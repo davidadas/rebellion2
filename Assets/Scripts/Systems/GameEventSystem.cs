@@ -11,37 +11,30 @@ namespace Rebellion.Systems
     public class GameEventSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
 
-        public GameEventSystem(GameRoot game)
+        /// <summary>
+        /// Creates a new GameEventSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for stochastic event actions.</param>
+        public GameEventSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
-        }
-
-        private List<GameResult> ProcessEvent(GameEvent gameEvent, IRandomNumberProvider provider)
-        {
-            if (!gameEvent.AreConditionsMet(_game))
-                return new List<GameResult>();
-
-            GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
-            List<GameResult> results = gameEvent.Execute(_game, provider);
-            _game.AddCompletedEvent(gameEvent);
-            return results;
+            _provider = provider;
         }
 
         /// <summary>
         /// Processes all eligible events and returns the aggregate results.
         /// </summary>
-        public List<GameResult> ProcessEvents(
-            List<GameEvent> gameEvents,
-            IRandomNumberProvider provider
-        )
+        public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
         {
             List<GameResult> allResults = new List<GameResult>();
             List<GameEvent> eventsToRemove = new List<GameEvent>();
 
             foreach (GameEvent gameEvent in gameEvents)
             {
-                allResults.AddRange(ProcessEvent(gameEvent, provider));
+                allResults.AddRange(ProcessEvent(gameEvent));
 
                 if (!gameEvent.IsRepeatable)
                     eventsToRemove.Add(gameEvent);
@@ -51,6 +44,20 @@ namespace Rebellion.Systems
                 _game.RemoveEvent(eventToRemove);
 
             return allResults;
+        }
+
+        /// <summary>
+        /// Executes a single game event if its conditions are met.
+        /// </summary>
+        private List<GameResult> ProcessEvent(GameEvent gameEvent)
+        {
+            if (!gameEvent.AreConditionsMet(_game))
+                return new List<GameResult>();
+
+            GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
+            List<GameResult> results = gameEvent.Execute(_game, _provider);
+            _game.AddCompletedEvent(gameEvent);
+            return results;
         }
     }
 }

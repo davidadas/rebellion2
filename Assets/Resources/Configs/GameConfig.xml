@@ -603,8 +603,8 @@
     <DiceRange>10</DiceRange>
     <!-- Addend to each dice roll (so rolls become 1-9 with default values) -->
     <DiceAddend>1</DiceAddend>
-    <!-- UPRIS1 table: maps combined uprising score to result -->
-    <Upris1Table>
+    <!-- Maps uprising score to a property damage consequence code -->
+    <PrimaryConsequenceTable>
       <Entry>
         <Key>1</Key>
         <Value>0</Value>
@@ -617,9 +617,9 @@
         <Key>10</Key>
         <Value>2</Value>
       </Entry>
-    </Upris1Table>
-    <!-- UPRIS2 table: maps combined uprising score to severity -->
-    <Upris2Table>
+    </PrimaryConsequenceTable>
+    <!-- Maps uprising score to a personnel consequence code -->
+    <SecondaryConsequenceTable>
       <Entry>
         <Key>1</Key>
         <Value>0</Value>
@@ -636,7 +636,7 @@
         <Key>12</Key>
         <Value>5</Value>
       </Entry>
-    </Upris2Table>
+    </SecondaryConsequenceTable>
     <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
     <!-- Negative = support erodes while uprising is active (GENERAL_PARAM_7697 = -1) -->
     <ControllerSupportShift>-1</ControllerSupportShift>
@@ -662,16 +662,20 @@
     <FighterPenalty>5</FighterPenalty>
     <!-- Penalty per (adjusted) hostile troop -->
     <TroopPenalty>2</TroopPenalty>
+    <!-- Popular support threshold above which a neutral planet transfers to the faction -->
+    <OwnershipTransferThreshold>60</OwnershipTransferThreshold>
     <!-- Support shift when blockading fleet matches popular support side -->
     <BlockadeMatchShift>1</BlockadeMatchShift>
     <!-- Support shift when blockading fleet opposes popular support side -->
     <BlockadeOpposeShift>-1</BlockadeOpposeShift>
   </SupportShift>
+  <!-- Blockade System Configuration -->
+  <Blockade>
+    <!-- Percent chance each regiment is destroyed when evacuating through a blockade -->
+    <EvacuationLossPercent>25</EvacuationLossPercent>
+  </Blockade>
   <!-- Victory System Configuration -->
-  <Victory>
-    <!-- Minimum tick before victory conditions can trigger (default: 200) -->
-    <MinVictoryTick>200</MinVictoryTick>
-  </Victory>
+  <Victory></Victory>
 
   <!-- Jedi / Force System Configuration -->
   <Jedi>

@@ -13,13 +13,9 @@ namespace Rebellion.Tests.Systems
     {
         // Builds a game with one planet, one officer parented to the planet (not the mission),
         // and optionally assigns the planet to the faction so GetNearestFriendlyPlanetTo returns it.
-        private (
-            GameRoot game,
-            Planet planet,
-            Officer officer,
-            MovementSystem movement,
-            OwnershipSystem ownership
-        ) BuildScene(bool factionOwnsPlanet)
+        private (GameRoot game, Planet planet, Officer officer, MovementSystem movement) BuildScene(
+            bool factionOwnsPlanet
+        )
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -55,12 +51,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(officer, planet);
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            return (game, planet, officer, movement, ownership);
+            return (game, planet, officer, movement);
         }
 
         // Creates a mission with the officer in MainParticipants (but officer stays parented to
@@ -113,12 +104,7 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
@@ -129,7 +115,7 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = null;
             Assert.DoesNotThrow(
-                () => results = missionSystem.UpdateMission(mission, new StubRNG()),
+                () => results = missionSystem.UpdateMission(mission),
                 "Should not throw when faction owns no planets"
             );
 
@@ -144,25 +130,21 @@ namespace Rebellion.Tests.Systems
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
             // there) caused IsMovable() to return false and RequestMove to throw on teardown.
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             StubMission mission = CreateMission(game, planet, officer);
 
             // Simulate the officer having arrived at the mission mid-execution.
             game.DetachNode(officer);
             officer.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => system.UpdateMission(mission, new StubRNG()));
+            Assert.DoesNotThrow(() => system.UpdateMission(mission));
         }
 
         [Test]
@@ -194,42 +176,33 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(officer);
             officer.SetParent(mission);
 
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission, new StubRNG()));
+            Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
         }
 
         [Test]
         public void UpdateMission_OnCompletion_DetachesMission()
         {
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission, new StubRNG());
+            system.UpdateMission(mission);
 
             Assert.IsNull(
                 mission.GetParent(),
@@ -332,12 +305,7 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             return (game, diplomacyMission, inciteMission, missionSystem);
         }
@@ -356,13 +324,12 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
-            StubRNG rng = new StubRNG();
-            missionSystem.UpdateMission(diplomacyMission, rng); // diplo completes, re-initiates
-            missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
+            missionSystem.UpdateMission(diplomacyMission); // diplo completes, re-initiates
+            missionSystem.UpdateMission(inciteMission); // incite completes, uprising starts
 
             // Diplo survived this turn (uprising fired after it ran), but is now re-initiated.
             // The next UpdateMission triggers the ShouldAbort pre-tick guard.
-            missionSystem.UpdateMission(diplomacyMission, rng);
+            missionSystem.UpdateMission(diplomacyMission);
 
             Assert.AreEqual(
                 0,
@@ -384,9 +351,8 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
-            StubRNG rng = new StubRNG();
-            missionSystem.UpdateMission(inciteMission, rng); // incite completes, uprising starts
-            missionSystem.UpdateMission(diplomacyMission, rng); // pre-tick guard fires, diplo canceled
+            missionSystem.UpdateMission(inciteMission); // incite completes, uprising starts
+            missionSystem.UpdateMission(diplomacyMission); // pre-tick guard fires, diplo canceled
 
             Assert.AreEqual(
                 0,
@@ -401,25 +367,21 @@ namespace Rebellion.Tests.Systems
             // Regression: when BeginMission reparents an officer to the mission via
             // game.AttachNode, TearDownMission previously threw "cannot attach node because
             // it already has a parent" because it called AttachNode without DetachNode first.
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             StubMission mission = CreateMission(game, planet, officer);
 
             // Simulate BeginMission: move officer to mission via scene graph (not SetParent).
             game.DetachNode(officer);
             game.AttachNode(officer, mission);
 
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => system.UpdateMission(mission, new StubRNG()));
+            Assert.DoesNotThrow(() => system.UpdateMission(mission));
             Assert.AreEqual(
                 planet,
                 officer.GetParent(),
@@ -432,13 +394,9 @@ namespace Rebellion.Tests.Systems
         {
             // When the officer's recorded origin is a capital ship (i.e. they boarded from a fleet),
             // teardown should return them to that ship, not to the planet directly.
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
 
             Fleet fleet = new Fleet { InstanceID = "fleet1", OwnerInstanceID = "empire" };
             CapitalShip ship = new CapitalShip
@@ -461,12 +419,12 @@ namespace Rebellion.Tests.Systems
             game.DetachNode(officer);
             game.AttachNode(officer, mission);
 
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission, new StubRNG());
+            system.UpdateMission(mission);
 
             Assert.AreEqual(
                 ship,
@@ -479,13 +437,9 @@ namespace Rebellion.Tests.Systems
         public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToNearestFriendlyPlanet()
         {
             // Fleet moved away mid-mission — officer falls back to nearest friendly planet.
-            (
-                GameRoot game,
-                Planet planetA,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
 
             PlanetSystem systemB = new PlanetSystem
             {
@@ -529,12 +483,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, planetB);
             game.AttachNode(ship, fleet);
 
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission, new StubRNG());
+            system.UpdateMission(mission);
 
             Assert.AreEqual(
                 planetA,
@@ -584,19 +538,9 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement, fog);
 
-            missionSystem.InitiateMission(
-                MissionType.Sabotage,
-                officer,
-                targetPlanet,
-                new StubRNG()
-            );
+            missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
 
             Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
             Assert.IsNotNull(mission, "Mission should be created");
@@ -648,19 +592,9 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement, fog);
 
-            missionSystem.InitiateMission(
-                MissionType.Sabotage,
-                officer,
-                targetPlanet,
-                new StubRNG()
-            );
+            missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
 
             Assert.IsTrue(
                 officer.IsOnMission(),
@@ -671,20 +605,16 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_WithCompletedMission_ReturnsMissionCompletedResult()
         {
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
             StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, movement, ownership);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = system.ProcessTick(game, new StubRNG());
+            List<GameResult> results = system.ProcessTick();
 
             Assert.IsTrue(
                 results.Any(r => r is MissionCompletedResult),
@@ -695,13 +625,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
         {
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
 
             SpecialForces sf = new SpecialForces
             {
@@ -732,13 +658,9 @@ namespace Rebellion.Tests.Systems
         public void Execute_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
             // Both main and decoy participants should appear in MissionCompletedResult.Participants.
-            (
-                GameRoot game,
-                Planet planet,
-                Officer officer,
-                MovementSystem movement,
-                OwnershipSystem ownership
-            ) = BuildScene(factionOwnsPlanet: true);
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
 
             Officer decoy = new Officer
             {

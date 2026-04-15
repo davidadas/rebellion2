@@ -115,8 +115,8 @@ jobs:
           python3 - <<'EOF'
           import xml.etree.ElementTree as ET, glob, sys
 
-          LINE_THRESHOLD   = 56.0
-          METHOD_THRESHOLD = 65.0
+          LINE_THRESHOLD   = 62.8
+          METHOD_THRESHOLD = 67.4
 
           files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
           if not files:

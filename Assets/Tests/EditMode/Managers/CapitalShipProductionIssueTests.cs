@@ -642,8 +642,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(testGame);
             MovementSystem movement = new MovementSystem(testGame, fog);
             ManufacturingSystem mfg = new ManufacturingSystem(testGame);
-            OwnershipSystem ownership = new OwnershipSystem(testGame, movement, mfg);
-            MissionSystem missionSystem = new MissionSystem(testGame, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(testGame, new CyclingRNG(), movement);
             AISystem ai = new AISystem(testGame, missionSystem, movement, mfg, new CyclingRNG());
 
             ai.ProcessTick();

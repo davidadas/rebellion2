@@ -23,6 +23,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes betrayal checks for the current tick.
         /// </summary>
+        /// <returns>Any betrayal results generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             // TODO: Implement betrayal logic

@@ -51,6 +51,8 @@ public class ResearchMission : Mission
     /// <summary>
     /// Returns the display name for a research mission based on the manufacturing type.
     /// </summary>
+    /// <param name="type">The manufacturing type to look up.</param>
+    /// <returns>The human-readable mission name.</returns>
     private static string GetMissionName(ManufacturingType type)
     {
         return type switch

@@ -12,10 +12,38 @@ namespace Rebellion.Systems
     public class JediSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
 
-        public JediSystem(GameRoot game)
+        /// <summary>
+        /// Creates a new JediSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for scan rolls.</param>
+        public JediSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
+            _provider = provider;
+        }
+
+        /// <summary>
+        /// Processes Force tier advancement and detection for all officers each tick.
+        /// </summary>
+        /// <returns>Any force discovery or experience results generated.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+
+            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
+            {
+                if (!officer.IsJedi || !officer.IsForceEligible)
+                    continue;
+
+                UpdateForceDiscoveryState(officer, results);
+            }
+
+            ScanForForceUsers(results);
+
+            return results;
         }
 
         /// <summary>
@@ -56,29 +84,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Processes Force tier advancement and detection for all officers each tick.
-        /// </summary>
-        public List<GameResult> ProcessTick(IRandomNumberProvider rng)
-        {
-            List<GameResult> results = new List<GameResult>();
-
-            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
-            {
-                if (!officer.IsJedi || !officer.IsForceEligible)
-                    continue;
-
-                UpdateForceDiscoveryState(officer, results);
-            }
-
-            ScanForForceUsers(rng, results);
-
-            return results;
-        }
-
-        /// <summary>
         /// Sets or clears IsDiscoveringForceUser based on whether the officer meets the
         /// ForceRank threshold and is available to scan.
         /// </summary>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="results">Collection to append any discovery state change results to.</param>
         private void UpdateForceDiscoveryState(Officer officer, List<GameResult> results)
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
@@ -115,7 +125,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Scans for hidden force users each tick at the scanner's location.
         /// </summary>
-        private void ScanForForceUsers(IRandomNumberProvider rng, List<GameResult> results)
+        /// <param name="results">Collection to append any discovered force user results to.</param>
+        private void ScanForForceUsers(List<GameResult> results)
         {
             List<Officer> scanners = _game
                 .GetSceneNodesByType<Officer>()
@@ -135,7 +146,7 @@ namespace Rebellion.Systems
 
                 foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
                 {
-                    if (!IsUndiscoveredForceUser(candidate))
+                    if (!candidate.IsUndiscoveredForceUser())
                         continue;
 
                     int probability = scanner.ForceRank + candidate.ForceRank + probabilityOffset;
@@ -143,13 +154,13 @@ namespace Rebellion.Systems
                     if (probability <= 0)
                         continue;
 
-                    double roll = rng.NextDouble() * 100.0;
+                    double roll = _provider.NextDouble() * 100.0;
                     if (roll >= probability)
                         continue;
 
                     candidate.IsForceEligible = true;
                     candidate.ForceValue =
-                        candidate.JediLevel + rng.NextInt(0, candidate.JediLevelVariance + 1);
+                        candidate.JediLevel + _provider.NextInt(0, candidate.JediLevelVariance + 1);
 
                     results.Add(
                         new ForceExperienceResult
@@ -175,18 +186,6 @@ namespace Rebellion.Systems
                     );
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns true if the officer is a Jedi whose Force potential has not yet been revealed.
-        /// </summary>
-        private static bool IsUndiscoveredForceUser(Officer officer)
-        {
-            return officer.IsJedi
-                && !officer.IsForceEligible
-                && !officer.IsCaptured
-                && !officer.IsKilled
-                && !officer.IsOnMission();
         }
     }
 }

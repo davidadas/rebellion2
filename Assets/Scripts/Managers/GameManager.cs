@@ -28,7 +28,7 @@ public class GameManager
     private ResearchSystem _researchManager;
     private JediSystem _jediSystem;
     private BetrayalSystem _betrayalManager;
-    private SupportShiftSystem _supportShiftManager;
+    private PlanetaryControlSystem _planetaryControlSystem;
     private UprisingSystem _uprisingManager;
     private VictorySystem _victoryManager;
     private IRandomNumberProvider _randomProvider;
@@ -40,6 +40,7 @@ public class GameManager
     /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
+    /// <param name="game">The game instance to manage.</param>
     public GameManager(GameRoot game)
     {
         _game = game;
@@ -60,6 +61,7 @@ public class GameManager
     /// <summary>
     /// Replaces the current game instance (used for hot reload) and reinitializes all systems.
     /// </summary>
+    /// <param name="newGame">The replacement game instance.</param>
     public void ReplaceGame(GameRoot newGame)
     {
         if (newGame == null)
@@ -81,11 +83,13 @@ public class GameManager
     /// <summary>
     /// Returns the current game instance.
     /// </summary>
+    /// <returns>The active GameRoot.</returns>
     public GameRoot GetGame() => _game;
 
     /// <summary>
     /// Returns the current tick count.
     /// </summary>
+    /// <returns>The current tick number.</returns>
     public int GetCurrentTick() => _game.CurrentTick;
 
     /// <summary>
@@ -97,11 +101,13 @@ public class GameManager
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
+    /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
     /// </summary>
+    /// <param name="speed">The desired tick speed.</param>
     public void SetGameSpeed(TickSpeed speed)
     {
         _game.SetGameSpeed(speed);
@@ -151,16 +157,15 @@ public class GameManager
     /// Resolves the pending combat encounter and resumes ticking.
     /// Must be called by the UI after presenting the combat decision to the player.
     /// </summary>
+    /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
     public void ResolveCombat(bool autoResolve)
     {
         if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
         SpaceCombatResult combatResult = _combatManager.Resolve(
-            _game,
             _pendingCombatDecision,
-            autoResolve,
-            _randomProvider
+            autoResolve
         );
         if (combatResult != null)
             ProcessResults(combatResult.Events);
@@ -177,27 +182,27 @@ public class GameManager
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
         // 0. Resource rebalance: timer-based decay, facility suspension, resource walk
-        _resourceRebalanceManager.ProcessTick(_randomProvider);
+        _resourceRebalanceManager.ProcessTick();
 
         // 1. Manufacturing: produces units before movement consumes capacity
-        ProcessResults(_manufacturingManager.ProcessTick(_movementManager, _randomProvider));
+        ProcessResults(_manufacturingManager.ProcessTick());
 
         // 1b. Maintenance: scrap units if maintenance cost exceeds capacity
-        ProcessResults(_maintenanceManager.ProcessTick(_randomProvider));
+        ProcessResults(_maintenanceManager.ProcessTick());
 
         // 2. Movement: updates positions before combat needs them
         ProcessResults(_movementManager.ProcessTick());
 
         // 3. Combat: auto-resolves AI encounters; freezes tick if player is involved
-        ProcessResults(_combatManager.ProcessTick(_game, _randomProvider));
+        ProcessResults(_combatManager.ProcessTick());
         if (_pendingCombatDecision != null)
             return;
 
         // 4. Missions: executes with current fog state
-        ProcessResults(_missionManager.ProcessTick(_game, _randomProvider));
+        ProcessResults(_missionManager.ProcessTick());
 
         // 5. Events: triggers based on current world state
-        _eventManager.ProcessEvents(_game.GetEventPool(), _randomProvider);
+        _eventManager.ProcessEvents(_game.GetEventPool());
 
         // 6. AI: observes fog/combat/events, directly mutates manager states
         ProcessResults(_aiSystem.ProcessTick());
@@ -205,11 +210,11 @@ public class GameManager
         // 7. Blockade: checks fleet presence after AI decisions
         ProcessResults(_blockadeManager.ProcessTick());
 
-        // 8. Support shift: adjusts popular support based on hostile forces
-        ProcessResults(_supportShiftManager.ProcessTick());
+        // 8. Planetary control: adjusts popular support and transfers ownership on threshold
+        ProcessResults(_planetaryControlSystem.ProcessTick());
 
         // 9. Uprising: checks garrison vs. support, rolls dice for uprising
-        ProcessResults(_uprisingManager.ProcessTick(_randomProvider));
+        ProcessResults(_uprisingManager.ProcessTick());
 
         // 10. Betrayal: loyalty checks after uprising
         ProcessResults(_betrayalManager.ProcessTick());
@@ -218,10 +223,10 @@ public class GameManager
         ProcessResults(_deathStarManager.ProcessTick());
 
         // 12. Research: applies tech upgrades
-        ProcessResults(_researchManager.ProcessTick(_game));
+        ProcessResults(_researchManager.ProcessTick());
 
         // 13. Jedi: refreshes force discovery state
-        ProcessResults(_jediSystem.ProcessTick(_randomProvider));
+        ProcessResults(_jediSystem.ProcessTick());
 
         // 14. Victory: terminal check last
         ProcessResults(_victoryManager.ProcessTick());
@@ -232,31 +237,35 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        _eventManager = new GameEventSystem(_game);
+        _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
-        _movementManager = new MovementSystem(_game, _fogOfWarManager);
-        _manufacturingManager = new ManufacturingSystem(_game);
-        _maintenanceManager = new MaintenanceSystem(_game);
+        _blockadeManager = new BlockadeSystem(_game, _randomProvider);
+        _movementManager = new MovementSystem(_game, _fogOfWarManager, _blockadeManager);
+        _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
+        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
         _resourceRebalanceManager = new ResourceRebalanceSystem(_game, _randomProvider);
-        OwnershipSystem ownershipSystem = new OwnershipSystem(
+        _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
             _movementManager,
             _manufacturingManager
         );
-        _jediSystem = new JediSystem(_game);
+        _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(
             _game,
+            _randomProvider,
             _movementManager,
-            ownershipSystem,
             _fogOfWarManager
         );
-        _combatManager = new CombatSystem(_game, _randomProvider, _movementManager);
-        _blockadeManager = new BlockadeSystem(_game);
+        _combatManager = new CombatSystem(
+            _game,
+            _randomProvider,
+            _movementManager,
+            _planetaryControlSystem
+        );
         _deathStarManager = new DeathStarSystem(_game);
-        _researchManager = new ResearchSystem();
+        _researchManager = new ResearchSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
-        _supportShiftManager = new SupportShiftSystem(_game);
-        _uprisingManager = new UprisingSystem(_game);
+        _uprisingManager = new UprisingSystem(_game, _randomProvider);
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -308,6 +317,7 @@ public class GameManager
     /// Handles cross-cutting side effects for a batch of game results.
     /// Per-result logging is the responsibility of the system that produced the result.
     /// </summary>
+    /// <param name="results">Batch of results from a system tick.</param>
     private void ProcessResults(List<GameResult> results)
     {
         foreach (VictoryResult result in results.OfType<VictoryResult>())

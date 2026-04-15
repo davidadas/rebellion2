@@ -59,6 +59,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a single music track from a Resources path.
     /// </summary>
+    /// <param name="resourcePath">Resources path to the audio file.</param>
+    /// <param name="loop">Whether to loop the track.</param>
     public void PlayTrack(string resourcePath, bool loop = false)
     {
         AudioClip clip = ResourceManager.GetAudio(resourcePath);
@@ -68,6 +70,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a single music clip.
     /// </summary>
+    /// <param name="clip">The AudioClip to play.</param>
+    /// <param name="loop">Whether to loop the clip.</param>
     public void PlayTrack(AudioClip clip, bool loop)
     {
         if (clip == null)
@@ -86,6 +90,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a playlist of preloaded AudioClips.
     /// </summary>
+    /// <param name="tracks">Array of AudioClips to play in sequence.</param>
+    /// <param name="shuffle">Whether to shuffle the playlist order.</param>
     public void PlayPlaylist(AudioClip[] tracks, bool shuffle = false)
     {
         if (tracks == null || tracks.Length == 0)
@@ -115,6 +121,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a playlist using resource paths (loaded just-in-time).
     /// </summary>
+    /// <param name="paths">Array of Resources paths to load and play.</param>
+    /// <param name="shuffle">Whether to shuffle the playlist order.</param>
     public void PlayPlaylistPaths(string[] paths, bool shuffle = false)
     {
         if (paths == null || paths.Length == 0)
@@ -165,6 +173,7 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Fades out music over a duration.
     /// </summary>
+    /// <param name="duration">Fade time in seconds.</param>
     public void FadeOutMusic(float duration)
     {
         StartCoroutine(FadeOut(musicSource, duration));
@@ -173,6 +182,9 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Coroutine to fade out an AudioSource.
     /// </summary>
+    /// <param name="source">The AudioSource to fade.</param>
+    /// <param name="duration">Fade time in seconds.</param>
+    /// <returns>Coroutine enumerator.</returns>
     private IEnumerator FadeOut(AudioSource source, float duration)
     {
         float startVolume = source.volume;
@@ -197,6 +209,7 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a sound effect from a Resources path.
     /// </summary>
+    /// <param name="resourcePath">Resources path to the SFX audio file.</param>
     public void PlaySFX(string resourcePath)
     {
         AudioClip clip = ResourceManager.GetAudio(resourcePath);
@@ -207,6 +220,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays a sound effect clip.
     /// </summary>
+    /// <param name="clip">The AudioClip to play.</param>
+    /// <param name="volumeScale">Volume multiplier for this effect.</param>
     public void PlaySFX(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null)
@@ -221,6 +236,8 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Plays looping ambience.
     /// </summary>
+    /// <param name="clip">The ambience AudioClip to play.</param>
+    /// <param name="loop">Whether to loop the ambience.</param>
     public void PlayAmbience(AudioClip clip, bool loop)
     {
         if (clip == null)
@@ -288,6 +305,7 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Waits for clip playlist track to finish.
     /// </summary>
+    /// <returns>Coroutine enumerator.</returns>
     private IEnumerator WaitForTrackEndClip()
     {
         while (musicSource.isPlaying)
@@ -308,6 +326,7 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Waits for path playlist track to finish.
     /// </summary>
+    /// <returns>Coroutine enumerator.</returns>
     private IEnumerator WaitForTrackEndPath()
     {
         while (musicSource.isPlaying)

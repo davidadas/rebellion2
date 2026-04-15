@@ -19,6 +19,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Only creates the root GameObject - normal Awake() handles initialization.
     /// IMPORTANT: Only call this at scene entry points (GameFlowController, etc), not from random systems.
     /// </summary>
+    /// <returns>The existing or newly created AppBootstrap instance.</returns>
     public static AppBootstrap EnsureExists()
     {
         if (Instance != null)

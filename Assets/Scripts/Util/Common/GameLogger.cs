@@ -148,6 +148,8 @@ namespace Rebellion.Util.Common
         /// <summary>
         /// Logs the message to the Unity Console based on the specified log level.
         /// </summary>
+        /// <param name="message">The formatted message to log.</param>
+        /// <param name="level">The severity level for routing to the appropriate Unity log method.</param>
         private static void LogToUnityConsole(string message, LogLevel level)
         {
             switch (level)
@@ -190,6 +192,7 @@ namespace Rebellion.Util.Common
         /// <summary>
         /// Writes a message to the log file.
         /// </summary>
+        /// <param name="message">The message to append to the log file.</param>
         private static void WriteToFile(string message)
         {
             try

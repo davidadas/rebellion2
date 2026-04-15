@@ -8,7 +8,7 @@ using Rebellion.Systems;
 namespace Rebellion.Tests.Systems
 {
     [TestFixture]
-    public class OwnershipSystemTests
+    public class PlanetaryControlSystemTests
     {
         private class UncancelableMission : StubMission
         {
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Systems
         private Planet _targetPlanet;
         private Planet _empirePlanet;
         private MovementSystem _movementSystem;
-        private OwnershipSystem _ownershipSystem;
+        private PlanetaryControlSystem _ownershipSystem;
 
         [SetUp]
         public void SetUp()
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_empirePlanet, system);
 
             _movementSystem = new MovementSystem(_game, new FogOfWarSystem(_game));
-            _ownershipSystem = new OwnershipSystem(
+            _ownershipSystem = new PlanetaryControlSystem(
                 _game,
                 _movementSystem,
                 new ManufacturingSystem(_game)

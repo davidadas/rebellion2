@@ -54,6 +54,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the total starfighter capacity of the fleet.
         /// </summary>
+        /// <returns>Sum of starfighter capacity across all capital ships.</returns>
         public int GetStarfighterCapacity()
         {
             return CapitalShips.Sum(ship => ship.GetStarfighterCapacity());
@@ -62,6 +63,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the total starfighters currently assigned.
         /// </summary>
+        /// <returns>Total starfighter count across all capital ships.</returns>
         public int GetCurrentStarfighterCount()
         {
             return CapitalShips.Sum(ship => ship.GetCurrentStarfighterCount());
@@ -70,6 +72,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns unused starfighter capacity.
         /// </summary>
+        /// <returns>Available starfighter slots remaining.</returns>
         public int GetExcessStarfighterCapacity()
         {
             return GetStarfighterCapacity() - GetCurrentStarfighterCount();
@@ -78,6 +81,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns total regiment capacity.
         /// </summary>
+        /// <returns>Sum of regiment capacity across all capital ships.</returns>
         public int GetRegimentCapacity()
         {
             return CapitalShips.Sum(ship => ship.GetRegimentCapacity());
@@ -86,6 +90,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns current regiment count.
         /// </summary>
+        /// <returns>Total regiment count across all capital ships.</returns>
         public int GetCurrentRegimentCount()
         {
             return CapitalShips.Sum(ship => ship.GetCurrentRegimentCount());
@@ -94,6 +99,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns unused regiment capacity.
         /// </summary>
+        /// <returns>Available regiment slots remaining.</returns>
         public int GetExcessRegimentCapacity()
         {
             return GetRegimentCapacity() - GetCurrentRegimentCount();
@@ -102,6 +108,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns all starfighters across the fleet (both in capital ships and as transport passengers).
         /// </summary>
+        /// <returns>All starfighters in the fleet.</returns>
         public IEnumerable<Starfighter> GetStarfighters()
         {
             return CapitalShips.SelectMany(ship => ship.Starfighters);
@@ -120,6 +127,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns all regiments across the fleet.
         /// </summary>
+        /// <returns>All regiments in the fleet.</returns>
         public IEnumerable<Regiment> GetRegiments()
         {
             return CapitalShips.SelectMany(ship => ship.Regiments);
@@ -128,6 +136,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns all officers across the fleet.
         /// </summary>
+        /// <returns>All officers in the fleet.</returns>
         public IEnumerable<Officer> GetOfficers()
         {
             return CapitalShips.SelectMany(ship => ship.Officers);
@@ -136,6 +145,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Adds a capital ship to the fleet.
         /// </summary>
+        /// <param name="capitalShip">The capital ship to add.</param>
         private void AddCapitalShip(CapitalShip capitalShip)
         {
             if (this.OwnerInstanceID != capitalShip.OwnerInstanceID)
@@ -169,6 +179,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Removes a child node.
         /// </summary>
+        /// <param name="child">The child node to remove.</param>
         public override void RemoveChild(ISceneNode child)
         {
             if (child is CapitalShip capitalShip)
@@ -180,6 +191,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
         /// </summary>
+        /// <returns>Combined attack rating of all completed ships and starfighters.</returns>
         public int GetCombatValue()
         {
             int capitalShipCombat = CapitalShips
@@ -194,6 +206,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Determines if the fleet can move.
         /// </summary>
+        /// <returns>True if the fleet is not currently moving.</returns>
         public bool IsMovable()
         {
             // Movement == null means not moving (can be moved)

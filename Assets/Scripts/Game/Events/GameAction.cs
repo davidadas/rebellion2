@@ -32,6 +32,7 @@ public abstract class GameAction
     /// <summary>
     /// Executes the action, modifying the game state.
     /// </summary>
+    /// <param name="game">The current game state.</param>
     /// <returns>Results describing what changed.</returns>
     public abstract List<GameResult> Execute(GameRoot game);
 }

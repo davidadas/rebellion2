@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             _game = new GameRoot(config);
-            _system = new JediSystem(_game);
+            _system = new JediSystem(_game, new FixedRNG());
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.Factions.Add(_alliance);
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateKnownJedi("LUKE", forceValue: 85);
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateKnownJedi("LUKE", forceValue: 80);
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateKnownJedi("LUKE", forceValue: 79);
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Systems
             luke.IsCaptured = true;
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Systems
             luke.IsDiscoveringForceUser = true;
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Systems
             Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
             luke.IsDiscoveringForceUser = true; // Was set previously
 
-            _system.ProcessTick(new FixedRNG());
+            _system.ProcessTick();
 
             Assert.IsFalse(luke.IsDiscoveringForceUser);
         }
@@ -148,7 +148,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(han, _tatooine);
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Systems
             Officer leia = CreateDormantJedi("LEIA");
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -173,7 +173,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_EmptyGame_NoEvents()
         {
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.Systems
             Officer vader = CreateKnownJedi("VADER", forceValue: 120);
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Systems
             luke.ForceTrainingAdjustment = 15;
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
@@ -222,8 +222,9 @@ namespace Rebellion.Tests.Systems
             Officer leia = CreateDormantJedi("LEIA");
 
             // Probability = 120 + 0 - 100 = 20%. Roll = 0.0 * 100 = 0% < 20%.
+            _system = new JediSystem(_game, new FixedRNG(0.0));
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG(0.0))
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -243,7 +244,7 @@ namespace Rebellion.Tests.Systems
             Officer leia = CreateDormantJedi("LEIA");
 
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -261,8 +262,9 @@ namespace Rebellion.Tests.Systems
 
             Officer leia = CreateDormantJedi("LEIA");
 
+            _system = new JediSystem(_game, new FixedRNG(0.0));
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG(0.0))
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -280,8 +282,9 @@ namespace Rebellion.Tests.Systems
 
             Officer vader = CreateKnownJedi("VADER", forceValue: 100);
 
+            _system = new JediSystem(_game, new FixedRNG(0.0));
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG(0.0))
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -298,8 +301,9 @@ namespace Rebellion.Tests.Systems
             Officer leia = CreateDormantJedi("LEIA");
             leia.IsCaptured = true;
 
+            _system = new JediSystem(_game, new FixedRNG(0.0));
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG(0.0))
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -321,8 +325,9 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(mission, _tatooine);
             _game.MoveNode(leia, mission);
 
+            _system = new JediSystem(_game, new FixedRNG(0.0));
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new FixedRNG(0.0))
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -340,8 +345,9 @@ namespace Rebellion.Tests.Systems
 
             Officer leia = CreateDormantJedi("LEIA");
 
+            _system = new JediSystem(_game, new MaxRNG());
             List<ForceDiscoveryResult> results = _system
-                .ProcessTick(new MaxRNG())
+                .ProcessTick()
                 .OfType<ForceDiscoveryResult>()
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
@@ -361,7 +367,8 @@ namespace Rebellion.Tests.Systems
             leia.JediLevelVariance = 5;
 
             // FixedRNG(0.0): NextDouble()=0.0 for discovery roll, NextInt(0, 6)=0 for ForceValue
-            _system.ProcessTick(new FixedRNG(0.0));
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+            _system.ProcessTick();
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);

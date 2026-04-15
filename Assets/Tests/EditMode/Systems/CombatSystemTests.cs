@@ -11,8 +11,17 @@ namespace Rebellion.Tests.Systems
 {
     public class CombatTestBase
     {
-        protected CombatSystem MakeCombat(GameRoot game, IRandomNumberProvider rng) =>
-            new CombatSystem(game, rng, new MovementSystem(game, null));
+        protected CombatSystem MakeCombat(GameRoot game, IRandomNumberProvider rng)
+        {
+            MovementSystem movement = new MovementSystem(game, null);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game);
+            PlanetaryControlSystem ownership = new PlanetaryControlSystem(
+                game,
+                movement,
+                manufacturing
+            );
+            return new CombatSystem(game, rng, movement, ownership);
+        }
 
         protected GameRoot CreateGame()
         {
@@ -59,11 +68,11 @@ namespace Rebellion.Tests.Systems
         /// Runs a full combat cycle: detect then resolve (auto).
         /// Returns true if combat was detected and resolved.
         /// </summary>
-        private bool RunCombat(CombatSystem manager, GameRoot game, IRandomNumberProvider rng)
+        private bool RunCombat(CombatSystem manager)
         {
-            if (manager.TryStartCombat(game, out CombatDecisionContext decision))
+            if (manager.TryStartCombat(out CombatDecisionContext decision))
             {
-                manager.Resolve(game, decision, autoResolve: true, rng);
+                manager.Resolve(decision, autoResolve: true);
                 return true;
             }
             return false;
@@ -89,7 +98,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             bool combatOccurred =
                 empireFleet.CapitalShips[0].HullStrength < 100
@@ -115,7 +124,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG();
             CombatSystem manager = MakeCombat(game, rng);
 
-            bool detected = RunCombat(manager, game, rng);
+            bool detected = RunCombat(manager);
 
             Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
@@ -143,7 +152,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG();
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.AreEqual(100, fleet1.CapitalShips[0].HullStrength);
             Assert.AreEqual(100, fleet2.CapitalShips[0].HullStrength);
@@ -170,7 +179,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.Less(empireFleet1.CapitalShips[0].HullStrength, 100, "First fleet fights");
             Assert.AreEqual(
@@ -200,7 +209,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
@@ -226,7 +235,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
@@ -270,7 +279,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             bool anyDestroyed =
                 game.GetSceneNodeByInstanceID<Fleet>("f1") == null
@@ -301,7 +310,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.Less(
                 empireFleet.CapitalShips[0].HullStrength,
@@ -330,7 +339,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.AreEqual(
                 0,
@@ -377,7 +386,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Fleet allianceFleet2 = game.GetSceneNodeByInstanceID<Fleet>("f2");
             if (allianceFleet2 != null)
@@ -425,7 +434,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"));
             bool foundFleet = false;
@@ -463,7 +472,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.AreEqual(
                 100,
@@ -497,7 +506,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.Less(empireFleet.CapitalShips[0].HullStrength, 100);
             Assert.Less(allianceFleet.CapitalShips[0].HullStrength, 100);
@@ -526,7 +535,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             int shieldedDamage = 100 - shieldedFleet.CapitalShips[0].HullStrength;
             int unshieldedDamage = 100 - unshieldedFleet.CapitalShips[0].HullStrength;
@@ -563,7 +572,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
             Assert.IsNotNull(target, "Target fleet should still exist");
@@ -595,7 +604,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
 
             CombatSystem manager1 = MakeCombat(game, rng1);
-            RunCombat(manager1, game, rng1);
+            RunCombat(manager1);
             int damage1 = 100 - empireFleet.CapitalShips[0].HullStrength;
 
             empireFleet.CapitalShips[0].HullStrength = 100;
@@ -604,7 +613,7 @@ namespace Rebellion.Tests.Systems
             allianceFleet.IsInCombat = false;
 
             CombatSystem manager2 = MakeCombat(game, rng2);
-            RunCombat(manager2, game, rng2);
+            RunCombat(manager2);
             int damage2 = 100 - empireFleet.CapitalShips[0].HullStrength;
 
             Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
@@ -635,8 +644,8 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng1 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             QueueRNG rng2 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
 
-            RunCombat(MakeCombat(game1, rng1), game1, rng1);
-            RunCombat(MakeCombat(game2, rng2), game2, rng2);
+            RunCombat(MakeCombat(game1, rng1));
+            RunCombat(MakeCombat(game2, rng2));
 
             Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
@@ -673,8 +682,8 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng1 = new QueueRNG(0.0, 0.0, 0.0, 0.0);
             QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
 
-            RunCombat(MakeCombat(game1, rng1), game1, rng1);
-            RunCombat(MakeCombat(game2, rng2), game2, rng2);
+            RunCombat(MakeCombat(game1, rng1));
+            RunCombat(MakeCombat(game2, rng2));
 
             Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
@@ -684,15 +693,6 @@ namespace Rebellion.Tests.Systems
                 fleet2.CapitalShips[0].HullStrength,
                 "Different RNG should produce different results"
             );
-        }
-
-        [Test]
-        public void TryStartCombat_NullGame_ThrowsException()
-        {
-            GameRoot game = new GameRoot();
-            CombatSystem manager = MakeCombat(game, new QueueRNG());
-
-            Assert.Throws<System.NullReferenceException>(() => manager.TryStartCombat(null, out _));
         }
 
         [Test]
@@ -717,7 +717,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG();
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.Pass("Empty fleets should not cause combat");
         }
@@ -741,7 +741,7 @@ namespace Rebellion.Tests.Systems
 
             CombatSystem manager = MakeCombat(game, new QueueRNG());
 
-            bool detected = manager.TryStartCombat(game, out CombatDecisionContext decision);
+            bool detected = manager.TryStartCombat(out CombatDecisionContext decision);
 
             Assert.IsTrue(detected);
             Assert.IsNotNull(decision);
@@ -767,7 +767,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
 
             CombatSystem manager = MakeCombat(game, new QueueRNG());
-            manager.TryStartCombat(game, out _);
+            manager.TryStartCombat(out _);
 
             Assert.IsTrue(
                 empireFleet.IsInCombat || allianceFleet.IsInCombat,
@@ -796,8 +796,8 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            manager.TryStartCombat(game, out CombatDecisionContext decision);
-            manager.Resolve(game, decision, autoResolve: true, rng);
+            manager.TryStartCombat(out CombatDecisionContext decision);
+            manager.Resolve(decision, autoResolve: true);
 
             Assert.IsFalse(empireFleet.IsInCombat, "IsInCombat should be cleared after resolution");
             Assert.IsFalse(
@@ -825,10 +825,10 @@ namespace Rebellion.Tests.Systems
 
             CombatSystem manager = MakeCombat(game, new QueueRNG());
 
-            manager.TryStartCombat(game, out _);
+            manager.TryStartCombat(out _);
 
             // Should not detect again while IsInCombat is set
-            bool detectedAgain = manager.TryStartCombat(game, out CombatDecisionContext second);
+            bool detectedAgain = manager.TryStartCombat(out CombatDecisionContext second);
 
             Assert.IsFalse(detectedAgain, "Fleets already in combat should not be detected again");
             Assert.IsNull(second);
@@ -859,7 +859,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            List<GameResult> results = manager.ProcessTick(game, rng);
+            List<GameResult> results = manager.ProcessTick();
 
             Assert.IsFalse(
                 results.OfType<PendingCombatResult>().Any(),
@@ -904,7 +904,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG();
             CombatSystem manager = MakeCombat(game, rng);
 
-            List<GameResult> results = manager.ProcessTick(game, rng);
+            List<GameResult> results = manager.ProcessTick();
 
             Assert.IsTrue(
                 results.OfType<PendingCombatResult>().Any(),
@@ -939,7 +939,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager, game, rng);
+            RunCombat(manager);
 
             Assert.AreEqual(
                 "alliance",
@@ -998,7 +998,7 @@ namespace Rebellion.Tests.Systems
             );
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            RunCombat(MakeCombat(game, rng), game, rng);
+            RunCombat(MakeCombat(game, rng));
 
             Assert.Contains(
                 officer,
@@ -1052,7 +1052,7 @@ namespace Rebellion.Tests.Systems
             );
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            RunCombat(MakeCombat(game, rng), game, rng);
+            RunCombat(MakeCombat(game, rng));
 
             Assert.Contains(
                 officer,

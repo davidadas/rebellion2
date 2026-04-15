@@ -14,32 +14,39 @@ namespace Rebellion.Systems
     public class ManufacturingSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
+        private readonly MovementSystem _movementSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
         /// Creates a new ManufacturingSystem.
         /// </summary>
-        public ManufacturingSystem(GameRoot game)
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
+        /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
+        public ManufacturingSystem(
+            GameRoot game,
+            IRandomNumberProvider provider = null,
+            MovementSystem movementSystem = null
+        )
         {
             _game = game;
+            _provider = provider;
+            _movementSystem = movementSystem;
         }
 
         /// <summary>
         /// Processes manufacturing for the current tick.
         /// </summary>
-        /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
-        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
-        public List<GameResult> ProcessTick(
-            MovementSystem movementSystem,
-            IRandomNumberProvider provider
-        )
+        /// <returns>Manufacturing results produced this tick.</returns>
+        public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
             results.AddRange(_pendingResults);
             _pendingResults.Clear();
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
-                results.AddRange(ProcessPlanetManufacturing(planet, movementSystem, provider));
+                results.AddRange(ProcessPlanetManufacturing(planet));
             }
             return results;
         }
@@ -141,6 +148,13 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Validates the planet's owner and checks production cost affordability.
+        /// </summary>
+        /// <param name="planet">The planet where production would occur.</param>
+        /// <param name="item">The item to produce.</param>
+        /// <param name="ignoreCost">If true, skips the cost affordability check.</param>
+        /// <returns>The owning faction, or null if validation fails.</returns>
         private Faction GetValidatedFaction(Planet planet, IManufacturable item, bool ignoreCost)
         {
             if (planet == null || item == null)
@@ -163,6 +177,11 @@ namespace Rebellion.Systems
             return faction;
         }
 
+        /// <summary>
+        /// Initializes the item's manufacturing state and adds it to the planet's queue.
+        /// </summary>
+        /// <param name="planet">The planet producing the item.</param>
+        /// <param name="item">The item to enqueue for production.</param>
         private void CommitToQueue(Planet planet, IManufacturable item)
         {
             item.ManufacturingStatus = ManufacturingStatus.Building;
@@ -190,28 +209,23 @@ namespace Rebellion.Systems
         /// CSCRHT table. Performs a success roll first; returns 0 if it fails. On success,
         /// returns the progress amount from the table.
         /// </summary>
-        /// <param name="provider">Random number provider for the rolls.</param>
         /// <returns>Progress to apply this tick, or 0 if the success check fails.</returns>
-        private int RollCapitalShipProgress(IRandomNumberProvider provider)
+        private int RollCapitalShipProgress()
         {
             GameConfig.ProductionConfig config = _game.Config.Production;
 
             // Success check: roll must be below threshold
-            int successRoll = provider.NextInt(0, config.CapitalShipSuccessRollRange);
+            int successRoll = _provider.NextInt(0, config.CapitalShipSuccessRollRange);
             if (successRoll >= config.CapitalShipSuccessThreshold)
                 return 0;
 
             // Progress roll: look up in CSCRHT table
-            int progressRoll = provider.NextInt(0, config.CapitalShipProgressRollRange);
+            int progressRoll = _provider.NextInt(0, config.CapitalShipProgressRollRange);
             ProbabilityTable cscrht = new ProbabilityTable(config.CapitalShipProgressTable);
             return cscrht.Lookup(progressRoll);
         }
 
-        private List<GameResult> ProcessPlanetManufacturing(
-            Planet planet,
-            MovementSystem movementSystem,
-            IRandomNumberProvider provider
-        )
+        private List<GameResult> ProcessPlanetManufacturing(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -244,14 +258,13 @@ namespace Rebellion.Systems
                 List<IManufacturable> completed = DistributeProgress(
                     items,
                     progressIncrement,
-                    provider,
                     planet,
                     results
                 );
                 IManufacturable lastCompleted = null;
                 foreach (IManufacturable item in completed)
                 {
-                    results.AddRange(CompleteManufacturing(planet, item, movementSystem));
+                    results.AddRange(CompleteManufacturing(planet, item));
                     lastCompleted = item;
                 }
 
@@ -293,13 +306,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="items">The ordered list of items in this type's queue.</param>
         /// <param name="progressIncrement">Total progress available this tick.</param>
-        /// <param name="provider">Random number provider for capital ship rolls.</param>
         /// <param name="planet">The planet where production is occurring.</param>
         /// <param name="results">Result list to append progress events to.</param>
         private List<IManufacturable> DistributeProgress(
             List<IManufacturable> items,
             int progressIncrement,
-            IRandomNumberProvider provider,
             Planet planet,
             List<GameResult> results
         )
@@ -314,7 +325,7 @@ namespace Rebellion.Systems
                 // Capital ships use probabilistic CSCRHT progression
                 if (activeItem is CapitalShip)
                 {
-                    int csProgress = RollCapitalShipProgress(provider);
+                    int csProgress = RollCapitalShipProgress();
                     if (csProgress > 0)
                     {
                         activeItem.IncrementManufacturingProgress(csProgress);
@@ -374,14 +385,13 @@ namespace Rebellion.Systems
         /// </summary>
         private List<GameResult> CompleteManufacturing(
             Planet productionPlanet,
-            IManufacturable item,
-            MovementSystem movementSystem
+            IManufacturable item
         )
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
             ISceneNode dest = ((ISceneNode)item).GetParent();
             if (dest != null)
-                movementSystem.RequestMove((IMovable)item, dest, productionPlanet);
+                _movementSystem.RequestMove((IMovable)item, dest, productionPlanet);
             ApplyCompletionSupportShift(productionPlanet, item);
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
@@ -430,8 +440,10 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Applies a popular support shift at the production planet when an item completes.
-        /// Matches the original game's behavior of boosting faction support on completion.
+        /// Boosts faction support on completion.
         /// </summary>
+        /// <param name="planet">The planet where manufacturing completed.</param>
+        /// <param name="item">The completed manufacturable item.</param>
         private void ApplyCompletionSupportShift(Planet planet, IManufacturable item)
         {
             string ownerID = item.GetOwnerInstanceID();

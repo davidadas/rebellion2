@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {
@@ -1224,5 +1225,194 @@ namespace Rebellion.Tests.Systems
                 "Officer on a CapitalShip should be movable to a mission"
             );
         }
+
+        #region Blockade Evacuation Losses
+
+        private (
+            GameRoot game,
+            Planet origin,
+            Planet destination,
+            MovementSystem movement
+        ) BuildBlockadeScene(IRandomNumberProvider rng)
+        {
+            GameConfig config = TestConfig.Create();
+            config.Blockade.EvacuationLossPercent = 50;
+            GameRoot game = new GameRoot(config);
+
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, system);
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(destination, system);
+
+            // Hostile fleet creates the blockade
+            Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
+            game.AttachNode(hostile, origin);
+
+            Assert.IsTrue(origin.IsBlockaded());
+
+            BlockadeSystem blockade = new BlockadeSystem(game, rng);
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game), blockade);
+
+            return (game, origin, destination, movement);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
+        {
+            // FixedRNG returns 0 → 0 < 50 → loss
+            (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
+                BuildBlockadeScene(new FixedRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>("r1"),
+                "Regiment should be destroyed running the blockade"
+            );
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
+        {
+            // MaxRNG returns 99 → 99 >= 50 → survives
+            (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
+                BuildBlockadeScene(new MaxRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Regiment>("r1"),
+                "Regiment should survive the blockade"
+            );
+            Assert.IsNotNull(regiment.Movement, "Surviving regiment should be in transit");
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
+                BuildBlockadeScene(new FixedRNG());
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            // Evacuation results are pending — flush via ProcessTick
+            List<GameResult> results = movement.ProcessTick();
+
+            EvacuationLossesResult evacResult = results
+                .OfType<EvacuationLossesResult>()
+                .FirstOrDefault();
+            Assert.IsNotNull(evacResult, "Should emit EvacuationLossesResult");
+            Assert.AreEqual(origin, evacResult.Location);
+            Assert.AreEqual(1, evacResult.LostRegiments.Count);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
+        {
+            // FixedRNG would cause loss, but planet isn't blockaded
+            GameConfig config = TestConfig.Create();
+            config.Blockade.EvacuationLossPercent = 100;
+            GameRoot game = new GameRoot(config);
+
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                PositionX = 100,
+                PositionY = 100,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(destination, system);
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+
+            Assert.IsFalse(origin.IsBlockaded());
+
+            BlockadeSystem blockade = new BlockadeSystem(game, new FixedRNG());
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game), blockade);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Regiment>("r1"),
+                "Regiment on unblockaded planet should never be destroyed"
+            );
+        }
+
+        [Test]
+        public void RequestMove_OfficerFromBlockadedPlanet_NotAffected()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
+                BuildBlockadeScene(new FixedRNG());
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsNotNull(
+                game.GetSceneNodeByInstanceID<Officer>("o1"),
+                "Officers should not be affected by evacuation losses"
+            );
+        }
+
+        #endregion
     }
 }

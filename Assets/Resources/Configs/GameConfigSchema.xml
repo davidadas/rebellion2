@@ -160,8 +160,8 @@
             <xs:all>
               <xs:element name="DiceRange" type="PositiveIntType" />
               <xs:element name="DiceAddend" type="xs:integer" />
-              <xs:element name="Upris1Table" type="IntTableType" />
-              <xs:element name="Upris2Table" type="IntTableType" />
+              <xs:element name="PrimaryConsequenceTable" type="IntTableType" />
+              <xs:element name="SecondaryConsequenceTable" type="IntTableType" />
               <xs:element name="ControllerSupportShift" type="xs:integer" />
             </xs:all>
           </xs:complexType>
@@ -179,17 +179,24 @@
               <xs:element name="FleetPenalty" type="xs:integer" />
               <xs:element name="FighterPenalty" type="xs:integer" />
               <xs:element name="TroopPenalty" type="xs:integer" />
+              <xs:element name="OwnershipTransferThreshold" type="xs:nonNegativeInteger" />
               <xs:element name="BlockadeMatchShift" type="xs:integer" />
               <xs:element name="BlockadeOpposeShift" type="xs:integer" />
             </xs:all>
           </xs:complexType>
         </xs:element>
 
-        <xs:element name="Victory">
+        <xs:element name="Blockade">
           <xs:complexType>
             <xs:all>
-              <xs:element name="MinVictoryTick" type="xs:nonNegativeInteger" />
+              <xs:element name="EvacuationLossPercent" type="xs:nonNegativeInteger" />
             </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Victory">
+          <xs:complexType>
+            <xs:all></xs:all>
           </xs:complexType>
         </xs:element>
 

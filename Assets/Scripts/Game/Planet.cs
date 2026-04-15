@@ -83,6 +83,7 @@ namespace Rebellion.Game
         /// Returns true if planet has any faction presence.
         /// Used by uprising system to filter unpopulated planets.
         /// </summary>
+        /// <returns>True if any faction has popular support on this planet.</returns>
         public bool IsPopulated()
         {
             return PopularSupport.Any(kvp => kvp.Value > 0);
@@ -93,6 +94,7 @@ namespace Rebellion.Game
         /// Owner's popularity scaled to [-50, +50]. Negative = danger zone.
         /// Self-sufficient - no Game dependency required.
         /// </summary>
+        /// <returns>Loyalty in [-50, +50]; negative means uprising risk.</returns>
         public int CalculateLoyalty()
         {
             if (string.IsNullOrEmpty(OwnerInstanceID))
@@ -128,6 +130,7 @@ namespace Rebellion.Game
         /// Gets the total energy capacity for this planet.
         /// Each facility uses 1 energy; this caps how many facilities can exist.
         /// </summary>
+        /// <returns>Maximum number of energy units available.</returns>
         public int GetEnergyCapacity()
         {
             return EnergyCapacity;
@@ -136,6 +139,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets the number of energy units currently consumed by facilities on this planet.
         /// </summary>
+        /// <returns>Number of energy units in use.</returns>
         public int GetEnergyUsed()
         {
             return Buildings.Count;
@@ -144,6 +148,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets the remaining energy available for new facilities.
         /// </summary>
+        /// <returns>Remaining energy units (capacity minus used).</returns>
         public int GetAvailableEnergy()
         {
             return Math.Max(0, EnergyCapacity - GetEnergyUsed());
@@ -564,6 +569,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Calculates total defense strength from defensive buildings.
         /// </summary>
+        /// <param name="filter">Which building states to include (default Active).</param>
+        /// <returns>Sum of weapon strength from defensive buildings.</returns>
         public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()
