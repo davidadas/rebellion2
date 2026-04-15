@@ -165,7 +165,11 @@ public static class GalaxyAnalysisPipeline
             int idx = 0;
             foreach (Faction f in ws.GameRoot.Factions)
             {
-                if (f.InstanceID == ws.Owner.InstanceID) { ownerSide = idx + 1; break; }
+                if (f.InstanceID == ws.Owner.InstanceID)
+                {
+                    ownerSide = idx + 1;
+                    break;
+                }
                 idx++;
             }
         }
@@ -179,7 +183,8 @@ public static class GalaxyAnalysisPipeline
             int slotIndex = 0;
             foreach (Planet planet in system.Planets)
             {
-                if (slotIndex >= 10) break;
+                if (slotIndex >= 10)
+                    break;
                 var sub = new PlanetSubobject
                 {
                     OwnerSide = ownerSide,
@@ -199,6 +204,11 @@ public static class GalaxyAnalysisPipeline
             // correctly. ScoreSystem now only fills in fields the planet accumulator doesn't.
             ScoreSystem(ws, record);
             ws.SystemAnalysis.Add(record);
+            // Assign AI-internal entity ID: HIBYTE 0x90 (system type, range [0x90,0x98))
+            // | sequential index. Mirrors FUN_004306c0's iterator over [0x90,0x98) entities
+            // which encodes entity keys via FUN_004025b0_make_key_value.
+            record.InternalId =
+                unchecked((int)0x90000000u) | ((ws.SystemAnalysis.Count - 1) & 0xFFFFFF);
 
             // Build a scorer node for GalaxyAnalysisScorer.
             SystemAnalysisNode node = BuildSystemNode(ws, system, record);
@@ -206,6 +216,40 @@ public static class GalaxyAnalysisPipeline
         }
 
         ws.FleetAnalysisSubObject.MarkSystemsReady();
+
+        // Seed the SelectedTargetTable (workspace+0x11c) for Type 9 attack/mission pipeline.
+        //
+        // In the original binary, a seeder function (not present in the disassembly set)
+        // allocates 0x50-byte SelectedTargetEntry objects via FUN_00473420 and inserts them
+        // into workspace+0x11c via FUN_005f39b0. The entry's EntityTypePacked (+0x30) is set
+        // to a SystemAnalysisRecord.InternalId so the HIBYTE [0x90,0x98) check in
+        // FUN_00473900 (CheckTargetPrecondition) passes. FactionContext (+0x4c) receives a
+        // workspace-level reference (*(container+0x10)).
+        //
+        // Seeding criteria: own-faction presence (PresenceFlags & 0x1) marks a system as a
+        // valid mission-dispatch point. The Type 9 pipeline then identifies attack/scout
+        // targets within or adjacent to that system.
+        ws.SelectedTargetTable.Clear();
+        foreach (SystemAnalysisRecord rec in ws.SystemAnalysis)
+        {
+            // Require own-faction presence: the AI must have forces here to issue missions.
+            if ((rec.PresenceFlags & 0x1u) == 0)
+                continue;
+            if (rec.System == null)
+                continue;
+
+            ws.SelectedTargetTable.Add(
+                new SelectedTargetEntry
+                {
+                    Workspace = ws,
+                    Id = ws.NextMissionId++,
+                    EntityTypePacked = rec.InternalId, // HIBYTE 0x90 → passes CheckTargetPrecondition [0x90,0x98)
+                    OwnerSide = ownerSide,
+                    FactionContext = ws, // mirrors *(container+0x10) which holds the workspace reference
+                }
+            );
+        }
+
         return true;
     }
 
@@ -235,6 +279,9 @@ public static class GalaxyAnalysisPipeline
 
             FleetAnalysisRecord fleetRecord = new FleetAnalysisRecord { Fleet = fleet };
             ws.FleetAnalysis.Add(fleetRecord);
+            // HIBYTE 0x80 (fleet type, range [0x80,0x90)) — FUN_00430200 iterator.
+            fleetRecord.InternalId =
+                unchecked((int)0x80000000u) | ((ws.FleetAnalysis.Count - 1) & 0xFFFFFF);
 
             // A fleet in this system means there's entity presence (field_0x30 in binary).
             // Set PresenceFlags so shortage generators find this system as a candidate.
@@ -324,7 +371,8 @@ public static class GalaxyAnalysisPipeline
         // CapabilityFlags (node+0x28) = record.FlagA.
         // StatusFlags (node+0x2c) = record.FlagB.
         uint dispositionFlags = record.DispositionFlags;
-        if (hasOwned) dispositionFlags |= 0x40000000u;
+        if (hasOwned)
+            dispositionFlags |= 0x40000000u;
         uint capabilityFlags = (uint)record.FlagA;
         uint statusFlags = (uint)record.FlagB;
 
@@ -371,8 +419,10 @@ public static class GalaxyAnalysisPipeline
 
         // OwnershipFlags: bit 0x1 = own side; bit 0x4 = has capital ships.
         uint ownershipFlags = 0;
-        if (isOwn) ownershipFlags |= 0x1;
-        if (hasCapShips) ownershipFlags |= 0x4;
+        if (isOwn)
+            ownershipFlags |= 0x1;
+        if (hasCapShips)
+            ownershipFlags |= 0x4;
 
         return new FleetAnalysisNode
         {
@@ -401,15 +451,15 @@ public static class GalaxyAnalysisPipeline
             CharacterAnalysisRecord rec = new CharacterAnalysisRecord { Officer = officer };
             ScoreCharacter(ws, rec);
             ws.CharacterAnalysis.Add(rec);
+            // HIBYTE 0xa0 (character type, range [0xa0,0xa2)) — FUN_004032c0 iterator.
+            rec.InternalId =
+                unchecked((int)0xa0000000u) | ((ws.CharacterAnalysis.Count - 1) & 0xFFFFFF);
 
             CharacterAnalysisNode node = new CharacterAnalysisNode
             {
                 EngagementFlags = 0, // not in combat — available for missions
                 CategoryFlags = 0,
-                Stats = new CombatEngagementStats
-                {
-                    CombatScore = rec.CharacterScore,
-                },
+                Stats = new CombatEngagementStats { CombatScore = rec.CharacterScore },
             };
             ws.FleetAnalysisSubObject.AddCharacterNode(node);
         }
@@ -563,8 +613,11 @@ public static class GalaxyAnalysisPipeline
             if (ownedByUs)
             {
                 // FUN_004319d0: *param_3 & 0x1 set → field35_0x2c |= 0x4
-                rec.FlagB |= 0x4;    // own planet (StatusFlags bit 2)
-                rec.FlagA |= 0x1;    // friendly-planet-owned bit (CapabilityFlags bit 0)
+                rec.FlagB |= 0x4; // own planet (FlagB bit 2)
+                // NOTE: FlagA bits 0-1 (0x1, 0x2) are set ONLY from planet ExtraFlags & 0x4/0x8
+                // via AccumulatePlanetIntoSystemRecord — they represent garrison unit type flags,
+                // NOT faction ownership. Do NOT set FlagA |= 0x1 here: that would incorrectly
+                // block all own-faction systems from PreconditionCheck1 (which requires FlagA & 0x3 == 0).
 
                 // FlagA bit 0x1000: set when param_4 & 0x20000 (regiment capacity available).
                 // Proxy: own planet with buildings = regiment support capable.
@@ -581,11 +634,10 @@ public static class GalaxyAnalysisPipeline
                 // This is the flag queried by UpdateShortageFleet (FUN_004191b0 param_1=0x80).
                 rec.DispositionFlags |= 0x80;
 
-                // DispositionFlags bit 0x2000: set when planet+0x28 & 0x800 set AND
-                //   planet+0x28 & 0x3800000 == 0 (fleet deployment condition).
-                // Proxy: own planet with troop capacity = fleet deployment viable.
-                if (troops > 0)
-                    rec.DispositionFlags |= 0x2000;
+                // DispositionFlags bit 0x2000: driven by CapabilityFlags & 0x800 in
+                // AccumulatePlanetIntoSystemRecord (FUN_004319d0 line 142-143).
+                // CapabilityFlags & 0x800 is now set by RefreshPlanetSubobject when the planet
+                // has active construction yards. No proxy needed here.
 
                 // SystemScore: positive for shortage candidate eligibility (+0x60 in binary).
                 rec.SystemScore += 1;
@@ -595,7 +647,6 @@ public static class GalaxyAnalysisPipeline
                 // FUN_004319d0: *param_3 & 0x4 → field35_0x2c |= 0x8 (enemy planet)
                 // param_4 & 0x4 → field34_0x28 |= 0x1 (shortage gen requires 0x3 clear)
                 rec.FlagB |= 0x8;
-                rec.FlagA |= 0x2;    // enemy planet bit (shortage gen skips when set)
                 rec.Stats.EnemyTroopSurplus += troops;
             }
             else if (isNeutral)
@@ -611,8 +662,9 @@ public static class GalaxyAnalysisPipeline
         if ((rec.FlagB & 0x4) != 0)
             rec.PresenceFlags |= 0x1; // own planets = presence
 
-        rec.Stats.FacilityCountOwned = rec.System.Planets
-            .Count(p => p.GetOwnerInstanceID() == ownerId);
+        rec.Stats.FacilityCountOwned = rec.System.Planets.Count(p =>
+            p.GetOwnerInstanceID() == ownerId
+        );
     }
 
     // FUN_00431860: scores a system node during calibration state 1.
@@ -715,34 +767,34 @@ public static class GalaxyAnalysisPipeline
         string planetOwner = planet.GetOwnerInstanceID();
 
         // Reset flag fields preserving only the persistent bits (assembly masks):
-        sub.CapabilityFlags &= 0x3e00000u;   // keep bits 21-25
-        sub.ExtraFlags &= 0x60000000u;        // keep bits 29-30
-        sub.StatusFlags &= 0x35ff0000u;       // keep specific bits
+        sub.CapabilityFlags &= 0x3e00000u; // keep bits 21-25
+        sub.ExtraFlags &= 0x60000000u; // keep bits 29-30
+        sub.StatusFlags &= 0x35ff0000u; // keep specific bits
 
         // Compute ownership code: entity.OwnerField >> 6 & 3.
         // In C# proxy: 1=Alliance owns, 2=Empire owns, 0=neutral.
         int ownCode;
         if (planetOwner == ownerFactionId)
-            ownCode = ownerSide;          // own faction
+            ownCode = ownerSide; // own faction
         else if (planetOwner != null)
-            ownCode = enemySide;          // enemy faction
+            ownCode = enemySide; // enemy faction
         else
-            ownCode = 0;                   // neutral / unclaimed
+            ownCode = 0; // neutral / unclaimed
 
         sub.OwnershipCode = ownCode;
 
         // FUN_004334c0 lines 123-144: ownership → StatusFlags:
         if (ownCode == ownerSide)
         {
-            sub.StatusFlags |= 0x1u | 0x20u;   // own faction (bit 0 + bit 5)
+            sub.StatusFlags |= 0x1u | 0x20u; // own faction (bit 0 + bit 5)
         }
         else if (ownCode == enemySide)
         {
-            sub.StatusFlags |= 0x4u | 0x20u;   // enemy faction (bit 2 + bit 5)
+            sub.StatusFlags |= 0x4u | 0x20u; // enemy faction (bit 2 + bit 5)
         }
         else
         {
-            sub.StatusFlags |= 0x2u;            // neutral (LOBYTE bit 1)
+            sub.StatusFlags |= 0x2u; // neutral (LOBYTE bit 1)
         }
 
         // Compute available capacity from the planet entity fields.
@@ -757,7 +809,7 @@ public static class GalaxyAnalysisPipeline
         // FUN_004334c0 line 182-184: if own planet AND AvailableCapacityA > 0 → set +0x20
         if ((sub.StatusFlags & 0x1u) != 0 && sub.AvailableCapacityA > 0)
         {
-            sub.CapabilityFlags |= 0x20u;   // own faction has available capacity
+            sub.CapabilityFlags |= 0x20u; // own faction has available capacity
             if (sub.AvailableCapacityB > 0)
                 sub.CapabilityFlags |= 0x40u;
         }
@@ -795,11 +847,15 @@ public static class GalaxyAnalysisPipeline
             foreach (Fleet fleet in ws.GameRoot.GetSceneNodesByType<Fleet>())
             {
                 Planet fleetPlanet = fleet.GetParentOfType<Planet>();
-                if (fleetPlanet != planet) continue;
+                if (fleetPlanet != planet)
+                    continue;
 
                 bool isOwnFleet = fleet.GetOwnerInstanceID() == ownerFactionId;
 
-                foreach (CapitalShip ship in fleet.CapitalShips ?? new System.Collections.Generic.List<CapitalShip>())
+                foreach (
+                    CapitalShip ship in fleet.CapitalShips
+                        ?? new System.Collections.Generic.List<CapitalShip>()
+                )
                 {
                     if (isOwnFleet)
                     {
@@ -812,9 +868,13 @@ public static class GalaxyAnalysisPipeline
                     }
                 }
 
-                foreach (Starfighter sf in fleet.GetStarfighters() ?? new System.Collections.Generic.List<Starfighter>())
+                foreach (
+                    Starfighter sf in fleet.GetStarfighters()
+                        ?? new System.Collections.Generic.List<Starfighter>()
+                )
                 {
-                    if (isOwnFleet) starfighterCount++;
+                    if (isOwnFleet)
+                        starfighterCount++;
                 }
             }
 
@@ -825,7 +885,11 @@ public static class GalaxyAnalysisPipeline
             if (capShipCount > 0)
             {
                 sub.CapabilityFlags |= 0x1000u;
-                if (capShipCount > 0 && (sub.StatusFlags & 0x1u) != 0 && (sub.CapabilityFlags & 0x3u) == 0)
+                if (
+                    capShipCount > 0
+                    && (sub.StatusFlags & 0x1u) != 0
+                    && (sub.CapabilityFlags & 0x3u) == 0
+                )
                     sub.CapabilityFlags |= 0x100u; // HIBYTE(0x1)
             }
 
@@ -838,17 +902,50 @@ public static class GalaxyAnalysisPipeline
                 sub.StatusFlags |= 0x80u; // character/mission slot (line 762-763: starfighter flag)
         }
 
+        // FUN_004334c0 lines 526-530: mine count (sub_52c4d0) and refinery count (sub_52c0f0).
+        // Both are computed unconditionally at the planet, independent of faction.
+        // ExtraFlags |= 0x10000 requires mines > 0 || refineries > 0 (checked later in enemy section).
+        sub.MineCount = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.Active);
+        sub.RefineryCount = planet.GetBuildingTypeCount(
+            BuildingType.Refinery,
+            EntityStateFilter.Active
+        );
+
+        // FUN_004334c0 lines 631-688: construction yard availability (sub_52b600 / entity type 0x2a).
+        // Binary: iterates construction yards; if any available (*(yard+0x50) & 0x1):
+        //   HIBYTE(CapabilityFlags) |= 0x10 (= 0x1000): construction yard present.
+        // Then if count > 0 AND own faction (LOBYTE & 0x3 == 0) AND manufacturing manager type 1
+        // available (sub_5087e0(0x1)) AND manager not busy (*(mgr+0x58) == 0):
+        //   HIBYTE(CapabilityFlags) |= 0x8 (= 0x800): construction yard deployment condition.
+        // CapabilityFlags bit 0x800 is the sole driver of DispositionFlags |= 0x2000 in
+        // AccumulatePlanetIntoSystemRecord (FUN_004319d0 lines 142-143), which is the primary
+        // filter for PreconditionCheck2 (FUN_004191b0 param_1 = 0x2000).
+        int constructionYardCount = planet.GetBuildingTypeCount(
+            BuildingType.ConstructionFacility,
+            EntityStateFilter.Active
+        );
+        if (constructionYardCount > 0)
+        {
+            sub.CapabilityFlags |= 0x1000u; // HIBYTE |= 0x10: any construction yard present
+            if ((sub.StatusFlags & 0x1u) != 0 && (sub.CapabilityFlags & 0x3u) == 0)
+                sub.CapabilityFlags |= 0x800u; // HIBYTE |= 0x8: own planet, construction yard available
+        }
+
         // FUN_004334c0 line 858-868: entity field +0x88 bit 0x1 set → specific ship class
         // This requires reading the entity field directly — proxy: if planet has a manufacturing facility
         // for capital ships → StatusFlags |= 0x8 (line 870)
         if (buildingCount > 0 && (sub.StatusFlags & 0x1u) != 0)
         {
-            sub.StatusFlags |= 0x8u;  // own planet with facilities
+            sub.StatusFlags |= 0x8u; // own planet with facilities
             sub.StatusFlags |= 0x20u; // mission condition flag
         }
 
         // FUN_004334c0 line 980-990: if own planet and no specific restrictions → CapabilityFlags |= 0x4000000
-        if ((sub.StatusFlags & 0x1u) != 0 && (sub.CapabilityFlags & 0x3u) == 0 && (sub.CapabilityFlags & 0x3e00000u) == 0)
+        if (
+            (sub.StatusFlags & 0x1u) != 0
+            && (sub.CapabilityFlags & 0x3u) == 0
+            && (sub.CapabilityFlags & 0x3e00000u) == 0
+        )
         {
             sub.CapabilityFlags |= 0x4000000u;
 
@@ -873,11 +970,39 @@ public static class GalaxyAnalysisPipeline
             {
                 // Urgency formula from assembly: (0x46 - capacity) * 0x66666667 / 2^34
                 // Simplified: scale deficit to 0-6.
-                sub.UrgencyScore = System.Math.Min(6, deficit / System.Math.Max(1, sub.EntityCapacity / 7));
+                sub.UrgencyScore = System.Math.Min(
+                    6,
+                    deficit / System.Math.Max(1, sub.EntityCapacity / 7)
+                );
             }
-            sub.UrgencyScore = (sub.StatusFlags & 0x1u) != 0 ? sub.UrgencyScore * 2 : sub.UrgencyScore;
+            sub.UrgencyScore =
+                (sub.StatusFlags & 0x1u) != 0 ? sub.UrgencyScore * 2 : sub.UrgencyScore;
             sub.UrgencyScore = System.Math.Min(6, sub.UrgencyScore);
         }
+
+        // FUN_004334c0 lines 875-880: popular support for own planets.
+        // Line 184: initial *(esi+0x48) = 0x64 (100) when entering own-planet path.
+        // Line 877: *(esi+0x48) overwritten with sub_5063f0(raw entity, ownerSide) = actual support.
+        // Line 878-880: if support < 0x46 (70) → ExtraFlags |= 0x10000000 (bit 28).
+        // ExtraFlags bit 28 propagates to FlagA & 0x8000000 in AccumulatePlanetIntoSystemRecord,
+        // which is the gate for PreconditionCheck2 (FUN_004da280) to return 1.
+        if ((sub.StatusFlags & 0x1u) != 0)
+        {
+            int popularSupport = planet.GetPopularSupport(ownerFactionId);
+            sub.CapacityThreshold = popularSupport;
+            if (popularSupport < 70)
+                sub.ExtraFlags |= 0x10000000u;
+        }
+
+        // FUN_004334c0 character capability count for own-faction planets.
+        // In the binary, this is incremented during character/officer iteration when
+        // a character has certain capability flags set. Checked by FUN_004319d0 line 115:
+        //   if (cf & 3 == 0 AND ef & 0x8000000 == 0 AND param_1->field111_0xcc > 0):
+        //     set DispositionFlags |= 0x20 | 0x40 | 0x80 (unit capacity available bits).
+        // These bits are queried by Types 5/6/7 strategy records to find deployment targets.
+        // Proxy: own-faction planet with buildings (EntityCapacity > 0) → CharCapabilityCount = 1.
+        if ((sub.StatusFlags & 0x1u) != 0 && sub.EntityCapacity > 0)
+            sub.CharCapabilityCount = 1;
 
         // FUN_004334c0 enemy planet path (line 1407-1573):
         // Enemy planet: compute urgency and set flags.
@@ -899,10 +1024,14 @@ public static class GalaxyAnalysisPipeline
             if (sub.CharCapabilityCount > 0)
                 sub.ExtraFlags |= 0x400000u;
 
-            // FUN_004334c0 line 1549-1572: fighter/unit surplus flags.
+            // FUN_004334c0 lines 1543-1572: unit presence and mine/refinery flags.
+            // 0x20000: enemy planet has ships or regiments (CapitalShipCount/RegimentCount/StarfighterCount > 0).
+            // 0x10000: enemy planet has mines or refineries (MineCount/RefineryCount > 0).
+            //   → FUN_004319d0 line 329: FlagA |= 0x800 when ExtraFlags & 0x10000.
+            //   → PreconditionCheck2 final gate: FlagA & 0x800 on the candidate system.
             if (sub.StarfighterCount > 0 || sub.CapitalShipCount > 0 || sub.RegimentCount > 0)
                 sub.ExtraFlags |= 0x20000u;
-            if (sub.CapitalShipCount > 0)
+            if (sub.MineCount > 0 || sub.RefineryCount > 0)
                 sub.ExtraFlags |= 0x10000u;
         }
 
@@ -944,11 +1073,12 @@ public static class GalaxyAnalysisPipeline
         PlanetSubobject sub
     )
     {
-        if (sub == null) return;
+        if (sub == null)
+            return;
 
         uint cf = sub.CapabilityFlags; // param_2 = &subobj+0x28
-        uint sf = sub.StatusFlags;     // param_3 = &subobj+0x30
-        uint ef = sub.ExtraFlags;      // param_4 = &subobj+0x2c
+        uint sf = sub.StatusFlags; // param_3 = &subobj+0x30
+        uint ef = sub.ExtraFlags; // param_4 = &subobj+0x2c
 
         if ((sf & 0x1u) == 0)
         {
@@ -957,11 +1087,11 @@ public static class GalaxyAnalysisPipeline
             {
                 // Neither own nor enemy (neutral/unowned), param_3 bit 2 also clear:
                 // FUN_004319d0 line 14-26 (Type 0 path):
-                sysRec.FlagB |= 0x10;              // field35_0x2c |= 0x10 (neutral planet)
-                sysRec.Stats.FacilityCount += 1;   // field105_0x84 += 1
+                sysRec.FlagB |= 0x10; // field35_0x2c |= 0x10 (neutral planet)
+                sysRec.Stats.FacilityCount += 1; // field105_0x84 += 1
                 sysRec.Stats.FriendlyTroopSurplus += sub.CharStrengthA; // field187 += param_1->field75_0x9c proxy
-                sysRec.Stats.NetFighterSurplus += sub.CharStrengthB;   // field188
-                sysRec.Stats.SystemPriority += sub.CharStrengthC;      // field189
+                sysRec.Stats.NetFighterSurplus += sub.CharStrengthB; // field188
+                sysRec.Stats.SystemPriority += sub.CharStrengthC; // field189
 
                 // field152-154 += param_1->field4-6
                 // (proxied by unit counts since exact field mappings require full sub-object)
@@ -978,7 +1108,7 @@ public static class GalaxyAnalysisPipeline
             {
                 // Enemy faction planet (param_3 bit 2 set):
                 // FUN_004319d0 lines 29-72 (Type 1 path, enemy):
-                sysRec.FlagB |= 0x8;               // field35_0x2c |= 0x8 (enemy planet)
+                sysRec.FlagB |= 0x8; // field35_0x2c |= 0x8 (enemy planet)
                 sysRec.Stats.EnemyTroopSurplus += 1; // field104_0x80 += 1
                 sysRec.Stats.FriendlyTroopSurplus += sub.UnitCountAccumA; // field150 += param_1->field2_0x8
                 sysRec.Stats.NetCapitalShipSurplus += sub.UnitCountAccumB; // field151 += param_1->field3_0xc
@@ -988,8 +1118,8 @@ public static class GalaxyAnalysisPipeline
                 sysRec.Stats.FightersAboveThreshold += sub.CharStrengthA; // field187
                 sysRec.Stats.NetFighterSurplus += sub.CharStrengthB;
                 sysRec.Stats.SystemPriority += sub.CharStrengthC;
-                sysRec.Stats.ThreatenedCount += sub.CombinedStrength;    // field112_0xa0
-                sysRec.Stats.AlignedEntityCount += sub.FleetStrengthA;   // field157_0x130
+                sysRec.Stats.ThreatenedCount += sub.CombinedStrength; // field112_0xa0
+                sysRec.Stats.AlignedEntityCount += sub.FleetStrengthA; // field157_0x130
 
                 // Max-track fields:
                 if (sysRec.Stats.FleetFacilityCombatPower < sub.CombinedStrength)
@@ -1002,13 +1132,16 @@ public static class GalaxyAnalysisPipeline
                 // Availability flag (param_3 bit 0x800):
                 if ((sf & 0x800u) != 0)
                 {
-                    sysRec.FlagB |= 0x100;  // field35 |= 0x100
+                    sysRec.FlagB |= 0x100; // field35 |= 0x100
                     if (sub.CapacityThreshold < sysRec.SystemScore)
                         sysRec.SystemScore = sub.CapacityThreshold;
                 }
-                if ((sf & 0x100u) == 0) sysRec.FlagB |= 0x400;    // field35 |= 0x400
-                if ((sf & 0x2000u) == 0) sysRec.FlagB |= 0x400000; // field35 |= 0x400000
-                if ((ef & 0x2f70000u) != 0) sysRec.FlagB |= 0x80000; // field35 |= 0x80000
+                if ((sf & 0x100u) == 0)
+                    sysRec.FlagB |= 0x400; // field35 |= 0x400
+                if ((sf & 0x2000u) == 0)
+                    sysRec.FlagB |= 0x400000; // field35 |= 0x400000
+                if ((ef & 0x2f70000u) != 0)
+                    sysRec.FlagB |= 0x80000; // field35 |= 0x80000
 
                 // param_2 & 0x80000000 → field33 |= 0x80000000
                 if ((cf & 0x80000000u) != 0)
@@ -1019,16 +1152,16 @@ public static class GalaxyAnalysisPipeline
         {
             // Own faction planet (param_3 bit 0x1 set):
             // FUN_004319d0 lines 77-165:
-            sysRec.FlagB |= 0x4;                // field35_0x2c |= 4
-            sysRec.Stats.FacilityCount += 1;    // field103_0x7c += 1
+            sysRec.FlagB |= 0x4; // field35_0x2c |= 4
+            sysRec.Stats.FacilityCount += 1; // field103_0x7c += 1
 
             // Accumulate own-planet stats into system record:
-            sysRec.Stats.FriendlyTroopSurplus += sub.TroopStrength;     // field107_0x8c
-            sysRec.Stats.EnemyShipCount += sub.CapShipStrength;         // field108_0x90 (repurposed)
+            sysRec.Stats.FriendlyTroopSurplus += sub.TroopStrength; // field107_0x8c
+            sysRec.Stats.EnemyShipCount += sub.CapShipStrength; // field108_0x90 (repurposed)
             sysRec.Stats.FightersAboveThreshold += sub.UnitCountAccumA; // field117_0xa8
-            sysRec.Stats.AvailableFighters += sub.UnitCountAccumB;      // field118_0xac
-            sysRec.Stats.EnemyStrengthAccum += sub.CombinedStrength;    // field112_0xa0 (repurposed)
-            sysRec.Stats.SummaryScore += sub.FleetStrengthA;            // field157_0x130
+            sysRec.Stats.AvailableFighters += sub.UnitCountAccumB; // field118_0xac
+            sysRec.Stats.EnemyStrengthAccum += sub.CombinedStrength; // field112_0xa0 (repurposed)
+            sysRec.Stats.SummaryScore += sub.FleetStrengthA; // field157_0x130
 
             // Max-trackers (own planet):
             if (sysRec.Stats.FleetFacilityCombatPower < sub.CombinedStrength)
@@ -1041,7 +1174,7 @@ public static class GalaxyAnalysisPipeline
             // Shortage flags from param_3:
             if ((sf & 0x40000u) != 0)
             {
-                sysRec.FlagB |= 0x800000;     // field35 |= 0x800000 (garrison shortage)
+                sysRec.FlagB |= 0x800000; // field35 |= 0x800000 (garrison shortage)
                 if ((sf & 0x10000u) != 0)
                     sysRec.FlagB |= 0x1000000;
                 else if ((sf & 0x20000u) != 0)
@@ -1049,12 +1182,20 @@ public static class GalaxyAnalysisPipeline
             }
 
             // param_2 (CapabilityFlags) bit operations → field33 (DispositionFlags):
-            if ((cf & 0x2u) == 0) sysRec.DispositionFlags |= 0x8u;
-            if ((cf & 0x3u) == 0 && (ef & unchecked((uint)0x8000000)) == 0 && sub.CharCapabilityCount > 0)
+            if ((cf & 0x2u) == 0)
+                sysRec.DispositionFlags |= 0x8u;
+            if (
+                (cf & 0x3u) == 0
+                && (ef & unchecked((uint)0x8000000)) == 0
+                && sub.CharCapabilityCount > 0
+            )
             {
-                if ((cf & 0x200000u) == 0) sysRec.DispositionFlags |= 0x20u;
-                if ((cf & 0x400000u) == 0) sysRec.DispositionFlags |= 0x40u;
-                if ((cf & 0x3800000u) == 0) sysRec.DispositionFlags |= 0x80u;
+                if ((cf & 0x200000u) == 0)
+                    sysRec.DispositionFlags |= 0x20u;
+                if ((cf & 0x400000u) == 0)
+                    sysRec.DispositionFlags |= 0x40u;
+                if ((cf & 0x3800000u) == 0)
+                    sysRec.DispositionFlags |= 0x80u;
             }
             if ((cf & 0x80u) != 0 && (cf & 0x3u) == 0)
                 sysRec.DispositionFlags |= 0x100u;
@@ -1082,34 +1223,102 @@ public static class GalaxyAnalysisPipeline
         }
 
         // --- LAB_004321b8: common ending for all paths ---
-        sysRec.Stats.EnemyStrengthAccum += sub.CharStrengthA;   // field190_0x19c += param_1->field110_0xc8
+        sysRec.Stats.EnemyStrengthAccum += sub.CharStrengthA; // field190_0x19c += param_1->field110_0xc8
 
         // param_4 (ExtraFlags) bit operations → field100/101/102/106/34_0x28/35_0x2c:
-        if ((ef & 0x8000000u) != 0) sysRec.Stats.UrgencyScore++;   // field100_0x70 (count0)
-        if ((sf & 0x8u) != 0) sysRec.Stats.ThreatenedCount++;       // field101_0x74 (count1)
-        if ((sf & 0x20u) != 0) sysRec.Stats.AlignedEntityCount++;   // field102_0x78 (count2)
-        if ((sf & 0x10u) != 0) sysRec.Stats.FleetSurplus++;         // field106_0x88 (count6)
-        if ((sf & 0x40u) != 0) sysRec.FlagB |= 0x20;               // field35 |= 0x20
-        if ((sf & 0x40000000u) != 0) sysRec.FlagB |= 0x40000000;   // field35 |= 0x40000000
-        if ((sf & 0x80000000u) != 0) sysRec.FlagB |= unchecked((int)0x80000000); // field35 |= 0x80000000
-        if ((sf & 0x200u) != 0) sysRec.FlagB |= 0x40000;           // field35 |= 0x40000
-        if ((ef & 0x1u) != 0) sysRec.Stats.CharGarrisonCountA++;    // field171_0x150
-        if ((ef & 0x2u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x8; } // field175+field28 |= 8
-        if ((ef & 0x4u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x1; } // field172+field28 |= 1
-        if ((ef & 0x8u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x2; } // field173+field28 |= 2
-        if ((ef & 0x10u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x4; } // field174+field28 |= 4
-        if ((ef & 0x20u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x10; } // field176+field28 |= 0x10
-        if ((ef & 0x40u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= unchecked((int)(0x20u | 0x4000020u)); }
-        if ((ef & 0x80u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x40; }
-        if ((ef & 0xc00u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x80; }
-        if ((ef & 0x3000u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x100; }
-        if ((ef & 0x100u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x200; }
-        if ((ef & 0x200u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x400; }
-        if ((ef & 0x10000u) != 0) sysRec.FlagA |= 0x800;
-        if ((ef & 0x20000u) != 0) sysRec.FlagA |= 0x1000;
-        if ((ef & unchecked((uint)0x800000)) != 0) sysRec.FlagA |= 0x2000;
-        if ((ef & 0xc000u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x4000; }
-        if ((ef & 0x1000000u) != 0) { sysRec.Stats.CharGarrisonCountA++; sysRec.FlagA |= 0x8000; }
+        if ((ef & 0x8000000u) != 0)
+            sysRec.Stats.UrgencyScore++; // field100_0x70 (count0)
+        if ((sf & 0x8u) != 0)
+            sysRec.Stats.ThreatenedCount++; // field101_0x74 (count1)
+        if ((sf & 0x20u) != 0)
+            sysRec.Stats.AlignedEntityCount++; // field102_0x78 (count2)
+        if ((sf & 0x10u) != 0)
+            sysRec.Stats.FleetSurplus++; // field106_0x88 (count6)
+        if ((sf & 0x40u) != 0)
+            sysRec.FlagB |= 0x20; // field35 |= 0x20
+        if ((sf & 0x40000000u) != 0)
+            sysRec.FlagB |= 0x40000000; // field35 |= 0x40000000
+        if ((sf & 0x80000000u) != 0)
+            sysRec.FlagB |= unchecked((int)0x80000000); // field35 |= 0x80000000
+        if ((sf & 0x200u) != 0)
+            sysRec.FlagB |= 0x40000; // field35 |= 0x40000
+        if ((ef & 0x1u) != 0)
+            sysRec.Stats.CharGarrisonCountA++; // field171_0x150
+        if ((ef & 0x2u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x8;
+        } // field175+field28 |= 8
+        if ((ef & 0x4u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x1;
+        } // field172+field28 |= 1
+        if ((ef & 0x8u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x2;
+        } // field173+field28 |= 2
+        if ((ef & 0x10u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x4;
+        } // field174+field28 |= 4
+        if ((ef & 0x20u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x10;
+        } // field176+field28 |= 0x10
+        if ((ef & 0x40u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= unchecked((int)(0x20u | 0x4000020u));
+        }
+        if ((ef & 0x80u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x40;
+        }
+        if ((ef & 0xc00u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x80;
+        }
+        if ((ef & 0x3000u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x100;
+        }
+        if ((ef & 0x100u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x200;
+        }
+        if ((ef & 0x200u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x400;
+        }
+        if ((ef & 0x10000u) != 0)
+            sysRec.FlagA |= 0x800;
+        if ((ef & 0x20000u) != 0)
+            sysRec.FlagA |= 0x1000;
+        if ((ef & unchecked((uint)0x800000)) != 0)
+            sysRec.FlagA |= 0x2000;
+        if ((ef & 0xc000u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x4000;
+        }
+        if ((ef & 0x1000000u) != 0)
+        {
+            sysRec.Stats.CharGarrisonCountA++;
+            sysRec.FlagA |= 0x8000;
+        }
+        // FUN_004319d0 lines 249-251: ExtraFlags bit 28 (0x10000000) → FlagA bit 27 (0x8000000).
+        // Set when own planet popular support < 70. Gate for PreconditionCheck2 return value.
+        if ((ef & 0x10000000u) != 0)
+            sysRec.FlagA |= 0x8000000;
     }
 
     // FUN_0041b230: secondary fleet score accumulator called during calibration state 5.
@@ -1163,8 +1372,10 @@ public static class GalaxyAnalysisPipeline
         // Bits 0x10 / 0x20 are fleet-specific flags from the analysis pipeline;
         // not yet computed (requires FUN_0042fb50 full implementation).
         uint ownershipFlags = 0;
-        if (isOwn) ownershipFlags |= 0x1;
-        if (hasCapShips) ownershipFlags |= 0x4;
+        if (isOwn)
+            ownershipFlags |= 0x1;
+        if (hasCapShips)
+            ownershipFlags |= 0x4;
 
         FleetUnitStats s = rec.Stats;
         int[] fss = ws.FleetSecondaryScores;
@@ -1174,42 +1385,44 @@ public static class GalaxyAnalysisPipeline
             // Own-side capital ships (bit 0x4):
             if ((ownershipFlags & 0x4) != 0)
             {
-                fss[7] += s.CapacityProduct;    // +0x268 <- stats+0x48
-                fss[8] += s.WarshipCount;        // +0x26c <- stats+0x4c
-                fss[9] += s.Val_0x50;            // +0x270 <- stats+0x50
-                fss[10] += s.CombatStrength;     // +0x274 <- stats+0x64
-                fss[11] += s.SecondaryStrength;  // +0x278 <- stats+0x68
-                fss[12] += s.FactionAlignment;   // +0x27c <- stats+0x28
-                fss[13] += s.CategoryFlags;      // +0x280 <- stats+0x18
+                fss[7] += s.CapacityProduct; // +0x268 <- stats+0x48
+                fss[8] += s.WarshipCount; // +0x26c <- stats+0x4c
+                fss[9] += s.Val_0x50; // +0x270 <- stats+0x50
+                fss[10] += s.CombatStrength; // +0x274 <- stats+0x64
+                fss[11] += s.SecondaryStrength; // +0x278 <- stats+0x68
+                fss[12] += s.FactionAlignment; // +0x27c <- stats+0x28
+                fss[13] += s.CategoryFlags; // +0x280 <- stats+0x18
             }
 
             // All own-side units:
-            fss[4] += s.CombatModifier;          // +0x25c <- stats+0x2c
-            fss[5] += s.TertiaryValue;           // +0x260 <- stats+0x6c
-            fss[3] += s.CombatStrength;          // +0x258 <- stats+0x64
-            fss[0] += s.ScaledCount;             // +0x24c <- stats+0x38
-            fss[1] += s.SizeTier;                // +0x250 <- stats+0x3c
-            fss[2] += s.WarshipAttribute;        // +0x254 <- stats+0x40
+            fss[4] += s.CombatModifier; // +0x25c <- stats+0x2c
+            fss[5] += s.TertiaryValue; // +0x260 <- stats+0x6c
+            fss[3] += s.CombatStrength; // +0x258 <- stats+0x64
+            fss[0] += s.ScaledCount; // +0x24c <- stats+0x38
+            fss[1] += s.SizeTier; // +0x250 <- stats+0x3c
+            fss[2] += s.WarshipAttribute; // +0x254 <- stats+0x40
 
-            if ((ownershipFlags & 0x10) != 0) ws.StatusFlags |= 0x4; // own fleet sub-flag A
-            if ((ownershipFlags & 0x20) != 0) ws.StatusFlags |= 0x8; // own fleet sub-flag B
+            if ((ownershipFlags & 0x10) != 0)
+                ws.StatusFlags |= 0x4; // own fleet sub-flag A
+            if ((ownershipFlags & 0x20) != 0)
+                ws.StatusFlags |= 0x8; // own fleet sub-flag B
 
-            fss[6] += s.CapacityField;           // +0x264 <- stats+0x44
+            fss[6] += s.CapacityField; // +0x264 <- stats+0x44
         }
         else
         {
             // Enemy unit:
-            fss[14] += 1;                        // +0x284 enemy count
-            fss[15] += s.CombatStrength;         // +0x288 <- stats+0x64
-            fss[16] += s.FactionAlignment;       // +0x28c <- stats+0x28
-            fss[17] += s.SecondaryStrength;      // +0x290 <- stats+0x68
+            fss[14] += 1; // +0x284 enemy count
+            fss[15] += s.CombatStrength; // +0x288 <- stats+0x64
+            fss[16] += s.FactionAlignment; // +0x28c <- stats+0x28
+            fss[17] += s.SecondaryStrength; // +0x290 <- stats+0x68
 
             // Max-track by CombatStrength (signed comparison matches assembly jg):
             if (s.CombatStrength > fss[18])
             {
-                fss[18] = s.CombatStrength;      // +0x294
-                fss[19] = s.SecondaryStrength;   // +0x298
-                fss[20] = s.FactionAlignment;    // +0x29c
+                fss[18] = s.CombatStrength; // +0x294
+                fss[19] = s.SecondaryStrength; // +0x298
+                fss[20] = s.FactionAlignment; // +0x29c
             }
         }
     }

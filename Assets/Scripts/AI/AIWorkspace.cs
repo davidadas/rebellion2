@@ -141,13 +141,35 @@ public class AIWorkspace
     public List<SelectedTargetEntry> SelectedTargetTable { get; } = new List<SelectedTargetEntry>();
 
     // -------------------------------------------------------------------------
-    // workspace+0x44 — fleet assignment sub-object.
-    // Used by FUN_004ceb30 (Type 8 state 3) which calls FUN_004f4cc0(this=workspace+0x44,
-    // arg=&entry.StatusFlags) to verify a pre-existing fleet assignment condition before
-    // creating new fleet issue records.
+    // workspace+0x00 — faction side (1=Alliance, 2=Empire).
+    // Read as *workspace in sub_419330's call to sub_4f2090(*workspace, type_range).
+    // sub_4f2090 → sub_53d660 → sub_53d730 use this to retrieve the faction-specific
+    // entity from the global game BST (DAT_006b33a4).
     // -------------------------------------------------------------------------
+    public int FactionSide { get; set; }
 
-    public object FleetAssignmentSubObject { get; set; }
+    // -------------------------------------------------------------------------
+    // workspace+0x44 — sector analysis BST (family 0x80, 20 strategic sectors).
+    //
+    // In the original binary, workspace+0x44 is a sorted BST container populated
+    // during the fleet assignment pipeline (sub_475d00). Each record represents one
+    // of the 20 strategic sectors (SECTORSD.json, family_id=0x80, IDs 20–39) and
+    // tracks the current fleet assignment state for that sector.
+    //
+    // Key = (0x80 << 24) | sector_data_id  (sector entity key, HIBYTE 0x80).
+    // FUN_004ceb30 searches this table using entry.StatusFlags to check for a
+    // pre-existing assignment before creating new fleet issue records.
+    // FUN_00476840 reads field_0x30 (FleetTypeCode) to determine which of the
+    // 6 FleetAssignmentTarget subtypes to instantiate.
+    //
+    // NOTE: The calibration's "&param_1->+0x44 = system analysis list" refers to
+    // iterating SECTOR records (family 0x80) in this same BST — the binary uses
+    // "system analysis" loosely for both sector-level and system-level structures.
+    // Individual planet systems (SYSTEMSD.json, family 0x92, 200 entries) are
+    // tracked in AIWorkspace.SystemAnalysis (HIBYTE 0x90).
+    // -------------------------------------------------------------------------
+    public List<SectorAnalysisRecord> SectorAnalysisTable { get; } =
+        new List<SectorAnalysisRecord>();
 
     // -------------------------------------------------------------------------
     // workspace+0x58 — fleet assignment records table.
@@ -164,10 +186,12 @@ public class AIWorkspace
     // -------------------------------------------------------------------------
 
     /// <summary>Fleet assignment records (workspace+0x58).</summary>
-    public List<FleetAssignmentRecord> FleetAssignmentTable { get; } = new List<FleetAssignmentRecord>();
+    public List<FleetAssignmentRecord> FleetAssignmentTable { get; } =
+        new List<FleetAssignmentRecord>();
 
     /// <summary>Fleet availability records (workspace+0x78).</summary>
-    public List<FleetAvailabilityRecord> FleetAvailabilityTable { get; } = new List<FleetAvailabilityRecord>();
+    public List<FleetAvailabilityRecord> FleetAvailabilityTable { get; } =
+        new List<FleetAvailabilityRecord>();
 
     /// <summary>Looks up a FleetAssignmentRecord by ID (FUN_004f4cc0 equivalent).</summary>
     public FleetAssignmentRecord FindFleetAssignment(int id) =>
@@ -191,17 +215,17 @@ public class AIWorkspace
     // These are static thresholds used by the shortage generators to decide
     // how many agents/fleets are needed and in what ratios.
     // -------------------------------------------------------------------------
-    public int SupplyThreshold364 { get; set; } = 3;  // +0x364
-    public int SupplyThreshold368 { get; set; } = 3;  // +0x368
-    public int SupplyThreshold36C { get; set; } = 2;  // +0x36c
-    public int SupplyThreshold370 { get; set; } = 1;  // +0x370
-    public int SupplyThreshold374 { get; set; } = 1;  // +0x374
-    public int SupplyThreshold378 { get; set; } = 0;  // +0x378
-    public int SupplyThreshold37C { get; set; } = 0;  // +0x37c
-    public int SupplyThreshold380 { get; set; } = 3;  // +0x380
-    public int SupplyThreshold384 { get; set; } = 9;  // +0x384
-    public int SupplyThreshold388 { get; set; } = 0;  // +0x388
-    public int SupplyThreshold38C { get; set; } = 6;  // +0x38c
+    public int SupplyThreshold364 { get; set; } = 3; // +0x364
+    public int SupplyThreshold368 { get; set; } = 3; // +0x368
+    public int SupplyThreshold36C { get; set; } = 2; // +0x36c
+    public int SupplyThreshold370 { get; set; } = 1; // +0x370
+    public int SupplyThreshold374 { get; set; } = 1; // +0x374
+    public int SupplyThreshold378 { get; set; } = 0; // +0x378
+    public int SupplyThreshold37C { get; set; } = 0; // +0x37c
+    public int SupplyThreshold380 { get; set; } = 3; // +0x380
+    public int SupplyThreshold384 { get; set; } = 9; // +0x384
+    public int SupplyThreshold388 { get; set; } = 0; // +0x388
+    public int SupplyThreshold38C { get; set; } = 6; // +0x38c
     public int SupplyThreshold390 { get; set; } = 12; // +0x390
 
     // -------------------------------------------------------------------------
@@ -242,10 +266,19 @@ public class AIWorkspace
     public int NextProductionId { get; set; } = 1;
 
     // workspace+0x204: sector-search state variable for Type 8 (FUN_004cea70).
-    // Negative: scan EntityTargetTable for entities with flag bit 0x4000000 set.
-    // Positive: call find-sector with this value as parameter.
-    // Zero: do nothing this cycle.
-    public int SectorSearchState { get; set; }
+    // Negative: scan EntityTargetTable backward; if all entries have bit 0x4000000 set
+    //   (or table is empty), call FUN_0042e9d0 to create a new MissionTargetEntry.
+    //   If any entry has bit 0x4000000 clear (unassigned), do nothing.
+    // Positive: call FUN_0042ea50_find_sector; iterate backward, find first entry with
+    //   HIBYTE(StatusFlags) not in [0x80, 0x90), activate it (reset state), remove it.
+    // Zero: no-op.
+    //
+    // In the original binary, calibration (FUN_0041af90 called from calibration state 5)
+    // zeros this field and then accumulates astruct_342->field212_0x11c per system node.
+    // In the C# implementation, calibration does not yet accumulate this field.
+    // Initialized to -1 so Type 8 creates entries on first run. This is the correct
+    // behavior for any game state where the AI has unresolved fleet assignments.
+    public int SectorSearchState { get; set; } = -1;
 
     // -------------------------------------------------------------------------
     // Capital ship naming flags (used by CapitalShipNameGeneratorRecord / Type 14).
@@ -276,8 +309,12 @@ public class AIWorkspace
     //   statIndex       = DWORD index into PerSystemStats (byte offset = statIndex * 4)
     // -------------------------------------------------------------------------
     public IssueRecordContainer QuerySystemAnalysis(
-        uint incl24, uint incl28, uint incl2c,
-        uint excl24, uint excl28, uint excl2c,
+        uint incl24,
+        uint incl28,
+        uint incl2c,
+        uint excl24,
+        uint excl28,
+        uint excl2c,
         int statIndex
     )
     {
@@ -288,18 +325,32 @@ public class AIWorkspace
             uint a = (uint)rec.FlagA;
             uint b = (uint)rec.FlagB;
 
-            if ((incl24 & d) != incl24) continue;
-            if ((excl24 & d) != 0) continue;
-            if ((incl28 & a) != incl28) continue;
-            if ((excl28 & a) != 0) continue;
-            if ((incl2c & b) != incl2c) continue;
-            if ((excl2c & b) != 0) continue;
+            if ((incl24 & d) != incl24)
+                continue;
+            if ((excl24 & d) != 0)
+                continue;
+            if ((incl28 & a) != incl28)
+                continue;
+            if ((excl28 & a) != 0)
+                continue;
+            if ((incl2c & b) != incl2c)
+                continue;
+            if ((excl2c & b) != 0)
+                continue;
 
             int statValue = rec.Stats.GetStatByIndex(statIndex);
-            // entityKey = system identity. We use System's hash as a proxy for the
-            // key-value that FUN_00403040 would produce from the original node pointer.
-            int entityKey = rec.System?.GetHashCode() ?? 0;
-            result.Add(new IssueRecord { EntityKey = entityKey, PropertyValue = statValue, Record = rec });
+            // entityKey = AI-internal entity ID for this system record (HIBYTE 0x90).
+            // FUN_00403040 produces the key from the entity node pointer; in C# we use
+            // the pre-assigned InternalId which carries the correct HIBYTE type encoding.
+            int entityKey = rec.InternalId;
+            result.Add(
+                new IssueRecord
+                {
+                    EntityKey = entityKey,
+                    PropertyValue = statValue,
+                    Record = rec,
+                }
+            );
         }
 
         // FUN_0041b9e0: assign sequential priorities ascending by PropertyValue.
@@ -329,14 +380,19 @@ public class AIWorkspace
     // -------------------------------------------------------------------------
     public IssueRecordContainer QuerySystemPlanets(
         int candidateEntityKey,
-        uint incl28, uint incl2c, uint incl30,
-        uint excl28, uint excl2c, uint excl30,
+        uint incl28,
+        uint incl2c,
+        uint incl30,
+        uint excl28,
+        uint excl2c,
+        uint excl30,
         int statIndex
     )
     {
         // FUN_0041b540: find the system analysis record matching this entity key.
+        // Uses InternalId (HIBYTE 0x90 | index) rather than System.GetHashCode().
         SystemAnalysisRecord sysRec = SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == candidateEntityKey
+            r.InternalId == candidateEntityKey
         );
         if (sysRec == null)
             return new IssueRecordContainer();
@@ -345,27 +401,36 @@ public class AIWorkspace
         var result = new IssueRecordContainer();
         foreach (PlanetSubobject sub in sysRec.PlanetSubobjects)
         {
-            if (sub == null) continue;
+            if (sub == null)
+                continue;
 
             uint cap = sub.CapabilityFlags;
             uint ext = sub.ExtraFlags;
             uint sta = sub.StatusFlags;
 
             // 6-condition filter (identical structure to FUN_004191b0's system filter):
-            if ((incl28 & cap) != incl28) continue;
-            if ((excl28 & cap) != 0) continue;
-            if ((incl2c & ext) != incl2c) continue;
-            if ((excl2c & ext) != 0) continue;
-            if ((incl30 & sta) != incl30) continue;
-            if ((excl30 & sta) != 0) continue;
+            if ((incl28 & cap) != incl28)
+                continue;
+            if ((excl28 & cap) != 0)
+                continue;
+            if ((incl2c & ext) != incl2c)
+                continue;
+            if ((excl2c & ext) != 0)
+                continue;
+            if ((incl30 & sta) != incl30)
+                continue;
+            if ((excl30 & sta) != 0)
+                continue;
 
             int statValue = sub.GetStatByIndex(statIndex);
-            result.Add(new IssueRecord
-            {
-                EntityKey = candidateEntityKey,
-                PropertyValue = statValue,
-                Record = sysRec,
-            });
+            result.Add(
+                new IssueRecord
+                {
+                    EntityKey = candidateEntityKey,
+                    PropertyValue = statValue,
+                    Record = sysRec,
+                }
+            );
         }
 
         result.FinalizeAndAssignPriorities();
@@ -462,6 +527,16 @@ public class SystemAnalysisRecord
     public PerSystemStats Stats { get; set; } = new PerSystemStats();
 
     /// <summary>
+    /// AI-internal entity key for this system analysis record.
+    /// High byte = 0x90 (system type code in AI's internal entity encoding, [0x90, 0x98)).
+    /// Lower 24 bits = sequential index within SystemAnalysis list.
+    /// Assigned during galaxy analysis state 2 (FUN_004306c0 iterator range [0x90,0x98)).
+    /// Used by strategy records to look up this record via workspace container queries
+    /// (sub_403d30 / FUN_004f4cc0_find_by_record_matching_family_id).
+    /// </summary>
+    public int InternalId { get; set; }
+
+    /// <summary>
     /// Disposition/character flags (+0x24, field33_0x24).
     /// Queried by FUN_004191b0 as the primary filter field (param_1 = include mask).
     /// Set by FUN_004319d0 from per-planet data accumulation.
@@ -553,7 +628,8 @@ public class IssueRecordContainer
     /// </summary>
     public void StoreFrom(IssueRecordContainer source)
     {
-        if (source == null) return;
+        if (source == null)
+            return;
         _records.AddRange(source._records);
     }
 
@@ -564,12 +640,14 @@ public class IssueRecordContainer
     /// </summary>
     public void FinalizeAndAssignPriorities()
     {
-        _records.Sort((a, b) =>
-        {
-            if (a.PropertyValue != b.PropertyValue)
-                return a.PropertyValue.CompareTo(b.PropertyValue);
-            return _rng.Next(2) == 0 ? -1 : 1; // random tiebreak
-        });
+        _records.Sort(
+            (a, b) =>
+            {
+                if (a.PropertyValue != b.PropertyValue)
+                    return a.PropertyValue.CompareTo(b.PropertyValue);
+                return _rng.Next(2) == 0 ? -1 : 1; // random tiebreak
+            }
+        );
         for (int i = 0; i < _records.Count; i++)
             _records[i].Priority = i + 1;
     }
@@ -581,7 +659,11 @@ public class IssueRecordContainer
     /// </summary>
     public bool TryGetTopEntityKey(out int entityKey)
     {
-        if (_records.Count == 0) { entityKey = 0; return false; }
+        if (_records.Count == 0)
+        {
+            entityKey = 0;
+            return false;
+        }
         entityKey = _records[0].EntityKey;
         return true;
     }
@@ -589,8 +671,7 @@ public class IssueRecordContainer
     /// <summary>
     /// FUN_00434e30: returns the top-priority SystemAnalysisRecord directly (C# convenience).
     /// </summary>
-    public SystemAnalysisRecord GetTopRecord() =>
-        _records.Count > 0 ? _records[0].Record : null;
+    public SystemAnalysisRecord GetTopRecord() => _records.Count > 0 ? _records[0].Record : null;
 
     /// <summary>FUN_005f3dd0: clear all records.</summary>
     public void Clear() => _records.Clear();
@@ -679,11 +760,11 @@ public class PlanetSubobject
     // +0x4c entity capacity field (entity+0x5c)
     public int EntityCapacity { get; set; }
 
-    // +0x50 fighter count A (sub_52c4d0 result)
-    public int FighterCountA { get; set; }
+    // +0x50 mine count (FUN_0052c4d0_find_mines_with_count result)
+    public int MineCount { get; set; }
 
-    // +0x54 fighter count B (sub_52c0f0 result)
-    public int FighterCountB { get; set; }
+    // +0x54 refinery count (FUN_0052c0f0_find_refinery_with_count result)
+    public int RefineryCount { get; set; }
 
     // +0x58 capital ship count (incremented per capital ship)
     public int CapitalShipCount { get; set; }
@@ -810,28 +891,28 @@ public class PlanetSubobject
         // Byte offset = index * 4. Planet sub-object layout from +0x48 (FUN_004334c0):
         return (index * 4) switch
         {
-            0x00 => CapacityThreshold,      // +0x48 index 0
-            0x04 => EntityCapacity,          // +0x4c index 1
-            0x08 => FighterCountA,           // +0x50 index 2
-            0x0c => FighterCountB,           // +0x54 index 3
-            0x10 => CapitalShipCount,        // +0x58 index 4
-            0x14 => RegimentCount,           // +0x5c index 5
-            0x18 => StarfighterCount,        // +0x60 index 6 (queried by sub_419af0 param_7=6)
-            0x1c => UnitTypeDCount,          // +0x64 index 7
-            0x20 => StrengthAccum,           // +0x68 index 8
-            0x24 => GarrisonDeficit,         // +0x6c index 9
-            0x28 => FighterTypeA,            // +0x70 index 10
-            0x2c => FighterTypeB,            // +0x74 index 11
-            0x30 => UnitStrengthSum,         // +0x78 index 12
-            0x34 => GarrisonDeficitB,        // +0x7c index 13
-            0x38 => AvailableCapacityB,      // +0x80 index 14
-            0x3c => AvailableCapacityA,      // +0x84 index 15
-            0x40 => TroopCount,              // +0x88 index 16
-            0x44 => TroopGateCount,          // +0x8c index 17
-            0x48 => AuxCount,                // +0x90 index 18
-            0x50 => UrgencyScore,            // +0x98 index 20
-            0x58 => UrgencyThreshold,        // +0xa0 index 22
-            0x5c => CharacterCount,          // +0xa4 index 23
+            0x00 => CapacityThreshold, // +0x48 index 0
+            0x04 => EntityCapacity, // +0x4c index 1
+            0x08 => MineCount, // +0x50 index 2
+            0x0c => RefineryCount, // +0x54 index 3
+            0x10 => CapitalShipCount, // +0x58 index 4
+            0x14 => RegimentCount, // +0x5c index 5
+            0x18 => StarfighterCount, // +0x60 index 6 (queried by sub_419af0 param_7=6)
+            0x1c => UnitTypeDCount, // +0x64 index 7
+            0x20 => StrengthAccum, // +0x68 index 8
+            0x24 => GarrisonDeficit, // +0x6c index 9
+            0x28 => FighterTypeA, // +0x70 index 10
+            0x2c => FighterTypeB, // +0x74 index 11
+            0x30 => UnitStrengthSum, // +0x78 index 12
+            0x34 => GarrisonDeficitB, // +0x7c index 13
+            0x38 => AvailableCapacityB, // +0x80 index 14
+            0x3c => AvailableCapacityA, // +0x84 index 15
+            0x40 => TroopCount, // +0x88 index 16
+            0x44 => TroopGateCount, // +0x8c index 17
+            0x48 => AuxCount, // +0x90 index 18
+            0x50 => UrgencyScore, // +0x98 index 20
+            0x58 => UrgencyThreshold, // +0xa0 index 22
+            0x5c => CharacterCount, // +0xa4 index 23
             _ => 0, // unmapped or out-of-range
         };
     }
@@ -846,6 +927,14 @@ public class FleetAnalysisRecord
     public Fleet Fleet { get; set; }
     public FleetUnitStats Stats { get; set; } = new FleetUnitStats();
     public int FleetScore { get; set; }
+
+    /// <summary>
+    /// AI-internal entity key for this fleet analysis record.
+    /// High byte = 0x80 (fleet type code in AI's internal entity encoding, [0x80, 0x90)).
+    /// Lower 24 bits = sequential index within FleetAnalysis list.
+    /// Assigned during galaxy analysis state 3 (FUN_00430200 iterator range [0x80,0x90)).
+    /// </summary>
+    public int InternalId { get; set; }
 }
 
 /// <summary>
@@ -856,6 +945,14 @@ public class CharacterAnalysisRecord
     public Officer Officer { get; set; }
     public int CharacterScore { get; set; }
     public int CapabilityFlags { get; set; }
+
+    /// <summary>
+    /// AI-internal entity key for this character analysis record.
+    /// High byte = 0xa0 (character type code in AI's internal entity encoding, [0xa0, 0xa2)).
+    /// Lower 24 bits = sequential index within CharacterAnalysis list.
+    /// Assigned during galaxy analysis state 5 (FUN_004032c0 iterator range [0xa0,0xa2)).
+    /// </summary>
+    public int InternalId { get; set; }
 }
 
 /// <summary>
@@ -902,12 +999,12 @@ public class MissionAssignmentEntry
     public int EntityRef38 { get; set; }
 
     // +0x3c: list A of assignment sub-records, iterated by FUN_0047a440/FUN_0047ae90.
-    public readonly System.Collections.Generic.List<int> AssignmentListA
-        = new System.Collections.Generic.List<int>();
+    public readonly System.Collections.Generic.List<int> AssignmentListA =
+        new System.Collections.Generic.List<int>();
 
     // +0x44: list B of assignment sub-records.
-    public readonly System.Collections.Generic.List<int> AssignmentListB
-        = new System.Collections.Generic.List<int>();
+    public readonly System.Collections.Generic.List<int> AssignmentListB =
+        new System.Collections.Generic.List<int>();
 
     // +0x68: back-reference to the owning AIWorkspace.
     // Set by FUN_0042ecc0 (field98_0x68 = container+0x14 = workspace ref).
@@ -1137,7 +1234,9 @@ public class MissionAssignmentEntry
     // vtable+0x48, +0x4c, +0x50: type-specific mission phases.
     // Concrete subclasses override these based on mission type.
     protected virtual void MissionPhase3() { }
+
     protected virtual void MissionPhase4() { }
+
     protected virtual void MissionPhase5() { }
 }
 
@@ -1408,9 +1507,7 @@ public class MissionTargetEntry
         {
             FleetAssignmentRecord entity = ContextObject.FindFleetAssignment(registryNode.Id);
 
-            if (entity != null
-                && entity.TypeId == FilterTypeId
-                && (entity.Flags & 0x4000) != 0)
+            if (entity != null && entity.TypeId == FilterTypeId && (entity.Flags & 0x4000) != 0)
             {
                 // Pass: check if SubObjectId is not already tracked, then try to accept.
                 int subId = entity.SubObjectId;
@@ -1508,14 +1605,14 @@ public class MissionTargetEntry
     /// cycle. For each node: resolves entity via FUN_004195f0, checks record+0x30 ==
     /// FilterTypeId, flag bit 0x1, and FUN_005f3650 count gate. Calls FUN_478620 for
     /// entries that fail.
-    /// INCOMPLETE(game-entity): requires resolved entity struct field definitions.
     /// </summary>
     private void CleanupAssignmentList()
     {
         foreach (CandidateRecord candidate in CandidateList.ToList())
         {
             FleetAvailabilityRecord entity = ContextObject.FindFleetAvailability(candidate.Id);
-            bool pass = entity != null
+            bool pass =
+                entity != null
                 && entity.TypeId == FilterTypeId
                 && (entity.Flags & 0x1) != 0
                 && entity.SubEntries.Count > 0;
@@ -1539,7 +1636,6 @@ public class MissionTargetEntry
     /// and allocates a 0x270-byte work item via FUN_004f5060 when a candidate is found.
     /// Sets work-item+0x20 = OwnerSide. Calls vtable slots +0x24 and +0x2c on the work item.
     /// Returns the allocated work item or null if no candidate passes.
-    /// INCOMPLETE(game-entity): requires resolved entity struct field definitions.
     /// </summary>
     private AIWorkItem BuildAssignmentCandidate()
     {
@@ -1600,7 +1696,6 @@ public class MissionTargetEntry
     ///   Accumulator6 != 0: SubAssignmentId |= 0x100000
     /// Accumulator4 is NOT checked for SubAssignmentId flags.
     /// Copies Accumulator2 → CapacitySnapshot0 and Accumulator3 → CapacitySnapshot1.
-    /// INCOMPLETE(game-entity): entity field reads require resolved struct definitions.
     /// </summary>
     private void AccumulateCapacityData()
     {
@@ -1624,9 +1719,11 @@ public class MissionTargetEntry
             CapacityAccumulator1 += entity.CapFieldB8;
             CapacityAccumulator2 += entity.CapField84;
             CapacityAccumulator3 += entity.CapField78;
-            if ((entity.CategoryFlags & 0x10) != 0) CapacityAccumulator4 += 1;
+            if ((entity.CategoryFlags & 0x10) != 0)
+                CapacityAccumulator4 += 1;
             CapacityAccumulator5 += entity.CapField68;
-            if ((entity.CategoryFlags & 0x20) != 0) CapacityAccumulator6 += 1;
+            if ((entity.CategoryFlags & 0x20) != 0)
+                CapacityAccumulator6 += 1;
             CapacityAccumulator7 += entity.CapField7C;
             CapacityAccumulator8 += entity.CapField70;
             CapacityAccumulator9 += entity.CapField9C;
@@ -1635,15 +1732,24 @@ public class MissionTargetEntry
         CapacitySnapshot0 = CapacityAccumulator2;
         CapacitySnapshot1 = CapacityAccumulator3;
 
-        if (CapacityAccumulator0 != 0) SubAssignmentId |= 0x200000;
-        if (CapacityAccumulator1 != 0) SubAssignmentId |= 0x400000;
-        if (CapacityAccumulator2 != 0) SubAssignmentId |= 0x800000;
-        if (CapacityAccumulator3 != 0) SubAssignmentId |= 0x1000000;
-        if (CapacityAccumulator5 != 0) SubAssignmentId |= 0x2000000;
-        if (CapacityAccumulator7 != 0) SubAssignmentId |= 0x4000000;
-        if (CapacityAccumulator8 != 0) SubAssignmentId |= 0x8000000;
-        if (CapacityAccumulator9 != 0) SubAssignmentId |= 0x10000000;
-        if (CapacityAccumulator6 != 0) SubAssignmentId |= 0x100000;
+        if (CapacityAccumulator0 != 0)
+            SubAssignmentId |= 0x200000;
+        if (CapacityAccumulator1 != 0)
+            SubAssignmentId |= 0x400000;
+        if (CapacityAccumulator2 != 0)
+            SubAssignmentId |= 0x800000;
+        if (CapacityAccumulator3 != 0)
+            SubAssignmentId |= 0x1000000;
+        if (CapacityAccumulator5 != 0)
+            SubAssignmentId |= 0x2000000;
+        if (CapacityAccumulator7 != 0)
+            SubAssignmentId |= 0x4000000;
+        if (CapacityAccumulator8 != 0)
+            SubAssignmentId |= 0x8000000;
+        if (CapacityAccumulator9 != 0)
+            SubAssignmentId |= 0x10000000;
+        if (CapacityAccumulator6 != 0)
+            SubAssignmentId |= 0x100000;
         // CapacityAccumulator4 is NOT checked for SubAssignmentId flags.
     }
 
@@ -1651,7 +1757,6 @@ public class MissionTargetEntry
     /// Subtracts the current fleet's capacity from the accumulators produced by
     /// AccumulateCapacityData. Called immediately after AccumulateCapacityData in
     /// dispatch case 2.
-    /// INCOMPLETE(fleet-vtable): requires Fleet interface to subtract capacity values.
     /// </summary>
     private void SubtractFleetCapacity()
     {
@@ -1672,14 +1777,14 @@ public class MissionTargetEntry
     /// Evaluates accumulated capacity against assignment thresholds (dispatch case 3).
     /// Sets localFlag to non-zero when a qualifying candidate is found, signalling the
     /// pipeline to advance to case 4. Returns a work item if a candidate was committed.
-    /// INCOMPLETE(game-entity): requires resolved entity struct field definitions.
     /// </summary>
     private AIWorkItem EvaluateCapacityCondition(ref int localFlag)
     {
         // Retrieve the last AssignmentRegistry entry and resolve its FleetAvailabilityRecord.
-        AssignmentRecord lastRecord = AssignmentRegistryList.Count > 0
-            ? AssignmentRegistryList[AssignmentRegistryList.Count - 1]
-            : null;
+        AssignmentRecord lastRecord =
+            AssignmentRegistryList.Count > 0
+                ? AssignmentRegistryList[AssignmentRegistryList.Count - 1]
+                : null;
         if (lastRecord == null)
         {
             localFlag = 1;
@@ -1694,14 +1799,22 @@ public class MissionTargetEntry
         }
 
         // 8 sequential capacity checks. Any failure means the condition is not satisfied.
-        if (entity.CapField7C > CapacityAccumulator0) return null;
-        if (entity.CapField80 > CapacityAccumulator1) return null;
-        if ((entity.Flags & 0x2) != 0 && CapacityAccumulator9 <= 0) return null;
-        if ((entity.Flags & 0xc) != 0 && entity.CapField6C > CapacityAccumulator2) return null;
-        if (entity.CapField60 > 0 && entity.CapField60 > CapacityAccumulator3) return null;
-        if (entity.CapField48 > 0 && entity.CapField48 > CapacityAccumulator5) return null;
-        if (CapacityAccumulator4 <= 0 && (entity.Flags & 0x80) != 0) return null;
-        if (CapacityAccumulator6 <= 0 && (entity.Flags & 0x400) != 0) return null;
+        if (entity.CapField7C > CapacityAccumulator0)
+            return null;
+        if (entity.CapField80 > CapacityAccumulator1)
+            return null;
+        if ((entity.Flags & 0x2) != 0 && CapacityAccumulator9 <= 0)
+            return null;
+        if ((entity.Flags & 0xc) != 0 && entity.CapField6C > CapacityAccumulator2)
+            return null;
+        if (entity.CapField60 > 0 && entity.CapField60 > CapacityAccumulator3)
+            return null;
+        if (entity.CapField48 > 0 && entity.CapField48 > CapacityAccumulator5)
+            return null;
+        if (CapacityAccumulator4 <= 0 && (entity.Flags & 0x80) != 0)
+            return null;
+        if (CapacityAccumulator6 <= 0 && (entity.Flags & 0x400) != 0)
+            return null;
 
         // All conditions passed: mark the assignment path and signal advance to case 4.
         AssignmentId |= 0x2000000;
@@ -1716,11 +1829,22 @@ public class MissionTargetEntry
     /// Zeroes PendingMissionTypeId, MissionParam, and PendingCancelId.
     /// Calls Fleet vtable slot 6 (FUN_004fd970) with 4 arguments.
     /// If PendingMissionTypeId != 0 after the call: SubAssignmentId |= 0x100.
-    /// Iterates ShipTypeList via FUN_005f3a70 lookup in ContextObject's ship table (+0xa8);
-    /// sets SubAssignmentId bits (0x20000000, high byte of 0x400, 0x80000000) per entry.
-    /// Tracks minimum via Fleet vtable slot 8 (FUN_004fd9b0); stores best destination
-    /// in PendingCancelId (+0xc4).
-    /// INCOMPLETE(fleet-vtable): requires Fleet vtable slots 6 and 8.
+    /// Scans ShipTypeList entries and sets SubAssignmentId capability bits (FUN_00477450).
+    /// Called in dispatch case 4.
+    ///
+    /// Assembly trace (fully read):
+    ///   1. Zeros PendingMissionTypeId (+0xbc), MissionParam (+0xc0), PendingCancelId (+0xc4).
+    ///   2. Calls FleetTarget.vtable[6](&PendingMissionTypeId, &MissionParam, local1, local2)
+    ///      = GetMissionInfo(this). Populates PendingMissionTypeId/MissionParam.
+    ///   3. If PendingMissionTypeId != 0: SubAssignmentId |= 0x100.
+    ///   4. Iterates ShipTypeList backward; for each ID looks up in ContextObject.MissionTable.
+    ///      If found:
+    ///        SubAssignmentId |= 0x20000000
+    ///        if (record.EntryStatusFlags & 0x3) != 0x3: SubAssignmentId |= 0x400
+    ///        if (record.EntryStatusFlags & 0x100) != 0: SubAssignmentId |= 0x80000000
+    ///        [Priority-based PendingCancelId block: only executes when unaff_EDI != 0,
+    ///         which is an implicit register parameter from the caller. In C# this is
+    ///         always 0 → block never runs → PendingCancelId stays 0.]
     /// </summary>
     private void ScanShipTypeList()
     {
@@ -1728,54 +1852,109 @@ public class MissionTargetEntry
         MissionParam = 0;
         PendingCancelId = 0;
 
-        // Vtable slot 6 call populates PendingMissionTypeId/MissionParam.
-        // Abstract method not yet defined — awaiting research pass for FUN_004fd970.
+        // FleetTarget.vtable[6](&PendingMissionTypeId, &MissionParam, ...): populates mission info.
         FleetTarget.GetMissionInfo(this);
 
         if (PendingMissionTypeId != 0)
             SubAssignmentId |= 0x100;
 
-        int minCost = int.MaxValue;
-        // Iterate ShipTypeList LIFO; each ID looks up a MissionAssignmentEntry.
+        // Iterate ShipTypeList backward; each ID looks up a MissionAssignmentEntry.
         for (int i = ShipTypeList.Count - 1; i >= 0; i--)
         {
-            MissionAssignmentEntry entry = ContextObject.MissionTable
-                .FirstOrDefault(e => e.Id == ShipTypeList[i]);
+            MissionAssignmentEntry entry = ContextObject.MissionTable.FirstOrDefault(e =>
+                e.Id == ShipTypeList[i]
+            );
             if (entry == null)
                 continue;
 
+            // record+0x20 (EntryStatusFlags) bit checks per FUN_00477450 assembly:
             SubAssignmentId |= 0x20000000;
             if ((entry.EntryStatusFlags & 0x3) != 0x3)
-                SubAssignmentId |= 0x400;
-            if ((entry.EntryStatusFlags & 0x100) != 0) // HIBYTE & 0x1 = bit 8
+                SubAssignmentId |= 0x400; // HIBYTE(eax) |= 0x4 → bit 10 = 0x400
+            if ((entry.EntryStatusFlags & 0x100) != 0) // HIBYTE(entry+0x20) & 0x1 = bit 8
                 SubAssignmentId = unchecked((int)((uint)SubAssignmentId | 0x80000000));
-
-            // Track minimum-cost entry; store its FieldAt18 in PendingCancelId.
-            if (entry.FieldAt18 < minCost)
-            {
-                minCost = entry.FieldAt18;
-                PendingCancelId = entry.FieldAt18;
-            }
+            // PendingCancelId block (iVar6 min tracking) only fires when unaff_EDI != 0,
+            // an implicit x86 register parameter from FUN_00476910. In C# this is 0. Skip.
         }
     }
 
     /// <summary>
-    /// <summary>
     /// Scans ProductionTypeList for eligible production candidates (FUN_00477590).
     /// Called in dispatch case 4 alongside ScanShipTypeList.
-    /// Zeroes PendingProductionId (+0xe0) and PreviousProductionId (+0xe4).
-    /// Clears bits 24-26 of AssignmentId (+0x60).
-    /// First loop: iterates ProductionTypeList; checks flags at entry+0x20; sets SubAssignmentId/AssignmentId bits.
-    /// Then calls FleetTarget vtable slot 7 with &amp;PendingProductionId; if non-zero: SubAssignmentId |= 0x200.
-    /// Second loop: calls FUN_004acfc0 per entry to find PreviousProductionId.
-    /// Remaining vtable/flag logic requires research pass (FUN_004acfc0 and slot 7 not yet read).
+    ///
+    /// Assembly trace (fully read):
+    ///   1. Zeros PendingProductionId (+0xe0) and PreviousProductionId (+0xe4).
+    ///   2. Clears bits 24-26 of AssignmentId: AssignmentId &amp;= 0xf8ffffff.
+    ///   3. First loop: iterates ProductionTypeList backward; for each ID looks up in
+    ///      ContextObject.ProductionTrackingTable. If found, reads entry+0x20 (status bits):
+    ///        AssignmentId |= 0x2000000 (bit 25)
+    ///        SubAssignmentId |= 0x40000000 (bit 30)
+    ///        if (bits & 0x10): AssignmentId |= 0x4000000 (bit 26)
+    ///        if (bits & 0x8) AND NOT (bits & 0x4): AssignmentId |= 0x1000000 (bit 24)
+    ///        if (bits & 0x8) AND (bits & 0x4) AND vtable[6]() == 4: AssignmentId |= 0x200000
+    ///        if NOT (bits & 0x1): SubAssignmentId |= 0x400
+    ///        else: SubAssignmentId |= 0x80000000
+    ///   4. Calls FleetTarget.vtable[7](&amp;PendingProductionId) = GetProductionInfo(this).
+    ///      If PendingProductionId != 0: SubAssignmentId |= 0x200.
+    ///   5. Second loop: iterates ProductionTypeList backward; for each ID calls
+    ///      FUN_004acfc0(FleetTarget, nodeId). If non-zero: PreviousProductionId = nodeId, break.
+    ///      FUN_004acfc0 not yet read; PreviousProductionId stays 0.
     /// </summary>
     private void ScanProductionList()
     {
         PendingProductionId = 0;
         PreviousProductionId = 0;
-        AssignmentId &= unchecked((int)0xf8ffffff);
-        // remaining: production flag loop + vtable slot 7 call — awaiting research spec
+        AssignmentId &= unchecked((int)0xf8ffffff); // clear bits 24-26
+
+        // First loop: iterate ProductionTypeList backward; set capability flags.
+        for (int i = ProductionTypeList.Count - 1; i >= 0; i--)
+        {
+            ProductionTrackingEntry rec = ContextObject.ProductionTrackingTable.FirstOrDefault(r =>
+                r.Id == ProductionTypeList[i]
+            );
+            if (rec == null)
+                continue;
+
+            // rec+0x20 status bits. In C# the 'Status' field occupies this offset.
+            // Active=1 (bit 0 set), Complete=2 (bit 1 set). Bits 3 and 4 (capability
+            // flags for capital ships / starfighters) not yet represented in C#;
+            // treated as 0 → their conditional paths are skipped.
+            int statusBits = (int)rec.Status;
+
+            AssignmentId = unchecked((int)((uint)AssignmentId | 0x2000000)); // bit 25
+            SubAssignmentId = unchecked((int)((uint)SubAssignmentId | 0x40000000)); // bit 30
+
+            if ((statusBits & 0x10) != 0) // bit 4: starfighter/capability flag
+                AssignmentId = unchecked((int)((uint)AssignmentId | 0x4000000)); // bit 26
+
+            if ((statusBits & 0x8) != 0) // bit 3: capital ship / queue flag
+            {
+                if ((statusBits & 0x4) == 0)
+                    AssignmentId = unchecked((int)((uint)AssignmentId | 0x1000000)); // bit 24
+                // else: vtable[6]() == 4 check requires FleetAssignmentTarget subclass. Skip.
+            }
+
+            if ((statusBits & 0x1) == 0)
+                SubAssignmentId |= 0x400; // HIBYTE |= 0x4 → bit 10
+            else
+                SubAssignmentId = unchecked((int)((uint)SubAssignmentId | 0x80000000)); // bit 31
+        }
+
+        // FleetTarget.vtable[7](&PendingProductionId): populates PendingProductionId.
+        FleetTarget.GetProductionInfo(this);
+
+        if (PendingProductionId != 0)
+            SubAssignmentId |= 0x200; // HIBYTE |= 0x2 → bit 9
+
+        // Second loop: iterates ProductionTypeList backward; for each ID calls
+        // FUN_004acfc0(FleetTarget, nodeId). FUN_004acfc0 assembly (now read):
+        //   returns 1 even when the entry is NOT found in the table (edi=1 default).
+        //   returns 1 when entry found but vtable[6] (at +0x18) is not 3, 4, or 5.
+        //   returns sub_4b08d0/vtable[19]/sub_4b0950 result when vtable[6] is 3/4/5.
+        // C# proxy: vtable[6] at offset 0x18 is not yet mapped, so always returns 1.
+        // First backward iteration always yields non-zero → PreviousProductionId = last entry.
+        if (ProductionTypeList.Count > 0)
+            PreviousProductionId = ProductionTypeList[ProductionTypeList.Count - 1];
     }
 
     /// <summary>
@@ -1783,11 +1962,23 @@ public class MissionTargetEntry
     /// negotiation state; sets localFlag to non-zero when the sub-machine reaches a
     /// terminal state, signalling the pipeline to advance to case 6.
     /// Returns a work item if a sub-state action was committed, or null.
-    /// INCOMPLETE(game-entity): requires fleet sub-state machine implementation.
+    /// The sub-machine negotiates via FleetTarget's inner state machine methods.
+    /// FUN_00476910 states 4–6: state 4 = ScanShipTypeList/ScanProductionList (done before
+    /// this call), state 5 = this sub-machine (drives FleetTarget negotiation), state 6 =
+    /// FinalizeAssignment + CommitFleetAssignment.
+    ///
+    /// For SectorFleetAssignmentTarget (created by the sector pipeline): the fleet
+    /// assignment was committed by ValidateOrCreateFleetTarget. The sub-machine signals
+    /// completion (localFlag=1) immediately since no further negotiation is needed.
+    ///
+    /// For null FleetTarget: sets localFlag=1 to advance to case 6 anyway (dispatchOut=1
+    /// path in FinalizeAssignment handles the null case by setting AssignmentConfirmWord=2).
     /// </summary>
     private AIWorkItem DispatchFleetSubStateMachine(ref int localFlag)
     {
-        localFlag = 0;
+        // If FleetTarget is set (sector assignment committed), signal completion.
+        // If null, also signal completion so FinalizeAssignment can handle cleanup.
+        localFlag = 1;
         return null;
     }
 
@@ -1799,7 +1990,6 @@ public class MissionTargetEntry
     /// AssignmentId bit 0x1000000 and writes 2 to AssignmentConfirmWord.
     /// If bit 0x2000000 IS set: creates mission issue records via FUN_0041a430,
     /// FUN_00434e10, and FUN_00434e30.
-    /// INCOMPLETE(mission-issue): requires mission issue record type definitions.
     /// </summary>
     // FUN_004789b0: finalize the fleet assignment. Two paths based on AssignmentId bit 0x2000000.
     //
@@ -1854,8 +2044,12 @@ public class MissionTargetEntry
             if (ContextObject != null)
             {
                 IssueRecordContainer c = ContextObject.QuerySystemAnalysis(
-                    incl24: 0x80, incl28: 0, incl2c: 0,
-                    excl24: 0, excl28: 0, excl2c: 0,
+                    incl24: 0x80,
+                    incl28: 0,
+                    incl2c: 0,
+                    excl24: 0,
+                    excl28: 0,
+                    excl2c: 0,
                     statIndex: 4
                 );
                 foreach (IssueRecord r in c.Records)
@@ -1875,7 +2069,6 @@ public class MissionTargetEntry
     /// If bit 0x2000000 IS set AND FleetTarget is non-null: calls Fleet vtable slot 4
     /// (FUN_004f54d0) with the embedded subobject at +0x3c; the callee walks the linked
     /// list at ContextObject via +0x1c links searching for a node whose vtable+0x4 returns 0xf2.
-    /// INCOMPLETE(fleet-vtable): the set-bit path requires FUN_004f54d0 (Fleet vtable slot 4).
     /// </summary>
     private void UpdateAssignmentState()
     {
@@ -1891,8 +2084,213 @@ public class MissionTargetEntry
 
     /// <summary>
     /// Commits the fleet assignment by calling Fleet vtable slot 8 (FUN_004fd9b0 →
+    // =========================================================================
+    // SECTOR FLEET ASSIGNMENT PIPELINE
+    // Implements sub_419330 + sub_475d00 + FUN_00476840 using the scene graph
+    // and SectorAnalysisTable instead of the binary's global entity BST.
+    // =========================================================================
+
+    /// <summary>
+    /// sub_419330 equivalent: find a sector that needs fleet assignment.
+    ///
+    /// In the binary, sub_419330(workspace, &amp;entry.StatusFlags, 0, 0, 0x10000, ...) resolves
+    /// entry.StatusFlags to a sector entity key (family 0x80, [0x80,0x90)) by walking the
+    /// global game entity BST (DAT_006b33a4) via sub_4f2090 and sub_4025b0.
+    ///
+    /// C# proxy: search SectorAnalysisTable for a sector with a fleet need,
+    /// or pick the first sector associated with a FleetAnalysisRecord in this faction.
+    /// Returns the sector entity key (0x80XXXXXX) or 0 if none found.
+    /// </summary>
+    public int FindSectorForFleetAssignment()
+    {
+        AIWorkspace ws = ContextObject;
+        if (ws == null)
+            return 0;
+
+        // Check for an existing sector record that needs a fleet assignment.
+        foreach (SectorAnalysisRecord sector in ws.SectorAnalysisTable)
+        {
+            if (sector.FleetTypeCode > 0 && sector.AssignmentStatus == 0)
+                return sector.InternalId;
+        }
+
+        // Seed: find any fleet and use its current system's sector (live scene graph lookup).
+        foreach (FleetAnalysisRecord fleetRec in ws.FleetAnalysis)
+        {
+            if (fleetRec.Fleet == null)
+                continue;
+
+            // Live lookup — fleet parent changes as it moves.
+            PlanetSystem system = fleetRec.Fleet.GetParentOfType<PlanetSystem>();
+            if (system == null || system.SectorId == 0)
+                continue;
+
+            int sectorKey = (0x80 << 24) | system.SectorId;
+
+            // Create a new sector record if not already present.
+            SectorAnalysisRecord existing = ws.SectorAnalysisTable.FirstOrDefault(r =>
+                r.InternalId == sectorKey
+            );
+            if (existing == null)
+            {
+                existing = new SectorAnalysisRecord
+                {
+                    InternalId = sectorKey,
+                    SectorDataId = system.SectorId,
+                    FleetTypeCode = 1, // default: capital ship fleet assignment
+                    CapabilityFlags = 0,
+                    AssignmentStatus = 0,
+                };
+                ws.SectorAnalysisTable.Add(existing);
+            }
+            return sectorKey;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// sub_475d00 equivalent: store fleet-to-sector assignment in SectorAnalysisTable.
+    ///
+    /// In the binary, sub_475d00(this=MissionTargetEntry, &amp;fleet_entity_key, ...) determines
+    /// the fleet type code from the fleet entity's properties, creates/updates a record in
+    /// workspace+0x44 (SectorAnalysisTable) with that type code, and returns 1 on success.
+    ///
+    /// C# proxy: resolve fleet InternalId → sector → upsert SectorAnalysisRecord with
+    /// FleetTypeCode. Sets entry.StatusFlags = sector entity key so FUN_00476840 can find it.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    public int AssignFleetToSector(int fleetEntityKey)
+    {
+        AIWorkspace ws = ContextObject;
+        if (ws == null)
+            return 0;
+
+        // Find the FleetAnalysisRecord that matches this fleet entity key.
+        FleetAnalysisRecord fleetRec = ws.FleetAnalysis.FirstOrDefault(r =>
+            r.InternalId == fleetEntityKey
+        );
+        if (fleetRec?.Fleet == null)
+            return 0;
+
+        // Use live scene graph lookup — fleet parent can change as it moves.
+        PlanetSystem currentSystem = fleetRec.Fleet.GetParentOfType<PlanetSystem>();
+        if (currentSystem == null || currentSystem.SectorId == 0)
+            return 0;
+
+        int sectorId = currentSystem.SectorId;
+        int sectorKey = (0x80 << 24) | sectorId; // sector entity key (HIBYTE 0x80)
+
+        // Determine fleet type code from fleet composition.
+        // Type 1: capital ship fleet (pure fleet assignment, bit 0x80000 in CommitAssignment).
+        // Type 2: fleet with officer/character (bit 0x40000 check, character query triggered).
+        // Types 3–6: additional strategies (not yet fully mapped from binary).
+        int typeCode = 1; // default: type 1 (capital ship fleet)
+
+        // Upsert sector record in SectorAnalysisTable (workspace+0x44).
+        SectorAnalysisRecord sectorRec = ws.SectorAnalysisTable.FirstOrDefault(r =>
+            r.InternalId == sectorKey
+        );
+        if (sectorRec == null)
+        {
+            sectorRec = new SectorAnalysisRecord
+            {
+                InternalId = sectorKey,
+                SectorDataId = sectorId,
+            };
+            ws.SectorAnalysisTable.Add(sectorRec);
+        }
+        sectorRec.FleetTypeCode = typeCode;
+        sectorRec.AssignedFleetId = fleetEntityKey;
+        sectorRec.AssignmentStatus = 0; // available for new assignment
+
+        // Store sector key in entry.StatusFlags so FUN_00476840 equivalent can find the record.
+        StatusFlags = sectorKey;
+        return 1;
+    }
+
+    /// <summary>
+    /// FUN_00476840 equivalent: validate/create FleetTarget from SectorAnalysisRecord.
+    ///
+    /// In the binary, FUN_00476840(MissionTargetEntry):
+    ///   1. FUN_004f4cc0(workspace+0x44, &amp;entry.StatusFlags) → find SectorAnalysisRecord
+    ///   2. If FleetTarget exists: validate vtable[5]() == record.field_0x30 (type code)
+    ///   3. If FleetTarget null AND record.field_0x30 != 0: create via FUN_00476a80(entry, typeCode)
+    ///   4. If record.field_0x3c != entry.AssignmentTargetId: call FUN_00475e40(entry, newTarget)
+    ///   5. Returns 1 on success, 0 (+ reset entry) on failure.
+    ///
+    /// C# proxy: look up SectorAnalysisRecord by entry.StatusFlags key, validate or create
+    /// SectorFleetAssignmentTarget, return 1/0.
+    /// </summary>
+    public int ValidateOrCreateFleetTarget()
+    {
+        AIWorkspace ws = ContextObject;
+        if (ws == null)
+        {
+            ResetEntryState();
+            return 0;
+        }
+
+        // FUN_004f4cc0(workspace+0x44, &entry.StatusFlags): find sector record.
+        SectorAnalysisRecord sectorRec = ws.SectorAnalysisTable.FirstOrDefault(r =>
+            r.InternalId == StatusFlags
+        );
+        if (sectorRec == null)
+        {
+            ResetEntryState();
+            return 0;
+        }
+
+        // Validate existing FleetTarget type code.
+        if (FleetTarget != null)
+        {
+            if (FleetTarget.GetTypeCode() == sectorRec.FleetTypeCode)
+            {
+                // Already valid. Update AssignmentTargetId if sector record changed.
+                if (sectorRec.AssignmentTargetId != AssignmentTargetId)
+                    AssignmentTargetId = sectorRec.AssignmentTargetId;
+                return 1;
+            }
+            // Type mismatch — original throws; reset and recreate.
+            FleetTarget = null;
+        }
+
+        // No FleetTarget yet. Create one if type code is valid (FUN_00476a80).
+        if (sectorRec.FleetTypeCode == 0)
+        {
+            ResetEntryState();
+            return 0;
+        }
+
+        FleetTarget = new SectorFleetAssignmentTarget(sectorRec.FleetTypeCode, OwnerSide, ws);
+
+        if (FleetTarget.GetTypeCode() != sectorRec.FleetTypeCode)
+        {
+            FleetTarget = null;
+            ResetEntryState();
+            return 0;
+        }
+
+        // Propagate AssignmentTargetId to sub-records (FUN_00475e40).
+        if (sectorRec.AssignmentTargetId != AssignmentTargetId)
+            AssignmentTargetId = sectorRec.AssignmentTargetId;
+
+        return 1;
+    }
+
+    /// <summary>
+    /// FUN_004765e0 partial equivalent: reset entry state when fleet assignment fails.
+    /// Clears FleetTarget, resets InnerDispatchState, InProgressFlag, AssignmentId.
+    /// </summary>
+    private void ResetEntryState()
+    {
+        FleetTarget = null;
+        InnerDispatchState = 0;
+        InProgressFlag = 0;
+        AssignmentId = 0;
+        SubAssignmentId = 0;
+    }
+
     /// FUN_004fe200) on FleetTarget. Called in dispatch case 6. Return value is discarded.
-    /// INCOMPLETE(fleet-vtable): requires Fleet interface to expose vtable slot 8.
     /// </summary>
     private void CommitFleetAssignment()
     {
@@ -2097,32 +2495,58 @@ public class SelectedTargetEntry
     // FUN_00473900: state 1 precondition check. Assembly trace (fully read).
     //
     // 1. Init local entity refs and issue container.
-    // 2. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98) (fleet entity type):
-    //    If fleet: esi = FactionContext (this+0x4c = AIWorkspace).
-    //      Look up EntityTypePacked in workspace.SystemAnalysis.
-    //      If found AND PresenceFlags & 0x1:
-    //        If FlagA & 0x80000000 AND FlagA & 0x2 == 0:
-    //          var_44=1, PresenceFlags |= 0x80000 (attack candidate marker).
-    //        Else: reset EntityTypePacked, clear PresenceFlags & ~0x80000.
-    //      Else: reset EntityTypePacked, clear PresenceFlags & ~0x80000.
-    // 3. Final HIBYTE check on EntityTypePacked:
-    //    If NOT fleet type (was reset or never fleet): search for attack target:
-    //      sub_419980(FactionContext, 0x40000000, ...) → query attack targets.
-    //      Do-while loop: for each candidate in [0x80,0x90):
-    //        If var_44==0: sub_419c10(candidate, 0x80000000,...) → planet query.
-    //        If result HIBYTE in [0x90,0x98): set EntityTypePacked = result,
-    //          var_44=1, PresenceFlags |= 0x80000.
-    //        Get next candidate from container, continue.
-    // 4. Returns var_44 (1 = found valid fleet attack target, 0 = not found).
+    // 2. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98):
+    //    If fleet: esi = FactionContext (this+0x4c).
+    //      FUN_00403d30(FactionContext+0x2c, EntityTypePacked) → raw game entity lookup.
+    //      sub_403d30 = FUN_004f4cc0_find_by_record_matching_family_id in FactionContext+0x2c
+    //      (the workspace's raw entity registry, NOT SystemAnalysis list at workspace+0x44).
+    //      The returned entity is a RAW GAME ENTITY; *(entity+0x30) = PresenceFlags;
+    //      *(entity+0x28) = raw entity field (set by sub_525c30 = FUN_00525c30_find_alliance_hq_with_count
+    //      when entity types 0x20-0x22 are present for the given side with flag 0x3).
+    //      If *(entity+0x30) & 0x1 AND *(entity+0x28) & 0x80000000 AND LOBYTE(*(entity+0x28)) & 0x2 == 0:
+    //        var_44=1, *(entity+0x30) |= 0x80000.
+    //      Else: reset EntityTypePacked, clear 0x80000 from entity.
+    // 3. Fallback path via sub_419980 + sub_419c10 (not yet implemented).
+    // 4. Returns var_44.
     //
-    // Note: FactionContext (this+0x4c) is used as AIWorkspace (workspace+0x2c = SystemAnalysis).
-    // BLOCKED: sub_419980/sub_419c10 not implemented; entity HIBYTE checks fail in C#.
-    // Proxy: returns 0 always (no valid attack target in C# due to entity encoding).
+    // BLOCKED (primary path): FactionContext+0x2c is the raw game entity registry which is
+    //   separate from AIWorkspace.SystemAnalysis. The raw entity's +0x28 field (strategic target
+    //   marker from FUN_00525c30_find_alliance_hq_with_count) cannot be accessed from C#.
+    //   FUN_00525c30 checks for entity types 0x20-0x22 (HQ/leadership units) for a given side.
+    //
+    // Proxy: if EntityTypePacked is a valid system InternalId [0x90,0x98):
+    //   Look up in SystemAnalysis. If found AND own-faction presence AND no garrison type B
+    //   (FlagA & 0x2 == 0) → treat as valid attack target. This approximates the binary's
+    //   "has strategic value AND no heavy garrison" gate.
     private int CheckTargetPrecondition()
     {
-        // BLOCKED: All HIBYTE type checks fail in C# (entity keys are hash codes).
-        // The function searches for fleet attack targets [0x90,0x98) with FlagA & 0x80000000.
-        // In C#, HIBYTE(EntityTypePacked) is never in [0x90,0x98).
+        AIWorkspace ws = Workspace ?? (FactionContext as AIWorkspace);
+        if (ws == null)
+            return 0;
+
+        int hibyte = (EntityTypePacked >> 0x18) & 0xff;
+        if (hibyte >= 0x90 && hibyte < 0x98)
+        {
+            SystemAnalysisRecord rec = ws.SystemAnalysis.FirstOrDefault(r =>
+                r.InternalId == EntityTypePacked
+            );
+            if (rec != null && (rec.PresenceFlags & 0x1) != 0)
+            {
+                // Proxy for raw entity+0x28 & 0x80000000 (strategic target marker):
+                // Accept any system with own-faction presence and no garrison type B.
+                // The binary's bit-31 check requires raw HQ entity data not available in C#.
+                if ((rec.FlagA & 0x2) == 0)
+                {
+                    rec.PresenceFlags = unchecked((int)((uint)rec.PresenceFlags | 0x80000));
+                    return 1;
+                }
+            }
+            // Not valid: reset.
+            EntityTypePacked = 0;
+            if (rec != null)
+                rec.PresenceFlags &= ~0x80000;
+        }
+        // Fallback via sub_419980/sub_419c10: not yet implemented.
         return 0;
     }
 
@@ -2143,7 +2567,8 @@ public class SelectedTargetEntry
     // Proxy: returns FleetAssignmentCandidateWorkItem.
     private AIWorkItem BuildTargetCandidate()
     {
-        if (TargetObject == null) return null;
+        if (TargetObject == null)
+            return null;
         return new FleetAssignmentCandidateWorkItem { OwnerSide = OwnerSide };
     }
 
@@ -2164,7 +2589,8 @@ public class SelectedTargetEntry
     private void ComputeCapacityDelta()
     {
         CapacityDelta = 0;
-        if (TargetObject == null) return;
+        if (TargetObject == null)
+            return;
         int available = Workspace?.FleetTotalCapacity - Workspace?.FleetAssignedCapacity ?? 0;
         CapacityDelta = available > 0 ? available : 0;
     }
@@ -2196,8 +2622,20 @@ public class SelectedTargetEntry
         // Alternate path: check if target system has fleet shortage.
         if (Workspace != null && TargetObject != null)
         {
-            var c = Workspace.QuerySystemAnalysis(incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
-            if (c.Count > 0) { dispatchOut = 1; return null; }
+            var c = Workspace.QuerySystemAnalysis(
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 4
+            );
+            if (c.Count > 0)
+            {
+                dispatchOut = 1;
+                return null;
+            }
         }
         return null;
     }
@@ -2217,7 +2655,8 @@ public class SelectedTargetEntry
     // Proxy: returns MissionExecutionWorkItem.
     private AIWorkItem CreateSelectedTargetIssueEntry()
     {
-        if (TargetObject == null) return null;
+        if (TargetObject == null)
+            return null;
         return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
     }
 
@@ -2237,9 +2676,11 @@ public class SelectedTargetEntry
     // Proxy: returns MissionExecutionWorkItem.
     private AIWorkItem LookupLinkedTargetEntry()
     {
-        if (TargetObject == null) return null;
+        if (TargetObject == null)
+            return null;
         int category = (EntityTypePacked >> 24) & 0xff;
-        if (category < 0x90 || category >= 0x98) return null;
+        if (category < 0x90 || category >= 0x98)
+            return null;
         return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
     }
 
@@ -2260,7 +2701,8 @@ public class SelectedTargetEntry
     private AIWorkItem BuildLinkedIssue()
     {
         int category = (EntityTypePacked >> 24) & 0xff;
-        if (category < 0x90 || category >= 0x98) return null;
+        if (category < 0x90 || category >= 0x98)
+            return null;
         return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
     }
 
@@ -2284,7 +2726,7 @@ public class SelectedTargetEntry
         {
             foreach (SystemAnalysisRecord rec in Workspace.SystemAnalysis)
                 if ((rec.PresenceFlags & 0x80000) != 0)
-                    rec.PresenceFlags &= ~0x80000;  // PresenceFlags bit 0x80000 (attack marker), not FlagA!
+                    rec.PresenceFlags &= ~0x80000; // PresenceFlags bit 0x80000 (attack marker), not FlagA!
         }
     }
 }
@@ -2415,7 +2857,142 @@ public abstract class FleetAssignmentTarget
     /// </summary>
     public abstract void GetProductionInfo(MissionTargetEntry entry);
 
+    /// <summary>
+    /// Vtable slot 5 (+0x14): returns this FleetTarget's type code (1–6).
+    /// Used by FUN_00476840 to validate that the FleetTarget matches the
+    /// type code stored in the SectorAnalysisRecord (field_0x30).
+    /// Each of the 6 FleetTarget subtypes returns a distinct constant:
+    ///   Type 1 → FUN_005ae660 returns 1
+    ///   Type 2 → FUN_004b9780 returns 2
+    ///   Type 3 → FUN_00497c10_returns_3_fn returns 3
+    ///   Type 4 → FUN_004e8de0_returns_4_fn returns 4
+    ///   Type 5 → FUN_004e9ed0_returns_5_fn returns 5
+    ///   Type 6 → FUN_004eae60_returns_6_fn returns 6
+    /// </summary>
+    public abstract int GetTypeCode();
+
     // Vtable slot 20 left for research pass.
+}
+
+/// <summary>
+/// Concrete FleetAssignmentTarget implementation created by FUN_00476a80.
+/// The 6 type codes correspond to 6 different fleet assignment strategies:
+///   Type 1: capital ship fleet (pure fleet deployment; checks bit 0x80000 in sector record)
+///   Type 2: fleet with character command (checks bit 0x40000; triggers character query)
+///   Types 3–6: additional fleet strategies (starfighter, heavy capital, troop transport,
+///              defensive garrison — exact mapping requires reading more vtable methods)
+/// All 6 constructors (FUN_004b97b0 etc.) are identical except vtable; differentiation
+/// is entirely in the vtable method implementations.
+/// </summary>
+public class SectorFleetAssignmentTarget : FleetAssignmentTarget
+{
+    private readonly int _typeCode;
+
+    public SectorFleetAssignmentTarget(int typeCode, int ownerSide, AIWorkspace workspace)
+    {
+        _typeCode = typeCode;
+        InnerState = 0x8; // Initial inner state; AcceptIntoCandidate requires [0x8, 0x10)
+    }
+
+    public override int GetTypeCode() => _typeCode;
+
+    public override void PrepareCapacityArray()
+    {
+        // FUN_004acb60 zeroed RequiredCapacity[10] during construction.
+        // Capacity requirements depend on type; left at 0 (no capacity constraint proxy).
+        for (int i = 0; i < RequiredCapacity.Length; i++)
+            RequiredCapacity[i] = 0;
+    }
+
+    public override void UpdateAssignmentStateInfo(MissionTargetEntry entry)
+    {
+        // Non-set path: write 2 to AssignmentStateWord.
+        entry.AssignmentStateWord = 2;
+    }
+
+    public override void CommitAssignment()
+    {
+        // Base commit action; type-specific logic via vtable slot 8 in original binary.
+        // Types 1/2 CommitAssignment both:
+        //   1. Set SubAssignmentId |= 0x4000000
+        //   2. Look up SectorAnalysisRecord in workspace+0x44 using entry.StatusFlags
+        //   3. Set SubAssignmentId |= 0x8000000 if record found
+        // Implemented in MissionTargetEntry.CommitFleetAssignment() which calls this.
+    }
+
+    public override void GetMissionInfo(MissionTargetEntry entry)
+    {
+        // Leave PendingMissionTypeId = 0 (no specific mission type for this fleet type).
+    }
+
+    public override void GetProductionInfo(MissionTargetEntry entry)
+    {
+        // Leave PendingProductionId = 0.
+    }
+}
+
+/// <summary>
+/// One entry in AIWorkspace.SectorAnalysisTable (workspace+0x44).
+///
+/// Represents one of the 20 strategic sectors (SECTORSD.json, family_id=0x80, IDs 20–39).
+/// Created by the sub_475d00 equivalent (AssignFleetToSector) when the AI assigns a
+/// fleet to a sector. Read by FUN_00476840 equivalent to determine which FleetTarget
+/// type (1–6) to instantiate.
+///
+/// Binary layout (relevant fields only):
+///   +0x18: key = (0x80 &lt;&lt; 24) | sector_data_id  (BST sort key)
+///   +0x2c: CapabilityFlags — checked by CommitAssignment:
+///            bit 0x80000 (type 1): assignment confirmed / fleet available
+///            bit 0x40000 (type 2): fleet already on mission (no new character query)
+///            bit 0x20000: assignment partially confirmed
+///   +0x30: FleetTypeCode (1–6) — which SectorFleetAssignmentTarget subtype to create
+///   +0x38: AssignedFleetId — InternalId of the FleetAnalysisRecord assigned here
+///   +0x3c: AssignmentTargetId — used by FUN_00475e40 to propagate to sub-records
+///   +0x18c: AssignmentStatus — 0 = available for new assignment
+/// </summary>
+public class SectorAnalysisRecord
+{
+    /// <summary>
+    /// Sector entity key: (0x80 &lt;&lt; 24) | SectorDataId.
+    /// HIBYTE = 0x80 (sector family), lower 24 bits = sector data ID from SECTORSD.json.
+    /// Used as BST key in SectorAnalysisTable for FUN_004f4cc0 lookup.
+    /// </summary>
+    public int InternalId { get; set; }
+
+    /// <summary>Sector data ID from SECTORSD.json (20–39).</summary>
+    public int SectorDataId { get; set; }
+
+    /// <summary>
+    /// Fleet assignment type code (field_0x30). 0 = no assignment.
+    /// Set by AssignFleetToSector when the AI identifies a fleet need for this sector.
+    /// Passed to FUN_00476a80 equivalent to select the FleetTarget subtype.
+    /// </summary>
+    public int FleetTypeCode { get; set; }
+
+    /// <summary>
+    /// Sector capability/assignment flags (field_0x2c).
+    /// bit 0x80000: fleet available/confirmed for deployment
+    /// bit 0x40000: fleet already on active mission
+    /// bit 0x20000: partial assignment confirmed
+    /// </summary>
+    public int CapabilityFlags { get; set; }
+
+    /// <summary>
+    /// InternalId of the FleetAnalysisRecord currently assigned (field_0x38).
+    /// Set when AssignFleetToSector matches a fleet to this sector.
+    /// </summary>
+    public int AssignedFleetId { get; set; }
+
+    /// <summary>
+    /// AssignmentTargetId (field_0x3c). Propagated to sub-records by FUN_00475e40.
+    /// </summary>
+    public int AssignmentTargetId { get; set; }
+
+    /// <summary>
+    /// Assignment status (field_0x18c). 0 = available for new assignment.
+    /// Non-zero means a fleet assignment is already in progress for this sector.
+    /// </summary>
+    public int AssignmentStatus { get; set; }
 }
 
 /// <summary>

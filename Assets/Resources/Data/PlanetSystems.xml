@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <PlanetSystems>
   <PlanetSystem>
     <DisplayName>Sesswenna</DisplayName>
@@ -8,6 +8,8 @@
     <TypeID>PSSEW</TypeID>
     <PositionX>1123</PositionX>
     <PositionY>403</PositionY>
+    <DataId>20</DataId>
+    <SectorId>20</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLSEW01</TypeID>
@@ -99,6 +101,8 @@
     <TypeID>PSCOR</TypeID>
     <PositionX>776</PositionX>
     <PositionY>474</PositionY>
+    <DataId>21</DataId>
+    <SectorId>21</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLCOR01</TypeID>
@@ -190,6 +194,8 @@
     <TypeID>PSFAK</TypeID>
     <PositionX>574</PositionX>
     <PositionY>684</PositionY>
+    <DataId>22</DataId>
+    <SectorId>22</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLFAK01</TypeID>
@@ -281,6 +287,8 @@
     <TypeID>PLDOL</TypeID>
     <PositionX>1424</PositionX>
     <PositionY>486</PositionY>
+    <DataId>23</DataId>
+    <SectorId>23</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLSLU01</TypeID>
@@ -372,6 +380,8 @@
     <TypeID>PLFAR</TypeID>
     <PositionX>1184</PositionX>
     <PositionY>792</PositionY>
+    <DataId>24</DataId>
+    <SectorId>24</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLFAR01</TypeID>
@@ -463,6 +473,8 @@
     <TypeID>PLSLU</TypeID>
     <PositionX>812</PositionX>
     <PositionY>811</PositionY>
+    <DataId>25</DataId>
+    <SectorId>25</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLDOL01</TypeID>
@@ -554,6 +566,8 @@
     <TypeID>PLATR</TypeID>
     <PositionX>877</PositionX>
     <PositionY>272</PositionY>
+    <DataId>26</DataId>
+    <SectorId>26</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLATR01</TypeID>
@@ -645,6 +659,8 @@
     <TypeID>PLMOD</TypeID>
     <PositionX>601</PositionX>
     <PositionY>371</PositionY>
+    <DataId>27</DataId>
+    <SectorId>27</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLMOD01</TypeID>
@@ -736,6 +752,8 @@
     <TypeID>PLQUE</TypeID>
     <PositionX>458</PositionX>
     <PositionY>502</PositionY>
+    <DataId>28</DataId>
+    <SectorId>28</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLQUE01</TypeID>
@@ -827,6 +845,8 @@
     <TypeID>PLCHU</TypeID>
     <PositionX>296</PositionX>
     <PositionY>662</PositionY>
+    <DataId>29</DataId>
+    <SectorId>29</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLCHU01</TypeID>
@@ -919,6 +939,8 @@
     <TypeID>PLKAN</TypeID>
     <PositionX>449</PositionX>
     <PositionY>861</PositionY>
+    <DataId>30</DataId>
+    <SectorId>30</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLKAN01</TypeID>
@@ -1010,6 +1032,8 @@
     <TypeID>PLDUF</TypeID>
     <PositionX>623</PositionX>
     <PositionY>924</PositionY>
+    <DataId>31</DataId>
+    <SectorId>31</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLDUF01</TypeID>
@@ -1101,6 +1125,8 @@
     <TypeID>PLABR</TypeID>
     <PositionX>837</PositionX>
     <PositionY>962</PositionY>
+    <DataId>32</DataId>
+    <SectorId>32</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLABR01</TypeID>
@@ -1192,6 +1218,8 @@
     <TypeID>PLXAP</TypeID>
     <PositionX>1049</PositionX>
     <PositionY>962</PositionY>
+    <DataId>33</DataId>
+    <SectorId>33</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLXAP01</TypeID>
@@ -1283,6 +1311,8 @@
     <TypeID>PLORU</TypeID>
     <PositionX>1272</PositionX>
     <PositionY>905</PositionY>
+    <DataId>34</DataId>
+    <SectorId>34</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLORU01</TypeID>
@@ -1374,6 +1404,8 @@
     <TypeID>PLJOS</TypeID>
     <PositionX>1422</PositionX>
     <PositionY>781</PositionY>
+    <DataId>35</DataId>
+    <SectorId>35</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLJOS01</TypeID>
@@ -1465,6 +1497,8 @@
     <TypeID>PLSUM</TypeID>
     <PositionX>1607</PositionX>
     <PositionY>622</PositionY>
+    <DataId>36</DataId>
+    <SectorId>36</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLSUM01</TypeID>
@@ -1557,6 +1591,8 @@
     <TypeID>PLGLY</TypeID>
     <PositionX>1760</PositionX>
     <PositionY>438</PositionY>
+    <DataId>37</DataId>
+    <SectorId>37</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLGLY01</TypeID>
@@ -1648,6 +1684,8 @@
     <TypeID>PLMAY</TypeID>
     <PositionX>1508</PositionX>
     <PositionY>298</PositionY>
+    <DataId>38</DataId>
+    <SectorId>38</SectorId>
     <Planets>
       <Planet>
         <TypeID>PLMAY01</TypeID>
@@ -1739,6 +1777,8 @@
     <TypeID>PLCAL</TypeID>
     <PositionX>1247</PositionX>
     <PositionY>204</PositionY>
+    <DataId>39</DataId>
+    <SectorId>39</SectorId>
     <Planets>
       <Planet>
         <InstanceID>AKRIT_TAR</InstanceID>

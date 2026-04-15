@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
 
@@ -106,6 +107,12 @@ public class HeavyAIWorker
     // Manufacturing system — used to queue production when a ProductionWorkItem is dispatched.
     private readonly Rebellion.Systems.ManufacturingSystem _manufacturingManager;
 
+    // Mission system — used to initiate character missions from ApplyMissionExecution.
+    private readonly Rebellion.Systems.MissionSystem _missionManager;
+
+    // RNG provider — passed through to MissionSystem for mission duration randomisation.
+    private readonly Rebellion.Util.Common.IRandomNumberProvider _randomProvider;
+
     /// <summary>
     /// True while the worker is still running the two-phase startup sequence
     /// (states 1 and 2).  Once AtStartSetupMissions() returns true, startup is
@@ -113,18 +120,34 @@ public class HeavyAIWorker
     /// </summary>
     public bool IsInStartup => _missionCycleState == 1 || _missionCycleState == 2;
 
+    // Movement system — used to issue fleet movement orders from ApplyFleetShortage.
+    private readonly Rebellion.Systems.MovementSystem _movementManager;
+
     public HeavyAIWorker(
         Faction faction,
         int ownerSide,
         GameRoot game,
-        Rebellion.Systems.ManufacturingSystem manufacturingManager = null
+        Rebellion.Systems.ManufacturingSystem manufacturingManager = null,
+        Rebellion.Systems.MovementSystem movementManager = null,
+        Rebellion.Systems.MissionSystem missionManager = null,
+        Rebellion.Util.Common.IRandomNumberProvider randomProvider = null
     )
     {
         _faction = faction;
         _game = game;
         _manufacturingManager = manufacturingManager;
+        _movementManager = movementManager;
+        _missionManager = missionManager;
+        _randomProvider = randomProvider;
         OwnerSide = ownerSide;
-        Workspace = new AIWorkspace { Owner = faction, GameRoot = game };
+        Workspace = new AIWorkspace
+        {
+            Owner = faction,
+            GameRoot = game,
+            // workspace+0x00 = faction side (1=Alliance, 2=Empire).
+            // Read as *workspace by sub_419330 → sub_4f2090 → sub_53d660 to identify faction.
+            FactionSide = ownerSide,
+        };
         _strategyRecordList = new StrategyRecordList();
         _missionCycleState = 1;
     }
@@ -382,20 +405,75 @@ public class HeavyAIWorker
     }
 
     /// <summary>
-    /// Handles a mission execution work item (TypeCode 0x201/0x240/0x250).
+    /// Handles a mission execution work item (TypeCode 0x201).
     ///
-    /// In the original, this routes through the AI manager to the opposing worker's
-    /// mission scheduling pipeline, which calls FUN_0042ecc0 to create mission instances
-    /// or FUN_0042ed10 to cancel them.
+    /// Resolves the target system from item.EntityRef (SystemAnalysisRecord.InternalId),
+    /// selects an available officer from this faction, chooses an appropriate MissionType
+    /// based on the target planet's ownership, and calls MissionSystem.InitiateMission.
     ///
-    /// Current implementation: no-op pending MissionSystem.CreateMission() integration.
-    /// The MissionAssignmentEntry.Dispatch() 8-state machine is now wired, but the
-    /// final mission creation call requires reading FUN_0042ecc0's full call chain.
+    /// Mission type heuristic:
+    ///   Neutral planet  → Diplomacy  (recruit the system)
+    ///   Enemy planet    → Espionage  (gather intel / weaken)
+    ///   Own planet      → Recruitment (grow officer pool)
+    ///
+    /// In the original binary this routes through FUN_0042ecc0 (create mission instance),
+    /// using PendingMissionTypeId and MissionParam from the MissionTargetEntry. Since
+    /// FleetTarget.GetMissionInfo() is not yet wired (abstract method), those fields are
+    /// always 0 and the heuristic above substitutes for them.
     /// </summary>
     private void ApplyMissionExecution(MissionExecutionWorkItem item)
     {
-        // No-op until MissionSystem.CreateMission() is integrated.
-        // The work item carries EntityRef and Workspace for when this is implemented.
+        if (_missionManager == null || _faction == null || _randomProvider == null)
+            return;
+
+        // Resolve target system from EntityRef (SystemAnalysisRecord.InternalId).
+        AIWorkspace ws = item.Workspace;
+        if (ws == null)
+            return;
+
+        SystemAnalysisRecord sysRec = ws.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == item.EntityRef
+        );
+
+        // Fallback: pick the highest-priority system with own-faction presence.
+        if (sysRec == null)
+        {
+            sysRec = ws
+                .SystemAnalysis.Where(r => (r.PresenceFlags & 0x1) != 0)
+                .OrderByDescending(r => r.SystemScore)
+                .FirstOrDefault();
+        }
+        if (sysRec?.System == null)
+            return;
+
+        // Pick a target planet — prefer non-own planets for active missions.
+        string factionId = _faction.InstanceID;
+        Planet target =
+            sysRec.System.Planets.FirstOrDefault(p => p.GetOwnerInstanceID() != factionId)
+            ?? sysRec.System.Planets.FirstOrDefault();
+        if (target == null)
+            return;
+
+        // Determine mission type from target ownership.
+        string targetOwner = target.GetOwnerInstanceID();
+        MissionType missionType;
+        if (targetOwner == null)
+            missionType = MissionType.Diplomacy;
+        else if (targetOwner != factionId)
+            missionType = MissionType.Espionage;
+        else
+            missionType = MissionType.Recruitment;
+
+        // Verify the mission is valid before committing.
+        if (!_missionManager.CanCreateMission(missionType, factionId, target, _randomProvider))
+            return;
+
+        // Pick the first available officer for this faction.
+        List<Officer> officers = _faction.GetAvailableOfficers();
+        if (officers.Count == 0)
+            return;
+
+        _missionManager.InitiateMission(missionType, officers[0], target, _randomProvider);
     }
 
     /// <summary>
@@ -417,18 +495,71 @@ public class HeavyAIWorker
     /// <summary>
     /// Handles an agent shortage work item (TypeCode 0x210/0x214).
     ///
-    /// In the original, the work item is routed through the AI manager to the opposing
-    /// worker's processing pipeline, which eventually creates mission assignments via
-    /// FUN_0042ecc0 (create mission entry). This requires the mission assignment
-    /// infrastructure (MissionAssignmentEntry.Dispatch, FUN_004bc170).
+    /// Routing (FUN_00435770 / AI.md Section 432):
+    ///   Work item's +0x20 (Side) determines routing:
+    ///   - Side 1: opposing worker's vtable[8] (FUN_00575590 = always-accept), then
+    ///             own worker's vtable[7] (FUN_00489d70 = insert into priority tree at worker+0x4).
+    ///   - Side 2: symmetric.
+    ///   LargeSelectionRecord slot 8 ALWAYS returns 1 (unconditional accept).
+    ///   Slot 7 (FUN_00489d70): inserts into priority tree, then calls FUN_005357e0
+    ///   which adds to the worker's pending queue at worker+0x4.
     ///
-    /// BLOCKED: MissionAssignmentEntry.Dispatch (FUN_004bc170, the 8-state machine)
-    /// is not yet implemented. Agent shortage work items are acknowledged but have no
-    /// game effect until that infrastructure is built.
+    /// VERIFIED from disassembly (FUN_00435770, FUN_00489d70, FUN_004be160,
+    /// FUN_004bdd00, FUN_00484f90, AI.md Sections 39/377/432/433):
+    /// TypeCode 0x214 = production package (PRIMARY PRODUCTION ORDER), NOT agent movement.
+    /// AI.md Section 39 confirms: carries seed_entity_id [0x90,0x98) and secondary_entity_id
+    /// [0xa4,0xa6) for scheduling unit production at Training Facilities.
+    /// The +0x4 priority tree drain is in AI.md Section 433 [INCOMPLETE].
+    /// APPROXIMATION: officers moved as fallback; correct action requires redesigning
+    /// AgentShortageWorkItem to carry production order data.
     /// </summary>
     private void ApplyAgentShortage(AgentShortageWorkItem item)
     {
-        // No-op until MissionAssignmentEntry.Dispatch is implemented.
+        if (item.TargetSystem == null || _movementManager == null || _faction == null)
+            return;
+
+        string factionId = _faction.InstanceID;
+        int count = System.Math.Max(1, item.AgentCount);
+
+        // Find a destination planet in the target system.
+        // Prefer own-faction planet; fall back to any planet.
+        Planet destination =
+            item.TargetSystem.Planets.FirstOrDefault(p => p.GetOwnerInstanceID() == factionId)
+            ?? item.TargetSystem.Planets.FirstOrDefault();
+
+        if (destination == null)
+            return;
+
+        var galaxy = _game?.Galaxy;
+        if (galaxy == null)
+            return;
+
+        // Move up to AgentCount available officers to the target system.
+        // Officers come from any system other than the destination.
+        int moved = 0;
+        foreach (var system in galaxy.GetChildren<PlanetSystem>(s => s != item.TargetSystem))
+        {
+            if (moved >= count)
+                break;
+            foreach (var planet in system.Planets)
+            {
+                if (moved >= count)
+                    break;
+                foreach (var officer in planet.Officers.ToList())
+                {
+                    if (moved >= count)
+                        break;
+                    if (officer.GetOwnerInstanceID() != factionId)
+                        continue;
+                    if (!officer.IsMovable())
+                        continue;
+                    if (officer.IsCaptured || officer.IsKilled)
+                        continue;
+                    _movementManager.RequestMove(officer, destination);
+                    moved++;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -446,9 +577,52 @@ public class HeavyAIWorker
     /// </summary>
     private void ApplyFleetShortage(FleetShortageWorkItem item)
     {
-        // No-op until fleet assignment pipeline is implemented.
-        // The original enqueues this into the inter-worker routing queue for deferred
-        // processing by MissionTargetEntry.Dispatch.
+        if (item.TargetSystem == null || _movementManager == null || _faction == null)
+            return;
+
+        string factionId = _faction.InstanceID;
+        var galaxy = _game?.Galaxy;
+        if (galaxy == null)
+            return;
+
+        // Find an idle friendly fleet at any system other than the shortage target.
+        // The binary (FUN_004dbfb0) uses a complex scored selection; here we pick the
+        // first available fleet with capital ships that isn't already at the target.
+        Fleet candidate = null;
+        foreach (var system in galaxy.GetChildren<PlanetSystem>(s => s != item.TargetSystem))
+        {
+            foreach (var planet in system.Planets)
+            {
+                foreach (var fleet in planet.Fleets)
+                {
+                    if (fleet.GetOwnerInstanceID() != factionId)
+                        continue;
+                    if (!fleet.IsMovable())
+                        continue;
+                    if (fleet.CapitalShips.Count == 0)
+                        continue;
+                    candidate = fleet;
+                    break;
+                }
+                if (candidate != null)
+                    break;
+            }
+            if (candidate != null)
+                break;
+        }
+
+        if (candidate == null)
+            return;
+
+        // Move to the first own-faction planet in the target system, or any planet.
+        Planet destination =
+            item.TargetSystem.Planets.FirstOrDefault(p => p.GetOwnerInstanceID() == factionId)
+            ?? item.TargetSystem.Planets.FirstOrDefault();
+
+        if (destination == null)
+            return;
+
+        _movementManager.RequestMove(candidate, destination);
     }
 
     /// <summary>
@@ -479,7 +653,11 @@ public class HeavyAIWorker
     ///   Alliance pool 2: 0x5260..0x5282 (35 entries)
     ///   Alliance pool 3: 0x52c0..0x52cf (16 entries)
     /// </summary>
-    private static string ResolveShipName(int nameResId, int side, GameConfig.ShipNamingConfig pools)
+    private static string ResolveShipName(
+        int nameResId,
+        int side,
+        GameConfig.ShipNamingConfig pools
+    )
     {
         if (side == 1) // Alliance
         {

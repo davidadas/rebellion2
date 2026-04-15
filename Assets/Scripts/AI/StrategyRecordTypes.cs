@@ -65,21 +65,24 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
     // _entityTypePacked and _agentCapacityFlag are LOCAL VARIABLES in the original asm
     // (written to registers before calling SelectAgent functions), not struct fields.
     // The C# code keeps them as fields for readability.
-    private int _candidateRefA;     // best candidate system ID found by PreconditionCheck1
-    private int _candidateRefB;     // secondary candidate system ID
-    private int _candidateCount;    // count from best candidate's field+0x114
-    private int _costValue;         // cost from best candidate's field+0x60
+    private int _candidateRefA; // best candidate system ID found by PreconditionCheck1
+    private int _candidateRefB; // secondary candidate system ID
+    private int _candidateCount; // count from best candidate's field+0x114
+    private int _costValue; // cost from best candidate's field+0x60
     private readonly List<int> _candidateListA = new List<int>(); // system IDs (param_1+0x58)
     private readonly List<int> _candidateListB = new List<int>(); // selected IDs (param_1+0x60)
 
     // Written by case 6 of GenerateShortageIssue before calling SelectAgent functions.
     private int _entityTypePacked;
+
     // Written by case 6 when a slot is found.
     private int _agentCapacityFlag;
+
     // +0x48: agent entity reference. Set by GetNextShortageSubState (via sub_41a9e0)
     // when a valid agent assignment target is found. High byte != 0 means valid.
     // FinalizeAgentShortageItem checks *(this+0x48) & 0xff000000 != 0.
     private int _agentEntityRef;
+
     // +0x68: issue record container (FUN_00434c50 / AutoClass761).
     // Accumulates issue records from FUN_004191b0 queries via FUN_00434e10.
     // FUN_00434e30 retrieves the top record ID. FUN_005f3dd0 clears it.
@@ -180,7 +183,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         foreach (int sysId in _candidateListA.ToList())
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId
+                r.InternalId == sysId
             );
             if (rec == null)
             {
@@ -190,11 +193,15 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
 
             // Exact filter conditions from assembly (FUN_004da010):
             bool pass =
-                (rec.PresenceFlags & 0x1) != 0 &&   // *(edi+0x30) & 0x1
-                (rec.FlagA & 0x800000) != 0 &&       // *(edi+0x28) & 0x800000
-                (rec.FlagA & 0x800) != 0 &&          // HIBYTE(*(edi+0x28)) & 0x8 = bit 11
-                (rec.FlagA & 0x3) == 0 &&            // *(edi+0x28) & 0x3 == 0
-                rec.SystemScore > 0;                  // *(edi+0x60) > 0
+                (rec.PresenceFlags & 0x1) != 0
+                && // *(edi+0x30) & 0x1
+                (rec.FlagA & 0x800000) != 0
+                && // *(edi+0x28) & 0x800000
+                (rec.FlagA & 0x800) != 0
+                && // HIBYTE(*(edi+0x28)) & 0x8 = bit 11
+                (rec.FlagA & 0x3) == 0
+                && // *(edi+0x28) & 0x3 == 0
+                rec.SystemScore > 0; // *(edi+0x60) > 0
 
             if (pass && rec.SystemScore < minScore)
             {
@@ -260,8 +267,12 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         // Queries a-c: FUN_004191b0 with DispositionFlags & 0x2000
         // Query a: stat index 4 = EnemyTroopSurplus, sort descending (param_9=2)
         IssueRecordContainer containerA = Workspace.QuerySystemAnalysis(
-            incl24: 0x2000, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
+            incl24: 0x2000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
             statIndex: 4
         );
         // Sort descending for query A (param_9=2 → sort dir != 1 → descending).
@@ -269,15 +280,23 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         // (The sort direction is stored in the container's +0x1c field = param_9.)
 
         IssueRecordContainer containerB = Workspace.QuerySystemAnalysis(
-            incl24: 0x2000, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 0x15  // PerSystemStats[0x15] = unknown field, returns 0 currently
+            incl24: 0x2000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x15 // PerSystemStats[0x15] = unknown field, returns 0 currently
         );
 
         IssueRecordContainer containerC = Workspace.QuerySystemAnalysis(
-            incl24: 0x2000, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 8  // PerSystemStats[8] = DWORD at offset 0x20, returns 0 currently
+            incl24: 0x2000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 8 // PerSystemStats[8] = DWORD at offset 0x20, returns 0 currently
         );
 
         // Accumulate into _issueContainer and get top record
@@ -292,7 +311,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         if (top == null)
             return 0;
 
-        int sysId = top.System?.GetHashCode() ?? 0;
+        int sysId = top.InternalId;
         _candidateRefA = sysId;
 
         // Steps f: sub_419af0 planet sub-object queries (now implemented via QuerySystemPlanets):
@@ -303,8 +322,12 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         //     no mission-blocking (CapabilityFlags & 0x3800000 == 0), stat=StarfighterCount
         IssueRecordContainer planetQuery1 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0x800, incl2c: 0, incl30: 0x1,
-            excl28: 0x3800000, excl2c: 0, excl30: 0,
+            incl28: 0x800,
+            incl2c: 0,
+            incl30: 0x1,
+            excl28: 0x3800000,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 6
         );
         _issueContainer.StoreFrom(planetQuery1);
@@ -316,8 +339,12 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         // (different flags — no CapabilityFlags filter, just own planets)
         IssueRecordContainer planetQuery2 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0, incl2c: 0, incl30: 0x1,
-            excl28: 0, excl2c: 0, excl30: 0,
+            incl28: 0,
+            incl2c: 0,
+            incl30: 0x1,
+            excl28: 0,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 6
         );
         _issueContainer.StoreFrom(planetQuery2);
@@ -342,12 +369,12 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             }
         }
 
-        // Step i: if FlagA bit 0x800 (HIBYTE(*(esi+0x28)) & 0x8 = bit 11 = 0x800):
-        // validate fleet capacity via sub_4f25a0 + sub_5087e0.
-        // These look up the fleet entity and check its capacity (+0x58 == 0).
-        // Proxy: if the planet query returned results (fleet entities exist) AND
-        //        FlagA & 0x800 is set (fleet deployment condition) → var_18=1.
-        if ((top.FlagA & 0x800) != 0 && planetQuery1.Count > 0)
+        // Step i: if FlagA bit 27 (0x8000000) = HIBYTE(*(esi+0x28)) & 0x8 in the binary:
+        // FUN_004da280 assembly line 221: checks HIBYTE(FlagA) & 0x8 = bit 27 = 0x8000000.
+        // Set by AccumulatePlanetIntoSystemRecord when ExtraFlags & 0x10000000 (own planet
+        // popular support < 70). Validates fleet capacity via sub_4f25a0 + sub_5087e0.
+        // Proxy: if the planet query returned results AND FlagA & 0x8000000 is set → var_18=1.
+        if ((top.FlagA & 0x8000000) != 0 && planetQuery1.Count > 0)
         {
             // Assembly: stores system cost in _costValue (param_1+0x54),
             // updates _candidateRefB (param_1+0x44) with the found entity.
@@ -409,7 +436,8 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
     //       If edi==0: sub_41a9e0(&_agentEntityRef, 0x2a, 0x10000, 0x4000, 2) — find agent.
     //       If requestedCount >= agent_capacity: workspace.StatusFlags |= 0x80.
     //
-    // BLOCKED: workspace+0x44 FleetAssignment sub-object not built; HIBYTE checks fail in C#.
+    // HIBYTE check passes now (InternalId HIBYTE=0x90 in [0x90,0x98)).
+    // Fleet unit iteration (sub_52bc60 etc.) still blocked on entity infrastructure.
     // Proxy: uses QuerySystemAnalysis results as stand-ins.
     private void UpdateShortageFleet()
     {
@@ -421,8 +449,12 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         // Query: systems with DispositionFlags & 0x80 (FUN_004191b0 param_1=0x80),
         // PerSystemStats[0x15] as the property value.
         IssueRecordContainer container1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x80, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
+            incl24: 0x80,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
             statIndex: 0x15
         );
 
@@ -437,18 +469,24 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             // workspace+0x44 fleet assignment infrastructure is built).
             // For now: use the query result directly.
             IssueRecordContainer container2 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0,
-                excl24: 0, excl28: 0, excl2c: 0,
-                statIndex: 0x4  // EnemyTroopSurplus
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x4 // EnemyTroopSurplus
             );
 
             // Find a candidate: system with SystemScore > 0 AND requestedCount >= stat[0xd8 proxy]
             foreach (IssueRecord item in container2.Records)
             {
                 SystemAnalysisRecord rec = item.Record;
-                if (rec == null || rec.SystemScore <= 0) continue;
+                if (rec == null || rec.SystemScore <= 0)
+                    continue;
                 // system+0xd8 proxy: use FacilityCountOwned as capacity threshold
-                if (requestedCount < rec.Stats.FacilityCountOwned) continue;
+                if (requestedCount < rec.Stats.FacilityCountOwned)
+                    continue;
 
                 int sysId = item.EntityKey;
                 if (!_candidateListA.Contains(sysId))
@@ -466,7 +504,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             // If we have a valid top record from the 0x80 query, append it to _candidateListA.
             if (topRec1 != null && topRec1.SystemScore > 0)
             {
-                int sysId = topRec1.System?.GetHashCode() ?? 0;
+                int sysId = topRec1.InternalId;
                 if (sysId != 0 && !_candidateListA.Contains(sysId))
                 {
                     _candidateListA.Add(sysId);
@@ -491,11 +529,14 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         foreach (int sysId in _candidateListA)
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId
+                r.InternalId == sysId
             );
-            if (rec == null) continue;
-            if (rec.SystemScore <= bestScore) continue;
-            if (rec.Stats.FacilityCount <= 0) continue; // found+0x90 > 0 proxy
+            if (rec == null)
+                continue;
+            if (rec.SystemScore <= bestScore)
+                continue;
+            if (rec.Stats.FacilityCount <= 0)
+                continue; // found+0x90 > 0 proxy
             bestScore = rec.SystemScore;
             bestSysId = sysId;
             bestRec = rec;
@@ -505,7 +546,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         foreach (int oldId in _candidateListB)
         {
             SystemAnalysisRecord old = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == oldId
+                r.InternalId == oldId
             );
             if (old != null)
                 old.PresenceFlags &= ~0x10000000;
@@ -728,23 +769,27 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         foreach (int sysId in _candidateListA)
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId
+                r.InternalId == sysId
             );
-            if (rec == null) continue;
+            if (rec == null)
+                continue;
 
             // Conditions: PresenceFlags & 0x1, FlagA & 0x3 == 0, capacity field > 0
-            if ((rec.PresenceFlags & 0x1) == 0) continue;
-            if ((rec.FlagA & 0x3) != 0) continue;
+            if ((rec.PresenceFlags & 0x1) == 0)
+                continue;
+            if ((rec.FlagA & 0x3) != 0)
+                continue;
             int capacity = rec.Stats.FacilityCount; // proxy for *(esi+0x114)
-            if (capacity <= 0) continue;
+            if (capacity <= 0)
+                continue;
 
             int score = rec.SystemScore; // *(esi+0x60)
             if (score < minCost)
             {
-                _candidateCount = capacity;   // *(this+0x50) = capacity
-                minCost = score;              // var_24 = score
-                _candidateRefA = sysId;       // store key in _candidateRefA
-                found = true;                 // var_28 = 1
+                _candidateCount = capacity; // *(this+0x50) = capacity
+                minCost = score; // var_24 = score
+                _candidateRefA = sysId; // store key in _candidateRefA
+                found = true; // var_28 = 1
             }
         }
 
@@ -752,17 +797,32 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         {
             // Fallback: QuerySystemAnalysis(0x80, ...) × 3, then QuerySystemPlanets × 3
             IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0,
-                excl24: 0, excl28: 0, excl2c: 0,
-                statIndex: 4);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 4
+            );
             IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0,
-                excl24: 0, excl28: 0, excl2c: 0,
-                statIndex: 0x15);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x15
+            );
             IssueRecordContainer c3 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0,
-                excl24: 0, excl28: 0, excl2c: 0,
-                statIndex: 8);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 8
+            );
             _issueContainer.StoreFrom(c1);
             _issueContainer.StoreFrom(c2);
             _issueContainer.StoreFrom(c3);
@@ -771,14 +831,35 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             _issueContainer.Clear();
 
             IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
-                _candidateRefA, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 6);
+                _candidateRefA,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3800003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 6
+            );
             IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
-                _candidateRefA, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 0);
+                _candidateRefA,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3800003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0
+            );
             IssueRecordContainer p3 = Workspace.QuerySystemPlanets(
-                _candidateRefA, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 0x33);
+                _candidateRefA,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3800003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0x33
+            );
             _issueContainer.StoreFrom(p1);
             _issueContainer.StoreFrom(p2);
             _issueContainer.StoreFrom(p3);
@@ -791,7 +872,8 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             if (_candidateRefA != 0)
             {
                 SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                    r.System?.GetHashCode() == _candidateRefA);
+                    r.InternalId == _candidateRefA
+                );
                 if (rec != null)
                 {
                     // Allocate 0x1c entry (sub_617140), init (sub_4ec010), insert (sub_4f4b30)
@@ -825,18 +907,17 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
     // 5. Destroy local list (sub_4f36f0).
     // 6. Return work item (or null if local list was empty or entity checks failed).
     //
-    // BLOCKED: In C# the entity ID is System.GetHashCode() which never has a valid
-    // type code in HIBYTE. The HIBYTE check (step 2) always fails, so the function
-    // always returns null in a fully correct implementation. The proxy below creates
-    // a FleetShortageWorkItem directly as a stand-in until fleet entity infrastructure
-    // is available.
+    // HIBYTE check now passes: SystemAnalysisRecord.InternalId = 0x90000000 | index,
+    // so HIBYTE = 0x90 which is in [0x90,0x98). Fleet unit iteration (sub_52bc60,
+    // sub_52b900, sub_51b460) still requires entity infrastructure not yet available;
+    // proxy returns a FleetShortageWorkItem directly as stand-in.
     private AIWorkItem FindShortageFleet()
     {
         if (_candidateRefA == 0)
             return null;
 
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA
+            r.InternalId == _candidateRefA
         );
         if (rec == null)
             return null;
@@ -910,7 +991,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
 
         // Cap by system fields: min(min(sys+0x84, _candidateCount), _costValue)
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA
+            r.InternalId == _candidateRefA
         );
         if (rec != null)
         {
@@ -971,12 +1052,14 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
 
         foreach (int sysId in _candidateListA.ToList())
         {
-            if (!continueLoop) break;
+            if (!continueLoop)
+                break;
 
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId
+                r.InternalId == sysId
             );
-            if (rec == null) continue;
+            if (rec == null)
+                continue;
 
             int score = rec.SystemScore;
             if (score <= 0)
@@ -1017,7 +1100,8 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
                 // esi = 0: stop loop regardless
                 continueLoop = false;
             }
-            if (found) break;
+            if (found)
+                break;
         }
 
         if (!found)
@@ -1026,7 +1110,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         // BLOCKED: fleet entity lookup (sub_4f25a0) + starfighter iteration
         // Proxy: return FleetShortageWorkItem for the found system
         SystemAnalysisRecord target = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == foundId
+            r.InternalId == foundId
         );
         return new FleetShortageWorkItem(target?.System, OwnerSide);
     }
@@ -1058,14 +1142,22 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
     {
         // Queries 1-2 from FUN_004db760 assembly:
         IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x200, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 7   // PerSystemStats[7] = byte offset 0x1c (unlisted, returns 0)
+            incl24: 0x200,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 7 // PerSystemStats[7] = byte offset 0x1c (unlisted, returns 0)
         );
         IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
-            incl24: 0x200, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 9   // PerSystemStats[9] = NetCapitalShipSurplus (+0x24)
+            incl24: 0x200,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 9 // PerSystemStats[9] = NetCapitalShipSurplus (+0x24)
         );
 
         _issueContainer.StoreFrom(c1);
@@ -1078,7 +1170,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         if (top == null)
             return 0;
 
-        _candidateRefA = top.System?.GetHashCode() ?? 0;
+        _candidateRefA = top.InternalId;
 
         // Steps 5-9: sub_419af0 planet-level queries (now implemented).
         // FUN_004db760 assembly lines 70-99:
@@ -1087,14 +1179,22 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         //   sub_419af0(_candidateRefA, 0x100, 0, 0x1, 0x3e00003, 0, 0, 0x33, 1)
         IssueRecordContainer pq1 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0x100, incl2c: 0, incl30: 0x1,
-            excl28: 0x3e00003, excl2c: 0, excl30: 0,
+            incl28: 0x100,
+            incl2c: 0,
+            incl30: 0x1,
+            excl28: 0x3e00003,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 0xf
         );
         IssueRecordContainer pq2 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0x100, incl2c: 0, incl30: 0x1,
-            excl28: 0x3e00003, excl2c: 0, excl30: 0,
+            incl28: 0x100,
+            incl2c: 0,
+            incl30: 0x1,
+            excl28: 0x3e00003,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 0
         );
 
@@ -1128,18 +1228,30 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
     private int SelectAgentSlotFull()
     {
         IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x100, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
+            incl24: 0x100,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
             statIndex: 7
         );
         IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
-            incl24: 0x100, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 0xa  // NetFighterSurplus (+0x28)
+            incl24: 0x100,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0xa // NetFighterSurplus (+0x28)
         );
         IssueRecordContainer c3 = Workspace.QuerySystemAnalysis(
-            incl24: 0x100, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
+            incl24: 0x100,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
             statIndex: 9
         );
 
@@ -1154,7 +1266,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         if (top == null)
             return 0;
 
-        _candidateRefA = top.System?.GetHashCode() ?? 0;
+        _candidateRefA = top.InternalId;
 
         // sub_419af0 planet queries (FUN_004db4c0 assembly lines 74-99):
         //   sub_419af0(_candidateRefA, 0x80, 0, 0, 0, 0, 0, 0xe, 1)
@@ -1162,14 +1274,22 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
         //   sub_419af0(_candidateRefA, 0x80, 0, 0, 0, 0, 0, 0x33, 1)
         IssueRecordContainer sq1 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0x80, incl2c: 0, incl30: 0,
-            excl28: 0, excl2c: 0, excl30: 0,
+            incl28: 0x80,
+            incl2c: 0,
+            incl30: 0,
+            excl28: 0,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 0xe
         );
         IssueRecordContainer sq2 = Workspace.QuerySystemPlanets(
             _candidateRefA,
-            incl28: 0x80, incl2c: 0, incl30: 0,
-            excl28: 0, excl2c: 0, excl30: 0,
+            incl28: 0x80,
+            incl2c: 0,
+            incl30: 0,
+            excl28: 0,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 0
         );
 
@@ -1199,7 +1319,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             return null;
 
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA
+            r.InternalId == _candidateRefA
         );
         if (rec == null)
             return null;
@@ -1222,7 +1342,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             return null;
 
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA
+            r.InternalId == _candidateRefA
         );
         if (rec == null)
             return null;
@@ -1243,7 +1363,7 @@ public class LocalShortageGeneratorType1Record : StrategyRecord
             return null;
 
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA
+            r.InternalId == _candidateRefA
         );
         if (rec == null)
             return null;
@@ -1388,7 +1508,7 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         foreach (int sysId in _type2CandidateList.ToList())
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId
+                r.InternalId == sysId
             );
 
             if (rec == null)
@@ -1403,11 +1523,15 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
 
             // Conditions (from assembly loc_4e1613-4e1624):
             bool pass =
-                (rec.PresenceFlags & 0x1u) != 0 &&    // PresenceFlags & 0x1 (own faction)
-                (rec.FlagA & 0x1000000) != 0 &&         // FlagA & 0x1000000 (Type 2 specific)
-                rec.SystemScore > 0 &&                   // SystemScore > 0
-                (rec.FlagA & 0x800) != 0 &&              // FlagA & 0x800 (fleet capability)
-                (rec.FlagA & 0x3) == 0;                  // FlagA & 0x3 == 0 (no enemy)
+                (rec.PresenceFlags & 0x1u) != 0
+                && // PresenceFlags & 0x1 (own faction)
+                (rec.FlagA & 0x1000000) != 0
+                && // FlagA & 0x1000000 (Type 2 specific)
+                rec.SystemScore > 0
+                && // SystemScore > 0
+                (rec.FlagA & 0x800) != 0
+                && // FlagA & 0x800 (fleet capability)
+                (rec.FlagA & 0x3) == 0; // FlagA & 0x3 == 0 (no enemy)
 
             if (!pass)
             {
@@ -1723,11 +1847,32 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         {
             // Three QuerySystemAnalysis(DispositionFlags & 0xe0): stats 0x15, 0x11, 0x13
             IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-                incl24: 0xe0, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 0x15);
+                incl24: 0xe0,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x15
+            );
             IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
-                incl24: 0xe0, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 0x11);
+                incl24: 0xe0,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x11
+            );
             IssueRecordContainer c3 = Workspace.QuerySystemAnalysis(
-                incl24: 0xe0, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 0x13);
+                incl24: 0xe0,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x13
+            );
             _type2IssueContainer.StoreFrom(c1);
             _type2IssueContainer.StoreFrom(c2);
             _type2IssueContainer.StoreFrom(c3);
@@ -1737,14 +1882,35 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
 
             // Three QuerySystemPlanets(_candidateRefA2, 0,0,1, excl28=0x3e00000,0,0, stat, 1)
             IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
-                _candidateRefA2, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3e00000, excl2c: 0, excl30: 0, statIndex: 6);
+                _candidateRefA2,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3e00000,
+                excl2c: 0,
+                excl30: 0,
+                statIndex: 6
+            );
             IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
-                _candidateRefA2, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3e00000, excl2c: 0, excl30: 0, statIndex: 4);
+                _candidateRefA2,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3e00000,
+                excl2c: 0,
+                excl30: 0,
+                statIndex: 4
+            );
             IssueRecordContainer p3 = Workspace.QuerySystemPlanets(
-                _candidateRefA2, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3e00000, excl2c: 0, excl30: 0, statIndex: 5);
+                _candidateRefA2,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3e00000,
+                excl2c: 0,
+                excl30: 0,
+                statIndex: 5
+            );
             _type2IssueContainer.StoreFrom(p1);
             _type2IssueContainer.StoreFrom(p2);
             _type2IssueContainer.StoreFrom(p3);
@@ -1772,7 +1938,9 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     //    Return work item. Else: return null.
     //
     // Note: uses _candidateRefA2 (set by CheckIssuePrecondition), NOT _candidateRefB2.
-    // BLOCKED: HIBYTE check always fails in C# (hash codes lack type encoding).
+    // HIBYTE check passes with InternalIds (SystemAnalysisRecord.InternalId HIBYTE = 0x90).
+    // Proxy: returns FleetShortageWorkItem since the fleet unit iterators (sub_52bc60 etc.)
+    // that build the actual unit node list are not yet read.
     private AIWorkItem FindIssueCandidate()
     {
         // Uses _candidateRefA2 (set by CheckIssuePrecondition), not _candidateRefB2.
@@ -1780,7 +1948,7 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
             return null;
 
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA2
+            r.InternalId == _candidateRefA2
         );
         if (rec == null || rec.System == null || (rec.FlagB & 0x4) == 0)
             return null;
@@ -1817,29 +1985,37 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         // Direct check: candidate entity at _candidateRefA2 in valid system?
         SystemAnalysisRecord rec = null;
         if (_candidateRefA2 != 0)
-            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _candidateRefA2);
+            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _candidateRefA2);
 
         if (rec != null && (rec.FlagA & 0x3) == 0 && (rec.FlagA & 0x100) != 0)
             return 1; // Direct condition A met
 
         // Seeding block (when direct check fails):
         // sub_419330(arg_48, 0x200, 0,0,0,0,0, 0x2, sort=2)
-        // ≈ QuerySystemAnalysis(DispositionFlags & 0x200, stat[2] = FighterCountA)
+        // ≈ QuerySystemAnalysis(DispositionFlags & 0x200, stat[2] = MineCount)
         IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x200, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
+            incl24: 0x200,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
             statIndex: 2
         );
         SystemAnalysisRecord top1 = c1.GetTopRecord();
         if (top1 != null)
-            _candidateRefA2 = top1.System?.GetHashCode() ?? _candidateRefA2;
+            _candidateRefA2 = top1?.InternalId ?? _candidateRefA2;
 
         // sub_419bb0(edi, arg_48, 0x100, 0, 0, 0x3, 0, 0, 0x2)
         // ≈ QuerySystemPlanets(_candidateRefA2, incl28=0x100, excl28=0, incl30=0, excl28incl=0x3 excl)
         IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
             _candidateRefA2,
-            incl28: 0x100, incl2c: 0, incl30: 0,
-            excl28: 0x3, excl2c: 0, excl30: 0,
+            incl28: 0x100,
+            incl2c: 0,
+            incl30: 0,
+            excl28: 0x3,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 2
         );
         SystemAnalysisRecord top2 = c2.GetTopRecord();
@@ -1851,7 +2027,7 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         // Proxy: if updated _candidateRefA2 points to a valid system.
         if (_candidateRefA2 != 0)
         {
-            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _candidateRefA2);
+            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _candidateRefA2);
             if (rec != null && (rec.FlagA & 0x3) == 0)
                 return 1;
         }
@@ -1882,7 +2058,7 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     {
         SystemAnalysisRecord rec = null;
         if (_candidateRefB2 != 0)
-            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _candidateRefB2);
+            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _candidateRefB2);
 
         if (rec != null && (rec.FlagA & 0x3) == 0 && (rec.FlagA & 0x80) != 0)
             return 1; // Direct condition B met
@@ -1890,17 +2066,21 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         // Seeding: sub_419bb0(edi, ebx, 0x80, 0, 0, 0x3, 0, 0, 0x2)
         IssueRecordContainer c1 = Workspace.QuerySystemPlanets(
             _candidateRefB2,
-            incl28: 0x80, incl2c: 0, incl30: 0,
-            excl28: 0x3, excl2c: 0, excl30: 0,
+            incl28: 0x80,
+            incl2c: 0,
+            incl30: 0,
+            excl28: 0x3,
+            excl2c: 0,
+            excl30: 0,
             statIndex: 2
         );
         SystemAnalysisRecord top1 = c1.GetTopRecord();
         if (top1 != null)
-            _candidateRefB2 = top1.System?.GetHashCode() ?? _candidateRefB2;
+            _candidateRefB2 = top1?.InternalId ?? _candidateRefB2;
 
         if (_candidateRefB2 != 0)
         {
-            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _candidateRefB2);
+            rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _candidateRefB2);
             if (rec != null && (rec.FlagA & 0x3) == 0)
                 return 1;
         }
@@ -1925,10 +2105,13 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     private AIWorkItem InitFleetAssignmentPhaseB()
     {
         // Proxy: this+0x44 → use _candidateRefA2 (set by CheckFleetIssueConditionA)
-        if (_candidateRefA2 == 0) return null;
+        if (_candidateRefA2 == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA2);
-        if (rec == null || (rec.FlagB & 0x4) == 0) return null;
+            r.InternalId == _candidateRefA2
+        );
+        if (rec == null || (rec.FlagB & 0x4) == 0)
+            return null;
         return new FleetShortageWorkItem(rec.System, OwnerSide);
     }
 
@@ -1938,10 +2121,13 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     private AIWorkItem InitFleetAssignmentPhaseA()
     {
         // Proxy: this+0x40 → use _candidateRefB2 (set by CheckFleetIssueConditionB)
-        if (_candidateRefB2 == 0) return null;
+        if (_candidateRefB2 == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefB2);
-        if (rec == null || (rec.FlagB & 0x4) == 0) return null;
+            r.InternalId == _candidateRefB2
+        );
+        if (rec == null || (rec.FlagB & 0x4) == 0)
+            return null;
         return new FleetShortageWorkItem(rec.System, OwnerSide);
     }
 
@@ -1963,10 +2149,13 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     // Proxy: creates AgentShortageWorkItem(0x214) if _candidateRefA2 non-null.
     private AIWorkItem DispatchFleetEntryPhaseB()
     {
-        if (_candidateRefA2 == 0) return null;
+        if (_candidateRefA2 == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA2);
-        if (rec == null) return null;
+            r.InternalId == _candidateRefA2
+        );
+        if (rec == null)
+            return null;
         return new AgentShortageWorkItem(0x214, rec.System, 1, OwnerSide);
     }
 
@@ -1974,10 +2163,13 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     // Proxy: creates AgentShortageWorkItem(0x214) if _candidateRefB2 non-null.
     private AIWorkItem DispatchFleetEntryPhaseA()
     {
-        if (_candidateRefB2 == 0) return null;
+        if (_candidateRefB2 == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefB2);
-        if (rec == null) return null;
+            r.InternalId == _candidateRefB2
+        );
+        if (rec == null)
+            return null;
         return new AgentShortageWorkItem(0x214, rec.System, 1, OwnerSide);
     }
 
@@ -1997,15 +2189,18 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     //    item+0x48 = _agentAssignmentFlag (*(this+0x54)).
     //    Return item.
     //
-    // BLOCKED: HIBYTE(_candidateRefB2) check fails in C# (hash codes lack type encoding).
+    // BLOCKED: HIBYTE(_candidateRefB2) check fails in C# (InternalIds now carry HIBYTE type encoding; check passes for [0x90,0x98) system records).
     // Proxy: returns AgentShortageWorkItem(0x210) when _agentAssignmentFlag is set.
     private AIWorkItem FinalizeIssueAssignment()
     {
         // Uses _candidateRefB2 (this+0x4c), NOT _candidateRefA2.
-        if (_candidateRefB2 == 0 || _agentAssignmentFlag == 0) return null;
+        if (_candidateRefB2 == 0 || _agentAssignmentFlag == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefB2);
-        if (rec == null) return null;
+            r.InternalId == _candidateRefB2
+        );
+        if (rec == null)
+            return null;
         // item+0x44 = _agentTypePacked, item+0x48 = _agentAssignmentFlag
         return new AgentShortageWorkItem(0x210, rec.System, _agentAssignmentFlag, OwnerSide);
     }
@@ -2040,12 +2235,17 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         foreach (int sysId in _type2CandidateList)
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId);
-            if (rec == null) continue;
-            if ((rec.PresenceFlags & 0x1) == 0) continue;
-            if ((rec.FlagA & 0x3) != 0) continue;
+                r.InternalId == sysId
+            );
+            if (rec == null)
+                continue;
+            if ((rec.PresenceFlags & 0x1) == 0)
+                continue;
+            if ((rec.FlagA & 0x3) != 0)
+                continue;
             int cap = rec.Stats.FacilityCount; // proxy for *(esi+0x114)
-            if (cap <= 0) continue;
+            if (cap <= 0)
+                continue;
             int score = rec.SystemScore;
             if (score < minCost)
             {
@@ -2060,32 +2260,63 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         {
             // Fallback: QuerySystemAnalysis(0x80, stat=0x15) + QuerySystemAnalysis(0x80, stat=4)
             IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 0x15);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x15
+            );
             IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 4
+            );
             c1.StoreFrom(c2);
-            if (c1.TryGetTopEntityKey(out int key1)) _candidateRefA2 = key1;
+            if (c1.TryGetTopEntityKey(out int key1))
+                _candidateRefA2 = key1;
             c1.Clear();
 
             // QuerySystemPlanets(_candidateRefA2, 0,0,1, 0x3800003,0,0x40000000, 6,1)
             IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
-                _candidateRefA2, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 6);
+                _candidateRefA2,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3800003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 6
+            );
             if (_type2CandidateList.Count > 0)
             {
                 IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
-                    _candidateRefA2, incl28: 0, incl2c: 0, incl30: 1,
-                    excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 0x33);
+                    _candidateRefA2,
+                    incl28: 0,
+                    incl2c: 0,
+                    incl30: 1,
+                    excl28: 0x3800003,
+                    excl2c: 0,
+                    excl30: 0x40000000,
+                    statIndex: 0x33
+                );
                 p1.StoreFrom(p2);
             }
-            if (p1.TryGetTopEntityKey(out int key2)) _candidateRefA2 = key2;
+            if (p1.TryGetTopEntityKey(out int key2))
+                _candidateRefA2 = key2;
             p1.Clear();
 
             // Fleet entity type proxy: _candidateRefA2 != 0 with valid system
             if (_candidateRefA2 != 0)
             {
                 SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                    r.System?.GetHashCode() == _candidateRefA2);
+                    r.InternalId == _candidateRefA2
+                );
                 if (rec != null)
                 {
                     if (!_type2CandidateList.Contains(_candidateRefA2))
@@ -2112,10 +2343,13 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     private AIWorkItem FindAgentIssueCandidate()
     {
         // Uses _candidateRefA2 (same as FindIssueCandidate)
-        if (_candidateRefA2 == 0) return null;
+        if (_candidateRefA2 == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _candidateRefA2);
-        if (rec == null || rec.System == null || (rec.FlagB & 0x4) == 0) return null;
+            r.InternalId == _candidateRefA2
+        );
+        if (rec == null || rec.System == null || (rec.FlagB & 0x4) == 0)
+            return null;
         return new FleetShortageWorkItem(rec.System, OwnerSide);
     }
 
@@ -2152,12 +2386,46 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
         if (total - Workspace.FleetAssignedCapacity < requested)
             requested = 0;
 
-        if (requested < 0) return 6;  // shortage → agent reallocation
-        if (requested == 0) return 0; // balanced → terminal
+        if (requested < 0)
+            return 6; // shortage → agent reallocation
+        if (requested == 0)
+            return 0; // balanced → terminal
 
-        // sub_41a9e0 blocked: agent entity not available in C#
-        // _type2Field58 = 0 → would cap _agentAssignmentFlag to 0 → return 0
-        return 0;
+        // sub_41a9e0(workspace, this+0x50, 0x2a, 0x10000, 0x4000, 2):
+        // Finds a character entity by agent type codes. Returns cap-per-agent in ECX.
+        // Binary: entity ref stored at this+0x50 (_agentTypePacked); HIBYTE checked != 0.
+        // With CharacterAnalysis InternalIds (HIBYTE 0xa0), use first available officer.
+        var agentRec = Workspace.CharacterAnalysis.FirstOrDefault(r =>
+            r.Officer != null && r.Officer.IsMovable() && !r.Officer.IsCaptured
+        );
+        if (agentRec == null)
+            return 0;
+
+        // _agentTypePacked serves as agent entity ref (this+0x50).
+        _agentTypePacked = agentRec.InternalId; // HIBYTE 0xa0 → passes (& 0xff000000) != 0
+        int capPerAgent = 1; // proxy for ECX from sub_41a9e0 (cap per agent = 1)
+
+        // Condition: (_agentTypePacked & 0xff000000) != 0 && capPerAgent != 0
+        if ((_agentTypePacked & unchecked((int)0xff000000)) != 0 && capPerAgent != 0)
+            _agentAssignmentFlag = requested / capPerAgent;
+
+        // Cap by _type2Field58 (set by CheckAgentEligibility to SystemScore-1).
+        if (_type2Field58 > 0 && _agentAssignmentFlag > _type2Field58)
+            _agentAssignmentFlag = _type2Field58;
+
+        if (_agentAssignmentFlag <= 0)
+            return 0;
+
+        // FUN_00479ee0: look up _candidateRefA2 entity, cap by entity's capacity.
+        var sysRec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _candidateRefA2);
+        if (sysRec != null)
+        {
+            int entityCap = System.Math.Min(sysRec.Stats.FacilityCount, _candidateCapacity5c);
+            if (entityCap > 0 && entityCap < _agentAssignmentFlag)
+                _agentAssignmentFlag = entityCap;
+        }
+
+        return _agentAssignmentFlag > 0 ? 8 : 0;
     }
 
     // FUN_004e3390: CreateAgentIssue — starfighter node builder, TypeCode=0x200.
@@ -2183,23 +2451,50 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
 
         foreach (int sysId in _type2CandidateList.ToList())
         {
-            if (!continueLoop) break;
+            if (!continueLoop)
+                break;
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId);
-            if (rec == null) continue;
+                r.InternalId == sysId
+            );
+            if (rec == null)
+                continue;
             int score = rec.SystemScore;
-            if (score <= 0) { _type2CandidateList.Remove(sysId); rec.FlagA &= ~0x1000000; continue; }
-            if ((rec.FlagA & 0x1000) == 0) { continue; }
-            if (score > 1) { foundId = sysId; _candidateRefA2 = sysId; found = true; }
+            if (score <= 0)
+            {
+                _type2CandidateList.Remove(sysId);
+                rec.FlagA &= ~0x1000000;
+                continue;
+            }
+            if ((rec.FlagA & 0x1000) == 0)
+            {
+                continue;
+            }
+            if (score > 1)
+            {
+                foundId = sysId;
+                _candidateRefA2 = sysId;
+                found = true;
+            }
             else // score == 1
             {
-                if (_type2CandidateList.Count > 1) { foundId = sysId; _candidateRefA2 = sysId; _type2CandidateList.Remove(sysId); rec.FlagA &= ~0x1000000; found = true; }
+                if (_type2CandidateList.Count > 1)
+                {
+                    foundId = sysId;
+                    _candidateRefA2 = sysId;
+                    _type2CandidateList.Remove(sysId);
+                    rec.FlagA &= ~0x1000000;
+                    found = true;
+                }
                 continueLoop = false;
             }
-            if (found) break;
+            if (found)
+                break;
         }
-        if (!found) return null;
-        SystemAnalysisRecord target = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == foundId);
+        if (!found)
+            return null;
+        SystemAnalysisRecord target = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == foundId
+        );
         return new FleetShortageWorkItem(target?.System, OwnerSide);
     }
 
@@ -2226,22 +2521,39 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     {
         // Proxy: seed _candidateRefA2 from QuerySystemAnalysis(0x1000 filter)
         IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x1000, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 2);
-        if (c1.TryGetTopEntityKey(out int key1)) _candidateRefA2 = key1;
+            incl24: 0x1000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 2
+        );
+        if (c1.TryGetTopEntityKey(out int key1))
+            _candidateRefA2 = key1;
         c1.Clear();
 
         // Seed _candidateRefB2 via QuerySystemPlanets
         IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
-            _candidateRefA2, incl28: 0x800800, incl2c: 0, incl30: 1,
-            excl28: 0x3, excl2c: 0, excl30: 0, statIndex: 6);
-        if (c2.TryGetTopEntityKey(out int key2)) _candidateRefB2 = key2;
+            _candidateRefA2,
+            incl28: 0x800800,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0x3,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 6
+        );
+        if (c2.TryGetTopEntityKey(out int key2))
+            _candidateRefB2 = key2;
         c2.Clear();
 
         // Proxy for fleet type check + _type2Field58 setting
         if (_candidateRefB2 != 0)
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == _candidateRefB2);
+                r.InternalId == _candidateRefB2
+            );
             if (rec != null)
             {
                 // *(this+0x58) = SystemScore (or SystemScore-1 if > 1)
@@ -2262,11 +2574,14 @@ public class LocalShortageGeneratorType2Record : StrategyRecord
     // FUN_004e3670 (agent slot, +0x48): dispatch agent entry → TypeCode 0x214.
     private AIWorkItem DispatchAgentEntry()
     {
-        if (_agentAssignmentFlag == 0) return null;
+        if (_agentAssignmentFlag == 0)
+            return null;
         int sysId = _candidateRefA2 != 0 ? _candidateRefA2 : _candidateRefB2;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null)
+            return null;
         return new AgentShortageWorkItem(0x214, rec.System, _agentAssignmentFlag, OwnerSide);
     }
 
@@ -2323,17 +2638,20 @@ public class ShortageGeneratorType3Record : StrategyRecord
     // Extra fields beyond 0x40-byte base (total size 0x7c = 0x3c extra bytes starting at +0x40).
     // Fields at +0x40..+0x4c: issue container used by CheckShortageConditionB (this+0x40),
     //   plus intermediate state (not mapped as individual C# fields; use local containers).
-    private int _entityRef50;    // +0x50: entity ref set by SelectAgentTypeSlotAvail/Full
+    private int _entityRef50; // +0x50: entity ref set by SelectAgentTypeSlotAvail/Full
     private int _phaseCSubObjRef; // +0x54: passed to DispatchPhaseCSubObject in Phase C state 11
     private int _phaseASubObjRef; // +0x58: passed to DispatchPhaseASubObject in Phase A states 11-12
     private int _typeModePacked; // +0x5c: agent type+mode packed (0x2d000002 or 0x2c000001)
     private int _agentMatchFlag; // +0x60: agent assignment count (FUN_004d8890: iVar1/agent_capacity)
+
     // +0x64: capacity upper limit set by CheckPhaseAAgentCondition (FUN_004d8120):
     //         = *(fleet+0x60) - 1 when *(fleet+0x60) > 1, else = *(fleet+0x60)
     private int _capacityLimit64;
+
     // +0x68: per-system capacity counter (proxy for *(esi+0x114)) set by CheckPhaseACondition:
     //         = capacity of the best candidate from _type3CandidateList
     private int _candidateCapacity68;
+
     // +0x6c: candidate list iterated by CheckFleetIssueC and CheckPhaseACondition
     private readonly List<int> _type3CandidateList = new List<int>(); // +0x6c
 
@@ -2681,8 +2999,6 @@ public class ShortageGeneratorType3Record : StrategyRecord
         }
     }
 
-    // --- INCOMPLETE helper stubs for RunPhaseB ---
-
     // FUN_004d6550: Phase B shortage condition check.
     //
     // Assembly trace (fully read):
@@ -2695,44 +3011,74 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //    If YES: look up in SystemAnalysis; if found AND *(sys+0xdc) > 0: return 1.
     //    Otherwise: return var_18 = 0.
     //
-    // Note: HIBYTE check always fails in C# (hash codes lack type encoding).
+    // Note: HIBYTE check always fails in C# (InternalIds now carry HIBYTE type encoding; check passes for [0x90,0x98) system records).
     // Proxy: return 1 if _phaseCSubObjRef != 0 with valid system record and FacilityCount > 0.
     private int CheckShortageConditionB()
     {
         // Step 1: QuerySystemAnalysis(DispositionFlags & 0x10000, stat[0x1d])
         IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-            incl24: 0x10000, incl28: 0, incl2c: 0,
-            excl24: 0, excl28: 0, excl2c: 0,
-            statIndex: 0x1d);
+            incl24: 0x10000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x1d
+        );
         if (c1.TryGetTopEntityKey(out int key1))
             _phaseCSubObjRef = key1;
 
         // Step 2: QuerySystemPlanets(_phaseCSubObjRef, 0,0,1, 0,0,0, stat=0x25, sort=1)
         IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
-            _phaseCSubObjRef, incl28: 0, incl2c: 0, incl30: 1,
-            excl28: 0, excl2c: 0, excl30: 0, statIndex: 0x25);
+            _phaseCSubObjRef,
+            incl28: 0,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 0x25
+        );
         if (c2.TryGetTopEntityKey(out int key2))
             _phaseCSubObjRef = key2;
 
         // Step 3: proxy for HIBYTE check + *(sys+0xdc) > 0
-        if (_phaseCSubObjRef == 0) return 0;
+        if (_phaseCSubObjRef == 0)
+            return 0;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _phaseCSubObjRef);
-        if (rec == null) return 0;
+            r.InternalId == _phaseCSubObjRef
+        );
+        if (rec == null)
+            return 0;
         // *(sys+0xdc) proxy: FacilityCount (must be > 0)
         return rec.Stats.FacilityCount > 0 ? 1 : 0;
     }
 
     // FUN_004d66a0: CreateFleetShortageItemB for Type 3 Phase B. Assembly trace (fully read).
-    // Reads entity ref from this+0x54 (_entityRef54). Looks up system in workspace (sub_403d30).
-    // Computes capacity deltas: *(sys+0x64)−*(sys+0x6c) and *(sys+0x74)−*(sys+0x7c).
-    // sub_4f25a0(OwnerSide, this+0x54) → ownership check. If owned:
-    // Builds GenCore facilities (sub_526a80) up to capacity delta 1,
-    // Kdy facilities (sub_526700) up to capacity delta 2, Lnr facilities (sub_526490) as fallback.
-    // Creates TypeCode 0x200 (FleetShortageWorkItem) if unit nodes built.
-    // BLOCKED: entity lookup (sub_403d30) requires HIBYTE-encoded entity IDs;
-    //          C# hash codes cause lookup failure. Returns null.
-    private AIWorkItem CreateFleetShortageItemB() => null;
+    // 1. sub_4ec1e0(&_phaseCSubObjRef) → copies ref to temp.
+    // 2. sub_403d30(workspace.EntityRegistry, ref) → raw entity lookup.
+    //    If found: capacity_delta_1 = *(entity+0x64) - *(entity+0x6c);
+    //              capacity_delta_2 = *(entity+0x74) - *(entity+0x7c).
+    //    If NOT found: both deltas = 0 (nothing built).
+    // 3. sub_4f25a0(OwnerSide, &_phaseCSubObjRef) → fleet by owner at that system.
+    //    If fleet found AND delta_1 > 0: GenCore (sub_526a80) unit nodes.
+    //    If delta_2 > 0: Kdy (sub_526700) nodes; if any remain: Lnr (sub_526490) nodes.
+    // 4. If node list non-empty: TypeCode=0x200 FleetShortageWorkItem. Return.
+    //
+    // Capacity deltas require raw entity fields (+0x64/+0x6c/+0x74/+0x7c) unavailable in C#.
+    // Fleet unit iteration (sub_526a80/sub_526700/sub_526490) requires entity infrastructure.
+    // Proxy: return FleetShortageWorkItem if _phaseCSubObjRef is a valid system with capacity.
+    private AIWorkItem CreateFleetShortageItemB()
+    {
+        if (_phaseCSubObjRef == 0)
+            return null;
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _phaseCSubObjRef
+        );
+        if (rec == null || rec.System == null || rec.Stats.FacilityCount <= 0)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004d6a10: Phase B agent assignment check.
     // Assembly (fully read): computes (Capacity * FleetTotalCapacity / 100) and compares
@@ -2743,36 +3089,173 @@ public class ShortageGeneratorType3Record : StrategyRecord
         int requested = (Capacity * Workspace.FleetTotalCapacity) / 100;
         // _totalAlignedEntityCount proxy: count of own-faction system fleets
         int aligned = Workspace.FleetAnalysis.Count(r =>
-            r.Fleet?.GetOwnerInstanceID() == Workspace.Owner?.InstanceID);
+            r.Fleet?.GetOwnerInstanceID() == Workspace.Owner?.InstanceID
+        );
         return requested < aligned ? 1 : 0;
     }
 
-    // FUN_004d7890 (Phase B): Creates fleet unit node list and TypeCode=0x200 work item.
+    // FUN_004d7890 (Phase B and Phase C case 7): re-queries to find system, then builds
+    // unit nodes. Identical function called from both Phase B case 7 and Phase C case 7.
     //
     // Assembly trace (fully read):
-    // 1. QuerySystemAnalysis(0x10000, ..., 0x1d) → store in container at this+0x40
-    //    → get last ID → store in _phaseCSubObjRef (this+0x54) → clear container.
-    // 2. QuerySystemPlanets(_phaseCSubObjRef, 0,0,1,0,0,0,0x25,1) → update _phaseCSubObjRef.
-    // 3. If _phaseCSubObjRef NOT fleet type ([0x90,0x98)):
-    //    a. QuerySystemAnalysis(0x200e0,...,3) → update _phaseCSubObjRef.
-    //    b. QuerySystemPlanets × 2 with excl28=0x3e00000, excl30=0x40000000, stats 7+0xb → update.
-    // 4. If still NOT fleet: QuerySystemAnalysis(0x20000,...,3) + more planet queries.
-    // 5. If IS fleet: get faction fleet via sub_4f25a0, iterate agents (sub_526700/sub_526490/sub_526a80),
-    //    allocate 0x20-byte nodes, insert into local node list.
-    // 6. If local list non-empty: allocate TypeCode=0x200 work item, attach nodes, return.
-    //    Else: return null.
+    // 1. QuerySystemAnalysis(0x10000, ..., stat=0x1d) → container at this+0x40
+    //    → last ID → _phaseCSubObjRef (this+0x54) → clear container.
+    // 2. sub_419af0(_phaseCSubObjRef, 0,0,1,0,0,0, stat=0x25, 1) → update _phaseCSubObjRef.
+    // 3. If HIBYTE(_phaseCSubObjRef) NOT in [0x90,0x98) (fallback A):
+    //    QuerySystemAnalysis(0x200e0,..., stat=3) → update _phaseCSubObjRef.
+    //    sub_419af0 × 2 (excl28=0x3e00000, excl30=0x40000000, stats 7 and 0xb) → update.
+    // 4. If still NOT valid (fallback B):
+    //    QuerySystemAnalysis(0x20000,..., stat=3) → update _phaseCSubObjRef.
+    //    sub_419af0 × 2 (excl30=0x40000000, stats 7 and 0xb) → update.
+    // 5. If HIBYTE(_phaseCSubObjRef) in [0x90,0x98): sub_4f25a0 (get fleet), then iterate
+    //    Kdy (sub_526700) / Lnr (sub_526490) / GenCore (sub_526a80) unit nodes.
+    // 6. If node list non-empty: TypeCode=0x200 work item. Else: return null.
     //
-    // BLOCKED: HIBYTE checks always fail in C#; fleet unit iteration requires entity infrastructure.
-    // Proxy: creates FleetShortageWorkItem as stand-in.
-    private AIWorkItem CreateAgentShortageItemB()
+    // Fleet unit iteration still blocked on entity infrastructure.
+    // HIBYTE check passes: InternalId = 0x90000000|index, HIBYTE=0x90 in [0x90,0x98).
+    // Proxy: re-runs queries (matching binary) and returns FleetShortageWorkItem when found.
+    private AIWorkItem CreateAgentShortageItemB() => RunAgentShortageQuery();
+
+    // FUN_004d7890 (Phase C case 7): same binary function as Phase B case 7.
+    // See CreateAgentShortageItemB for full documentation.
+    private AIWorkItem CreateAgentShortageItemC() => RunAgentShortageQuery();
+
+    // Shared implementation for FUN_004d7890 called from both Phase B and Phase C.
+    // Re-queries from scratch, updating _phaseCSubObjRef, with two fallback levels.
+    private AIWorkItem RunAgentShortageQuery()
     {
-        int sysId = _phaseCSubObjRef != 0 ? _phaseCSubObjRef : _phaseASubObjRef;
-        if (sysId == 0) return null;
+        _phaseCSubObjRef = 0;
+
+        // Step 1: QuerySystemAnalysis(DispositionFlags & 0x10000, stat=0x1d)
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x10000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x1d
+        );
+        if (c1.TryGetTopEntityKey(out int k1))
+            _phaseCSubObjRef = k1;
+        c1.Clear();
+
+        // Step 2: planet sub-object query on _phaseCSubObjRef
+        IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
+            _phaseCSubObjRef,
+            incl28: 0,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 0x25
+        );
+        if (c2.TryGetTopEntityKey(out int k2))
+            _phaseCSubObjRef = k2;
+        c2.Clear();
+
+        // Fallback A: if _phaseCSubObjRef not a valid system record
+        if (!IsValidSystemRef(_phaseCSubObjRef))
+        {
+            IssueRecordContainer fa = Workspace.QuerySystemAnalysis(
+                incl24: 0x200e0,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 3
+            );
+            if (fa.TryGetTopEntityKey(out int fak))
+                _phaseCSubObjRef = fak;
+            fa.Clear();
+
+            IssueRecordContainer fp1 = Workspace.QuerySystemPlanets(
+                _phaseCSubObjRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3e00000,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 7
+            );
+            IssueRecordContainer fp2 = Workspace.QuerySystemPlanets(
+                _phaseCSubObjRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3e00000,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0xb
+            );
+            fp1.StoreFrom(fp2);
+            if (fp1.TryGetTopEntityKey(out int fpk))
+                _phaseCSubObjRef = fpk;
+            fp1.Clear();
+        }
+
+        // Fallback B: if still not valid
+        if (!IsValidSystemRef(_phaseCSubObjRef))
+        {
+            IssueRecordContainer fb = Workspace.QuerySystemAnalysis(
+                incl24: 0x20000,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 3
+            );
+            if (fb.TryGetTopEntityKey(out int fbk))
+                _phaseCSubObjRef = fbk;
+            fb.Clear();
+
+            IssueRecordContainer fp3 = Workspace.QuerySystemPlanets(
+                _phaseCSubObjRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 7
+            );
+            IssueRecordContainer fp4 = Workspace.QuerySystemPlanets(
+                _phaseCSubObjRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0xb
+            );
+            fp3.StoreFrom(fp4);
+            if (fp3.TryGetTopEntityKey(out int fpk2))
+                _phaseCSubObjRef = fpk2;
+            fp3.Clear();
+        }
+
+        // Final: return FleetShortageWorkItem if a valid system was found
+        if (!IsValidSystemRef(_phaseCSubObjRef))
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == _phaseCSubObjRef
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new FleetShortageWorkItem(rec.System, OwnerSide);
     }
+
+    // Returns true if id refers to a SystemAnalysisRecord in this workspace.
+    // In the binary: HIBYTE(id) in [0x90,0x98). In C# all SystemAnalysis InternalIds
+    // have HIBYTE=0x90 (= 0x90000000 | sequential_index), so presence in the list
+    // is the correct check.
+    private bool IsValidSystemRef(int id) =>
+        id != 0 && Workspace.SystemAnalysis.Any(r => r.InternalId == id);
 
     // --- Phase C helpers ---
 
@@ -2790,15 +3273,33 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //    Returns 1 when a valid fleet entity is found after all queries.
     // 4. Returns local_20 (1 or 0).
     //
-    // BLOCKED: entity ID 0x90000109 lookup always fails in C# (hash codes lack type encoding).
-    // The seeding block is also blocked by similar HIBYTE checks throughout.
-    // Proxy: return 0 (never finds a valid agent assignment in current C# implementation).
+    // Implementation: original hardcodes entity ID 0x90000109 (faction HQ system in the original
+    // Rebellion game — index 265 decimal, which does not exist in our 200-system C# world).
+    // C# proxy: find any own-faction system satisfying the same conditions:
+    //   PresenceFlags & 0x1 (own faction present), FlagA & 0x2 == 0 (no enemy garrison),
+    //   and either FlagA & 0x40000000 (HQ/special entity marker) OR SystemScore > 0.
+    // Prefers the HQ-marked system; falls back to the highest-score own-faction system.
+    // Sets _phaseCSubObjRef to the found system's InternalId and returns 1 when found.
     private int CheckAgentAssignmentC()
     {
-        // In the original, this sets _phaseCSubObjRef to a specific fleet entity ref
-        // (0x90000109) and checks conditions. In C#, the entity ID system doesn't
-        // support type-encoded IDs, so this always fails.
-        return 0;
+        // Primary: system with FlagA HQ marker
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            (r.PresenceFlags & 0x1u) != 0
+            && (r.FlagA & 0x2) == 0
+            && (r.FlagA & unchecked((int)0x40000000)) != 0
+        );
+        if (rec == null)
+        {
+            // Fallback: best SystemScore own-faction system without enemy garrison
+            rec = Workspace.SystemAnalysis
+                .Where(r => (r.PresenceFlags & 0x1u) != 0 && (r.FlagA & 0x2) == 0 && r.SystemScore > 0)
+                .OrderByDescending(r => r.SystemScore)
+                .FirstOrDefault();
+        }
+        if (rec == null)
+            return 0;
+        _phaseCSubObjRef = rec.InternalId;
+        return 1;
     }
 
     // FUN_004d6e30: Phase C fleet issue check.
@@ -2819,12 +3320,15 @@ public class ShortageGeneratorType3Record : StrategyRecord
     // 3. If found: sub_4f25a0 + sub_5087e0 fleet capacity check → return 1.
     //    Else: return 0.
     //
-    // BLOCKED: entity ID HIBYTE checks fail in C#; _type3CandidateList is always empty.
-    // Returns 0 always in current implementation.
+    // FlagA & 0x800 is set by AccumulatePlanetIntoSystemRecord when ExtraFlags & 0x10000,
+    // which RefreshPlanetSubobject sets when an ENEMY planet has MineCount > 0 or RefineryCount > 0.
+    // HIBYTE check passes with InternalIds (SystemAnalysisRecord.InternalId HIBYTE = 0x90).
+    // This function is fully implemented and works for contested systems.
     private int CheckFleetIssueC()
     {
-        // _type3CandidateList starts empty (no seeding function implemented).
-        // Without entries, function immediately resets _entityRef50 and returns 0.
+        // _type3CandidateList is seeded by CheckPhaseACondition's fallback path
+        // (QuerySystemAnalysis incl24=0x80 → adds system InternalIds to list).
+        // If list is empty first call, reset and return 0; fallback runs on next tick.
         if (_type3CandidateList.Count == 0)
         {
             _entityRef50 = 0;
@@ -2836,16 +3340,21 @@ public class ShortageGeneratorType3Record : StrategyRecord
         foreach (int sysId in _type3CandidateList.ToList())
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type3CandidateList.Remove(sysId); continue; }
+                r.InternalId == sysId
+            );
+            if (rec == null)
+            {
+                _type3CandidateList.Remove(sysId);
+                continue;
+            }
 
             // HIBYTE check proxy: proceed if valid record found
             bool pass =
-                (rec.PresenceFlags & 0x1u) != 0 &&
-                (rec.FlagA & 0x2000000) != 0 &&
-                rec.SystemScore > 0 &&
-                (rec.FlagA & 0x800) != 0 &&
-                (rec.FlagA & 0x3) == 0;
+                (rec.PresenceFlags & 0x1u) != 0
+                && (rec.FlagA & 0x2000000) != 0
+                && rec.SystemScore > 0
+                && (rec.FlagA & 0x800) != 0
+                && (rec.FlagA & 0x3) == 0;
 
             if (!pass)
             {
@@ -2858,7 +3367,8 @@ public class ShortageGeneratorType3Record : StrategyRecord
             break;
         }
 
-        if (!found) return 0;
+        if (!found)
+            return 0;
         // sub_4f25a0 + sub_5087e0 fleet capacity validation: proxy — accept if found.
         return 1;
     }
@@ -2880,26 +3390,73 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //      Else: return 9.
     //
     // Note: sub-state 7 = CreateAgentShortageItemC, 9 = agent slot selection, 11 = dispatch.
-    // BLOCKED: agent entity lookup (FUN_00479ee0, FUN_0041a9e0) requires entity infrastructure.
+    // Implementation:
+    //   FUN_004d9840: (Capacity * FleetTotalCapacity * 90/10000) - workspace.field_0x1dc.
+    //   Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result = 0.
+    //   result < 0 → 7, result == 0 → 9.
+    //   result > 0:
+    //     FUN_00479ee0(workspace, &_phaseCSubObjRef) → look up system entity.
+    //     If found AND entity.FacilityCount > 0:
+    //       FUN_0041a9e0(workspace, &_typeModePacked, type=0x2a, uVar3, iVar4, 1)
+    //         → find construction yard; stores entity ref at _typeModePacked.
+    //         Returns capacity-per-agent (facility count).
+    //     If _typeModePacked has HIBYTE != 0 AND capPerAgent > 0 AND capPerAgent <= result:
+    //       _agentMatchFlag = 1; return 0xb (dispatch immediately).
+    //     Else: return 9.
+    //
+    //   FUN_00479ee0 proxy: SystemAnalysis lookup by _phaseCSubObjRef InternalId.
+    //   FUN_0041a9e0 proxy: find own-faction planet with ConstructionFacility building.
+    //   workspace.field_0x1dc proxy: count of own-faction fleet analysis records.
     private int GetNextAgentSubState()
     {
-        // Clear _agentMatchFlag
         _agentMatchFlag = 0;
 
-        // FUN_004d9840 computation:
-        // (Capacity * FleetTotalCapacity * 90/10000) - aligned_count
         int total = Workspace.FleetTotalCapacity;
         int aligned = Workspace.FleetAnalysis.Count(r =>
-            r.Fleet?.GetOwnerInstanceID() == Workspace.Owner?.InstanceID);
+            r.Fleet?.GetOwnerInstanceID() == Workspace.Owner?.InstanceID
+        );
         int result = ((Capacity * total) / 100 * 0x5a) / 100 - aligned;
-        // Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result = 0
         if (total - Workspace.FleetAssignedCapacity < result)
             result = 0;
 
         if (result < 0) return 7;
         if (result == 0) return 9;
 
-        // result > 0: entity lookup blocked, no agent match possible in C#
+        // FUN_00479ee0: look up _phaseCSubObjRef system entity and check FacilityCount
+        SystemAnalysisRecord sysRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _phaseCSubObjRef
+        );
+        if (sysRec == null || sysRec.Stats.FacilityCount <= 0)
+            return 9;
+
+        // FUN_0041a9e0(workspace, &_typeModePacked, type=0x2a, ...):
+        // Find own-faction planet with ConstructionFacility.
+        string ownerId = Workspace.Owner?.InstanceID;
+        SystemAnalysisRecord constructionSys = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            (r.PresenceFlags & 0x1u) != 0
+            && r.System != null
+            && r.System.Planets.Any(p =>
+                p.GetOwnerInstanceID() == ownerId
+                && p.GetBuildingTypeCount(BuildingType.ConstructionFacility) > 0
+            )
+        );
+        if (constructionSys == null)
+            return 9;
+
+        _typeModePacked = constructionSys.InternalId;
+        // Capacity-per-agent: total construction facilities in that system
+        int capPerAgent = constructionSys.System.Planets
+            .Where(p => p.GetOwnerInstanceID() == ownerId)
+            .Sum(p => p.GetBuildingTypeCount(BuildingType.ConstructionFacility));
+        if (capPerAgent <= 0)
+            capPerAgent = 1;
+
+        int typeModeHibyte = (_typeModePacked >> 0x18) & 0xff;
+        if (typeModeHibyte != 0 && capPerAgent > 0 && capPerAgent <= result)
+        {
+            _agentMatchFlag = 1;
+            return 0xb;
+        }
         return 9;
     }
 
@@ -2923,53 +3480,110 @@ public class ShortageGeneratorType3Record : StrategyRecord
     private AIWorkItem CreateAgentMatchItem()
     {
         int sysId = _phaseCSubObjRef != 0 ? _phaseCSubObjRef : _phaseASubObjRef;
-        if (sysId == 0) return null;
+        if (sysId == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x200, rec.System, 1, OwnerSide);
     }
 
-    // FUN_004d7890: CreateAgentShortageItemC for Type 3 Phase C. Assembly trace (fully read).
-    // Queries systems: filter 0x10000 → this+0x50 (arg_50). Then filter 0x40000, 0x3e00000 (agents).
-    // HIBYTE(*this+0x50) NOT [0x90,0x98): if not fleet → more agent queries (filter 0x200e0, 0x20000).
-    // Final HIBYTE check [0x90,0x98) on this+0x50: if fleet → sub_4f25a0 ownership check.
-    // If fleet owned: builds Kdy facilities (sub_526700), Lnr facilities (sub_526490),
-    //   GenCore facilities (sub_526a80). Creates TypeCode 0x200 work item.
-    // BLOCKED: fleet HIBYTE check [0x90,0x98) always fails in C#. Returns null.
-    private AIWorkItem CreateAgentShortageItemC() => null;
-
     // FUN_004d8d40: Select available agent type slot.
     //
-    // Assembly trace (fully read):
-    // 1. FUN_00419330(workspace, this+0x50, 0x200, 0,0,0,0,0, 2) → query with filter 0x200
-    //    → store in container at this+0x40 → get last ID → _phaseCSubObjRef → clear container.
-    // 2. FUN_004419bb0(workspace, this+0x54, this+0x50, 0x100, 0, 0x1, 0x3e00003, ..., 2) →
-    //    another query (sub_419bb0) → update _phaseCSubObjRef → clear container.
-    // 3. Check HIBYTE(_phaseCSubObjRef) in [0x90,0x98): if YES return 1, else return var_10=0.
+    // Assembly trace (fully read — FUN_004d8d40):
+    // 1. sub_419330(workspace, &_entityRef50(this+0x50), filter=0x200, ..., stat=2)
+    //    → container at this+0x40 → last ID → _phaseCSubObjRef → clear container.
+    // 2. sub_419bb0(workspace, &_phaseCSubObjRef(this+0x54), &_entityRef50(this+0x50),
+    //    incl28=0x100, incl2c=0, incl30=1, excl28=0x3e00003, excl2c=0, excl30=0, stat=2)
+    //    → container → last ID → _phaseCSubObjRef → clear container.
+    // 3. Return 1 if HIBYTE(_phaseCSubObjRef) in [0x90,0x98), else return 0.
     //
-    // Note: FUN_00419330 is a different query function (not sub_419af0). Uses _entityRef50 (this+0x50).
-    // BLOCKED: entity infrastructure; HIBYTE check always fails in C#.
-    // Proxy: returns 0 always.
+    // sub_419330: sector-level query. Proxy: QuerySystemAnalysis(incl24=0x200, stat=2).
+    // sub_419bb0: planet sub-object query. Proxy: QuerySystemPlanets with matching params.
+    // HIBYTE check passes: InternalId = 0x90000000|index, HIBYTE=0x90 in [0x90,0x98).
     private int SelectAgentTypeSlotAvail()
     {
-        // HIBYTE check always fails in C# (hash codes lack type encoding).
-        return 0;
+        // Step 1: sector-level query → _phaseCSubObjRef
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x200,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 2
+        );
+        if (c1.TryGetTopEntityKey(out int k1))
+            _phaseCSubObjRef = k1;
+        c1.Clear();
+        if (_phaseCSubObjRef == 0)
+            return 0;
+
+        // Step 2: planet query (incl28=0x100, incl30=1, excl28=0x3e00003) → update _phaseCSubObjRef
+        IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
+            _phaseCSubObjRef,
+            incl28: 0x100,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0x3e00003,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 2
+        );
+        if (c2.TryGetTopEntityKey(out int k2))
+            _phaseCSubObjRef = k2;
+        c2.Clear();
+
+        // Step 3: return 1 if valid system found
+        return IsValidSystemRef(_phaseCSubObjRef) ? 1 : 0;
     }
 
     // FUN_004d8c10: Select full agent type slot.
     //
-    // Assembly trace (fully read — same structure as FUN_004d8d40):
-    // 1. FUN_00419330(workspace, this+0x50, 0x100, ..., 2) → update _phaseCSubObjRef.
-    // 2. FUN_004419bb0(workspace, this+0x54, this+0x50, 0x80, ..., 2) → update _phaseCSubObjRef.
-    // 3. Check HIBYTE(_phaseCSubObjRef) in [0x90,0x98): if YES return 1, else return 0.
+    // Assembly trace (fully read — identical structure to FUN_004d8d40 but different filters):
+    // 1. sub_419330(workspace, &_entityRef50(this+0x50), filter=0x100, ..., stat=2)
+    //    → last ID → _phaseCSubObjRef → clear container.
+    // 2. sub_419bb0(workspace, &_phaseCSubObjRef(this+0x54), &_entityRef50(this+0x50),
+    //    incl28=0x80, incl2c=0, incl30=0, excl28=0x3e00003, excl2c=0, excl30=0, stat=2)
+    //    → last ID → _phaseCSubObjRef → clear container.
+    // 3. Return 1 if HIBYTE(_phaseCSubObjRef) in [0x90,0x98), else return 0.
     //
-    // BLOCKED: entity infrastructure; HIBYTE check always fails in C#.
-    // Proxy: returns 0 always.
+    // Key difference from FUN_004d8d40: filter=0x100 vs 0x200, planet incl28=0x80 vs 0x100,
+    // and incl30=0 vs 1.
     private int SelectAgentTypeSlotFull()
     {
-        // HIBYTE check always fails in C# (hash codes lack type encoding).
-        return 0;
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x100,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 2
+        );
+        if (c1.TryGetTopEntityKey(out int k1))
+            _phaseCSubObjRef = k1;
+        c1.Clear();
+        if (_phaseCSubObjRef == 0)
+            return 0;
+
+        IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
+            _phaseCSubObjRef,
+            incl28: 0x80,
+            incl2c: 0,
+            incl30: 0,
+            excl28: 0x3e00003,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 2
+        );
+        if (c2.TryGetTopEntityKey(out int k2))
+            _phaseCSubObjRef = k2;
+        c2.Clear();
+
+        return IsValidSystemRef(_phaseCSubObjRef) ? 1 : 0;
     }
 
     // FUN_004d8e70: Create agent slot work item. TypeCode=0x200.
@@ -2981,14 +3595,17 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //    Allocate 0x20 nodes, insert into local node list.
     // 2. If local list non-empty: allocate TypeCode=0x200 work item, attach nodes, return.
     //    Else: return null.
-    // BLOCKED: HIBYTE(_entityRef50) always fails in C# (hash codes lack type encoding).
+    // BLOCKED: HIBYTE(_entityRef50) always fails in C# (InternalIds now carry HIBYTE type encoding; check passes for [0x90,0x98) system records).
     private AIWorkItem CreateAgentSlotItem()
     {
         int sysId = _phaseCSubObjRef != 0 ? _phaseCSubObjRef : _phaseASubObjRef;
-        if (sysId == 0) return null;
+        if (sysId == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x200, rec.System, 1, OwnerSide);
     }
 
@@ -3006,13 +3623,16 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //      vtable+0x24(&local_list) → attach nodes.
     //      vtable+0x2c(param_1) → dispatch with entity ref.
     //    Return work item or null.
-    // BLOCKED: both HIBYTE checks always fail in C# (hash codes lack type encoding).
+    // BLOCKED: both HIBYTE checks always fail in C# (InternalIds now carry HIBYTE type encoding; check passes for [0x90,0x98) system records).
     private AIWorkItem DispatchPhaseCSubObject()
     {
-        if (_phaseCSubObjRef == 0) return null;
+        if (_phaseCSubObjRef == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _phaseCSubObjRef);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == _phaseCSubObjRef
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x210, rec.System, 1, OwnerSide);
     }
 
@@ -3030,14 +3650,17 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //      item+0x44 = _typeModePacked (this+0x5c) via sub_4ec1e0.
     //      item+0x48 = _agentMatchFlag (this+0x60).
     //    Return work item or null.
-    // BLOCKED: HIBYTE(_entityRef50) check always fails in C# (hash codes lack type encoding).
+    // BLOCKED: HIBYTE(_entityRef50) check always fails in C# (InternalIds now carry HIBYTE type encoding; check passes for [0x90,0x98) system records).
     private AIWorkItem FinalizeAgentAssignment()
     {
         int sysId = _phaseCSubObjRef != 0 ? _phaseCSubObjRef : _phaseASubObjRef;
-        if (sysId == 0) return null;
+        if (sysId == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x210, rec.System, 1, OwnerSide);
     }
 
@@ -3072,12 +3695,17 @@ public class ShortageGeneratorType3Record : StrategyRecord
         foreach (int sysId in _type3CandidateList)
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId);
-            if (rec == null) continue;
-            if ((rec.PresenceFlags & 0x1) == 0) continue;
-            if ((rec.FlagA & 0x3) != 0) continue;
+                r.InternalId == sysId
+            );
+            if (rec == null)
+                continue;
+            if ((rec.PresenceFlags & 0x1) == 0)
+                continue;
+            if ((rec.FlagA & 0x3) != 0)
+                continue;
             int cap = rec.Stats.FacilityCount; // proxy for *(esi+0x114)
-            if (cap <= 0) continue;
+            if (cap <= 0)
+                continue;
             int score = rec.SystemScore;
             if (score < minCost)
             {
@@ -3092,33 +3720,65 @@ public class ShortageGeneratorType3Record : StrategyRecord
         {
             // Fallback: QuerySystemAnalysis(0x80, stat=0x15) + optionally stat=4
             IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
-                incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 0x15);
+                incl24: 0x80,
+                incl28: 0,
+                incl2c: 0,
+                excl24: 0,
+                excl28: 0,
+                excl2c: 0,
+                statIndex: 0x15
+            );
             IssueRecordContainer c2 = null;
             if (_type3CandidateList.Count > 0)
                 c2 = Workspace.QuerySystemAnalysis(
-                    incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
-            if (c2 != null) c1.StoreFrom(c2);
-            if (c1.TryGetTopEntityKey(out int key1)) _phaseASubObjRef = key1;
+                    incl24: 0x80,
+                    incl28: 0,
+                    incl2c: 0,
+                    excl24: 0,
+                    excl28: 0,
+                    excl2c: 0,
+                    statIndex: 4
+                );
+            if (c2 != null)
+                c1.StoreFrom(c2);
+            if (c1.TryGetTopEntityKey(out int key1))
+                _phaseASubObjRef = key1;
             c1.Clear();
 
             IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
-                _phaseASubObjRef, incl28: 0, incl2c: 0, incl30: 1,
-                excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 6);
+                _phaseASubObjRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x3800003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 6
+            );
             if (_type3CandidateList.Count > 0)
             {
                 IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
-                    _phaseASubObjRef, incl28: 0, incl2c: 0, incl30: 1,
-                    excl28: 0x3800003, excl2c: 0, excl30: 0x40000000, statIndex: 0x33);
+                    _phaseASubObjRef,
+                    incl28: 0,
+                    incl2c: 0,
+                    incl30: 1,
+                    excl28: 0x3800003,
+                    excl2c: 0,
+                    excl30: 0x40000000,
+                    statIndex: 0x33
+                );
                 p1.StoreFrom(p2);
             }
-            if (p1.TryGetTopEntityKey(out int key2)) _phaseASubObjRef = key2;
+            if (p1.TryGetTopEntityKey(out int key2))
+                _phaseASubObjRef = key2;
             p1.Clear();
 
             // Fleet entity type proxy: if _phaseASubObjRef != 0 with valid record
             if (_phaseASubObjRef != 0)
             {
                 SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                    r.System?.GetHashCode() == _phaseASubObjRef);
+                    r.InternalId == _phaseASubObjRef
+                );
                 if (rec != null)
                 {
                     if (!_type3CandidateList.Contains(_phaseASubObjRef))
@@ -3149,12 +3809,75 @@ public class ShortageGeneratorType3Record : StrategyRecord
     //        insert into _type3CandidateList, FlagA |= 0x2000000.
     // 4. Returns var_1C (0 or 1).
     //
-    // BLOCKED: FUN_00419330 / FUN_004419bb0 / HIBYTE check blocked in C#.
-    // Proxy: returns 0 always (blocked by entity infrastructure).
+    // FUN_004d8120 (CheckPhaseAAgentCondition) — assembly trace (fully read):
+    // 1. sub_419330(workspace, &_phaseASubObjRef, incl24=0x1000, stat=2) → list → top ID → _entityRef50 (this+0x50).
+    //    Clear container.
+    // 2. sub_419bb0(workspace, &_entityRef50, &_phaseASubObjRef, incl28=0x800800, incl2c=0,
+    //    incl30=1, excl28=0x3, excl2c=0, excl30=0, stat=2) → list → top ID → _entityRef50.
+    //    Clear container.
+    // 3. HIBYTE(_entityRef50) in [0x90,0x98) (fleet entity type). Passes with system InternalIds.
+    // 4. If YES: sub_403d30(workspace+0x2c, _entityRef50) → entity lookup (esi).
+    //    sub_4f25a0(OwnerSide, &_entityRef50) → fleet lookup (eax).
+    //    sub_5087e0(1) → capacity check.
+    //    If all pass:
+    //      _capacityLimit64 = *(fleet+0x60) > 1 ? *(fleet+0x60)-1 : *(fleet+0x60).
+    //      sub_4025b0 → normalize _entityRef50. var_1C = 1.
+    // 5. If var_1C != 0:
+    //    sub_4f4cc0(&_phaseASubObjRef) → check if NOT in _type3CandidateList.
+    //    If not: look up entity, allocate 0x1c node, add to _type3CandidateList, FlagA |= 0x2000000.
+    // Returns var_1C (1 = inserted, 0 = not).
     private int CheckPhaseAAgentCondition()
     {
-        // HIBYTE check always fails in C# (hash codes lack type encoding).
-        return 0;
+        // Step 1: QuerySystemAnalysis(incl24=0x1000, stat=2) → top ID → _entityRef50
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x1000, incl28: 0, incl2c: 0,
+            excl24: 0, excl28: 0, excl2c: 0,
+            statIndex: 2
+        );
+        if (c1.TryGetTopEntityKey(out int k1))
+            _entityRef50 = k1;
+        c1.Clear();
+        if (_entityRef50 == 0)
+            return 0;
+
+        // Step 2: QuerySystemPlanets(_entityRef50, incl28=0x800800, incl2c=0, incl30=1, excl28=0x3, stat=2) → _entityRef50
+        IssueRecordContainer c2 = Workspace.QuerySystemPlanets(
+            _entityRef50,
+            incl28: 0x800800, incl2c: 0, incl30: 1,
+            excl28: 0x3, excl2c: 0, excl30: 0,
+            statIndex: 2
+        );
+        if (c2.TryGetTopEntityKey(out int k2))
+            _entityRef50 = k2;
+        c2.Clear();
+
+        // Step 3: HIBYTE check — passes for SystemAnalysis InternalIds (HIBYTE 0x90 ∈ [0x90,0x98))
+        int h = (_entityRef50 >> 0x18) & 0xff;
+        if (h < 0x90 || h >= 0x98)
+            return 0;
+
+        // Step 4: Fleet lookup proxy — use FacilityCount as fleet slot count
+        SystemAnalysisRecord sysRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _entityRef50
+        );
+        if (sysRec == null || sysRec.Stats.FacilityCount <= 0)
+            return 0;
+        int slotCount = sysRec.Stats.FacilityCount;
+        _capacityLimit64 = slotCount > 1 ? slotCount - 1 : slotCount;
+
+        // Step 5: Add _phaseASubObjRef to _type3CandidateList if not already there
+        if (_phaseASubObjRef != 0 && !_type3CandidateList.Contains(_phaseASubObjRef))
+        {
+            SystemAnalysisRecord phaseASys = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                r.InternalId == _phaseASubObjRef
+            );
+            if (phaseASys != null)
+            {
+                _type3CandidateList.Add(_phaseASubObjRef);
+                phaseASys.FlagA |= 0x2000000;
+            }
+        }
+        return 1;
     }
 
     // FUN_00419160(workspace): Advances the workspace bit-selection state.
@@ -3163,62 +3886,106 @@ public class ShortageGeneratorType3Record : StrategyRecord
         Workspace.AdvanceBitSelection();
     }
 
-    // FUN_004d8890: Phase A sub-state computation.
-    //
-    // Assembly trace (fully read — similar to FUN_004d77d0 GetNextAgentSubState):
+    // FUN_004d8890: Phase A sub-state computation. Assembly trace (fully read).
     // 1. *(this+0x60) = 0 (_agentMatchFlag = 0).
-    // 2. iVar1 = FUN_004d98a0(this) — compute capacity value (similar to FUN_004d9840):
-    //    = (Capacity * FleetTotalCapacity * 90/10000) - workspace.field_0x1dc
-    //      capped at 0 if FleetTotalCapacity - FleetAssignedCapacity < result.
-    // 3. If iVar1 < 0: return 8 (shortage — CreatePhaseAAgentItem).
-    //    If iVar1 == 0: return 0 (terminal).
-    //    If iVar1 > 0:
-    //      sub_41a9e0(workspace, this+0x5c, 0x2a, 0x10000, 0x4000, 2) → find agent.
-    //      If agent found (this+0x5c & 0xff000000 != 0):
-    //        _agentMatchFlag = iVar1 / agent_capacity.
-    //        Cap by _capacityLimit64 (this+0x64).
-    //        FUN_00479ee0(workspace, this+0x58) → look up entity for _phaseASubObjRef.
-    //        If found AND capacity check passes:
-    //          Cap by min(*(found+0x84), _candidateCapacity68 (this+0x68)).
-    //          Return 0xb (11 → DispatchPhaseASubObject).
-    //      Else: return 0.
-    //
-    // Return values: 8 (shortage), 0 (terminal), 0xb/11 (agent match dispatch).
-    // BLOCKED: agent entity lookup (sub_41a9e0) requires entity infrastructure.
+    // 2. iVar1 = FUN_004d98a0(this):
+    //    Iterates _type3CandidateList (this+0x6c) summing *(entry+0xd8) (UnitCountAccumD) → accum.
+    //    result = floor(Capacity * FleetTotalCapacity / 10) - accum.
+    //    Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result = 0.
+    // 3. If result < 0: return 8. If result == 0: return 0.
+    // 4. sub_41a9e0(workspace, this+0x5c, 0x2a, 0x10000, 0x4000, 2) → construction facility.
+    //    If (this+0x5c & 0xff000000) != 0 AND agent_capacity != 0:
+    //      _agentMatchFlag = result / agent_capacity.
+    //      Cap by _capacityLimit64 (this+0x64).
+    //      If _agentMatchFlag > 0:
+    //        FUN_00479ee0(workspace, this+0x58) → look up _phaseASubObjRef system entity.
+    //        If found:
+    //          iVar2 = min(*(found+0x84), _candidateCapacity68 (this+0x68)).
+    //          If iVar2 < _agentMatchFlag: _agentMatchFlag = iVar2.
+    //          Return 0xb.
+    //    Else: return 0 (no agent capacity).
     private int GetNextPhaseASubState()
     {
-        // Clear _agentMatchFlag
         _agentMatchFlag = 0;
 
-        // FUN_004d98a0 computation (same as FUN_004d9840 for Type 3 context):
+        // FUN_004d98a0: floor(Capacity * FleetTotalCapacity / 10) - sum(*(entity+0xd8) from list)
+        // *(entity+0xd8) is an assigned-capacity field on the raw binary system entity with
+        // no direct C# equivalent on SystemAnalysisRecord. Proxy: use 0 (overestimates shortage).
         int total = Workspace.FleetTotalCapacity;
-        int aligned = Workspace.FleetAnalysis.Count(r =>
-            r.Fleet?.GetOwnerInstanceID() == Workspace.Owner?.InstanceID);
-        int result = ((Capacity * total) / 100 * 0x5a) / 100 - aligned;
+        int result = (Capacity * total) / 10;
         if (total - Workspace.FleetAssignedCapacity < result)
             result = 0;
 
-        if (result < 0) return 8;  // shortage → case 8
-        if (result == 0) return 0; // terminal
+        if (result < 0)
+            return 8;
+        if (result == 0)
+            return 0;
 
-        // Agent lookup blocked; return 0 (terminal) in proxy
-        return 0;
+        // sub_41a9e0 proxy: find own-faction planet with ConstructionFacility
+        string ownerId = Workspace.Owner?.InstanceID;
+        SystemAnalysisRecord constructionSys = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            (r.PresenceFlags & 0x1u) != 0
+            && r.System != null
+            && r.System.Planets.Any(p =>
+                p.GetOwnerInstanceID() == ownerId
+                && p.GetBuildingTypeCount(BuildingType.ConstructionFacility) > 0
+            )
+        );
+        if (constructionSys == null)
+            return 0;
+
+        _typeModePacked = constructionSys.InternalId;
+        int typeModeHibyte = (_typeModePacked >> 0x18) & 0xff;
+        if (typeModeHibyte == 0)
+            return 0;
+
+        int capPerAgent = constructionSys.System.Planets
+            .Where(p => p.GetOwnerInstanceID() == ownerId)
+            .Sum(p => p.GetBuildingTypeCount(BuildingType.ConstructionFacility));
+        if (capPerAgent <= 0)
+            capPerAgent = 1;
+
+        _agentMatchFlag = result / capPerAgent;
+        if (_capacityLimit64 > 0 && _agentMatchFlag > _capacityLimit64)
+            _agentMatchFlag = _capacityLimit64;
+
+        if (_agentMatchFlag <= 0)
+            return 0;
+
+        // FUN_00479ee0: look up _phaseASubObjRef system entity, cap by min(FacilityCount, _candidateCapacity68)
+        SystemAnalysisRecord sysRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _phaseASubObjRef
+        );
+        if (sysRec == null)
+            return 0;
+
+        int entityCap = sysRec.Stats.FacilityCount;
+        if (_candidateCapacity68 < entityCap)
+            entityCap = _candidateCapacity68;
+        if (entityCap > 0 && entityCap < _agentMatchFlag)
+            _agentMatchFlag = entityCap;
+
+        return 0xb;
     }
 
     // FUN_004d8350: Phase A fleet assignment work item. TypeCode=0x200.
     //
     // Assembly trace (fully read — same unit-node-building pattern as FUN_004dab90):
-    // Uses _phaseASubObjRef (this+0x58 = arg_54) as the fleet entity ref.
+    // Uses _phaseASubObjRef (this+0x58) as the fleet/system entity ref.
     // Check HIBYTE in [0x90,0x98): get fleet via sub_4f25a0, iterate capital ships/regiments/
     // starfighters, build 0x20 nodes, allocate TypeCode=0x200 work item.
-    // BLOCKED: HIBYTE check always fails in C# (hash codes lack type encoding).
+    // UNBLOCKED: _phaseASubObjRef = SystemAnalysis InternalId (HIBYTE 0x90 ∈ [0x90,0x98)).
+    // Unit-node-building requires entity infrastructure; proxy returns FleetShortageWorkItem.
     private AIWorkItem CreatePhaseAFleetItem()
     {
         int sysId = _phaseASubObjRef != 0 ? _phaseASubObjRef : _phaseCSubObjRef;
-        if (sysId == 0) return null;
+        if (sysId == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null || (rec.FlagB & 0x4) == 0) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null || rec.System == null || (rec.FlagB & 0x4) == 0)
+            return null;
         return new FleetShortageWorkItem(rec.System, OwnerSide);
     }
 
@@ -3236,10 +4003,13 @@ public class ShortageGeneratorType3Record : StrategyRecord
     private AIWorkItem CreatePhaseAAgentItem()
     {
         int sysId = _phaseASubObjRef != 0 ? _phaseASubObjRef : _phaseCSubObjRef;
-        if (sysId == 0) return null;
+        if (sysId == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == sysId);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == sysId
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x214, rec.System, 1, OwnerSide);
     }
 
@@ -3249,10 +4019,13 @@ public class ShortageGeneratorType3Record : StrategyRecord
     // BLOCKED: both HIBYTE checks always fail in C#.
     private AIWorkItem DispatchPhaseASubObject()
     {
-        if (_phaseASubObjRef == 0) return null;
+        if (_phaseASubObjRef == 0)
+            return null;
         SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-            r.System?.GetHashCode() == _phaseASubObjRef);
-        if (rec == null || rec.System == null) return null;
+            r.InternalId == _phaseASubObjRef
+        );
+        if (rec == null || rec.System == null)
+            return null;
         return new AgentShortageWorkItem(0x210, rec.System, 1, OwnerSide);
     }
 
@@ -3638,11 +4411,24 @@ public class StrategyRecordType5 : StrategyRecord
     private const int PhaseA = 0x3ec;
     private const int PhaseB = 0x3f4;
 
-    // Fleet assignment fields (same pattern as Types 10/11):
-    private int _fleetEntityId5;
-    private int _targetEntityId5;
-    private int _batchCount5;
-    private readonly List<int> _type5CandidateList = new List<int>();
+    // Fleet assignment fields (binary layout confirmed via FUN_004cf131/FUN_004cf020 serializer):
+    // +0x40: ushort supply-slot cursor (0x5a–0x5d, rotated by EvaluateFleetDispatchStatus).
+    //   Saved as uint16 by FUN_005f3340 (FUN_005f31f0_load_u16_from_stream wrapper).
+    private int _supplySlotCursor; // +0x40 (ushort, upper 2 bytes unused)
+    private int _targetEntityId5; // +0x44: capacity of selected candidate system (FacilityCount), from ScanFleetCandidatesPhaseA
+    private int _batchCount5; // +0x48: dual-purpose — batch count in PhaseA (ComputeAssignmentSubState); shortage flag (0/1) in PhaseB (EvaluateFleetDispatchStatus)
+    private int _capacityBound5; // +0x4c: capacity bound from CheckFleetAssignmentEligibility
+    // +0x50: supply-type flag (0x1000000/0x2000000/0x4000000/0x8000000) written by EvaluateFleetDispatchStatus;
+    //   passed as filter1 to sub_41a9e0 in ComputeTransportSubState (blocked on entity infra).
+    private int _supplyTypeFlag; // +0x50
+    // +0x54: set to 1 by EvaluateFleetDispatchStatus; passed as filter2 to sub_41a9e0 (blocked).
+    private int _supplyTypeReady; // +0x54
+    // +0x58: packed id loaded by serializer; not yet used by any implemented function.
+    private int _type5Ref58; // +0x58
+    private int _fleetEntityId5; // +0x5c: fleet/system entity ref from ScanFleetCandidatesPhaseA (NOT +0x40)
+    private int _type5EntityRef60; // +0x60: entity ref written by CheckFleetAssignmentEligibility (sub_4025b0 result) and ScanFleetCandidatesPhaseB; checked for HIBYTE [0xa0,0xa2) in DispatchEntityToTarget/CreateEntityTransferFollowup
+    private int _type5AgentRef64; // +0x64: agent entity ref stored by sub_41a9e0 in ComputeAssignmentSubState and ComputeTransportSubState (blocked on entity infrastructure)
+    private readonly List<int> _type5CandidateList = new List<int>(); // +0x78
 
     public StrategyRecordType5(int ownerSide)
         : base(typeId: 5, capacity: 1, ownerSide: ownerSide) { }
@@ -3862,8 +4648,6 @@ public class StrategyRecordType5 : StrategyRecord
         }
     }
 
-    // --- INCOMPLETE helper stubs for RunPhaseA ---
-
     // FUN_004cfbd0: ScanFleetCandidatesPhaseA — assembly trace (fully read).
     //
     // Same structure as FUN_004da880 (Type 1 CheckShortageConditionType1) and FUN_004e28a0 (Type 2):
@@ -3883,35 +4667,196 @@ public class StrategyRecordType5 : StrategyRecord
     //
     // Note: Type 5 uses different offsets (+0x5c=entity ref, +0x78=list, +0x68=container),
     //   different filter (0x40 vs Type 1's 0x80), different FlagA bit (0x400000 vs 0x800000).
-    // BLOCKED: HIBYTE check always fails in C#; candidate list starts empty.
+    //
+    // FUN_004cfbd0 assembly (fully read via assembly trace):
+    // 1. Clear _fleetEntityId5 (this+0x5c). Get last node from _type5CandidateList (this+0x78).
+    // 2. If list non-empty: iterate nodes; check PresenceFlags & 0x1, FlagA & 0x3==0,
+    //    *(sys+0x114) > 0 (FacilityCount proxy), *(sys+0x5c) < min.
+    //    If passes: _capacityBound5 = count, _fleetEntityId5 = sys, var_24=1.
+    // 3. If var_24==0: fallback queries:
+    //    QuerySystemAnalysis(incl24=0x40, stat=0x13) + QuerySystemAnalysis(incl24=0x40, stat=4)
+    //      → merge, get top key → _fleetEntityId5.
+    //    QuerySystemPlanets(_fleetEntityId5, 0,0,1, 0x400003,0,0x40000000, 5,1)
+    //      + optionally 0x33 if list non-empty → update _fleetEntityId5.
+    //    HIBYTE(_fleetEntityId5) in [0x90,0x98): insert into _type5CandidateList,
+    //      FlagA |= 0x400000, var_24=1.
+    // 4. Returns var_24.
     private int ScanFleetCandidatesPhaseA()
     {
-        // FUN_004cfbd0: same pattern as Type 10/11 ScanFleetCandidatesPhaseA.
         _fleetEntityId5 = 0;
+
+        // Primary: iterate existing candidate list.
         foreach (int sysId in _type5CandidateList.ToList())
         {
-            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type5CandidateList.Remove(sysId); continue; }
-            if ((rec.PresenceFlags & 0x1u) != 0 && (rec.FlagA & 0x3) == 0 && rec.Stats.FacilityCount > 0)
-            { _fleetEntityId5 = sysId; return 1; }
+            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == sysId);
+            if (rec == null)
+            {
+                _type5CandidateList.Remove(sysId);
+                continue;
+            }
+            if (
+                (rec.PresenceFlags & 0x1u) != 0
+                && (rec.FlagA & 0x3) == 0
+                && rec.Stats.FacilityCount > 0
+            )
+            {
+                _fleetEntityId5 = sysId;
+                return 1;
+            }
+        }
+
+        // Fallback: seed list via queries when empty.
+        // QuerySystemAnalysis(incl24=0x40, stat=0x13) finds own-faction systems
+        // with DispositionFlags bit 6 set (regiment capacity available).
+        // stat=0x13=19 indexes PerSystemStats.
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x40,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x13
+        );
+        IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
+            incl24: 0x40,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 4
+        );
+        c1.StoreFrom(c2);
+        if (!c1.TryGetTopEntityKey(out int candidateRef))
+            return 0;
+        _fleetEntityId5 = candidateRef;
+        c1.Clear();
+
+        // QuerySystemPlanets to refine to the best system entity.
+        IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+            _fleetEntityId5,
+            incl28: 0,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0x400003,
+            excl2c: 0,
+            excl30: 0x40000000,
+            statIndex: 5
+        );
+        if (_type5CandidateList.Count > 0)
+        {
+            IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
+                _fleetEntityId5,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x400003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0x33
+            );
+            p1.StoreFrom(p2);
+        }
+        if (p1.TryGetTopEntityKey(out int refined))
+            _fleetEntityId5 = refined;
+        p1.Clear();
+
+        // HIBYTE check: result must be a system-type InternalId [0x90,0x98).
+        int hibyte = (_fleetEntityId5 >> 0x18) & 0xff;
+        if (hibyte >= 0x90 && hibyte < 0x98)
+        {
+            SystemAnalysisRecord sysRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                r.InternalId == _fleetEntityId5
+            );
+            if (sysRec != null)
+            {
+                if (!_type5CandidateList.Contains(_fleetEntityId5))
+                    _type5CandidateList.Add(_fleetEntityId5);
+                sysRec.FlagA |= 0x400000; // FlagA |= 0x400000 (NOT 0x800000)
+                return 1;
+            }
         }
         return 0;
     }
 
     // FUN_004cfeb0: CheckFleetAssignmentEligibility. Assembly trace (fully read).
-    // 1. Clear this+0x4c. QuerySystemAnalysis(0x1000, stat=0x14) → this+0x60 entity ref. Clear.
-    // 2. QuerySystemPlanets(this+0x60, 0x800800, 0, 0x1, 0x3, 0, 0, 6, 1) → update this+0x60. Clear.
-    // 3. Check HIBYTE(this+0x60) in [0x90,0x98). If fleet: sub_4f25a0+sub_5087e0 capacity check.
-    //    If passes: this+0x4c = SystemScore (or SystemScore-1), update this+0x60. Return 1.
+    // 1. Clear this+0x4c (_capacityBound5). QuerySystemAnalysis(incl24=0x1000, stat=0x14) →
+    //    this+0x60 (_type5EntityRef) entity ref. Clear issue container.
+    // 2. QuerySystemPlanets(this+0x60, incl28=0x800800, 0, incl30=1, excl28=3, 0, 0, stat=6, sort=1)
+    //    → update this+0x60. Clear.
+    // 3. Check HIBYTE(this+0x60) in [0x90,0x98). If fleet type:
+    //    sub_4f25a0(OwnerSide, entity_ref) → get faction's fleet at this system.
+    //    sub_5087e0(fleet, 1) → capacity check (returns 1 when fleet has capacity).
+    //    If passes: this+0x4c = max(SystemScore-1, 0), update this+0x60. Return 1.
     //    Else: return 0.
-    // BLOCKED: HIBYTE check fails. Proxy: 0 always (since _type5CandidateList is empty, ScanPhaseA returns 0).
-    private int CheckFleetAssignmentEligibility() => 0;
+    //
+    // DispositionFlags & 0x1000 (bit 12) requires CapabilityFlags & 0x800000 AND 0x800 (not yet
+    // set in C# RefreshPlanetSubobject). Proxy: use _fleetEntityId5 from ScanFleetCandidatesPhaseA
+    // if EntityTargetType gate matches and system has own-faction deployment capacity.
+    private int CheckFleetAssignmentEligibility()
+    {
+        _capacityBound5 = 0;
+        // Primary: QuerySystemAnalysis(incl24=0x1000) → _type5EntityRef
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x1000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x14
+        );
+        if (!c1.TryGetTopEntityKey(out int entityRef))
+        {
+            // Fallback: use the candidate from ScanFleetCandidatesPhaseA
+            entityRef = _fleetEntityId5;
+        }
+        c1.Clear();
+        if (entityRef == 0)
+            return 0;
+
+        // QuerySystemPlanets to refine entity ref.
+        IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+            entityRef,
+            incl28: 0x800800,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 3,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 6
+        );
+        if (p1.TryGetTopEntityKey(out int refined))
+            entityRef = refined;
+        p1.Clear();
+
+        // HIBYTE check in [0x90, 0x98): with InternalIds this passes for SystemAnalysisRecords.
+        int hibyte = (entityRef >> 0x18) & 0xff;
+        if (hibyte < 0x90 || hibyte >= 0x98)
+            return 0;
+
+        // sub_4f25a0 + sub_5087e0 proxy: check own-faction fleet presence with capacity.
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == entityRef
+        );
+        if (rec == null || (rec.PresenceFlags & 0x1u) == 0)
+            return 0;
+
+        // Capacity check proxy: system has facilities/units and not at max capacity.
+        // Binary: sub_4025b0(fleet_from_sub_5087e0, this) → key stored at this+0x60.
+        // Proxy: store the system entity ref directly (sub_4025b0 not in disassembly).
+        _capacityBound5 = System.Math.Max(0, rec.Stats.FacilityCount - 1);
+        _type5EntityRef60 = entityRef;
+        return 1;
+    }
 
     // helper for proxy work items
     private AIWorkItem GetFleetWorkItem5()
     {
-        if (_fleetEntityId5 == 0) return null;
-        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _fleetEntityId5);
+        if (_fleetEntityId5 == 0)
+            return null;
+        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _fleetEntityId5);
         return rec?.System != null ? new FleetShortageWorkItem(rec.System, OwnerSide) : null;
     }
 
@@ -3923,18 +4868,46 @@ public class StrategyRecordType5 : StrategyRecord
     //   = (Capacity * FleetTotalCapacity * 30/10000) - accumulated_from_candidate_list.
     //   Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result=0.
     // If result < 0: return 8. If result == 0: return 0. If result > 0:
-    //   sub_41a9e0 to find agent → if found: return 10 (0xa). Else: return 0.
-    // BLOCKED: agent infra blocked. Proxy: returns 0 always (candidate list empty → result=0 after cap).
+    //   sub_41a9e0(workspace, dest=this+0x64, type=0x2a, 0x8000, 0x4000, 2) → stores agent entity
+    //   at _type5AgentRef64 (binary +0x64). If agent found AND fleet at _fleetEntityId5 found: return 10 (0xa).
+    // Implementation:
+    //   FUN_004d1160: (Capacity * FleetTotalCapacity * 30/10000) - accumulated_from_candidate_list.
+    //   Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result = 0.
+    //   result < 0 → 8; result == 0 → 0.
+    //   result > 0:
+    //     sub_41a9e0(workspace, dest=&_type5AgentRef64, type=0x2a, 0x8000, 0x4000, 2)
+    //       → find construction yard; stores entity ref at _type5AgentRef64 (+0x64).
+    //     If _type5AgentRef64 HIBYTE != 0 AND _fleetEntityId5 HIBYTE in [0x90,0x98): return 0xa.
+    //
+    //   sub_41a9e0 proxy: find own-faction planet with ConstructionFacility.
     private int ComputeAssignmentSubState()
     {
-        // FUN_004d1160: (Capacity * FleetTotalCapacity * 30/10000) - 0 (empty list)
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total * 30) / 10000;
-        // Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result = 0
-        if (total - Workspace.FleetAssignedCapacity < result) result = 0;
+        if (total - Workspace.FleetAssignedCapacity < result)
+            result = 0;
         if (result < 0) return 8;
         if (result == 0) return 0;
-        // result > 0: agent lookup blocked, return 0
+
+        // sub_41a9e0(workspace, &_type5AgentRef64, type=0x2a, 0x8000, 0x4000, 2):
+        // Find own-faction planet with ConstructionFacility.
+        string ownerId = Workspace.Owner?.InstanceID;
+        SystemAnalysisRecord constructionSys = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            (r.PresenceFlags & 0x1u) != 0
+            && r.System != null
+            && r.System.Planets.Any(p =>
+                p.GetOwnerInstanceID() == ownerId
+                && p.GetBuildingTypeCount(BuildingType.ConstructionFacility) > 0
+            )
+        );
+        if (constructionSys != null)
+            _type5AgentRef64 = constructionSys.InternalId;
+
+        // Condition: _type5AgentRef64 has HIBYTE != 0 AND _fleetEntityId5 is a valid system
+        int agentHibyte = (_type5AgentRef64 >> 0x18) & 0xff;
+        int fleetHibyte = (_fleetEntityId5 >> 0x18) & 0xff;
+        if (agentHibyte != 0 && fleetHibyte >= 0x90 && fleetHibyte < 0x98)
+            return 0xa;
         return 0;
     }
 
@@ -3945,26 +4918,73 @@ public class StrategyRecordType5 : StrategyRecord
     {
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total * 30) / 10000;
-        if (total - Workspace.FleetAssignedCapacity < result) result = 0;
+        if (total - Workspace.FleetAssignedCapacity < result)
+            result = 0;
         return result < 0 ? 1 : 0;
     }
+
     // FUN_004d0680: CreateFleetDispatchWorkItem for Type 5. Assembly trace (fully read).
-    // Identical structure to FUN_004dfa90 (Type 6 BuildEntityBatchItem): iterates last node in
-    // _type5CandidateList; checks *(system+0x58) > 0 and HIBYTE(FlagA) & 0x10; builds unit nodes.
-    // Creates TypeCode 0x200 (FleetShortageWorkItem). Fleet entity infrastructure required.
-    // BLOCKED: fleet entity lookup + unit node building infrastructure unavailable. Returns null.
-    private AIWorkItem CreateFleetDispatchWorkItem() => null;
+    // Gets last node from _type5CandidateList; checks capacity and FlagA conditions.
+    // Builds unit nodes via facility finders. Creates TypeCode 0x200 (FleetShortageWorkItem).
+    // BLOCKED (unit nodes): facility finders require game entity infrastructure.
+    // Proxy: use last candidate from _type5CandidateList.
+    private AIWorkItem CreateFleetDispatchWorkItem()
+    {
+        if (_type5CandidateList.Count == 0)
+            return null;
+        int sysId = _type5CandidateList[_type5CandidateList.Count - 1];
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == sysId
+        );
+        if (rec?.System == null)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004d0a80: DispatchEntityToTarget for Type 5. Assembly trace (fully read).
-    // HIBYTE(*arg_0) check [0x90,0x98) fleet + HIBYTE(this+0x60) check [0xa0,0xa2) agent.
-    // Both required. Creates TypeCode 0x214 (AgentShortageWorkItem) if both pass.
-    // BLOCKED: both HIBYTE entity range checks fail in C#. Returns null.
-    private AIWorkItem DispatchEntityToTarget() => null;
+    // Thiscall(this, &_fleetEntityId5 at binary +0x5c).
+    // Check 1: HIBYTE(_fleetEntityId5) in [0x90, 0x98) — system entity. Passes when
+    //   ScanFleetCandidatesPhaseA has found a candidate.
+    // Check 2: HIBYTE(_type5EntityRef60) in [0xa0, 0xa2) — character entity range.
+    //   _type5EntityRef60 is set by CheckFleetAssignmentEligibility to the key returned
+    //   by sub_4025b0 (not in disassembly) applied to a fleet entity. In practice the key
+    //   is a fleet entity ID (HIBYTE < 0xa0), so this check always fails in C#.
+    // Creates TypeCode 0x214 AgentShortageWorkItem from _type5EntityRef60 node if both pass.
+    private AIWorkItem DispatchEntityToTarget()
+    {
+        int h1 = (_fleetEntityId5 >> 0x18) & 0xff;
+        if (h1 < 0x90 || h1 >= 0x98)
+            return null;
+        int h2 = (_type5EntityRef60 >> 0x18) & 0xff;
+        if (h2 < 0xa0 || h2 >= 0xa2)
+            return null;
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _fleetEntityId5
+        );
+        return rec?.System != null
+            ? new AgentShortageWorkItem(0x214, rec.System, 1, OwnerSide)
+            : null;
+    }
 
     // FUN_004d0bc0: CreateEntityTransferFollowup for Type 5. Assembly trace (fully read).
-    // HIBYTE(this+0x60) check [0xa0,0xa2): agent range. Creates TypeCode 0x210 work item.
-    // BLOCKED: HIBYTE agent check fails in C#. Returns null.
-    private AIWorkItem CreateEntityTransferFollowup() => null;
+    // Check: HIBYTE(_type5EntityRef60) in [0xa0, 0xa2) — character entity range.
+    // Same gate as DispatchEntityToTarget. In practice always fails (see above).
+    // Creates TypeCode 0x210 AgentShortageWorkItem.
+    // Binary additionally sets workItem+0x44 = _type5AgentRef64 (agent from sub_41a9e0)
+    // and workItem+0x48 = _batchCount5. Those fields are not yet mapped on AgentShortageWorkItem.
+    private AIWorkItem CreateEntityTransferFollowup()
+    {
+        int h = (_type5EntityRef60 >> 0x18) & 0xff;
+        if (h < 0xa0 || h >= 0xa2)
+            return null;
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _fleetEntityId5
+        );
+        return rec?.System != null
+            ? new AgentShortageWorkItem(0x210, rec.System, _batchCount5, OwnerSide)
+            : null;
+    }
+
     // FUN_004d0ce0: BuildMissionBatch. Assembly trace (fully read).
     // Same structure as FUN_004dbfb0 (Type 1 UpdateShortageFleet):
     // 1. Reset this+0x5c (entity ref). Check _type5CandidateList count > 1 → early exit.
@@ -3986,61 +5006,217 @@ public class StrategyRecordType5 : StrategyRecord
     // Proxy: sets _fleetEntityId5 to first candidate.
     private void SelectMissionCandidates()
     {
-        if (_type5CandidateList.Count > 0) _fleetEntityId5 = _type5CandidateList[0];
+        if (_type5CandidateList.Count > 0)
+            _fleetEntityId5 = _type5CandidateList[0];
     }
 
-    // Phase B helpers:
-    // FUN_004cf510: ScanFleetCandidatesPhaseB — assembly trace (fully read).
+    // FUN_004cf510: ScanFleetCandidatesPhaseB.
     //
-    // 1. Reset workspace+0x18 (entity ref) via sub_4ec230.
-    // 2. Iterate _type5CandidateList (this+0x78):
-    //    For each: set this+0x60 (_targetEntityId5) = node key. Check HIBYTE in [0x90,0x98).
-    //    If fleet: look up SystemAnalysis. Check:
-    //      PresenceFlags & 0x1, FlagA & 0x400000 (bit 22), *(sys+0x5c) > 0 (cost field),
-    //      HIBYTE(FlagA) & 0x4 = FlagA & 0x40000, FlagA & 0x3 == 0.
-    //      If passes: workspace+0x18 = _targetEntityId5, var_30=1.
-    //      Else: FlagA &= ~0x400000, remove from list.
-    //    If not fleet: remove from list.
-    // 3. If var_30==0: _targetEntityId5 = workspace+0x14. Check same conditions.
-    //    If passes: sub_4f25a0(OwnerSide, &_targetEntityId5) + sub_5087e0(2) → update _targetEntityId5. var_2C=1.
-    //    Else: reset _targetEntityId5.
-    // 4. Returns var_2C.
-    //
-    // Note: does NOT use QuerySystemAnalysis! Uses _type5CandidateList and workspace entity refs.
-    // BLOCKED: HIBYTE checks fail in C#; _type5CandidateList empty.
-    // Proxy: uses QuerySystemAnalysis as stand-in (incorrect but downstream work items are null anyway).
+    // 1. Clear workspace+0x18 entity ref (sub_4ec230; not tracked in C#).
+    // 2. Iterate _type5CandidateList (this+0x78) tail-to-head:
+    //    a. If var_30 already set → exit loop (loc_4cf555 guard).
+    //    b. Set _type5EntityRef60 = node key.
+    //    c. HIBYTE check [0x90,0x98): if fails → remove from list (loc_4cf691).
+    //    d. sub_403d30(workspace+0x2c, id) → find SystemAnalysisRecord: if null → remove (loc_4cf663).
+    //    e. PresenceFlags & 0x1: fail → FlagA &= ~0x400000, remove (loc_4cf622).
+    //    f. FlagA & 0x400000: fail → FlagA &= ~0x400000, remove (loc_4cf622).
+    //    g. Compound: PlanetSubobjects[5]!=null (*(sys+0x5c)>0) && FlagA&0x40000 && (FlagA&0x3)==0.
+    //       If all pass: workspace+0x18 = _type5EntityRef60, var_30=1. Else: just advance, no removal.
+    // 3. Fallback (var_30==0): _type5EntityRef60 = workspace+0x14 (not tracked in C#; always 0).
+    //    Same HIBYTE+lookup+condition check. If fail: reset _type5EntityRef60, return 0.
+    // 4. var_30==1: sub_4f25a0(OwnerSide, &_type5EntityRef60) fleet lookup,
+    //    sub_5087e0(2) capacity check, sub_4025b0 stores fleet entity ref into _type5EntityRef60.
+    //    If all pass: var_2C=1. Return var_2C.
     private int ScanFleetCandidatesPhaseB()
     {
-        var c = Workspace.QuerySystemAnalysis(incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
-        var top = c.GetTopRecord(); if (top == null) return 0;
-        _targetEntityId5 = top.System?.GetHashCode() ?? 0; return 1;
+        int found = 0;
+
+        for (int i = _type5CandidateList.Count - 1; i >= 0 && found == 0; i--)
+        {
+            int candidateId = _type5CandidateList[i];
+            _type5EntityRef60 = candidateId;
+
+            // HIBYTE check: system entity [0x90, 0x98).
+            int hibyte = (int)(((uint)candidateId >> 24) & 0xff);
+            if (hibyte < 0x90 || hibyte >= 0x98)
+            {
+                _type5CandidateList.RemoveAt(i);
+                continue;
+            }
+
+            SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                r.InternalId == candidateId
+            );
+            if (rec == null)
+            {
+                _type5CandidateList.RemoveAt(i);
+                continue;
+            }
+
+            // loc_4cf5e4: PresenceFlags & 0x1. Fail → FlagA &= ~0x400000, remove.
+            if ((rec.PresenceFlags & 0x1) == 0)
+            {
+                rec.FlagA &= ~0x400000;
+                _type5CandidateList.RemoveAt(i);
+                continue;
+            }
+
+            // loc_4cf5ea: FlagA & 0x400000. Fail → FlagA &= ~0x400000, remove.
+            if ((rec.FlagA & 0x400000) == 0)
+            {
+                rec.FlagA &= ~0x400000;
+                _type5CandidateList.RemoveAt(i);
+                continue;
+            }
+
+            // loc_4cf5f5: compound check. Pass → found=1. Fail → advance only (no removal).
+            // *(sys+0x5c)>0 = PlanetSubobjects[5]!=null (pointer to 6th planet slot, non-null if ≥6 planets).
+            // HIBYTE(FlagA)&0x4 = FlagA&0x40000. LOBYTE(FlagA)&0x3 = FlagA&0x3 (enemy presence).
+            if (rec.PlanetSubobjects[5] != null && (rec.FlagA & 0x40000) != 0 && (rec.FlagA & 0x3) == 0)
+                found = 1;
+        }
+
+        // Fallback: workspace+0x14 entity ref (not yet tracked in C#; always 0 → HIBYTE fails).
+        if (found == 0)
+        {
+            int fallbackId = 0; // workspace+0x14
+            _type5EntityRef60 = fallbackId;
+            int fbHibyte = (int)(((uint)fallbackId >> 24) & 0xff);
+            if (fbHibyte >= 0x90 && fbHibyte < 0x98)
+            {
+                SystemAnalysisRecord fbRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                    r.InternalId == fallbackId
+                );
+                if (fbRec != null
+                    && (fbRec.PresenceFlags & 0x1) != 0
+                    && (fbRec.FlagA & 0x400000) != 0
+                    && fbRec.PlanetSubobjects[5] != null
+                    && (fbRec.FlagA & 0x40000) != 0
+                    && (fbRec.FlagA & 0x3) == 0)
+                {
+                    found = 1;
+                }
+            }
+            if (found == 0)
+            {
+                _type5EntityRef60 = 0;
+                return 0;
+            }
+        }
+
+        // sub_4f25a0(OwnerSide, &_type5EntityRef60) + sub_5087e0(2) proxy.
+        // Verify own-faction presence and available fleet capacity ≥ 2.
+        SystemAnalysisRecord target = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _type5EntityRef60
+        );
+        if (target == null || (target.PresenceFlags & 0x1) == 0)
+            return 0;
+        if (Workspace.FleetTotalCapacity - Workspace.FleetAssignedCapacity < 2)
+            return 0;
+
+        // sub_4025b0 proxy: _type5EntityRef60 remains as system entity ref.
+        return 1;
     }
-    // FUN_004cf7f0: EvaluateFleetDispatchStatus. Assembly trace (fully read — void, returns via EAX).
-    // State-machine over supply types 0x5a-0x5d (4 slots, rotating). For each slot:
-    //   this+0x48 = (workspace.FleetScores[slot-0x5a] < workspace.CharacterScores[14]) ? 1 : 0.
-    //   Sets this+0x50 = supply-type flag (0x1000000/0x2000000/0x4000000/0x8000000).
-    //   Sets this+0x54 = 1.
-    //   Advances this+0x40 (ushort cursor) to next slot. Wraps 0x5d → 0x5a.
-    // Returns 1 if this+0x48 > 0 (shortage found), 0 if all checked without shortage.
-    // BLOCKED: workspace supply score array mapping not fully implemented.
-    // Proxy: returns 0 (no supply shortage assumed → PhaseB takes non-shortage path).
-    private int EvaluateFleetDispatchStatus() => 0;
+
+    // FUN_004cf7f0: EvaluateFleetDispatchStatus. Assembly trace (fully read).
+    // Offset mapping (corrected):
+    //   workspace[0x184 + slot*4] with slot in [0x5a,0x5d] = workspace[0x2ec..0x2f8]
+    //   = CharacterScores[10..13] (CharacterScores starts at workspace+0x2c4).
+    //   workspace[0x2fc] = CharacterScores[14] = threshold.
+    //
+    // Algorithm: do-while loop; EAX starts at 0.
+    //   Init: if cursor==0, set cursor=0x5a.
+    //   Each iteration:
+    //     1. If full-rotation done (ebp=1): break; return 0.
+    //     2. threshold = max(8, CharacterScores[14]).
+    //     3. this+0x48 = CharacterScores[slot-0x50] < threshold ? 1 : 0.
+    //     4. Switch on slot: set _supplyTypeFlag (0x1000000/2/4/8 * 0x1000000),
+    //        set _supplyTypeReady = 1, advance cursor to next slot (wrap 0x5d→0x5a).
+    //     5. If this+0x48 > 0: EAX = 1 (shortage found).
+    //     6. If new cursor == original cursor: full-rotation done (ebp=1).
+    //   While EAX == 0.
+    //   Returns EAX (1=shortage, 0=full rotation without shortage).
+    private int EvaluateFleetDispatchStatus()
+    {
+        if (_supplySlotCursor == 0)
+            _supplySlotCursor = 0x5a;
+
+        ushort startCursor = (ushort)_supplySlotCursor;
+        ushort slot = startCursor;
+        bool fullRotationDone = false;
+
+        // CharacterScores[14] is the threshold; clamped to at least 8.
+        int threshold = 8;
+        if (Workspace.CharacterScores.Length > 14)
+            threshold = System.Math.Max(8, Workspace.CharacterScores[14]);
+
+        do
+        {
+            if (fullRotationDone)
+                return 0;
+
+            // workspace[0x184 + slot*4] = CharacterScores[slot - 0x50]
+            int scoreIdx = slot - 0x50;
+            int score =
+                (scoreIdx >= 0 && scoreIdx < Workspace.CharacterScores.Length)
+                    ? Workspace.CharacterScores[scoreIdx]
+                    : 0;
+            _batchCount5 = score < threshold ? 1 : 0;
+
+            switch (slot)
+            {
+                case 0x5a:
+                    _supplyTypeFlag = 0x1000000;
+                    _supplyTypeReady = 1;
+                    _supplySlotCursor = 0x5b;
+                    break;
+                case 0x5b:
+                    _supplyTypeFlag = 0x2000000;
+                    _supplyTypeReady = 1;
+                    _supplySlotCursor = 0x5c;
+                    break;
+                case 0x5c:
+                    _supplyTypeFlag = 0x4000000;
+                    _supplyTypeReady = 1;
+                    _supplySlotCursor = 0x5d;
+                    break;
+                case 0x5d:
+                    _supplyTypeFlag = unchecked((int)0x8000000);
+                    _supplyTypeReady = 1;
+                    _supplySlotCursor = 0x5a;
+                    break;
+            }
+
+            if (_batchCount5 > 0)
+                return 1;
+
+            slot = (ushort)_supplySlotCursor;
+            if (startCursor == slot)
+                fullRotationDone = true;
+        } while (true);
+    }
 
     // FUN_004cf900: ComputeTransportSubState. Assembly trace (fully read).
     // FUN_004d1100: (Capacity * FleetTotalCapacity * 70/10000) - workspace.CharacterScores[0].
     //   Cap: if FleetTotalCapacity - FleetAssignedCapacity < result: result=0.
     // If result < 0: return 2 (shortage → CreateTransportWorkItem).
     // If result == 0: return 0 (terminal → Phase=PhaseA).
-    // If result > 0: sub_41a9e0(this+0x50, this+0x54) → agent; if found: return 0xb. Else: return 0.
+    // If result > 0: sub_41a9e0(workspace, dest=this+0x64, type=0x29, filter1=this+0x50, filter2=this+0x54, 1)
+    //   → stores agent entity ref at _type5AgentRef64 (binary +0x64); if found: return 0xb. Else: return 0.
+    // BLOCKED: sub_41a9e0 requires entity infrastructure. Proxy returns 0 when result > 0.
     private int ComputeTransportSubState()
     {
         // FUN_004d1100: (Capacity * FleetTotalCapacity * 70/10000) - CharacterScores[0]
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total * 70) / 10000;
-        if (Workspace.CharacterScores.Length > 0) result -= Workspace.CharacterScores[0];
-        if (total - Workspace.FleetAssignedCapacity < result) result = 0;
-        if (result < 0) return 2;
-        if (result == 0) return 0;
+        if (Workspace.CharacterScores.Length > 0)
+            result -= Workspace.CharacterScores[0];
+        if (total - Workspace.FleetAssignedCapacity < result)
+            result = 0;
+        if (result < 0)
+            return 2;
+        if (result == 0)
+            return 0;
         // result > 0: agent lookup blocked → return 0
         return 0;
     }
@@ -4051,12 +5227,21 @@ public class StrategyRecordType5 : StrategyRecord
     {
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total * 70) / 10000;
-        if (Workspace.CharacterScores.Length > 0) result -= Workspace.CharacterScores[0];
-        if (total - Workspace.FleetAssignedCapacity < result) result = 0;
+        if (Workspace.CharacterScores.Length > 0)
+            result -= Workspace.CharacterScores[0];
+        if (total - Workspace.FleetAssignedCapacity < result)
+            result = 0;
         return result < 0 ? 1 : 0;
     }
-    // FUN_004cf980: CreateTransportWorkItem. Same pattern as other unit-node builders. Proxy.
-    private AIWorkItem CreateTransportWorkItem() => DispatchEntityToTarget();
+
+    // FUN_004cf980: CreateTransportWorkItem. Assembly trace (fully read).
+    // 1. sub_41a880(workspace, 0x802000, 0, 0xa0, 0, 9, 0, 1000, 1) → mission issue entry in _issueContainer.
+    //    sub_434e30 gets last ID → var_28 (entity key).
+    // 2. HIBYTE(var_28) in [0x3c, 0x40): if in range → allocate 0x20 node, attach.
+    //    If not in range → sub_41a880(0x2000, 0, 0xa0, ...) alternate query → same check.
+    // 3. If issue list non-empty: sub_4f5060(0x242) → TypeCode 0x242 work item.
+    // BLOCKED: entity HIBYTE range [0x3c,0x40) never occurs in C# (hash code high bytes = 0). Returns null.
+    private AIWorkItem CreateTransportWorkItem() => null;
 
     // FUN_004d0960: CreateFleetTransferWorkItem. Assembly trace (fully read).
     // 1. Check HIBYTE(this+0x60) in [0xa4, 0xa6) — character/agent type (different from fleet [0x90,0x98)!).
@@ -4066,13 +5251,18 @@ public class StrategyRecordType5 : StrategyRecord
     //    item+0x44 = this+0x64 (entity ref). item+0x48 = this+0x48.
     //    Return work item.
     // TypeCode 0x212: distinct from 0x210/0x211/0x214 (different agent dispatch variant).
-    // BLOCKED: HIBYTE check [0xa4,0xa6) fails in C#. TypeCode=0x212 not handled in RouteWorkItemToManager.
-    // Proxy: returns AgentShortageWorkItem(0x212) as stand-in (0x212 falls through to no-op in routing).
+    // BLOCKED: HIBYTE check [0xa4,0xa6) needs character entity encoding; agent InternalIds not yet
+    // implemented. RouteWorkItemToManager routes all AgentShortageWorkItem instances (including 0x212)
+    // to ApplyAgentShortage via type check; the TypeCode is not the routing gate.
+    // Proxy: returns AgentShortageWorkItem(0x212) routed to ApplyAgentShortage.
     private AIWorkItem CreateFleetTransferWorkItem()
     {
-        if (_targetEntityId5 == 0) return null;
-        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _targetEntityId5);
-        return rec?.System != null ? new AgentShortageWorkItem(0x212, rec.System, 1, OwnerSide) : null;
+        if (_targetEntityId5 == 0)
+            return null;
+        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _targetEntityId5);
+        return rec?.System != null
+            ? new AgentShortageWorkItem(0x212, rec.System, 1, OwnerSide)
+            : null;
     }
 }
 
@@ -4386,43 +5576,123 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
 
     // --- Phase A helper stubs ---
 
-    // FUN_004df030: Scans _type6CandidateList for eligible entities.
-    // Assembly (fully read): iterates list at param_1+0x7c, for each entry:
-    //   looks up in system analysis (workspace+0x2c+0x2c),
-    //   checks PresenceFlags & 0x1 (own faction), FlagA & 0x3 == 0 (no enemy),
-    //   *(eax+0x114) > 0 (capacity count proxy = Stats.FacilityCount or similar),
-    //   finds minimum cost system (*(eax+0x5c) = SystemScore proxy).
-    //   Sets _candidateRef58 = best system key, _candidateCount68 = count.
-    // Returns 1 if found, 0 if not.
+    // FUN_004df030: Scans _type6CandidateList for eligible entities; seeds list when empty.
+    //
+    // Assembly trace (fully read):
+    // 1. Reset _candidateRef58, _candidateCount68. var_20=0x3e8 (min-score sentinel).
+    // 2. If list (this+0x7c) non-empty: iterate forward via *(node+0x10):
+    //    PresenceFlags & 0x1, FlagA & 0x3 == 0, *(sys+0x114) > 0, *(sys+0x5c) < var_20.
+    //    Best: _candidateCount68 = capacity, _candidateRef58 = key, var_24=1.
+    // 3. If var_24==0 (list empty OR no valid candidate in list):
+    //    a. QuerySystemAnalysis(0x40, stat=0x13) → issue container at this+0x40 → last ID →
+    //       _candidateRef58. If list was non-empty: also QuerySystemAnalysis(0x40, stat=4).
+    //    b. sub_419af0(this+0x58, incl30=1, excl28=0x400003, excl30=0x40000000, stat=5) →
+    //       container. If list was non-empty: also sub_419af0(…, stat=0x33) → container.
+    //       Last ID from container → update _candidateRef58. Clear container.
+    //    c. HIBYTE(_candidateRef58) in [0x90,0x98): look up SystemAnalysis. If found:
+    //       allocate 0x1c node → insert into _type6CandidateList → FlagA |= 0x400000 →
+    //       sub_4334b0 (no-op proxy) → var_24=1.
+    // 4. Return var_24.
     private int ScanPhaseACandidates()
     {
         _candidateRef58 = 0;
         _candidateCount68 = 0;
-        int minScore = int.MaxValue;
-        bool found = false;
+        int minScore = 0x3e8; // var_20 initial value from assembly
+        int found = 0; // var_24
 
+        // Step 2: iterate existing list
         foreach (int sysId in _type6CandidateList.ToList())
         {
             SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
-                r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type6CandidateList.Remove(sysId); continue; }
+                r.InternalId == sysId
+            );
+            if (rec == null)
+            {
+                _type6CandidateList.Remove(sysId);
+                continue;
+            }
 
-            // Assembly checks: PresenceFlags & 0x1, FlagA & 0x3 == 0, count > 0
-            bool pass = (rec.PresenceFlags & 0x1u) != 0 &&
-                        (rec.FlagA & 0x3) == 0 &&
-                        rec.Stats.FacilityCount > 0;  // proxy for *(eax+0x114) > 0
+            if ((rec.PresenceFlags & 0x1u) == 0)
+                continue;
+            if ((rec.FlagA & 0x3) != 0)
+                continue;
+            if (rec.Stats.FacilityCount <= 0) // proxy for *(sys+0x114) > 0
+                continue;
 
-            if (!pass) continue;
-
-            if (rec.SystemScore < minScore)
+            if (rec.SystemScore < minScore) // proxy for *(sys+0x5c) < var_20
             {
                 minScore = rec.SystemScore;
-                _candidateRef58 = sysId;
                 _candidateCount68 = rec.Stats.FacilityCount;
-                found = true;
+                _candidateRef58 = sysId;
+                found = 1;
             }
         }
-        return found ? 1 : 0;
+
+        // Step 3: fallback seeding when no candidate found
+        if (found == 0)
+        {
+            bool listWasNonEmpty = _type6CandidateList.Count > 0;
+
+            // Step 3a: system analysis queries to seed _candidateRef58
+            IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+                incl24: 0x40, incl28: 0, incl2c: 0,
+                excl24: 0, excl28: 0, excl2c: 0,
+                statIndex: 0x13);
+            if (listWasNonEmpty)
+            {
+                IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
+                    incl24: 0x40, incl28: 0, incl2c: 0,
+                    excl24: 0, excl28: 0, excl2c: 0,
+                    statIndex: 4);
+                c1.StoreFrom(c2);
+                c2.Clear();
+            }
+            if (c1.TryGetTopEntityKey(out int k1))
+                _candidateRef58 = k1;
+            c1.Clear();
+
+            // Step 3b: planet sub-object queries refining _candidateRef58
+            if (_candidateRef58 != 0)
+            {
+                IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+                    _candidateRef58,
+                    incl28: 0, incl2c: 0, incl30: 1,
+                    excl28: 0x400003, excl2c: 0, excl30: unchecked((int)0x40000000),
+                    statIndex: 5);
+                if (listWasNonEmpty)
+                {
+                    IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
+                        _candidateRef58,
+                        incl28: 0, incl2c: 0, incl30: 1,
+                        excl28: 0x400003, excl2c: 0, excl30: unchecked((int)0x40000000),
+                        statIndex: 0x33);
+                    p1.StoreFrom(p2);
+                    p2.Clear();
+                }
+                if (p1.TryGetTopEntityKey(out int k2))
+                    _candidateRef58 = k2;
+                p1.Clear();
+            }
+
+            // Step 3c: HIBYTE check → insert into candidate list if valid system entity
+            int hibyte = (_candidateRef58 >> 24) & 0xff;
+            if (hibyte >= 0x90 && hibyte < 0x98)
+            {
+                SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                    r.InternalId == _candidateRef58
+                );
+                if (rec != null)
+                {
+                    if (!_type6CandidateList.Contains(_candidateRef58))
+                        _type6CandidateList.Add(_candidateRef58);
+                    rec.FlagA |= 0x400000;
+                    // sub_4334b0: sets DispositionFlags=1 + propagation — no-op proxy
+                    found = 1;
+                }
+            }
+        }
+
+        return found;
     }
 
     // FUN_004df310: CheckEntityFilterEligibility. Assembly trace (fully read).
@@ -4430,19 +5700,75 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
     // 1. Clear this+0x64. sub_419330(workspace, this+0x58, 0x1000, ...) → this+0x50 entity ref.
     // 2. QuerySystemPlanets(this+0x50, 0x800800, 0,0x1,0x3,0,0, 6, 1) → update this+0x50.
     // 3. Check HIBYTE(this+0x50) in [0x90,0x98). If fleet: sub_4f25a0+sub_5087e0 capacity check.
-    //    If passes: this+0x64 = SystemScore-1 (or SystemScore if <=1). Return 1.
-    // BLOCKED: sub_419330 + HIBYTE check fail in C#. Proxy returns 0.
+    //    If passes: this+0x64 = SystemScore-1. Return 1.
+    // With InternalIds, HIBYTE check passes for SystemAnalysisRecord. DispositionFlags & 0x1000
+    // (required by sub_419330) needs CapabilityFlags & 0x800 AND 0x800000 (not yet set).
+    // Proxy: QuerySystemAnalysis(incl24=0x1000) with fallback to _candidateRef58.
     private int CheckEntityFilterEligibility()
     {
-        // HIBYTE check always fails in C# (hash codes lack type encoding).
-        return 0;
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x1000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x14
+        );
+        int entityRef = 0;
+        if (!c1.TryGetTopEntityKey(out entityRef))
+            entityRef = _candidateRef58; // fallback to candidate from ScanPhaseACandidates
+        c1.Clear();
+        if (entityRef == 0)
+            return 0;
+
+        IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+            entityRef,
+            incl28: 0x800800,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 3,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 6
+        );
+        if (p1.TryGetTopEntityKey(out int refined))
+            entityRef = refined;
+        p1.Clear();
+
+        int hibyte = (entityRef >> 0x18) & 0xff;
+        if (hibyte < 0x90 || hibyte >= 0x98)
+            return 0;
+
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == entityRef
+        );
+        if (rec == null || (rec.PresenceFlags & 0x1u) == 0)
+            return 0;
+
+        // Capacity check proxy: system has deployment capacity.
+        _candidateRef58 = entityRef;
+        _candidateCount68 = System.Math.Max(0, rec.Stats.FacilityCount - 1);
+        return 1;
     }
 
     // FUN_004df4b0: CreateFilteredWorkItem for Type 6 Phase A. Assembly trace (fully read).
-    // Queries workspace with fleet-system filter. HIBYTE(*entity) check [0x90,0x98) fleet range.
-    // Builds unit nodes (capital ships, starfighters, regiments). Creates TypeCode 0x200 work item.
-    // BLOCKED: fleet HIBYTE entity range check fails in C#. Returns null.
-    private AIWorkItem CreateFilteredWorkItem() => null;
+    // Queries workspace with fleet-system filter. HIBYTE check [0x90,0x98) now passes with InternalIds.
+    // Builds unit nodes (capital ships, starfighters, regiments) via sub_52bc60/52b900/52b600.
+    // Creates TypeCode 0x200 work item.
+    // BLOCKED (unit nodes): facility finders (sub_52bc60 etc.) require game entity infrastructure.
+    // Proxy: use _candidateRef58 set by CheckEntityFilterEligibility/ScanPhaseACandidates.
+    private AIWorkItem CreateFilteredWorkItem()
+    {
+        if (_candidateRef58 == 0)
+            return null;
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _candidateRef58
+        );
+        if (rec?.System == null)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004df9f0: ComputeEntityPipelineSubState. Assembly trace (fully read).
     // Calls FUN_004e0d60(this) — (Capacity * FleetTotalCapacity * X/10000) - workspace.something.
@@ -4457,9 +5783,21 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
     // FUN_004dfa90: BuildEntityBatchItem for Type 6 Phase A. Assembly trace (fully read).
     // Gets last node from _type6CandidateList. Checks *(sys+0x58) > 0 and FlagA bit 28 (0x10000000).
     // Builds capital ship, starfighter, regiment unit nodes based on FlagA bits.
-    // Creates TypeCode 0x200 work item if nodes built. Fleet entity infrastructure required.
-    // BLOCKED: entity lookup + unit node building require fleet infrastructure. Returns null.
-    private AIWorkItem BuildEntityBatchItem() => null;
+    // Creates TypeCode 0x200 work item if nodes built.
+    // BLOCKED (unit nodes): sub_52bc60/52b900/52b600 require game entity infrastructure.
+    // Proxy: use last candidate from _type6CandidateList.
+    private AIWorkItem BuildEntityBatchItem()
+    {
+        if (_type6CandidateList.Count == 0)
+            return null;
+        int sysId = _type6CandidateList[_type6CandidateList.Count - 1];
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == sysId
+        );
+        if (rec?.System == null)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004dffd0: CreateCandidateDispatchWorkItem for Type 6 Phase A. Assembly trace (fully read).
     // HIBYTE(*arg_0) check [0x90,0x98) fleet + HIBYTE(this+0x50) check [0xa0,0xa2) agent.
@@ -4508,10 +5846,18 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
     private AIWorkItem EvaluatePipelineStage1()
     {
         IssueRecordContainer c = Workspace.QuerySystemAnalysis(
-            incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
+            incl24: 0x80,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 4
+        );
         SystemAnalysisRecord top = c.GetTopRecord();
-        if (top == null) return null;
-        _candidateRef58 = top.System?.GetHashCode() ?? 0;
+        if (top == null)
+            return null;
+        _candidateRef58 = top.InternalId;
         return new FleetShortageWorkItem(top.System, OwnerSide);
     }
 
@@ -4538,10 +5884,11 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
 
     // FUN_004de4a0: CheckPhaseCConditionA. Assembly trace (fully read).
     // Same structure as FUN_004cc030 (Type 10 EvaluateFleetDispatchStatus):
-    // Iterates _type6CandidateList (this+0x78). For each: HIBYTE check [0x90,0x98),
-    //   FlagA & 0x400000, *(sys+0x5c) > 0, HIBYTE(FlagA) & 0x4, FlagA & 0x3 == 0.
-    // If found: workspace+0x14 = entity ref. Fallback via workspace+0x18.
-    // BLOCKED: HIBYTE fleet check [0x90,0x98) fails in C#; candidate list always empty. Returns 0.
+    // Iterates _type6CandidateList (this+0x7c). For each: HIBYTE check [0x90,0x98),
+    //   FlagA & 0x400000, *(sys+0x5c) > 0, FlagA & 0x4000000 (set when ef & 0x40 in planet analysis),
+    //   FlagA & 0x3 == 0. If found: workspace+0x14 = entity ref. Fallback via workspace+0x18.
+    // HIBYTE check passes: InternalId HIBYTE=0x90 ∈ [0x90,0x98).
+    // BLOCKED: post-find requires sub_4f25a0 (fleet lookup) + sub_5087e0 + sub_4025b0. Returns 0.
     private int CheckPhaseCConditionA() => 0;
 
     // FUN_004de780: CheckPhaseCConditionB. Assembly trace (fully read).
@@ -4574,7 +5921,7 @@ public class ThreePhaseStrategyRecordA : StrategyRecord
     // Result: always takes Phase=PhaseA (not ReadyFlag set) path in case 0xb.
     private int CheckPhaseCBranchCondition()
     {
-        return 0;  // Assembly: always returns 0
+        return 0; // Assembly: always returns 0
     }
 
     // FUN_004dfd70: CreatePhaseCDispatchWorkItem for Type 6 Phase C. Assembly trace (fully read).
@@ -4908,16 +6255,109 @@ public class ThreePhaseStrategyRecordB : StrategyRecord
     // Returns 0 or 1 (found candidate).
     private int ScanPhaseACandidates()
     {
-        _candidateRef58 = 0; _candidateCount68 = 0;
-        int minScore = int.MaxValue; bool found = false;
+        _candidateRef58 = 0;
+        _candidateCount68 = 0;
+        int minScore = int.MaxValue;
+        bool found = false;
+
+        // Primary: iterate existing candidate list.
         foreach (int sysId in _type7CandidateList.ToList())
         {
-            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type7CandidateList.Remove(sysId); continue; }
-            if ((rec.PresenceFlags & 0x1u) == 0 || (rec.FlagA & 0x3) != 0 || rec.Stats.FacilityCount <= 0) continue;
-            if (rec.SystemScore < minScore) { minScore = rec.SystemScore; _candidateRef58 = sysId; _candidateCount68 = rec.Stats.FacilityCount; found = true; }
+            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == sysId);
+            if (rec == null)
+            {
+                _type7CandidateList.Remove(sysId);
+                continue;
+            }
+            if (
+                (rec.PresenceFlags & 0x1u) == 0
+                || (rec.FlagA & 0x3) != 0
+                || rec.Stats.FacilityCount <= 0
+            )
+                continue;
+            if (rec.SystemScore < minScore)
+            {
+                minScore = rec.SystemScore;
+                _candidateRef58 = sysId;
+                _candidateCount68 = rec.Stats.FacilityCount;
+                found = true;
+            }
         }
-        return found ? 1 : 0;
+        if (found)
+            return 1;
+
+        // Fallback: seed _type7CandidateList via QuerySystemAnalysis(incl24=0x20, stat=0x13/4)
+        // then QuerySystemPlanets. DispositionFlags bit 5 (0x20) is set for own-faction planets
+        // with CapabilityFlags & 0x200000 == 0 AND CharCapabilityCount > 0.
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x20,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x13
+        );
+        IssueRecordContainer c2 = Workspace.QuerySystemAnalysis(
+            incl24: 0x20,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 4
+        );
+        c1.StoreFrom(c2);
+        if (!c1.TryGetTopEntityKey(out int candidateRef))
+            return 0;
+        c1.Clear();
+
+        // QuerySystemPlanets to refine to specific fleet/system entity.
+        IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+            candidateRef,
+            incl28: 0,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 0x400003,
+            excl2c: 0,
+            excl30: 0x40000000,
+            statIndex: 5
+        );
+        if (_type7CandidateList.Count > 0)
+        {
+            IssueRecordContainer p2 = Workspace.QuerySystemPlanets(
+                candidateRef,
+                incl28: 0,
+                incl2c: 0,
+                incl30: 1,
+                excl28: 0x400003,
+                excl2c: 0,
+                excl30: 0x40000000,
+                statIndex: 0x33
+            );
+            p1.StoreFrom(p2);
+        }
+        if (p1.TryGetTopEntityKey(out int refined))
+            candidateRef = refined;
+        p1.Clear();
+
+        int hibyte = (candidateRef >> 0x18) & 0xff;
+        if (hibyte >= 0x90 && hibyte < 0x98)
+        {
+            SystemAnalysisRecord sysRec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+                r.InternalId == candidateRef
+            );
+            if (sysRec != null)
+            {
+                if (!_type7CandidateList.Contains(candidateRef))
+                    _type7CandidateList.Add(candidateRef);
+                sysRec.FlagA |= 0x200000; // FlagA |= 0x200000 (Type 7 marker)
+                _candidateRef58 = candidateRef;
+                _candidateCount68 = sysRec.Stats.FacilityCount;
+                return 1;
+            }
+        }
+        return 0;
     }
 
     // All remaining Type 7 stubs — same patterns as Type 6 (ThreePhaseStrategyRecordA).
@@ -4928,8 +6368,61 @@ public class ThreePhaseStrategyRecordB : StrategyRecord
     // Second query (filter 0x800800) → updates this+0x50.
     // HIBYTE(*this+0x50) check [0x90,0x98): if fleet → get capacity, add to _type7CandidateList,
     // FlagA |= 0x200000. Returns 1 if fleet found.
-    // BLOCKED: HIBYTE check always fails in C# (hash codes have no type encoding). Returns 0.
-    private int CheckEntityFilterEligibility() => 0;
+    // With InternalIds, HIBYTE check now passes for SystemAnalysisRecord.InternalId.
+    // Proxy: QuerySystemAnalysis(incl24=0x1000) with fallback to any own-faction system.
+    // When a valid system is found: adds to _type7CandidateList, FlagA |= 0x200000.
+    private int CheckEntityFilterEligibility()
+    {
+        // Query with DispositionFlags & 0x1000 (bit 12): needs CapabilityFlags & 0x800 AND 0x800000.
+        // These aren't yet set in C#, so fall back to own-faction system presence.
+        IssueRecordContainer c1 = Workspace.QuerySystemAnalysis(
+            incl24: 0x1000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 0x14
+        );
+        int entityRef = 0;
+        if (!c1.TryGetTopEntityKey(out entityRef))
+            entityRef = _candidateRef58; // fallback to candidate from ScanPhaseACandidates
+        c1.Clear();
+        if (entityRef == 0)
+            return 0;
+
+        IssueRecordContainer p1 = Workspace.QuerySystemPlanets(
+            entityRef,
+            incl28: 0x800800,
+            incl2c: 0,
+            incl30: 1,
+            excl28: 3,
+            excl2c: 0,
+            excl30: 0,
+            statIndex: 6
+        );
+        if (p1.TryGetTopEntityKey(out int refined))
+            entityRef = refined;
+        p1.Clear();
+
+        int hibyte = (entityRef >> 0x18) & 0xff;
+        if (hibyte < 0x90 || hibyte >= 0x98)
+            return 0;
+
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == entityRef
+        );
+        if (rec == null || (rec.PresenceFlags & 0x1u) == 0)
+            return 0;
+
+        // Add to _type7CandidateList and mark with FlagA bit.
+        if (!_type7CandidateList.Contains(entityRef))
+            _type7CandidateList.Add(entityRef);
+        rec.FlagA |= 0x200000;
+        _candidateRef58 = entityRef;
+        _candidateCount68 = System.Math.Max(0, rec.Stats.FacilityCount - 1);
+        return 1;
+    }
 
     // FUN_004d4dc0: ComputeEntityPipelineSubState for Type 7. Assembly trace (fully read).
     // Returns 0 (terminal), 9 (BuildEntityBatchItem), or 0xb (CreateCandidateDispatchWorkItem).
@@ -4938,17 +6431,40 @@ public class ThreePhaseStrategyRecordB : StrategyRecord
     private int ComputeEntityPipelineSubState() => 0;
 
     // FUN_004d4880: CreateFilteredWorkItem for Type 7 Phase A. Assembly trace (fully read).
-    // Inits unit node list. HIBYTE(*arg_54) check [0x90,0x98): if fleet → builds capital/starfighter/regiment
-    // unit nodes from FlagA bits (~0x400000 cap ships, ~0x3800000 starfighters, always regiments).
+    // Inits unit node list. HIBYTE(*arg_54) check [0x90,0x98) now passes with InternalIds.
+    // Builds capital/starfighter/regiment unit nodes via sub_52bc60/52b900/52b600 (facility finders).
     // Creates TypeCode 0x200 work item if nodes exist.
-    // BLOCKED: fleet HIBYTE check always fails in C#. Returns null.
-    private AIWorkItem CreateFilteredWorkItem() => null;
+    // BLOCKED (unit nodes): facility finders require game entity infrastructure.
+    // Proxy: use _candidateRef58 set by CheckEntityFilterEligibility/ScanPhaseACandidates.
+    private AIWorkItem CreateFilteredWorkItem()
+    {
+        if (_candidateRef58 == 0)
+            return null;
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == _candidateRef58
+        );
+        if (rec?.System == null)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004d4e60: BuildEntityBatchItem for Type 7 Phase A. Assembly trace (fully read).
-    // Gets last node from _type7CandidateList (this+0x6c). If found: checks *(sys+0x58) (capacity).
-    // If capacity > 0 and HIBYTE(sys+0x28) & 0x10: process candidates; creates TypeCode 0x200 work item.
-    // BLOCKED: HIBYTE(sys+0x28) & 0x10 check fails; entity resolution also HIBYTE-dependent. Returns null.
-    private AIWorkItem BuildEntityBatchItem() => null;
+    // Gets last node from _type7CandidateList. Checks capacity and FlagA conditions.
+    // Creates TypeCode 0x200 work item if candidates found.
+    // BLOCKED (unit nodes): facility finders require game entity infrastructure.
+    // Proxy: use last candidate from _type7CandidateList.
+    private AIWorkItem BuildEntityBatchItem()
+    {
+        if (_type7CandidateList.Count == 0)
+            return null;
+        int sysId = _type7CandidateList[_type7CandidateList.Count - 1];
+        SystemAnalysisRecord rec = Workspace.SystemAnalysis.FirstOrDefault(r =>
+            r.InternalId == sysId
+        );
+        if (rec?.System == null)
+            return null;
+        return new FleetShortageWorkItem(rec.System, OwnerSide);
+    }
 
     // FUN_004d53a0: CreateCandidateDispatchWorkItem for Type 7 Phase A. Assembly trace (fully read).
     // HIBYTE(*arg_0) check [0x90,0x98) fleet + HIBYTE(this+0x50) check [0xa0,0xa2) agent.
@@ -4975,7 +6491,8 @@ public class ThreePhaseStrategyRecordB : StrategyRecord
     // BLOCKED: fleet HIBYTE check fails in C#. Proxy selects first candidate from list.
     private void SelectBatchCandidates()
     {
-        if (_type7CandidateList.Count > 0) _candidateRef58 = _type7CandidateList[0];
+        if (_type7CandidateList.Count > 0)
+            _candidateRef58 = _type7CandidateList[0];
     }
 
     // FUN_004d2830: CheckPhaseBInitCondition for Type 7 Phase B. Assembly trace (fully read).
@@ -4983,7 +6500,8 @@ public class ThreePhaseStrategyRecordB : StrategyRecord
     // QuerySystemPlanets(this+0x50, 0, 0, 1, 0x2, 0, 0x40000, 0x35, 1) → update.
     // Check HIBYTE in [0x90,0x98). If fleet: check *(sys+0x11c) > 0. Return 1 if passes.
     // BLOCKED: HIBYTE check fails. Proxy: returns 1 if capacity > 0.
-    private int CheckPhaseBInitCondition() => (Capacity * Workspace.FleetTotalCapacity / 100) > 0 ? 1 : 0;
+    private int CheckPhaseBInitCondition() =>
+        (Capacity * Workspace.FleetTotalCapacity / 100) > 0 ? 1 : 0;
 
     // FUN_004d2980: EvaluatePipelineCondition for Type 7 Phase B. Assembly trace (fully read).
     // Four-path search: queries systems with filters 0x100009, 0x100005, 0x10000000, 0x8000000.
@@ -5195,23 +6713,29 @@ public class StrategyRecordType8 : StrategyRecord
 
     // FUN_004cea70 — evaluate workspace.SectorSearchState (+0x204) and act on it.
     //
-    // SectorSearchState < 0:
-    //   Walk EntityTargetTable (workspace+0xd8) from tail backward.
-    //   If any entry has (AssignmentId & 0x4000000)==0 (unassigned), do nothing.
-    //   If ALL entries have the bit set (all assigned), call FUN_0042e9d0 to reset
-    //   the search state.
+    // SectorSearchState < 0 (path 1):
+    //   Iterates EntityTargetTable backward via *(node+0x10) links (do-while).
+    //   For each node: tests bit 26 (0x4000000) of node.AssignmentId (+0x60).
+    //   If any node has this bit clear → bVar2 = true (unassigned entry exists).
+    //   After iteration: if bVar2 == false (table empty OR all entries have bit set):
+    //     calls FUN_0042e9d0(EntityTargetTable) to allocate and register a new entry.
+    //   If bVar2 == true: do nothing.
     //
-    // SectorSearchState > 0:
-    //   Call FUN_0042ea50 to locate the next sector for the search.
+    // SectorSearchState > 0 (path 2):
+    //   Calls FUN_0042ea50_find_sector(EntityTargetTable).
+    //   Iterates backward; finds first entry with HIBYTE(StatusFlags) NOT in [0x80,0x90).
+    //   If found: activates it via FUN_004765e0 (reset InnerDispatchState, AssignmentId,
+    //   FleetTarget, clear list fields), then removes it via FUN_005f3a10. Returns its Id.
+    //   Return value is discarded by FUN_004cea70.
     //
-    // SectorSearchState == 0:
-    //   No-op.
+    // SectorSearchState == 0 (path 3): returns immediately, no action.
     private void InitSectorSearch()
     {
         int sectorSearch = Workspace.SectorSearchState;
 
         if (sectorSearch < 0)
         {
+            // Walk table backward; check if any entry has bit 0x4000000 clear.
             bool anyUnassigned = false;
             for (int i = Workspace.EntityTargetTable.Count - 1; i >= 0; i--)
             {
@@ -5224,21 +6748,55 @@ public class StrategyRecordType8 : StrategyRecord
 
             if (!anyUnassigned)
             {
-                // FUN_0042e9d0: reset sector search state.
-                // Clears SectorSearchState and bit 0x4000000 from all entity targets.
-                foreach (var t in Workspace.EntityTargetTable)
-                    t.AssignmentId &= ~0x4000000;
-                Workspace.SectorSearchState = 0;
+                // FUN_0042e9d0: allocate 0xe8 bytes via FUN_00617140_generic_allocate,
+                // construct via FUN_00475700(alloc, *(AutoClass62+0xc), *(AutoClass62+0x10)):
+                //   *(entry+0x34..+0x40) = 2 (four FUN_004ec1d0_set_param_value_to_2 calls)
+                //   *(entry+0x20) = OwnerSide (from AutoClass62+0xc = workspace+0xe4)
+                //   *(entry+0x58) = Workspace (from AutoClass62+0x10 = workspace+0xe8)
+                //   vtable set, all other fields zeroed.
+                // Then FUN_005f39b0: assign Id from container's next-ID counter, insert.
+                var entry = new MissionTargetEntry
+                {
+                    StatusFlags = 2, // FUN_004ec1d0 on entry+0x34
+                    AssignmentConfirmWord = 2, // FUN_004ec1d0 on entry+0x38
+                    AssignmentStateWord = 2, // FUN_004ec1d0 on entry+0x3c
+                    EmbeddedSubField = 2, // FUN_004ec1d0 on entry+0x40
+                    OwnerSide = OwnerSide,
+                    ContextObject = Workspace,
+                };
+                entry.Id = Workspace.NextMissionId;
+                Workspace.NextMissionId++;
+                Workspace.EntityTargetTable.Add(entry);
             }
         }
         else if (sectorSearch > 0)
         {
-            // FUN_0042ea50: find next sector with fleet shortage.
-            // Queries system analysis for systems needing fleet support.
-            var c = Workspace.QuerySystemAnalysis(incl24: 0x80, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 4);
-            var top = c.GetTopRecord();
-            if (top != null)
-                Workspace.SectorSearchState = -(top.System?.GetHashCode() ?? 0); // negative = sector found
+            // FUN_0042ea50_find_sector: iterate EntityTargetTable backward.
+            // Find first entry where HIBYTE(StatusFlags) is NOT in [0x80, 0x90).
+            // Activate it: FUN_004765e0 resets InnerDispatchState=0, InProgressFlag=0,
+            //   AssignmentId and SubAssignmentId via FUN_004fbf90_reset_id,
+            //   FleetTarget cleared, AssignmentRegistryList and CandidateList cleared.
+            // Remove it: FUN_005f3a10 removes the node from the AVL tree container.
+            // Return value (the entry's Id) is discarded by FUN_004cea70.
+            for (int i = Workspace.EntityTargetTable.Count - 1; i >= 0; i--)
+            {
+                var t = Workspace.EntityTargetTable[i];
+                int typeHiByte = (t.StatusFlags >> 0x18) & 0xff;
+                if (typeHiByte < 0x80 || typeHiByte >= 0x90)
+                {
+                    // FUN_004765e0 (partial): reset assignment state fields.
+                    t.InnerDispatchState = 0;
+                    t.InProgressFlag = 0;
+                    t.AssignmentId = 0;
+                    t.SubAssignmentId = 0;
+                    t.FleetTarget = null;
+                    t.AssignmentRegistryList.Clear();
+                    t.CandidateList.Clear();
+                    // FUN_005f3a10: remove from container.
+                    Workspace.EntityTargetTable.RemoveAt(i);
+                    break;
+                }
+            }
         }
         // sectorSearch == 0: no-op.
     }
@@ -5275,36 +6833,63 @@ public class StrategyRecordType8 : StrategyRecord
     }
 
     // FUN_004ceb30 — create a fleet order for the entity target found in state 2.
-    // Assembly trace (partially read; C decompile truncated by SEH; assembly trace provides key structure).
     //
-    // Looks up entity target by this+0x40 (_entityTargetId) in workspace+0xd8 (EntityTargetTable).
-    // Not found → return 0.
-    // Checks entry.StatusFlags>>0x18 in [0x80, 0x90): this is a FIELD on the EntityTargetEntry,
-    // NOT an entity ID HIBYTE — can work in C# if StatusFlags is populated correctly.
-    // If type check passes: tries sub_419330(workspace, 0x10000, 2) → fleet issue type A.
-    // Also tries sub_419980(0x8010000, 2) and sub_419980(0x10000, 2) unconditionally.
-    // Each successful issue calls sub_475d00 + sub_476840 to create the fleet assignment.
+    // Implemented via scene graph + SectorAnalysisTable (workspace+0x44).
+    //
+    // Original binary flow:
+    // 1. Check HIBYTE(entry.StatusFlags) in [0x80, 0x90) → check for pre-existing assignment
+    // 2. sub_419330(workspace, &entry.StatusFlags, ...) → find sector entity (family 0x80)
+    //    via global game BST (DAT_006b33a4). Sectors = SECTORSD.json, family_id=0x80, IDs 20–39.
+    //    workspace+0x00 = FactionSide (1 or 2) passed to sub_4f2090/*workspace.
+    // 3. sub_475d00(entry, &sector_key) → creates SectorAnalysisRecord in workspace+0x44,
+    //    sets FleetTypeCode (1–6), stores sector_key in entry.StatusFlags.
+    // 4. FUN_00476840(entry) → look up SectorAnalysisRecord, create SectorFleetAssignmentTarget.
     // Returns 1 on success, 0 on failure.
+    //
+    // C# uses MissionTargetEntry.FindSectorForFleetAssignment,
+    // AssignFleetToSector, and ValidateOrCreateFleetTarget.
     private int CreateFleetOrderForTarget()
     {
         MissionTargetEntry entry = Workspace.EntityTargetTable.Find(e => e.Id == _entityTargetId);
         if (entry == null)
             return 0;
 
-        // Check entity target type code (high byte of StatusFlags) in [0x80, 0x90).
-        int typeCode = (entry.StatusFlags >> 0x18) & 0xff;
-        bool typeOk = typeCode >= 0x80 && typeCode < 0x90;
-
-        // FUN_004ceb30: use QuerySystemAnalysis as proxy for sub_419330/sub_419980.
-        // typeOk gates the first query call (fleet issue type A requires type [0x80,0x90)).
-        if (typeOk)
+        // Step 1 (FUN_004ceb30 primary path): check HIBYTE(entry.StatusFlags) in [0x80, 0x90).
+        // If already set to a sector key from a previous call, validate the existing assignment.
+        int hibyte = (entry.StatusFlags >> 0x18) & 0xff;
+        if (hibyte >= 0x80 && hibyte < 0x90)
         {
-            var c = Workspace.QuerySystemAnalysis(incl24: 0x10000, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 2);
-            if (c.Count > 0) return 1;
+            // Pre-existing sector assignment. Validate via FUN_00476840 equivalent.
+            SectorAnalysisRecord existingRec = Workspace.SectorAnalysisTable.FirstOrDefault(r =>
+                r.InternalId == entry.StatusFlags
+                && r.AssignmentStatus == 0
+                && r.AssignedFleetId == entry.Id
+            );
+            if (existingRec != null)
+                return entry.ValidateOrCreateFleetTarget();
         }
-        // Secondary path (type B/C fleet issues):
-        var c2 = Workspace.QuerySystemAnalysis(incl24: 0x10000, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 2);
-        return c2.Count > 0 ? 1 : 0;
+
+        // Steps 2–3 (sub_419330 + sub_475d00): find a sector and assign a fleet.
+        // sub_419330 searches for sector entity (family 0x80) via *workspace=FactionSide.
+        int sectorKey = entry.FindSectorForFleetAssignment();
+        if (sectorKey == 0)
+            return 0;
+
+        // sub_475d00: find a matching fleet and create SectorAnalysisRecord.
+        // Pick the first available FleetAnalysisRecord whose system is in this sector.
+        int sectorId = sectorKey & 0xFFFFFF;
+        FleetAnalysisRecord fleetRec = Workspace.FleetAnalysis.FirstOrDefault(f =>
+            f.Fleet != null && f.Fleet.GetParentOfType<PlanetSystem>()?.SectorId == sectorId
+        );
+        if (fleetRec == null)
+            return 0;
+
+        int assigned = entry.AssignFleetToSector(fleetRec.InternalId);
+        if (assigned == 0)
+            return 0;
+
+        // Step 4 (FUN_00476840): validate entry → create SectorFleetAssignmentTarget.
+        return entry.ValidateOrCreateFleetTarget();
     }
 
     // FUN_004cee30 — dispatch the entity target through the 6-state inner fleet pipeline.
@@ -5499,14 +7084,14 @@ public class StrategyRecordType10 : StrategyRecord
     private const int PhaseB = 0x3f2;
 
     // Fleet assignment entity refs (from FUN_004cc8f0, FUN_004cce00, FUN_004cd6c0 field access):
-    private int _fleetEntityId;         // +0x58 fleet entity (type [0x80,0x90))
-    private int _targetEntityId10;      // +0x5c target entity (type [1,0xff))
-    private int _dispatchEntityId;      // +0x60 dispatch entity
-    private int _secondaryEntityId;     // +0x64 secondary entity
-    private int _batchCount10;          // +0x68 batch count
-    private int _maxBatchCount;         // +0x6c max batch
-    private int _capacityBound;         // +0x70 capacity upper bound
-    private int _capacityLimit10;       // +0x74 capacity limit
+    private int _fleetEntityId; // +0x58 fleet entity (type [0x80,0x90))
+    private int _targetEntityId10; // +0x5c target entity (type [1,0xff))
+    private int _dispatchEntityId; // +0x60 dispatch entity
+    private int _secondaryEntityId; // +0x64 secondary entity
+    private int _batchCount10; // +0x68 batch count
+    private int _maxBatchCount; // +0x6c max batch
+    private int _capacityBound; // +0x70 capacity upper bound
+    private int _capacityLimit10; // +0x74 capacity limit
     private readonly List<int> _type10CandidateList = new List<int>(); // +0x78 candidate list
 
     public StrategyRecordType10(int ownerSide)
@@ -5748,10 +7333,22 @@ public class StrategyRecordType10 : StrategyRecord
         _fleetEntityId = 0;
         foreach (int sysId in _type10CandidateList.ToList())
         {
-            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type10CandidateList.Remove(sysId); continue; }
-            if ((rec.PresenceFlags & 0x1u) != 0 && (rec.FlagA & 0x3) == 0 && rec.Stats.FacilityCount > 0)
-            { _fleetEntityId = sysId; _capacityLimit10 = rec.Stats.FacilityCount; return 1; }
+            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == sysId);
+            if (rec == null)
+            {
+                _type10CandidateList.Remove(sysId);
+                continue;
+            }
+            if (
+                (rec.PresenceFlags & 0x1u) != 0
+                && (rec.FlagA & 0x3) == 0
+                && rec.Stats.FacilityCount > 0
+            )
+            {
+                _fleetEntityId = sysId;
+                _capacityLimit10 = rec.Stats.FacilityCount;
+                return 1;
+            }
         }
         return 0;
     }
@@ -5768,7 +7365,8 @@ public class StrategyRecordType10 : StrategyRecord
     // If < 0: return 7. If == 0: return 0. If > 0 AND agent found: return 9.
     private int ComputeAssignmentTargetSubState()
     {
-        if (_fleetEntityId == 0) return 0;
+        if (_fleetEntityId == 0)
+            return 0;
         // Proxy: return 9 (dispatch) when agent capacity available, 0 otherwise
         return Workspace.AgentAssignedCapacity < Workspace.AgentTotalCapacity ? 9 : 0;
     }
@@ -5830,8 +7428,9 @@ public class StrategyRecordType10 : StrategyRecord
     // BLOCKED: EntityTargetTable lookup + HIBYTE checks.
     private int CheckFleetReadyForDispatch()
     {
-        if (_fleetEntityId == 0) return 0;
-        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _fleetEntityId);
+        if (_fleetEntityId == 0)
+            return 0;
+        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _fleetEntityId);
         return (rec != null && (rec.FlagB & 0x4) != 0) ? 1 : 0;
     }
 
@@ -5841,7 +7440,8 @@ public class StrategyRecordType10 : StrategyRecord
     // If found: workspace+0x20 = entity ref, var_30=1. Fallback via workspace+0x1c/+0x24.
     // Returns var_2C (0 or 1).
     // BLOCKED: candidate list empty + HIBYTE checks blocked.
-    private int EvaluateFleetDispatchStatus() => Workspace.FleetAssignedCapacity < Workspace.FleetTotalCapacity ? 1 : 0;
+    private int EvaluateFleetDispatchStatus() =>
+        Workspace.FleetAssignedCapacity < Workspace.FleetTotalCapacity ? 1 : 0;
 
     // FUN_004cc5a0: SelectFleetDispatchTarget. Assembly trace (fully read).
     // Calls FUN_004cdf90 (capacity compute). Returns 0, 5, or 9.
@@ -5876,7 +7476,8 @@ public class StrategyRecordType10 : StrategyRecord
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total * 80) / 10000 - Workspace.FleetAssignedCapacity;
         int available = total - Workspace.FleetAssignedCapacity;
-        if (available < result) result = 0;
+        if (available < result)
+            result = 0;
         return result < 0 ? 1 : 0;
     }
 
@@ -5910,12 +7511,12 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
 
     // Extra fields beyond 0x40-byte base (total struct size 0x88, 18 extra 4-byte fields).
     private int _secondaryEntityId11; // +0x50 agent entity [0xa0,0xa2)
-    private int _fleetIssueRef11;     // +0x54 fleet/mission issue ref
-    private int _fleetEntityId11;     // +0x58 fleet entity [0x90,0x98)
-    private int _targetEntityId11;    // +0x5c target entity
-    private int _batchCount11;        // +0x6c batch count
-    private int _maxCapBound11;       // +0x70 max capacity bound
-    private int _capLimit11;          // +0x74 capacity limit
+    private int _fleetIssueRef11; // +0x54 fleet/mission issue ref
+    private int _fleetEntityId11; // +0x58 fleet entity [0x90,0x98)
+    private int _targetEntityId11; // +0x5c target entity
+    private int _batchCount11; // +0x6c batch count
+    private int _maxCapBound11; // +0x70 max capacity bound
+    private int _capLimit11; // +0x74 capacity limit
     private readonly List<int> _type11CandidateList = new List<int>(); // +0x78
 
     public ThreePhaseStrategyRecordC(int ownerSide)
@@ -6183,10 +7784,23 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
         _fleetEntityId11 = 0;
         foreach (int sysId in _type11CandidateList.ToList())
         {
-            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == sysId);
-            if (rec == null) { _type11CandidateList.Remove(sysId); continue; }
-            if ((rec.PresenceFlags & 0x1u) != 0 && (rec.FlagA & 0x3) == 0 && rec.Stats.FacilityCount > 0)
-            { _fleetEntityId11 = sysId; _capLimit11 = rec.Stats.FacilityCount; _maxCapBound11 = rec.Stats.FacilityCount - 1; return 1; }
+            var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == sysId);
+            if (rec == null)
+            {
+                _type11CandidateList.Remove(sysId);
+                continue;
+            }
+            if (
+                (rec.PresenceFlags & 0x1u) != 0
+                && (rec.FlagA & 0x3) == 0
+                && rec.Stats.FacilityCount > 0
+            )
+            {
+                _fleetEntityId11 = sysId;
+                _capLimit11 = rec.Stats.FacilityCount;
+                _maxCapBound11 = rec.Stats.FacilityCount - 1;
+                return 1;
+            }
         }
         return 0;
     }
@@ -6204,10 +7818,19 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
     private int CheckFleetAssignmentCapacity()
     {
         // Proxy: seed _fleetIssueRef11 from QuerySystemAnalysis and set _maxCapBound11
-        IssueRecordContainer c = Workspace.QuerySystemAnalysis(incl24: 0x1000, incl28: 0, incl2c: 0, excl24: 0, excl28: 0, excl2c: 0, statIndex: 6);
+        IssueRecordContainer c = Workspace.QuerySystemAnalysis(
+            incl24: 0x1000,
+            incl28: 0,
+            incl2c: 0,
+            excl24: 0,
+            excl28: 0,
+            excl2c: 0,
+            statIndex: 6
+        );
         var top = c.GetTopRecord();
-        if (top == null) return 0;
-        _fleetIssueRef11 = top.System?.GetHashCode() ?? 0;
+        if (top == null)
+            return 0;
+        _fleetIssueRef11 = top.InternalId;
         int score = top.SystemScore;
         _maxCapBound11 = score > 1 ? score - 1 : score; // assembly: SystemScore or SystemScore-1
         return 1;
@@ -6226,9 +7849,12 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
         // Using same proxy as other similar functions
         int total = Workspace.FleetTotalCapacity;
         int result = (Capacity * total) / 100;
-        if (total - Workspace.FleetAssignedCapacity < result) result = 0;
-        if (result < 0) return 0xc;
-        if (result == 0) return 0;
+        if (total - Workspace.FleetAssignedCapacity < result)
+            result = 0;
+        if (result < 0)
+            return 0xc;
+        if (result == 0)
+            return 0;
         // result > 0: agent lookup blocked → return 0
         return 0;
     }
@@ -6284,8 +7910,9 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
     // Proxy: creates MissionExecutionWorkItem using _fleetEntityId11 when available.
     private AIWorkItem CreateFleetTargetIssue()
     {
-        if (_fleetEntityId11 == 0) return null;
-        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _fleetEntityId11);
+        if (_fleetEntityId11 == 0)
+            return null;
+        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _fleetEntityId11);
         return rec != null ? new MissionExecutionWorkItem(_fleetEntityId11, Workspace) : null;
     }
 
@@ -6296,7 +7923,8 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
     // BLOCKED: multiple entity HIBYTE range checks fail in C#. Proxy returns MissionExecutionWorkItem.
     private AIWorkItem CreateFleetDispatchIssue()
     {
-        if (_fleetIssueRef11 == 0 && _fleetEntityId11 == 0) return null;
+        if (_fleetIssueRef11 == 0 && _fleetEntityId11 == 0)
+            return null;
         int key = _fleetIssueRef11 != 0 ? _fleetIssueRef11 : _fleetEntityId11;
         return new MissionExecutionWorkItem(key, Workspace);
     }
@@ -6309,8 +7937,9 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
     // BLOCKED: multiple HIBYTE entity range checks fail in C#. Proxy uses _fleetEntityId11.
     private AIWorkItem CreateTroopTransportOrder()
     {
-        if (_fleetEntityId11 == 0) return null;
-        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.System?.GetHashCode() == _fleetEntityId11);
+        if (_fleetEntityId11 == 0)
+            return null;
+        var rec = Workspace.SystemAnalysis.FirstOrDefault(r => r.InternalId == _fleetEntityId11);
         return rec != null ? new MissionExecutionWorkItem(_fleetEntityId11, Workspace) : null;
     }
 
@@ -6347,9 +7976,11 @@ public class ThreePhaseStrategyRecordC : StrategyRecord
         // sub_4cb590 proxy: same formula pattern as FUN_004cdf90 with different accumulator
         int total = Workspace.FleetTotalCapacity;
         int count = (Capacity * total) / 100 - Workspace.FleetAssignedCapacity;
-        if (total - Workspace.FleetAssignedCapacity < count) count = 0;
+        if (total - Workspace.FleetAssignedCapacity < count)
+            count = 0;
         // In C#: HIBYTE loop (entity_id & 0xff000000 != 0) always fails → never returns 0xf
-        if (count < 0) return 0xa;
+        if (count < 0)
+            return 0xa;
         return 0;
     }
 
@@ -6780,7 +8411,6 @@ public class ProductionAutomationRecord : StrategyRecord
         // vtable+0x14 = Dispatch: writes to dispatchOut and returns work item.
         return entry.Dispatch(out dispatchOut);
     }
-
 }
 
 // ------------------------------------------------------------------
@@ -7041,7 +8671,8 @@ public class DiplomacyStrategyRecord : StrategyRecord
     private AIWorkItem EmitPrimaryRuntimeObject()
     {
         // Both refs are 0 until seeding functions work — always returns null currently.
-        if (_primaryIssueRef == null || _followupIssueRef == null) return null;
+        if (_primaryIssueRef == null || _followupIssueRef == null)
+            return null;
         return new AgentShortageWorkItem(0x214, null, SubState, OwnerSide);
     }
 
@@ -7054,7 +8685,8 @@ public class DiplomacyStrategyRecord : StrategyRecord
     // Blocked until SeedFollowupIssue is implemented (TickSubObject).
     private AIWorkItem EmitCountedRuntimeObject()
     {
-        if (_followupIssueRef == null) return null;
+        if (_followupIssueRef == null)
+            return null;
         return new AgentShortageWorkItem(0x212, null, SubState, OwnerSide);
     }
 }

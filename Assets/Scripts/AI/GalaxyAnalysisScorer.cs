@@ -159,7 +159,8 @@ public class GalaxyAnalysisScorer
     // ================================================================
     private readonly List<SystemAnalysisNode> _systemNodes = new List<SystemAnalysisNode>();
     private readonly List<FleetAnalysisNode> _fleetNodes = new List<FleetAnalysisNode>();
-    private readonly List<CharacterAnalysisNode> _characterNodes = new List<CharacterAnalysisNode>();
+    private readonly List<CharacterAnalysisNode> _characterNodes =
+        new List<CharacterAnalysisNode>();
 
     // ================================================================
     // PRE-ACCUMULATION HOOKS (vtable slot 1, called before accumulation)
@@ -661,5 +662,4 @@ public class GalaxyAnalysisScorer
             }
         }
     }
-
 }

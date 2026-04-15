@@ -38,6 +38,20 @@ namespace Rebellion.Game
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
+        /// <summary>
+        /// Numeric data ID from SYSTEMSD.json (e.g. 100, 101...). Used to construct
+        /// AI entity keys: (family_byte &lt;&lt; 24) | DataId. Systems have family_id 0x92
+        /// in the game data; fleet assignment uses 0x90-family keys for system lookups.
+        /// </summary>
+        public int DataId { get; set; }
+
+        /// <summary>
+        /// Strategic sector this system belongs to. From SYSTEMSD.json sector_id field.
+        /// Sectors have family_id 0x80 (20 total, IDs 20–39). The AI fleet assignment
+        /// pipeline works at sector granularity: sector entity key = (0x80 &lt;&lt; 24) | SectorId.
+        /// </summary>
+        public int SectorId { get; set; }
+
         // Child Nodes
         public List<Planet> Planets { get; set; } = new List<Planet>();
 
