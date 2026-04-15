@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, sys);
 
-            system = new ResearchSystem();
+            system = new ResearchSystem(game);
         }
 
         private Building CreateShipyard(string id)
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(shipyard, planet);
 
             int before = faction.ResearchCapacity[ManufacturingType.Ship];
-            system.ProcessTick(game);
+            system.ProcessTick();
             int after = faction.ResearchCapacity[ManufacturingType.Ship];
 
             Assert.AreEqual(1, after - before, "One idle shipyard should add 1 capacity per tick");
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateShipyard("SY2"), planet);
             game.AttachNode(CreateShipyard("SY3"), planet);
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(3, faction.ResearchCapacity[ManufacturingType.Ship]);
         }
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Systems
             };
             planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Systems
             shipyard.ManufacturingStatus = ManufacturingStatus.Building;
             game.AttachNode(shipyard, planet);
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Systems
             shipyard.Movement = new MovementState();
             game.AttachNode(shipyard, planet);
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
             Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Building]);
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
             Assert.AreEqual(
@@ -188,7 +188,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 12;
 
-            List<GameResult> results = system.ProcessTick(game);
+            List<GameResult> results = system.ProcessTick();
 
             TechnologyUnlockedResult result = results
                 .OfType<TechnologyUnlockedResult>()
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Systems
             // Enough to unlock both: 12 + 24 = 36
             faction.ResearchCapacity[ManufacturingType.Ship] = 40;
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(2, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
             Assert.AreEqual(
@@ -223,7 +223,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.ResearchCapacity[ManufacturingType.Ship] = 5;
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(0, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
             Assert.AreEqual(5, faction.ResearchCapacity[ManufacturingType.Ship]);
@@ -236,7 +236,7 @@ namespace Rebellion.Tests.Systems
             faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 1);
             faction.ResearchCapacity[ManufacturingType.Ship] = 9999;
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(
                 1,
@@ -254,7 +254,7 @@ namespace Rebellion.Tests.Systems
             // Run 12 ticks with just the idle facility (+1 per tick = 12 total → unlock Frigate)
             for (int i = 0; i < 12; i++)
             {
-                system.ProcessTick(game);
+                system.ProcessTick();
             }
 
             Assert.AreEqual(
@@ -296,7 +296,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empSy2, empirePlanet);
             game.AttachNode(empSy3, empirePlanet);
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(1, faction.ResearchCapacity[ManufacturingType.Ship]);
             Assert.AreEqual(3, empire.ResearchCapacity[ManufacturingType.Ship]);
@@ -336,7 +336,7 @@ namespace Rebellion.Tests.Systems
             // Set capacity to meet its difficulty
             faction.ResearchCapacity[type] = target.GetResearchDifficulty();
 
-            system.ProcessTick(game);
+            system.ProcessTick();
 
             Assert.AreEqual(target.GetResearchOrder(), faction.GetHighestUnlockedOrder(type));
 

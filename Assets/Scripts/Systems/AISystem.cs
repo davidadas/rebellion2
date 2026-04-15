@@ -102,18 +102,12 @@ namespace Rebellion.Systems
                     !_missionManager.CanCreateMission(
                         MissionType.SubdueUprising,
                         faction.InstanceID,
-                        planet,
-                        _randomProvider
+                        planet
                     )
                 )
                     continue;
 
-                _missionManager.InitiateMission(
-                    MissionType.SubdueUprising,
-                    leader,
-                    planet,
-                    _randomProvider
-                );
+                _missionManager.InitiateMission(MissionType.SubdueUprising, leader, planet);
             }
         }
 
@@ -683,8 +677,7 @@ namespace Rebellion.Systems
                             !_missionManager.CanCreateMission(
                                 missionType.Value,
                                 faction.InstanceID,
-                                friendlyTarget,
-                                _randomProvider
+                                friendlyTarget
                             )
                         )
                             continue;
@@ -692,12 +685,7 @@ namespace Rebellion.Systems
                         GameLogger.Log(
                             $"Sending {officer.GetDisplayName()} on {missionType} mission to {friendlyTarget.GetDisplayName()}."
                         );
-                        _missionManager.InitiateMission(
-                            missionType.Value,
-                            officer,
-                            friendlyTarget,
-                            _randomProvider
-                        );
+                        _missionManager.InitiateMission(missionType.Value, officer, friendlyTarget);
                         continue;
                     }
                 }
@@ -720,7 +708,6 @@ namespace Rebellion.Systems
                         enemySelection.Value.Type,
                         faction.InstanceID,
                         enemyTarget,
-                        _randomProvider,
                         enemySelection.Value.TargetOfficer
                     )
                 )
@@ -733,7 +720,6 @@ namespace Rebellion.Systems
                     enemySelection.Value.Type,
                     officer,
                     enemyTarget,
-                    _randomProvider,
                     enemySelection.Value.TargetOfficer
                 );
             }

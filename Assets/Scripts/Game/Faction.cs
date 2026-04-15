@@ -165,6 +165,8 @@ namespace Rebellion.Game
         /// Returns technologies unlocked for a specific manufacturing type.
         /// A technology is unlocked when its ResearchOrder &lt;= UnlockedResearchOrders[type].
         /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to query.</param>
+        /// <returns>Unlocked technologies for the given type.</returns>
         public List<Technology> GetUnlockedTechnologies(ManufacturingType manufacturingType)
         {
             if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
@@ -178,6 +180,8 @@ namespace Rebellion.Game
         /// Returns the next technology to be researched for a manufacturing type,
         /// or null if all technologies are unlocked.
         /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to query.</param>
+        /// <returns>The next technology to research, or null if all are unlocked.</returns>
         public Technology GetCurrentResearchTarget(ManufacturingType manufacturingType)
         {
             if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
@@ -190,6 +194,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the highest unlocked research order for a specific manufacturing type.
         /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to query.</param>
+        /// <returns>The highest unlocked research order.</returns>
         public int GetHighestUnlockedOrder(ManufacturingType manufacturingType)
         {
             return UnlockedResearchOrders[manufacturingType];
@@ -198,6 +204,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Sets the highest unlocked research order for a specific manufacturing type.
         /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to update.</param>
+        /// <param name="order">The new highest unlocked research order.</param>
         public void SetHighestUnlockedOrder(ManufacturingType manufacturingType, int order)
         {
             UnlockedResearchOrders[manufacturingType] = order;
@@ -217,16 +225,19 @@ namespace Rebellion.Game
         /// <summary>
         /// Gets the total energy capacity across all owned planets.
         /// </summary>
+        /// <returns>The total energy capacity.</returns>
         public int GetTotalEnergyCapacity() => SumPlanetaryResources(p => p.GetEnergyCapacity());
 
         /// <summary>
         /// Gets the total energy used by facilities across all owned planets.
         /// </summary>
+        /// <returns>The total energy used.</returns>
         public int GetTotalEnergyUsed() => SumPlanetaryResources(p => p.GetEnergyUsed());
 
         /// <summary>
         /// Gets the total available energy across all owned planets.
         /// </summary>
+        /// <returns>The total available energy.</returns>
         public int GetTotalAvailableEnergy() => SumPlanetaryResources(p => p.GetAvailableEnergy());
 
         /// <summary>
@@ -345,25 +356,29 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the total maintenance cost of all completed units and construction cost of all
-        /// units currently being built.
+        /// Returns all owned entities that implement IManufacturable.
         /// </summary>
-        /// <returns>The summed cost across all owned manufacturable entities.</returns>
-        public int GetTotalUnitCost()
+        public List<IManufacturable> GetAllOwnedManufacturables()
         {
             return _ownedEntities
                 .Where(kvp => typeof(IManufacturable).IsAssignableFrom(kvp.Key))
                 .SelectMany(kvp => kvp.Value)
                 .OfType<IManufacturable>()
-                .Sum(manufacturable =>
-                {
-                    if (manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building)
-                    {
-                        return manufacturable.GetMaintenanceCost();
-                    }
+                .ToList();
+        }
 
-                    return manufacturable.GetConstructionCost();
-                });
+        /// <summary>
+        /// Returns the total maintenance cost of all completed units and construction cost of all
+        /// units currently being built.
+        /// </summary>
+        public int GetTotalUnitCost()
+        {
+            return GetAllOwnedManufacturables()
+                .Sum(m =>
+                    m.GetManufacturingStatus() != ManufacturingStatus.Building
+                        ? m.GetMaintenanceCost()
+                        : m.GetConstructionCost()
+                );
         }
 
         /// <summary>
@@ -460,6 +475,7 @@ namespace Rebellion.Game
         /// Rebuilds ResearchQueue from the given templates.
         /// Groups by ManufacturingType, sorts by ResearchOrder.
         /// </summary>
+        /// <param name="templates">The manufacturable templates to build queues from.</param>
         public void RebuildResearchQueues(IManufacturable[] templates)
         {
             ResearchQueue.Clear();

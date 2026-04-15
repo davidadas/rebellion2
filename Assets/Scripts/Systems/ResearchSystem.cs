@@ -10,18 +10,29 @@ namespace Rebellion.Systems
     /// </summary>
     public class ResearchSystem
     {
+        private readonly GameRoot _game;
+
+        /// <summary>
+        /// Creates a new ResearchSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        public ResearchSystem(GameRoot game)
+        {
+            _game = game;
+        }
+
         /// <summary>
         /// Processes research for the current tick across all factions.
         /// </summary>
-        public List<GameResult> ProcessTick(GameRoot game)
+        /// <returns>Any technology unlock results generated this tick.</returns>
+        public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            List<Faction> factions = game.GetFactions();
 
-            foreach (Faction faction in factions)
+            foreach (Faction faction in _game.GetFactions())
             {
                 AccumulateIdleFacilityCapacity(faction);
-                CheckUnitUnlock(faction, game, results);
+                CheckUnitUnlock(faction, results);
             }
 
             return results;
@@ -30,6 +41,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Each idle facility contributes +1 research capacity per tick.
         /// </summary>
+        /// <param name="faction">The faction to accumulate research capacity for.</param>
         private void AccumulateIdleFacilityCapacity(Faction faction)
         {
             List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
@@ -51,7 +63,9 @@ namespace Rebellion.Systems
         /// Unlocks the next technology in the queue when accumulated capacity
         /// meets the target's ResearchDifficulty. Loops to handle carry-over.
         /// </summary>
-        private void CheckUnitUnlock(Faction faction, GameRoot game, List<GameResult> results)
+        /// <param name="faction">The faction to check unlocks for.</param>
+        /// <param name="results">Collection to append any unlock results to.</param>
+        private void CheckUnitUnlock(Faction faction, List<GameResult> results)
         {
             foreach (ManufacturingType type in ResearchableTypes)
             {
@@ -72,7 +86,7 @@ namespace Rebellion.Systems
                     results.Add(
                         new TechnologyUnlockedResult
                         {
-                            Tick = game.CurrentTick,
+                            Tick = _game.CurrentTick,
                             Faction = faction,
                             ResearchType = type,
                             TechnologyName = techName,

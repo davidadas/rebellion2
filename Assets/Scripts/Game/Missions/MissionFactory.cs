@@ -124,6 +124,9 @@ public class MissionFactory
     /// <summary>
     /// Dispatches to the appropriate mission subclass's TryCreate based on mission type.
     /// </summary>
+    /// <param name="missionType">The type of mission to create.</param>
+    /// <param name="ctx">Context containing participants, target, and owner info.</param>
+    /// <returns>The created mission, or null if creation fails.</returns>
     private static Mission TryCreateByType(MissionType missionType, MissionContext ctx)
     {
         return missionType switch

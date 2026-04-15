@@ -331,6 +331,9 @@ namespace Rebellion.Util.Extensions
         /// Handles both directly-attributed fields and compiler-generated backing fields
         /// whose associated auto-property has [CloneIgnore].
         /// </summary>
+        /// <param name="field">The field to check for clone-ignore attributes.</param>
+        /// <param name="declaringType">The type that declares the field, used to resolve backing-field properties.</param>
+        /// <returns>True if the field should be skipped during cloning.</returns>
         private static bool IsCloneIgnored(FieldInfo field, Type declaringType)
         {
             if (Attribute.IsDefined(field, typeof(CloneIgnoreAttribute)))

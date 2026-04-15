@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -8,27 +9,46 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Enforces maintenance capacity limits each tick.
-    /// When a faction's total unit maintenance cost exceeds its maintenance capacity
-    /// (refined materials output), one random eligible unit is scrapped per tick.
-    ///
-    /// - Maintenance capacity = min(mines, resources, refineries) * refinement multiplier
-    /// - Eligible scrap targets: Regiments, Starfighters, CapitalShips, Buildings
-    /// - One unit scrapped per tick per faction while in shortfall
+    /// When a faction's unit maintenance cost exceeds its refined materials output,
+    /// one random eligible unit is scrapped per tick until balance is restored.
     /// </summary>
     public class MaintenanceSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
 
-        public MaintenanceSystem(GameRoot game)
+        /// <summary>
+        /// Creates a new MaintenanceSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for scrap target selection.</param>
+        public MaintenanceSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
+            _provider = provider;
         }
 
         /// <summary>
-        /// Returns the maintenance capacity for a faction.
-        /// This is the total refined output: min(mines, resources, refineries) * multiplier.
+        /// Checks each faction for maintenance shortfall and scraps one random
+        /// eligible unit per faction per tick if over capacity.
         /// </summary>
+        /// <returns>Any maintenance shortfall or auto-scrap results.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+
+            foreach (Faction faction in _game.GetFactions())
+                EnforceMaintenanceLimit(faction, results);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Returns the maintenance capacity (refined output) for a faction.
+        /// </summary>
+        /// <param name="faction">The faction to calculate capacity for.</param>
+        /// <returns>The faction's total refined material output.</returns>
         public int GetMaintenanceCapacity(Faction faction)
         {
             int rawCount = faction.GetTotalAvailableMaterialsRaw();
@@ -37,73 +57,60 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the total maintenance required by all owned units.
+        /// Returns the total maintenance cost of all owned units.
         /// </summary>
+        /// <param name="faction">The faction to calculate maintenance for.</param>
+        /// <returns>The total maintenance cost of all owned units.</returns>
         public int GetMaintenanceRequired(Faction faction)
         {
             return faction.GetTotalUnitCost();
         }
 
         /// <summary>
-        /// Checks each faction for maintenance shortfall and scraps one random
-        /// eligible unit per faction per tick if over capacity.
+        /// Checks a single faction for maintenance shortfall, notifies on state change,
+        /// and scraps one random unit if over capacity.
         /// </summary>
-        public List<GameResult> ProcessTick(IRandomNumberProvider provider)
+        private void EnforceMaintenanceLimit(Faction faction, List<GameResult> results)
         {
-            List<GameResult> results = new List<GameResult>();
+            int capacity = GetMaintenanceCapacity(faction);
+            int required = GetMaintenanceRequired(faction);
+            bool inShortfall = required > capacity;
 
-            foreach (Faction faction in _game.GetFactions())
+            // Notify on first tick of shortfall; clear when recovered.
+            if (inShortfall && _shortfallFactions.Add(faction.InstanceID))
             {
-                int capacity = GetMaintenanceCapacity(faction);
-                int required = GetMaintenanceRequired(faction);
-                bool inShortfall = required > capacity;
-
-                if (inShortfall && !_shortfallFactions.Contains(faction.InstanceID))
-                {
-                    _shortfallFactions.Add(faction.InstanceID);
-                    results.Add(
-                        new MaintenanceRequiredResult
-                        {
-                            Faction = faction,
-                            Amount = required - capacity,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
-                }
-                else if (!inShortfall)
-                {
-                    _shortfallFactions.Remove(faction.InstanceID);
-                }
-
-                if (inShortfall)
-                {
-                    GameObjectAutoscrappedResult result = ScrapRandomUnit(faction, provider);
-                    if (result != null)
-                        results.Add(result);
-                }
+                results.Add(
+                    new MaintenanceRequiredResult
+                    {
+                        Faction = faction,
+                        Amount = required - capacity,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+            else if (!inShortfall)
+            {
+                _shortfallFactions.Remove(faction.InstanceID);
+                return;
             }
 
-            return results;
+            // Scrap one random unit while over capacity.
+            GameObjectAutoscrappedResult result = ScrapRandomUnit(faction);
+            if (result != null)
+                results.Add(result);
         }
 
         /// <summary>
         /// Scraps one random eligible unit from the faction.
-        /// Eligible types match the original game's troopsd-to-deffacsd range:
-        /// Regiments, Starfighters, CapitalShips (not in transit), and Buildings.
-        /// Units currently under construction are excluded.
         /// </summary>
-        private GameObjectAutoscrappedResult ScrapRandomUnit(
-            Faction faction,
-            IRandomNumberProvider provider
-        )
+        private GameObjectAutoscrappedResult ScrapRandomUnit(Faction faction)
         {
-            List<ISceneNode> candidates = GetScrapCandidates(faction);
+            List<IManufacturable> candidates = GetScrapCandidates(faction);
 
             if (candidates.Count == 0)
                 return null;
 
-            int index = provider.NextInt(0, candidates.Count);
-            ISceneNode victim = candidates[index];
+            IManufacturable victim = candidates[_provider.NextInt(0, candidates.Count)];
             Planet location = victim.GetParentOfType<Planet>();
 
             // Track parent fleet before detaching — may need cleanup if last ship removed.
@@ -111,11 +118,8 @@ namespace Rebellion.Systems
 
             _game.DetachNode(victim);
 
-            // Clean up empty fleet after scrapping last capital ship.
             if (parentFleet?.CapitalShips.Count == 0)
-            {
                 _game.DetachNode(parentFleet);
-            }
 
             GameLogger.Log(
                 $"Maintenance shortfall: scrapped {victim.GetDisplayName()} from {faction.DisplayName}"
@@ -130,50 +134,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns all units eligible for maintenance auto-scrap.
-        /// Excludes units under construction or in transit.
+        /// Returns all completed, stationary units eligible for auto-scrap.
         /// </summary>
-        private List<ISceneNode> GetScrapCandidates(Faction faction)
+        private List<IManufacturable> GetScrapCandidates(Faction faction)
         {
-            List<ISceneNode> candidates = new List<ISceneNode>();
-
-            foreach (Regiment regiment in faction.GetOwnedUnitsByType<Regiment>())
-            {
-                if (
-                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
+            return faction
+                .GetAllOwnedManufacturables()
+                .Where(m =>
+                    m.GetManufacturingStatus() == ManufacturingStatus.Complete && m.Movement == null
                 )
-                    candidates.Add(regiment);
-            }
-
-            foreach (Starfighter fighter in faction.GetOwnedUnitsByType<Starfighter>())
-            {
-                if (
-                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                    && fighter.Movement == null
-                )
-                    candidates.Add(fighter);
-            }
-
-            foreach (CapitalShip ship in faction.GetOwnedUnitsByType<CapitalShip>())
-            {
-                if (
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                )
-                    candidates.Add(ship);
-            }
-
-            foreach (Building building in faction.GetOwnedUnitsByType<Building>())
-            {
-                if (
-                    building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && building.Movement == null
-                )
-                    candidates.Add(building);
-            }
-
-            return candidates;
+                .ToList();
         }
     }
 }

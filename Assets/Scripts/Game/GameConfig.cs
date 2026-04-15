@@ -22,6 +22,7 @@ public class GameConfig
     public CombatConfig Combat { get; set; } = new CombatConfig();
     public UprisingConfig Uprising { get; set; } = new UprisingConfig();
     public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
+    public BlockadeConfig Blockade { get; set; } = new BlockadeConfig();
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
     public ResearchConfig Research { get; set; } = new ResearchConfig();
@@ -135,15 +136,13 @@ public class GameConfig
         /// <summary>Addend to each dice roll.</summary>
         public int DiceAddend { get; set; }
 
-        /// <summary>
-        /// UPRIS1 table: maps combined uprising score to result.
-        /// </summary>
-        public Dictionary<int, int> Upris1Table { get; set; } = new Dictionary<int, int>();
+        /// <summary>Maps uprising score to a property damage consequence code.</summary>
+        public Dictionary<int, int> PrimaryConsequenceTable { get; set; } =
+            new Dictionary<int, int>();
 
-        /// <summary>
-        /// UPRIS2 table: maps combined uprising score to severity.
-        /// </summary>
-        public Dictionary<int, int> Upris2Table { get; set; } = new Dictionary<int, int>();
+        /// <summary>Maps uprising score to a personnel consequence code.</summary>
+        public Dictionary<int, int> SecondaryConsequenceTable { get; set; } =
+            new Dictionary<int, int>();
 
         /// <summary>
         /// Popular support shift applied to the controlling faction each uprising resolution tick.
@@ -185,6 +184,9 @@ public class GameConfig
 
         /// <summary>Penalty per (adjusted) hostile troop.</summary>
         public int TroopPenalty { get; set; }
+
+        /// <summary>Popular support threshold above which a neutral planet transfers to the faction.</summary>
+        public int OwnershipTransferThreshold { get; set; }
 
         /// <summary>Support shift when blockading fleet matches popular support side.</summary>
         public int BlockadeMatchShift { get; set; }
@@ -354,15 +356,21 @@ public class GameConfig
     }
 
     /// <summary>
-    /// Victory system configuration.
-    /// Controls when victory conditions can trigger.
+    /// Blockade system configuration.
+    /// Controls evacuation losses when units depart blockaded planets.
     /// </summary>
     [PersistableObject]
-    public class VictoryConfig
+    public class BlockadeConfig
     {
-        /// <summary>Minimum tick before victory can trigger (default: 200)</summary>
-        public int MinVictoryTick { get; set; }
+        /// <summary>Percent chance each regiment is destroyed when evacuating through a blockade.</summary>
+        public int EvacuationLossPercent { get; set; }
     }
+
+    /// <summary>
+    /// Victory system configuration.
+    /// </summary>
+    [PersistableObject]
+    public class VictoryConfig { }
 
     /// <summary>
     /// Jedi / Force training system configuration.
@@ -517,6 +525,8 @@ public class GameConfig
         /// <summary>
         /// Returns the tick config for the given mission config key, or null.
         /// </summary>
+        /// <param name="key">Mission config key name (e.g. "Diplomacy").</param>
+        /// <returns>The matching MissionTickConfig, or null.</returns>
         public MissionTickConfig GetTickConfig(string key)
         {
             return key switch

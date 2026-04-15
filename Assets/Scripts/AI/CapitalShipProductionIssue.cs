@@ -183,6 +183,7 @@ public class CapitalShipProductionIssue
     /// system and faction pointers are non-null. In our code these are readonly
     /// constructor args that are always non-null.
     /// </summary>
+    /// <returns>True if all 4 stages succeed (AND-chained).</returns>
     public bool Execute()
     {
         if (_system == null || _faction == null)
@@ -213,6 +214,7 @@ public class CapitalShipProductionIssue
     /// and sets enableFinalizePackage (this+0x28) which gates finalize support shifts.
     /// If enableMinorChars is set (variant 220), processes minor characters.
     /// </summary>
+    /// <returns>True if ships in progress were found, or if setup is disabled.</returns>
     private bool ExecuteSetup()
     {
         if (!_enableSetup)
@@ -265,6 +267,7 @@ public class CapitalShipProductionIssue
     /// Remaining pool values persist on the ship for the next tick.
     /// Ship completes when ProductionCapacityUsed >= ProductionCapacity.
     /// </summary>
+    /// <returns>True if any ship was processed, or if contribution is disabled.</returns>
     private bool ExecuteContribution()
     {
         if (!_enableContribution)
@@ -358,6 +361,7 @@ public class CapitalShipProductionIssue
     ///   3. LNR pool → remaining capacity (ProductionCapacity - ProductionCapacityUsed)
     /// Remaining pools are written back to the ship for next tick.
     /// </summary>
+    /// <param name="ship">The ship whose KDY/LNR pools are consumed.</param>
     private void ApplyContributions(CapitalShip ship)
     {
         int kdyPool = ship.KdyPool;
@@ -401,6 +405,8 @@ public class CapitalShipProductionIssue
     /// If available >= required: pool -= required, required = 0
     /// Else: required -= available, pool = 0
     /// </summary>
+    /// <param name="availablePool">Pool to consume from; reduced by amount consumed.</param>
+    /// <param name="requiredAmount">Requirement to fill; reduced by amount consumed.</param>
     private static void ConsumeFromPool(ref int availablePool, ref int requiredAmount)
     {
         if (requiredAmount < availablePool)
@@ -421,6 +427,7 @@ public class CapitalShipProductionIssue
     /// returns the FIRST matching character, then reads vtable offset 500 (leadership skill).
     /// Called once per facility but always returns the same character since list order is stable.
     /// </summary>
+    /// <returns>Leadership skill of the first matching officer, or 0 if none found.</returns>
     private int GetPersonnelSkill()
     {
         string factionId = _faction.InstanceID;
@@ -445,6 +452,7 @@ public class CapitalShipProductionIssue
     /// Sums fleet assault strength vs enemy defensive values, then applies
     /// probabilistic strikes against enemy targets at the system.
     /// </summary>
+    /// <returns>True always (assault failures don't break the AND-chain).</returns>
     private bool ExecuteAssault()
     {
         if (!_enableAssault)
@@ -593,6 +601,7 @@ public class CapitalShipProductionIssue
     ///
     /// Our manufacturing queue handles fleet cleanup via ManufacturingSystem completion.
     /// </summary>
+    /// <returns>True always (finalize currently has no failure path).</returns>
     private bool ExecuteFinalize()
     {
         if (!_enableFinalize)
@@ -611,6 +620,7 @@ public class CapitalShipProductionIssue
     /// Enumerates all capital ships under construction at this system.
     /// Filters to ships owned by this faction that have not completed capacity.
     /// </summary>
+    /// <returns>Ships owned by this faction with incomplete production capacity.</returns>
     private List<CapitalShip> EnumerateShipsInProgress()
     {
         string factionId = _faction.InstanceID;
@@ -640,6 +650,7 @@ public class CapitalShipProductionIssue
     /// Builds the strike target list for assault evaluation (FUN_0058b1e0).
     /// 4 target types: enemy troops, enemy fighters, enemy system energy, enemy allocated energy.
     /// </summary>
+    /// <returns>All enemy troops, fighters, and energy targets at this system.</returns>
     private List<StrikeTarget> EnumerateStrikeTargets()
     {
         string factionId = _faction.InstanceID;
@@ -708,6 +719,7 @@ public class CapitalShipProductionIssue
     /// Troops/fighters: removed from the scene graph via FUN_0058b4b0.
     /// Energy: decremented by 1 via FUN_0058b560.
     /// </summary>
+    /// <param name="target">The strike target to destroy or decrement.</param>
     private void ApplyStrike(StrikeTarget target)
     {
         switch (target.Type)

@@ -13,6 +13,8 @@ namespace Rebellion.Util.Extensions
         /// <summary>
         /// Returns the planet position if idle, or the current transit position if in transit.
         /// </summary>
+        /// <param name="movable">The movable entity to get the position of.</param>
+        /// <returns>The current position as a Point.</returns>
         public static Point GetPosition(this IMovable movable)
         {
             if (movable.Movement == null)
@@ -26,6 +28,8 @@ namespace Rebellion.Util.Extensions
         /// <summary>
         /// Sets the current transit position. Only valid while a MovementState is active.
         /// </summary>
+        /// <param name="movable">The movable entity to update.</param>
+        /// <param name="position">The new transit position to assign.</param>
         public static void SetPosition(this IMovable movable, Point position)
         {
             if (movable.Movement == null)

@@ -93,18 +93,17 @@ public class DiplomacyMission : Mission
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// Increments popular support and emits a PlanetOwnershipChangedResult when support
-    /// crosses 60 and the planet is not yet owned by this faction.
+    /// Increments popular support on the target planet.
+    /// Ownership transfer is handled by PlanetaryControlSystem when support crosses the threshold.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <param name="provider">RNG provider (unused for diplomacy).</param>
-    /// <returns>A PlanetOwnershipChangedResult if ownership transfers, otherwise an empty list.</returns>
+    /// <returns>Always empty; diplomacy only adjusts support.</returns>
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)
             return new List<GameResult>();
-        List<GameResult> results = new List<GameResult>();
 
         int currentSupport = planet.GetPopularSupport(OwnerInstanceID);
         int increment = 1;
@@ -127,26 +126,7 @@ public class DiplomacyMission : Mission
         int newSupport = Math.Min(100, currentSupport + increment);
         game.SetPlanetPopularSupport(planet, OwnerInstanceID, newSupport);
 
-        // Emit an ownership-change result when support crosses 60 and planet isn't already ours.
-        // MissionSystem will call OwnershipSystem.TransferPlanet to action the transfer.
-        string previousOwner = planet.GetOwnerInstanceID();
-        if (planet.GetPopularSupport(OwnerInstanceID) > 60 && previousOwner != OwnerInstanceID)
-        {
-            GameLogger.Log($"Planet {planet.InstanceID} ownership changed to {OwnerInstanceID}.");
-            results.Add(
-                new PlanetOwnershipChangedResult
-                {
-                    Planet = planet,
-                    PreviousOwner = string.IsNullOrEmpty(previousOwner)
-                        ? null
-                        : game.GetFactionByOwnerInstanceID(previousOwner),
-                    NewOwner = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
-                    Tick = game.CurrentTick,
-                }
-            );
-        }
-
-        return results;
+        return new List<GameResult>();
     }
 
     /// <summary>

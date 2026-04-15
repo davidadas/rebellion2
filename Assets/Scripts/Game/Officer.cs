@@ -186,6 +186,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the research skill value for the given manufacturing type.
         /// </summary>
+        /// <param name="type">The manufacturing type to query.</param>
+        /// <returns>The officer's research skill value for that type.</returns>
         public int GetResearchSkill(ManufacturingType type)
         {
             return type switch
@@ -200,6 +202,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Increments the research skill for the given manufacturing type by the specified amount.
         /// </summary>
+        /// <param name="type">The manufacturing type whose skill to increment.</param>
+        /// <param name="amount">Amount to add (default 1).</param>
         public void IncrementResearchSkill(ManufacturingType type, int amount = 1)
         {
             switch (type)
@@ -223,6 +227,14 @@ namespace Rebellion.Game
         public bool IsOnMission()
         {
             return GetParent() is Mission;
+        }
+
+        /// <summary>
+        /// Returns whether the officer is a Jedi whose Force potential has not yet been revealed.
+        /// </summary>
+        public bool IsUndiscoveredForceUser()
+        {
+            return IsJedi && !IsForceEligible && !IsCaptured && !IsKilled && !IsOnMission();
         }
 
         /// <summary>

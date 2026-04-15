@@ -8,26 +8,31 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Periodically decays per-planet energy and raw materials, suspends facilities,
-    /// and applies a random resource walk. Faithfully reproduces the original game's
-    /// FUN_00510b20_rebalance_system_resources_and_update_facilities pipeline.
+    /// and applies a random resource walk.
     ///
     /// Two independent timers per faction:
-    /// 1. Rebalance timer (PARAM_7717/7718): picks a random planet, applies probabilistic
-    ///    decay to energy + raw materials, clamps raw_materials ≤ energy, rolls 10%
-    ///    suspension chance on each active facility.
-    /// 2. Resource walk timer (PARAM_7719/7720): picks a random planet, randomly adjusts
-    ///    energy or raw materials by ±1 using the RESRC_TABLE distribution.
+    /// 1. Rebalance timer: picks a random planet, applies probabilistic decay to
+    ///    energy and raw materials, and rolls suspension chance on active facilities.
+    /// 2. Resource walk timer: picks a random planet and randomly adjusts
+    ///    energy or raw materials by ±1.
     /// </summary>
     public class ResourceRebalanceSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
         private readonly Dictionary<string, int> _nextRebalanceTick = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _nextResourceWalkTick =
             new Dictionary<string, int>();
 
+        /// <summary>
+        /// Creates a new ResourceRebalanceSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for timer offsets and resource rolls.</param>
         public ResourceRebalanceSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
+            _provider = provider;
 
             // Arm initial timers for each faction
             GameConfig.ResourceRebalanceConfig config = _game.GetConfig().ResourceRebalance;
@@ -47,7 +52,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Checks each faction's timers and fires rebalance/walk when due.
         /// </summary>
-        public void ProcessTick(IRandomNumberProvider provider)
+        public void ProcessTick()
         {
             GameConfig.ResourceRebalanceConfig config = _game.GetConfig().ResourceRebalance;
 
@@ -61,11 +66,11 @@ namespace Rebellion.Systems
                     && _game.CurrentTick >= rebalTick
                 )
                 {
-                    RebalanceRandomPlanet(faction, config, provider);
+                    RebalanceRandomPlanet(faction, config);
                     _nextRebalanceTick[fid] =
                         _game.CurrentTick
                         + config.RebalanceTimerBase
-                        + provider.NextInt(0, config.RebalanceTimerSpread);
+                        + _provider.NextInt(0, config.RebalanceTimerSpread);
                 }
 
                 // Resource walk timer
@@ -74,23 +79,21 @@ namespace Rebellion.Systems
                     && _game.CurrentTick >= walkTick
                 )
                 {
-                    ResourceWalkRandomPlanet(faction, config, provider);
+                    ResourceWalkRandomPlanet(faction, config);
                     _nextResourceWalkTick[fid] =
                         _game.CurrentTick
                         + config.ResourceWalkTimerBase
-                        + provider.NextInt(0, config.ResourceWalkTimerSpread);
+                        + _provider.NextInt(0, config.ResourceWalkTimerSpread);
                 }
             }
         }
 
         /// <summary>
         /// Picks one random owned planet and applies resource decay + facility suspension.
-        /// Reproduces FUN_00510b20.
         /// </summary>
         private void RebalanceRandomPlanet(
             Faction faction,
-            GameConfig.ResourceRebalanceConfig config,
-            IRandomNumberProvider provider
+            GameConfig.ResourceRebalanceConfig config
         )
         {
             List<Planet> planets = faction
@@ -101,25 +104,16 @@ namespace Rebellion.Systems
             if (planets.Count == 0)
                 return;
 
-            Planet target = planets[provider.NextInt(0, planets.Count)];
+            Planet target = planets[_provider.NextInt(0, planets.Count)];
 
-            ApplyResourceDecay(target, config, provider);
+            ApplyResourceDecay(target, config);
         }
 
         /// <summary>
-        /// Probabilistic decay of raw materials and energy.
-        /// Reproduces FUN_00558590_apply_resource_rebalance_losses exactly.
-        ///
-        /// For each unit of each resource, probability of loss =
-        /// (remaining_combined * decayMultiplier) out of 100.
-        /// At least 1 unit is always lost. After decay, raw materials
-        /// are clamped to not exceed energy.
+        /// Probabilistic decay of raw materials and energy. At least 1 unit is always
+        /// lost. After decay, raw materials are clamped to not exceed energy.
         /// </summary>
-        private void ApplyResourceDecay(
-            Planet planet,
-            GameConfig.ResourceRebalanceConfig config,
-            IRandomNumberProvider provider
-        )
+        private void ApplyResourceDecay(Planet planet, GameConfig.ResourceRebalanceConfig config)
         {
             int rawMaterials = planet.NumRawResourceNodes;
             int energy = planet.EnergyCapacity;
@@ -135,7 +129,7 @@ namespace Rebellion.Systems
                 {
                     int remaining = (energy - rawLosses - energyLosses) + rawMaterials;
                     int probability = remaining * config.DecayMultiplier;
-                    if (provider.NextInt(0, 100) < probability)
+                    if (_provider.NextInt(0, 100) < probability)
                         rawLosses++;
                 }
 
@@ -144,7 +138,7 @@ namespace Rebellion.Systems
                 {
                     int remaining = (rawMaterials - rawLosses - energyLosses) + energy;
                     int probability = remaining * config.DecayMultiplier;
-                    if (provider.NextInt(0, 100) < probability)
+                    if (_provider.NextInt(0, 100) < probability)
                         energyLosses++;
                 }
             }
@@ -181,24 +175,20 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Picks one random planet and applies a ±1 adjustment to energy or raw materials.
-        /// Reproduces the RESRC_TABLE random walk:
-        ///   0-24: decrement raw materials (if > 0 and mines exist)
-        ///   25-49: decrement energy (if > 0 and facilities exist)
-        ///   50-74: increment raw materials (if below max and below energy)
-        ///   75-99: increment energy (if below max)
+        /// Each quartile of a 0-99 roll maps to: decrement raw materials, decrement energy,
+        /// increment raw materials, or increment energy (with capacity/clamp guards).
         /// </summary>
         private void ResourceWalkRandomPlanet(
             Faction faction,
-            GameConfig.ResourceRebalanceConfig config,
-            IRandomNumberProvider provider
+            GameConfig.ResourceRebalanceConfig config
         )
         {
             List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
             if (planets.Count == 0)
                 return;
 
-            Planet target = planets[provider.NextInt(0, planets.Count)];
-            int roll = provider.NextInt(0, 100);
+            Planet target = planets[_provider.NextInt(0, planets.Count)];
+            int roll = _provider.NextInt(0, 100);
 
             if (roll < 25)
             {

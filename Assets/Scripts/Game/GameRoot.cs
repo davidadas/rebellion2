@@ -586,6 +586,7 @@ namespace Rebellion.Game
         /// Initializes the galaxy map by registering nodes and setting parents.
         /// </summary>
         /// <param name="galaxy">The galaxy map to initialize.</param>
+        /// <returns>The initialized GalaxyMap.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
             galaxy.Traverse(

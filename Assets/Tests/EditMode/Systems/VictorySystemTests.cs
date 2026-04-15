@@ -57,17 +57,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BeforeGracePeriod_ReturnsEmpty()
-        {
-            (GameRoot game, _, _, _, VictorySystem system) = BuildScene();
-            game.CurrentTick = 0;
-
-            List<GameResult> results = system.ProcessTick();
-
-            Assert.AreEqual(0, results.Count, "Grace period should suppress victory checks");
-        }
-
-        [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
             (GameRoot game, Faction empire, _, _, VictorySystem system) = BuildScene();

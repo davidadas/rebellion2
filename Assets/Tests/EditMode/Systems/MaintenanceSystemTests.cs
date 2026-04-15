@@ -88,10 +88,10 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(regiment, planet);
 
-            MaintenanceSystem system2 = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem system2 = new MaintenanceSystem(game, rng);
 
-            system2.ProcessTick(rng);
+            system2.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
@@ -130,11 +130,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment1, planet);
             game.AttachNode(regiment2, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             // RNG returns 0, so first candidate is selected
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            List<GameResult> results = maintenanceSystem.ProcessTick(rng);
+            List<GameResult> results = maintenanceSystem.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
@@ -181,10 +181,10 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment1, planet);
             game.AttachNode(regiment2, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            maintenanceSystem.ProcessTick(rng);
+            maintenanceSystem.ProcessTick();
 
             int remaining =
                 (game.GetSceneNodeByInstanceID<Regiment>("r1") != null ? 1 : 0)
@@ -216,10 +216,10 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(regiment, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            maintenanceSystem.ProcessTick(rng);
+            maintenanceSystem.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
@@ -258,10 +258,10 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(ship, fleet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            maintenanceSystem.ProcessTick(rng);
+            maintenanceSystem.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
         }
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateMine("mine2", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
 
             int capacity = maintenanceSystem.GetMaintenanceCapacity(empire);
 
@@ -313,10 +313,10 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(defense, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game);
             FixedRNG rng = new FixedRNG();
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            maintenanceSystem.ProcessTick(rng);
+            maintenanceSystem.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
         }

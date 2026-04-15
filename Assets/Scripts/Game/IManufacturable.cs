@@ -93,6 +93,7 @@ namespace Rebellion.Game
         /// Returns the position in the research unlock sequence for this unit's manufacturing type.
         /// 0 = available at game start without research.
         /// </summary>
+        /// <returns>Research unlock order index (0 = no research needed).</returns>
         public int GetResearchOrder()
         {
             return ResearchOrder;
@@ -101,6 +102,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns the accumulated research capacity cost required to unlock this unit.
         /// </summary>
+        /// <returns>Total research capacity cost to unlock.</returns>
         public int GetResearchDifficulty()
         {
             return ResearchDifficulty;

@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Systems
 
             _movement = new MovementSystem(_game, new FogOfWarSystem(_game));
             _provider = new FixedRNG();
-            _manager = new ManufacturingSystem(_game);
+            _manager = new ManufacturingSystem(_game, _provider, _movement);
         }
 
         [Test]
@@ -76,13 +76,13 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot emptyGame = new GameRoot(config);
-            ManufacturingSystem emptyManager = new ManufacturingSystem(emptyGame);
-
-            MovementSystem emptyMovement = new MovementSystem(
+            ManufacturingSystem emptyManager = new ManufacturingSystem(
                 emptyGame,
-                new FogOfWarSystem(emptyGame)
+                new FixedRNG(),
+                new MovementSystem(emptyGame, new FogOfWarSystem(emptyGame))
             );
-            emptyManager.ProcessTick(emptyMovement, new FixedRNG());
+
+            emptyManager.ProcessTick();
 
             Assert.Pass();
         }
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.Greater(mine.ManufacturingProgress, 0);
             Assert.AreEqual(ManufacturingStatus.Building, mine.ManufacturingStatus);
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
@@ -473,7 +473,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
             Assert.AreEqual(ManufacturingStatus.Building, mine.ManufacturingStatus);
 
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
         }
@@ -493,7 +493,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Building should still be attached to planet after completion
             Assert.AreEqual(_coruscant, mine.GetParent());
@@ -564,7 +564,7 @@ namespace Rebellion.Tests.Systems
             // One tick: production = 2
             // mine1 needs 1, gets 1, completes, overflow = 1
             // mine2 gets overflow of 1
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
             Assert.AreEqual(1, mine2.ManufacturingProgress); // Got the overflow!
@@ -600,7 +600,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
 
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // mine1 completes exactly (1 == 1)
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
@@ -611,7 +611,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Building, mine2.ManufacturingStatus);
 
             // Next tick advances mine2
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.Greater(mine2.ManufacturingProgress, 0);
         }
 
@@ -646,7 +646,7 @@ namespace Rebellion.Tests.Systems
 
             // ProcessTick gives 1 progress (ceiling(1.0/10) = 1)
             // First item completes (1 >= 1), second should start
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
@@ -698,7 +698,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine3, _coruscant, ignoreCost: true);
 
             // Tick 1: mine1 completes
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
             Assert.AreEqual(
                 2,
@@ -706,7 +706,7 @@ namespace Rebellion.Tests.Systems
             );
 
             // Tick 2: mine2 completes
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
             Assert.AreEqual(
                 1,
@@ -714,7 +714,7 @@ namespace Rebellion.Tests.Systems
             );
 
             // Tick 3: mine3 completes
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
             Assert.AreEqual(
                 0,
@@ -764,7 +764,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine3, _coruscant, ignoreCost: true);
 
             // Tick 1: mine1 completes and is removed - mine2 should still process next tick
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
 
             // Tick 2: mine2 should be active (not skipped)
@@ -773,11 +773,11 @@ namespace Rebellion.Tests.Systems
             ];
             Assert.AreEqual(mine2, queueBefore[0]); // mine2 is now first
 
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
 
             // Tick 3: mine3 should complete
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(ManufacturingStatus.Complete, mine3.ManufacturingStatus);
         }
 
@@ -798,7 +798,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
 
             // First tick advances progress
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             int progressAfterTick1 = mine.ManufacturingProgress;
             Assert.Greater(progressAfterTick1, 0);
 
@@ -806,7 +806,7 @@ namespace Rebellion.Tests.Systems
             _game.DetachNode(_shipyard);
 
             // Second tick should not advance progress (no production source)
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
             Assert.AreEqual(progressAfterTick1, mine.ManufacturingProgress); // No change
         }
 
@@ -840,7 +840,7 @@ namespace Rebellion.Tests.Systems
 
             // Two production sources: shipyard (rate 10, contributes 0.1) and shipyard2
             // (rate 20, contributes 0.05). Combined rate rounds up to 1 per tick.
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Progress should be exactly 1 (production rate from two sources)
             Assert.AreEqual(1, mine.ManufacturingProgress);
@@ -865,7 +865,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Verify only one instance in scene graph
             List<Building> allBuildings = _game.GetSceneNodesByType<Building>();
@@ -897,7 +897,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Verify bidirectional relationship
             Assert.AreEqual(_coruscant, mine.GetParent()); // child → parent
@@ -919,13 +919,13 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Planet captured mid-construction
             _game.Factions.Add(new Faction { InstanceID = "REBELLION" });
             _coruscant.OwnerInstanceID = "REBELLION";
 
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Building should still belong to original producer (EMPIRE)
             Assert.AreEqual("EMPIRE", mine.OwnerInstanceID);
@@ -1005,7 +1005,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
 
             // Process one tick - zero cost should complete immediately
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // Verify completion behavior
             Assert.AreEqual(ManufacturingStatus.Complete, free.ManufacturingStatus);
@@ -1035,7 +1035,7 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
             int initialProgress = mine.ManufacturingProgress;
 
-            _manager.ProcessTick(_movement, _provider);
+            _manager.ProcessTick();
 
             // No production facilities = no progress
             Assert.AreEqual(initialProgress, mine.ManufacturingProgress);
@@ -1384,7 +1384,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
 
             Assert.AreEqual(2, fleet.CapitalShips.Count, "Ship should be in fleet.");
@@ -1412,7 +1412,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             bool result = mfg.Enqueue(planet, ship, planet, ignoreCost: true);
 
             Assert.IsFalse(
@@ -1448,7 +1448,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, newShip, existingFleet, ignoreCost: true);
 
             List<Fleet> fleets = planet.GetFleets();
@@ -1484,7 +1484,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             bool result = mfg.Enqueue(planet, newShip, planet, ignoreCost: true);
 
             Assert.IsFalse(
@@ -1521,7 +1521,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             bool result = mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
 
             Assert.IsFalse(result, "Enqueueing a capital ship with no owner should fail.");
@@ -1554,10 +1554,10 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
             Assert.Greater(ship.ManufacturingProgress, 0, "Progress should advance.");
@@ -1595,9 +1595,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
             bool inQueue = planet
@@ -1633,9 +1633,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.IsNotNull(ship.GetParentOfType<Fleet>(), "Ship should be in a fleet.");
             Assert.IsNull(ship.Movement, "No _movement needed for same-planet destination.");
@@ -1672,9 +1672,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
             Assert.IsNotNull(ship.Movement, "Ship should have _movement state for transit.");
@@ -1718,13 +1718,13 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
 
             destPlanet.OwnerInstanceID = "rebels";
 
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
             Assert.IsNull(
@@ -1772,7 +1772,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship1, fleet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, fleet, ignoreCost: true);
 
@@ -1806,7 +1806,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship1, targetFleet, ignoreCost: true);
             mfg.Enqueue(planet, ship2, targetFleet, ignoreCost: true);
 
@@ -1845,9 +1845,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.IsNotNull(fighter.Movement, "Should have _movement state for shipping.");
@@ -1886,9 +1886,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(
                 destShip,
@@ -1918,9 +1918,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(originPlanet, regiment, destPlanet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.IsNotNull(regiment.Movement, "Should have _movement state for shipping.");
@@ -1944,9 +1944,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
@@ -1991,7 +1991,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
             // Destroy the destination fleet mid-production — fighter is a child so it is deregistered too
@@ -2035,7 +2035,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, mine, destPlanet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -2074,7 +2074,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -2104,7 +2104,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, regiment, destPlanet, ignoreCost: true);
 
             Assert.AreEqual(
@@ -2148,9 +2148,9 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(originPlanet, mine, destPlanet, ignoreCost: true);
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have _movement state for shipping.");
@@ -2215,13 +2215,13 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
 
             planetB.OwnerInstanceID = "rebels";
 
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.AreEqual(
@@ -2302,13 +2302,13 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
 
             planetB.OwnerInstanceID = "rebels";
 
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.IsNotNull(
@@ -2351,11 +2351,11 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(constructionYard, planet);
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             // Tick once without blockade to get baseline progress
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
             int progressWithout = mine.ManufacturingProgress;
 
             // Reset progress
@@ -2375,7 +2375,7 @@ namespace Rebellion.Tests.Systems
             }
 
             // Tick with blockade
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
             int progressWith = mine.ManufacturingProgress;
 
             Assert.Greater(
@@ -2417,7 +2417,7 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             // 20 hostile capital ships apply a 100% blockade penalty, halting all production.
@@ -2433,7 +2433,7 @@ namespace Rebellion.Tests.Systems
                 _game.AttachNode(ship, hostileFleet);
             }
 
-            mfg.ProcessTick(_movement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -2500,13 +2500,13 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(anchor, fleet);
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
             MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
             mfg.Enqueue(planet, regiment, fleet, ignoreCost: true);
 
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.Greater(
                 mine.ManufacturingProgress,
@@ -2562,12 +2562,12 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
 
             // Tick many times — should never advance
             for (int i = 0; i < 20; i++)
-                mfg.ProcessTick(_movement, _provider);
+                mfg.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -2623,11 +2623,11 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
 
             for (int i = 0; i < 20; i++)
-                mfg.ProcessTick(_movement, _provider);
+                mfg.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -2673,11 +2673,11 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, _movement);
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
 
             for (int i = 0; i < 20; i++)
-                mfg.ProcessTick(_movement, _provider);
+                mfg.ProcessTick();
 
             Assert.AreEqual(
                 0,
@@ -2794,7 +2794,8 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(productionPlanet, capitalShip, destFleet, ignoreCost: true);
 
             Assert.IsNotNull(
@@ -2808,8 +2809,7 @@ namespace Rebellion.Tests.Systems
             _game.DetachNode(destFleet);
 
             // One tick completes manufacturing and triggers the rescue.
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.IsNull(
                 _game.GetSceneNodeByInstanceID<CapitalShip>("cs1"),
@@ -2845,14 +2845,14 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(productionPlanet, fighter, destFleet, ignoreCost: true);
 
             // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.AreEqual(
@@ -2894,14 +2894,14 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
+            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(productionPlanet, regiment, destFleet, ignoreCost: true);
 
             // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
-            MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
@@ -2971,8 +2971,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetB, sys);
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
-
             Building mine1 = new Building
             {
                 InstanceID = "m1",
@@ -3002,6 +3000,7 @@ namespace Rebellion.Tests.Systems
             };
 
             MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
 
             mfg.Enqueue(planetA, mine1, planetB, ignoreCost: true);
             mfg.Enqueue(planetA, mine2, planetB, ignoreCost: true);
@@ -3010,7 +3009,7 @@ namespace Rebellion.Tests.Systems
             // Destination captured before mines complete.
             planetB.OwnerInstanceID = "rebels";
 
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
             Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
@@ -3105,8 +3104,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetB, sys);
 
-            ManufacturingSystem mfg = new ManufacturingSystem(_game);
-
             Building mine1 = new Building
             {
                 InstanceID = "m1",
@@ -3136,6 +3133,7 @@ namespace Rebellion.Tests.Systems
             };
 
             MovementSystem localMovement = new MovementSystem(_game, new FogOfWarSystem(_game));
+            ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
 
             mfg.Enqueue(planetA, mine1, planetB, ignoreCost: true);
             mfg.Enqueue(planetA, mine2, planetB, ignoreCost: true);
@@ -3144,7 +3142,7 @@ namespace Rebellion.Tests.Systems
             // Destination captured before mines complete.
             planetB.OwnerInstanceID = "rebels";
 
-            mfg.ProcessTick(localMovement, _provider);
+            mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
             Assert.AreEqual(ManufacturingStatus.Complete, mine2.ManufacturingStatus);
@@ -3178,7 +3176,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.IsTrue(results.OfType<ManufacturingDeployedResult>().Any());
         }
@@ -3198,7 +3196,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             ManufacturingDeployedResult deployed = results
                 .OfType<ManufacturingDeployedResult>()
@@ -3222,7 +3220,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.IsTrue(results.OfType<ManufacturingCompletedResult>().Any());
         }
@@ -3253,7 +3251,7 @@ namespace Rebellion.Tests.Systems
 
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.IsTrue(
                 results.OfType<ManufacturingDeployedResult>().Any(),
@@ -3280,7 +3278,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.IsTrue(results.OfType<ManufacturingRemainingResult>().Any());
         }
@@ -3311,7 +3309,7 @@ namespace Rebellion.Tests.Systems
 
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             ManufacturingRemainingResult remaining = results
                 .OfType<ManufacturingRemainingResult>()
@@ -3334,7 +3332,7 @@ namespace Rebellion.Tests.Systems
             };
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             Assert.IsTrue(results.OfType<ManufacturingPointsRequiredResult>().Any());
         }
@@ -3365,7 +3363,7 @@ namespace Rebellion.Tests.Systems
 
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
-            List<GameResult> results = _manager.ProcessTick(_movement, _provider);
+            List<GameResult> results = _manager.ProcessTick();
 
             ManufacturingPointsRequiredResult pointsResult = results
                 .OfType<ManufacturingPointsRequiredResult>()

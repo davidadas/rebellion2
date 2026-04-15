@@ -85,6 +85,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads a single AudioClip from the specified Resources path.
     /// </summary>
+    /// <param name="path">Resources path to the audio file.</param>
+    /// <returns>The loaded AudioClip.</returns>
     public static AudioClip GetAudio(string path)
     {
         return LoadResource<AudioClip>(path, "Audio not found at: ");
@@ -93,6 +95,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads multiple AudioClips from the specified resource paths.
     /// </summary>
+    /// <param name="paths">Array of Resources paths to load.</param>
+    /// <returns>Array of loaded AudioClips.</returns>
     public static AudioClip[] GetAudioSet(string[] paths)
     {
         if (paths == null || paths.Length == 0)
@@ -113,6 +117,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads a single VideoClip from the specified Resources path.
     /// </summary>
+    /// <param name="path">Resources path to the video file.</param>
+    /// <returns>The loaded VideoClip.</returns>
     public static VideoClip GetVideo(string path)
     {
         return LoadResource<VideoClip>(path, "Video not found at: ");
@@ -121,6 +127,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads all VideoClips in a specified Resources folder.
     /// </summary>
+    /// <param name="folderPath">Resources folder path containing video files.</param>
+    /// <returns>Array of loaded VideoClips.</returns>
     public static VideoClip[] GetVideoGroup(string folderPath)
     {
         return LoadResourceGroup<VideoClip>(folderPath, "No videos found in folder: ");
@@ -129,6 +137,8 @@ public static class ResourceManager
     /// <summary>
     /// Loads a Sprite from the specified Resources path.
     /// </summary>
+    /// <param name="path">Resources path to the sprite.</param>
+    /// <returns>The loaded Sprite.</returns>
     public static Sprite GetSprite(string path)
     {
         return LoadResource<Sprite>(path, "Sprite not found at: ");

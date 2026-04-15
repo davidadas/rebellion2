@@ -25,6 +25,8 @@ public class GameEvent : BaseGameEntity
     /// <summary>
     /// Returns true if all conditions are met.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <returns>True if every conditional is satisfied.</returns>
     public bool AreConditionsMet(GameRoot game)
     {
         foreach (GameConditional conditional in Conditionals)
@@ -38,6 +40,9 @@ public class GameEvent : BaseGameEntity
     /// <summary>
     /// Executes the event's actions and returns all results.
     /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">Random number provider for stochastic actions.</param>
+    /// <returns>Combined results from all executed actions.</returns>
     public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
         List<GameResult> results = new List<GameResult>();

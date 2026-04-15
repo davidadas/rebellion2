@@ -88,9 +88,10 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SupportCrossesThreshold_EmitsOwnershipChange()
+        public void Execute_SupportCrossesThreshold_NoOwnershipChangeEmitted()
         {
-            // Support at 60 — one increment pushes it to 61, crossing the threshold
+            // Support at 60 — one increment pushes it to 61, crossing the threshold.
+            // DiplomacyMission only bumps support; PlanetaryControlSystem handles transfers.
             GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
@@ -102,12 +103,15 @@ namespace Rebellion.Tests.Game.Missions
                 (List<GameResult>)
                     onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
 
-            PlanetOwnershipChangedResult ownershipResult = results
-                .OfType<PlanetOwnershipChangedResult>()
-                .SingleOrDefault();
-            Assert.IsNotNull(ownershipResult, "Should emit PlanetOwnershipChangedResult");
-            Assert.AreEqual("empire", ownershipResult.NewOwner.InstanceID);
-            Assert.IsNull(ownershipResult.PreviousOwner);
+            Assert.IsFalse(
+                results.OfType<PlanetOwnershipChangedResult>().Any(),
+                "DiplomacyMission should not emit ownership change; PlanetaryControlSystem handles transfers"
+            );
+            Assert.AreEqual(
+                61,
+                planet.GetPopularSupport("empire"),
+                "Support should still increment"
+            );
         }
 
         [Test]

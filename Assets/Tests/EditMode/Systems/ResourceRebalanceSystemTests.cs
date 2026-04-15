@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Systems
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
             game.CurrentTick = 1;
-            system.ProcessTick(rng);
+            system.ProcessTick();
 
             Assert.Less(planet.NumRawResourceNodes, 10);
             Assert.Less(planet.EnergyCapacity, 10);
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Systems
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
             game.CurrentTick = 1;
-            system.ProcessTick(rng);
+            system.ProcessTick();
 
             Assert.LessOrEqual(planet.NumRawResourceNodes, planet.EnergyCapacity);
         }
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Systems
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
             game.CurrentTick = 1;
-            system.ProcessTick(rng);
+            system.ProcessTick();
 
             int totalRemaining = planet.NumRawResourceNodes + planet.EnergyCapacity;
             Assert.Less(
@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Systems
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
             game.CurrentTick = 1000; // Past the walk timer
-            system.ProcessTick(rng);
+            system.ProcessTick();
 
             Assert.AreEqual(6, planet.EnergyCapacity, "Energy should have been incremented by 1.");
         }
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Systems
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 
             game.CurrentTick = 1000;
-            system.ProcessTick(rng);
+            system.ProcessTick();
 
             Assert.AreEqual(15, planet.EnergyCapacity);
         }

@@ -75,12 +75,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
 
             AISystem ai = new AISystem(
@@ -172,12 +167,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             AISystem ai = new AISystem(
                 game,
@@ -281,12 +271,7 @@ namespace Rebellion.Tests.Managers
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            OwnershipSystem ownership = new OwnershipSystem(
-                game,
-                movement,
-                new ManufacturingSystem(game)
-            );
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             AISystem ai = new AISystem(
                 game,
@@ -598,8 +583,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -671,8 +655,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -824,8 +807,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -926,8 +908,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1017,8 +998,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1093,8 +1073,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             // LastIndexRNG returns max-1 from NextInt. Gate bounds (20, 80):
             // roll = NextInt(20, 81) = 80. Net strength = 50. 80 >= 50, gate blocks.
             AISystem ai = new AISystem(
@@ -1207,8 +1186,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1319,8 +1297,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1437,8 +1414,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1543,8 +1519,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,
@@ -1644,8 +1619,7 @@ namespace Rebellion.Tests.Managers
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
-            OwnershipSystem ownership = new OwnershipSystem(game, movement, manufacturing);
-            MissionSystem missionSystem = new MissionSystem(game, movement, ownership);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(), movement);
             AISystem ai = new AISystem(
                 game,
                 missionSystem,

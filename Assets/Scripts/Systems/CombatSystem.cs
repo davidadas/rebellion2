@@ -34,6 +34,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movement;
+        private readonly PlanetaryControlSystem _ownership;
 
         /// <summary>
         /// Creates a new CombatSystem.
@@ -41,11 +42,18 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for combat resolution.</param>
         /// <param name="movement">Movement system used to evacuate officers from destroyed ships.</param>
-        public CombatSystem(GameRoot game, IRandomNumberProvider provider, MovementSystem movement)
+        /// <param name="ownership">Planetary control system used to transfer planets on conquest.</param>
+        public CombatSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            MovementSystem movement,
+            PlanetaryControlSystem ownership
+        )
         {
             _game = game;
             _provider = provider;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
         }
 
         /// <summary>
@@ -53,28 +61,24 @@ namespace Rebellion.Systems
         /// When a player-involved encounter is found, emits a PendingCombatResult and stops —
         /// the caller is responsible for freezing the tick until the player resolves it.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="rng">Random number provider.</param>
-        /// <returns>A list of game results (PendingCombatResult if player input is needed).</returns>
-        public List<GameResult> ProcessTick(GameRoot game, IRandomNumberProvider rng)
+        /// <returns>Combat results, or a PendingCombatResult if player input is needed.</returns>
+        public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
             HashSet<string> foughtThisTick = new HashSet<string>();
 
-            while (
-                TryStartCombatExcluding(game, foughtThisTick, out CombatDecisionContext decision)
-            )
+            while (TryStartCombatExcluding(foughtThisTick, out CombatDecisionContext decision))
             {
-                Fleet attackerFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                Fleet attackerFleet = _game.GetSceneNodeByInstanceID<Fleet>(
                     decision.AttackerFleetInstanceID
                 );
-                Fleet defenderFleet = game.GetSceneNodeByInstanceID<Fleet>(
+                Fleet defenderFleet = _game.GetSceneNodeByInstanceID<Fleet>(
                     decision.DefenderFleetInstanceID
                 );
-                Faction attacker = game.GetFactionByOwnerInstanceID(
+                Faction attacker = _game.GetFactionByOwnerInstanceID(
                     attackerFleet?.GetOwnerInstanceID()
                 );
-                Faction defender = game.GetFactionByOwnerInstanceID(
+                Faction defender = _game.GetFactionByOwnerInstanceID(
                     defenderFleet?.GetOwnerInstanceID()
                 );
 
@@ -85,12 +89,7 @@ namespace Rebellion.Systems
                     && defender.IsAIControlled()
                 )
                 {
-                    SpaceCombatResult combatResult = Resolve(
-                        game,
-                        decision,
-                        autoResolve: true,
-                        rng
-                    );
+                    SpaceCombatResult combatResult = Resolve(decision, autoResolve: true);
                     if (combatResult != null)
                         results.AddRange(combatResult.Events);
                     foughtThisTick.Add(decision.AttackerFleetInstanceID);
@@ -103,7 +102,7 @@ namespace Rebellion.Systems
                         {
                             AttackerFleet = attackerFleet,
                             DefenderFleet = defenderFleet,
-                            Tick = game.CurrentTick,
+                            Tick = _game.CurrentTick,
                         }
                     );
                     return results;
@@ -117,29 +116,26 @@ namespace Rebellion.Systems
         /// Detects the first hostile fleet encounter this tick.
         /// The encounter is NOT resolved here; call Resolve() after player decision.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="decision">Output: the combat decision context if an encounter was found.</param>
         /// <returns>True if a hostile encounter was detected.</returns>
-        public bool TryStartCombat(GameRoot game, out CombatDecisionContext decision) =>
-            TryStartCombatExcluding(game, new HashSet<string>(), out decision);
+        public bool TryStartCombat(out CombatDecisionContext decision) =>
+            TryStartCombatExcluding(new HashSet<string>(), out decision);
 
         /// <summary>
         /// Detects the first hostile fleet encounter excluding any fleet IDs already resolved
         /// this tick. Used by ProcessTick to prevent Draw outcomes from causing re-detection.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="excludedIDs">Fleet IDs to skip (already fought this tick).</param>
         /// <param name="decision">Output: the combat decision context if found.</param>
         /// <returns>True if a hostile encounter was detected.</returns>
         private bool TryStartCombatExcluding(
-            GameRoot game,
             HashSet<string> excludedIDs,
             out CombatDecisionContext decision
         )
         {
             decision = null;
 
-            if (!DetectFleetCollision(game, excludedIDs, out Fleet attacker, out Fleet defender))
+            if (!DetectFleetCollision(excludedIDs, out Fleet attacker, out Fleet defender))
                 return false;
 
             attacker.IsInCombat = true;
@@ -159,13 +155,11 @@ namespace Rebellion.Systems
         /// Skips fleets already engaged in combat or excluded by ID.
         /// Faction groups are sorted by owner ID for deterministic selection.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="excludedIDs">Fleet IDs to skip.</param>
         /// <param name="attacker">Output: the attacking fleet.</param>
         /// <param name="defender">Output: the defending fleet.</param>
         /// <returns>True if a collision was found.</returns>
         private bool DetectFleetCollision(
-            GameRoot game,
             HashSet<string> excludedIDs,
             out Fleet attacker,
             out Fleet defender
@@ -174,7 +168,7 @@ namespace Rebellion.Systems
             attacker = null;
             defender = null;
 
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 List<Fleet> fleets = planet
                     .GetChildren<Fleet>(
@@ -207,31 +201,28 @@ namespace Rebellion.Systems
         /// Resolves a pending combat encounter. Applies damage to the game world and
         /// clears IsInCombat on both fleets regardless of outcome.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="decision">The pending combat decision to resolve.</param>
         /// <param name="autoResolve">True for AI auto-resolve, false for manual/interactive.</param>
-        /// <param name="rng">Random number provider.</param>
         /// <returns>The combat result, or null if manual combat was used.</returns>
-        public SpaceCombatResult Resolve(
-            GameRoot game,
-            CombatDecisionContext decision,
-            bool autoResolve,
-            IRandomNumberProvider rng
-        )
+        public SpaceCombatResult Resolve(CombatDecisionContext decision, bool autoResolve)
         {
             SpaceCombatResult result = null;
 
             if (autoResolve)
             {
-                result = AutoResolveCombat(game, decision, rng);
+                result = AutoResolveCombat(decision, _provider);
             }
             else
             {
                 RunManualCombat();
             }
 
-            Fleet attacker = game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
-            Fleet defender = game.GetSceneNodeByInstanceID<Fleet>(decision.DefenderFleetInstanceID);
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
             if (attacker != null)
                 attacker.IsInCombat = false;
             if (defender != null)
@@ -244,18 +235,20 @@ namespace Rebellion.Systems
         /// Auto-resolves space combat using the 7-phase pipeline, then applies
         /// damage to the game world.
         /// </summary>
-        /// <param name="game">The game instance.</param>
         /// <param name="decision">The combat decision context.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>The combat result with winner and destroyed unit IDs.</returns>
         private SpaceCombatResult AutoResolveCombat(
-            GameRoot game,
             CombatDecisionContext decision,
             IRandomNumberProvider rng
         )
         {
-            Fleet attacker = game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
-            Fleet defender = game.GetSceneNodeByInstanceID<Fleet>(decision.DefenderFleetInstanceID);
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
 
             if (attacker == null || defender == null)
             {
@@ -277,7 +270,7 @@ namespace Rebellion.Systems
                 defender,
                 planet,
                 rng,
-                game.CurrentTick
+                _game.CurrentTick
             );
             result.Events = ApplyCombatResult(result);
 
@@ -790,6 +783,7 @@ namespace Rebellion.Systems
         /// removes destroyed ships and depleted fighter squadrons, and cleans up empty fleets.
         /// </summary>
         /// <param name="result">The combat result to apply.</param>
+        /// <returns>Events generated from ship damage and destruction.</returns>
         private List<GameResult> ApplyCombatResult(SpaceCombatResult result)
         {
             List<GameResult> events = ApplyShipDamage(result.ShipDamage);
@@ -807,6 +801,7 @@ namespace Rebellion.Systems
         /// Applies ship damage results to the game world.
         /// </summary>
         /// <param name="damageResults">Ship damage results to apply.</param>
+        /// <returns>Damage and destruction events for each affected ship.</returns>
         private List<GameResult> ApplyShipDamage(List<ShipDamageResult> damageResults)
         {
             List<GameResult> events = new List<GameResult>();
@@ -866,6 +861,8 @@ namespace Rebellion.Systems
         /// Moves officers off a destroyed ship before it is removed from the scene graph.
         /// Prefers another surviving ship in the same fleet; falls back to the nearest friendly planet.
         /// </summary>
+        /// <param name="ship">The destroyed ship whose officers need evacuation.</param>
+        /// <param name="fleet">The fleet containing the destroyed ship.</param>
         private void EvacuateOfficers(CapitalShip ship, Fleet fleet)
         {
             List<Officer> officers = ship.Officers.ToList();
@@ -1039,7 +1036,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Transfers planet ownership to the attacking faction.
+        /// Transfers planet ownership to the attacking faction via PlanetaryControlSystem.
         /// </summary>
         /// <param name="planet">The planet changing hands.</param>
         /// <param name="newOwnerID">The faction taking ownership.</param>
@@ -1050,15 +1047,13 @@ namespace Rebellion.Systems
             PlanetaryAssaultResult result
         )
         {
-            string oldOwnerID = planet.GetOwnerInstanceID();
-            _game.ChangeUnitOwnership(planet, newOwnerID);
+            Faction newOwner = _game.GetFactionByOwnerInstanceID(newOwnerID);
+            _ownership.TransferPlanet(planet, newOwner);
 
             result.OwnershipChanged = true;
-            result.NewOwner = _game.GetFactionByOwnerInstanceID(newOwnerID);
+            result.NewOwner = newOwner;
 
-            GameLogger.Log(
-                $"Planet {planet.GetDisplayName()} captured! {oldOwnerID} -> {newOwnerID}"
-            );
+            GameLogger.Log($"Planet {planet.GetDisplayName()} captured by {newOwner.DisplayName}");
         }
 
         /// <summary>
@@ -1183,8 +1178,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes the bombardment strike loop. Each iteration rebuilds the lane list
-        /// (per disassembly), picks a random lane, rolls against its resistance, and
+        /// Executes the bombardment strike loop. Each iteration rebuilds the lane list,
+        /// picks a random lane, rolls against its resistance, and
         /// applies the strike if the roll exceeds resistance.
         /// </summary>
         /// <param name="planet">The planet being bombarded.</param>

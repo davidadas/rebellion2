@@ -43,6 +43,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Progress fraction in [0.0, 1.0] - 0.0 = just departed, 1.0 = arrived.
         /// </summary>
+        /// <returns>Progress as a float in [0.0, 1.0].</returns>
         public float Progress()
         {
             if (TransitTicks == 0)
@@ -55,6 +56,7 @@ namespace Rebellion.Game
         /// <summary>
         /// True if the unit has completed transit.
         /// </summary>
+        /// <returns>True if transit is complete.</returns>
         public bool IsComplete()
         {
             return TicksElapsed >= TransitTicks;
@@ -63,6 +65,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Remaining ticks until arrival.
         /// </summary>
+        /// <returns>Number of ticks remaining.</returns>
         public int TicksRemaining()
         {
             return TransitTicks - TicksElapsed;

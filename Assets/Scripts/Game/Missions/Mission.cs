@@ -133,21 +133,25 @@ public abstract class Mission : ContainerNode
     /// Returns the configured tick values as [BaseTicks, SpreadTicks].
     /// Actual duration is BaseTicks + random(0, SpreadTicks) inclusive.
     /// </summary>
+    /// <returns>Array of [BaseTicks, SpreadTicks].</returns>
     public int[] GetTickRange() => new int[] { BaseTicks, SpreadTicks };
 
     /// <summary>
     /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.
     /// </summary>
+    /// <param name="tick">The exact tick count to assign as MaxProgress.</param>
     public void SetExecutionTick(int tick) => MaxProgress = tick;
 
     /// <summary>
     /// Returns true when CurrentProgress has reached or exceeded MaxProgress.
     /// </summary>
+    /// <returns>True if the mission has completed.</returns>
     public bool IsComplete() => CurrentProgress >= MaxProgress;
 
     /// <summary>
     /// Returns all main and decoy participants as a single list.
     /// </summary>
+    /// <returns>Combined list of main and decoy participants.</returns>
     public List<IMissionParticipant> GetAllParticipants() =>
         MainParticipants.Concat(DecoyParticipants).ToList();
 
@@ -219,6 +223,7 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Returns the sum of defense ratings of all enemy regiments on the target planet.
     /// </summary>
+    /// <returns>Total defense rating, or 0 if no valid planet target.</returns>
     protected internal double GetDefenseScore()
     {
         Planet planet = GetParent() as Planet;
@@ -375,6 +380,7 @@ public abstract class Mission : ContainerNode
     /// <param name="missionName">Human-readable mission name used in the error message.</param>
     /// <exception cref="ArgumentNullException">target is null.</exception>
     /// <exception cref="InvalidOperationException">target is not a Planet.</exception>
+    /// <returns>The validated Planet instance.</returns>
     protected static Planet RequirePlanetTarget(ISceneNode target, string missionName)
     {
         if (target == null)
@@ -424,6 +430,7 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Returns all mission participants as children of the mission.
     /// </summary>
+    /// <returns>All main and decoy participants as scene nodes.</returns>
     public override IEnumerable<ISceneNode> GetChildren()
     {
         if (HasInitiated)
@@ -435,17 +442,21 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Only mission participants may be moved into a mission node.
     /// </summary>
+    /// <param name="child">The node to test.</param>
+    /// <returns>True if child is an IMissionParticipant.</returns>
     public override bool CanAcceptChild(ISceneNode child) => child is IMissionParticipant;
 
     /// <summary>
     /// No-op — participants are pre-populated in MainParticipants/DecoyParticipants at
     /// construction. Only SetParent is needed for scene-graph bookkeeping.
     /// </summary>
+    /// <param name="child">The node to add (ignored).</param>
     public override void AddChild(ISceneNode child) { }
 
     /// <summary>
     /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).
     /// </summary>
+    /// <param name="child">The node to remove from participant lists.</param>
     public override void RemoveChild(ISceneNode child)
     {
         if (child is IMissionParticipant participant)

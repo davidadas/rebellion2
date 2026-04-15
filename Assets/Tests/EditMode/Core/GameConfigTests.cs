@@ -57,9 +57,6 @@ namespace Rebellion.Tests.Core
             Assert.AreEqual(5, config.Planet.DistanceDivisor);
             Assert.AreEqual(100, config.Planet.DistanceBase);
             Assert.AreEqual(100, config.Planet.MaxPopularSupport);
-
-            // Victory defaults
-            Assert.AreEqual(200, config.Victory.MinVictoryTick);
         }
 
         [Test]

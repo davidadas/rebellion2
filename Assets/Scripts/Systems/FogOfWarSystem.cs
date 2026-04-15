@@ -16,6 +16,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates a FogOfWarSystem for the given game instance.
         /// </summary>
+        /// <param name="game">The game instance.</param>
         public FogOfWarSystem(GameRoot game)
         {
             _game = game;
@@ -100,6 +101,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Copies an officer with a fresh Skills dictionary to prevent shared references.
         /// </summary>
+        /// <param name="officer">The officer to copy.</param>
+        /// <returns>A shallow copy with an independent Skills dictionary.</returns>
         private Officer CopyOfficer(Officer officer)
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
@@ -148,6 +151,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Determines if a faction currently has real-time visibility of a planet.
         /// </summary>
+        /// <param name="planet">The planet to check visibility for.</param>
+        /// <param name="faction">The faction whose visibility to evaluate.</param>
+        /// <returns>True if the faction owns the planet or has a fleet present.</returns>
         public bool IsPlanetVisible(Planet planet, Faction faction)
         {
             if (planet.OwnerInstanceID == faction.InstanceID)
@@ -163,6 +169,8 @@ namespace Rebellion.Systems
         /// Builds a faction-specific galaxy view.
         /// Creates new structure (systems/planets) with shallow-copied entities.
         /// </summary>
+        /// <param name="faction">The faction to build a view for.</param>
+        /// <returns>A galaxy map filtered by the faction's fog of war state.</returns>
         public GalaxyMap BuildFactionView(Faction faction)
         {
             GalaxyMap factionView = new GalaxyMap();
@@ -221,6 +229,8 @@ namespace Rebellion.Systems
         /// Creates a planet view shell with all entity lists cleared, ready to be populated
         /// by one of the three visibility branches.
         /// </summary>
+        /// <param name="masterPlanet">The source planet to copy structure from.</param>
+        /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
             Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
@@ -335,6 +345,9 @@ namespace Rebellion.Systems
         /// Populates a view planet for a completely unexplored location. No ownership or
         /// entity data is surfaced. Captured friendly officers are always live data regardless.
         /// </summary>
+        /// <param name="viewPlanet">The view planet to populate.</param>
+        /// <param name="masterPlanet">The authoritative planet data source.</param>
+        /// <param name="faction">The faction whose view is being built.</param>
         private void ApplyUnexploredView(Planet viewPlanet, Planet masterPlanet, Faction faction)
         {
             viewPlanet.Officers.AddRange(

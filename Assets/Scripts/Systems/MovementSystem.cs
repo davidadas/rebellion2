@@ -19,22 +19,30 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
+        private readonly BlockadeSystem _blockade;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
-        /// <param name="game">The game instance this manager is associated with.</param>
+        /// <param name="game">The game instance.</param>
         /// <param name="fogOfWar">The fog of war system for capturing snapshots on arrival.</param>
-        public MovementSystem(GameRoot game, FogOfWarSystem fogOfWar)
+        /// <param name="blockade">The blockade system for evacuation loss rolls.</param>
+        public MovementSystem(
+            GameRoot game,
+            FogOfWarSystem fogOfWar,
+            BlockadeSystem blockade = null
+        )
         {
             _game = game;
             _fogOfWar = fogOfWar;
+            _blockade = blockade;
         }
 
         /// <summary>
         /// Processes movement for the current tick.
         /// </summary>
+        /// <returns>Movement-related events generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
@@ -55,6 +63,8 @@ namespace Rebellion.Systems
         /// and marks it in visual transit. The unit is logically at the destination from this
         /// point; its position interpolates over subsequent ticks.
         /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The target scene node to move toward.</param>
         public void RequestMove(IMovable unit, ISceneNode destination)
         {
             if (unit == null)
@@ -87,6 +97,9 @@ namespace Rebellion.Systems
         /// during enqueue, and this sets it travelling visually from the production planet.
         /// If the destination has changed sides since enqueue, routes via HandleArrivalRejection.
         /// </summary>
+        /// <param name="unit">The unit to set in transit.</param>
+        /// <param name="destination">The pre-assigned destination scene node.</param>
+        /// <param name="origin">The production planet the unit departs from visually.</param>
         public void RequestMove(IMovable unit, ISceneNode destination, Planet origin)
         {
             if (unit == null)
@@ -141,6 +154,8 @@ namespace Rebellion.Systems
         /// Moves a group of units to the same destination. Captured officers are excluded
         /// unless their captor faction has an escort in the group.
         /// </summary>
+        /// <param name="units">The units to move as a group.</param>
+        /// <param name="destination">The shared target scene node.</param>
         public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
         {
             if (units == null)
@@ -174,6 +189,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Advances the movement of a single unit by one tick and handles arrival.
         /// </summary>
+        /// <param name="movable">The movable unit to update.</param>
+        /// <returns>Events generated on arrival or during transit.</returns>
         private List<GameResult> UpdateMovement(IMovable movable)
         {
             if (movable.Movement == null)
@@ -358,6 +375,7 @@ namespace Rebellion.Systems
         /// Used when a unit's parent is being destroyed and it has no other refuge.
         /// Clears movement state if no friendly planet exists.
         /// </summary>
+        /// <param name="unit">The unit to evacuate.</param>
         public void EvacuateToNearestFriendlyPlanet(IMovable unit)
         {
             string ownerID = unit.GetOwnerInstanceID();
@@ -387,6 +405,8 @@ namespace Rebellion.Systems
         /// Redirects a unit to the nearest friendly planet when its destination is unavailable.
         /// Clears movement state if no valid fallback exists.
         /// </summary>
+        /// <param name="movable">The unit whose arrival was rejected.</param>
+        /// <param name="rejectedDestination">The planet that refused the unit.</param>
         private void HandleArrivalRejection(IMovable movable, Planet rejectedDestination)
         {
             string ownerID = movable.GetOwnerInstanceID();
@@ -443,6 +463,8 @@ namespace Rebellion.Systems
         /// Reparents the unit to the destination, sets up its visual transit state, and logs
         /// the departure. Returns without moving if the destination cannot accept the unit.
         /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The target scene node to reparent into.</param>
         private void ExecuteMove(IMovable unit, ISceneNode destination)
         {
             // Fleet only accepts CapitalShips directly. Resolve other unit types
@@ -475,6 +497,19 @@ namespace Rebellion.Systems
                     $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
                 );
                 return;
+            }
+
+            if (_blockade != null)
+            {
+                EvacuationLossesResult evacResult = _blockade.ApplyEvacuationLosses(
+                    unit,
+                    originPlanet
+                );
+                if (evacResult != null)
+                {
+                    _pendingResults.Add(evacResult);
+                    return;
+                }
             }
 
             // If the unit is mid-flight, start the new journey from its current visual position.
@@ -541,6 +576,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Resolves a Fleet destination to the appropriate CapitalShip for non-fleet units.
         /// </summary>
+        /// <param name="unit">The non-fleet unit being assigned.</param>
+        /// <param name="fleet">The fleet to find a suitable ship within.</param>
+        /// <returns>The target ship, or null if no valid ship exists.</returns>
         private ISceneNode ResolveFleetTarget(IMovable unit, Fleet fleet)
         {
             if (unit is Starfighter)
@@ -556,6 +594,10 @@ namespace Rebellion.Systems
         /// Calculates transit time in ticks based on distance and hyperdrive rating.
         /// Result is clamped to MinTransitTicks.
         /// </summary>
+        /// <param name="unit">The unit whose hyperdrive rating determines speed.</param>
+        /// <param name="originPos">The starting position.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <returns>Number of ticks the transit will take.</returns>
         private int CalculateTransitTicks(IMovable unit, Point originPos, Planet destination)
         {
             Point destPos = destination.GetPosition();

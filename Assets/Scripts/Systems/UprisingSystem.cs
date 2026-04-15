@@ -9,123 +9,122 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
-    /// Uses dual dice rolls and table lookups matching the original uprising resolution.
     /// </summary>
     public class UprisingSystem
     {
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
 
-        public UprisingSystem(GameRoot game)
+        /// <summary>
+        /// Creates a new UprisingSystem.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for dice rolls.</param>
+        public UprisingSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
+            _provider = provider;
         }
 
         /// <summary>
-        /// Processes uprising checks for all owned, populated planets.
-        /// Starts new uprisings when garrison is insufficient.
-        /// Applies consequence resolution each tick for planets already in uprising.
-        /// Uprisings are cleared externally by SubdueUprisingMission or OwnershipSystem.
+        /// Checks garrison levels and resolves active uprisings for all owned planets.
         /// </summary>
-        /// <param name="provider">Random number provider for dice rolls.</param>
         /// <returns>Game results from uprising starts and consequence resolution.</returns>
-        public List<GameResult> ProcessTick(IRandomNumberProvider provider)
+        public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            List<Planet> planets = _game.GetSceneNodesByType<Planet>();
 
-            foreach (Planet planet in planets)
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
-                if (string.IsNullOrEmpty(planet.OwnerInstanceID))
-                    continue;
-
-                if (!planet.IsPopulated())
-                    continue;
-
-                Faction faction = _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+                Faction faction = GetControllingFaction(planet);
                 if (faction == null)
                     continue;
 
-                if (!planet.IsInUprising)
-                {
-                    int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
-                    int garrisonRequired = CalculateGarrisonRequirement(
-                        planet,
-                        faction,
-                        _game.Config.AI.Garrison
-                    );
-                    int garrisonSurplus = troopCount - garrisonRequired;
-
-                    if (garrisonSurplus < 0)
-                    {
-                        planet.BeginUprising();
-                        results.Add(
-                            new PlanetUprisingStartedResult
-                            {
-                                Planet = planet,
-                                InstigatorFaction = FindLeadingOpposingFaction(
-                                    planet,
-                                    faction.InstanceID
-                                ),
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
-                }
+                if (planet.IsInUprising)
+                    ResolveActiveUprising(planet, faction, results);
                 else
-                {
-                    int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
-                    int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
-
-                    ResolveUprisingTableResults(
-                        planet,
-                        faction,
-                        ownerSupport,
-                        troopCount,
-                        provider,
-                        out int uprisingEffect,
-                        out int uprisingSeverity
-                    );
-
-                    ApplyUprisingConsequence(
-                        planet,
-                        faction.InstanceID,
-                        uprisingEffect,
-                        provider,
-                        results
-                    );
-                    ApplyUprisingConsequence(
-                        planet,
-                        faction.InstanceID,
-                        uprisingSeverity,
-                        provider,
-                        results
-                    );
-
-                    ApplyUprisingControllerSupportShift(planet, faction);
-                }
+                    CheckForNewUprising(planet, faction, results);
             }
 
             return results;
         }
 
         /// <summary>
-        /// Resolves uprising using dual dice rolls and UPRIS1/UPRIS2 table lookups.
-        /// Combined score = dice + (garrison_threshold - troop_multiplier * troops)
-        ///                      + (hostile_fleets + hostile_troops - typed_garrison).
+        /// Returns the controlling faction for a planet, or null if the planet is
+        /// unowned, unpopulated, or its faction cannot be resolved.
+        /// </summary>
+        private Faction GetControllingFaction(Planet planet)
+        {
+            if (string.IsNullOrEmpty(planet.OwnerInstanceID))
+                return null;
+            if (!planet.IsPopulated())
+                return null;
+            return _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Starts an uprising if the garrison is too weak to hold the planet.
+        /// </summary>
+        private void CheckForNewUprising(Planet planet, Faction faction, List<GameResult> results)
+        {
+            int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+            int garrisonRequired = CalculateGarrisonRequirement(
+                planet,
+                faction,
+                _game.Config.AI.Garrison
+            );
+
+            if (troopCount >= garrisonRequired)
+                return;
+
+            planet.BeginUprising();
+            results.Add(
+                new PlanetUprisingStartedResult
+                {
+                    Planet = planet,
+                    InstigatorFaction = FindLeadingOpposingFaction(planet, faction.InstanceID),
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Rolls uprising dice, applies consequences, and shifts controller support.
+        /// </summary>
+        private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
+        {
+            int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
+            int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+
+            ResolveUprisingTableResults(
+                planet,
+                faction,
+                ownerSupport,
+                troopCount,
+                out int uprisingEffect,
+                out int uprisingSeverity
+            );
+
+            ApplyUprisingConsequence(planet, faction.InstanceID, uprisingEffect, results);
+            ApplyUprisingConsequence(planet, faction.InstanceID, uprisingSeverity, results);
+
+            ApplyUprisingControllerSupportShift(planet, faction);
+        }
+
+        /// <summary>
+        /// Resolves uprising outcome using dice rolls and consequence table lookups.
         /// </summary>
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <param name="supportForController">Popular support value for the controlling faction.</param>
         /// <param name="controllerTroopCount">Number of controller's troops on the planet.</param>
-        /// <param name="provider">Random number provider for dice rolls.</param>
-        /// <param name="uprisingEffect">Output: UPRIS1 table result (effect code).</param>
-        /// <param name="uprisingSeverity">Output: UPRIS2 table result (severity code).</param>
+        /// <param name="uprisingEffect">Output: primary consequence table result.</param>
+        /// <param name="uprisingSeverity">Output: secondary consequence table result.</param>
         private void ResolveUprisingTableResults(
             Planet planet,
             Faction faction,
             int supportForController,
             int controllerTroopCount,
-            IRandomNumberProvider provider,
             out int uprisingEffect,
             out int uprisingSeverity
         )
@@ -135,8 +134,8 @@ namespace Rebellion.Systems
 
             GameConfig.UprisingConfig config = _game.Config.Uprising;
 
-            int rollA = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
-            int rollB = provider.NextInt(0, config.DiceRange) + config.DiceAddend;
+            int rollA = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
+            int rollB = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
 
             int troopMultiplier = 1;
             PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
@@ -172,10 +171,10 @@ namespace Rebellion.Systems
                 + (threshold - troopMultiplier * controllerTroopCount)
                 + (hostileFleetCount + hostileTroopCount - attachedTroopState);
 
-            uprisingEffect = LookupTable(config.Upris1Table, combinedScore);
+            uprisingEffect = LookupTable(config.PrimaryConsequenceTable, combinedScore);
 
             if (uprisingEffect > 0)
-                uprisingSeverity = LookupTable(config.Upris2Table, combinedScore);
+                uprisingSeverity = LookupTable(config.SecondaryConsequenceTable, combinedScore);
         }
 
         /// <summary>
@@ -184,29 +183,27 @@ namespace Rebellion.Systems
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
         /// <param name="consequence">The consequence code from the uprising table (0–5).</param>
-        /// <param name="provider">RNG provider for selecting random targets.</param>
         /// <param name="results">Result list to append events to.</param>
         private void ApplyUprisingConsequence(
             Planet planet,
             string controllerInstanceId,
             int consequence,
-            IRandomNumberProvider provider,
             List<GameResult> results
         )
         {
             switch (consequence)
             {
                 case 1:
-                    DestroyRandomBuilding(planet, controllerInstanceId, provider, results);
+                    DestroyRandomBuilding(planet, controllerInstanceId, results);
                     return;
                 case 2:
-                    DestroyRandomRegiment(planet, controllerInstanceId, provider, results);
+                    DestroyRandomRegiment(planet, controllerInstanceId, results);
                     return;
                 case 3:
-                    CaptureRandomOfficer(planet, controllerInstanceId, provider, results);
+                    CaptureRandomOfficer(planet, controllerInstanceId, results);
                     return;
                 case 4:
-                    FreeRandomCapturedOfficer(planet, controllerInstanceId, provider, results);
+                    FreeRandomCapturedOfficer(planet, controllerInstanceId, results);
                     return;
                 case 5:
                     FreeAllCapturedOfficers(planet, controllerInstanceId, results);
@@ -219,12 +216,10 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
-        /// <param name="provider">RNG provider for selecting a random building.</param>
         /// <param name="results">Result list to append events to.</param>
         private void DestroyRandomBuilding(
             Planet planet,
             string controllerInstanceId,
-            IRandomNumberProvider provider,
             List<GameResult> results
         )
         {
@@ -234,7 +229,7 @@ namespace Rebellion.Systems
                 .ToList();
             if (facilities.Count == 0)
                 return;
-            _game.DetachNode(facilities[provider.NextInt(0, facilities.Count)]);
+            _game.DetachNode(facilities[_provider.NextInt(0, facilities.Count)]);
             results.Add(
                 new PlanetIncidentResult
                 {
@@ -251,12 +246,10 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
-        /// <param name="provider">RNG provider for selecting a random regiment.</param>
         /// <param name="results">Result list to append events to.</param>
         private void DestroyRandomRegiment(
             Planet planet,
             string controllerInstanceId,
-            IRandomNumberProvider provider,
             List<GameResult> results
         )
         {
@@ -266,7 +259,7 @@ namespace Rebellion.Systems
                 .ToList();
             if (regiments.Count == 0)
                 return;
-            _game.DetachNode(regiments[provider.NextInt(0, regiments.Count)]);
+            _game.DetachNode(regiments[_provider.NextInt(0, regiments.Count)]);
             results.Add(
                 new PlanetIncidentResult
                 {
@@ -283,12 +276,10 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
-        /// <param name="provider">RNG provider for selecting a random officer.</param>
         /// <param name="results">Result list to append events to.</param>
         private void CaptureRandomOfficer(
             Planet planet,
             string controllerInstanceId,
-            IRandomNumberProvider provider,
             List<GameResult> results
         )
         {
@@ -298,7 +289,7 @@ namespace Rebellion.Systems
                 .ToList();
             if (candidates.Count == 0)
                 return;
-            Officer target = candidates[provider.NextInt(0, candidates.Count)];
+            Officer target = candidates[_provider.NextInt(0, candidates.Count)];
             target.IsCaptured = true;
             results.Add(
                 new OfficerCaptureStateResult
@@ -316,12 +307,10 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
-        /// <param name="provider">RNG provider for selecting a random captured officer.</param>
         /// <param name="results">Result list to append events to.</param>
         private void FreeRandomCapturedOfficer(
             Planet planet,
             string controllerInstanceId,
-            IRandomNumberProvider provider,
             List<GameResult> results
         )
         {
@@ -331,7 +320,7 @@ namespace Rebellion.Systems
                 .ToList();
             if (candidates.Count == 0)
                 return;
-            Officer target = candidates[provider.NextInt(0, candidates.Count)];
+            Officer target = candidates[_provider.NextInt(0, candidates.Count)];
             target.IsCaptured = false;
             target.CaptorInstanceID = null;
             results.Add(
@@ -483,6 +472,9 @@ namespace Rebellion.Systems
         /// Looks up a value from an uprising table. Finds the highest threshold
         /// that the score meets or exceeds, and returns the associated value.
         /// </summary>
+        /// <param name="table">The threshold-to-value lookup table.</param>
+        /// <param name="score">The score to look up against the table thresholds.</param>
+        /// <returns>The value associated with the highest matching threshold.</returns>
         private static int LookupTable(Dictionary<int, int> table, int score)
         {
             int result = 0;
@@ -499,6 +491,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Counts friendly regiment troops at a planet.
         /// </summary>
+        /// <param name="planet">The planet to count troops on.</param>
+        /// <param name="factionId">The faction whose troops to count.</param>
+        /// <returns>The number of friendly regiments present.</returns>
         private static int CountFriendlyTroops(Planet planet, string factionId)
         {
             return planet.GetAllRegiments().Count(r => r.GetOwnerInstanceID() == factionId);
@@ -508,6 +503,9 @@ namespace Rebellion.Systems
         /// Returns the opposing faction with the highest popular support on this planet,
         /// or null if no opposing faction has any support.
         /// </summary>
+        /// <param name="planet">The planet to check support on.</param>
+        /// <param name="ownerInstanceId">The current owner's instance ID to exclude.</param>
+        /// <returns>The opposing faction with the most support, or null.</returns>
         private Faction FindLeadingOpposingFaction(Planet planet, string ownerInstanceId)
         {
             string opposingFactionId = null;
