@@ -11,7 +11,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages unit and facility production during each game tick.
     /// </summary>
-    public class ManufacturingSystem
+    public class ManufacturingSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

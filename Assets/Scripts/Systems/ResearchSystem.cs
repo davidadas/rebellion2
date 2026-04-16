@@ -8,7 +8,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages research and technology advancement during each game tick.
     /// </summary>
-    public class ResearchSystem
+    public class ResearchSystem : IGameSystem
     {
         private readonly GameRoot _game;
 

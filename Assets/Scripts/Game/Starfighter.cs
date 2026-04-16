@@ -16,6 +16,7 @@ namespace Rebellion.Game
 
         // General Info
         public int SquadronSize;
+        public int MaxSquadronSize;
         public int DetectionRating;
         public int Bombardment;
         public int ShieldStrength;

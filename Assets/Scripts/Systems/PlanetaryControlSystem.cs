@@ -120,20 +120,15 @@ namespace Rebellion.Systems
                 if (!planet.IsColonized)
                     continue;
 
-                string currentOwner = planet.GetOwnerInstanceID();
+                // Only claim unowned planets — owned planets don't flip via support alone.
+                if (!string.IsNullOrEmpty(planet.GetOwnerInstanceID()))
+                    continue;
 
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    if (faction.InstanceID == currentOwner)
-                        continue;
-
                     int support = planet.GetPopularSupport(faction.InstanceID);
                     if (support <= threshold)
                         continue;
-
-                    Faction previousOwner = string.IsNullOrEmpty(currentOwner)
-                        ? null
-                        : _game.GetFactionByOwnerInstanceID(currentOwner);
 
                     TransferPlanet(planet, faction);
 
@@ -141,7 +136,7 @@ namespace Rebellion.Systems
                         new PlanetOwnershipChangedResult
                         {
                             Planet = planet,
-                            PreviousOwner = previousOwner,
+                            PreviousOwner = null,
                             NewOwner = faction,
                             Tick = _game.CurrentTick,
                         }

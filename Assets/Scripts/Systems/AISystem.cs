@@ -10,7 +10,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages AI behavior for factions in the game.
     /// </summary>
-    public class AISystem
+    public class AISystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly MissionSystem _missionManager;

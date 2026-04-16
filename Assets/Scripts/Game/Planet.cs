@@ -570,14 +570,15 @@ namespace Rebellion.Game
         /// Calculates total defense strength from defensive buildings.
         /// </summary>
         /// <param name="filter">Which building states to include (default Active).</param>
-        /// <returns>Sum of weapon strength from defensive buildings.</returns>
+        /// <returns>Sum of shield strength from Shield buildings (type 0x24 only).</returns>
         public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()
                 .Where(b =>
-                    b.GetBuildingType() == BuildingType.Defense && IsEntityActive(b, filter)
+                    b.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    && IsEntityActive(b, filter)
                 )
-                .Sum(b => b.WeaponStrength);
+                .Sum(b => b.ShieldStrength);
         }
 
         /// <summary>

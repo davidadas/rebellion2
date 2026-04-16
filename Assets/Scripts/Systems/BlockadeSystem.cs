@@ -10,7 +10,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages blockade detection, transition events, and evacuation losses.
     /// </summary>
-    public class BlockadeSystem
+    public class BlockadeSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

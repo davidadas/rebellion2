@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -16,7 +17,7 @@ namespace Rebellion.Systems
     /// 2. Resource walk timer: picks a random planet and randomly adjusts
     ///    energy or raw materials by ±1.
     /// </summary>
-    public class ResourceRebalanceSystem
+    public class ResourceRebalanceSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -52,7 +53,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Checks each faction's timers and fires rebalance/walk when due.
         /// </summary>
-        public void ProcessTick()
+        public List<GameResult> ProcessTick()
         {
             GameConfig.ResourceRebalanceConfig config = _game.GetConfig().ResourceRebalance;
 
@@ -86,6 +87,8 @@ namespace Rebellion.Systems
                         + _provider.NextInt(0, config.ResourceWalkTimerSpread);
                 }
             }
+
+            return new List<GameResult>();
         }
 
         /// <summary>

@@ -28,6 +28,7 @@ namespace Rebellion.Game
 
         // Hull, Shield, and Repair Info
         public int HullStrength;
+        public int MaxHullStrength;
         public int DamageControl;
         public int MaxShieldStrength;
         public int ShieldRechargeRate;

@@ -153,7 +153,7 @@ public static class TestConfig
         UnityEngine.Application.dataPath,
         "Resources",
         "Configs",
-        "GameConfigSchema.xml"
+        "GameConfigSchema.xsd"
     );
 
     public static GameConfig Create()

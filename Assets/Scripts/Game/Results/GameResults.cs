@@ -791,6 +791,8 @@ namespace Rebellion.Game.Results
         public int DefenseStrength { get; set; }
         public bool Success { get; set; }
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
+        public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
+        public int EnergyDamage { get; set; }
         public bool OwnershipChanged { get; set; }
         public Faction NewOwner { get; set; }
     }
