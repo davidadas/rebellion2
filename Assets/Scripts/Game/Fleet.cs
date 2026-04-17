@@ -197,17 +197,16 @@ namespace Rebellion.Game
         public int GetCombatValue()
         {
             int capitalShipCombat = 0;
-            foreach (var s in CapitalShips)
+            foreach (CapitalShip s in CapitalShips)
             {
                 if (s.ManufacturingStatus != ManufacturingStatus.Complete)
                     continue;
 
                 int attackStrength = s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum());
-                int hullValue = s.MaxHullStrength;
-                if (hullValue > 0)
+                if (s.HullStrength > 0)
                 {
-                    int shipDamage = hullValue - s.HullStrength;
-                    capitalShipCombat += attackStrength - (attackStrength * shipDamage) / hullValue;
+                    capitalShipCombat +=
+                        attackStrength - (attackStrength * s.HullDamage) / s.HullStrength;
                 }
                 else
                 {
@@ -216,17 +215,16 @@ namespace Rebellion.Game
             }
 
             int starfighterCombat = 0;
-            foreach (var f in GetStarfighters())
+            foreach (Starfighter f in GetStarfighters())
             {
                 if (f.ManufacturingStatus != ManufacturingStatus.Complete)
                     continue;
 
                 int weaponStrength = f.LaserCannon + f.IonCannon + f.Torpedoes;
-                int maxSize = f.MaxSquadronSize;
-                if (maxSize > 0)
+                if (f.SquadronSize > 0)
                 {
-                    int losses = maxSize - f.SquadronSize;
-                    starfighterCombat += weaponStrength - (weaponStrength * losses) / maxSize;
+                    starfighterCombat +=
+                        weaponStrength - (weaponStrength * f.SquadronLosses) / f.SquadronSize;
                 }
                 else
                 {

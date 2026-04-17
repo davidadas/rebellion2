@@ -9,9 +9,10 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Manages planetary ownership and popular support.
-    /// Each tick: applies support recovery/decay, then checks whether any planet's
-    /// support has crossed the ownership threshold and transfers control if so.
-    /// Also provides TransferPlanet for immediate conquest transfers (CombatSystem).
+    /// Each tick: applies support recovery/decay, then claims any unowned planet whose
+    /// support for a faction has crossed the ownership threshold. Owned planets do not
+    /// flip via support alone — they change hands only through conquest (via TransferPlanet,
+    /// invoked from CombatSystem).
     /// </summary>
     public class PlanetaryControlSystem
     {

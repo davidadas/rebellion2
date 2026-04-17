@@ -409,7 +409,7 @@ namespace Rebellion.Systems
                 ships.Add(
                     new ShipSnap
                     {
-                        HullCurrent = ship.HullStrength,
+                        HullCurrent = ship.GetCurrentHull(),
                         HullMax = ship.HullStrength,
                         ShieldNibble = Math.Min(ship.ShieldRechargeRate, 15),
                         WeaponNibble = 15,
@@ -418,7 +418,10 @@ namespace Rebellion.Systems
                 );
             }
 
-            List<int> fighters = fleet.GetStarfighters().Select(f => f.SquadronSize).ToList();
+            List<int> fighters = fleet
+                .GetStarfighters()
+                .Select(f => f.GetCurrentSquadronSize())
+                .ToList();
 
             return (ships, fighters);
         }
@@ -820,7 +823,7 @@ namespace Rebellion.Systems
                 if (ship == null)
                     continue;
 
-                ship.HullStrength = damage.HullAfter;
+                ship.HullDamage = ship.HullStrength - damage.HullAfter;
 
                 events.Add(
                     new GameObjectDamagedResult
@@ -855,7 +858,7 @@ namespace Rebellion.Systems
                 if (fighter == null)
                     continue;
 
-                fighter.SquadronSize = loss.SquadsAfter;
+                fighter.SquadronLosses = fighter.SquadronSize - loss.SquadsAfter;
 
                 if (loss.SquadsAfter <= 0)
                 {
@@ -878,7 +881,7 @@ namespace Rebellion.Systems
                 return;
 
             CapitalShip survivingShip = fleet.CapitalShips.FirstOrDefault(s =>
-                !ReferenceEquals(s, ship) && s.HullStrength > 0
+                !ReferenceEquals(s, ship) && s.GetCurrentHull() > 0
             );
 
             foreach (Officer officer in officers)
@@ -967,10 +970,10 @@ namespace Rebellion.Systems
 
             int excessAssaultStrength = totalAssaultStrength - totalDefenseStrength;
 
-            // Phase 4: Dice roll for success
-            // Original (FUN_0058bfb0): threshold = 1 when assault context active,
-            // range = count of available target lanes. Roll random(0, laneCount + threshold),
-            // succeed if roll < threshold. Probability: 1 / (laneCount + 1).
+            // Phase 4: Dice roll for success.
+            // Matches original FUN_0058c580 (execute_capital_ship_assault_stage):
+            // roll_dice(laneCount) returns [0, laneCount], succeed if roll < 1.
+            // Probability: 1 / (laneCount + 1).
             int energyResistance = _game.Config.AI.CapitalShipProduction.EnergyStrikeResistance;
             int allocatedEnergyResistance = _game
                 .Config
@@ -1060,8 +1063,11 @@ namespace Rebellion.Systems
             int thresholdLow = _game.Config.Combat.BombardmentStrikeThresholdLow;
             int thresholdHigh = _game.Config.Combat.BombardmentStrikeThresholdHigh;
 
-            // A) Initial pre-loop strike — targets buildings ONLY
-            List<Building> buildings = planet.GetAllBuildings();
+            // A) Initial pre-loop strike — targets defense/production buildings ONLY
+            List<Building> buildings = planet
+                .GetAllBuildings()
+                .Where(IsAssaultTargetBuilding)
+                .ToList();
             if (buildings.Count > 0)
             {
                 int buildingIndex = _provider.NextInt(0, buildings.Count);
@@ -1102,11 +1108,29 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Determines whether a building can be targeted by a capital-ship assault strike.
+        /// Original enumerates defense (types 0x22–0x27) and production (0x28–0x2f) facilities;
+        /// excludes the "Weapon" BuildingType, which is a planet-side fortress weapon category
+        /// not covered by any assault-target range.
+        /// </summary>
+        private static bool IsAssaultTargetBuilding(Building building)
+        {
+            BuildingType type = building.GetBuildingType();
+            return type == BuildingType.Defense
+                || type == BuildingType.Mine
+                || type == BuildingType.Refinery
+                || type == BuildingType.Shipyard
+                || type == BuildingType.TrainingFacility
+                || type == BuildingType.ConstructionFacility;
+        }
+
+        /// <summary>
         /// Builds the list of assault target lanes for one strike iteration.
-        /// Each regiment, building, energy point, and allocated energy point
-        /// is a separate lane with its own resistance value.
-        /// Original has 4 target slots: troops, buildings (defense+HQ+production), energy, allocated energy.
-        /// Starfighters are not targets — they're handled during fleet combat before assault.
+        /// Matches original FUN_0058b1e0 (enumerate_capital_strike_target_lanes):
+        /// enumerates troops, defense facilities (types 0x22–0x27), production facilities
+        /// (types 0x28–0x2f), energy, and allocated energy. HQ (types 0x20–0x21) is not
+        /// represented as a Building in this port. Starfighters are handled during fleet
+        /// combat before assault.
         /// </summary>
         /// <param name="planet">The planet being assaulted.</param>
         /// <param name="energyResistance">Resistance value for energy lanes (GENERAL_PARAM_1540).</param>
@@ -1136,6 +1160,9 @@ namespace Rebellion.Systems
             List<Building> buildings = planet.GetAllBuildings();
             for (int i = 0; i < buildings.Count; i++)
             {
+                if (!IsAssaultTargetBuilding(buildings[i]))
+                    continue;
+
                 lanes.Add(
                     new AssaultLane
                     {

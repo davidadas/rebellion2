@@ -16,7 +16,7 @@ namespace Rebellion.Game
 
         // General Info
         public int SquadronSize;
-        public int MaxSquadronSize;
+        public int SquadronLosses;
         public int DetectionRating;
         public int Bombardment;
         public int ShieldStrength;
@@ -49,6 +49,15 @@ namespace Rebellion.Game
         /// Default constructor used for deserialization.
         /// </summary>
         public Starfighter() { }
+
+        /// <summary>
+        /// Current fighter count remaining in the squadron. SquadronSize is the immutable
+        /// spec value from the XML; SquadronLosses accumulates as fighters are destroyed.
+        /// </summary>
+        public int GetCurrentSquadronSize()
+        {
+            return SquadronSize - SquadronLosses;
+        }
 
         /// <summary>
         /// Returns the manufacturing type for this unit.

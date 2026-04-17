@@ -145,8 +145,6 @@
           <xs:complexType>
             <xs:all>
               <xs:element name="AssaultPersonnelDivisor" type="PositiveIntType" />
-              <xs:element name="AssaultSuccessThreshold" type="PositiveIntType" />
-              <xs:element name="AssaultRollRange" type="PositiveIntType" />
               <xs:element name="BombardmentStrikeThresholdLow" type="xs:nonNegativeInteger" />
               <xs:element name="BombardmentStrikeThresholdHigh" type="xs:nonNegativeInteger" />
               <xs:element name="BombardmentEnergyResistance" type="xs:nonNegativeInteger" />

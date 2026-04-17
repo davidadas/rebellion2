@@ -101,8 +101,8 @@ namespace Rebellion.Tests.Systems
             RunCombat(manager);
 
             bool combatOccurred =
-                empireFleet.CapitalShips[0].HullStrength < 100
-                || allianceFleet.CapitalShips[0].HullStrength < 100;
+                empireFleet.CapitalShips[0].GetCurrentHull() < 100
+                || allianceFleet.CapitalShips[0].GetCurrentHull() < 100;
             Assert.IsTrue(combatOccurred, "Combat should occur between hostile factions");
         }
 
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
                 initialHull,
-                fleet.CapitalShips[0].HullStrength,
+                fleet.CapitalShips[0].GetCurrentHull(),
                 "No combat should occur"
             );
         }
@@ -154,8 +154,8 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.AreEqual(100, fleet1.CapitalShips[0].HullStrength);
-            Assert.AreEqual(100, fleet2.CapitalShips[0].HullStrength);
+            Assert.AreEqual(100, fleet1.CapitalShips[0].GetCurrentHull());
+            Assert.AreEqual(100, fleet2.CapitalShips[0].GetCurrentHull());
         }
 
         [Test]
@@ -181,10 +181,10 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.Less(empireFleet1.CapitalShips[0].HullStrength, 100, "First fleet fights");
+            Assert.Less(empireFleet1.CapitalShips[0].GetCurrentHull(), 100, "First fleet fights");
             Assert.AreEqual(
                 100,
-                empireFleet2.CapitalShips[0].HullStrength,
+                empireFleet2.CapitalShips[0].GetCurrentHull(),
                 "Second fleet does not fight"
             );
         }
@@ -313,7 +313,7 @@ namespace Rebellion.Tests.Systems
             RunCombat(manager);
 
             Assert.Less(
-                empireFleet.CapitalShips[0].HullStrength,
+                empireFleet.CapitalShips[0].GetCurrentHull(),
                 100,
                 "Ships should take damage during combat"
             );
@@ -395,7 +395,7 @@ namespace Rebellion.Tests.Systems
                 if (allFighters.Count > 0)
                 {
                     Assert.Less(
-                        allFighters[0].SquadronSize,
+                        allFighters[0].GetCurrentSquadronSize(),
                         10,
                         "Alliance fighters should take losses"
                     );
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Systems
             List<Starfighter> empFighters = empFleet.GetStarfighters().ToList();
             Assert.Greater(empFighters.Count, 0, "Empire should have fighters");
             Assert.Less(
-                empFighters[0].SquadronSize,
+                empFighters[0].GetCurrentSquadronSize(),
                 100,
                 "Empire fighters should take some losses"
             );
@@ -476,12 +476,12 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 100,
-                empireFleet.CapitalShips[0].HullStrength,
+                empireFleet.CapitalShips[0].GetCurrentHull(),
                 "No damage without weapons"
             );
             Assert.AreEqual(
                 100,
-                allianceFleet.CapitalShips[0].HullStrength,
+                allianceFleet.CapitalShips[0].GetCurrentHull(),
                 "No damage without weapons"
             );
         }
@@ -508,8 +508,8 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.Less(empireFleet.CapitalShips[0].HullStrength, 100);
-            Assert.Less(allianceFleet.CapitalShips[0].HullStrength, 100);
+            Assert.Less(empireFleet.CapitalShips[0].GetCurrentHull(), 100);
+            Assert.Less(allianceFleet.CapitalShips[0].GetCurrentHull(), 100);
         }
 
         [Test]
@@ -537,8 +537,8 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            int shieldedDamage = 100 - shieldedFleet.CapitalShips[0].HullStrength;
-            int unshieldedDamage = 100 - unshieldedFleet.CapitalShips[0].HullStrength;
+            int shieldedDamage = shieldedFleet.CapitalShips[0].HullDamage;
+            int unshieldedDamage = unshieldedFleet.CapitalShips[0].HullDamage;
 
             Assert.Greater(unshieldedDamage, shieldedDamage, "Shields should reduce damage");
         }
@@ -577,7 +577,7 @@ namespace Rebellion.Tests.Systems
             Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
             Assert.IsNotNull(target, "Target fleet should still exist");
             Assert.Less(
-                target.CapitalShips[0].HullStrength,
+                target.CapitalShips[0].GetCurrentHull(),
                 1000,
                 "Fighters should damage capital ships"
             );
@@ -605,16 +605,16 @@ namespace Rebellion.Tests.Systems
 
             CombatSystem manager1 = MakeCombat(game, rng1);
             RunCombat(manager1);
-            int damage1 = 100 - empireFleet.CapitalShips[0].HullStrength;
+            int damage1 = empireFleet.CapitalShips[0].HullDamage;
 
-            empireFleet.CapitalShips[0].HullStrength = 100;
-            allianceFleet.CapitalShips[0].HullStrength = 100;
+            empireFleet.CapitalShips[0].HullDamage = 0;
+            allianceFleet.CapitalShips[0].HullDamage = 0;
             empireFleet.IsInCombat = false;
             allianceFleet.IsInCombat = false;
 
             CombatSystem manager2 = MakeCombat(game, rng2);
             RunCombat(manager2);
-            int damage2 = 100 - empireFleet.CapitalShips[0].HullStrength;
+            int damage2 = empireFleet.CapitalShips[0].HullDamage;
 
             Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
         }
@@ -651,8 +651,8 @@ namespace Rebellion.Tests.Systems
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
 
             Assert.AreEqual(
-                fleet1.CapitalShips[0].HullStrength,
-                fleet2.CapitalShips[0].HullStrength,
+                fleet1.CapitalShips[0].GetCurrentHull(),
+                fleet2.CapitalShips[0].GetCurrentHull(),
                 "Same RNG should produce identical results"
             );
         }
@@ -689,8 +689,8 @@ namespace Rebellion.Tests.Systems
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
 
             Assert.AreNotEqual(
-                fleet1.CapitalShips[0].HullStrength,
-                fleet2.CapitalShips[0].HullStrength,
+                fleet1.CapitalShips[0].GetCurrentHull(),
+                fleet2.CapitalShips[0].GetCurrentHull(),
                 "Different RNG should produce different results"
             );
         }
@@ -873,12 +873,12 @@ namespace Rebellion.Tests.Systems
                 Assert.IsNotNull(ef, $"Empire fleet at planet {i} should survive");
                 Assert.IsNotNull(af, $"Alliance fleet at planet {i} should survive");
                 Assert.Less(
-                    ef.CapitalShips[0].HullStrength,
+                    ef.CapitalShips[0].GetCurrentHull(),
                     1000,
                     $"Empire fleet at planet {i} should have taken damage"
                 );
                 Assert.Less(
-                    af.CapitalShips[0].HullStrength,
+                    af.CapitalShips[0].GetCurrentHull(),
                     1000,
                     $"Alliance fleet at planet {i} should have taken damage"
                 );
@@ -1586,17 +1586,20 @@ namespace Rebellion.Tests.Systems
         public void ExecutePlanetaryAssault_AllTargetsDestroyed_TransfersPlanetOwnership()
         {
             GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 0);
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
             CreateTargetBuilding(game, "bld1", "alliance", planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // Lanes: Building(resist=0), EnergyAllocated(resist=9). Count=2.
-            // Call 1: dice roll NextInt(0, 3) → 0 → success.
+            // Lanes: Building(resist=0), Energy(resist=9), EnergyAllocated(resist=9). Count=3.
+            // Call 1: dice roll NextInt(0, 4) → 0 → success.
             // Call 2: initial building index NextInt(0, 1) → 0.
-            // Call 3: initial strike roll NextInt(1, 11) → 5 → hit → building destroyed.
-            // After destruction: no lanes remain → loop breaks. Planet fully wiped.
-            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5 });
+            // Call 3: initial strike roll NextInt(1, 11) → 5 → hit (0 < 5) → building destroyed.
+            // After destruction: only Energy lane remains (EnergyCapacity=1, used=0).
+            // Main loop Call 4: lane index NextInt(0, 1) → 0 → Energy lane.
+            // Main loop Call 5: strike roll NextInt(1, 11) → 10 → hit (9 < 10) → energy reduced to 0.
+            // Next iteration: no lanes → loop breaks. Planet fully wiped.
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5, 0, 10 });
             CombatSystem combat = MakeCombat(game, rng);
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(

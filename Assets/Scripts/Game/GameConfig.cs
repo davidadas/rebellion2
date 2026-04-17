@@ -321,16 +321,6 @@ public class GameConfig
         public int AssaultPersonnelDivisor { get; set; }
 
         /// <summary>
-        /// Dice roll threshold for a planetary assault to succeed (roll must be below this).
-        /// </summary>
-        public int AssaultSuccessThreshold { get; set; }
-
-        /// <summary>
-        /// Upper bound of the dice roll range for planetary assault success checks.
-        /// </summary>
-        public int AssaultRollRange { get; set; }
-
-        /// <summary>
         /// Low threshold for bombardment strike resistance check.
         /// Strike hits if target resistance is less than random(Low, High).
         /// Source: GENERAL_PARAM 1538.
