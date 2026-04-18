@@ -22,12 +22,14 @@ public class PerSystemStats
     // (&node->field40_0x70)[param_7] — DWORD at byte offset (param_7 * 4) from PerSystemStats start.
     // Byte offsets: 0x0c=FacilityCount, 0x10=EnemyTroopSurplus, 0x14=FriendlyTroopSurplus,
     //   0x24=NetCapitalShipSurplus, 0x28=NetFighterSurplus, 0x2c=SystemPriority,
-    //   0x30=EntityClassification, 0x38=FightersAboveThreshold, 0x3c=AvailableFighters.
+    //   0x30=EntityClassification, 0x38=FightersAboveThreshold, 0x3c=AvailableFighters,
+    //   0x40=CapShipAtTarget, 0x44=CapShipNotAtTarget, 0x48=RegimentAtTarget,
+    //   0x4c=RegimentNotAtTarget, 0x50=StarfighterAtTarget, 0x54=StarfighterNotAtTarget.
     // DWORD index 4 (offset 0x10) = EnemyTroopSurplus
     // DWORD index 8 (offset 0x20) = unlisted (returns 0 until FUN_004319d0 fully implemented)
     // DWORD index 9 (offset 0x24) = NetCapitalShipSurplus
     // DWORD index 10 (offset 0x28) = NetFighterSurplus
-    // DWORD index 21 (offset 0x54) = unlisted (returns 0 until FUN_004319d0 fully implemented)
+    // DWORD index 21 (offset 0x54) = StarfighterNotAtTarget (StarfighterCount sum where cf & 0x3800000 == 0)
     public int GetStatByIndex(int index)
     {
         return (index * 4) switch
@@ -41,9 +43,15 @@ public class PerSystemStats
             0x30 => EntityClassification,
             0x38 => FightersAboveThreshold,
             0x3c => AvailableFighters,
+            0x40 => CapShipAtTarget,
+            0x44 => CapShipNotAtTarget,
+            0x48 => RegimentAtTarget,
+            0x4c => RegimentNotAtTarget,
+            0x50 => StarfighterAtTarget,
+            0x54 => StarfighterNotAtTarget,
             0x7c => FacilityCountOwned,
             0x80 => EnemyShipCount,
-            _ => 0, // unlisted fields return 0 until FUN_004319d0 fully implemented
+            _ => 0, // unlisted fields return 0 until fully implemented
         };
     }
 
@@ -56,6 +64,17 @@ public class PerSystemStats
     public int EntityClassification; // +0x30  (node+0xa0) - min-tracked for enemies
     public int FightersAboveThreshold; // +0x38  (node+0xa8)
     public int AvailableFighters; // +0x3c  (node+0xac)
+    // FUN_004319d0 lines 151-172: own-planet per-type unit count accumulators.
+    // Set only in the own-faction path (sf & 0x1). Each pair splits on a CapabilityFlags bit.
+    // "AtTarget": cf bit set by a deployment strategy record (FUN_004ca030 family for cap ships,
+    //   FUN_004cfbd0 family for regiments, FUN_004da280 family for starfighters) when it designates
+    //   this planet as its current operation target. "NotAtTarget": bit not set by that strategy.
+    public int CapShipAtTarget; // +0x40  (node+0xb0): CapitalShipCount sum where cf & 0x200000 != 0
+    public int CapShipNotAtTarget; // +0x44  (node+0xb4): CapitalShipCount sum where cf & 0x200000 == 0
+    public int RegimentAtTarget; // +0x48  (node+0xb8): RegimentCount sum where cf & 0x400000 != 0
+    public int RegimentNotAtTarget; // +0x4c  (node+0xbc): RegimentCount sum where cf & 0x400000 == 0
+    public int StarfighterAtTarget; // +0x50  (node+0xc0): StarfighterCount sum where cf & 0x3800000 != 0
+    public int StarfighterNotAtTarget; // +0x54  (node+0xc4): StarfighterCount sum where cf & 0x3800000 == 0 (statIndex 0x15)
     public int FacilityCountOwned; // +0x7c  (node+0xec)
     public int EnemyShipCount; // +0x80  (node+0xf0)
     public int ThreatenedCount; // +0x8c  (node+0xfc)

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Util.Common;
 
 // Abstract base for all 14 strategy record types that populate the heavy AI worker's
 // BST-ordered work list. Corresponds to the common layout established by
@@ -118,6 +120,7 @@ public abstract class StrategyRecord
         {
             ActiveState = 1;
             ReadyFlag = 0;
+            GameLogger.Log($"[AI] Record activated: type={TypeId}");
         }
     }
 
@@ -165,6 +168,7 @@ public abstract class StrategyRecord
             Phase = 0;
             SubState = 0;
             ReadyFlag = 1;
+            GameLogger.Log($"[AI] Record inactive: type={TypeId}, ActiveState={ActiveState}");
             return true;
         }
         return false;
@@ -232,22 +236,29 @@ public class FleetShortageWorkItem : AIWorkItem
 /// TypeCode 0x201 = AssembleFinalWorkItem (FUN_004bc810).
 /// TypeCode 0x240 = ProcessTerminalWorkItem (FUN_0047a7b0).
 /// TypeCode 0x250 = ProcessReturnWorkItemPhase (FUN_0047a6a0).
-/// Carries the mission entity reference and workspace for RouteWorkItemToManager.
+/// Carries the mission target system (typed reference) and workspace for RouteWorkItemToManager.
+/// Legacy integer path retained for MissionAssignmentEntry callers not yet migrated.
 /// </summary>
 public class MissionExecutionWorkItem : AIWorkItem
 {
     // TypeCode 0x201 for standard mission dispatch; other codes for specific paths.
     public override int TypeCode => 0x201;
 
-    /// <summary>Entity reference for the mission assignment (+0x18 from MissionAssignmentEntry).</summary>
-    public int EntityRef { get; }
+    /// <summary>System analysis record for the mission target.</summary>
+    public SystemAnalysisRecord SystemRef { get; }
 
     /// <summary>Workspace reference for mission creation.</summary>
     public AIWorkspace Workspace { get; }
 
-    public MissionExecutionWorkItem(int entityRef, AIWorkspace workspace)
+    /// <summary>Characters selected during Stage evaluation for this mission.</summary>
+    public List<CharacterAnalysisRecord> SelectedCharacters { get; } = new List<CharacterAnalysisRecord>();
+
+    /// <summary>Specific planet within the target system, resolved from the planet sub-object filter. Null when no planet refinement was performed.</summary>
+    public Planet TargetPlanet { get; set; }
+
+    public MissionExecutionWorkItem(SystemAnalysisRecord systemRef, AIWorkspace workspace)
     {
-        EntityRef = entityRef;
+        SystemRef = systemRef;
         Workspace = workspace;
     }
 

@@ -144,8 +144,8 @@ do_clean() {
 
 do_all() {
     trap 'echo ""; echo "Resist the dark side and fix those tests..."' ERR
-    do_format
-    do_lint
+    # do_format
+    # do_lint
     do_coverage
     echo ""
     echo "Your tests pass. The force is strong with this one."

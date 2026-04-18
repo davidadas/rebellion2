@@ -204,5 +204,11 @@ namespace Rebellion.Game
         {
             return CapitalShips.Cast<ISceneNode>();
         }
+
+        /// <summary>
+        /// The PlanetSystem this fleet is currently stationed at, or null if in transit.
+        /// In the scene graph, a fleet docked at a system has that system as its ParentNode.
+        /// </summary>
+        public PlanetSystem CurrentSystem => ParentNode as PlanetSystem;
     }
 }

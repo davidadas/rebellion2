@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 // Corresponds to LargeSelectionRecord (astruct_423), the "heavy AI worker" that drives
 // all galaxy analysis and strategy record processing for one faction side.
@@ -171,6 +172,7 @@ public class HeavyAIWorker
             bool analysisComplete = GalaxyAnalysisPipeline.Tick(Workspace);
             if (analysisComplete)
                 _missionCycleState = 2;
+
             return false;
         }
 
@@ -309,8 +311,11 @@ public class HeavyAIWorker
         }
 
         // Active cursor: tick the current record.
+        GameLogger.Log($"[AI] Record running: type={_workCursor?.TypeId}");
         _workCursor.TickCounter = 0;
         AIWorkItem workItem = _workCursor.Tick();
+        if (workItem != null)
+            GameLogger.Log($"[AI] Work item: type={workItem.TypeCode} from record={_workCursor?.TypeId}");
 
         if (workItem != null)
         {
@@ -407,7 +412,8 @@ public class HeavyAIWorker
     /// <summary>
     /// Handles a mission execution work item (TypeCode 0x201).
     ///
-    /// Resolves the target system from item.EntityRef (SystemAnalysisRecord.InternalId),
+    /// Resolves the target system from item.SystemRef (typed reference, preferred) or
+    /// item.EntityRef (legacy integer InternalId, MissionAssignmentEntry path).
     /// selects an available officer from this faction, chooses an appropriate MissionType
     /// based on the target planet's ownership, and calls MissionSystem.InitiateMission.
     ///
@@ -426,33 +432,16 @@ public class HeavyAIWorker
         if (_missionManager == null || _faction == null || _randomProvider == null)
             return;
 
-        // Resolve target system from EntityRef (SystemAnalysisRecord.InternalId).
-        AIWorkspace ws = item.Workspace;
-        if (ws == null)
+        if (item.Workspace == null || item.SystemRef?.System == null)
             return;
 
-        SystemAnalysisRecord sysRec = ws.SystemAnalysis.FirstOrDefault(r =>
-            r.InternalId == item.EntityRef
-        );
-
-        // Fallback: pick the highest-priority system with own-faction presence.
-        if (sysRec == null)
-        {
-            sysRec = ws
-                .SystemAnalysis.Where(r => (r.PresenceFlags & 0x1) != 0)
-                .OrderByDescending(r => r.SystemScore)
-                .FirstOrDefault();
-        }
-        if (sysRec?.System == null)
-            return;
-
-        // Pick a target planet — prefer non-own planets for active missions.
+        SystemAnalysisRecord sysRec = item.SystemRef;
         string factionId = _faction.InstanceID;
-        Planet target =
-            sysRec.System.Planets.FirstOrDefault(p => p.GetOwnerInstanceID() != factionId)
-            ?? sysRec.System.Planets.FirstOrDefault();
-        if (target == null)
+
+        if (item.TargetPlanet == null)
             return;
+
+        Planet target = item.TargetPlanet;
 
         // Determine mission type from target ownership.
         string targetOwner = target.GetOwnerInstanceID();

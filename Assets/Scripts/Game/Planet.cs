@@ -503,6 +503,12 @@ namespace Rebellion.Game
         public void AddFleet(Fleet fleet)
         {
             Fleets.Add(fleet);
+
+            // Add faction as a visitor.
+            if (!VisitingFactionIDs.Contains(fleet.GetOwnerInstanceID()))
+            {
+                VisitingFactionIDs.Add(fleet.GetOwnerInstanceID());
+            }
         }
 
         /// <summary>

@@ -63,10 +63,9 @@ namespace Rebellion.Systems
             if (_game.CurrentTick % _game.Config.AI.TickInterval != 0)
                 return new List<GameResult>();
 
-            foreach (Faction faction in _game.Factions.Where(f => f.IsAIControlled()))
-            {
+            var aiFactions = _game.Factions.Where(f => f.IsAIControlled()).ToList();
+            foreach (Faction faction in aiFactions)
                 UpdateFaction(faction);
-            }
 
             return new List<GameResult>();
         }

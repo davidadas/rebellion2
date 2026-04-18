@@ -339,18 +339,7 @@ public class AIWorkspace
                 continue;
 
             int statValue = rec.Stats.GetStatByIndex(statIndex);
-            // entityKey = AI-internal entity ID for this system record (HIBYTE 0x90).
-            // FUN_00403040 produces the key from the entity node pointer; in C# we use
-            // the pre-assigned InternalId which carries the correct HIBYTE type encoding.
-            int entityKey = rec.InternalId;
-            result.Add(
-                new IssueRecord
-                {
-                    EntityKey = entityKey,
-                    PropertyValue = statValue,
-                    Record = rec,
-                }
-            );
+            result.Add(new IssueRecord { PropertyValue = statValue, Record = rec });
         }
 
         // FUN_0041b9e0: assign sequential priorities ascending by PropertyValue.
@@ -361,25 +350,18 @@ public class AIWorkspace
     // -------------------------------------------------------------------------
     // FUN_00419af0 — QuerySystemPlanets (entity-scoped planet sub-object query)
     //
-    // Resolves the system analysis record for the entity key at param_1,
-    // then calls FUN_00430eb0 to query that system's 10 planet sub-objects
-    // with the same 6-condition flag filter used by FUN_004191b0.
+    // Queries the planet sub-objects of the given system analysis record with the
+    // same 6-condition flag filter used by QuerySystemAnalysis (FUN_004191b0).
     //
-    // Parameters (from FUN_00419af0 assembly):
-    //   candidateEntityKey — entity key (from _candidateRefA etc.)
+    // Parameters:
+    //   sysRec   — system analysis record whose planets to query
     //   incl28 / excl28 — include/exclude masks for planet.CapabilityFlags (+0x28)
     //   incl2c / excl2c — include/exclude masks for planet.ExtraFlags (+0x2c)
     //   incl30 / excl30 — include/exclude masks for planet.StatusFlags (+0x30)
     //   statIndex       — DWORD index into planet data fields (+0x48 base)
-    //
-    // Called from PreconditionCheck2 and SelectAgentSlot with specific params:
-    //   sub_419af0(_candidateRefA, 0x800, 0, 0x1, 0x3800000, 0, 0, 6, 1)
-    //   → own planets (StatusFlags & 0x1) with fleet deployment (CapabilityFlags & 0x800)
-    //     but without mission-blocking flags (CapabilityFlags & 0x3800000 == 0)
-    //     → stat = StarfighterCount (index 6)
     // -------------------------------------------------------------------------
     public IssueRecordContainer QuerySystemPlanets(
-        int candidateEntityKey,
+        SystemAnalysisRecord sysRec,
         uint incl28,
         uint incl2c,
         uint incl30,
@@ -389,18 +371,14 @@ public class AIWorkspace
         int statIndex
     )
     {
-        // FUN_0041b540: find the system analysis record matching this entity key.
-        // Uses InternalId (HIBYTE 0x90 | index) rather than System.GetHashCode().
-        SystemAnalysisRecord sysRec = SystemAnalysis.FirstOrDefault(r =>
-            r.InternalId == candidateEntityKey
-        );
         if (sysRec == null)
             return new IssueRecordContainer();
 
         // FUN_00430eb0: filter the 10 planet sub-objects.
         var result = new IssueRecordContainer();
-        foreach (PlanetSubobject sub in sysRec.PlanetSubobjects)
+        for (int i = 0; i < sysRec.PlanetSubobjects.Length; i++)
         {
+            PlanetSubobject sub = sysRec.PlanetSubobjects[i];
             if (sub == null)
                 continue;
 
@@ -408,7 +386,6 @@ public class AIWorkspace
             uint ext = sub.ExtraFlags;
             uint sta = sub.StatusFlags;
 
-            // 6-condition filter (identical structure to FUN_004191b0's system filter):
             if ((incl28 & cap) != incl28)
                 continue;
             if ((excl28 & cap) != 0)
@@ -423,14 +400,8 @@ public class AIWorkspace
                 continue;
 
             int statValue = sub.GetStatByIndex(statIndex);
-            result.Add(
-                new IssueRecord
-                {
-                    EntityKey = candidateEntityKey,
-                    PropertyValue = statValue,
-                    Record = sysRec,
-                }
-            );
+            Planet planet = sysRec.System?.Planets.ElementAtOrDefault(i);
+            result.Add(new IssueRecord { PropertyValue = statValue, Record = sysRec, MatchedPlanet = planet });
         }
 
         result.FinalizeAndAssignPriorities();
@@ -510,8 +481,9 @@ public class AIWorkspace
 ///       0x2000 = fleet deployment condition (queried by PreconditionCheck2 0x2000 filter)
 ///       0x40000000 = own-side controlled
 ///   FlagA (+0x28, field34_0x28): Capability/unit flags.
-///     bit 0x1-0x2 = enemy/own ownership (shortage gen requires 0x3 clear)
-///     bit 0x800000 = garrison shortage candidate (set by UpdateShortageFleet)
+///     bit 0x1 = regiment deployment in progress (ExtraFlags 0x4 → NeedsUnitDeployment false)
+///     bit 0x2 = starfighter deployment in progress (ExtraFlags 0x8 → NeedsUnitDeployment false)
+///     bit 0x800000 = shortage candidate marker (set by UpdateShortageFleet; not pipeline-derived)
 ///     bit 0x1000  = regiment capacity available
 ///   FlagB (+0x2c, field35_0x2c): Status/ownership flags.
 ///     bit 0x4   = own faction owns at least one planet here
@@ -525,16 +497,6 @@ public class SystemAnalysisRecord
 {
     public PlanetSystem System { get; set; }
     public PerSystemStats Stats { get; set; } = new PerSystemStats();
-
-    /// <summary>
-    /// AI-internal entity key for this system analysis record.
-    /// High byte = 0x90 (system type code in AI's internal entity encoding, [0x90, 0x98)).
-    /// Lower 24 bits = sequential index within SystemAnalysis list.
-    /// Assigned during galaxy analysis state 2 (FUN_004306c0 iterator range [0x90,0x98)).
-    /// Used by strategy records to look up this record via workspace container queries
-    /// (sub_403d30 / FUN_004f4cc0_find_by_record_matching_family_id).
-    /// </summary>
-    public int InternalId { get; set; }
 
     /// <summary>
     /// Disposition/character flags (+0x24, field33_0x24).
@@ -554,7 +516,8 @@ public class SystemAnalysisRecord
     /// <summary>
     /// Capability/unit flags word (system record +0x28, field34_0x28).
     /// Set by FUN_004319d0 accumulation from per-planet data.
-    /// Shortage generators check: bits 0–1 must be CLEAR (no enemy planets).
+    /// See NeedsUnitDeployment (bits 0–1), IsShortageCandidate (bit 23),
+    /// HasEnemyEconomicTarget (bit 11) for named semantic accessors.
     /// </summary>
     public int FlagA { get; set; }
 
@@ -566,43 +529,77 @@ public class SystemAnalysisRecord
     public int FlagB { get; set; }
 
     /// <summary>
-    /// Entity/fleet presence count (system record +0x30).
-    /// Non-zero when this faction or an enemy has a fleet or character in this system.
-    /// Shortage generators check: (PresenceFlags &amp; 0x1) must be non-zero to qualify.
+    /// Entity/fleet presence flags (system record +0x30).
+    /// Set by GalaxyAnalysisPipeline when own-faction fleet or own-controlled planet is
+    /// present. See HasFactionPresence (bit 0) for the named semantic accessor.
     /// </summary>
     public int PresenceFlags { get; set; }
 
     // Score fields used by calibration state 1 (FUN_00431860 → FUN_0041af90 scoring).
     public int SystemScore { get; set; }
     public int ScoringFlags { get; set; }
+
+    // --- Semantic flag properties ---
+
+    /// <summary>
+    /// True when the AI faction has own planets or own fleet stationed at this system.
+    /// Corresponds to PresenceFlags bit 0x1: set by GalaxyAnalysisPipeline when an
+    /// own-faction fleet or own-controlled planet is present.
+    /// </summary>
+    public bool HasFactionPresence => (PresenceFlags & 0x1) != 0;
+
+    /// <summary>
+    /// True when this system has been flagged as an active fleet shortage candidate by
+    /// the Type 1 shortage generator. Runtime marker set by UpdateShortageFleet
+    /// (FlagA |= 0x800000); not a pipeline-derived property.
+    /// </summary>
+    public bool IsShortageCandidate => (FlagA & 0x800000) != 0;
+
+    /// <summary>
+    /// True when at least one enemy-held planet in this system has mines or refineries.
+    /// Corresponds to FlagA bit 0x800 (bit 11): set by AccumulatePlanetIntoSystemRecord
+    /// when ExtraFlags bit 0x10000 is present, which RefreshPlanetSubobject sets only
+    /// for enemy planets that have mine or refinery buildings.
+    /// </summary>
+    public bool HasEnemyEconomicTarget => (FlagA & 0x800) != 0;
+
+    /// <summary>
+    /// True when no regiment or starfighter deployment mission is currently active for this
+    /// system (FlagA bits 0 and 1 are both clear). FlagA bit 0x1 is set via ExtraFlags bit
+    /// 0x4 when a strategy record initiates regiment deployment (CapabilityFlags |= 0x200000
+    /// written by the record before calling sub_4334b0 to refresh the analysis). FlagA bit
+    /// 0x2 is the analogous starfighter deployment marker. Shortage generators require this
+    /// to be true before creating a new deployment mission for the system.
+    /// </summary>
+    public bool NeedsUnitDeployment => (FlagA & 0x3) == 0;
 }
 
 /// <summary>
 /// One result record from FUN_004191b0 (QuerySystemAnalysis).
 /// Corresponds to the 24-byte astruct built by FUN_0041bb10.
-/// Contains the system's entity key and the PerSystemStats property value at the queried index.
+/// Contains the SystemAnalysisRecord and the PerSystemStats property value at the queried index.
 /// Priority is assigned by FUN_0041b9e0 (1 = highest priority = lowest property value).
 /// </summary>
 public class IssueRecord
 {
-    /// <summary>System entity key from FUN_00403040 (proxy: System.GetHashCode()).</summary>
-    public int EntityKey { get; set; }
-
     /// <summary>PerSystemStats[statIndex] value (at result record +0x10).</summary>
     public int PropertyValue { get; set; }
 
     /// <summary>Sequential priority index assigned by FinalizeAndAssignPriorities (1 = first/best).</summary>
     public int Priority { get; set; }
 
-    /// <summary>Back-reference to the source SystemAnalysisRecord for C# convenience.</summary>
+    /// <summary>The source SystemAnalysisRecord.</summary>
     public SystemAnalysisRecord Record { get; set; }
+
+    /// <summary>The specific planet that passed the sub-object filter. Null when populated by QuerySystemAnalysis.</summary>
+    public Planet MatchedPlanet { get; set; }
 }
 
 /// <summary>
 /// Container of IssueRecord results from FUN_004191b0 (astruct_340 / AutoClass761).
 /// Items are sorted ascending by PropertyValue with random tiebreaking (FUN_0041ba00).
 /// FUN_00434e10 splices items from a query result into this container.
-/// FUN_00434e30 retrieves the top-priority entity key.
+/// FUN_00434e30 retrieves the top-priority record.
 /// FUN_005f3dd0 clears the container.
 /// </summary>
 public class IssueRecordContainer
@@ -653,25 +650,17 @@ public class IssueRecordContainer
     }
 
     /// <summary>
-    /// FUN_00434e30_get_last_mission_issue_record_id: returns the top-priority record's
-    /// EntityKey (priority 1 = smallest PropertyValue = most urgent shortage).
-    /// Returns false if the container is empty.
-    /// </summary>
-    public bool TryGetTopEntityKey(out int entityKey)
-    {
-        if (_records.Count == 0)
-        {
-            entityKey = 0;
-            return false;
-        }
-        entityKey = _records[0].EntityKey;
-        return true;
-    }
-
-    /// <summary>
-    /// FUN_00434e30: returns the top-priority SystemAnalysisRecord directly (C# convenience).
+    /// FUN_00434e30: returns the top-priority SystemAnalysisRecord (priority 1 = smallest PropertyValue).
+    /// Returns null if the container is empty.
     /// </summary>
     public SystemAnalysisRecord GetTopRecord() => _records.Count > 0 ? _records[0].Record : null;
+
+    /// <summary>
+    /// Returns the planet matched by the sub-object filter in the top-priority record.
+    /// Returns null if the container is empty or no planet was matched.
+    /// </summary>
+    public Planet GetTopMatchedPlanet() =>
+        _records.Count > 0 ? _records[0].MatchedPlanet : null;
 
     /// <summary>FUN_005f3dd0: clear all records.</summary>
     public void Clear() => _records.Clear();
@@ -944,7 +933,21 @@ public class CharacterAnalysisRecord
 {
     public Officer Officer { get; set; }
     public int CharacterScore { get; set; }
+
+    /// <summary>
+    /// Capability type bits derived from workspace+0x138 FieldAt18 HIBYTE pattern.
+    ///   bit 0x10: FieldAt18 HIBYTE in [0x90,0x98) — system entity type.
+    ///             C# proxy: officer is not currently on a mission.
+    ///   bit 0x20: FieldAt18 HIBYTE in [0xa0,0xa2) — character entity type.
+    ///             C# proxy: officer is currently on a mission.
+    /// </summary>
     public int CapabilityFlags { get; set; }
+
+    /// <summary>
+    /// The fleet analysis record this character belongs to.
+    /// Populated during BuildCharacterAnalysis.
+    /// </summary>
+    public FleetAnalysisRecord FleetRef { get; set; }
 
     /// <summary>
     /// AI-internal entity key for this character analysis record.
@@ -975,6 +978,10 @@ public class MissionAssignmentEntry
     // +0x18: entity reference/key used in FUN_0047acc0, FUN_0047ad30, FUN_0041ace0
     // for record ownership validation and workspace mission lookup.
     public int FieldAt18 { get; set; }
+
+    // C# typed target system reference. Replaces the encoded integer in FieldAt18
+    // for MissionExecutionWorkItem creation (states 1, 7, 8 of the dispatch machine).
+    public SystemAnalysisRecord SystemRef { get; set; }
 
     // +0x1c: current state of the 8-state dispatch machine (FUN_004bc170).
     // Default 0 → treated as default → resets to state 1.
@@ -1159,7 +1166,7 @@ public class MissionAssignmentEntry
         if ((MachineFlags & 0x40000000u) != 0)
         {
             MachineFlags &= unchecked((uint)(~0x9fffffff));
-            return new MissionExecutionWorkItem(FieldAt18, Workspace);
+            return new MissionExecutionWorkItem(SystemRef, Workspace);
         }
         MachineFlags &= unchecked((uint)(~0x9fffffff));
         return null;
@@ -1186,7 +1193,7 @@ public class MissionAssignmentEntry
     private AIWorkItem AssembleFinalWorkItem()
     {
         MachineFlags &= ~0x8u;
-        return new MissionExecutionWorkItem(FieldAt18, Workspace);
+        return new MissionExecutionWorkItem(SystemRef, Workspace);
     }
 
     // FUN_0047a7b0: terminal handler for state 8.
@@ -1194,7 +1201,7 @@ public class MissionAssignmentEntry
     private AIWorkItem ProcessTerminalWorkItem()
     {
         if (EntityRef38 != 0)
-            return new MissionExecutionWorkItem(FieldAt18, Workspace);
+            return new MissionExecutionWorkItem(SystemRef, Workspace);
         return null;
     }
 
@@ -1304,8 +1311,10 @@ public class MissionTargetEntry
     public int AssignmentStateWord { get; set; }
 
     // +0x40: astruct_187 subobject field at offset +0x04 within the embedded block.
-    // Purpose not yet resolved from callee analysis; reserved for binary layout fidelity.
-    public int EmbeddedSubField { get; set; }
+    // In FUN_0042e990 (EntityTargetTable search), this field is compared with the entity key
+    // at the caller's this+0x54 slot (the planet-refined system candidate). In C#, stored
+    // as a typed SystemAnalysisRecord reference rather than an integer entity key.
+    public SystemAnalysisRecord EntityRef { get; set; }
 
     // +0x44: assignment target reference (astruct_187 subobject field at +0x08).
     // Written into FleetAvailabilityRecord.AssignmentRef by the accept path
@@ -1775,8 +1784,11 @@ public class MissionTargetEntry
 
     /// <summary>
     /// Evaluates accumulated capacity against assignment thresholds (dispatch case 3).
-    /// Sets localFlag to non-zero when a qualifying candidate is found, signalling the
-    /// pipeline to advance to case 4. Returns a work item if a candidate was committed.
+    /// Corresponds to FUN_004772d0. Always sets localFlag to 1 before returning
+    /// (assembly: *param_1 = 1 is the last instruction, unconditional). When all 8
+    /// capacity checks pass, marks AssignmentId bit 0x2000000. The downstream work
+    /// item creation (FUN_004776f0 / FUN_00477ae0 / FUN_00477ef0 paths) is BLOCKED
+    /// by fleet entity infrastructure, so null is always returned.
     /// </summary>
     private AIWorkItem EvaluateCapacityCondition(ref int localFlag)
     {
@@ -1798,28 +1810,26 @@ public class MissionTargetEntry
             return null;
         }
 
-        // 8 sequential capacity checks. Any failure means the condition is not satisfied.
-        if (entity.CapField7C > CapacityAccumulator0)
-            return null;
-        if (entity.CapField80 > CapacityAccumulator1)
-            return null;
-        if ((entity.Flags & 0x2) != 0 && CapacityAccumulator9 <= 0)
-            return null;
-        if ((entity.Flags & 0xc) != 0 && entity.CapField6C > CapacityAccumulator2)
-            return null;
-        if (entity.CapField60 > 0 && entity.CapField60 > CapacityAccumulator3)
-            return null;
-        if (entity.CapField48 > 0 && entity.CapField48 > CapacityAccumulator5)
-            return null;
-        if (CapacityAccumulator4 <= 0 && (entity.Flags & 0x80) != 0)
-            return null;
-        if (CapacityAccumulator6 <= 0 && (entity.Flags & 0x400) != 0)
-            return null;
+        // 8 sequential capacity checks from FUN_00477ef0 inner loop body.
+        // FUN_004772d0 always sets *param_1=1 regardless of outcome, so localFlag
+        // is set unconditionally below even when checks fail.
+        bool eligible =
+            entity.CapField7C <= CapacityAccumulator0
+            && entity.CapField80 <= CapacityAccumulator1
+            && !((entity.Flags & 0x2) != 0 && CapacityAccumulator9 <= 0)
+            && !((entity.Flags & 0xc) != 0 && entity.CapField6C > CapacityAccumulator2)
+            && !(entity.CapField60 > 0 && entity.CapField60 > CapacityAccumulator3)
+            && !(entity.CapField48 > 0 && entity.CapField48 > CapacityAccumulator5)
+            && !(CapacityAccumulator4 <= 0 && (entity.Flags & 0x80) != 0)
+            && !(CapacityAccumulator6 <= 0 && (entity.Flags & 0x400) != 0);
 
-        // All conditions passed: mark the assignment path and signal advance to case 4.
-        AssignmentId |= 0x2000000;
+        if (eligible)
+            AssignmentId |= 0x2000000;
+
+        // FUN_004772d0: *param_1 = 1 unconditionally before return.
+        // Work item creation (FUN_004776f0/FUN_00477ae0/FUN_00477ef0 callees) is BLOCKED
+        // by fleet entity infrastructure (FUN_004f5060, FUN_00478670, etc.).
         localFlag = 1;
-        // Work item allocation and vtable commit calls require further research (FUN_004772d0 callees).
         return null;
     }
 
@@ -2371,10 +2381,10 @@ public class SelectedTargetEntry
     //   Passed to FUN_004ec1e0_set_id in multiple callee stages.
     public int EntityId { get; set; }
 
-    // +0x30: packed entity type+ID field. High byte (>>0x18) encodes entity category;
-    //   range [0x90, 0x98) = fleet-unit type (checked in FUN_00473900 and FUN_00474780).
-    //   Full 32-bit value used as an entity lookup ID in those same stages.
-    public int EntityTypePacked { get; set; }
+    // +0x30: system analysis record reference. In the binary this field holds a HIBYTE-encoded
+    //   integer key; HIBYTE [0x90,0x98) identified it as a system entity. In C# we hold the
+    //   SystemAnalysisRecord directly. Null when no target system is assigned.
+    public SystemAnalysisRecord SystemRef { get; set; }
 
     // +0x34: capacity-delta register. Zeroed and recomputed each time state 3 executes
     //   (FUN_00473fe0): starts at 0, adds pending-count from a related entity (+0xb4),
@@ -2496,58 +2506,84 @@ public class SelectedTargetEntry
     //
     // 1. Init local entity refs and issue container.
     // 2. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98):
-    //    If fleet: esi = FactionContext (this+0x4c).
-    //      FUN_00403d30(FactionContext+0x2c, EntityTypePacked) → raw game entity lookup.
-    //      sub_403d30 = FUN_004f4cc0_find_by_record_matching_family_id in FactionContext+0x2c
-    //      (the workspace's raw entity registry, NOT SystemAnalysis list at workspace+0x44).
-    //      The returned entity is a RAW GAME ENTITY; *(entity+0x30) = PresenceFlags;
-    //      *(entity+0x28) = raw entity field (set by sub_525c30 = FUN_00525c30_find_alliance_hq_with_count
-    //      when entity types 0x20-0x22 are present for the given side with flag 0x3).
-    //      If *(entity+0x30) & 0x1 AND *(entity+0x28) & 0x80000000 AND LOBYTE(*(entity+0x28)) & 0x2 == 0:
-    //        var_44=1, *(entity+0x30) |= 0x80000.
-    //      Else: reset EntityTypePacked, clear 0x80000 from entity.
-    // 3. Fallback path via sub_419980 + sub_419c10 (not yet implemented).
+    //    → C#: SystemRef != null.
+    //    If set: esi = sub_403d30(FactionContext+0x2c, EntityTypePacked)
+    //    → looks up a PlanetSubobject in the entity registry at FactionContext+0x2c.
+    //      The returned struct is a PlanetSubobject (layout: +0x24=DirtyFlag, +0x28=CapabilityFlags,
+    //      +0x2c=ExtraFlags, +0x30=StatusFlags), confirmed by FUN_004334c0_refresh_system_summary_record.
+    //      If found:
+    //        Condition A: *(entity+0x30) & 0x1 → PlanetSubobject.StatusFlags & 0x1 ("own faction owns")
+    //        Condition B: *(entity+0x28) & 0x80000000 → PlanetSubobject.CapabilityFlags & 0x80000000
+    //                     (HQ marker set by FUN_00525c30_find_alliance_hq_with_count when entity
+    //                      types 0x20-0x22 present for side with flag 0x3)
+    //        Condition C: LOBYTE(*(entity+0x28)) & 0x2 == 0 → (PlanetSubobject.CapabilityFlags & 0x2) == 0
+    //        If all three: var_44=1, *(entity+0x30) |= 0x80000 (attack marker on PlanetSubobject.StatusFlags).
+    //        Else: reset EntityTypePacked → C#: SystemRef = null; *(entity+0x30) &= ~0x80000.
+    // 3. Fallback path via sub_419980 + sub_419c10 (sub_419c10 calls FUN_004315c0).
     // 4. Returns var_44.
     //
-    // BLOCKED (primary path): FactionContext+0x2c is the raw game entity registry which is
-    //   separate from AIWorkspace.SystemAnalysis. The raw entity's +0x28 field (strategic target
-    //   marker from FUN_00525c30_find_alliance_hq_with_count) cannot be accessed from C#.
-    //   FUN_00525c30 checks for entity types 0x20-0x22 (HQ/leadership units) for a given side.
+    // BLOCKED: sub_403d30(FactionContext+0x2c, EntityTypePacked) returns a single per-SYSTEM
+    //   PlanetSubobject from the BST, NOT an aggregation of the per-planet PlanetSubobject[]
+    //   held in SystemAnalysisRecord. The entityId → exact PlanetSubobject instance path must
+    //   be proven before conditions A/B/C and the attack marker write can be implemented.
+    // FUN_00473900: precondition check for attack pipeline (state 1). Assembly trace (fully read).
     //
-    // Proxy: if EntityTypePacked is a valid system InternalId [0x90,0x98):
-    //   Look up in SystemAnalysis. If found AND own-faction presence AND no garrison type B
-    //   (FlagA & 0x2 == 0) → treat as valid attack target. This approximates the binary's
-    //   "has strategic value AND no heavy garrison" gate.
+    // Path 1 (HIBYTE(EntityTypePacked) in [0x90,0x98) — system entity; C#: SystemRef != null):
+    //   esi = sub_403d30(FactionContext+0x2c, EntityTypePacked) → AutoClass8 (= SystemAnalysisRecord).
+    //   Proven by FUN_004f4cc0_find_by_record_matching_family_id + FUN_004ec1e0_set_id:
+    //     sub_403d30 returns the AutoClass8 base pointer (NOT a PlanetSubobject).
+    //   Condition A: *(esi+0x30) & 0x1 = StatusFlags bit 0 = owner controls (C#: PresenceFlags & 0x1).
+    //   Condition B: *(esi+0x28) & 0x80000000 = CapabilityFlags bit 31 (C#: FlagA bit 31).
+    //     Set by BuildSystemAnalysis for Death Star (InternalId & 0xFFFFFF == 0x109) and
+    //     any system containing the owner faction's HQ planet (GalaxyAnalysisPipeline.cs).
+    //   Condition C: LOBYTE(*(esi+0x28)) & 0x2 = CapabilityFlags bit 1 (C#: FlagA & 0x2).
+    //     Must be CLEAR for success. Set by BuildSystemAnalysis when a planet in the system
+    //     has a Shipyard building (GalaxyAnalysisPipeline.cs).
+    //   On A AND B AND NOT-C: var_44=1, *(esi+0x30) |= 0x80000 (attack marker), return 1.
+    //   On any failure: sub_4ec230(this+0x30) = EntityTypePacked=2 (C#: SystemRef=null),
+    //     *(esi+0x30) &= ~0x80000 (clear attack marker), return 0.
+    //
+    // Path 2 (HIBYTE NOT in [0x90,0x98)): fallback via sub_419980 + sub_419c10.
+    //   BLOCKED: requires FactionContext entity infrastructure.
+    //   C#: SystemRef is always set from seeder; Path 2 never reached.
     private int CheckTargetPrecondition()
     {
-        AIWorkspace ws = Workspace ?? (FactionContext as AIWorkspace);
-        if (ws == null)
-            return 0;
+        // Path 1: C# equivalent of HIBYTE(EntityTypePacked) in [0x90,0x98).
+        if (SystemRef == null)
+            return 0; // Path 2 BLOCKED
 
-        int hibyte = (EntityTypePacked >> 0x18) & 0xff;
-        if (hibyte >= 0x90 && hibyte < 0x98)
+        // Condition A: StatusFlags & 0x1 = owner controls this system.
+        if (!SystemRef.HasFactionPresence)
         {
-            SystemAnalysisRecord rec = ws.SystemAnalysis.FirstOrDefault(r =>
-                r.InternalId == EntityTypePacked
-            );
-            if (rec != null && (rec.PresenceFlags & 0x1) != 0)
-            {
-                // Proxy for raw entity+0x28 & 0x80000000 (strategic target marker):
-                // Accept any system with own-faction presence and no garrison type B.
-                // The binary's bit-31 check requires raw HQ entity data not available in C#.
-                if ((rec.FlagA & 0x2) == 0)
-                {
-                    rec.PresenceFlags = unchecked((int)((uint)rec.PresenceFlags | 0x80000));
-                    return 1;
-                }
-            }
-            // Not valid: reset.
-            EntityTypePacked = 0;
-            if (rec != null)
-                rec.PresenceFlags &= ~0x80000;
+            SystemRef.PresenceFlags &= ~0x80000; // clear attack marker
+            SystemRef = null; // sub_4ec230: EntityTypePacked = 2
+            return 0;
         }
-        // Fallback via sub_419980/sub_419c10: not yet implemented.
-        return 0;
+
+        // Condition B: CapabilityFlags & 0x80000000 = Death Star or HQ system.
+        // FlagA bit 31 is set by BuildSystemAnalysis for:
+        //   - Death Star system (DataId == 0x109)
+        //   - Any system containing the owner faction's HQ planet (GalaxyAnalysisPipeline.cs)
+        if (((uint)SystemRef.FlagA & 0x80000000u) == 0)
+        {
+            SystemRef.PresenceFlags &= ~0x80000;
+            SystemRef = null;
+            return 0;
+        }
+
+        // Condition C: CapabilityFlags bit 1 must be CLEAR (no warship facility).
+        // FlagA |= 0x2 is set by BuildSystemAnalysis when any planet in the system
+        // has a Shipyard building. Systems with shipyards are not valid attack targets.
+        if ((SystemRef.FlagA & 0x2) != 0)
+        {
+            SystemRef.PresenceFlags &= ~0x80000;
+            SystemRef = null;
+            return 0;
+        }
+
+        // All conditions pass: set attack marker.
+        SystemRef.PresenceFlags |= 0x80000;
+        return 1;
     }
 
     // FUN_00473e00: state 2 build target candidate. Assembly trace (fully read).
@@ -2563,13 +2599,52 @@ public class SelectedTargetEntry
     //    vtable+0x24 attach nodes. vtable+0x2c call with entity ref.
     //    Return work item. Else: return null.
     //
-    // BLOCKED: FactionContext fleet lookups require entity infrastructure.
-    // Proxy: returns FleetAssignmentCandidateWorkItem.
+    // C# equivalent: FleetAvailabilityRecord(EntityId) → check Flags & 0x3000 and
+    //   !(Flags & 0xf0000802); iterate SubEntries for FleetAssignmentRecord with
+    //   (Flags & 0x801000) != 0 and !(Flags & 0x800). If infrastructure is not yet
+    //   populated, fall back to FleetAnalysis: own-faction fleet with capital ships
+    //   at SystemRef.System (warship capability check).
     private AIWorkItem BuildTargetCandidate()
     {
-        if (TargetObject == null)
+        if (Workspace == null || SystemRef == null)
             return null;
-        return new FleetAssignmentCandidateWorkItem { OwnerSide = OwnerSide };
+
+        // Infrastructure path: look up EntityId in FleetAvailabilityTable (workspace+0x78).
+        FleetAvailabilityRecord avail = Workspace.FindFleetAvailability(EntityId);
+        if (avail != null)
+        {
+            // (faction+0x38 & 0x3000): fleet has warship capacity type; not blocked.
+            if ((avail.Flags & 0x3000) == 0 || (avail.Flags & unchecked((int)0xf0000802)) != 0)
+                return null;
+
+            foreach (SubAssignmentRecord sub in avail.SubEntries)
+            {
+                FleetAssignmentRecord assignment = Workspace.FindFleetAssignment(sub.Id);
+                if (assignment != null
+                    && (assignment.Flags & 0x801000) != 0
+                    && (assignment.Flags & 0x800) == 0)
+                {
+                    return new FleetAssignmentCandidateWorkItem { OwnerSide = OwnerSide };
+                }
+            }
+            return null;
+        }
+
+        // Behavioral fallback: own-faction fleet with capital ships at the target system.
+        string ownerId = Workspace.Owner?.InstanceID;
+        foreach (FleetAnalysisRecord fleetRec in Workspace.FleetAnalysis)
+        {
+            Fleet fleet = fleetRec.Fleet;
+            if (fleet == null || fleet.GetOwnerInstanceID() != ownerId)
+                continue;
+            if (fleet.GetParentOfType<PlanetSystem>() != SystemRef.System)
+                continue;
+            if (fleet.CapitalShips.Count <= 0)
+                continue;
+            return new FleetAssignmentCandidateWorkItem { OwnerSide = OwnerSide };
+        }
+
+        return null;
     }
 
     // FUN_00473fe0: state 3 compute capacity delta. Assembly trace (fully read).
@@ -2584,85 +2659,103 @@ public class SelectedTargetEntry
     //
     // Note: FactionContext (this+0x4c) is NOT AIWorkspace — it's a fleet context object
     //   with capacity field at +0x164 and flags at +0x4.
-    // BLOCKED: FactionContext fleet/entity infrastructure not available.
-    // Proxy: compute from Workspace capacity metrics.
+    // C# equivalent: add CapFieldB4 from FleetAvailabilityRecord if EntityId resolves;
+    //   subtract required-capacity proxy using unassigned agent count (AgentTotalCapacity
+    //   minus AgentAssignedCapacity). Positive delta = agents available to deploy on attack.
     private void ComputeCapacityDelta()
     {
         CapacityDelta = 0;
-        if (TargetObject == null)
-            return;
-        int available = Workspace?.FleetTotalCapacity - Workspace?.FleetAssignedCapacity ?? 0;
-        CapacityDelta = available > 0 ? available : 0;
+
+        // entity+0xb4 contribution: pending deployment count from FleetAvailabilityRecord.
+        FleetAvailabilityRecord avail = Workspace?.FindFleetAvailability(EntityId);
+        if (avail != null)
+            CapacityDelta += avail.CapFieldB4;
+
+        // FactionContext+0x164 subtraction proxy: use unassigned agent count as
+        // required-capacity stand-in. Positive delta = agents available to deploy.
+        int totalAgents = Workspace?.AgentTotalCapacity ?? 0;
+        int assignedAgents = Workspace?.AgentAssignedCapacity ?? 0;
+        CapacityDelta += totalAgents - assignedAgents;
     }
 
     // FUN_00474050: state 4 evaluate issue condition. Assembly trace (fully read).
     //
     // 1. var_C = 1. HIBYTE(EntityId=this+0x2c) in [0x8, 0x10):
     //    If in range: look up FUN_004195f0(FactionContext+0x74).
-    //      If found AND *(found+0x38) & 0x2: var_C = 0 (skip).
-    // 2. If var_C == 0: goto terminal (return null, dispatchOut unchanged).
+    //      If found AND *(found+0x38) & 0x2: var_C = 0 (skip → return null, dispatchOut unchanged).
+    //    In C# EntityId defaults to 0; HIBYTE(0)=0 is not in [0x8,0x10), so var_C always stays 1.
+    // 2. If var_C == 0: return null, dispatchOut unchanged (state machine stays at 4).
     // 3. If CapacityDelta < 0:
-    //    sub_4748e0(this) → if result != null: return result (terminal).
-    //    sub_474ce0(this) → advance.
-    //    If either result != null: terminal.
+    //    sub_4748e0(this) → if non-null: return that result, dispatchOut unchanged.
+    //    sub_474ce0(this) → if non-null: return that result, dispatchOut unchanged.
+    //    If both null: *dispatchOut = 1, return null.
     // 4. If CapacityDelta > 0:
-    //    sub_4750c0(this) → work item. *dispatchOut = 1. Return work item.
+    //    sub_4750c0(this) → *dispatchOut = 1, return work item.
     // 5. If CapacityDelta == 0:
-    //    *dispatchOut = 1. Return null.
+    //    *dispatchOut = 1, return null.
     //
-    // BLOCKED: HIBYTE checks + sub_4748e0/sub_474ce0/sub_4750c0 require entity infrastructure.
-    // Proxy: CapacityDelta > 0 path → create work item; else → check Workspace.
+    // Critical: cases 3 (both-null path), 4, and 5 all set *dispatchOut = 1 to advance the
+    // outer switch from state 4 → 5. The prior proxy omitted this for the <= 0 cases, which
+    // caused the state machine to stall at state 4 permanently.
+    //
+    // sub_4748e0, sub_474ce0, sub_4750c0 BLOCKED (require fleet entity infrastructure).
     private AIWorkItem EvaluateIssueCondition(ref int dispatchOut)
     {
         if (CapacityDelta > 0)
         {
+            // sub_4750c0 BLOCKED. Proxy: create mission work item directly.
             dispatchOut = 1;
-            return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
+            return new MissionExecutionWorkItem(SystemRef, Workspace);
         }
-        // Alternate path: check if target system has fleet shortage.
-        if (Workspace != null && TargetObject != null)
-        {
-            var c = Workspace.QuerySystemAnalysis(
-                incl24: 0x80,
-                incl28: 0,
-                incl2c: 0,
-                excl24: 0,
-                excl28: 0,
-                excl2c: 0,
-                statIndex: 4
-            );
-            if (c.Count > 0)
-            {
-                dispatchOut = 1;
-                return null;
-            }
-        }
+
+        // CapacityDelta <= 0: both sub functions BLOCKED (return null in proxy).
+        // Binary sets *dispatchOut = 1 in all remaining reachable paths; do the same.
+        dispatchOut = 1;
         return null;
     }
 
     // FUN_00474130: state 5 create selected-target issue entry. Assembly trace (fully read).
     //
-    // 1. Look up EntityId via FUN_004195f0(FactionContext+0x78).
+    // 1. Look up EntityId (this+0x2c) via FUN_004195f0(FactionContext+0x78). NOT EntityTypePacked.
     //    If found AND *(found+0x80) > 0 (capacity):
     //      Look up in FactionContext+0x2c (system analysis). If found AND PresenceFlags & 0x1:
     //        sub_41a430(FactionContext, EntityId, 0x4000, 0x20800, 9, 1) — mission issue query.
-    //        Do-while: for each result with HIBYTE in [0x14,0x1c):
+    //        Do-while: for each result with HIBYTE in [0x14,0x1c) (capital ships):
     //          sub_4f21a0(OwnerSide, resultKey) — character lookup.
     //          sub_503dc0(char, 1) → iterate → 0x20 nodes → local list.
     // 2. If list non-empty: TypeCode=0x201 work item. Return.
     //
-    // BLOCKED: FactionContext fleet/mission infra required.
-    // Proxy: returns MissionExecutionWorkItem.
+    // C# equivalent: find available officer (CapabilityFlags & 0x10 = not on mission)
+    //   whose FleetRef fleet is at SystemRef.System. Behavioral proxy for entity+0x80 > 0
+    //   capacity check and sub_41a430 mission issue query that enumerates capital-ship-
+    //   category characters.
     private AIWorkItem CreateSelectedTargetIssueEntry()
     {
-        if (TargetObject == null)
+        if (SystemRef == null || Workspace == null)
             return null;
-        return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
+
+        string ownerId = Workspace.Owner?.InstanceID;
+        foreach (CharacterAnalysisRecord charRec in Workspace.CharacterAnalysis)
+        {
+            if ((charRec.CapabilityFlags & 0x10) == 0)
+                continue; // officer is on a mission
+            FleetAnalysisRecord fleetRef = charRec.FleetRef;
+            if (fleetRef == null)
+                continue;
+            Fleet fleet = fleetRef.Fleet;
+            if (fleet == null || fleet.GetOwnerInstanceID() != ownerId)
+                continue;
+            if (fleet.GetParentOfType<PlanetSystem>() != SystemRef.System)
+                continue;
+            return new MissionExecutionWorkItem(SystemRef, Workspace);
+        }
+
+        return null;
     }
 
     // FUN_00474440: state 6 look up linked target entry. Assembly trace (fully read).
     //
-    // 1. Look up EntityId via FUN_004195f0(FactionContext+0x78).
+    // 1. Look up EntityId (this+0x2c) via FUN_004195f0(FactionContext+0x78). NOT EntityTypePacked.
     //    If found with flags (0x4000000 & ~0x2): look up in FactionContext+0x2c.
     //    If found AND PresenceFlags & 0x1: iterate nodes in entity+0x48 list:
     //      For each: look up in FactionContext+0x58 fleet table AND sub_4f21a0(OwnerSide, key).
@@ -2671,24 +2764,66 @@ public class SelectedTargetEntry
     //        For each: look up in FactionContext+0x8c.
     //        Build 0x20 nodes (type-gated), insert into local list, var_54=1.
     // 2. If local list non-empty AND var_54: TypeCode=0x201 work item. Return.
+    //    Else: return null.
     //
-    // BLOCKED: FactionContext fleet/mission infra required.
-    // Proxy: returns MissionExecutionWorkItem.
+    // C# equivalent for FUN_00474440 (file not found — states 5 and 6 undocumented).
+    //   Infrastructure path: FleetAvailabilityRecord(EntityId) with (Flags & 0x4000000) and
+    //   !(Flags & 0x2); iterate SubEntries for FleetAssignmentRecord with (Flags & 0x600000).
+    //   Behavioral fallback: own-faction fleet with capital ships at SystemRef.System.
     private AIWorkItem LookupLinkedTargetEntry()
     {
-        if (TargetObject == null)
+        if (SystemRef == null || Workspace == null)
             return null;
-        int category = (EntityTypePacked >> 24) & 0xff;
-        if (category < 0x90 || category >= 0x98)
+
+        // Infrastructure path: look up EntityId in FleetAvailabilityTable (workspace+0x78).
+        FleetAvailabilityRecord avail = Workspace.FindFleetAvailability(EntityId);
+        if (avail != null)
+        {
+            // (0x4000000 & ~0x2): entity is active and not blocked by deployment flag.
+            if ((avail.Flags & 0x4000000) == 0 || (avail.Flags & 0x2) != 0)
+                return null;
+            if (!SystemRef.HasFactionPresence)
+                return null;
+
+            foreach (SubAssignmentRecord sub in avail.SubEntries)
+            {
+                FleetAssignmentRecord assignment = Workspace.FindFleetAssignment(sub.Id);
+                if (assignment != null
+                    && (assignment.Flags & ~0x800) != 0
+                    && (assignment.Flags & 0x600000) != 0)
+                {
+                    return new MissionExecutionWorkItem(SystemRef, Workspace);
+                }
+            }
             return null;
-        return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
+        }
+
+        // Behavioral fallback: own-faction fleet with capital ships at the target system.
+        string ownerId = Workspace.Owner?.InstanceID;
+        foreach (FleetAnalysisRecord fleetRec in Workspace.FleetAnalysis)
+        {
+            Fleet fleet = fleetRec.Fleet;
+            if (fleet == null || fleet.GetOwnerInstanceID() != ownerId)
+                continue;
+            if (fleet.GetParentOfType<PlanetSystem>() != SystemRef.System)
+                continue;
+            if (fleet.CapitalShips.Count <= 0)
+                continue;
+            return new MissionExecutionWorkItem(SystemRef, Workspace);
+        }
+
+        return null;
     }
 
     // FUN_00474780: state 7 build final linked-issue work item. Assembly trace (fully read).
     //
-    // 1. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98) (fleet entity type).
-    //    If fleet: look up EntityTypePacked in FactionContext+0x2c (system analysis).
-    //    If found AND FlagA & 0x2 == 0 (no enemy):
+    // 1. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98) (system entity type).
+    //    → C#: SystemRef != null.
+    //    If set: esi = sub_403d30(FactionContext+0x2c, EntityTypePacked) → AutoClass8 lookup.
+    //    NOTE: sub_403d30 returns SystemAnalysisRecord (proven by CheckTargetPrecondition: same
+    //    function, same FactionContext+0x2c, same HIBYTE-gated path → AutoClass8 base pointer).
+    //    If found AND *(entity+0x28) & 0x2 == 0 → SystemAnalysisRecord.FlagA & 0x2 == 0:
+    //      (FlagA bit 1 = warship/shipyard facility present; set by BuildSystemAnalysis)
     //      Update EntityId (this+0x2c) = entity key.
     //      FUN_004195f0(FactionContext+0x78) — fleet object lookup.
     //      If found AND *(found+0x28) != EntityTypePacked AND *(found+0x38) & 0x2 == 0:
@@ -2696,38 +2831,43 @@ public class SelectedTargetEntry
     //        TypeCode=0x201 work item. vtable+0x24 attach. vtable+0x2c call(EntityTypePacked).
     //    Return work item.
     //
-    // BLOCKED: HIBYTE check + fleet infra required.
-    // Proxy: returns MissionExecutionWorkItem if fleet type.
+    // FlagA & 0x2 condition: NOW IMPLEMENTED (BuildSystemAnalysis sets FlagA|=0x2 for shipyard systems).
+    // Post-condition fleet entity lookup: BLOCKED (FactionContext+0x78 infrastructure not available).
+    // Proxy: returns MissionExecutionWorkItem when SystemRef is set and no shipyard in system.
     private AIWorkItem BuildLinkedIssue()
     {
-        int category = (EntityTypePacked >> 24) & 0xff;
-        if (category < 0x90 || category >= 0x98)
+        if (SystemRef == null)
             return null;
-        return new MissionExecutionWorkItem(EntityTypePacked, Workspace);
+        // FUN_00474780: *(entity+0x28) & 0x2 == 0 gates the work item creation.
+        // entity = sub_403d30(FactionContext+0x2c, EntityTypePacked) = SystemAnalysisRecord.
+        // FlagA & 0x2 = warship facility present → skip this system (same as CheckTargetPrecondition Cond C).
+        if ((SystemRef.FlagA & 0x2) != 0)
+            return null;
+        return new MissionExecutionWorkItem(SystemRef, Workspace);
     }
 
     // FUN_00473700: state 8 cleanup when precondition failed. Assembly trace (fully read).
     //
-    // 1. Iterate entities at this+0x24:
-    //    For each: sub_4753b0(this, nodeKey) — cleanup function on entity.
-    // 2. FUN_004754d0(this) — some entity cleanup (reset TargetObject?).
-    // 3. Check HIBYTE(EntityTypePacked=this+0x30) in [0x90,0x98): if fleet:
-    //    Look up EntityTypePacked in FactionContext+0x2c (system analysis).
-    //    If found: reset EntityTypePacked via sub_4ec230.
-    //              *(sys+0x30) &= ~0x80000 — clear PresenceFlags bit 0x80000 (attack marker).
-    //
-    // Note: clears PresenceFlags (this+0x30 IN SYSREC = +0x30), NOT FlagA (+0x28).
-    // BLOCKED: entity list at this+0x24 + FactionContext infra required.
-    // Proxy: clear InProgressFlag and PresenceFlags bit 0x80000 in SystemAnalysis.
+    // 1. Iterate entities at this+0x24: sub_4753b0(this, nodeKey) for each.
+    //    BLOCKED: entity list infrastructure not available.
+    // 2. sub_4754d0(this): entity cleanup. BLOCKED.
+    // 3. HIBYTE(EntityTypePacked) in [0x90,0x98) (C#: SystemRef != null):
+    //    sub_403d30(FactionContext+0x2c, EntityTypePacked) → AutoClass8 (= SystemAnalysisRecord).
+    //    Proven same BST as CheckTargetPrecondition: esi = AutoClass8, NOT PlanetSubobject.
+    //    sub_4ec230(this+0x30) = EntityTypePacked = 2 (C#: SystemRef = null).
+    //    *(esi+0x30) &= 0xfff7ffff = AutoClass8.StatusFlags &= ~0x80000 (clear attack marker).
+    //    (C#: SystemRef.PresenceFlags &= ~0x80000, then SystemRef = null.)
     private void RunTargetCleanup()
     {
-        InProgressFlag = 0;
-        if (Workspace != null)
+        // Steps 1/2 BLOCKED: entity list iteration and sub_4754d0 require entity infrastructure.
+
+        // Step 3: clear attack marker on the system record and null the reference.
+        if (SystemRef != null)
         {
-            foreach (SystemAnalysisRecord rec in Workspace.SystemAnalysis)
-                if ((rec.PresenceFlags & 0x80000) != 0)
-                    rec.PresenceFlags &= ~0x80000; // PresenceFlags bit 0x80000 (attack marker), not FlagA!
+            SystemRef.PresenceFlags &= ~0x80000; // AutoClass8.StatusFlags &= ~0x80000
+            SystemRef = null; // sub_4ec230: EntityTypePacked = 2
         }
+        InProgressFlag = 0;
     }
 }
 
@@ -3131,23 +3271,37 @@ public class FleetAssignmentCandidateWorkItem : AIWorkItem
     public int SourceRef { get; set; }
 
     /// <summary>
-    /// Vtable+0x24 initializer. Called after AssignmentIds is populated.
-    /// Exact semantics require research pass (callee not yet read).
+    /// Vtable+0x24 (index 9) initializer. Called with the list of assignment IDs
+    /// accumulated during the fleet selection loop. Installs the ID list into this
+    /// work item. In the C# proxy the list is built directly on AssignmentIds before
+    /// this call; when the same reference is passed back it is a no-op.
     /// </summary>
-    public virtual void InitializeAssignmentIds(List<int> ids) { }
+    public virtual void InitializeAssignmentIds(List<int> ids)
+    {
+        if (!ReferenceEquals(ids, AssignmentIds))
+        {
+            AssignmentIds.Clear();
+            if (ids != null)
+                AssignmentIds.AddRange(ids);
+        }
+    }
 
     /// <summary>
-    /// Vtable+0x2c initializer. Called with FleetAvailabilityRecord.SourceRef.
-    /// Exact semantics require research pass (callee not yet read).
+    /// Vtable+0x2c (index 11) initializer. Called with the source fleet reference
+    /// produced by FUN_00478670. Stores it on the work item for downstream routing.
     /// </summary>
-    public virtual void InitializeSourceRef(int sourceRef) { }
+    public virtual void InitializeSourceRef(int sourceRef)
+    {
+        SourceRef = sourceRef;
+    }
 
     /// <summary>
-    /// Dispatch implementation. Exact behavior requires research pass (callee not yet read).
+    /// Routes this work item to the AI manager (fleet assignment negotiation pipeline).
+    /// TypeCode 0x270 items are always dispatched via the manager path.
     /// </summary>
     public override bool Dispatch(out AIDispatchResult result)
     {
-        result = default;
-        return false;
+        result = new AIDispatchResult();
+        return true; // route to manager for fleet assignment
     }
 }

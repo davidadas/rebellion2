@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 // Implements FUN_00417a50 (galaxy analysis pipeline) and FUN_00417cb0 (calibration
 // sub-machine), both of which operate on the AIWorkspace (scratchBlock).
@@ -44,42 +45,34 @@ public static class GalaxyAnalysisPipeline
                 return false;
 
             case 2:
-                // FUN_004306c0: build system analysis records.
-                // Returns non-zero when complete; may span multiple ticks.
                 if (BuildSystemAnalysis(ws))
                     ws.GalaxyAnalysisPhase = 3;
                 return false;
 
             case 3:
-                // FUN_00430200: cross-link fleet entities into system records.
                 if (BuildFleetSystemCrossLinks(ws))
                 {
-                    // Count system nodes × 10 into accumulator.
                     ws.SystemScoreAccumulator = ws.SystemAnalysis.Count * 10;
                     ws.GalaxyAnalysisPhase = 4;
                 }
                 return false;
 
             case 4:
-                // FUN_0042fb50: build fleet analysis sub-list.
                 if (BuildFleetAnalysis(ws))
                     ws.GalaxyAnalysisPhase = 5;
                 return false;
 
             case 5:
-                // FUN_004032c0: build character analysis sub-list.
                 if (BuildCharacterAnalysis(ws))
                 {
                     ws.GalaxyAnalysisPhase = 6;
-                    // Set bit 0x80000000 in StatusFlags (signals calibration data ready).
                     ws.StatusFlags |= unchecked((int)0x80000000);
                 }
                 return false;
 
             case 6:
-                // FUN_00417cb0: calibration sub-machine.
                 if (TickCalibration(ws))
-                    return true; // Entire pipeline complete.
+                    return true;
                 return false;
 
             default:
@@ -192,6 +185,18 @@ public static class GalaxyAnalysisPipeline
                 };
                 record.PlanetSubobjects[slotIndex++] = sub;
 
+                // FUN_004334c0 lines 164-174: entity DataId-based flag setup (runs at the
+                // start of RefreshPlanetSubobject, before ownership checks).
+                // Binary checks *(planet_entity + 0x18) & 0xffffff against specific DataIds.
+                // In C# we use system.DataId (Planet has no DataId property).
+                if (system.DataId == 0x109)
+                {
+                    sub.CapabilityFlags |= 0x80000000u; // CapabilityFlags |= 0x80000000
+                    sub.StatusFlags |= 0x40000000u; // StatusFlags |= 0x40000000
+                }
+                if (system.DataId == 0x121)
+                    sub.StatusFlags |= 0x8000000u; // StatusFlags |= 0x8000000
+
                 // FUN_004334c0: refresh the sub-object from the planet game entity.
                 RefreshPlanetSubobject(sub, planet, ownerFactionId, ownerSide, ws);
 
@@ -204,11 +209,22 @@ public static class GalaxyAnalysisPipeline
             // correctly. ScoreSystem now only fills in fields the planet accumulator doesn't.
             ScoreSystem(ws, record);
             ws.SystemAnalysis.Add(record);
-            // Assign AI-internal entity ID: HIBYTE 0x90 (system type, range [0x90,0x98))
-            // | sequential index. Mirrors FUN_004306c0's iterator over [0x90,0x98) entities
-            // which encodes entity keys via FUN_004025b0_make_key_value.
-            record.InternalId =
-                unchecked((int)0x90000000u) | ((ws.SystemAnalysis.Count - 1) & 0xFFFFFF);
+
+            // FUN_004334c0 lines 178-182: sub_525c30 counts entity families 0x20 (Alliance HQ)
+            // and 0x22 (Empire HQ) at this system. If any HQ entity is present, three flag bits
+            // are set: CapabilityFlags |= 0x80000000, StatusFlags |= 0x80000000, ExtraFlags |= 0x2000000.
+            // C# equivalent: GalaxyClassifier.cs:235 stores faction.HQInstanceID = planet.InstanceID
+            // when a planet is the faction headquarters. So the check is: does any planet in this
+            // system have an InstanceID matching the owner faction's HQ planet?
+            if (
+                ws.Owner?.HQInstanceID != null
+                && system.Planets.Any(p => p.InstanceID == ws.Owner.HQInstanceID)
+            )
+            {
+                record.FlagA |= unchecked((int)0x80000000u); // CapabilityFlags |= 0x80000000
+                record.PresenceFlags |= unchecked((int)0x80000000u); // StatusFlags |= 0x80000000
+                record.FlagB |= 0x2000000; // ExtraFlags |= 0x2000000
+            }
 
             // Build a scorer node for GalaxyAnalysisScorer.
             SystemAnalysisNode node = BuildSystemNode(ws, system, record);
@@ -226,6 +242,10 @@ public static class GalaxyAnalysisPipeline
         // FUN_00473900 (CheckTargetPrecondition) passes. FactionContext (+0x4c) receives a
         // workspace-level reference (*(container+0x10)).
         //
+        // C# translation: EntityTypePacked (integer HIBYTE-encoded ID) → SystemRef (typed reference).
+        // The HIBYTE category check becomes a null check on SystemRef; the identity lookup becomes
+        // reference equality. The seeder sets SystemRef = rec directly.
+        //
         // Seeding criteria: own-faction presence (PresenceFlags & 0x1) marks a system as a
         // valid mission-dispatch point. The Type 9 pipeline then identifies attack/scout
         // targets within or adjacent to that system.
@@ -233,7 +253,7 @@ public static class GalaxyAnalysisPipeline
         foreach (SystemAnalysisRecord rec in ws.SystemAnalysis)
         {
             // Require own-faction presence: the AI must have forces here to issue missions.
-            if ((rec.PresenceFlags & 0x1u) == 0)
+            if (!rec.HasFactionPresence)
                 continue;
             if (rec.System == null)
                 continue;
@@ -243,7 +263,7 @@ public static class GalaxyAnalysisPipeline
                 {
                     Workspace = ws,
                     Id = ws.NextMissionId++,
-                    EntityTypePacked = rec.InternalId, // HIBYTE 0x90 → passes CheckTargetPrecondition [0x90,0x98)
+                    SystemRef = rec,
                     OwnerSide = ownerSide,
                     FactionContext = ws, // mirrors *(container+0x10) which holds the workspace reference
                 }
@@ -279,9 +299,6 @@ public static class GalaxyAnalysisPipeline
 
             FleetAnalysisRecord fleetRecord = new FleetAnalysisRecord { Fleet = fleet };
             ws.FleetAnalysis.Add(fleetRecord);
-            // HIBYTE 0x80 (fleet type, range [0x80,0x90)) — FUN_00430200 iterator.
-            fleetRecord.InternalId =
-                unchecked((int)0x80000000u) | ((ws.FleetAnalysis.Count - 1) & 0xFFFFFF);
 
             // A fleet in this system means there's entity presence (field_0x30 in binary).
             // Set PresenceFlags so shortage generators find this system as a candidate.
@@ -450,6 +467,26 @@ public static class GalaxyAnalysisPipeline
         {
             CharacterAnalysisRecord rec = new CharacterAnalysisRecord { Officer = officer };
             ScoreCharacter(ws, rec);
+
+            // bit 0x10: workspace+0x138 FieldAt18 HIBYTE [0x90,0x98) — system entity type.
+            // C# proxy: officer not currently on a mission (stationed with fleet at system).
+            // bit 0x20: workspace+0x138 FieldAt18 HIBYTE [0xa0,0xa2) — character entity type.
+            // C# proxy: officer currently on a mission (targeting an entity).
+            if (!officer.IsOnMission())
+                rec.CapabilityFlags |= 0x10;
+            else
+                rec.CapabilityFlags |= 0x20;
+
+            // Associate with the fleet analysis record whose fleet contains this officer.
+            foreach (FleetAnalysisRecord fleetRec in ws.FleetAnalysis)
+            {
+                if (fleetRec.Fleet != null && fleetRec.Fleet.GetOfficers().Contains(officer))
+                {
+                    rec.FleetRef = fleetRec;
+                    break;
+                }
+            }
+
             ws.CharacterAnalysis.Add(rec);
             // HIBYTE 0xa0 (character type, range [0xa0,0xa2)) — FUN_004032c0 iterator.
             rec.InternalId =
@@ -483,20 +520,13 @@ public static class GalaxyAnalysisPipeline
 
             case 1:
             {
-                // Walk system analysis list from CalibrationCursor to end.
-                // FUN_00431860 is called on each node; it returns non-zero if the
-                // node requires a fleet/character score refresh, setting bits
-                // 0x20000000/0x40000000/0x10000000 in StatusFlags.
-                // When the cursor reaches the end → state 5.
                 while (ws.CalibrationCursor < ws.SystemAnalysis.Count)
                 {
                     SystemAnalysisRecord rec = ws.SystemAnalysis[ws.CalibrationCursor];
                     int result = ScoreSystemNode(ws, rec);
                     if (result != 0)
-                        ws.StatusFlags |= unchecked((int)0xa0000000); // bits 0x80000000 | 0x20000000
+                        ws.StatusFlags |= unchecked((int)0xa0000000);
                     ws.CalibrationCursor++;
-                    // Each call may span a tick — break here to match per-frame behavior.
-                    // In the original this is a do-while that breaks after each step.
                     break;
                 }
 
@@ -508,8 +538,6 @@ public static class GalaxyAnalysisPipeline
 
             case 2:
             {
-                // Fleet score computation (array bounds 8, 0x10 = 8 and 16).
-                // Populates FleetScores using fleet analysis data.
                 ComputeFleetScoreRange(ws, 8, 16);
                 ws.CalibrationState = 5;
                 return false;
@@ -517,7 +545,6 @@ public static class GalaxyAnalysisPipeline
 
             case 4:
             {
-                // Character score computation (array bounds 0x30=48, 0x40=64).
                 ComputeCharacterScoreRange(ws, 48, 64);
                 ws.CalibrationState = 5;
                 return false;
@@ -525,10 +552,6 @@ public static class GalaxyAnalysisPipeline
 
             case 5:
             {
-                // Finalization: if analysis data ready (bit 0x80000000), run the scorer
-                // and other accumulation passes, then return true (calibration complete).
-                // FUN_00417cb0 state 5: calls vtable[4] on sub-objects at workspace+0xc0
-                // and +0x104 (GalaxyAnalysisScorer.Score()), then handles per-flag passes.
                 if ((ws.StatusFlags & unchecked((int)0x80000000)) != 0)
                 {
                     // Invoke both scorer instances (vtable[4] calls in original).
@@ -797,6 +820,26 @@ public static class GalaxyAnalysisPipeline
             sub.StatusFlags |= 0x2u; // neutral (LOBYTE bit 1)
         }
 
+        // FUN_004334c0 line 156-158: fleet.+0x88 & 0x20 → CapabilityFlags |= 0x2 (warship facility).
+        // fleet.+0x88 bit 5 is the capital-ship construction capability flag on the fleet entity.
+        // C# proxy: planet has a completed Shipyard building (BuildingType.Shipyard).
+        // Note: in the original this is gated on fleet presence (fleet.+0x88 & 0x2 != 0); we
+        // skip that gate since we have no per-planet fleet entity — the capability is present
+        // regardless of whether a fleet is stationed there.
+        if (planet.GetAllBuildings().Any(b => b.BuildingType == BuildingType.Shipyard))
+            sub.CapabilityFlags |= 0x2u;
+
+        // FUN_004334c0 lines 178-182: sub_525c30(fleet, ownerCode, 0x3) != 0 → HQ buildings present.
+        // sub_525c30 counts entity family types 0x20 (Alliance HQ) and 0x22 (Empire HQ).
+        // C# equivalent: this specific planet is the owner faction's HQ planet.
+        // (GalaxyClassifier.cs line 235 stores faction.HQInstanceID = planet.InstanceID for HQ planets.)
+        if (ws.Owner?.HQInstanceID != null && planet.InstanceID == ws.Owner.HQInstanceID)
+        {
+            sub.CapabilityFlags |= 0x80000000u; // CapabilityFlags |= 0x80000000
+            sub.StatusFlags |= 0x80000000u; // StatusFlags |= 0x80000000
+            sub.ExtraFlags |= 0x2000000u; // ExtraFlags |= 0x2000000
+        }
+
         // Compute available capacity from the planet entity fields.
         // In the binary entity+0x5c = garrison capacity, +0x60 = used, +0x64/+0x68 = fighter capacity.
         // C# proxy: use building count * 5 as garrison capacity (Planet has no direct capacity field).
@@ -997,12 +1040,19 @@ public static class GalaxyAnalysisPipeline
         // FUN_004334c0 character capability count for own-faction planets.
         // In the binary, this is incremented during character/officer iteration when
         // a character has certain capability flags set. Checked by FUN_004319d0 line 115:
-        //   if (cf & 3 == 0 AND ef & 0x8000000 == 0 AND param_1->field111_0xcc > 0):
+        //   if (cf & 3 == 0 AND sf & 0x8000000 == 0 AND param_1->field111_0xcc > 0):
         //     set DispositionFlags |= 0x20 | 0x40 | 0x80 (unit capacity available bits).
         // These bits are queried by Types 5/6/7 strategy records to find deployment targets.
         // Proxy: own-faction planet with buildings (EntityCapacity > 0) → CharCapabilityCount = 1.
         if ((sub.StatusFlags & 0x1u) != 0 && sub.EntityCapacity > 0)
             sub.CharCapabilityCount = 1;
+
+        // FUN_004334c0 lines 283-289: AuxCount (*(esi+0x90)) incremented per sub_503dc0 unit
+        // with *(unit+0x50) & 1 set. sub_503dc0 iterates characters/officers at this planet.
+        // Checked at lines 1224/1232 as part of the regiment/starfighter deployment gate.
+        // Proxy: own-faction planet with capacity → AuxCount = 1 (at least one available character).
+        if ((sub.StatusFlags & 0x1u) != 0 && sub.EntityCapacity > 0)
+            sub.AuxCount = 1;
 
         // FUN_004334c0 enemy planet path (line 1407-1573):
         // Enemy planet: compute urgency and set flags.
@@ -1048,6 +1098,26 @@ public static class GalaxyAnalysisPipeline
         // If condition fails entirely: ExtraFlags LOBYTE |= 0x80
         // (This path triggers when entity+0x88 bit 0x2 is clear — no ship at planet)
         // Since we can't easily check this without the entity data, leave it as-is.
+
+        // FUN_004334c0 lines 1215-1236: regiment and starfighter deployment-in-progress flags.
+        // Gate: no enemy presence at this planet (CapabilityFlags bits 0–1 clear).
+        // CapabilityFlags bits 0x200000 and 0x400000 are set by strategy records when they
+        // initiate a deployment mission to this planet (sub_4334b0 is called immediately after
+        // the strategy record writes the bit). Until C# strategy records propagate these bits,
+        // ExtraFlags 0x4 and 0x8 remain unset, and NeedsUnitDeployment stays true for all systems.
+        // Once strategy records are implemented, this code activates the assignment-blocking gate.
+        if ((sub.CapabilityFlags & 0x3u) == 0)
+        {
+            // Regiment deployment in progress: ExtraFlags & 0x4 → FlagA |= 0x1 (NeedsUnitDeployment = false).
+            // var_184 (any regiment available) proxied by AuxCount > 0.
+            // sub_5f2ef0() & 0x2000000 (active mission check) omitted — not yet tracked in C#.
+            if ((sub.CapabilityFlags & 0x200000u) != 0 && sub.AuxCount > 0)
+                sub.ExtraFlags |= 0x4u;
+
+            // Starfighter deployment in progress: ExtraFlags & 0x8 → FlagA |= 0x2.
+            if ((sub.CapabilityFlags & 0x400000u) != 0 && sub.AuxCount > 0)
+                sub.ExtraFlags |= 0x8u;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1186,7 +1256,7 @@ public static class GalaxyAnalysisPipeline
                 sysRec.DispositionFlags |= 0x8u;
             if (
                 (cf & 0x3u) == 0
-                && (ef & unchecked((uint)0x8000000)) == 0
+                && (sf & 0x8000000u) == 0
                 && sub.CharCapabilityCount > 0
             )
             {
@@ -1210,8 +1280,29 @@ public static class GalaxyAnalysisPipeline
             if ((cf & 0x800u) != 0 && (cf & 0x3800000u) == 0)
                 sysRec.DispositionFlags |= 0x2000u;
 
-            if ((cf & unchecked((uint)0x3e00000)) != 0)
+            // FUN_004319d0 lines 145-172: per-type unit count accumulators.
+            // DispositionFlags |= 0x20000000 and the SumA fields are gated on cf & 0x3e00000.
+            // SumB fields apply when cf lacks the corresponding bit (lines 164-172, outside the block).
+            if ((cf & 0x3e00000u) != 0)
+            {
                 sysRec.DispositionFlags |= 0x20000000u;
+                if ((cf & 0x200000u) != 0)
+                {
+                    if ((cf & 0x2u) == 0)
+                        sysRec.FlagB |= 0x20000; // field35 |= 0x20000 (cf & 0x200000, cf & 0x2 clear)
+                    sysRec.Stats.CapShipAtTarget += sub.CapitalShipCount;
+                }
+                if ((cf & 0x400000u) != 0)
+                    sysRec.Stats.RegimentAtTarget += sub.RegimentCount;
+                if ((cf & 0x3800000u) != 0)
+                    sysRec.Stats.StarfighterAtTarget += sub.StarfighterCount;
+            }
+            if ((cf & 0x3800000u) == 0)
+                sysRec.Stats.StarfighterNotAtTarget += sub.StarfighterCount; // statIndex 0x15
+            if ((cf & 0x400000u) == 0)
+                sysRec.Stats.RegimentNotAtTarget += sub.RegimentCount;
+            if ((cf & 0x200000u) == 0)
+                sysRec.Stats.CapShipNotAtTarget += sub.CapitalShipCount;
             if ((cf & unchecked((uint)0x80000000)) != 0)
             {
                 sysRec.DispositionFlags |= 0x40000000u;
