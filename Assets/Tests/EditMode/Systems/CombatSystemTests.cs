@@ -1690,16 +1690,25 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_InitialStrikeDestroysBuilding()
+        public void ExecutePlanetaryAssault_InitialStrikeOnProductionBuilding_DestroysBuilding()
         {
+            // The pre-loop initial strike only targets production buildings, so use a Mine
+            // rather than a Defense building — otherwise the destruction would happen in the
+            // main loop and this test wouldn't be exercising the initial-strike codepath.
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-            Building building = CreateTargetBuilding(game, "bld1", "alliance", planet);
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "alliance",
+                BuildingType = BuildingType.Mine,
+                Bombardment = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(mine, planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // Lanes: Building(resist=0), Energy(resist=9), EnergyAllocated(resist=9). Count=3.
-            // Remaining: main loop hits energy lanes, all miss (9 >= 1).
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5 });
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -1709,7 +1718,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(result.Success);
-            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == building.InstanceID));
+            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == mine.InstanceID));
         }
 
         [Test]

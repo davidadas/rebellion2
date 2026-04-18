@@ -13,6 +13,7 @@ namespace Rebellion.Systems
         Starfighter,
         Energy,
         Building,
+        CapitalShip,
     }
 
     public enum AssaultLaneType
@@ -1129,6 +1130,9 @@ namespace Rebellion.Systems
                 allocatedEnergyResistance
             ).Count;
 
+            if (initialLaneCount == 0)
+                return;
+
             for (int i = 0; i < excessAssaultStrength; i++)
             {
                 int laneIndex = _provider.NextInt(0, initialLaneCount);
@@ -1809,9 +1813,12 @@ namespace Rebellion.Systems
                     if (idx < ships.Count)
                     {
                         CapitalShip target = ships[idx];
-                        strike.Lane = BombardmentLaneType.Building;
+                        strike.Lane = BombardmentLaneType.CapitalShip;
                         strike.Target = target;
                         strike.TargetName = target.GetDisplayName();
+                        Fleet parentFleet = target.GetParentOfType<Fleet>();
+                        if (parentFleet != null)
+                            CombatHelpers.EvacuateOfficers(_game, _movement, target, parentFleet);
                         _game.DetachNode(target);
                     }
                     else if (idx < ships.Count + fighters.Count)
