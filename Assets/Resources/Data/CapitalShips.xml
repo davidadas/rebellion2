@@ -16,7 +16,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1200</HullStrength>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -89,7 +90,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>300</HullStrength>
+    <MaxHullStrength>300</MaxHullStrength>
+    <CurrentHullStrength>300</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>100</MaxShieldStrength>
     <ShieldRechargeRate>5</ShieldRechargeRate>
@@ -162,7 +164,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1000</HullStrength>
+    <MaxHullStrength>1000</MaxHullStrength>
+    <CurrentHullStrength>1000</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -235,7 +238,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1000</HullStrength>
+    <MaxHullStrength>1000</MaxHullStrength>
+    <CurrentHullStrength>1000</CurrentHullStrength>
     <DamageControl>30</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -308,7 +312,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1800</HullStrength>
+    <MaxHullStrength>1800</MaxHullStrength>
+    <CurrentHullStrength>1800</CurrentHullStrength>
     <DamageControl>20</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -381,7 +386,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>2750</HullStrength>
+    <MaxHullStrength>2750</MaxHullStrength>
+    <CurrentHullStrength>2750</CurrentHullStrength>
     <DamageControl>30</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -454,7 +460,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>28</ResearchDifficulty>
-    <HullStrength>500</HullStrength>
+    <MaxHullStrength>500</MaxHullStrength>
+    <CurrentHullStrength>500</CurrentHullStrength>
     <DamageControl>20</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -527,7 +534,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>4</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
-    <HullStrength>400</HullStrength>
+    <MaxHullStrength>400</MaxHullStrength>
+    <CurrentHullStrength>400</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -600,7 +608,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>5</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
-    <HullStrength>320</HullStrength>
+    <MaxHullStrength>320</MaxHullStrength>
+    <CurrentHullStrength>320</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -673,7 +682,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>6</ResearchOrder>
     <ResearchDifficulty>70</ResearchDifficulty>
-    <HullStrength>1200</HullStrength>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -746,7 +756,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>7</ResearchOrder>
     <ResearchDifficulty>80</ResearchDifficulty>
-    <HullStrength>1800</HullStrength>
+    <MaxHullStrength>1800</MaxHullStrength>
+    <CurrentHullStrength>1800</CurrentHullStrength>
     <DamageControl>25</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>30</ShieldRechargeRate>
@@ -819,7 +830,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>9</ResearchOrder>
     <ResearchDifficulty>80</ResearchDifficulty>
-    <HullStrength>1600</HullStrength>
+    <MaxHullStrength>1600</MaxHullStrength>
+    <CurrentHullStrength>1600</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>30</ShieldRechargeRate>
@@ -892,7 +904,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>10</ResearchOrder>
     <ResearchDifficulty>100</ResearchDifficulty>
-    <HullStrength>3000</HullStrength>
+    <MaxHullStrength>3000</MaxHullStrength>
+    <CurrentHullStrength>3000</CurrentHullStrength>
     <DamageControl>35</DamageControl>
     <MaxShieldStrength>800</MaxShieldStrength>
     <ShieldRechargeRate>20</ShieldRechargeRate>
@@ -965,7 +978,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>11</ResearchOrder>
     <ResearchDifficulty>100</ResearchDifficulty>
-    <HullStrength>5000</HullStrength>
+    <MaxHullStrength>5000</MaxHullStrength>
+    <CurrentHullStrength>5000</CurrentHullStrength>
     <DamageControl>20</DamageControl>
     <MaxShieldStrength>1200</MaxShieldStrength>
     <ShieldRechargeRate>60</ShieldRechargeRate>
@@ -1038,7 +1052,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>25000</HullStrength>
+    <MaxHullStrength>25000</MaxHullStrength>
+    <CurrentHullStrength>25000</CurrentHullStrength>
     <DamageControl>60</DamageControl>
     <MaxShieldStrength>2000</MaxShieldStrength>
     <ShieldRechargeRate>100</ShieldRechargeRate>
@@ -1114,7 +1129,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1200</HullStrength>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1187,7 +1203,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>1200</HullStrength>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1260,7 +1277,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>360</HullStrength>
+    <MaxHullStrength>360</MaxHullStrength>
+    <CurrentHullStrength>360</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>100</MaxShieldStrength>
     <ShieldRechargeRate>5</ShieldRechargeRate>
@@ -1333,7 +1351,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>600</HullStrength>
+    <MaxHullStrength>600</MaxHullStrength>
+    <CurrentHullStrength>600</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1406,7 +1425,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>900</HullStrength>
+    <MaxHullStrength>900</MaxHullStrength>
+    <CurrentHullStrength>900</CurrentHullStrength>
     <DamageControl>5</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1479,7 +1499,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <HullStrength>500</HullStrength>
+    <MaxHullStrength>500</MaxHullStrength>
+    <CurrentHullStrength>500</CurrentHullStrength>
     <DamageControl>10</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1552,7 +1573,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>1</ResearchOrder>
     <ResearchDifficulty>12</ResearchDifficulty>
-    <HullStrength>600</HullStrength>
+    <MaxHullStrength>600</MaxHullStrength>
+    <CurrentHullStrength>600</CurrentHullStrength>
     <DamageControl>20</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -1625,7 +1647,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
-    <HullStrength>2400</HullStrength>
+    <MaxHullStrength>2400</MaxHullStrength>
+    <CurrentHullStrength>2400</CurrentHullStrength>
     <DamageControl>50</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -1698,7 +1721,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>4</ResearchOrder>
     <ResearchDifficulty>48</ResearchDifficulty>
-    <HullStrength>300</HullStrength>
+    <MaxHullStrength>300</MaxHullStrength>
+    <CurrentHullStrength>300</CurrentHullStrength>
     <DamageControl>20</DamageControl>
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
@@ -1771,7 +1795,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>6</ResearchOrder>
     <ResearchDifficulty>70</ResearchDifficulty>
-    <HullStrength>1400</HullStrength>
+    <MaxHullStrength>1400</MaxHullStrength>
+    <CurrentHullStrength>1400</CurrentHullStrength>
     <DamageControl>30</DamageControl>
     <MaxShieldStrength>300</MaxShieldStrength>
     <ShieldRechargeRate>15</ShieldRechargeRate>
@@ -1844,7 +1869,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>7</ResearchOrder>
     <ResearchDifficulty>60</ResearchDifficulty>
-    <HullStrength>1400</HullStrength>
+    <MaxHullStrength>1400</MaxHullStrength>
+    <CurrentHullStrength>1400</CurrentHullStrength>
     <DamageControl>30</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>30</ShieldRechargeRate>
@@ -1917,7 +1943,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>8</ResearchOrder>
     <ResearchDifficulty>80</ResearchDifficulty>
-    <HullStrength>1840</HullStrength>
+    <MaxHullStrength>1840</MaxHullStrength>
+    <CurrentHullStrength>1840</CurrentHullStrength>
     <DamageControl>25</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>30</ShieldRechargeRate>
@@ -1990,7 +2017,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>9</ResearchOrder>
     <ResearchDifficulty>80</ResearchDifficulty>
-    <HullStrength>1200</HullStrength>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
     <DamageControl>35</DamageControl>
     <MaxShieldStrength>600</MaxShieldStrength>
     <ShieldRechargeRate>30</ShieldRechargeRate>
@@ -2063,7 +2091,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>10</ResearchOrder>
     <ResearchDifficulty>100</ResearchDifficulty>
-    <HullStrength>2200</HullStrength>
+    <MaxHullStrength>2200</MaxHullStrength>
+    <CurrentHullStrength>2200</CurrentHullStrength>
     <DamageControl>45</DamageControl>
     <MaxShieldStrength>800</MaxShieldStrength>
     <ShieldRechargeRate>20</ShieldRechargeRate>
@@ -2136,7 +2165,8 @@
     <BaseBuildSpeed>0</BaseBuildSpeed>
     <ResearchOrder>11</ResearchOrder>
     <ResearchDifficulty>100</ResearchDifficulty>
-    <HullStrength>3000</HullStrength>
+    <MaxHullStrength>3000</MaxHullStrength>
+    <CurrentHullStrength>3000</CurrentHullStrength>
     <DamageControl>40</DamageControl>
     <MaxShieldStrength>1100</MaxShieldStrength>
     <ShieldRechargeRate>60</ShieldRechargeRate>

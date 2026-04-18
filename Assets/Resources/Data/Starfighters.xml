@@ -12,7 +12,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>3</ConstructionCost>
     <MaintenanceCost>3</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>12</DetectionRating>
     <Bombardment>0</Bombardment>
     <ShieldStrength>0</ShieldStrength>
@@ -37,7 +38,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>3</ConstructionCost>
     <MaintenanceCost>3</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>12</DetectionRating>
     <Bombardment>2</Bombardment>
     <ShieldStrength>0</ShieldStrength>
@@ -62,7 +64,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>3</ConstructionCost>
     <MaintenanceCost>3</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>20</DetectionRating>
     <Bombardment>0</Bombardment>
     <ShieldStrength>0</ShieldStrength>
@@ -87,7 +90,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>7</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>25</DetectionRating>
     <Bombardment>1</Bombardment>
     <ShieldStrength>5</ShieldStrength>
@@ -115,7 +119,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>12</DetectionRating>
     <Bombardment>2</Bombardment>
     <ShieldStrength>5</ShieldStrength>
@@ -140,7 +145,8 @@
     </AllowedOwnerInstanceIDs>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>15</DetectionRating>
     <Bombardment>1</Bombardment>
     <ShieldStrength>5</ShieldStrength>
@@ -165,7 +171,8 @@
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_primary</DisplayImagePath>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>15</DetectionRating>
     <Bombardment>0</Bombardment>
     <ShieldStrength>5</ShieldStrength>
@@ -190,7 +197,8 @@
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_primary</DisplayImagePath>
     <ConstructionCost>7</ConstructionCost>
     <MaintenanceCost>8</MaintenanceCost>
-    <SquadronSize>12</SquadronSize>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>15</DetectionRating>
     <Bombardment>2</Bombardment>
     <ShieldStrength>9</ShieldStrength>

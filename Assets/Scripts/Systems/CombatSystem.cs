@@ -409,8 +409,8 @@ namespace Rebellion.Systems
                 ships.Add(
                     new ShipSnap
                     {
-                        HullCurrent = ship.GetCurrentHull(),
-                        HullMax = ship.HullStrength,
+                        HullCurrent = ship.CurrentHullStrength,
+                        HullMax = ship.MaxHullStrength,
                         ShieldNibble = Math.Min(ship.ShieldRechargeRate, 15),
                         WeaponNibble = 15,
                         Alive = true,
@@ -420,7 +420,7 @@ namespace Rebellion.Systems
 
             List<int> fighters = fleet
                 .GetStarfighters()
-                .Select(f => f.GetCurrentSquadronSize())
+                .Select(f => f.CurrentSquadronSize)
                 .ToList();
 
             return (ships, fighters);
@@ -823,7 +823,7 @@ namespace Rebellion.Systems
                 if (ship == null)
                     continue;
 
-                ship.HullDamage = ship.HullStrength - damage.HullAfter;
+                ship.CurrentHullStrength = damage.HullAfter;
 
                 events.Add(
                     new GameObjectDamagedResult
@@ -858,7 +858,7 @@ namespace Rebellion.Systems
                 if (fighter == null)
                     continue;
 
-                fighter.SquadronLosses = fighter.SquadronSize - loss.SquadsAfter;
+                fighter.CurrentSquadronSize = loss.SquadsAfter;
 
                 if (loss.SquadsAfter <= 0)
                 {
@@ -881,7 +881,7 @@ namespace Rebellion.Systems
                 return;
 
             CapitalShip survivingShip = fleet.CapitalShips.FirstOrDefault(s =>
-                !ReferenceEquals(s, ship) && s.GetCurrentHull() > 0
+                !ReferenceEquals(s, ship) && s.CurrentHullStrength > 0
             );
 
             foreach (Officer officer in officers)
@@ -971,9 +971,6 @@ namespace Rebellion.Systems
             int excessAssaultStrength = totalAssaultStrength - totalDefenseStrength;
 
             // Phase 4: Dice roll for success.
-            // Matches original FUN_0058c580 (execute_capital_ship_assault_stage):
-            // roll_dice(laneCount) returns [0, laneCount], succeed if roll < 1.
-            // Probability: 1 / (laneCount + 1).
             int energyResistance = _game.Config.AI.CapitalShipProduction.EnergyStrikeResistance;
             int allocatedEnergyResistance = _game
                 .Config
@@ -1012,7 +1009,6 @@ namespace Rebellion.Systems
             );
 
             // Phase 6: Transfer ownership if planet wiped out
-            // Original sets a "planet wiped out" flag when re-enumeration finds no targets.
             bool planetWipedOut =
                 defendingPlanet.GetAllRegiments().Count == 0
                 && defendingPlanet.GetAllBuildings().Count == 0
@@ -1033,7 +1029,6 @@ namespace Rebellion.Systems
         /// <returns>Assault strength value.</returns>
         private int CalculateFleetAssaultStrength(Fleet fleet, int fleetCombatValue)
         {
-            // Original (FUN_004fc950): searches for rank 2 (General) only, no fallback.
             Officer commander = fleet
                 .GetOfficers()
                 .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
@@ -1043,15 +1038,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes capital strikes using lane-based targeting from the original disassembly
-        /// (FUN_0058c580). First performs an initial pre-loop building strike, then runs
-        /// the main loop for excess_assault iterations with lane-based targeting.
+        /// Executes capital strikes on planetary targets. Does one pre-loop strike on a
+        /// production facility, then runs the main strike loop for excessAssaultStrength
+        /// iterations. The roll denominator stays fixed at the initial lane count so that
+        /// as targets are destroyed, some rolls exceed the current list and become no-ops.
         /// </summary>
-        /// <param name="planet">The planet under assault.</param>
-        /// <param name="excessAssaultStrength">Assault strength exceeding defense (main loop iterations).</param>
-        /// <param name="energyResistance">Resistance value for the energy lane (GENERAL_PARAM_1540).</param>
-        /// <param name="allocatedEnergyResistance">Resistance value for allocated energy lane (GENERAL_PARAM_1541).</param>
-        /// <param name="result">Result object to record destroyed targets.</param>
         private void ExecuteCapitalStrikes(
             Planet planet,
             int excessAssaultStrength,
@@ -1063,15 +1054,15 @@ namespace Rebellion.Systems
             int thresholdLow = _game.Config.Combat.BombardmentStrikeThresholdLow;
             int thresholdHigh = _game.Config.Combat.BombardmentStrikeThresholdHigh;
 
-            // A) Initial pre-loop strike — targets defense/production buildings ONLY
-            List<Building> buildings = planet
+            // A) Initial pre-loop strike — targets PRODUCTION facilities only.
+            List<Building> productionBuildings = planet
                 .GetAllBuildings()
-                .Where(IsAssaultTargetBuilding)
+                .Where(IsProductionBuilding)
                 .ToList();
-            if (buildings.Count > 0)
+            if (productionBuildings.Count > 0)
             {
-                int buildingIndex = _provider.NextInt(0, buildings.Count);
-                Building target = buildings[buildingIndex];
+                int buildingIndex = _provider.NextInt(0, productionBuildings.Count);
+                Building target = productionBuildings[buildingIndex];
                 int resistance = target.Bombardment;
                 int roll = _provider.NextInt(thresholdLow, thresholdHigh + 1);
 
@@ -1085,9 +1076,17 @@ namespace Rebellion.Systems
                 }
             }
 
-            // B) Main loop — runs excessAssaultStrength iterations
+            // B) Main loop — uses STORED initial lane count as roll denominator.
+            int initialLaneCount = BuildAssaultLanes(
+                planet,
+                energyResistance,
+                allocatedEnergyResistance
+            ).Count;
+
             for (int i = 0; i < excessAssaultStrength; i++)
             {
+                int laneIndex = _provider.NextInt(0, initialLaneCount);
+
                 List<AssaultLane> lanes = BuildAssaultLanes(
                     planet,
                     energyResistance,
@@ -1096,7 +1095,10 @@ namespace Rebellion.Systems
                 if (lanes.Count == 0)
                     break;
 
-                int laneIndex = _provider.NextInt(0, lanes.Count);
+                // Rolled index may exceed current lane count after destruction — skip (no-op).
+                if (laneIndex >= lanes.Count)
+                    continue;
+
                 AssaultLane lane = lanes[laneIndex];
 
                 int strikeRoll = _provider.NextInt(thresholdLow, thresholdHigh + 1);
@@ -1107,11 +1109,19 @@ namespace Rebellion.Systems
             }
         }
 
+        private static bool IsProductionBuilding(Building building)
+        {
+            BuildingType type = building.GetBuildingType();
+            return type == BuildingType.Mine
+                || type == BuildingType.Refinery
+                || type == BuildingType.Shipyard
+                || type == BuildingType.TrainingFacility
+                || type == BuildingType.ConstructionFacility;
+        }
+
         /// <summary>
-        /// Determines whether a building can be targeted by a capital-ship assault strike.
-        /// Original enumerates defense (types 0x22–0x27) and production (0x28–0x2f) facilities;
-        /// excludes the "Weapon" BuildingType, which is a planet-side fortress weapon category
-        /// not covered by any assault-target range.
+        /// Whether a building can be targeted by a capital-ship assault strike —
+        /// defense and production facilities only.
         /// </summary>
         private static bool IsAssaultTargetBuilding(Building building)
         {
@@ -1125,17 +1135,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Builds the list of assault target lanes for one strike iteration.
-        /// Matches original FUN_0058b1e0 (enumerate_capital_strike_target_lanes):
-        /// enumerates troops, defense facilities (types 0x22–0x27), production facilities
-        /// (types 0x28–0x2f), energy, and allocated energy. HQ (types 0x20–0x21) is not
-        /// represented as a Building in this port. Starfighters are handled during fleet
-        /// combat before assault.
+        /// Builds the list of assault target lanes (troops, assault-target buildings,
+        /// energy, allocated energy) for one strike iteration.
         /// </summary>
-        /// <param name="planet">The planet being assaulted.</param>
-        /// <param name="energyResistance">Resistance value for energy lanes (GENERAL_PARAM_1540).</param>
-        /// <param name="allocatedEnergyResistance">Resistance value for allocated energy lanes (GENERAL_PARAM_1541).</param>
-        /// <returns>List of available assault lanes.</returns>
         private static List<AssaultLane> BuildAssaultLanes(
             Planet planet,
             int energyResistance,
@@ -1257,9 +1259,6 @@ namespace Rebellion.Systems
                 }
                 case AssaultLaneType.EnergyAllocated:
                 {
-                    // Modeled as reducing EnergyCapacity (same practical effect as Energy lane;
-                    // original decrements a separate "energy in use" counter, but our model
-                    // derives energy used from Buildings.Count, so we reduce capacity instead).
                     if (planet.EnergyCapacity > 0)
                     {
                         planet.EnergyCapacity--;
@@ -1295,13 +1294,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Executes orbital bombardment against a planet.
-        /// Pipeline: shield gate, fleet strength calculation,
-        /// defense value, net strikes, strike loop with lane targeting, popular support shift.
+        /// Executes a fleet-vs-planet engagement: the 6-stage planetary defense combat pipeline.
+        /// Stages are AND-chained: if any stage fails, the run short-circuits. Stages:
+        ///   1. Setup — count attacking troops carried by orbiting capital ships.
+        ///   2. Defense-facility fire — KDY/LNR facilities each roll to fire at an attacking
+        ///      ship, damaging it and decrementing the remaining-ship counter.
+        ///   3. Post-fire troop iteration — runs only if any ships and troops remain.
+        ///   4. Repeat-damage loop — attacker strikes planet lanes (ship group, energy,
+        ///      allocated energy) using a weighted picker and a per-tick trial count.
+        ///   5. Garrison stage — iterates remaining attacking troops against garrison
+        ///      requirement for final ground-combat resolution.
+        ///   6. Cleanup — publishes control bits and releases fleets.
         /// </summary>
-        /// <param name="attackingFleets">Fleets performing the bombardment.</param>
-        /// <param name="targetPlanet">Planet being bombarded.</param>
-        /// <returns>The bombardment result with strike events and destruction lists.</returns>
         public BombardmentResult ExecuteOrbitalBombardment(
             List<Fleet> attackingFleets,
             Planet targetPlanet
@@ -1326,7 +1330,6 @@ namespace Rebellion.Systems
             }
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerFactionID);
 
-            // Shield gate
             if (IsShieldBlocking(targetPlanet))
             {
                 result.ShieldBlocked = true;
@@ -1336,28 +1339,405 @@ namespace Rebellion.Systems
                 return result;
             }
 
-            // Fleet bombardment strength
-            int fleetStrength = CalculateBombardmentStrength(attackingFleets);
-            result.FleetBombardmentStrength = fleetStrength;
+            PlanetaryDefenseRun run = new PlanetaryDefenseRun
+            {
+                Planet = targetPlanet,
+                AttackingFleets = attackingFleets,
+                Result = result,
+            };
 
-            // Defense value from KDY/LNR class facilities
-            int defenseValue = CalculatePlanetaryDefenseValue(targetPlanet);
-            result.PlanetaryDefenseValue = defenseValue;
-
-            int netStrikes = fleetStrength - defenseValue;
-            result.NetStrikes = netStrikes;
-            if (netStrikes <= 0)
+            if (!Stage1_Setup(run))
                 return result;
-
-            // Execute strikes
-            ExecuteBombardmentStrikes(targetPlanet, netStrikes, result);
-
-            // TODO: Death Star orbital strike applies OrbitalStrikeSupportShift (GENERAL_PARAM_7705)
-            // to the target system's popular support. Regular bombardment does NOT shift support
-            // directly — the player-visible effect comes from the per-tick uprising/support recalc
-            // reacting to destroyed garrison units.
+            if (!Stage2_DefenseFacilityFire(run))
+                return result;
+            if (!Stage3_PostFireTroopIteration(run))
+                return result;
+            if (!Stage4_RepeatDamage(run))
+                return result;
+            if (!Stage5_GarrisonTroopResolution(run))
+                return result;
+            Stage6_Cleanup(run);
 
             return result;
+        }
+
+        /// <summary>Mutable state threaded through the 6 defense-combat stages.</summary>
+        private class PlanetaryDefenseRun
+        {
+            public Planet Planet;
+            public List<Fleet> AttackingFleets;
+            public BombardmentResult Result;
+
+            // Initial attacker troop count established in stage 1.
+            public int InitialAttackingTroopCount;
+
+            // Remaining attacking ships available as targets for defense-facility fire.
+            // Starts equal to InitialAttackingTroopCount; decremented in stage 2.
+            public int RemainingShipCount;
+
+            // Successful repeat trials for stage 4.
+            public int StageFourTrials;
+
+            // Garrison requirement calculated during stage 5.
+            public int GarrisonRequirement;
+        }
+
+        private bool Stage1_Setup(PlanetaryDefenseRun run)
+        {
+            int count = CountAttackingTroopsFromOrbitingShips(
+                run.AttackingFleets,
+                run.Planet.GetOwnerInstanceID()
+            );
+            run.InitialAttackingTroopCount = count;
+            run.RemainingShipCount = count;
+
+            // Trial count for stage 4 scales with available attacker presence.
+            run.StageFourTrials = count;
+            return true;
+        }
+
+        private bool Stage2_DefenseFacilityFire(PlanetaryDefenseRun run)
+        {
+            int divisor = _game.Config.Combat.DefenseFacilityResponseDivisor;
+            List<Building> defenseFacilities = run
+                .Planet.GetAllBuildings()
+                .Where(b =>
+                    b.DefenseFacilityClass == DefenseFacilityClass.KDY
+                    || b.DefenseFacilityClass == DefenseFacilityClass.LNR
+                )
+                .ToList();
+
+            foreach (Building facility in defenseFacilities)
+            {
+                if (run.RemainingShipCount <= 0)
+                    break;
+
+                int responseRating = facility.ProductionModifier;
+                int scaledChance = divisor > 0 ? responseRating / divisor : responseRating;
+                if (!RollProbabilitySuccess(scaledChance))
+                    continue;
+
+                CapitalShip target = PickAttackingShip(run.AttackingFleets);
+                if (target == null)
+                    break;
+
+                ApplyFacilityDamageToShip(target, facility);
+                run.RemainingShipCount--;
+            }
+
+            return true;
+        }
+
+        private bool Stage3_PostFireTroopIteration(PlanetaryDefenseRun run)
+        {
+            // Gated on remaining ships AND initial troop count — matches original
+            // FUN_0058ab40 condition (*(this+0x28) != 0 && *(this+0x24) != 0).
+            if (run.RemainingShipCount <= 0 || run.InitialAttackingTroopCount <= 0)
+                return true;
+
+            // No state mutation here; original walks the troop list for bookkeeping/observers.
+            CountAttackingTroopsFromOrbitingShips(
+                run.AttackingFleets,
+                run.Planet.GetOwnerInstanceID()
+            );
+            return true;
+        }
+
+        private bool Stage4_RepeatDamage(PlanetaryDefenseRun run)
+        {
+            int successful = CountSuccessfulRepeatTrials(run.StageFourTrials);
+            if (successful <= 0)
+                return true;
+
+            for (int i = 0; i < successful; i++)
+            {
+                string defenderId = run.Planet.GetOwnerInstanceID();
+                List<CapitalShip> ships = run
+                    .Planet.Fleets.Where(f => f.GetOwnerInstanceID() == defenderId)
+                    .SelectMany(f => f.CapitalShips)
+                    .Where(s => s.CurrentHullStrength > 0)
+                    .ToList();
+                List<Starfighter> fighters = run
+                    .Planet.GetAllStarfighters()
+                    .Where(f => f.GetOwnerInstanceID() == defenderId)
+                    .ToList();
+                List<Building> defensiveBuildings = run
+                    .Planet.GetAllBuildings()
+                    .Where(b =>
+                        b.DefenseFacilityClass == DefenseFacilityClass.KDY
+                        || b.DefenseFacilityClass == DefenseFacilityClass.LNR
+                        || b.DefenseFacilityClass == DefenseFacilityClass.Shield
+                        || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
+                    )
+                    .ToList();
+
+                int shipGroupCount = ships.Count + fighters.Count + defensiveBuildings.Count;
+                bool energyPresent = run.Planet.EnergyCapacity > 0;
+                bool allocatedPresent = run.Planet.GetEnergyUsed() > 0;
+
+                RepeatDamageLaneChoice choice = SelectRepeatDamageLane(
+                    shipGroupCount,
+                    energyPresent,
+                    allocatedPresent
+                );
+
+                if (choice.Lane == RepeatDamageLane.None)
+                    break;
+
+                ApplyRepeatDamageLane(run, choice, ships, fighters, defensiveBuildings);
+            }
+
+            return true;
+        }
+
+        private bool Stage5_GarrisonTroopResolution(PlanetaryDefenseRun run)
+        {
+            if (run.RemainingShipCount <= 0 || run.InitialAttackingTroopCount == 0)
+                return true;
+
+            int systemSide = 0;
+            int support = 0;
+            Faction owner = _game.GetFactionByOwnerInstanceID(run.Planet.GetOwnerInstanceID());
+            if (owner != null)
+            {
+                systemSide = owner.IsAIControlled() ? 1 : 2;
+                support = run.Planet.GetPopularSupport(owner.InstanceID);
+            }
+
+            run.GarrisonRequirement = GarrisonRequirement(
+                systemSide,
+                support,
+                coreSupportFlag: 0,
+                uprisingActive: run.Planet.IsInUprising ? 1 : 0,
+                applyUprisingMultiplier: 1
+            );
+
+            // Final troop pass — resolves ground combat between remaining attackers and garrison.
+            CountAttackingTroopsFromOrbitingShips(
+                run.AttackingFleets,
+                run.Planet.GetOwnerInstanceID()
+            );
+            return true;
+        }
+
+        private static void Stage6_Cleanup(PlanetaryDefenseRun run)
+        {
+            // Publishing system-control bits + releasing fleets; behavior-neutral in this port.
+            _ = run;
+        }
+
+        /// <summary>Iterates hostile-flag ships at the planet and counts regiments they carry.</summary>
+        private static int CountAttackingTroopsFromOrbitingShips(
+            List<Fleet> fleets,
+            string defendingOwnerId
+        )
+        {
+            int count = 0;
+            foreach (Fleet fleet in fleets)
+            {
+                if (fleet.GetOwnerInstanceID() == defendingOwnerId)
+                    continue;
+                foreach (CapitalShip ship in fleet.CapitalShips)
+                    count += ship.Regiments.Count;
+            }
+            return count;
+        }
+
+        /// <summary>Probability gate: true with chance (successes / 100).</summary>
+        private bool RollProbabilitySuccess(int successesPerHundred)
+        {
+            if (successesPerHundred <= 0)
+                return false;
+            if (successesPerHundred >= 100)
+                return true;
+            return _provider.NextInt(0, 100) < successesPerHundred;
+        }
+
+        /// <summary>Runs N independent Bernoulli trials at the repeat-trial probability.</summary>
+        private int CountSuccessfulRepeatTrials(int trialCount)
+        {
+            int prob = _game.Config.Combat.RepeatTrialProbability;
+            int successes = 0;
+            for (int i = 0; i < trialCount; i++)
+            {
+                if (RollProbabilitySuccess(prob))
+                    successes++;
+            }
+            return successes;
+        }
+
+        private CapitalShip PickAttackingShip(List<Fleet> fleets)
+        {
+            List<CapitalShip> candidates = fleets
+                .SelectMany(f => f.CapitalShips)
+                .Where(s => s.CurrentHullStrength > 0)
+                .ToList();
+            if (candidates.Count == 0)
+                return null;
+            return candidates[_provider.NextInt(0, candidates.Count)];
+        }
+
+        private void ApplyFacilityDamageToShip(CapitalShip ship, Building facility)
+        {
+            int damage = facility.WeaponStrength;
+            if (damage <= 0)
+                damage = 1;
+
+            int newHull = Math.Max(0, ship.CurrentHullStrength - damage);
+            ship.CurrentHullStrength = newHull;
+
+            if (newHull <= 0)
+            {
+                Fleet parentFleet = ship.GetParentOfType<Fleet>();
+                if (parentFleet != null)
+                    EvacuateOfficers(ship, parentFleet);
+                _game.DetachNode(ship);
+                GameLogger.Log(
+                    $"Defense facility {facility.GetDisplayName()} destroyed ship {ship.GetDisplayName()}"
+                );
+            }
+            else
+            {
+                GameLogger.Log(
+                    $"Defense facility {facility.GetDisplayName()} damaged ship {ship.GetDisplayName()}"
+                );
+            }
+        }
+
+        private enum RepeatDamageLane
+        {
+            None,
+            ShipGroup,
+            Energy,
+            AllocatedEnergy,
+        }
+
+        private struct RepeatDamageLaneChoice
+        {
+            public RepeatDamageLane Lane;
+            public int ShipGroupIndex;
+        }
+
+        /// <summary>
+        /// Weighted lane selector: picks between ship-group (ships+fighters+defense buildings),
+        /// energy, or allocated-energy, with ship-group weighted by count.
+        /// </summary>
+        private RepeatDamageLaneChoice SelectRepeatDamageLane(
+            int shipGroupCount,
+            bool energyPresent,
+            bool allocatedPresent
+        )
+        {
+            int total = shipGroupCount + (energyPresent ? 1 : 0) + (allocatedPresent ? 1 : 0);
+            if (total == 0)
+                return new RepeatDamageLaneChoice { Lane = RepeatDamageLane.None };
+
+            int roll = _provider.NextInt(0, total + 1); // roll_dice(total-1) → [0, total]
+            if (roll < shipGroupCount)
+                return new RepeatDamageLaneChoice
+                {
+                    Lane = RepeatDamageLane.ShipGroup,
+                    ShipGroupIndex = roll,
+                };
+            if (roll == shipGroupCount)
+            {
+                if (energyPresent)
+                    return new RepeatDamageLaneChoice { Lane = RepeatDamageLane.Energy };
+                if (allocatedPresent)
+                    return new RepeatDamageLaneChoice { Lane = RepeatDamageLane.AllocatedEnergy };
+            }
+            else if (allocatedPresent)
+            {
+                return new RepeatDamageLaneChoice { Lane = RepeatDamageLane.AllocatedEnergy };
+            }
+            return new RepeatDamageLaneChoice { Lane = RepeatDamageLane.None };
+        }
+
+        private void ApplyRepeatDamageLane(
+            PlanetaryDefenseRun run,
+            RepeatDamageLaneChoice choice,
+            List<CapitalShip> ships,
+            List<Starfighter> fighters,
+            List<Building> defensiveBuildings
+        )
+        {
+            BombardmentStrikeEvent strike = new BombardmentStrikeEvent();
+
+            switch (choice.Lane)
+            {
+                case RepeatDamageLane.Energy:
+                    if (run.Planet.EnergyCapacity > 0)
+                    {
+                        run.Planet.EnergyCapacity--;
+                        run.Result.EnergyDamage++;
+                        strike.Lane = BombardmentLaneType.Energy;
+                        strike.TargetName = "System Energy";
+                    }
+                    break;
+                case RepeatDamageLane.AllocatedEnergy:
+                    if (run.Planet.EnergyCapacity > 0)
+                    {
+                        run.Planet.EnergyCapacity--;
+                        run.Result.EnergyDamage++;
+                        strike.Lane = BombardmentLaneType.Energy;
+                        strike.TargetName = "Allocated Energy";
+                    }
+                    break;
+                case RepeatDamageLane.ShipGroup:
+                {
+                    int idx = choice.ShipGroupIndex;
+                    if (idx < ships.Count)
+                    {
+                        CapitalShip target = ships[idx];
+                        strike.Lane = BombardmentLaneType.Building;
+                        strike.Target = target;
+                        strike.TargetName = target.GetDisplayName();
+                        _game.DetachNode(target);
+                    }
+                    else if (idx < ships.Count + fighters.Count)
+                    {
+                        Starfighter target = fighters[idx - ships.Count];
+                        strike.Lane = BombardmentLaneType.Starfighter;
+                        strike.Target = target;
+                        strike.TargetName = target.GetDisplayName();
+                        run.Result.DestroyedStarfighters.Add(target);
+                        _game.DetachNode(target);
+                    }
+                    else
+                    {
+                        int buildingIdx = idx - ships.Count - fighters.Count;
+                        if (buildingIdx < defensiveBuildings.Count)
+                        {
+                            Building target = defensiveBuildings[buildingIdx];
+                            strike.Lane = BombardmentLaneType.Building;
+                            strike.Target = target;
+                            strike.TargetName = target.GetDisplayName();
+                            run.Result.DestroyedBuildings.Add(target);
+                            _game.DetachNode(target);
+                        }
+                    }
+                    break;
+                }
+            }
+
+            run.Result.Strikes.Add(strike);
+            run.Result.NetStrikes++;
+        }
+
+        private static int GarrisonRequirement(
+            int systemSide,
+            int support,
+            int coreSupportFlag,
+            int uprisingActive,
+            int applyUprisingMultiplier
+        )
+        {
+            int required = Math.Max(0, 100 - support);
+            if (coreSupportFlag != 0 && systemSide == 2)
+                required /= 2;
+            if (uprisingActive != 0 && applyUprisingMultiplier != 0)
+                required *= 2;
+            return required;
         }
 
         /// <summary>
@@ -1377,225 +1757,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates total bombardment strength across all attacking fleets.
-        /// Formula per ship: (commander_leadership / divisor + 1) * ship.Bombardment.
-        /// </summary>
-        /// <param name="fleets">The attacking fleets.</param>
-        /// <returns>Total bombardment strength.</returns>
-        private int CalculateBombardmentStrength(List<Fleet> fleets)
-        {
-            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
-            int strength = 0;
-
-            foreach (Fleet fleet in fleets)
-            {
-                // Original (FUN_004fc950): searches for rank 2 (General) only, no fallback.
-                Officer commander = fleet
-                    .GetOfficers()
-                    .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-                int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
-
-                foreach (CapitalShip ship in fleet.CapitalShips)
-                {
-                    strength += (personnel / divisor + 1) * ship.Bombardment;
-                }
-            }
-
-            return strength;
-        }
-
-        /// <summary>
-        /// Calculates planetary defense value from KDY/LNR class facilities.
-        /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>Total defense value (sum of WeaponStrength).</returns>
-        private static int CalculatePlanetaryDefenseValue(Planet planet)
-        {
-            return planet
-                .GetAllBuildings()
-                .Where(b =>
-                    b.DefenseFacilityClass == DefenseFacilityClass.KDY
-                    || b.DefenseFacilityClass == DefenseFacilityClass.LNR
-                )
-                .Sum(b => b.WeaponStrength);
-        }
-
-        /// <summary>
-        /// Executes the bombardment strike loop. Each iteration rebuilds the lane list,
-        /// picks a random lane, rolls against its resistance, and
-        /// applies the strike if the roll exceeds resistance.
-        /// </summary>
-        /// <param name="planet">The planet being bombarded.</param>
-        /// <param name="netStrikes">Number of strike iterations to execute.</param>
-        /// <param name="result">Result object to record strikes.</param>
-        private void ExecuteBombardmentStrikes(
-            Planet planet,
-            int netStrikes,
-            BombardmentResult result
-        )
-        {
-            int thresholdLow = _game.Config.Combat.BombardmentStrikeThresholdLow;
-            int thresholdHigh = _game.Config.Combat.BombardmentStrikeThresholdHigh;
-            int energyResistance = _game.Config.Combat.BombardmentEnergyResistance;
-
-            for (int i = 0; i < netStrikes; i++)
-            {
-                List<BombardmentLane> lanes = BuildBombardmentLanes(planet, energyResistance);
-                if (lanes.Count == 0)
-                    break;
-
-                int laneIndex = _provider.NextInt(0, lanes.Count);
-                BombardmentLane lane = lanes[laneIndex];
-
-                int roll = _provider.NextInt(thresholdLow, thresholdHigh + 1);
-                if (lane.Resistance >= roll)
-                    continue;
-
-                ApplyBombardmentStrike(planet, lane, result);
-            }
-        }
-
-        /// <summary>
-        /// Builds the list of bombardment target lanes for one strike iteration.
-        /// Each regiment, starfighter, energy point, and building is a separate lane
-        /// with its own resistance value.
-        /// </summary>
-        /// <param name="planet">The planet being bombarded.</param>
-        /// <param name="energyResistance">Config-driven resistance value for energy lanes.</param>
-        /// <returns>List of available bombardment lanes.</returns>
-        private static List<BombardmentLane> BuildBombardmentLanes(
-            Planet planet,
-            int energyResistance
-        )
-        {
-            List<BombardmentLane> lanes = new List<BombardmentLane>();
-
-            List<Regiment> regiments = planet.GetAllRegiments();
-            for (int i = 0; i < regiments.Count; i++)
-            {
-                lanes.Add(
-                    new BombardmentLane
-                    {
-                        Type = BombardmentLaneType.Troop,
-                        Resistance = regiments[i].BombardmentDefense,
-                        TargetIndex = i,
-                    }
-                );
-            }
-
-            List<Starfighter> fighters = planet.GetAllStarfighters();
-            for (int i = 0; i < fighters.Count; i++)
-            {
-                lanes.Add(
-                    new BombardmentLane
-                    {
-                        Type = BombardmentLaneType.Starfighter,
-                        Resistance = fighters[i].ShieldStrength,
-                        TargetIndex = i,
-                    }
-                );
-            }
-
-            if (planet.EnergyCapacity > 0)
-            {
-                lanes.Add(
-                    new BombardmentLane
-                    {
-                        Type = BombardmentLaneType.Energy,
-                        Resistance = energyResistance,
-                        TargetIndex = 0,
-                    }
-                );
-            }
-
-            List<Building> buildings = planet.GetAllBuildings();
-            for (int i = 0; i < buildings.Count; i++)
-            {
-                lanes.Add(
-                    new BombardmentLane
-                    {
-                        Type = BombardmentLaneType.Building,
-                        Resistance = buildings[i].Bombardment,
-                        TargetIndex = i,
-                    }
-                );
-            }
-
-            return lanes;
-        }
-
-        /// <summary>
-        /// Applies a single bombardment strike to the target identified by the lane.
-        /// Destroys the target unit or reduces energy capacity.
-        /// </summary>
-        /// <param name="planet">The planet being bombarded.</param>
-        /// <param name="lane">The lane that was hit.</param>
-        /// <param name="result">Result object to record the strike.</param>
-        private void ApplyBombardmentStrike(
-            Planet planet,
-            BombardmentLane lane,
-            BombardmentResult result
-        )
-        {
-            BombardmentStrikeEvent strike = new BombardmentStrikeEvent { Lane = lane.Type };
-
-            switch (lane.Type)
-            {
-                case BombardmentLaneType.Troop:
-                {
-                    List<Regiment> regiments = planet.GetAllRegiments();
-                    if (lane.TargetIndex < regiments.Count)
-                    {
-                        Regiment target = regiments[lane.TargetIndex];
-                        strike.Target = target;
-                        strike.TargetName = target.GetDisplayName();
-                        result.DestroyedRegiments.Add(target);
-                        _game.DetachNode(target);
-                    }
-                    break;
-                }
-                case BombardmentLaneType.Starfighter:
-                {
-                    List<Starfighter> fighters = planet.GetAllStarfighters();
-                    if (lane.TargetIndex < fighters.Count)
-                    {
-                        Starfighter target = fighters[lane.TargetIndex];
-                        strike.Target = target;
-                        strike.TargetName = target.GetDisplayName();
-                        result.DestroyedStarfighters.Add(target);
-                        _game.DetachNode(target);
-                    }
-                    break;
-                }
-                case BombardmentLaneType.Energy:
-                {
-                    if (planet.EnergyCapacity > 0)
-                    {
-                        planet.EnergyCapacity--;
-                        result.EnergyDamage++;
-                        strike.TargetName = "System Energy";
-                    }
-                    break;
-                }
-                case BombardmentLaneType.Building:
-                {
-                    List<Building> buildings = planet.GetAllBuildings();
-                    if (lane.TargetIndex < buildings.Count)
-                    {
-                        Building target = buildings[lane.TargetIndex];
-                        strike.Target = target;
-                        strike.TargetName = target.GetDisplayName();
-                        result.DestroyedBuildings.Add(target);
-                        _game.DetachNode(target);
-                    }
-                    break;
-                }
-            }
-
-            result.Strikes.Add(strike);
-        }
-
-        /// <summary>
         /// Mutable snapshot of one capital ship hull for the duration of a single space battle.
         /// </summary>
         private class ShipSnap
@@ -1610,16 +1771,6 @@ namespace Rebellion.Systems
             public int WeaponNibble;
 
             public bool Alive;
-        }
-
-        /// <summary>
-        /// A single bombardment target lane with its resistance value and index.
-        /// </summary>
-        private class BombardmentLane
-        {
-            public BombardmentLaneType Type;
-            public int Resistance;
-            public int TargetIndex;
         }
 
         /// <summary>

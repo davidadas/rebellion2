@@ -567,12 +567,10 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Calculates total defense strength from defensive shield buildings.
-        /// Matches original FUN_00526b00 (shield enumeration): counts both Shield (type 0x24)
-        /// and DeathStarShield (type 0x25) facilities.
+        /// Calculates total defense strength from shield and DeathStarShield buildings.
         /// </summary>
         /// <param name="filter">Which building states to include (default Active).</param>
-        /// <returns>Sum of shield strength from Shield and DeathStarShield buildings.</returns>
+        /// <returns>Sum of ShieldStrength across matching buildings.</returns>
         public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()

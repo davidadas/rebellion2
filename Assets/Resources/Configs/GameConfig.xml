@@ -592,6 +592,10 @@
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
     <!-- Number of Shield facilities required to block bombardment entirely -->
     <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
+    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) -->
+    <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
+    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 -->
+    <RepeatTrialProbability>50</RepeatTrialProbability>
   </Combat>
   <!-- Uprising System Configuration -->
   <Uprising>

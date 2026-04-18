@@ -149,6 +149,8 @@
               <xs:element name="BombardmentStrikeThresholdHigh" type="xs:nonNegativeInteger" />
               <xs:element name="BombardmentEnergyResistance" type="xs:nonNegativeInteger" />
               <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
+              <xs:element name="DefenseFacilityResponseDivisor" type="PositiveIntType" />
+              <xs:element name="RepeatTrialProbability" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
         </xs:element>

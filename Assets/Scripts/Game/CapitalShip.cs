@@ -27,8 +27,8 @@ namespace Rebellion.Game
         public int ResearchDifficulty { get; set; }
 
         // Hull, Shield, and Repair Info
-        public int HullStrength;
-        public int HullDamage;
+        public int MaxHullStrength;
+        public int CurrentHullStrength;
         public int DamageControl;
         public int MaxShieldStrength;
         public int ShieldRechargeRate;
@@ -86,15 +86,6 @@ namespace Rebellion.Game
         /// Default constructor used for deserialization.
         /// </summary>
         public CapitalShip() { }
-
-        /// <summary>
-        /// Current hull remaining after damage. HullStrength is the immutable spec value;
-        /// HullDamage accumulates as the ship takes hits.
-        /// </summary>
-        public int GetCurrentHull()
-        {
-            return HullStrength - HullDamage;
-        }
 
         /// <summary>
         /// Returns the maximum number of starfighters this ship can carry.

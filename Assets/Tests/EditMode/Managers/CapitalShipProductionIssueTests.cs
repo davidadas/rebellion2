@@ -697,7 +697,8 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 0,
                 RegimentCapacity = 0,
-                HullStrength = 999,
+                MaxHullStrength = 999,
+                CurrentHullStrength = 999,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 PrimaryWeapons = new Dictionary<PrimaryWeaponType, int[]>
                 {
