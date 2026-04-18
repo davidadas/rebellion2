@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Systems
             config.Blockade.EvacuationLossPercent = 25;
             GameRoot game = new GameRoot(config);
 
-            // FixedRNG returns 0 from NextInt → 0 < 25 → loss
+            // FixedRNG returns 0 from NextInt -> 0 < 25 -> loss
             BlockadeSystem system = new BlockadeSystem(game, new FixedRNG());
 
             Assert.IsTrue(system.RollEvacuationLoss());
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Systems
             config.Blockade.EvacuationLossPercent = 25;
             GameRoot game = new GameRoot(config);
 
-            // MaxRNG returns 99 from NextInt(0,100) → 99 >= 25 → survives
+            // MaxRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
             BlockadeSystem system = new BlockadeSystem(game, new MaxRNG());
 
             Assert.IsFalse(system.RollEvacuationLoss());

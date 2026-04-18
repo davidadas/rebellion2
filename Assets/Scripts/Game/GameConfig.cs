@@ -44,10 +44,10 @@ public class GameConfig
         /// <summary>Garrison requirement parameters.</summary>
         public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
 
-        /// <summary>Lower bound for fleet deployment probability gate (PARAM_1538).</summary>
+        /// <summary>Lower bound for fleet deployment probability gate.</summary>
         public int DeploymentGateLow { get; set; }
 
-        /// <summary>Upper bound for fleet deployment probability gate (PARAM_1539).</summary>
+        /// <summary>Upper bound for fleet deployment probability gate.</summary>
         public int DeploymentGateHigh { get; set; }
 
         /// <summary>Capital ship production pipeline parameters.</summary>
@@ -58,7 +58,6 @@ public class GameConfig
     /// <summary>
     /// AI capital ship production pipeline configuration.
     /// Controls KDY/LNR facility contribution scaling and strike target evaluation.
-    /// Source: GNPRTB params 1537, and strike evaluation constants from disassembly.
     /// </summary>
     [PersistableObject]
     public class CapitalShipProductionConfig
@@ -66,7 +65,6 @@ public class GameConfig
         /// <summary>
         /// Personnel skill divisor for facility production contribution.
         /// Formula: (personnel_skill / divisor + 1) * facility_production_modifier.
-        /// Source: GNPR param 1537 (same value as Combat.AssaultPersonnelDivisor).
         /// </summary>
         public int FacilityPersonnelDivisor { get; set; }
 
@@ -321,31 +319,18 @@ public class GameConfig
         public int AssaultPersonnelDivisor { get; set; }
 
         /// <summary>
-        /// Dice roll threshold for a planetary assault to succeed (roll must be below this).
-        /// </summary>
-        public int AssaultSuccessThreshold { get; set; }
-
-        /// <summary>
-        /// Upper bound of the dice roll range for planetary assault success checks.
-        /// </summary>
-        public int AssaultRollRange { get; set; }
-
-        /// <summary>
         /// Low threshold for bombardment strike resistance check.
         /// Strike hits if target resistance is less than random(Low, High).
-        /// Source: GENERAL_PARAM 1538.
         /// </summary>
         public int BombardmentStrikeThresholdLow { get; set; }
 
         /// <summary>
         /// High threshold for bombardment strike resistance check.
-        /// Source: GENERAL_PARAM 1539.
         /// </summary>
         public int BombardmentStrikeThresholdHigh { get; set; }
 
         /// <summary>
         /// Resistance value for the system energy bombardment lane.
-        /// Source: GENERAL_PARAM 1540.
         /// </summary>
         public int BombardmentEnergyResistance { get; set; }
 
@@ -353,6 +338,18 @@ public class GameConfig
         /// Minimum number of Shield-class defense facilities required to block bombardment.
         /// </summary>
         public int BombardmentShieldBlockThreshold { get; set; }
+
+        /// <summary>
+        /// Divisor applied to a defense facility's ProductionModifier when rolling its chance
+        /// to fire back at an attacking ship during stage 2 of planetary defense combat.
+        /// </summary>
+        public int DefenseFacilityResponseDivisor { get; set; }
+
+        /// <summary>
+        /// Probability (out of 100) that a single repeat trial succeeds during stage 4
+        /// of planetary defense combat. Ported from the original's probability table.
+        /// </summary>
+        public int RepeatTrialProbability { get; set; }
     }
 
     /// <summary>
@@ -550,30 +547,29 @@ public class GameConfig
     /// <summary>
     /// Resource rebalance configuration.
     /// Controls periodic resource decay, facility suspension, and resource random walk.
-    /// Source: GENERAL_PARAM 7712-7720.
     /// </summary>
     [PersistableObject]
     public class ResourceRebalanceConfig
     {
-        /// <summary>Probability multiplier for per-unit resource decay (PARAM_7715). Default: 5.</summary>
+        /// <summary>Probability multiplier for per-unit resource decay. Default: 5.</summary>
         public int DecayMultiplier { get; set; }
 
-        /// <summary>Base delay for rebalance timer in ticks (PARAM_7717).</summary>
+        /// <summary>Base delay for rebalance timer in ticks.</summary>
         public int RebalanceTimerBase { get; set; }
 
-        /// <summary>Random spread added to rebalance timer (PARAM_7718). Range: 0..spread-1.</summary>
+        /// <summary>Random spread added to rebalance timer. Range: 0..spread-1.</summary>
         public int RebalanceTimerSpread { get; set; }
 
-        /// <summary>Base delay for resource walk timer in ticks (PARAM_7719).</summary>
+        /// <summary>Base delay for resource walk timer in ticks.</summary>
         public int ResourceWalkTimerBase { get; set; }
 
-        /// <summary>Random spread for resource walk timer (PARAM_7720).</summary>
+        /// <summary>Random spread for resource walk timer.</summary>
         public int ResourceWalkTimerSpread { get; set; }
 
-        /// <summary>Maximum energy value per planet (PARAM_7714).</summary>
+        /// <summary>Maximum energy value per planet.</summary>
         public int MaxEnergy { get; set; }
 
-        /// <summary>Maximum raw materials value per planet (PARAM_7712).</summary>
+        /// <summary>Maximum raw materials value per planet.</summary>
         public int MaxRawMaterials { get; set; }
     }
 }

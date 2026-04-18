@@ -15,7 +15,8 @@ namespace Rebellion.Game
         public int ResearchDifficulty { get; set; }
 
         // General Info
-        public int SquadronSize;
+        public int MaxSquadronSize;
+        public int CurrentSquadronSize;
         public int DetectionRating;
         public int Bombardment;
         public int ShieldStrength;

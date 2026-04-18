@@ -10,20 +10,24 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingSystem
+    public class UprisingSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly PlanetaryControlSystem _planetaryControl;
 
         /// <summary>
         /// Creates a new UprisingSystem.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for dice rolls.</param>
-        public UprisingSystem(GameRoot game, IRandomNumberProvider provider)
+        public UprisingSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            PlanetaryControlSystem planetaryControl
+        )
         {
             _game = game;
             _provider = provider;
+            _planetaryControl = planetaryControl;
         }
 
         /// <summary>
@@ -90,6 +94,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Rolls uprising dice, applies consequences, and shifts controller support.
+        /// If the controller's last troops are destroyed, the planet goes neutral.
         /// </summary>
         private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
         {
@@ -109,6 +114,23 @@ namespace Rebellion.Systems
             ApplyUprisingConsequence(planet, faction.InstanceID, uprisingSeverity, results);
 
             ApplyUprisingControllerSupportShift(planet, faction);
+
+            // If controller troops are gone while an uprising is active, the controller
+            // has lost the planet: clear owner (system goes neutral) and end the uprising.
+            if (CountFriendlyTroops(planet, faction.InstanceID) == 0)
+            {
+                _planetaryControl.ClearPlanetOwnership(planet);
+                planet.EndUprising();
+                results.Add(
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        PreviousOwner = faction,
+                        NewOwner = null,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
         }
 
         /// <summary>

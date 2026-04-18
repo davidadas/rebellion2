@@ -1060,7 +1060,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyOfficerVisible()
         {
-            // Alliance fleet orbits coruscant (empire's planet) → live view for _alliance.
+            // Alliance fleet orbits coruscant (empire's planet) -> live view for _alliance.
             // Empire officer is stationed there (valid — same owner as planet).
             // Alliance live view should include the enemy officer.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);

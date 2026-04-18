@@ -7,7 +7,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages Death Star construction and destruction during each game tick.
     /// </summary>
-    public class DeathStarSystem
+    public class DeathStarSystem : IGameSystem
     {
         private readonly GameRoot _game;
 

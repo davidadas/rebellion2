@@ -567,17 +567,20 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Calculates total defense strength from defensive buildings.
+        /// Calculates total defense strength from shield and DeathStarShield buildings.
         /// </summary>
         /// <param name="filter">Which building states to include (default Active).</param>
-        /// <returns>Sum of weapon strength from defensive buildings.</returns>
+        /// <returns>Sum of ShieldStrength across matching buildings.</returns>
         public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
         {
             return GetAllBuildings()
                 .Where(b =>
-                    b.GetBuildingType() == BuildingType.Defense && IsEntityActive(b, filter)
+                    (
+                        b.DefenseFacilityClass == DefenseFacilityClass.Shield
+                        || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
+                    ) && IsEntityActive(b, filter)
                 )
-                .Sum(b => b.WeaponStrength);
+                .Sum(b => b.ShieldStrength);
         }
 
         /// <summary>

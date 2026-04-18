@@ -711,7 +711,8 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "d1",
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
-                WeaponStrength = 50,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 50,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Building defense2 = new Building
@@ -719,7 +720,8 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "d2",
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Defense,
-                WeaponStrength = 75,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 75,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Building mine = new Building
@@ -727,7 +729,7 @@ namespace Rebellion.Tests.Managers
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
-                WeaponStrength = 10,
+                ShieldStrength = 10,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(defense1, planet);

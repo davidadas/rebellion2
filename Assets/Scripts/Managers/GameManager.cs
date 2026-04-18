@@ -115,7 +115,7 @@ public class GameManager
         switch (speed)
         {
             case TickSpeed.Fast:
-                _tickInterval = 0.1f;
+                _tickInterval = 1f;
                 break;
             case TickSpeed.Medium:
                 _tickInterval = 10f;
@@ -182,7 +182,7 @@ public class GameManager
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
         // 0. Resource rebalance: timer-based decay, facility suspension, resource walk
-        _resourceRebalanceManager.ProcessTick();
+        ProcessResults(_resourceRebalanceManager.ProcessTick());
 
         // 1. Manufacturing: produces units before movement consumes capacity
         ProcessResults(_manufacturingManager.ProcessTick());
@@ -265,7 +265,7 @@ public class GameManager
         _deathStarManager = new DeathStarSystem(_game);
         _researchManager = new ResearchSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
-        _uprisingManager = new UprisingSystem(_game, _randomProvider);
+        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,

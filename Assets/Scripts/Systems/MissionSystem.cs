@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem
+    public class MissionSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

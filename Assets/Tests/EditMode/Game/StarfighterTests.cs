@@ -21,7 +21,8 @@ namespace Rebellion.Tests.Game
                 BaseBuildSpeed = 8,
                 ResearchOrder = 2,
                 ResearchDifficulty = 24,
-                SquadronSize = 12,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
                 DetectionRating = 50,
                 Bombardment = 30,
                 ShieldStrength = 40,
@@ -144,11 +145,11 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SquadronSize_SetAndGet_StoresCorrectValue()
         {
-            _starfighter.SquadronSize = 24;
+            _starfighter.CurrentSquadronSize = 24;
 
             Assert.AreEqual(
                 24,
-                _starfighter.SquadronSize,
+                _starfighter.CurrentSquadronSize,
                 "SquadronSize should store and return the correct value"
             );
         }
@@ -158,7 +159,11 @@ namespace Rebellion.Tests.Game
         {
             Starfighter newStarfighter = new Starfighter();
 
-            Assert.AreEqual(0, newStarfighter.SquadronSize, "SquadronSize should default to 0");
+            Assert.AreEqual(
+                0,
+                newStarfighter.CurrentSquadronSize,
+                "SquadronSize should default to 0"
+            );
         }
 
         [Test]
@@ -436,8 +441,8 @@ namespace Rebellion.Tests.Game
                 "ResearchDifficulty should be correctly deserialized."
             );
             Assert.AreEqual(
-                _starfighter.SquadronSize,
-                deserialized.SquadronSize,
+                _starfighter.CurrentSquadronSize,
+                deserialized.CurrentSquadronSize,
                 "SquadronSize should be correctly deserialized."
             );
             Assert.AreEqual(

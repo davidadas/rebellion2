@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// When a faction's unit maintenance cost exceeds its refined materials output,
     /// one random eligible unit is scrapped per tick until balance is restored.
     /// </summary>
-    public class MaintenanceSystem
+    public class MaintenanceSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

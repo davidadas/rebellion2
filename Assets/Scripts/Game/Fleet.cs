@@ -189,17 +189,47 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Calculates total fleet combat value by summing capital ship and starfighter attack ratings.
+        /// Sum of damage-adjusted attack ratings across completed, non-in-transit
+        /// capital ships and starfighters.
         /// </summary>
-        /// <returns>Combined attack rating of all completed ships and starfighters.</returns>
         public int GetCombatValue()
         {
-            int capitalShipCombat = CapitalShips
-                .Where(s => s.ManufacturingStatus == ManufacturingStatus.Complete)
-                .Sum(s => s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum()));
-            int starfighterCombat = GetStarfighters()
-                .Where(f => f.ManufacturingStatus == ManufacturingStatus.Complete)
-                .Sum(f => f.LaserCannon + f.IonCannon + f.Torpedoes);
+            int capitalShipCombat = 0;
+            foreach (CapitalShip s in CapitalShips)
+            {
+                if (s.ManufacturingStatus != ManufacturingStatus.Complete || s.Movement != null)
+                    continue;
+
+                int attackStrength = s.PrimaryWeapons.Values.Sum(arcs => arcs.Sum());
+                if (s.MaxHullStrength > 0)
+                {
+                    capitalShipCombat +=
+                        (attackStrength * s.CurrentHullStrength) / s.MaxHullStrength;
+                }
+                else
+                {
+                    capitalShipCombat += attackStrength;
+                }
+            }
+
+            int starfighterCombat = 0;
+            foreach (Starfighter f in GetStarfighters())
+            {
+                if (f.ManufacturingStatus != ManufacturingStatus.Complete || f.Movement != null)
+                    continue;
+
+                int weaponStrength = f.LaserCannon + f.IonCannon + f.Torpedoes;
+                if (f.MaxSquadronSize > 0)
+                {
+                    starfighterCombat +=
+                        (weaponStrength * f.CurrentSquadronSize) / f.MaxSquadronSize;
+                }
+                else
+                {
+                    starfighterCombat += weaponStrength;
+                }
+            }
+
             return capitalShipCombat + starfighterCombat;
         }
 

@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem
+    public class MovementSystem : IGameSystem
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;

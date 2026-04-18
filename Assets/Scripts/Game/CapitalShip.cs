@@ -27,7 +27,8 @@ namespace Rebellion.Game
         public int ResearchDifficulty { get; set; }
 
         // Hull, Shield, and Repair Info
-        public int HullStrength;
+        public int MaxHullStrength;
+        public int CurrentHullStrength;
         public int DamageControl;
         public int MaxShieldStrength;
         public int ShieldRechargeRate;

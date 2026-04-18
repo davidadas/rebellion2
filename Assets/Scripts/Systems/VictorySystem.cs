@@ -9,7 +9,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages victory condition checking during each game tick.
     /// </summary>
-    public class VictorySystem
+    public class VictorySystem : IGameSystem
     {
         private readonly GameRoot _game;
 

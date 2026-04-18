@@ -700,7 +700,7 @@ namespace Rebellion.Tests.Systems
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
 
-            // Fleet moves A → B (MinTransitTicks, since A and B are very close).
+            // Fleet moves A -> B (MinTransitTicks, since A and B are very close).
             movement.RequestMove(fleet, planetB);
             int fleetTransit = fleet.Movement.TransitTicks;
 
@@ -1285,7 +1285,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
         {
-            // FixedRNG returns 0 → 0 < 50 → loss
+            // FixedRNG returns 0 -> 0 < 50 -> loss
             (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
                 BuildBlockadeScene(new FixedRNG());
 
@@ -1304,7 +1304,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
         {
-            // MaxRNG returns 99 → 99 >= 50 → survives
+            // MaxRNG returns 99 -> 99 >= 50 -> survives
             (GameRoot game, Planet origin, Planet destination, MovementSystem movement) =
                 BuildBlockadeScene(new MaxRNG());
 

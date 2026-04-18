@@ -9,9 +9,6 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Manages planetary ownership and popular support.
-    /// Each tick: applies support recovery/decay, then checks whether any planet's
-    /// support has crossed the ownership threshold and transfers control if so.
-    /// Also provides TransferPlanet for immediate conquest transfers (CombatSystem).
     /// </summary>
     public class PlanetaryControlSystem
     {
@@ -79,6 +76,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Clears the planet's owner, returning it to neutral control.
+        /// </summary>
+        public void ClearPlanetOwnership(Planet planet)
+        {
+            _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+            _game.DeregsiterOwnedUnit(planet);
+            planet.SetOwnerInstanceID(null);
+        }
+
+        /// <summary>
         /// Applies periodic support shift for a single planet.
         /// </summary>
         /// <param name="planet">The planet to apply the shift to.</param>
@@ -120,20 +127,15 @@ namespace Rebellion.Systems
                 if (!planet.IsColonized)
                     continue;
 
-                string currentOwner = planet.GetOwnerInstanceID();
+                // Only claim unowned planets — owned planets don't flip via support alone.
+                if (!string.IsNullOrEmpty(planet.GetOwnerInstanceID()))
+                    continue;
 
                 foreach (Faction faction in _game.GetFactions())
                 {
-                    if (faction.InstanceID == currentOwner)
-                        continue;
-
                     int support = planet.GetPopularSupport(faction.InstanceID);
                     if (support <= threshold)
                         continue;
-
-                    Faction previousOwner = string.IsNullOrEmpty(currentOwner)
-                        ? null
-                        : _game.GetFactionByOwnerInstanceID(currentOwner);
 
                     TransferPlanet(planet, faction);
 
@@ -141,7 +143,7 @@ namespace Rebellion.Systems
                         new PlanetOwnershipChangedResult
                         {
                             Planet = planet,
-                            PreviousOwner = previousOwner,
+                            PreviousOwner = null,
                             NewOwner = faction,
                             Tick = _game.CurrentTick,
                         }

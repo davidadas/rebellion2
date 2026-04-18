@@ -79,7 +79,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_TwoFactionFleets_ResolvesCombat()
+        public void Resolve_TwoFactionFleets_RunsSpaceCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -101,13 +101,13 @@ namespace Rebellion.Tests.Systems
             RunCombat(manager);
 
             bool combatOccurred =
-                empireFleet.CapitalShips[0].HullStrength < 100
-                || allianceFleet.CapitalShips[0].HullStrength < 100;
+                empireFleet.CapitalShips[0].CurrentHullStrength < 100
+                || allianceFleet.CapitalShips[0].CurrentHullStrength < 100;
             Assert.IsTrue(combatOccurred, "Combat should occur between hostile factions");
         }
 
         [Test]
-        public void Combat_NoHostileFleets_NoCombat()
+        public void Resolve_NoHostileFleets_DoesNotRunCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
-            int initialHull = fleet.CapitalShips[0].HullStrength;
+            int initialHull = fleet.CapitalShips[0].CurrentHullStrength;
 
             QueueRNG rng = new QueueRNG();
             CombatSystem manager = MakeCombat(game, rng);
@@ -129,13 +129,13 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(detected, "No combat should be detected");
             Assert.AreEqual(
                 initialHull,
-                fleet.CapitalShips[0].HullStrength,
+                fleet.CapitalShips[0].CurrentHullStrength,
                 "No combat should occur"
             );
         }
 
         [Test]
-        public void Combat_SingleFactionMultipleFleets_NoCombat()
+        public void Resolve_SingleFactionFleets_DoesNotRunCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -154,12 +154,12 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.AreEqual(100, fleet1.CapitalShips[0].HullStrength);
-            Assert.AreEqual(100, fleet2.CapitalShips[0].HullStrength);
+            Assert.AreEqual(100, fleet1.CapitalShips[0].CurrentHullStrength);
+            Assert.AreEqual(100, fleet2.CapitalShips[0].CurrentHullStrength);
         }
 
         [Test]
-        public void Combat_MultipleAttackerFleets_OnlyFirstPairFights()
+        public void Resolve_MultipleAttackerFleets_OnlyFirstPairFights()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -181,16 +181,20 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.Less(empireFleet1.CapitalShips[0].HullStrength, 100, "First fleet fights");
+            Assert.Less(
+                empireFleet1.CapitalShips[0].CurrentHullStrength,
+                100,
+                "First fleet fights"
+            );
             Assert.AreEqual(
                 100,
-                empireFleet2.CapitalShips[0].HullStrength,
+                empireFleet2.CapitalShips[0].CurrentHullStrength,
                 "Second fleet does not fight"
             );
         }
 
         [Test]
-        public void Combat_AttackerDestroysDefender_AttackerWins()
+        public void Resolve_AttackerDestroysDefender_ReturnsAttackerVictory()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -216,7 +220,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_DefenderDestroysAttacker_DefenderWins()
+        public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -242,7 +246,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_MutualDestruction_BothFleetsRemoved()
+        public void Resolve_MutualDestruction_RemovesBothFleets()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -291,7 +295,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_ShipTakesDamage_HullStrengthReduced()
+        public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -313,14 +317,14 @@ namespace Rebellion.Tests.Systems
             RunCombat(manager);
 
             Assert.Less(
-                empireFleet.CapitalShips[0].HullStrength,
+                empireFleet.CapitalShips[0].CurrentHullStrength,
                 100,
                 "Ships should take damage during combat"
             );
         }
 
         [Test]
-        public void Combat_ShipDestroyed_RemovedFromFleet()
+        public void Resolve_ShipDestroyed_RemovedFromFleet()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -349,7 +353,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_FighterSquadronTakesLosses_SquadronSizeReduced()
+        public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -395,7 +399,7 @@ namespace Rebellion.Tests.Systems
                 if (allFighters.Count > 0)
                 {
                     Assert.Less(
-                        allFighters[0].SquadronSize,
+                        allFighters[0].CurrentSquadronSize,
                         10,
                         "Alliance fighters should take losses"
                     );
@@ -408,14 +412,14 @@ namespace Rebellion.Tests.Systems
             List<Starfighter> empFighters = empFleet.GetStarfighters().ToList();
             Assert.Greater(empFighters.Count, 0, "Empire should have fighters");
             Assert.Less(
-                empFighters[0].SquadronSize,
+                empFighters[0].CurrentSquadronSize,
                 100,
                 "Empire fighters should take some losses"
             );
         }
 
         [Test]
-        public void Combat_EmptyFleet_RemovedFromScene()
+        public void Resolve_EmptyFleet_RemovedFromScene()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -450,7 +454,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_BothSidesZeroWeapons_NoDamage()
+        public void Resolve_BothSidesZeroWeapons_AppliesNoDamage()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -476,18 +480,18 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 100,
-                empireFleet.CapitalShips[0].HullStrength,
+                empireFleet.CapitalShips[0].CurrentHullStrength,
                 "No damage without weapons"
             );
             Assert.AreEqual(
                 100,
-                allianceFleet.CapitalShips[0].HullStrength,
+                allianceFleet.CapitalShips[0].CurrentHullStrength,
                 "No damage without weapons"
             );
         }
 
         [Test]
-        public void Combat_WeaponFire_DamagesTargets()
+        public void Resolve_WeaponFire_DamagesTargets()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -508,12 +512,12 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.Less(empireFleet.CapitalShips[0].HullStrength, 100);
-            Assert.Less(allianceFleet.CapitalShips[0].HullStrength, 100);
+            Assert.Less(empireFleet.CapitalShips[0].CurrentHullStrength, 100);
+            Assert.Less(allianceFleet.CapitalShips[0].CurrentHullStrength, 100);
         }
 
         [Test]
-        public void Combat_ShieldAbsorption_ReducesDamage()
+        public void Resolve_ShieldAbsorption_ReducesDamage()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -537,14 +541,18 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            int shieldedDamage = 100 - shieldedFleet.CapitalShips[0].HullStrength;
-            int unshieldedDamage = 100 - unshieldedFleet.CapitalShips[0].HullStrength;
+            int shieldedDamage =
+                shieldedFleet.CapitalShips[0].MaxHullStrength
+                - shieldedFleet.CapitalShips[0].CurrentHullStrength;
+            int unshieldedDamage =
+                unshieldedFleet.CapitalShips[0].MaxHullStrength
+                - unshieldedFleet.CapitalShips[0].CurrentHullStrength;
 
             Assert.Greater(unshieldedDamage, shieldedDamage, "Shields should reduce damage");
         }
 
         [Test]
-        public void Combat_FightersAttackCapitalShips_DamageApplied()
+        public void Resolve_FightersAttackCapitalShips_AppliesDamage()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -577,14 +585,14 @@ namespace Rebellion.Tests.Systems
             Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
             Assert.IsNotNull(target, "Target fleet should still exist");
             Assert.Less(
-                target.CapitalShips[0].HullStrength,
+                target.CapitalShips[0].CurrentHullStrength,
                 1000,
                 "Fighters should damage capital ships"
             );
         }
 
         [Test]
-        public void Combat_DamageVariance_Within20Percent()
+        public void Resolve_RepeatedRuns_DamageVarianceWithinTwentyPercent()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -605,22 +613,30 @@ namespace Rebellion.Tests.Systems
 
             CombatSystem manager1 = MakeCombat(game, rng1);
             RunCombat(manager1);
-            int damage1 = 100 - empireFleet.CapitalShips[0].HullStrength;
+            int damage1 =
+                empireFleet.CapitalShips[0].MaxHullStrength
+                - empireFleet.CapitalShips[0].CurrentHullStrength;
 
-            empireFleet.CapitalShips[0].HullStrength = 100;
-            allianceFleet.CapitalShips[0].HullStrength = 100;
+            empireFleet.CapitalShips[0].CurrentHullStrength = empireFleet
+                .CapitalShips[0]
+                .MaxHullStrength;
+            allianceFleet.CapitalShips[0].CurrentHullStrength = allianceFleet
+                .CapitalShips[0]
+                .MaxHullStrength;
             empireFleet.IsInCombat = false;
             allianceFleet.IsInCombat = false;
 
             CombatSystem manager2 = MakeCombat(game, rng2);
             RunCombat(manager2);
-            int damage2 = 100 - empireFleet.CapitalShips[0].HullStrength;
+            int damage2 =
+                empireFleet.CapitalShips[0].MaxHullStrength
+                - empireFleet.CapitalShips[0].CurrentHullStrength;
 
             Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
         }
 
         [Test]
-        public void Combat_SameRNGSeed_SameOutcome()
+        public void Resolve_SameRNGSeed_ProducesSameOutcome()
         {
             GameRoot game1 = new GameRoot();
             GameRoot game2 = new GameRoot();
@@ -651,14 +667,14 @@ namespace Rebellion.Tests.Systems
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
 
             Assert.AreEqual(
-                fleet1.CapitalShips[0].HullStrength,
-                fleet2.CapitalShips[0].HullStrength,
+                fleet1.CapitalShips[0].CurrentHullStrength,
+                fleet2.CapitalShips[0].CurrentHullStrength,
                 "Same RNG should produce identical results"
             );
         }
 
         [Test]
-        public void Combat_DifferentRNGSeeds_DifferentOutcomes()
+        public void Resolve_DifferentRNGSeeds_ProduceDifferentOutcomes()
         {
             GameRoot game1 = new GameRoot();
             GameRoot game2 = new GameRoot();
@@ -689,14 +705,14 @@ namespace Rebellion.Tests.Systems
             Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
 
             Assert.AreNotEqual(
-                fleet1.CapitalShips[0].HullStrength,
-                fleet2.CapitalShips[0].HullStrength,
+                fleet1.CapitalShips[0].CurrentHullStrength,
+                fleet2.CapitalShips[0].CurrentHullStrength,
                 "Different RNG should produce different results"
             );
         }
 
         [Test]
-        public void Combat_EmptyFleets_NoCombat()
+        public void Resolve_EmptyFleets_DoesNotRunCombat()
         {
             GameRoot game = new GameRoot();
             Faction empire = new Faction { InstanceID = "empire" };
@@ -873,12 +889,12 @@ namespace Rebellion.Tests.Systems
                 Assert.IsNotNull(ef, $"Empire fleet at planet {i} should survive");
                 Assert.IsNotNull(af, $"Alliance fleet at planet {i} should survive");
                 Assert.Less(
-                    ef.CapitalShips[0].HullStrength,
+                    ef.CapitalShips[0].CurrentHullStrength,
                     1000,
                     $"Empire fleet at planet {i} should have taken damage"
                 );
                 Assert.Less(
-                    af.CapitalShips[0].HullStrength,
+                    af.CapitalShips[0].CurrentHullStrength,
                     1000,
                     $"Alliance fleet at planet {i} should have taken damage"
                 );
@@ -913,7 +929,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Combat_DefenderWinsOnOwnPlanet_NoOwnershipChange()
+        public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
@@ -966,14 +982,16 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "weak",
                 OwnerInstanceID = "alliance",
-                HullStrength = 1,
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
                 ShieldRechargeRate = 0,
             };
             CapitalShip strongShip = new CapitalShip
             {
                 InstanceID = "strong",
                 OwnerInstanceID = "alliance",
-                HullStrength = 1000,
+                MaxHullStrength = 1000,
+                CurrentHullStrength = 1000,
                 ShieldRechargeRate = 0,
             };
             allianceFleet.CapitalShips.Add(weakShip);
@@ -1030,7 +1048,8 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "ship1",
                 OwnerInstanceID = "alliance",
-                HullStrength = 1,
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
                 ShieldRechargeRate = 0,
             };
             allianceFleet.CapitalShips.Add(ship);
@@ -1079,7 +1098,8 @@ namespace Rebellion.Tests.Systems
                 CapitalShip ship = new CapitalShip
                 {
                     InstanceID = $"{instanceId}_ship{i}",
-                    HullStrength = hullStrength,
+                    MaxHullStrength = hullStrength,
+                    CurrentHullStrength = hullStrength,
                     ShieldRechargeRate = shieldRechargeRate,
                 };
 
@@ -1130,7 +1150,8 @@ namespace Rebellion.Tests.Systems
                 Starfighter fighter = new Starfighter
                 {
                     InstanceID = $"{instanceId}_fighter",
-                    SquadronSize = squadronSize,
+                    MaxSquadronSize = squadronSize,
+                    CurrentSquadronSize = squadronSize,
                     LaserCannon = 5,
                     IonCannon = 3,
                     Torpedoes = 2,
@@ -1160,7 +1181,8 @@ namespace Rebellion.Tests.Systems
                 CapitalShip ship = new CapitalShip
                 {
                     InstanceID = $"{id}_ship{i}",
-                    HullStrength = 100,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
                     Bombardment = bombardment,
                 };
                 fleet.CapitalShips.Add(ship);
@@ -1171,7 +1193,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_ShieldBlocked_ReturnsShieldBlockedResult()
+        public void ExecuteOrbitalBombardment_ShieldThresholdMet_ReturnsShieldBlockedResult()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
@@ -1198,7 +1220,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_FleetStrengthBelowDefense_NoStrikes()
+        public void ExecuteOrbitalBombardment_FleetStrengthBelowDefense_ProducesNoStrikes()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
@@ -1227,66 +1249,14 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_RegimentsOnPlanet_DestroysTroops()
-        {
-            GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-
-            Regiment reg = new Regiment
-            {
-                InstanceID = "reg1",
-                OwnerInstanceID = "alliance",
-                BombardmentDefense = 0,
-            };
-            game.AttachNode(reg, planet);
-
-            // Fleet with bombardment=10 and no defense gives 10 net strikes.
-            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 10);
-
-            // SequenceRNG: lane select=0 (troops), threshold roll=10 (max, always hits resistance 0)
-            SequenceRNG rng = new SequenceRNG(
-                intValues: new[]
-                {
-                    0, // lane select (troops)
-                    10, // threshold roll (hits resistance 0)
-                }
-            );
-            CombatSystem combat = MakeCombat(game, rng);
-
-            BombardmentResult result = combat.ExecuteOrbitalBombardment(
-                new List<Fleet> { fleet },
-                planet
-            );
-
-            Assert.IsTrue(result.DestroyedRegiments.Any(r => r.InstanceID == "reg1"));
-            Assert.AreEqual(0, planet.GetAllRegiments().Count);
-        }
-
-        [Test]
-        public void Bombardment_PlanetWithEnergy_ReducesEnergy()
+        public void ExecuteOrbitalBombardment_PlanetWithEnergyOnly_ReducesEnergyCapacity()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 3);
 
-            // No troops, fighters, or buildings, so only the energy lane is available.
+            // No KDY/LNR, no buildings, no defenders -> only energy lane is ever present.
             Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
-
-            // All rolls select lane 0 (energy) and roll high enough to hit
-            SequenceRNG rng = new SequenceRNG(
-                intValues: new[]
-                {
-                    0,
-                    10, // strike 1
-                    0,
-                    10, // strike 2
-                    0,
-                    10, // strike 3
-                    0,
-                    10, // strike 4
-                    0,
-                    10, // strike 5 (energy=0, no more lanes)
-                }
-            );
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 0, 0, 0, 0, 0 });
             CombatSystem combat = MakeCombat(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1299,24 +1269,27 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_BuildingsOnPlanet_DestroysBuildings()
+        public void ExecuteOrbitalBombardment_DefensiveBuildingOnPlanet_DestroysBuilding()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 5);
 
-            Building mine = new Building
+            // KDY facility — counted as a defensive (ship-group) lane target in Stage 4, but is
+            // NOT a shield so the shield-gate doesn't block. ProductionModifier=0 disables the
+            // Stage 2 fire-back roll so the pipeline is deterministic.
+            Building kdy = new Building
             {
-                InstanceID = "mine1",
+                InstanceID = "kdy1",
                 OwnerInstanceID = "alliance",
-                BuildingType = BuildingType.Mine,
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.KDY,
                 Bombardment = 0,
+                ProductionModifier = 0,
+                WeaponStrength = 0,
             };
-            game.AttachNode(mine, planet);
-
-            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
-
-            // Lane 0=energy, lane 1=building. Select lane 1 (building).
-            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1, 10 });
+            game.AttachNode(kdy, planet);
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 1);
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0 });
             CombatSystem combat = MakeCombat(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1324,50 +1297,17 @@ namespace Rebellion.Tests.Systems
                 planet
             );
 
-            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == "mine1"));
+            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == "kdy1"));
         }
 
         [Test]
-        public void Bombardment_PlanetWithSupport_ShiftsPopularSupport()
+        public void ExecuteOrbitalBombardment_AllTargetsDestroyed_BreaksStrikeLoop()
         {
             GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-
-            Regiment reg = new Regiment
-            {
-                InstanceID = "reg1",
-                OwnerInstanceID = "alliance",
-                BombardmentDefense = 0,
-            };
-            game.AttachNode(reg, planet);
-
-            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
-
-            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 10 });
-            CombatSystem combat = MakeCombat(game, rng);
-
-            int supportBefore = planet.GetPopularSupport("empire");
-
-            BombardmentResult result = combat.ExecuteOrbitalBombardment(
-                new List<Fleet> { fleet },
-                planet
-            );
-
-            Assert.Less(planet.GetPopularSupport("empire"), supportBefore);
-            Assert.Less(result.PopularSupportShift, 0);
-        }
-
-        [Test]
-        public void Bombardment_AllTargetsDestroyed_StopsEarly()
-        {
-            GameRoot game = CreateGame();
-            // Planet with energy=1, no other targets
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
-
-            // Fleet with bombardment=100 gives 100 net strikes, but only 1 energy to destroy.
-            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 100);
-
-            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 10 });
+            // After 1 hit, lane picker returns None and main loop breaks.
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 3);
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 0 });
             CombatSystem combat = MakeCombat(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1381,26 +1321,172 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Bombardment_HighResistance_StrikeMisses()
+        public void ExecuteOrbitalBombardment_NoAttackingFleets_ReturnsEmptyResult()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            CombatSystem combat = MakeCombat(game, new QueueRNG());
+
+            BombardmentResult result = combat.ExecuteOrbitalBombardment(new List<Fleet>(), planet);
+
+            Assert.IsFalse(result.ShieldBlocked);
+            Assert.AreEqual(0, result.Strikes.Count);
+            Assert.IsNull(result.AttackingFaction);
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_MixedFactionFleets_ReturnsEmptyResult()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Fleet empireFleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
+            Fleet allianceFleet = CreateBombardmentFleet(game, "f2", "alliance", planet, 1, 5);
+
+            CombatSystem combat = MakeCombat(game, new QueueRNG());
+
+            BombardmentResult result = combat.ExecuteOrbitalBombardment(
+                new List<Fleet> { empireFleet, allianceFleet },
+                planet
+            );
+
+            Assert.AreEqual(0, result.Strikes.Count);
+            Assert.IsNull(result.AttackingFaction);
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_DefenseFacilityFiresOnAttacker_DamagesShip()
+        {
+            // KDY facility with ProductionModifier high enough that the stage-2 fire-back roll
+            // always succeeds (scaled chance >= 100). Fleet strength = 0 so stage 4 does nothing.
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Building kdy = new Building
+            {
+                InstanceID = "kdy1",
+                OwnerInstanceID = "alliance",
+                DefenseFacilityClass = DefenseFacilityClass.KDY,
+                ProductionModifier = 1000, // scaledChance = 1000/10 = 100 -> always fires
+                WeaponStrength = 25,
+            };
+            game.AttachNode(kdy, planet);
+
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 0);
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            combat.ExecuteOrbitalBombardment(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(
+                75,
+                fleet.CapitalShips[0].CurrentHullStrength,
+                "Attacker ship should lose 25 hull to facility fire"
+            );
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_DefenseFacilityOverkill_DestroysShip()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Building kdy = new Building
+            {
+                InstanceID = "kdy1",
+                OwnerInstanceID = "alliance",
+                DefenseFacilityClass = DefenseFacilityClass.KDY,
+                ProductionModifier = 1000,
+                WeaponStrength = 500, // > hull -> destroys
+            };
+            game.AttachNode(kdy, planet);
+
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 0);
+
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            combat.ExecuteOrbitalBombardment(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(
+                0,
+                fleet.CapitalShips.Count,
+                "Destroyed ship should be removed from fleet"
+            );
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_ZeroProductionModifier_SkipsFacilityFire()
+        {
+            // ProductionModifier = 0 -> scaledChance = 0 -> RollProbabilitySuccess returns false
+            // -> facility never fires. Verifies the short-circuit path in Stage 2.
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Building kdy = new Building
+            {
+                InstanceID = "kdy1",
+                OwnerInstanceID = "alliance",
+                DefenseFacilityClass = DefenseFacilityClass.KDY,
+                ProductionModifier = 0,
+                WeaponStrength = 999,
+            };
+            game.AttachNode(kdy, planet);
+
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 0);
+
+            CombatSystem combat = MakeCombat(game, new QueueRNG());
+
+            combat.ExecuteOrbitalBombardment(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(
+                100,
+                fleet.CapitalShips[0].CurrentHullStrength,
+                "Zero-chance facility should not fire"
+            );
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_AllocatedEnergyLane_ReducesEnergyCapacity()
+        {
+            // Planet with energy=2 and a non-defensive, non-target building (to force
+            // allocatedPresent = true without adding to the ship-group lane).
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 2);
+
+            Building weapon = new Building
+            {
+                InstanceID = "w1",
+                OwnerInstanceID = "alliance",
+                BuildingType = BuildingType.Weapon,
+                DefenseFacilityClass = DefenseFacilityClass.None,
+            };
+            game.AttachNode(weapon, planet);
+
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 2);
+
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 1, 0 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            BombardmentResult result = combat.ExecuteOrbitalBombardment(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.AreEqual(2, result.EnergyDamage);
+            Assert.AreEqual(0, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_RepeatTrialsAllFail_ProducesNoStrikes()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 5);
 
-            // Building with high bombardment resistance (15)
-            Building bunker = new Building
-            {
-                InstanceID = "bunker1",
-                OwnerInstanceID = "alliance",
-                BuildingType = BuildingType.Defense,
-                Bombardment = 15,
-            };
-            game.AttachNode(bunker, planet);
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 3);
 
-            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 5);
-
-            // Lane 0=energy, lane 1=building. Select lane 1 (building).
-            // Roll of 1 (min threshold) against resistance 15 is a miss.
-            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 99, 99, 99 });
             CombatSystem combat = MakeCombat(game, rng);
 
             BombardmentResult result = combat.ExecuteOrbitalBombardment(
@@ -1409,7 +1495,26 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.AreEqual(0, result.Strikes.Count);
-            Assert.AreEqual(1, planet.GetAllBuildings().Count);
+            Assert.AreEqual(5, planet.EnergyCapacity, "Energy should be untouched");
+        }
+
+        [Test]
+        public void ExecuteOrbitalBombardment_FleetStrengthZero_SkipsStage4()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 5);
+
+            Fleet fleet = CreateBombardmentFleet(game, "f1", "empire", planet, 1, 0);
+
+            CombatSystem combat = MakeCombat(game, new QueueRNG());
+
+            BombardmentResult result = combat.ExecuteOrbitalBombardment(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.AreEqual(0, result.Strikes.Count);
+            Assert.AreEqual(5, planet.EnergyCapacity);
         }
     }
 
@@ -1428,7 +1533,9 @@ namespace Rebellion.Tests.Systems
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = $"{id}_ship",
-                HullStrength = 100,
+                OwnerInstanceID = owner,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             if (weaponPower > 0)
@@ -1447,12 +1554,12 @@ namespace Rebellion.Tests.Systems
             return fleet;
         }
 
-        private Building CreateDefenseBuilding(
+        private Building CreateShieldBuilding(
             GameRoot game,
             string id,
             string owner,
             Planet planet,
-            int weaponStrength
+            int shieldStrength
         )
         {
             Building building = new Building
@@ -1460,7 +1567,28 @@ namespace Rebellion.Tests.Systems
                 InstanceID = id,
                 OwnerInstanceID = owner,
                 BuildingType = BuildingType.Defense,
-                WeaponStrength = weaponStrength,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = shieldStrength,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, planet);
+            return building;
+        }
+
+        private Building CreateTargetBuilding(
+            GameRoot game,
+            string id,
+            string owner,
+            Planet planet,
+            int bombardment = 0
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = id,
+                OwnerInstanceID = owner,
+                BuildingType = BuildingType.Defense,
+                Bombardment = bombardment,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, planet);
@@ -1473,7 +1601,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
 
-            CombatSystem combat = MakeCombat(game, new QueueRNG());
+            CombatSystem combat = MakeCombat(game, new SequenceRNG());
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
                 new List<Fleet>(),
@@ -1492,7 +1620,7 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateAssaultFleet(game, "ef1", "empire", planet, 100);
             Fleet allianceFleet = CreateAssaultFleet(game, "af1", "alliance", planet, 100);
 
-            CombatSystem combat = MakeCombat(game, new QueueRNG());
+            CombatSystem combat = MakeCombat(game, new SequenceRNG());
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
                 new List<Fleet> { empireFleet, allianceFleet },
@@ -1507,12 +1635,11 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-            CreateDefenseBuilding(game, "def1", "alliance", planet, weaponStrength: 100);
+            CreateShieldBuilding(game, "shield1", "alliance", planet, shieldStrength: 500);
 
-            // Fleet with zero weapon power cannot overcome defense of 100.
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 0);
 
-            CombatSystem combat = MakeCombat(game, new QueueRNG());
+            CombatSystem combat = MakeCombat(game, new SequenceRNG());
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
                 new List<Fleet> { fleet },
@@ -1520,6 +1647,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsFalse(result.Success);
+            Assert.AreEqual(500, result.DefenseStrength);
         }
 
         [Test]
@@ -1528,11 +1656,10 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
 
-            // High-weapon fleet with no defense, so assault strength > 0.
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // RNG seeded to produce a roll above the assault threshold, causing failure.
-            QueueRNG rng = new QueueRNG(0.5);
+            // Planet energy=5, no other targets -> 1 energy lane. laneCount=1.
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1 });
             CombatSystem combat = MakeCombat(game, rng);
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
@@ -1550,9 +1677,8 @@ namespace Rebellion.Tests.Systems
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
-
-            // RNG seeded to produce a roll below the assault threshold, causing success.
-            QueueRNG rng = new QueueRNG(0.0);
+            // Main loop strikes energy lane but resistance(9) >= roll(1) -> all miss.
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0 });
             CombatSystem combat = MakeCombat(game, rng);
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
@@ -1564,22 +1690,26 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_SuccessWithDefenseBuilding_DestroysBuildingOnSuccess()
+        public void ExecutePlanetaryAssault_InitialStrikeOnProductionBuilding_DestroysBuilding()
         {
+            // The pre-loop initial strike only targets production buildings, so use a Mine
+            // rather than a Defense building — otherwise the destruction would happen in the
+            // main loop and this test wouldn't be exercising the initial-strike codepath.
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-            Building defBuilding = CreateDefenseBuilding(
-                game,
-                "def1",
-                "alliance",
-                planet,
-                weaponStrength: 1
-            );
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "alliance",
+                BuildingType = BuildingType.Mine,
+                Bombardment = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(mine, planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // First RNG value produces a successful roll, second is for building selection.
-            QueueRNG rng = new QueueRNG(0.0, 0.5);
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5 });
             CombatSystem combat = MakeCombat(game, rng);
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
@@ -1588,22 +1718,19 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(result.Success);
-            Assert.IsTrue(
-                result.DestroyedBuildings.Any(b => b.InstanceID == defBuilding.InstanceID)
-            );
+            Assert.IsTrue(result.DestroyedBuildings.Any(b => b.InstanceID == mine.InstanceID));
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_AllDefenseDestroyed_TransfersPlanetOwnership()
+        public void ExecutePlanetaryAssault_AllTargetsDestroyed_TransfersPlanetOwnership()
         {
             GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
-            CreateDefenseBuilding(game, "def1", "alliance", planet, weaponStrength: 1);
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
+            CreateTargetBuilding(game, "bld1", "alliance", planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
 
-            // First RNG value produces a successful roll, second is for building selection.
-            QueueRNG rng = new QueueRNG(0.0, 0.5);
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5, 0, 10 });
             CombatSystem combat = MakeCombat(game, rng);
 
             PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
@@ -1614,6 +1741,120 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(result.OwnershipChanged);
             Assert.AreEqual("empire", result.NewOwner.InstanceID);
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void ExecutePlanetaryAssault_CommanderBoostsAssaultStrength()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+            Officer commander = new Officer
+            {
+                InstanceID = "cmd1",
+                OwnerInstanceID = "empire",
+                CurrentRank = OfficerRank.General,
+                Skills = new Dictionary<MissionParticipantSkill, int>
+                {
+                    { MissionParticipantSkill.Leadership, 80 },
+                },
+            };
+            fleet.CapitalShips[0].AddOfficer(commander);
+
+            // CombatValue = 4×100 = 400. AssaultStrength = (80/40 + 1) × 400 = 1200.
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 1 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.AreEqual(1200, result.AssaultStrength);
+        }
+
+        [Test]
+        public void ExecutePlanetaryAssault_StrikeDestroysRegiment()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "reg1",
+                OwnerInstanceID = "alliance",
+                BombardmentDefense = 0,
+            };
+            game.AttachNode(regiment, planet);
+
+            Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+
+            // Lanes: Troop(resist=0), Energy(resist=9). Count=2. No buildings -> skip initial.
+            // Remaining: regiment gone, energy lane only, all miss (9 >= 1).
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(1, result.DestroyedRegiments.Count);
+            Assert.AreEqual("reg1", result.DestroyedRegiments[0].InstanceID);
+        }
+
+        [Test]
+        public void ExecutePlanetaryAssault_StrikeReducesEnergy()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+
+            // Lanes: Energy(resist=9). Count=1. No buildings -> skip initial.
+            // Remaining: energy=4, still has lane, all miss (9 >= 1).
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 10 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(1, result.EnergyDamage);
+            Assert.AreEqual(4, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void ExecutePlanetaryAssault_HighResistanceBlocksStrike()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "reg1",
+                OwnerInstanceID = "alliance",
+                BombardmentDefense = 10,
+            };
+            game.AttachNode(regiment, planet);
+
+            Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+
+            // Lanes: Troop(resist=10), Energy(resist=9). Count=2.
+            // Remaining: all miss (resist >= 1 for all lanes).
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5 });
+            CombatSystem combat = MakeCombat(game, rng);
+
+            PlanetaryAssaultResult result = combat.ExecutePlanetaryAssault(
+                new List<Fleet> { fleet },
+                planet
+            );
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(0, result.DestroyedRegiments.Count);
+            Assert.AreEqual(1, planet.GetAllRegiments().Count);
         }
     }
 }

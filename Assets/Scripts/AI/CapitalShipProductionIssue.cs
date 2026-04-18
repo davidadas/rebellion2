@@ -261,9 +261,9 @@ public class CapitalShipProductionIssue
     /// to that ship's persistent KDY or LNR pool.
     ///
     /// After all facilities contribute, pools are consumed per-ship (FUN_0058bb60):
-    ///   1. KDY pool → primary shortage (refined_material_cost)
-    ///   2. LNR pool → remaining primary shortage
-    ///   3. LNR pool → capacity (production=40)
+    ///   1. KDY pool -> primary shortage (refined_material_cost)
+    ///   2. LNR pool -> remaining primary shortage
+    ///   3. LNR pool -> capacity (production=40)
     /// Remaining pool values persist on the ship for the next tick.
     /// Ship completes when ProductionCapacityUsed >= ProductionCapacity.
     /// </summary>
@@ -356,9 +356,9 @@ public class CapitalShipProductionIssue
     /// (FUN_0058bb60_apply_capital_ship_production_contributions).
     ///
     /// Consumption order via FUN_0055d170:
-    ///   1. KDY pool → primary shortage (ConstructionCost - RefinedMaterialProgress)
-    ///   2. LNR pool → remaining primary shortage
-    ///   3. LNR pool → remaining capacity (ProductionCapacity - ProductionCapacityUsed)
+    ///   1. KDY pool -> primary shortage (ConstructionCost - RefinedMaterialProgress)
+    ///   2. LNR pool -> remaining primary shortage
+    ///   3. LNR pool -> remaining capacity (ProductionCapacity - ProductionCapacityUsed)
     /// Remaining pools are written back to the ship for next tick.
     /// </summary>
     /// <param name="ship">The ship whose KDY/LNR pools are consumed.</param>
@@ -544,7 +544,7 @@ public class CapitalShipProductionIssue
         // Each iteration:
         //   1. Roll index using STORED count from setup (this+0x20), NOT current count
         //   2. Re-enumerate targets (fresh list every iteration, not just after strikes)
-        //   3. Select Nth target from new list — if index >= current count, target is NULL → skip
+        //   3. Select Nth target from new list — if index >= current count, target is NULL -> skip
         //   This creates probability dampening: as targets are destroyed, some rolls
         //   exceed the shrinking list and become no-ops.
         for (int i = 0; i < netStrength && !_productionComplete; i++)
@@ -555,7 +555,7 @@ public class CapitalShipProductionIssue
             // Re-enumerate targets every iteration (FUN_0058b1e0 called at line 121)
             _strikeTargets = EnumerateStrikeTargets();
 
-            // If rolled index >= current count, target is NULL → skip (FUN_0058b990 returns NULL)
+            // If rolled index >= current count, target is NULL -> skip (FUN_0058b990 returns NULL)
             if (_strikeTargets.Count == 0)
             {
                 _productionComplete = true;

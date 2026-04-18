@@ -20,6 +20,13 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel_case.required_prefix = _
 dotnet_naming_style.underscore_camel_case.capitalization   = camel_case
 
+# Prefer explicit types — no var
+csharp_style_var_for_built_in_types    = false:error
+csharp_style_var_when_type_is_apparent = false:error
+csharp_style_var_elsewhere             = false:error
+dotnet_diagnostic.IDE0007.severity    = error    # use var — disabled
+dotnet_diagnostic.IDE0008.severity    = error    # use explicit type
+
 # Roslynator diagnostics
 dotnet_diagnostic.RCS1046.severity = error    # async method name must end with Async
 dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not end with Async

@@ -276,7 +276,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void Contribution_KDYAndLNR_CombinedConsumptionOrder()
         {
-            // Test the full consumption chain: KDY→primary, LNR→primary, LNR→capacity
+            // Test the full consumption chain: KDY->primary, LNR->primary, LNR->capacity
             CapitalShip ship = EnqueueShip(
                 _empPlanet,
                 "cs1",
@@ -697,7 +697,8 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 0,
                 RegimentCapacity = 0,
-                HullStrength = 999,
+                MaxHullStrength = 999,
+                CurrentHullStrength = 999,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 PrimaryWeapons = new Dictionary<PrimaryWeaponType, int[]>
                 {

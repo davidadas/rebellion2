@@ -7,7 +7,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages character betrayal mechanics during each game tick.
     /// </summary>
-    public class BetrayalSystem
+    public class BetrayalSystem : IGameSystem
     {
         private readonly GameRoot _game;
 

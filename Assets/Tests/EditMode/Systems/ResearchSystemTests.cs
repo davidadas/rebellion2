@@ -251,7 +251,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             game.AttachNode(CreateShipyard("SY1"), planet);
 
-            // Run 12 ticks with just the idle facility (+1 per tick = 12 total → unlock Frigate)
+            // Run 12 ticks with just the idle facility (+1 per tick = 12 total -> unlock Frigate)
             for (int i = 0; i < 12; i++)
             {
                 system.ProcessTick();

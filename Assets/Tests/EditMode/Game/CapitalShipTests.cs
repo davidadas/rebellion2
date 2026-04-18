@@ -19,7 +19,8 @@ namespace Rebellion.Tests.Game
                 StarfighterCapacity = 2,
                 RegimentCapacity = 3,
                 OwnerInstanceID = "FNALL1",
-                HullStrength = 100,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
                 DamageControl = 10,
                 MaxShieldStrength = 50,
                 ShieldRechargeRate = 5,
@@ -397,7 +398,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void HullStrength_DefaultCapitalShip_ReturnsExpectedValue()
         {
-            Assert.AreEqual(100, _capitalShip.HullStrength);
+            Assert.AreEqual(100, _capitalShip.CurrentHullStrength);
         }
 
         [Test]
