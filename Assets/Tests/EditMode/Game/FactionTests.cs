@@ -362,16 +362,17 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(10, total, "Should only count non-blockaded planets");
         }
 
-        // TODO: FogState serialization fails when Faction is root type (works fine in GameRoot)
-        // Comprehensive serialization tested via SaveGameManagerTests
-        //[Test]
-        public void SerializeAndDeserialize_MaintainsState_DISABLED()
+        [Test]
+        public void SerializeAndDeserialize_MaintainsState()
         {
             _faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 3);
             _faction.AddOwnedUnit(_planet1);
             _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
 
             string serialized = SerializationHelper.Serialize(_faction);
+            Console.WriteLine("=== SERIALIZED XML ===");
+            Console.WriteLine(serialized);
+            Console.WriteLine("=== END ===");
             Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
 
             Assert.AreEqual(

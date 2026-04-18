@@ -502,6 +502,14 @@ namespace Rebellion.Util.Serialization
             Type valueType = keyValueType[1];
 
             IDictionary dictionary = (IDictionary)Activator.CreateInstance(type);
+
+            // Self-closing element (e.g. <Snapshots />) — consume and return empty.
+            if (reader.IsEmptyElement)
+            {
+                reader.Read();
+                return dictionary;
+            }
+
             int startDepth = reader.Depth;
 
             reader.ReadStartElement();
@@ -597,6 +605,13 @@ namespace Rebellion.Util.Serialization
             IList collection
         )
         {
+            // Self-closing element (e.g. <UnrecruitedOfficers />) — consume and return empty.
+            if (reader.IsEmptyElement)
+            {
+                reader.Read();
+                return;
+            }
+
             int startDepth = reader.Depth;
             IDictionary<string, Type> persistableMap = ReflectionHelper.GetPersistableObjectMap();
 

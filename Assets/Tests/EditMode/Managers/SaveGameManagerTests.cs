@@ -254,9 +254,8 @@ namespace Rebellion.Tests.Managers
         // [Test]
         // public void SaveAndLoadGame_PreservesUnrecruitedOfficers() { ... }
 
-        // TODO: Fix FogState serialization issue with single faction
-        //[Test]
-        public void SaveAndLoadGame_GameWithFactions_PreservesFactions_DISABLED()
+        [Test]
+        public void SaveAndLoadGame_GameWithFactions_PreservesFactions()
         {
             GameSummary summary = new GameSummary
             {
@@ -604,9 +603,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSystem["CORUSCANT"]);
         }
 
-        // TODO: Fix FogState serialization issue
-        //[Test]
-        public void SaveAndLoadGame_GameWithEmptyFogState_PreservesFogState_DISABLED()
+        [Test]
+        public void SaveAndLoadGame_GameWithEmptyFogState_PreservesFogState()
         {
             GameSummary summary = new GameSummary
             {
