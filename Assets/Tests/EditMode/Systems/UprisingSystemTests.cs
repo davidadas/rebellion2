@@ -52,7 +52,17 @@ namespace Rebellion.Tests.Systems
                 game.AttachNode(regiment, planet);
             }
 
-            UprisingSystem uprisingSystem = new UprisingSystem(game, rng ?? new StubRNG());
+            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game)
+            );
+            UprisingSystem uprisingSystem = new UprisingSystem(
+                game,
+                rng ?? new StubRNG(),
+                planetaryControl
+            );
             return (game, planet, uprisingSystem);
         }
 
@@ -110,11 +120,12 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
-            // Planet already in uprising with no troops. Dice produce a score that triggers
-            // consequence case 1 (destroy facility). A building is present, so it gets destroyed.
+            // Planet already in uprising with one garrison troop (so the zero-garrison flip
+            // mechanic doesn't fire). Dice produce a score that triggers consequence case 1
+            // (destroy facility). A building is present, so it gets destroyed.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
-                troopCount: 0,
+                troopCount: 1,
                 rng: new SequenceRNG(intValues: new[] { 0, 0 })
             );
             planet.IsInUprising = true;
@@ -134,12 +145,12 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ActiveUprising_OfficerCaptured()
         {
-            // Planet in uprising with an officer present. Dice produce a score that triggers
-            // consequence case 3 (capture officer).
+            // Planet in uprising with a garrison troop (so the zero-garrison flip doesn't fire)
+            // and an officer present. Dice trigger consequence case 3 (capture officer).
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
-                troopCount: 0,
-                rng: new SequenceRNG(intValues: new[] { 1, 1 })
+                troopCount: 1,
+                rng: new SequenceRNG(intValues: new[] { 2, 1 })
             );
             planet.IsInUprising = true;
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
@@ -154,12 +165,12 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
         {
-            // Planet in uprising with one already-captured officer. Dice produce a score that
-            // triggers consequence case 4 (free one captured officer).
+            // Planet in uprising with a garrison troop (so the zero-garrison flip doesn't fire)
+            // and an already-captured officer. Dice trigger consequence case 4 (free officer).
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
-                troopCount: 0,
-                rng: new SequenceRNG(intValues: new[] { 2, 2 })
+                troopCount: 1,
+                rng: new SequenceRNG(intValues: new[] { 3, 2 })
             );
             planet.IsInUprising = true;
             Officer captive = new Officer
@@ -199,11 +210,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_AlreadyInUprising_ConsequencesFireButNothingToDestroy()
+        public void ProcessTick_ActiveUprising_ZeroTroops_PlanetGoesNeutral()
         {
-            // Planet already in uprising with no troops and no facilities.
-            // High dice trigger consequences (destroy troop, free captured), but both skip
-            // because there are no valid targets. Uprising remains active.
+            // Planet in active uprising with zero garrison troops: the controller has lost the
+            // planet. Uprising ends and the planet is reset to neutral ownership.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0,
@@ -211,14 +221,16 @@ namespace Rebellion.Tests.Systems
             );
             planet.IsInUprising = true;
 
-            system.ProcessTick();
+            List<GameResult> results = system.ProcessTick();
 
-            Assert.IsTrue(planet.IsInUprising);
-            Assert.AreEqual(
-                "empire",
-                planet.OwnerInstanceID,
-                "UprisingSystem must not change ownership"
-            );
+            Assert.IsFalse(planet.IsInUprising, "Uprising should end when controller loses planet");
+            Assert.IsNull(planet.OwnerInstanceID, "Planet should become neutral");
+            PlanetOwnershipChangedResult flip = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .SingleOrDefault();
+            Assert.IsNotNull(flip, "PlanetOwnershipChangedResult should be emitted");
+            Assert.AreEqual("empire", flip.PreviousOwner?.InstanceID);
+            Assert.IsNull(flip.NewOwner);
         }
 
         [Test]
@@ -236,7 +248,17 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            UprisingSystem uprisingSystem = new UprisingSystem(game, new StubRNG());
+            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game)
+            );
+            UprisingSystem uprisingSystem = new UprisingSystem(
+                game,
+                new StubRNG(),
+                planetaryControl
+            );
             uprisingSystem.ProcessTick();
 
             Assert.IsFalse(planet.IsInUprising, "Neutral planet should not revolt");
@@ -274,7 +296,17 @@ namespace Rebellion.Tests.Systems
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             game.AttachNode(regiment, planet);
 
-            UprisingSystem uprisingSystem = new UprisingSystem(game, new StubRNG());
+            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game)
+            );
+            UprisingSystem uprisingSystem = new UprisingSystem(
+                game,
+                new StubRNG(),
+                planetaryControl
+            );
             uprisingSystem.ProcessTick();
 
             Assert.IsFalse(
@@ -315,7 +347,17 @@ namespace Rebellion.Tests.Systems
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             game.AttachNode(regiment, planet);
 
-            UprisingSystem uprisingSystem = new UprisingSystem(game, new StubRNG());
+            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                new ManufacturingSystem(game)
+            );
+            UprisingSystem uprisingSystem = new UprisingSystem(
+                game,
+                new StubRNG(),
+                planetaryControl
+            );
             uprisingSystem.ProcessTick();
 
             Assert.IsTrue(

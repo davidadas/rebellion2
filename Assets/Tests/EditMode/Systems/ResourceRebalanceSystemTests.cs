@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(sys, game.GetGalaxyMap());
             game.AttachNode(planet, sys);
 
-            // HighRNG returns max-1: for NextInt(0,100) returns 99 → case 4 (increment energy)
+            // HighRNG returns max-1: for NextInt(0,100) returns 99 -> case 4 (increment energy)
             HighRNG rng = new HighRNG();
             ResourceRebalanceSystem system = new ResourceRebalanceSystem(game, rng);
 

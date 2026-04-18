@@ -248,8 +248,8 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Finds the difficulty profile matching the player's faction and difficulty level.
-        /// Falls back through progressively looser matches: exact → faction wildcard →
-        /// any wildcard → "Default" name → first entry.
+        /// Falls back through progressively looser matches: exact -> faction wildcard ->
+        /// any wildcard -> "Default" name -> first entry.
         /// </summary>
         /// <param name="config">Galaxy classification config with difficulty profiles.</param>
         /// <param name="summary">Game summary with player faction and difficulty.</param>

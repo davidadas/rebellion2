@@ -900,8 +900,8 @@ namespace Rebellion.Tests.Systems
             _manager.ProcessTick();
 
             // Verify bidirectional relationship
-            Assert.AreEqual(_coruscant, mine.GetParent()); // child → parent
-            Assert.IsTrue(_coruscant.GetAllBuildings().Contains(mine)); // parent → child
+            Assert.AreEqual(_coruscant, mine.GetParent()); // child -> parent
+            Assert.IsTrue(_coruscant.GetAllBuildings().Contains(mine)); // parent -> child
         }
 
         [Test]

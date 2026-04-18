@@ -265,7 +265,7 @@ public class GameManager
         _deathStarManager = new DeathStarSystem(_game);
         _researchManager = new ResearchSystem(_game);
         _betrayalManager = new BetrayalSystem(_game);
-        _uprisingManager = new UprisingSystem(_game, _randomProvider);
+        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,

@@ -76,6 +76,16 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Clears the planet's owner, returning it to neutral control.
+        /// </summary>
+        public void ClearPlanetOwnership(Planet planet)
+        {
+            _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+            _game.DeregsiterOwnedUnit(planet);
+            planet.SetOwnerInstanceID(null);
+        }
+
+        /// <summary>
         /// Applies periodic support shift for a single planet.
         /// </summary>
         /// <param name="planet">The planet to apply the shift to.</param>
