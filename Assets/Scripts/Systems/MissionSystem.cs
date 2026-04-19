@@ -117,17 +117,36 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Updates a single mission's state for this tick.
-        /// Returns results from execution and participant movement on completion.
+        /// Runs per-tick foil detection before progress, then executes on completion.
         /// </summary>
         /// <param name="mission">The mission to update.</param>
-        /// <returns>Results produced if the mission executed this tick; empty otherwise.</returns>
+        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
         {
             List<GameResult> results = new List<GameResult>();
 
-            // Pre-tick guard: cancel immediately if an external event has invalidated this mission.
             if (mission.ShouldAbort(_game))
             {
+                TearDownMission(mission);
+                return results;
+            }
+
+            results.AddRange(ResolveDetection(mission));
+
+            if (mission.ShouldAbort(_game))
+            {
+                results.Add(
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = mission.DisplayName,
+                        TargetName =
+                            (mission.GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
+                        Participants = mission.GetAllParticipants(),
+                        Outcome = MissionOutcome.Foiled,
+                        Tick = _game.CurrentTick,
+                    }
+                );
                 TearDownMission(mission);
                 return results;
             }
@@ -184,11 +203,115 @@ namespace Rebellion.Systems
 
             foreach (IMovable movable in allParticipants.Cast<IMovable>())
             {
+                if (movable is Officer o && (o.IsCaptured || o.IsKilled))
+                    continue;
                 if (origin != null)
                     _movementManager.RequestMove(movable, origin);
             }
 
             _game.DetachNode(mission);
+        }
+
+        /// <summary>
+        /// Per-tick foil detection. Rolls the mission's foil check and, if detected,
+        /// applies kill-or-capture to each main participant using the best
+        /// defending officer's combat rating.
+        /// </summary>
+        /// <param name="mission">The mission to check for detection.</param>
+        /// <returns>Results from any capture or kill events.</returns>
+        private List<GameResult> ResolveDetection(Mission mission)
+        {
+            List<GameResult> results = new List<GameResult>();
+
+            if (!mission.RollFoilCheck(_provider))
+                return results;
+
+            Officer defender = mission.FindBestDefender();
+            if (defender == null)
+                return results;
+
+            int defenderCombat = defender.GetSkillValue(MissionParticipantSkill.Combat);
+            Planet planet = mission.GetParent() as Planet;
+
+            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            {
+                if (participant is Officer spy)
+                {
+                    if (spy.IsCaptured || spy.IsKilled)
+                        continue;
+                    results.AddRange(ResolveKillOrCapture(spy, defenderCombat, planet, mission));
+                }
+                else if (participant is SpecialForces sf)
+                {
+                    _game.DetachNode(sf);
+                    results.Add(
+                        new GameObjectDestroyedResult
+                        {
+                            DestroyedObject = sf,
+                            Context = planet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Resolves whether a detected spy is killed or captured based on combat comparison.
+        /// Positive delta (defender stronger) favours capture; negative favours kill.
+        /// </summary>
+        /// <param name="spy">The officer who was detected.</param>
+        /// <param name="defenderCombat">The defending officer's combat skill.</param>
+        /// <param name="planet">The planet where the mission takes place.</param>
+        /// <param name="mission">The mission that was foiled.</param>
+        /// <returns>One capture or kill result.</returns>
+        private List<GameResult> ResolveKillOrCapture(
+            Officer spy,
+            int defenderCombat,
+            Planet planet,
+            Mission mission
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+
+            int delta = defenderCombat - spy.GetEffectiveCombat();
+            double captureProbability =
+                mission.KillOrCaptureProbabilityTable != null
+                    ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
+                    : 50;
+
+            if (_provider.NextDouble() * 100 <= captureProbability)
+            {
+                spy.IsCaptured = true;
+                spy.CaptorInstanceID = planet?.OwnerInstanceID;
+                spy.CanEscape = true;
+                results.Add(
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = spy,
+                        IsCaptured = true,
+                        Context = planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+            else
+            {
+                spy.IsKilled = true;
+                _game.DetachNode(spy);
+                results.Add(
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = spy,
+                        Context = planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+
+            return results;
         }
 
         /// <summary>

@@ -238,6 +238,39 @@
           </xs:complexType>
         </xs:element>
 
+        <xs:element name="Assassination">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="BaseInjury" type="PositiveIntType" />
+              <xs:element name="InjuryDiceRange1" type="xs:nonNegativeInteger" />
+              <xs:element name="InjuryDiceRange2" type="xs:nonNegativeInteger" />
+              <xs:element name="KillProbability" type="xs:nonNegativeInteger" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Recovery">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="FastHealAmount" type="PositiveIntType" />
+              <xs:element name="NormalHealAmount" type="PositiveIntType" />
+              <xs:element name="FastRepairAmount" type="PositiveIntType" />
+              <xs:element name="NormalRepairAmount" type="PositiveIntType" />
+              <xs:element name="FastReplacementAmount" type="PositiveIntType" />
+              <xs:element name="NormalReplacementAmount" type="PositiveIntType" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Captive">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="EscapeTable" type="IntTableType" />
+              <xs:element name="EscapeLoyaltyShift" type="xs:integer" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
         <xs:element name="ProbabilityTables">
           <xs:complexType>
             <xs:all>
@@ -252,6 +285,7 @@
                     <xs:element name="DeathStarSabotage" type="IntTableType" />
                     <xs:element name="Espionage" type="IntTableType" />
                     <xs:element name="Foil" type="IntTableType" />
+                    <xs:element name="KillOrCapture" type="IntTableType" />
                     <xs:element name="InciteUprising" type="IntTableType" />
                     <xs:element name="Recruitment" type="IntTableType" />
                     <xs:element name="Rescue" type="IntTableType" />

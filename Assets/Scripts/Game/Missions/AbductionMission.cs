@@ -99,6 +99,7 @@ public class AbductionMission : Mission
             return new List<GameResult>();
         target.IsCaptured = true;
         target.CaptorInstanceID = OwnerInstanceID;
+        target.CanEscape = true;
 
         return new List<GameResult>
         {

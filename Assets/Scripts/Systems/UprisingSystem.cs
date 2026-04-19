@@ -313,6 +313,7 @@ namespace Rebellion.Systems
                 return;
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
             target.IsCaptured = true;
+            target.CanEscape = true;
             results.Add(
                 new OfficerCaptureStateResult
                 {
@@ -345,6 +346,7 @@ namespace Rebellion.Systems
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
             target.IsCaptured = false;
             target.CaptorInstanceID = null;
+            target.CanEscape = false;
             results.Add(
                 new OfficerCaptureStateResult
                 {
@@ -376,6 +378,7 @@ namespace Rebellion.Systems
             {
                 target.IsCaptured = false;
                 target.CaptorInstanceID = null;
+                target.CanEscape = false;
                 results.Add(
                     new OfficerCaptureStateResult
                     {

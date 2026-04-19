@@ -26,6 +26,9 @@ public class GameConfig
     public VictoryConfig Victory { get; set; } = new VictoryConfig();
     public JediConfig Jedi { get; set; } = new JediConfig();
     public ResearchConfig Research { get; set; } = new ResearchConfig();
+    public AssassinationConfig Assassination { get; set; } = new AssassinationConfig();
+    public RecoveryConfig Recovery { get; set; } = new RecoveryConfig();
+    public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
     public ProbabilityTablesConfig ProbabilityTables { get; set; } = new ProbabilityTablesConfig();
 
     /// <summary>
@@ -438,6 +441,69 @@ public class GameConfig
     }
 
     /// <summary>
+    /// Assassination mission outcome configuration.
+    /// Controls injury dice and survival probability on a successful hit.
+    /// </summary>
+    [PersistableObject]
+    public class AssassinationConfig
+    {
+        /// <summary>Base injury always applied on a successful assassination hit.</summary>
+        public int BaseInjury { get; set; }
+
+        /// <summary>First injury dice range: random(0, DiceRange1) added to base.</summary>
+        public int InjuryDiceRange1 { get; set; }
+
+        /// <summary>Second injury dice range: random(0, DiceRange2) added to total.</summary>
+        public int InjuryDiceRange2 { get; set; }
+
+        /// <summary>Probability (0–100) that a hit kills the target outright. Otherwise target survives with injury.</summary>
+        public int KillProbability { get; set; }
+    }
+
+    /// <summary>
+    /// Recovery system configuration.
+    /// Controls officer healing rates and ship repair rates.
+    /// </summary>
+    [PersistableObject]
+    public class RecoveryConfig
+    {
+        /// <summary>Injury points healed per tick for officers with FastHeal (Force users).</summary>
+        public int FastHealAmount { get; set; }
+
+        /// <summary>Injury points healed per tick for normal officers.</summary>
+        public int NormalHealAmount { get; set; }
+
+        /// <summary>Hull points repaired per tick for ships at a friendly shipyard.</summary>
+        public int FastRepairAmount { get; set; }
+
+        /// <summary>Hull points repaired per tick for ships not at a shipyard.</summary>
+        public int NormalRepairAmount { get; set; }
+
+        /// <summary>Fighters replaced per tick for squadrons at a friendly planet.</summary>
+        public int FastReplacementAmount { get; set; }
+
+        /// <summary>Fighters replaced per tick for squadrons not at a friendly planet.</summary>
+        public int NormalReplacementAmount { get; set; }
+    }
+
+    /// <summary>
+    /// Captive system configuration.
+    /// Controls escape attempt probability and loyalty effects.
+    /// </summary>
+    [PersistableObject]
+    public class CaptiveConfig
+    {
+        /// <summary>
+        /// Escape probability table. Maps (officerSkills - planetDefense) to escape
+        /// probability 0–100. Looked up each tick for captured officers with CanEscape.
+        /// </summary>
+        public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Loyalty shift applied to the officer on successful escape.</summary>
+        public int EscapeLoyaltyShift { get; set; }
+    }
+
+    /// <summary>
     /// Probability tables configuration.
     /// All probability tables grouped by data type (not usage).
     /// </summary>
@@ -465,6 +531,7 @@ public class GameConfig
         public Dictionary<int, int> DeathStarSabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
+        public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();

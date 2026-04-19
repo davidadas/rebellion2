@@ -246,6 +246,21 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns true if this ship has hull damage that can be repaired.
+        /// </summary>
+        /// <returns>True if CurrentHullStrength is below MaxHullStrength.</returns>
+        public bool IsDamaged() => CurrentHullStrength < MaxHullStrength;
+
+        /// <summary>
+        /// Repairs hull damage by the specified amount, capped at MaxHullStrength.
+        /// </summary>
+        /// <param name="amount">Hull points to restore.</param>
+        public void RepairHull(int amount)
+        {
+            CurrentHullStrength = Math.Min(MaxHullStrength, CurrentHullStrength + amount);
+        }
+
+        /// <summary>
         /// Returns the manufacturing manufacturing type of the manufacturable.
         /// </summary>
         /// <returns>ManufacturingType.Ship</returns>

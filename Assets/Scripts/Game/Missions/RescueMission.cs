@@ -99,6 +99,7 @@ public class RescueMission : Mission
             return new List<GameResult>();
         target.IsCaptured = false;
         target.CaptorInstanceID = null;
+        target.CanEscape = false;
 
         return new List<GameResult>
         {

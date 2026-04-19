@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -33,7 +34,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetOnEnemyPlanet_SetsTargetKilled()
+        public void TryCreate_ValidTarget_ReturnsNotNull()
         {
             (
                 GameRoot game,
@@ -54,247 +55,12 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>(),
                 target
             );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
 
-            MissionSceneBuilder.RunToSuccess(mission, game);
-
-            Assert.IsTrue(
-                target.IsKilled,
-                "Target officer should be marked killed on assassination success"
+            Assert.IsNotNull(
+                mission,
+                "TryCreate should succeed with a valid enemy officer on the target planet"
             );
-        }
-
-        [Test]
-        public void Execute_TargetOnEnemyPlanet_ReturnsCharacterKilledResult()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().FirstOrDefault();
-            Assert.IsNotNull(killed, "Should return OfficerKilledResult on success");
-            Assert.AreEqual("target", killed.TargetOfficer.InstanceID);
-        }
-
-        [Test]
-        public void Execute_TargetOnEnemyPlanet_SetsAssassinOnResult()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().First();
-            Assert.AreEqual(
-                officer.InstanceID,
-                killed.Assassin.InstanceID,
-                "Assassin should be the main participant"
-            );
-        }
-
-        [Test]
-        public void Execute_TargetOnEnemyPlanet_DetachesTargetFromSceneGraph()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            MissionSceneBuilder.RunToSuccess(mission, game);
-
-            Assert.IsNull(target.GetParent(), "Killed officer should be detached from scene graph");
-        }
-
-        [Test]
-        public void Execute_TargetAlreadyKilled_ReturnsFailed()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            // Target is killed after mission creation but before execution
-            target.IsKilled = true;
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                completed.Outcome,
-                "Mission should fail when target is already killed before execution"
-            );
-        }
-
-        [Test]
-        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            // A second enemy planet the target can legally move to
-            Planet anotherEnemyPlanet = new Planet
-            {
-                InstanceID = "another_enemy",
-                OwnerInstanceID = "rebels",
-                IsColonized = true,
-            };
-            game.AttachNode(
-                anotherEnemyPlanet,
-                game.GetSceneNodeByInstanceID<PlanetSystem>("sys1")
-            );
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            // Target moves to a different planet before mission executes
-            game.MoveNode(target, anotherEnemyPlanet);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                completed.Outcome,
-                "Mission should fail when target officer has moved to a different planet before execution"
-            );
-        }
-
-        [Test]
-        public void Execute_TargetRemovedFromScene_ReturnsFailed()
-        {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarSystem fog
-            ) = MissionSceneBuilder.Build();
-
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            game.AttachNode(target, enemyPlanet);
-
-            AssassinationMission mission = CreateAssassinationMission(
-                game,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                target
-            );
-            game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
-
-            game.DetachNode(target);
-
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                completed.Outcome,
-                "Mission should fail when target has left the scene before execution"
-            );
+            Assert.AreEqual("target", mission.TargetOfficerInstanceID);
         }
 
         [Test]
@@ -480,7 +246,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_ValidTarget_ReturnsNotNull()
+        public void Execute_SuccessKillCheckPasses_KillsTargetWithInjury()
         {
             (
                 GameRoot game,
@@ -501,12 +267,204 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>(),
                 target
             );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
 
-            Assert.IsNotNull(
-                mission,
-                "TryCreate should succeed with a valid enemy officer on the target planet"
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsTrue(target.IsKilled, "Target should be killed when kill check passes");
+            Assert.IsNull(target.GetParent(), "Killed target should be detached from scene graph");
+            Assert.IsTrue(
+                results.Any(r => r is OfficerInjuredResult),
+                "Should produce OfficerInjuredResult before kill"
             );
-            Assert.AreEqual("target", mission.TargetOfficerInstanceID);
+
+            OfficerKilledResult killed = results.OfType<OfficerKilledResult>().First();
+            Assert.AreEqual("target", killed.TargetOfficer.InstanceID);
+            Assert.AreEqual(
+                officer.InstanceID,
+                killed.Assassin.InstanceID,
+                "Assassin should be the main participant"
+            );
+        }
+
+        [Test]
+        public void Execute_SuccessKillCheckFails_TargetSurvivesWithInjury()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+
+            Assert.IsFalse(target.IsKilled, "Target should survive when kill check fails");
+            Assert.Greater(target.InjuryPoints, 0, "Target should have injury points");
+            Assert.IsTrue(
+                results.Any(r => r is OfficerInjuredResult),
+                "Should produce OfficerInjuredResult"
+            );
+            Assert.IsFalse(
+                results.Any(r => r is OfficerKilledResult),
+                "Should not produce OfficerKilledResult when target survives"
+            );
+        }
+
+        [Test]
+        public void Execute_TargetAlreadyKilled_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            // Target is killed after mission creation but before execution
+            target.IsKilled = true;
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when target is already killed before execution"
+            );
+        }
+
+        [Test]
+        public void Execute_TargetMovedToDifferentPlanet_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            // A second enemy planet the target can legally move to
+            Planet anotherEnemyPlanet = new Planet
+            {
+                InstanceID = "another_enemy",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(
+                anotherEnemyPlanet,
+                game.GetSceneNodeByInstanceID<PlanetSystem>("sys1")
+            );
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            // Target moves to a different planet before mission executes
+            game.MoveNode(target, anotherEnemyPlanet);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when target officer has moved to a different planet before execution"
+            );
+        }
+
+        [Test]
+        public void Execute_TargetRemovedFromScene_ReturnsFailed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AssassinationMission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            game.DetachNode(target);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                completed.Outcome,
+                "Mission should fail when target has left the scene before execution"
+            );
         }
 
         [Test]

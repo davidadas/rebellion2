@@ -64,6 +64,54 @@ namespace Rebellion.Tests.Systems
             return mission;
         }
 
+        private (
+            GameRoot game,
+            Planet planet,
+            Officer spy,
+            Officer defender,
+            MovementSystem movement
+        ) BuildDetectionScene()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(planet, system);
+
+            Officer spy = EntityFactory.CreateOfficer("spy", "empire");
+            Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
+            game.AttachNode(defender, planet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "rebels",
+                DefenseRating = 100,
+            };
+            game.AttachNode(regiment, planet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            return (game, planet, spy, defender, movement);
+        }
+
         [Test]
         public void UpdateMission_CompletedNoFriendlyPlanet_SkipsMovement()
         {
@@ -686,6 +734,267 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(
                 completedResult.Participants.Any(p => p.InstanceID == "o2"),
                 "Decoy must appear in Participants"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionRollFails_MissionContinues()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 10 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.99), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsFalse(
+                spy.IsCaptured,
+                "Officer should not be captured when detection roll fails"
+            );
+            Assert.AreEqual(
+                1,
+                mission.CurrentProgress,
+                "Mission progress should increment when not detected"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionSucceedsHighCapture_CapturesParticipant()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured, "Officer should be captured when detection succeeds");
+            Assert.AreEqual(
+                "rebels",
+                spy.CaptorInstanceID,
+                "CaptorInstanceID should be set to the planet owner's faction"
+            );
+            Assert.IsTrue(
+                results.Any(r => r is OfficerCaptureStateResult),
+                "Should produce OfficerCaptureStateResult"
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled),
+                "Should produce MissionCompletedResult with Foiled outcome"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionSucceedsLowCapture_KillsParticipant()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 0 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsKilled, "Officer should be killed when capture probability is 0");
+            Assert.IsTrue(
+                results.Any(r => r is OfficerKilledResult),
+                "Should produce OfficerKilledResult"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionOnOwnPlanet_NeverDetected()
+        {
+            (GameRoot game, Planet planet, Officer spy, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured, "Missions on own planets should never be detected");
+        }
+
+        [Test]
+        public void UpdateMission_DetectionWithNoDefender_NoCapture()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            game.DetachNode(defender);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsFalse(
+                spy.IsCaptured,
+                "Officer should not be captured when no defending officer exists"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionWithDecoy_PreventsCapture()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.DecoyProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.DecoyParticipants.Add(decoy);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured, "Successful decoy should prevent detection");
+        }
+
+        [Test]
+        public void UpdateMission_DetectionCapturesParticipant_CancelsMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            Officer secondSpy = EntityFactory.CreateOfficer("o2", "empire");
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.MainParticipants.Add(secondSpy);
+            spy.SetParent(mission);
+            secondSpy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsNull(
+                mission.GetParent(),
+                "Mission should be torn down when any participant is captured"
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled),
+                "Should produce Foiled outcome when mission is canceled by detection"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionWithSpecialForces_DestroysUnit()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            SpecialForces sf = new SpecialForces { InstanceID = "sf1", OwnerInstanceID = "empire" };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(sf);
+            sf.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsNull(sf.GetParent(), "SpecialForces should be detached when detected");
+            Assert.IsTrue(
+                results.Any(r => r is GameObjectDestroyedResult),
+                "Should produce GameObjectDestroyedResult for destroyed SpecialForces"
+            );
+        }
+
+        [Test]
+        public void TearDownMission_CapturedParticipant_SkipsMovement()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            officer.SetParent(mission);
+            officer.IsCaptured = true;
+
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            system.UpdateMission(mission);
+
+            Assert.IsNull(
+                officer.Movement,
+                "Captured officer should not have movement queued during teardown"
             );
         }
     }
