@@ -36,6 +36,9 @@ public abstract class Mission : ContainerNode
     public ProbabilityTable KillOrCaptureProbabilityTable { get; set; }
 
     [PersistableIgnore]
+    public int DecoyDefenderScalingPercent { get; set; }
+
+    [PersistableIgnore]
     public int BaseTicks;
 
     [PersistableIgnore]
@@ -109,6 +112,7 @@ public abstract class Mission : ContainerNode
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
         FoilProbabilityTable = new ProbabilityTable(tables.Foil);
+        DecoyDefenderScalingPercent = tables.DecoyDefenderScalingPercent;
         KillOrCaptureProbabilityTable = new ProbabilityTable(tables.KillOrCapture);
 
         Dictionary<int, int> successTable = tables.GetSuccessTable(ConfigKey);
@@ -185,13 +189,14 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Calculates the probability that a decoy participant beats enemy detection.
-    /// Score is the decoy's espionage skill offset by 35% of the best enemy defender's espionage.
+    /// Calculates the probability that a decoy participant fools enemy defenders.
+    /// Score = (decoy skill - target defense) - (best defender espionage * scaling%).
     /// </summary>
     /// <param name="decoy">The decoy participant to evaluate.</param>
     /// <returns>Decoy success probability 0–100.</returns>
     protected double GetDecoyProbability(IMissionParticipant decoy)
     {
+        // Best enemy officer's espionage, scaled by config percentage.
         int bestDefenderEspionage = 0;
         if (GetParent() is Planet planet)
         {
@@ -207,7 +212,9 @@ public abstract class Mission : ContainerNode
         }
 
         int decoyEspionage = decoy.GetMissionSkillValue(DecoyParticipantSkill);
-        int score = decoyEspionage - (int)(bestDefenderEspionage * 0.35);
+        int targetDefense = (int)GetDefenseScore();
+        int scaledDefender = bestDefenderEspionage * DecoyDefenderScalingPercent / 100;
+        int score = (decoyEspionage - targetDefense) - scaledDefender;
         return DecoyProbabilityTable.Lookup(score);
     }
 
@@ -263,26 +270,25 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Returns true if at least one decoy participant beats the detection threshold.
-    /// A successful decoy zeroes out the foil probability for this execution.
+    /// Picks one random decoy participant and rolls their decoy probability.
+    /// Returns false if no decoys are assigned.
     /// </summary>
-    /// <param name="provider">RNG provider for rolling against each decoy's probability.</param>
-    /// <returns>True if at least one decoy succeeds.</returns>
+    /// <param name="provider">RNG provider for selection and probability roll.</param>
+    /// <returns>True if the selected decoy succeeds.</returns>
     protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
     {
-        foreach (IMissionParticipant decoy in DecoyParticipants)
-        {
-            if (provider.NextDouble() * 100 <= GetDecoyProbability(decoy))
-                return true;
-        }
-        return false;
+        if (DecoyParticipants.Count == 0)
+            return false;
+
+        IMissionParticipant decoy = DecoyParticipants[provider.NextInt(0, DecoyParticipants.Count)];
+        return provider.NextDouble() * 100 <= GetDecoyProbability(decoy);
     }
 
     /// <summary>
-    /// Per-tick foil detection roll. Computes foil probability from defense score,
-    /// checks if a decoy nullifies detection, then rolls the dice.
+    /// Per-tick foil detection roll. Computes foil probability from defense score
+    /// and rolls the dice. Decoys are checked separately after detection.
     /// </summary>
-    /// <param name="provider">RNG provider for decoy and foil rolls.</param>
+    /// <param name="provider">RNG provider for the foil roll.</param>
     /// <returns>True if the mission is detected this tick.</returns>
     internal bool RollFoilCheck(IRandomNumberProvider provider)
     {
@@ -292,10 +298,18 @@ public abstract class Mission : ContainerNode
         if (foilProbability <= 0)
             return false;
 
-        if (CheckDecoySuccessful(provider))
-            return false;
-
         return provider.NextDouble() * 100 <= foilProbability;
+    }
+
+    /// <summary>
+    /// Checks if any decoy participant can nullify the detection consequences.
+    /// Uses the spy's espionage vs the best defender's espionage scaled by config factor.
+    /// </summary>
+    /// <param name="provider">RNG provider for decoy rolls.</param>
+    /// <returns>True if a decoy prevents capture.</returns>
+    internal bool RollDecoyCheck(IRandomNumberProvider provider)
+    {
+        return CheckDecoySuccessful(provider);
     }
 
     /// <summary>

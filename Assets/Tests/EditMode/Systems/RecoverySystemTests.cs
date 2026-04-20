@@ -350,6 +350,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 8,
             };
@@ -384,6 +385,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 8,
             };
@@ -411,6 +413,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
             };
@@ -432,6 +435,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 11,
             };
@@ -457,6 +461,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 11,
             };
@@ -481,6 +486,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 8,
             };
@@ -493,6 +499,60 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(
                 results.Any(r => r is FighterDamageResult),
                 "Partially replaced squadron should not produce result"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ShipUnderConstruction_NotRepaired()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "s1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 50,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(
+                50,
+                ship.CurrentHullStrength,
+                "Ship still under construction should not be repaired"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_SquadronUnderConstruction_NotReplaced()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+
+            Starfighter squadron = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 8,
+            };
+            game.AttachNode(squadron, planet);
+
+            RecoverySystem system = new RecoverySystem(game);
+
+            system.ProcessTick();
+
+            Assert.AreEqual(
+                8,
+                squadron.CurrentSquadronSize,
+                "Squadron still under construction should not have fighters replaced"
             );
         }
     }

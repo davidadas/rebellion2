@@ -104,7 +104,7 @@ public class AssassinationMission : Mission
         Planet planet = GetParent() as Planet;
 
         int injury = RollInjury(game.Config.Assassination, provider);
-        target.ApplyInjury(injury);
+        target.ApplyInjury(injury, game.Config.Recovery.MaxInjuryPoints);
         results.Add(
             new OfficerInjuredResult
             {

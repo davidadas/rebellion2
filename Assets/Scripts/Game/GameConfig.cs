@@ -467,6 +467,9 @@ public class GameConfig
     [PersistableObject]
     public class RecoveryConfig
     {
+        /// <summary>Maximum injury points an officer can accumulate.</summary>
+        public int MaxInjuryPoints { get; set; }
+
         /// <summary>Injury points healed per tick for officers with FastHeal (Force users).</summary>
         public int FastHealAmount { get; set; }
 
@@ -527,6 +530,9 @@ public class GameConfig
         public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Decoy { get; set; } = new Dictionary<int, int>();
+
+        /// <summary>Percentage of defender espionage subtracted from decoy score.</summary>
+        public int DecoyDefenderScalingPercent { get; set; }
         public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> DeathStarSabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();

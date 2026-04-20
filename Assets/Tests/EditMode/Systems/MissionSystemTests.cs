@@ -890,13 +890,14 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            decoy.SetSkillValue(MissionParticipantSkill.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
             mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
+                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
             mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 100 } }
@@ -909,7 +910,7 @@ namespace Rebellion.Tests.Systems
 
             system.UpdateMission(mission);
 
-            Assert.IsFalse(spy.IsCaptured, "Successful decoy should prevent detection");
+            Assert.IsFalse(spy.IsCaptured, "Successful decoy should prevent capture");
         }
 
         [Test]
@@ -918,7 +919,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            // Decoy has Espionage=0 but Combat=80. DecoyParticipantSkill is set to Combat.
+            // Decoy has Espionage=0 but Combat=200. DecoyParticipantSkill is set to Combat.
             // If the system incorrectly uses Espionage, the decoy fails and the spy is captured.
             Officer decoy = new Officer
             {
@@ -927,7 +928,7 @@ namespace Rebellion.Tests.Systems
                 Skills = new Dictionary<MissionParticipantSkill, int>
                 {
                     { MissionParticipantSkill.Espionage, 0 },
-                    { MissionParticipantSkill.Combat, 80 },
+                    { MissionParticipantSkill.Combat, 200 },
                     { MissionParticipantSkill.Diplomacy, 0 },
                     { MissionParticipantSkill.Leadership, 0 },
                 },
@@ -939,7 +940,7 @@ namespace Rebellion.Tests.Systems
             );
             mission.DecoyParticipantSkill = MissionParticipantSkill.Combat;
             mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 50, 100 } }
+                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
             mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 100 } }
@@ -955,6 +956,92 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(
                 spy.IsCaptured,
                 "Decoy should use DecoyParticipantSkill (Combat=80) not always Espionage"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionWithStrongDefense_DecoyFails()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            // High defense score makes decoy probability very low.
+            for (int i = 0; i < 5; i++)
+            {
+                Regiment regiment = new Regiment
+                {
+                    InstanceID = $"extra_r{i}",
+                    OwnerInstanceID = "rebels",
+                    DefenseRating = 50,
+                };
+                game.AttachNode(regiment, planet);
+            }
+
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.DecoyProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 0 }, { 200, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.DecoyParticipants.Add(decoy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                spy.IsCaptured,
+                "Strong target defense should make decoy fail, allowing capture"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_DetectionPicksOneRandomDecoy_NotAll()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            // Two decoys: one with Espionage=0 (will fail), one with Espionage=200 (would pass).
+            // FixedRNG NextInt returns min (0), so first decoy is always picked.
+            // If all decoys were checked, the second would save the spy.
+            Officer weakDecoy = EntityFactory.CreateOfficer("decoy_weak", "empire");
+            weakDecoy.SetSkillValue(MissionParticipantSkill.Espionage, 0);
+
+            Officer strongDecoy = EntityFactory.CreateOfficer("decoy_strong", "empire");
+            strongDecoy.SetSkillValue(MissionParticipantSkill.Espionage, 200);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.DecoyProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.DecoyParticipants.Add(weakDecoy);
+            mission.DecoyParticipants.Add(strongDecoy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsTrue(
+                spy.IsCaptured,
+                "Only one random decoy should be rolled, not all — weak decoy picked first should fail"
             );
         }
 

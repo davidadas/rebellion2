@@ -729,15 +729,17 @@
   <Assassination>
     <!-- Base injury always applied on a successful hit -->
     <BaseInjury>1</BaseInjury>
-    <!-- First injury dice range: random(0, DiceRange1) added to base -->
+    <!-- Upper bound of the primary injury roll -->
     <PrimaryInjuryRange>100</PrimaryInjuryRange>
-    <!-- Second injury dice range: random(0, DiceRange2) added to total -->
+    <!-- Upper bound of the secondary injury roll -->
     <SecondaryInjuryRange>29</SecondaryInjuryRange>
     <!-- Probability (0-100) that a hit kills the target outright -->
     <KillProbability>25</KillProbability>
   </Assassination>
   <!-- Recovery System Configuration -->
   <Recovery>
+    <!-- Maximum injury points an officer can accumulate -->
+    <MaxInjuryPoints>32767</MaxInjuryPoints>
     <!-- Injury points healed per tick for Force users -->
     <FastHealAmount>2</FastHealAmount>
     <!-- Injury points healed per tick for normal officers -->
@@ -1311,7 +1313,9 @@
           <Value>99</Value>
         </Entry>
       </SubdueUprising>
-      <!-- Decoy: score = decoy_espionage - (best_defender_espionage * 0.35). Source: TDECOYTB.json -->
+      <!-- Percentage of defender espionage subtracted from decoy score -->
+      <DecoyDefenderScalingPercent>35</DecoyDefenderScalingPercent>
+      <!-- Decoy probability table -->
       <Decoy>
         <Entry>
           <Key>-20</Key>

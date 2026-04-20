@@ -223,8 +223,13 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            // Roll the per-tick foil detection check (includes decoy nullification).
+            // Roll the per-tick foil detection check.
             if (!mission.RollFoilCheck(_provider))
+                return results;
+
+            // Decoys prevent capture, not detection. If a decoy succeeds,
+            // the mission is still foiled but participants avoid consequences.
+            if (mission.RollDecoyCheck(_provider))
                 return results;
 
             // Use the first defending officer's combat for kill-or-capture, or 0 if none.

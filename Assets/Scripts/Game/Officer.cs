@@ -245,12 +245,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Adds the specified amount to injury points, clamped to [0, 32767].
+        /// Adds the specified amount to injury points, clamped to [0, maxInjury].
         /// </summary>
         /// <param name="amount">The amount of injury to apply.</param>
-        public void ApplyInjury(int amount)
+        /// <param name="maxInjury">Upper bound for injury points.</param>
+        public void ApplyInjury(int amount, int maxInjury)
         {
-            InjuryPoints = Math.Min(32767, Math.Max(0, InjuryPoints + amount));
+            InjuryPoints = Math.Min(maxInjury, Math.Max(0, InjuryPoints + amount));
         }
 
         /// <summary>

@@ -79,7 +79,7 @@ namespace Rebellion.Systems
         {
             foreach (CapitalShip ship in _game.GetSceneNodesByType<CapitalShip>())
             {
-                if (!ship.IsDamaged())
+                if (!ship.IsDamaged() || ship.ManufacturingStatus != ManufacturingStatus.Complete)
                     continue;
 
                 int before = ship.CurrentHullStrength;
@@ -113,7 +113,10 @@ namespace Rebellion.Systems
         {
             foreach (Starfighter squadron in _game.GetSceneNodesByType<Starfighter>())
             {
-                if (!squadron.HasLosses())
+                if (
+                    !squadron.HasLosses()
+                    || squadron.ManufacturingStatus != ManufacturingStatus.Complete
+                )
                     continue;
 
                 int before = squadron.CurrentSquadronSize;

@@ -187,6 +187,11 @@ namespace Rebellion.Tests.Systems
             List<GameResult> results = system.ProcessTick();
 
             Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
+            Assert.IsNotNull(
+                officer.CaptorInstanceID,
+                "CaptorInstanceID should be set to the opposing faction"
+            );
+            Assert.IsTrue(officer.CanEscape, "Uprising-captured officer should be able to escape");
             Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
         }
 

@@ -311,6 +311,8 @@ namespace Rebellion.Systems
                 return;
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
             target.IsCaptured = true;
+            Faction opposingFaction = FindLeadingOpposingFaction(planet, controllerInstanceId);
+            target.CaptorInstanceID = opposingFaction?.InstanceID;
             target.CanEscape = true;
             results.Add(
                 new OfficerCaptureStateResult
