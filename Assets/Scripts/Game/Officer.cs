@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
@@ -43,11 +44,17 @@ namespace Rebellion.Game
         public bool IsRecruitable { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
+        public bool CanEscape { get; set; }
         public bool IsKilled { get; set; }
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
         public int Loyalty { get; set; }
         public int HyperdriveModifier { get; set; } // Han Solo speed bonus (subtracts from transit time)
+
+        // Injury
+        public int InjuryPoints { get; set; }
+        public bool CanHeal { get; set; }
+        public bool FastHeal { get; set; }
 
         // Jedi / Force Info
         public int JediProbability { get; set; }
@@ -235,6 +242,34 @@ namespace Rebellion.Game
         public bool IsUndiscoveredForceUser()
         {
             return IsJedi && !IsForceEligible && !IsCaptured && !IsKilled && !IsOnMission();
+        }
+
+        /// <summary>
+        /// Adds the specified amount to injury points, clamped to [0, maxInjury].
+        /// </summary>
+        /// <param name="amount">The amount of injury to apply.</param>
+        /// <param name="maxInjury">Upper bound for injury points.</param>
+        public void ApplyInjury(int amount, int maxInjury)
+        {
+            InjuryPoints = Math.Min(maxInjury, Math.Max(0, InjuryPoints + amount));
+        }
+
+        /// <summary>
+        /// Subtracts the specified amount from injury points, floored at zero.
+        /// </summary>
+        /// <param name="amount">The amount to heal.</param>
+        public void Heal(int amount)
+        {
+            InjuryPoints = Math.Max(0, InjuryPoints - amount);
+        }
+
+        /// <summary>
+        /// Returns the officer's combat skill reduced by current injury, floored at zero.
+        /// </summary>
+        /// <returns>The effective combat value after injury penalty.</returns>
+        public int GetEffectiveCombat()
+        {
+            return Math.Max(0, Skills[MissionParticipantSkill.Combat] - InjuryPoints);
         }
 
         /// <summary>

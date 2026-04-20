@@ -1,3 +1,4 @@
+using System;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game
@@ -49,6 +50,21 @@ namespace Rebellion.Game
         /// Default constructor used for deserialization.
         /// </summary>
         public Starfighter() { }
+
+        /// <summary>
+        /// Returns true if this squadron has lost fighters that can be replaced.
+        /// </summary>
+        /// <returns>True if CurrentSquadronSize is below MaxSquadronSize.</returns>
+        public bool HasLosses() => CurrentSquadronSize < MaxSquadronSize;
+
+        /// <summary>
+        /// Replaces lost fighters by the specified amount, capped at MaxSquadronSize.
+        /// </summary>
+        /// <param name="amount">Fighters to replace.</param>
+        public void ReplaceFighters(int amount)
+        {
+            CurrentSquadronSize = Math.Min(MaxSquadronSize, CurrentSquadronSize + amount);
+        }
 
         /// <summary>
         /// Returns the manufacturing type for this unit.

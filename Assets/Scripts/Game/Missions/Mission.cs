@@ -33,6 +33,12 @@ public abstract class Mission : ContainerNode
     public ProbabilityTable FoilProbabilityTable { get; set; }
 
     [PersistableIgnore]
+    public ProbabilityTable KillOrCaptureProbabilityTable { get; set; }
+
+    [PersistableIgnore]
+    public int DecoyDefenderScalingPercent { get; set; }
+
+    [PersistableIgnore]
     public int BaseTicks;
 
     [PersistableIgnore]
@@ -52,13 +58,15 @@ public abstract class Mission : ContainerNode
     /// <summary>
     /// Returns true if an external event has invalidated this mission and it should be
     /// canceled before its next tick. Checked by MissionSystem as a pre-tick guard.
-    /// Base implementation cancels when any main participant is captured or killed.
+    /// Base implementation cancels when no main participants remain or any officer
+    /// participant is captured or killed.
     /// Override and call base for missions with additional cancellation conditions.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <returns>True if the mission should be aborted.</returns>
     public virtual bool ShouldAbort(GameRoot game) =>
-        MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
+        MainParticipants.Count == 0
+        || MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
     /// <summary>
     /// Parameterless constructor for deserialization.
@@ -104,6 +112,8 @@ public abstract class Mission : ContainerNode
     {
         DecoyProbabilityTable = new ProbabilityTable(tables.Decoy);
         FoilProbabilityTable = new ProbabilityTable(tables.Foil);
+        DecoyDefenderScalingPercent = tables.DecoyDefenderScalingPercent;
+        KillOrCaptureProbabilityTable = new ProbabilityTable(tables.KillOrCapture);
 
         Dictionary<int, int> successTable = tables.GetSuccessTable(ConfigKey);
         if (successTable != null)
@@ -179,13 +189,14 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Calculates the probability that a decoy participant beats enemy detection.
-    /// Score is the decoy's espionage skill offset by 35% of the best enemy defender's espionage.
+    /// Calculates the probability that a decoy participant fools enemy defenders.
+    /// Score = (decoy skill - target defense) - (best defender espionage * scaling%).
     /// </summary>
     /// <param name="decoy">The decoy participant to evaluate.</param>
     /// <returns>Decoy success probability 0–100.</returns>
     protected double GetDecoyProbability(IMissionParticipant decoy)
     {
+        // Best enemy officer's espionage, scaled by config percentage.
         int bestDefenderEspionage = 0;
         if (GetParent() is Planet planet)
         {
@@ -201,7 +212,9 @@ public abstract class Mission : ContainerNode
         }
 
         int decoyEspionage = decoy.GetMissionSkillValue(DecoyParticipantSkill);
-        int score = decoyEspionage - (int)(bestDefenderEspionage * 0.35);
+        int targetDefense = (int)GetDefenseScore();
+        int scaledDefender = bestDefenderEspionage * DecoyDefenderScalingPercent / 100;
+        int score = (decoyEspionage - targetDefense) - scaledDefender;
         return DecoyProbabilityTable.Lookup(score);
     }
 
@@ -240,28 +253,16 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Combines agent success probability and foil probability into a net success chance.
-    /// </summary>
-    /// <param name="agentProbability">Raw agent success probability 0–100.</param>
-    /// <param name="foilProbability">Foil probability 0–100 that reduces the net chance.</param>
-    /// <returns>Net success probability 0–100.</returns>
-    protected double CalculateTotalSuccess(double agentProbability, double foilProbability) =>
-        (agentProbability / 100.0) * (1 - foilProbability / 100.0) * 100.0;
-
-    /// <summary>
-    /// Returns true if at least one main participant beats the combined success threshold.
+    /// Returns true if at least one main participant beats the success threshold.
+    /// Foil detection is handled separately per-tick by MissionSystem.
     /// </summary>
     /// <param name="provider">RNG provider for rolling against the success probability.</param>
-    /// <param name="foilProbability">Foil probability 0–100 applied to each participant's roll.</param>
     /// <returns>True if at least one participant succeeds.</returns>
-    protected bool CheckMissionSuccess(IRandomNumberProvider provider, double foilProbability)
+    protected bool CheckMissionSuccess(IRandomNumberProvider provider)
     {
         foreach (IMissionParticipant participant in MainParticipants)
         {
-            double successProbability = CalculateTotalSuccess(
-                GetAgentProbability(participant),
-                foilProbability
-            );
+            double successProbability = GetAgentProbability(participant);
             if (provider.NextDouble() * 100 <= successProbability)
                 return true;
         }
@@ -269,29 +270,65 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Returns true if at least one decoy participant beats the detection threshold.
-    /// A successful decoy zeroes out the foil probability for this execution.
+    /// Picks one random decoy participant and rolls their decoy probability.
+    /// Returns false if no decoys are assigned.
     /// </summary>
-    /// <param name="provider">RNG provider for rolling against each decoy's probability.</param>
-    /// <returns>True if at least one decoy succeeds.</returns>
+    /// <param name="provider">RNG provider for selection and probability roll.</param>
+    /// <returns>True if the selected decoy succeeds.</returns>
     protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
     {
-        foreach (IMissionParticipant decoy in DecoyParticipants)
-        {
-            if (provider.NextDouble() * 100 <= GetDecoyProbability(decoy))
-                return true;
-        }
-        return false;
+        if (DecoyParticipants.Count == 0)
+            return false;
+
+        IMissionParticipant decoy = DecoyParticipants[provider.NextInt(0, DecoyParticipants.Count)];
+        return provider.NextDouble() * 100 <= GetDecoyProbability(decoy);
     }
 
     /// <summary>
-    /// Returns true if the foil roll falls within the foil probability, causing a Foiled outcome.
+    /// Per-tick foil detection roll. Computes foil probability from defense score
+    /// and rolls the dice. Decoys are checked separately after detection.
     /// </summary>
     /// <param name="provider">RNG provider for the foil roll.</param>
-    /// <param name="foilProbability">Foil probability 0–100.</param>
-    /// <returns>True if the mission is foiled.</returns>
-    protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability) =>
-        provider.NextDouble() * 100 <= foilProbability;
+    /// <returns>True if the mission is detected this tick.</returns>
+    internal bool RollFoilCheck(IRandomNumberProvider provider)
+    {
+        double defenseScore = GetDefenseScore();
+        double foilProbability = GetFoilProbability(defenseScore);
+
+        if (foilProbability <= 0)
+            return false;
+
+        return provider.NextDouble() * 100 <= foilProbability;
+    }
+
+    /// <summary>
+    /// Checks if any decoy participant can nullify the detection consequences.
+    /// Uses the spy's espionage vs the best defender's espionage scaled by config factor.
+    /// </summary>
+    /// <param name="provider">RNG provider for decoy rolls.</param>
+    /// <returns>True if a decoy prevents capture.</returns>
+    internal bool RollDecoyCheck(IRandomNumberProvider provider)
+    {
+        return CheckDecoySuccessful(provider);
+    }
+
+    /// <summary>
+    /// Finds the first eligible enemy officer on the mission's target planet.
+    /// Returns null if no eligible defender exists.
+    /// </summary>
+    /// <returns>A defending officer, or null.</returns>
+    internal Officer FindDefender()
+    {
+        Planet planet = GetParent() as Planet;
+        if (planet == null)
+            return null;
+
+        return planet
+            .GetAllOfficers()
+            .FirstOrDefault(o =>
+                o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled
+            );
+    }
 
     /// <summary>
     /// Increments the mission skill of every participant that has CanImproveMissionSkill set.
@@ -313,6 +350,7 @@ public abstract class Mission : ContainerNode
 
     /// <summary>
     /// Executes the mission, determines the outcome, and returns all results.
+    /// Foil detection is handled per-tick by MissionSystem before execution.
     /// MissionCompletedResult is always the last item in the list.
     /// </summary>
     /// <param name="game">The current game state.</param>
@@ -323,13 +361,7 @@ public abstract class Mission : ContainerNode
         List<GameResult> results = new List<GameResult>();
         MissionOutcome outcome;
 
-        double defenseScore = GetDefenseScore();
-        double foilProbability = GetFoilProbability(defenseScore);
-
-        if (CheckDecoySuccessful(provider))
-            foilProbability = 0;
-
-        if (CheckMissionSuccess(provider, foilProbability))
+        if (CheckMissionSuccess(provider))
         {
             if (!IsMissionSatisfied(game))
             {
@@ -342,11 +374,6 @@ public abstract class Mission : ContainerNode
                 results.AddRange(OnSuccess(game, provider));
                 ImproveMissionParticipantsSkill();
             }
-        }
-        else if (CheckMissionFoiled(provider, foilProbability))
-        {
-            outcome = MissionOutcome.Foiled;
-            results.AddRange(OnFoiled(game, provider));
         }
         else
         {
@@ -407,16 +434,6 @@ public abstract class Mission : ContainerNode
     /// <param name="provider">RNG provider for any randomized effects.</param>
     /// <returns>Results produced by the success outcome.</returns>
     protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
-
-    /// <summary>
-    /// Override to apply effects when the mission is foiled by enemy forces.
-    /// Default returns no results.
-    /// </summary>
-    /// <param name="game">The current game state.</param>
-    /// <param name="provider">RNG provider for any randomized effects.</param>
-    /// <returns>Results produced by the foiled outcome; empty by default.</returns>
-    protected virtual List<GameResult> OnFoiled(GameRoot game, IRandomNumberProvider provider) =>
-        new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.
