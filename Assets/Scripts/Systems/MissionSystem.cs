@@ -223,14 +223,18 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
+            // Roll the per-tick foil detection check (includes decoy nullification).
             if (!mission.RollFoilCheck(_provider))
                 return results;
 
+            // Use the first defending officer's combat for kill-or-capture, or 0 if none.
             Officer defender = mission.FindDefender();
             int defenderCombat =
                 defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
             Planet planet = mission.GetParent() as Planet;
 
+            // Apply consequences to each participant: officers face kill-or-capture,
+            // SpecialForces are destroyed outright.
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
             {
                 if (participant is Officer spy)

@@ -242,8 +242,8 @@
           <xs:complexType>
             <xs:all>
               <xs:element name="BaseInjury" type="PositiveIntType" />
-              <xs:element name="InjuryDiceRange1" type="xs:nonNegativeInteger" />
-              <xs:element name="InjuryDiceRange2" type="xs:nonNegativeInteger" />
+              <xs:element name="PrimaryInjuryRange" type="xs:nonNegativeInteger" />
+              <xs:element name="SecondaryInjuryRange" type="xs:nonNegativeInteger" />
               <xs:element name="KillProbability" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>

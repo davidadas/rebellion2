@@ -913,6 +913,52 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_DetectionWithDecoySkill_UsesConfiguredSkill()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            // Decoy has Espionage=0 but Combat=80. DecoyParticipantSkill is set to Combat.
+            // If the system incorrectly uses Espionage, the decoy fails and the spy is captured.
+            Officer decoy = new Officer
+            {
+                InstanceID = "decoy",
+                OwnerInstanceID = "empire",
+                Skills = new Dictionary<MissionParticipantSkill, int>
+                {
+                    { MissionParticipantSkill.Espionage, 0 },
+                    { MissionParticipantSkill.Combat, 80 },
+                    { MissionParticipantSkill.Diplomacy, 0 },
+                    { MissionParticipantSkill.Leadership, 0 },
+                },
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.DecoyParticipantSkill = MissionParticipantSkill.Combat;
+            mission.DecoyProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 50, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.DecoyParticipants.Add(decoy);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.IsFalse(
+                spy.IsCaptured,
+                "Decoy should use DecoyParticipantSkill (Combat=80) not always Espionage"
+            );
+        }
+
+        [Test]
         public void UpdateMission_DetectionCapturesParticipant_CancelsMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =

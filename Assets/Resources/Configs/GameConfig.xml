@@ -730,9 +730,9 @@
     <!-- Base injury always applied on a successful hit -->
     <BaseInjury>1</BaseInjury>
     <!-- First injury dice range: random(0, DiceRange1) added to base -->
-    <InjuryDiceRange1>100</InjuryDiceRange1>
+    <PrimaryInjuryRange>100</PrimaryInjuryRange>
     <!-- Second injury dice range: random(0, DiceRange2) added to total -->
-    <InjuryDiceRange2>29</InjuryDiceRange2>
+    <SecondaryInjuryRange>29</SecondaryInjuryRange>
     <!-- Probability (0-100) that a hit kills the target outright -->
     <KillProbability>25</KillProbability>
   </Assassination>

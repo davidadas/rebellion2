@@ -436,7 +436,7 @@ public class GameConfig
         /// <summary>Base research points awarded per successful research mission.</summary>
         public int BaseResearchPoints { get; set; }
 
-        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success.</summary>
+        /// <summary>Random bonus range added to base research points on success.</summary>
         public int ResearchDiceRange { get; set; }
     }
 
@@ -450,13 +450,13 @@ public class GameConfig
         /// <summary>Base injury always applied on a successful assassination hit.</summary>
         public int BaseInjury { get; set; }
 
-        /// <summary>First injury dice range: random(0, DiceRange1) added to base.</summary>
-        public int InjuryDiceRange1 { get; set; }
+        /// <summary>Upper bound of the primary injury roll.</summary>
+        public int PrimaryInjuryRange { get; set; }
 
-        /// <summary>Second injury dice range: random(0, DiceRange2) added to total.</summary>
-        public int InjuryDiceRange2 { get; set; }
+        /// <summary>Upper bound of the secondary injury roll.</summary>
+        public int SecondaryInjuryRange { get; set; }
 
-        /// <summary>Probability (0–100) that a hit kills the target outright. Otherwise target survives with injury.</summary>
+        /// <summary>Probability (0–100) that a hit kills the target outright.</summary>
         public int KillProbability { get; set; }
     }
 

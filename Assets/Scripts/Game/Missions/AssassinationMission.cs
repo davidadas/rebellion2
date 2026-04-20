@@ -101,15 +101,10 @@ public class AssassinationMission : Mission
             return new List<GameResult>();
 
         List<GameResult> results = new List<GameResult>();
-        GameConfig.AssassinationConfig config = game.Config.Assassination;
         Planet planet = GetParent() as Planet;
 
-        int injury =
-            config.BaseInjury
-            + provider.NextInt(0, config.InjuryDiceRange1 + 1)
-            + provider.NextInt(0, config.InjuryDiceRange2 + 1);
+        int injury = RollInjury(game.Config.Assassination, provider);
         target.ApplyInjury(injury);
-
         results.Add(
             new OfficerInjuredResult
             {
@@ -119,7 +114,7 @@ public class AssassinationMission : Mission
             }
         );
 
-        if (provider.NextDouble() * 100 <= config.KillProbability)
+        if (RollKillCheck(game.Config.Assassination, provider))
         {
             target.IsKilled = true;
             game.DetachNode(target);
@@ -135,6 +130,36 @@ public class AssassinationMission : Mission
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Rolls the total injury from base + two random ranges.
+    /// </summary>
+    /// <param name="config">Assassination configuration.</param>
+    /// <param name="provider">RNG provider.</param>
+    /// <returns>Total injury amount.</returns>
+    private static int RollInjury(
+        GameConfig.AssassinationConfig config,
+        IRandomNumberProvider provider
+    )
+    {
+        return config.BaseInjury
+            + provider.NextInt(0, config.PrimaryInjuryRange + 1)
+            + provider.NextInt(0, config.SecondaryInjuryRange + 1);
+    }
+
+    /// <summary>
+    /// Rolls whether the assassination hit kills the target outright.
+    /// </summary>
+    /// <param name="config">Assassination configuration.</param>
+    /// <param name="provider">RNG provider.</param>
+    /// <returns>True if the target is killed.</returns>
+    private static bool RollKillCheck(
+        GameConfig.AssassinationConfig config,
+        IRandomNumberProvider provider
+    )
+    {
+        return provider.NextDouble() * 100 <= config.KillProbability;
     }
 
     /// <summary>
