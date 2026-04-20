@@ -227,8 +227,8 @@ namespace Rebellion.Systems
             if (!mission.RollFoilCheck(_provider))
                 return results;
 
-            // Decoys prevent capture, not detection. If a decoy succeeds,
-            // the mission is still foiled but participants avoid consequences.
+            // A successful decoy negates the consequences of detection for this tick.
+            // No capture, kill, or destruction is applied and the mission continues.
             if (mission.RollDecoyCheck(_provider))
                 return results;
 
