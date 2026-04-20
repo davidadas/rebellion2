@@ -94,7 +94,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Rolls uprising dice, applies consequences, and shifts controller support.
-        /// If the controller's last troops are destroyed, the planet goes neutral.
+        /// If all controller buildings are destroyed, the planet goes neutral.
         /// </summary>
         private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
         {
@@ -115,9 +115,7 @@ namespace Rebellion.Systems
 
             ApplyUprisingControllerSupportShift(planet, faction);
 
-            // If controller troops are gone while an uprising is active, the controller
-            // has lost the planet: clear owner (system goes neutral) and end the uprising.
-            if (CountFriendlyTroops(planet, faction.InstanceID) == 0)
+            if (!planet.Buildings.Any(b => b.GetOwnerInstanceID() == faction.InstanceID))
             {
                 _planetaryControl.ClearPlanetOwnership(planet);
                 planet.EndUprising();

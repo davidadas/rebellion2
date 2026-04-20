@@ -855,7 +855,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_DetectionWithNoDefender_NoCapture()
+        public void UpdateMission_DetectionWithNoDefender_StillAppliesKillOrCapture()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -866,16 +866,20 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 0 } }
+            );
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
 
             MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
 
-            system.UpdateMission(mission);
+            List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsFalse(
-                spy.IsCaptured,
-                "Officer should not be captured when no defending officer exists"
+            Assert.IsTrue(
+                spy.IsKilled || spy.IsCaptured,
+                "Detected spy should face kill-or-capture even without a defending officer"
             );
         }
 

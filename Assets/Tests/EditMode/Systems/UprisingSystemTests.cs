@@ -120,9 +120,33 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
-            // Planet already in uprising with one garrison troop (so the zero-garrison flip
-            // mechanic doesn't fire). Dice produce a score that triggers consequence case 1
-            // (destroy facility). A building is present, so it gets destroyed.
+            // Planet already in uprising with one garrison troop. Dice produce a score
+            // that triggers consequence case 1 (destroy facility). Two buildings present —
+            // one gets destroyed, but the second keeps the planet owned.
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 1,
+                rng: new SequenceRNG(intValues: new[] { 0, 0 })
+            );
+            planet.IsInUprising = true;
+            planet.EnergyCapacity = 2;
+            Building facility = EntityFactory.CreateBuilding("b1", "empire");
+            Building facility2 = EntityFactory.CreateBuilding("b2", "empire");
+            game.AttachNode(facility, planet);
+            game.AttachNode(facility2, planet);
+
+            system.ProcessTick();
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>("b1"),
+                "Facility should be destroyed by uprising case 1"
+            );
+            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
+        }
+
+        [Test]
+        public void ProcessTick_ActiveUprisingLastBuildingDestroyed_PlanetGoesNeutral()
+        {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1,
@@ -133,13 +157,17 @@ namespace Rebellion.Tests.Systems
             Building facility = EntityFactory.CreateBuilding("b1", "empire");
             game.AttachNode(facility, planet);
 
-            system.ProcessTick();
+            List<GameResult> results = system.ProcessTick();
 
             Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>("b1"),
-                "Facility should be destroyed by uprising case 1"
+                planet.GetOwnerInstanceID(),
+                "Planet should go neutral when last building is destroyed by uprising"
             );
-            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
+            Assert.IsFalse(planet.IsInUprising, "Uprising should end when planet goes neutral");
+            Assert.IsTrue(
+                results.OfType<PlanetOwnershipChangedResult>().Any(r => r.NewOwner == null),
+                "Should produce ownership changed result with null new owner"
+            );
         }
 
         [Test]

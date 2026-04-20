@@ -279,15 +279,6 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Returns true if the foil roll falls within the foil probability, causing a Foiled outcome.
-    /// </summary>
-    /// <param name="provider">RNG provider for the foil roll.</param>
-    /// <param name="foilProbability">Foil probability 0–100.</param>
-    /// <returns>True if the mission is foiled.</returns>
-    protected bool CheckMissionFoiled(IRandomNumberProvider provider, double foilProbability) =>
-        provider.NextDouble() * 100 <= foilProbability;
-
-    /// <summary>
     /// Per-tick foil detection roll. Computes foil probability from defense score,
     /// checks if a decoy nullifies detection, then rolls the dice.
     /// </summary>
@@ -308,11 +299,11 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
-    /// Finds the best enemy officer on the mission's target planet, ranked by espionage.
+    /// Finds the first eligible enemy officer on the mission's target planet.
     /// Returns null if no eligible defender exists.
     /// </summary>
-    /// <returns>The best defending officer, or null.</returns>
-    internal Officer FindBestDefender()
+    /// <returns>A defending officer, or null.</returns>
+    internal Officer FindDefender()
     {
         Planet planet = GetParent() as Planet;
         if (planet == null)
@@ -320,9 +311,9 @@ public abstract class Mission : ContainerNode
 
         return planet
             .GetAllOfficers()
-            .Where(o => o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled)
-            .OrderByDescending(o => o.GetSkillValue(MissionParticipantSkill.Espionage))
-            .FirstOrDefault();
+            .FirstOrDefault(o =>
+                o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled
+            );
     }
 
     /// <summary>

@@ -214,8 +214,8 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Per-tick foil detection. Rolls the mission's foil check and, if detected,
-        /// applies kill-or-capture to each main participant using the best
-        /// defending officer's combat rating.
+        /// applies kill-or-capture to each main participant using the first
+        /// defending officer's combat rating (or zero if no defender is present).
         /// </summary>
         /// <param name="mission">The mission to check for detection.</param>
         /// <returns>Results from any capture or kill events.</returns>
@@ -226,11 +226,9 @@ namespace Rebellion.Systems
             if (!mission.RollFoilCheck(_provider))
                 return results;
 
-            Officer defender = mission.FindBestDefender();
-            if (defender == null)
-                return results;
-
-            int defenderCombat = defender.GetSkillValue(MissionParticipantSkill.Combat);
+            Officer defender = mission.FindDefender();
+            int defenderCombat =
+                defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
             Planet planet = mission.GetParent() as Planet;
 
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())

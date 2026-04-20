@@ -727,20 +727,20 @@
   </Research>
   <!-- Assassination Mission Configuration -->
   <Assassination>
-    <!-- Base injury always applied on a successful hit (GENERAL_PARAM_2575) -->
+    <!-- Base injury always applied on a successful hit -->
     <BaseInjury>1</BaseInjury>
-    <!-- First injury dice range: random(0, DiceRange1) added to base (GENERAL_PARAM_2574) -->
+    <!-- First injury dice range: random(0, DiceRange1) added to base -->
     <InjuryDiceRange1>100</InjuryDiceRange1>
-    <!-- Second injury dice range: random(0, DiceRange2) added to total (GENERAL_PARAM_2576) -->
+    <!-- Second injury dice range: random(0, DiceRange2) added to total -->
     <InjuryDiceRange2>29</InjuryDiceRange2>
-    <!-- Probability (0-100) that a hit kills the target outright (GENERAL_PARAM_2577) -->
+    <!-- Probability (0-100) that a hit kills the target outright -->
     <KillProbability>25</KillProbability>
   </Assassination>
   <!-- Recovery System Configuration -->
   <Recovery>
-    <!-- Injury points healed per tick for Force users (GENERAL_PARAM_2563) -->
+    <!-- Injury points healed per tick for Force users -->
     <FastHealAmount>2</FastHealAmount>
-    <!-- Injury points healed per tick for normal officers (GENERAL_PARAM_2564) -->
+    <!-- Injury points healed per tick for normal officers -->
     <NormalHealAmount>1</NormalHealAmount>
     <!-- Hull points repaired per tick at a friendly shipyard -->
     <FastRepairAmount>2</FastRepairAmount>
@@ -753,7 +753,7 @@
   </Recovery>
   <!-- Captive System Configuration -->
   <Captive>
-    <!-- Escape probability table (ESCAPETB.DAT): maps (officerSkills - planetDefense) to probability -->
+    <!-- Escape probability table: maps (officerSkills - planetDefense) to escape probability -->
     <EscapeTable>
       <Entry>
         <Key>-50</Key>
@@ -1440,7 +1440,7 @@
           <Value>99</Value>
         </Entry>
       </Foil>
-      <!-- KillOrCapture: (defenderCombat - spyCombat) → capture probability (RLEVADTB.DAT) -->
+      <!-- KillOrCapture: (defenderCombat - spyCombat) → capture probability -->
       <KillOrCapture>
         <Entry>
           <Key>-20</Key>
