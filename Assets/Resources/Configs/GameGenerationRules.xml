@@ -331,7 +331,30 @@
       <!-- KDY-150 absent from rim table per syfcrm.json -->
     </RimFacilityTable>
     <HQLoadouts>
-      <!-- No HQ-specific facility overrides for now; facilities placed by normal tables -->
+      <!-- Coruscant: FACLCR table, one group, guarantees a Construction Yard. -->
+      <HQFacilityLoadout>
+        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <FacilityTypeIDs>
+          <string>BDFA01</string>
+          <!-- Construction Yard -->
+        </FacilityTypeIDs>
+      </HQFacilityLoadout>
+      <!-- Alliance HQ (dynamically picked rim planet): FACLHQ table, groups 1..2.
+           Group 1's Alliance HQ building is represented by the IsHeadquarters flag. -->
+      <HQFacilityLoadout>
+        <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        <FactionID>FNALL1</FactionID>
+        <FacilityTypeIDs>
+          <string>BDFA04</string>
+          <!-- Mine -->
+          <string>BDFA05</string>
+          <!-- Refinery -->
+          <string>BDFA01</string>
+          <!-- Construction Yard -->
+          <string>BDDF02</string>
+          <!-- GenCore Level I -->
+        </FacilityTypeIDs>
+      </HQFacilityLoadout>
     </HQLoadouts>
   </FacilityGeneration>
   <!-- Unit Deployment: from original disassembly.

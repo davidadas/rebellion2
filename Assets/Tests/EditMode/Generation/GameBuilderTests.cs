@@ -265,6 +265,63 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void BuildGame_ColonizedPlanets_FillBuildingsProportionalToEnergyCapacity()
+        {
+            int totalEnergy = 0;
+            int totalBuildings = 0;
+            foreach (PlanetSystem sector in _game.Galaxy.PlanetSystems)
+            {
+                foreach (Planet planet in sector.Planets.Where(p => p.IsColonized))
+                {
+                    totalEnergy += planet.EnergyCapacity;
+                    totalBuildings += planet.Buildings.Count;
+                }
+            }
+
+            Assert.GreaterOrEqual(
+                totalBuildings * 10,
+                totalEnergy * 9,
+                $"Total buildings ({totalBuildings}) vs total colonized energy capacity ({totalEnergy}): seeder is skipping planets or over-concentrating on some."
+            );
+        }
+
+        [Test]
+        public void BuildGame_EachFaction_OwnsAtLeastOneConstructionFacility()
+        {
+            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.ConstructionFacility);
+        }
+
+        [Test]
+        public void BuildGame_EachFaction_OwnsAtLeastOneShipyard()
+        {
+            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.Shipyard);
+        }
+
+        [Test]
+        public void BuildGame_EachFaction_OwnsAtLeastOneTrainingFacility()
+        {
+            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.TrainingFacility);
+        }
+
+        private void AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType buildingType)
+        {
+            foreach (Faction faction in _game.Factions)
+            {
+                bool ownsOne = _game
+                    .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
+                    .SelectMany(p => p.Buildings)
+                    .Any(b =>
+                        b.OwnerInstanceID == faction.InstanceID && b.BuildingType == buildingType
+                    );
+
+                Assert.IsTrue(
+                    ownsOne,
+                    $"Faction '{faction.GetDisplayName()}' should own at least one {buildingType}."
+                );
+            }
+        }
+
+        [Test]
         public void BuildGame_ValidConfig_DeploysOfficers()
         {
             List<Officer> officers = new List<Officer>();

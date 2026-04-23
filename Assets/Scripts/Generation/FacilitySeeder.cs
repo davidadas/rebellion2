@@ -15,16 +15,19 @@ namespace Rebellion.Generation
     {
         /// <summary>
         /// Seeds all eligible planets with facilities using weighted probability tables.
+        /// Configured HQ loadouts are placed before the random roll on their target planet.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="templates">Building templates to clone from.</param>
         /// <param name="rules">Generation rules containing facility tables and mine multipliers.</param>
+        /// <param name="classification">Classification result used to resolve FACTION_HQ loadout entries.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>All buildings that were placed during seeding.</returns>
         public List<Building> Seed(
             PlanetSystem[] systems,
             Building[] templates,
             GameGenerationRules rules,
+            GalaxyClassificationResult classification,
             IRandomNumberProvider rng
         )
         {
@@ -38,6 +41,11 @@ namespace Rebellion.Generation
             WeightedTable<string> coreTable = BuildTable(config.CoreFacilityTable);
             WeightedTable<string> rimTable = BuildTable(config.RimFacilityTable);
 
+            Dictionary<string, List<string>> loadoutsByPlanetId = ResolveHQLoadouts(
+                config.HQLoadouts,
+                classification
+            );
+
             foreach (PlanetSystem system in systems)
             {
                 bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
@@ -46,6 +54,11 @@ namespace Rebellion.Generation
                 {
                     if (!ShouldSeedPlanet(planet, isCore))
                         continue;
+
+                    if (loadoutsByPlanetId.TryGetValue(planet.InstanceID, out List<string> loadout))
+                    {
+                        PlaceLoadoutFacilities(planet, loadout, templateMap, deployedBuildings);
+                    }
 
                     SeedPlanet(
                         planet,
@@ -171,7 +184,93 @@ namespace Rebellion.Generation
             List<(int, string)> tableEntries = entries.ConvertAll(e =>
                 (e.CumulativeWeight, e.TypeID)
             );
-            return new WeightedTable<string>(tableEntries);
+            return new WeightedTable<string>(tableEntries, rollMin: 0, rollMax: 100);
+        }
+
+        /// <summary>
+        /// Resolves HQ loadout entries into a planet-keyed lookup. "FACTION_HQ"
+        /// entries are resolved to the dynamically-picked HQ via the classification.
+        /// </summary>
+        /// <param name="loadouts">HQ loadout entries from config, may be null.</param>
+        /// <param name="classification">Classification result with faction HQ assignments.</param>
+        /// <returns>Facility TypeIDs keyed by resolved planet InstanceID.</returns>
+        private Dictionary<string, List<string>> ResolveHQLoadouts(
+            List<HQFacilityLoadout> loadouts,
+            GalaxyClassificationResult classification
+        )
+        {
+            Dictionary<string, List<string>> resolved = new Dictionary<string, List<string>>();
+            if (loadouts == null)
+                return resolved;
+
+            foreach (HQFacilityLoadout loadout in loadouts)
+            {
+                string planetId = loadout.PlanetInstanceID;
+                if (planetId == "FACTION_HQ")
+                {
+                    if (string.IsNullOrEmpty(loadout.FactionID))
+                        continue;
+                    if (
+                        !classification.FactionHQs.TryGetValue(
+                            loadout.FactionID,
+                            out Planet hqPlanet
+                        )
+                    )
+                        continue;
+                    planetId = hqPlanet.InstanceID;
+                }
+
+                resolved[planetId] = loadout.FacilityTypeIDs ?? new List<string>();
+            }
+
+            return resolved;
+        }
+
+        /// <summary>
+        /// Places configured loadout facilities on a planet. Raises energy capacity and
+        /// raw-resource count first so the forced facilities fit without tripping the
+        /// Planet's capacity validator. Matches the original HQ seed path.
+        /// </summary>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="facilityTypeIDs">Facility TypeIDs to place in order.</param>
+        /// <param name="templateMap">Building templates keyed by TypeID.</param>
+        /// <param name="deployedBuildings">Accumulator for all placed buildings.</param>
+        private void PlaceLoadoutFacilities(
+            Planet planet,
+            List<string> facilityTypeIDs,
+            Dictionary<string, Building> templateMap,
+            List<Building> deployedBuildings
+        )
+        {
+            int validLoadoutCount = facilityTypeIDs.Count(id => templateMap.ContainsKey(id));
+            int requiredCapacity = planet.Buildings.Count + validLoadoutCount;
+            if (planet.EnergyCapacity < requiredCapacity)
+                planet.EnergyCapacity = requiredCapacity;
+
+            int loadoutMineCount = facilityTypeIDs.Count(id =>
+                templateMap.TryGetValue(id, out Building template)
+                && template.BuildingType == BuildingType.Mine
+            );
+            int existingMineCount = planet.Buildings.Count(b =>
+                b.BuildingType == BuildingType.Mine
+            );
+            int requiredMines = existingMineCount + loadoutMineCount;
+            if (planet.NumRawResourceNodes < requiredMines)
+                planet.NumRawResourceNodes = requiredMines;
+
+            foreach (string typeID in facilityTypeIDs)
+            {
+                if (!templateMap.TryGetValue(typeID, out Building template))
+                    continue;
+
+                Building building = template.GetDeepCopy();
+                building.SetOwnerInstanceID(planet.OwnerInstanceID);
+                building.SetManufacturingStatus(ManufacturingStatus.Complete);
+                building.Movement = null;
+
+                planet.AddChild(building);
+                deployedBuildings.Add(building);
+            }
         }
     }
 }

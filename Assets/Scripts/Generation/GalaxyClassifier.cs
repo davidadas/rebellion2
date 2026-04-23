@@ -69,7 +69,7 @@ namespace Rebellion.Generation
                 rng
             );
 
-            AssignStrongPlanetOwnership(result);
+            AssignBucketPlanetOwnership(result);
 
             return result;
         }
@@ -351,11 +351,11 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Sets ownership and colonization on Strong-bucket planets that weren't
+        /// Sets ownership and colonization on bucket-owned planets that weren't
         /// already assigned as starting planets.
         /// </summary>
         /// <param name="result">Classification result containing the bucket map.</param>
-        private void AssignStrongPlanetOwnership(GalaxyClassificationResult result)
+        private void AssignBucketPlanetOwnership(GalaxyClassificationResult result)
         {
             foreach (KeyValuePair<Planet, PlanetBucket> kvp in result.BucketMap)
             {
@@ -363,7 +363,7 @@ namespace Rebellion.Generation
                 if (planet.OwnerInstanceID != null)
                     continue;
 
-                if (kvp.Value.Strength == BucketStrength.Strong && kvp.Value.FactionID != null)
+                if (kvp.Value.FactionID != null)
                 {
                     planet.OwnerInstanceID = kvp.Value.FactionID;
                     planet.IsColonized = true;

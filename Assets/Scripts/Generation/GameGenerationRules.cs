@@ -193,6 +193,7 @@ namespace Rebellion.Generation
     public class HQFacilityLoadout
     {
         public string PlanetInstanceID;
+        public string FactionID;
         public List<string> FacilityTypeIDs;
     }
 
