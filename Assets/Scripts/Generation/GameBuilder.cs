@@ -84,6 +84,7 @@ namespace Rebellion.Generation
                 systems,
                 buildingTemplates,
                 rules,
+                classification,
                 _randomProvider
             );
 
