@@ -245,9 +245,11 @@ namespace Rebellion.Tests.Generation
                 new StubRNG()
             );
 
-            Assert.IsTrue(
-                deployed.Any(b => b.TypeID == "BDFA01"),
-                "HQ loadout Construction Yard should be placed on the configured planet."
+            Assert.IsNotEmpty(deployed, "Facility seeding should produce deployed buildings.");
+            Assert.AreEqual(
+                "BDFA01",
+                deployed[0].TypeID,
+                "HQ loadout Construction Yard should be placed before any randomly seeded facilities."
             );
         }
 
