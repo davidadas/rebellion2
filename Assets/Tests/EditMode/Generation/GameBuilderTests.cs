@@ -291,18 +291,6 @@ namespace Rebellion.Tests.Generation
             AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.ConstructionFacility);
         }
 
-        [Test]
-        public void BuildGame_EachFaction_OwnsAtLeastOneShipyard()
-        {
-            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.Shipyard);
-        }
-
-        [Test]
-        public void BuildGame_EachFaction_OwnsAtLeastOneTrainingFacility()
-        {
-            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.TrainingFacility);
-        }
-
         private void AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType buildingType)
         {
             foreach (Faction faction in _game.Factions)

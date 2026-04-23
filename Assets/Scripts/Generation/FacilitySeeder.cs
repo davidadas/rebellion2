@@ -206,7 +206,7 @@ namespace Rebellion.Generation
             foreach (HQFacilityLoadout loadout in loadouts)
             {
                 string planetId = loadout.PlanetInstanceID;
-                if (planetId == "FACTION_HQ")
+                if (planetId == GameGenerationRules.FactionHqSentinel)
                 {
                     if (string.IsNullOrEmpty(loadout.FactionID))
                         continue;

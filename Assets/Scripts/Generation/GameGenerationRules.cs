@@ -11,6 +11,12 @@ namespace Rebellion.Generation
     public class GameGenerationRules
     {
         /// <summary>
+        /// Sentinel value for PlanetInstanceID fields (HQFacilityLoadout, FixedGarrison)
+        /// that should resolve to the faction's dynamically-assigned HQ at runtime.
+        /// </summary>
+        public const string FactionHqSentinel = "FACTION_HQ";
+
+        /// <summary>
         /// Rules related to officer generation, including initial officer counts.
         /// </summary>
         public OfficerSection Officers;

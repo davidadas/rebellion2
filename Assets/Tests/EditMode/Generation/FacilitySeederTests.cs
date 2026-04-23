@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Generation
     public class FacilitySeederTests
     {
         /// <summary>
-        /// Wraps StubRNG and records the (min, max) of every NextInt call so the test
+        /// Records the (min, max) of every NextInt call and returns min, so the test
         /// can assert the facility seeder never rolls past the original table's range.
         /// </summary>
         private class RecordingRNG : IRandomNumberProvider
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "FACTION_HQ",
+                    PlanetInstanceID = GameGenerationRules.FactionHqSentinel,
                     FactionID = "FNALL1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },

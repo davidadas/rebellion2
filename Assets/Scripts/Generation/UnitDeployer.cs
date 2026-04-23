@@ -149,7 +149,7 @@ namespace Rebellion.Generation
             foreach (FixedGarrison garrison in garrisons)
             {
                 string planetId = garrison.PlanetInstanceID;
-                if (planetId == "FACTION_HQ")
+                if (planetId == GameGenerationRules.FactionHqSentinel)
                 {
                     if (
                         classification.FactionHQs.TryGetValue(
