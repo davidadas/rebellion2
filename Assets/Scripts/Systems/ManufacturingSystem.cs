@@ -179,6 +179,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Initializes the item's manufacturing state and adds it to the planet's queue.
+        /// Deducts the full construction cost from the producing faction's stockpile upfront.
         /// </summary>
         /// <param name="planet">The planet producing the item.</param>
         /// <param name="item">The item to enqueue for production.</param>
@@ -188,6 +189,10 @@ namespace Rebellion.Systems
             item.ManufacturingProgress = 0;
             item.ProducerOwnerID = planet.GetOwnerInstanceID();
             item.ProducerPlanetID = planet.GetInstanceID();
+
+            Faction producer = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
+            if (producer != null)
+                producer.RefinedMaterialStockpile -= item.GetConstructionCost();
 
             planet.AddToManufacturingQueue(item);
 
@@ -245,8 +250,8 @@ namespace Rebellion.Systems
                 // Calculate progress increment based on planet's production rate
                 int progressIncrement = planet.GetProductionRate(type);
 
-                // Apply blockade production penalty
-                if (planet.IsBlockaded())
+                // Apply blockade production penalty (KDY defense negates it)
+                if (planet.IsBlockadePenalized())
                 {
                     int modifier = planet.GetBlockadeModifier(
                         _game.Config.Production.BlockadeCapitalShipPenalty,

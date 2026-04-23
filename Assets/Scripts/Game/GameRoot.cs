@@ -204,11 +204,11 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets the refined materials for a faction (applies config rules).
-        /// This is the final material value after refinement multiplier and unit costs.
+        /// Gets the refined materials for a faction. Reads the accumulated stockpile;
+        /// income is added and costs are deducted each tick by the resource systems.
         /// </summary>
-        /// <param name="faction">The faction to calculate for.</param>
-        /// <returns>The refined materials value.</returns>
+        /// <param name="faction">The faction to read for.</param>
+        /// <returns>The faction's current refined material stockpile.</returns>
         public int GetRefinedMaterials(Faction faction)
         {
             if (faction == null)
@@ -216,20 +216,14 @@ namespace Rebellion.Game
                 throw new InvalidOperationException("Faction is null.");
             }
 
-            int rawCount = faction.GetTotalAvailableMaterialsRaw();
-            int multiplier = GetConfig().Production.RefinementMultiplier;
-            int materials = rawCount * multiplier;
-            int cost = faction.GetTotalUnitCost();
-
-            return materials - cost;
+            return faction.RefinedMaterialStockpile;
         }
 
         /// <summary>
-        /// Gets the raw materials for a faction (before refinement multiplier).
-        /// This is the refined capacity count.
+        /// Gets the raw materials for a faction. Reads the accumulated stockpile.
         /// </summary>
-        /// <param name="faction">The faction to calculate for.</param>
-        /// <returns>The raw refined capacity count.</returns>
+        /// <param name="faction">The faction to read for.</param>
+        /// <returns>The faction's current raw material stockpile.</returns>
         public int GetRawMaterials(Faction faction)
         {
             if (faction == null)
@@ -237,7 +231,7 @@ namespace Rebellion.Game
                 throw new InvalidOperationException("Faction is null.");
             }
 
-            return faction.GetTotalAvailableMaterialsRaw();
+            return faction.RawMaterialStockpile;
         }
 
         /// <summary>

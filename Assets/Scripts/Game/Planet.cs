@@ -71,6 +71,22 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// True when the planet should suffer blockade economic penalties. A blockade
+        /// with an active KDY defense on the planet does not penalize production.
+        /// </summary>
+        /// <returns>True if blockaded and no KDY facility is present on the planet.</returns>
+        public bool IsBlockadePenalized()
+        {
+            if (!IsBlockaded())
+                return false;
+
+            return !Buildings.Any(b =>
+                b.DefenseFacilityClass == DefenseFacilityClass.KDY
+                && b.GetManufacturingStatus() == ManufacturingStatus.Complete
+            );
+        }
+
+        /// <summary>
         /// Checks if the planet is contested (has any hostile fleets present, regardless of defenders).
         /// </summary>
         /// <returns>True if any hostile fleet is present, false otherwise.</returns>
@@ -165,13 +181,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets the number of available resource nodes that are not blockaded.
-        /// If the location is blockaded, no resources can be accessed.
+        /// Gets the number of available resource nodes that are not blockaded. A KDY
+        /// defense on the planet negates the blockade for resource access.
         /// </summary>
-        /// <returns>The number of accessible resource nodes, or 0 if blockaded.</returns>
+        /// <returns>The number of accessible resource nodes, or 0 if blockade-penalized.</returns>
         public int GetAvailableResourceNodes()
         {
-            return IsBlockaded() ? 0 : GetRawResourceNodes();
+            return IsBlockadePenalized() ? 0 : GetRawResourceNodes();
         }
 
         /// <summary>
@@ -187,12 +203,12 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Gets the number of mined resources that are available and not under construction.
-        /// If the location is blockaded, no resources are available.
+        /// A blockade without a KDY defense blocks access entirely.
         /// </summary>
-        /// <returns>The number of available mined resources, or 0 if blockaded.</returns>
+        /// <returns>The number of available mined resources, or 0 if blockade-penalized.</returns>
         public int GetAvailableMinedResources()
         {
-            if (IsBlockaded())
+            if (IsBlockadePenalized())
             {
                 return 0;
             }
@@ -212,13 +228,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets the available refinement capacity that is not blockaded and excludes refineries under construction.
-        /// If the location is blockaded, no refinement capacity is available.
+        /// Gets the available refinement capacity, excluding refineries under construction.
+        /// A blockade without a KDY defense blocks capacity entirely.
         /// </summary>
-        /// <returns>The available refinement capacity, or 0 if blockaded.</returns>
+        /// <returns>The available refinement capacity, or 0 if blockade-penalized.</returns>
         public int GetAvailableRefinementCapacity()
         {
-            if (IsBlockaded())
+            if (IsBlockadePenalized())
             {
                 return 0;
             }

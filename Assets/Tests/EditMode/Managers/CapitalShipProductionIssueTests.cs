@@ -637,6 +637,7 @@ namespace Rebellion.Tests.Managers
             testEmpire.RebuildResearchQueues(
                 new IManufacturable[] { dreadnaught, galleon, carrack }
             );
+            testEmpire.RefinedMaterialStockpile = 10000;
 
             // Run AI manufacturing
             FogOfWarSystem fog = new FogOfWarSystem(testGame);
