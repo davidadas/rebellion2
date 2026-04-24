@@ -100,9 +100,7 @@ namespace Rebellion.Systems
         /// <returns>Enumerable of owned, colonized planets.</returns>
         private IEnumerable<Planet> GetOwnedColonizedPlanets(Faction faction)
         {
-            return _game
-                .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
-                .Where(p => p.IsColonized && p.OwnerInstanceID == faction.InstanceID);
+            return faction.GetOwnedUnitsByType<Planet>().Where(p => p.IsColonized);
         }
     }
 }
