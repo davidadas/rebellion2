@@ -92,7 +92,10 @@ public class SaveGameManager
                     FileShare.Read
                 );
 
-                GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(stream);
+                GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
+                    stream,
+                    MetadataElementName
+                );
 
                 saves.Add(new SaveGameEntry(Path.GetFileNameWithoutExtension(file.Name), metadata));
             }
@@ -109,6 +112,7 @@ public class SaveGameManager
 
     /// <summary>
     /// Save game data to file using XML serialization.
+    /// Stamps the current schema version and save timestamp onto the metadata.
     /// </summary>
     /// <param name="game">The game data to save.</param>
     /// <param name="fileName">The name of the save file.</param>
@@ -122,6 +126,12 @@ public class SaveGameManager
             Directory.CreateDirectory(saveDirectory);
         }
 
+        if (game.Metadata == null)
+            game.Metadata = new GameMetadata();
+
+        game.Metadata.SaveVersion = SaveSchema.CurrentVersion;
+        game.Metadata.LastSavedUtc = DateTime.UtcNow;
+
         // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
@@ -131,6 +141,7 @@ public class SaveGameManager
 
     /// <summary>
     /// Load game data from file using XML deserialization.
+    /// Peeks the save version first and refuses saves written by newer clients.
     /// </summary>
     /// <param name="fileName">The name of the save file.</param>
     /// <returns>The loaded game data.</returns>
@@ -139,7 +150,36 @@ public class SaveGameManager
         string saveFilePath = GetSaveFilePath(fileName);
 
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+
+        int saveVersion = PeekSaveVersion(saveFilePath, serializer);
+        SaveSchema.GuardCanLoad(saveVersion);
+
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
         return (GameRoot)serializer.Deserialize(fileStream);
     }
+
+    /// <summary>
+    /// Reads just the metadata node from a save file to determine its schema version
+    /// without paying for a full deserialize.
+    /// </summary>
+    /// <param name="saveFilePath">Absolute path to the save file.</param>
+    /// <param name="serializer">Serializer configured for the save's root type.</param>
+    /// <returns>The save version, or 0 for legacy saves written before versioning.</returns>
+    private int PeekSaveVersion(string saveFilePath, GameSerializer serializer)
+    {
+        using FileStream stream = new FileStream(
+            saveFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
+
+        GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
+            stream,
+            MetadataElementName
+        );
+        return metadata?.SaveVersion ?? 0;
+    }
+
+    private const string MetadataElementName = "Metadata";
 }

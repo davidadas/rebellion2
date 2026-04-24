@@ -15,6 +15,10 @@ namespace Rebellion.Game
 
         public DateTime LastSavedUtc;
 
-        public string Version;
+        /// <summary>
+        /// Schema version of the save file. Stamped on save, checked on load.
+        /// See <see cref="Rebellion.Util.Serialization.SaveSchema"/>.
+        /// </summary>
+        public int SaveVersion;
     }
 }

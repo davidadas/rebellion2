@@ -86,29 +86,33 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Deserializes the first XML element matching type <typeparamref name="T"/> from the given stream.
+        /// Deserializes the first XML element matching <paramref name="elementName"/> from the given stream.
+        /// When <paramref name="elementName"/> is null, falls back to the type name of <typeparamref name="T"/>.
+        /// Use an explicit name when the element is stored under a member name that differs from the type
+        /// (e.g. the <c>GameMetadata</c> type stored under a <c>Metadata</c> field).
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="stream"></param>
+        /// <typeparam name="T">The target type to deserialize.</typeparam>
+        /// <param name="stream">The stream to read from.</param>
+        /// <param name="elementName">Optional explicit XML element name; defaults to <c>typeof(T).Name</c>.</param>
         /// <returns>The deserialized instance of <typeparamref name="T"/>.</returns>
-        /// <exception cref="InvalidDataException"></exception>
-        public T DeserializeNode<T>(Stream stream)
+        /// <exception cref="InvalidDataException">The requested element was not found.</exception>
+        public T DeserializeNode<T>(Stream stream, string elementName = null)
         {
             using XmlReader reader = XmlReader.Create(stream, _settings.CreateReaderSettings());
 
             reader.MoveToContent();
 
-            string elementName = typeof(T).Name;
+            string name = elementName ?? typeof(T).Name;
 
             do
             {
-                if (reader.NodeType == XmlNodeType.Element && reader.Name == elementName)
+                if (reader.NodeType == XmlNodeType.Element && reader.Name == name)
                 {
                     return (T)XmlDeserializer.ReadValue(typeof(T), reader);
                 }
             } while (reader.Read());
 
-            throw new InvalidDataException($"Element '{elementName}' not found.");
+            throw new InvalidDataException($"Element '{name}' not found.");
         }
 
         /// <summary>

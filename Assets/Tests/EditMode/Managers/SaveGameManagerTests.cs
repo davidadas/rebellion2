@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.Managers
@@ -300,7 +301,6 @@ namespace Rebellion.Tests.Managers
                 SaveDisplayName = "Test Save",
                 PlayerFactionID = "FNALL1",
                 LastSavedUtc = new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
-                Version = "1.0.0",
             };
 
             GameRoot game = new GameRoot
@@ -317,11 +317,6 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(loadedGame.Metadata);
             Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
             Assert.AreEqual("FNALL1", loadedGame.Metadata.PlayerFactionID);
-            Assert.AreEqual(
-                new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
-                loadedGame.Metadata.LastSavedUtc
-            );
-            Assert.AreEqual("1.0.0", loadedGame.Metadata.Version);
         }
 
         [Test]
@@ -762,6 +757,126 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSystem["PLANET1"]);
             Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSystem["PLANET2"]);
             Assert.AreEqual("SYS2", loadedAlliance.Fog.PlanetToSystem["PLANET3"]);
+        }
+
+        [Test]
+        public void SaveGameData_NewSave_StampsCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(SaveSchema.CurrentVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void SaveGameData_MetadataWithStaleVersion_OverwritesWithCurrentSchemaVersion()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Metadata = new GameMetadata { SaveVersion = 0 },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(SaveSchema.CurrentVersion, loadedGame.Metadata.SaveVersion);
+        }
+
+        [Test]
+        public void LoadGameData_SaveVersionNewerThanClient_ThrowsSaveVersionTooNewException()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            int futureVersion = SaveSchema.CurrentVersion + 99;
+            string bumped = xml.Replace(
+                $"<SaveVersion>{SaveSchema.CurrentVersion}</SaveVersion>",
+                $"<SaveVersion>{futureVersion}</SaveVersion>"
+            );
+            File.WriteAllText(saveFilePath, bumped);
+
+            SaveVersionTooNewException thrown = Assert.Throws<SaveVersionTooNewException>(() =>
+                SaveGameManager.Instance.LoadGameData(_saveFileName)
+            );
+
+            Assert.AreEqual(futureVersion, thrown.SaveVersion);
+            Assert.AreEqual(SaveSchema.CurrentVersion, thrown.ClientVersion);
+        }
+
+        [Test]
+        public void LoadGameData_LegacySaveWithoutVersionElement_LoadsAsVersionZero()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+
+            string saveFilePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(saveFilePath);
+            string stripped = System.Text.RegularExpressions.Regex.Replace(
+                xml,
+                @"\s*<SaveVersion>\d+</SaveVersion>",
+                string.Empty
+            );
+            File.WriteAllText(saveFilePath, stripped);
+
+            Assert.DoesNotThrow(() => SaveGameManager.Instance.LoadGameData(_saveFileName));
         }
     }
 } // namespace Rebellion.Tests.Managers
