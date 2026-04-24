@@ -27,53 +27,74 @@ namespace Rebellion.Systems
         /// <summary>
         /// Runs per-tick income accumulation for every faction.
         /// </summary>
-        /// <returns>Income results (currently empty; future hook for logging).</returns>
+        /// <returns>An empty result list.</returns>
         public List<GameResult> ProcessTick()
         {
-            int multiplier = _game.GetConfig().Production.RefinementMultiplier;
-            GameConfig.ProductionConfig production = _game.GetConfig().Production;
-
             foreach (Faction faction in _game.GetFactions())
             {
-                int rawIncome = 0;
-                int refinedIncome = 0;
-
-                foreach (Planet planet in GetOwnedColonizedPlanets(faction))
-                {
-                    int planetRaw = planet.GetRawMinedResources();
-                    int planetRefined = ComputePlanetRefinedCapacity(planet);
-
-                    int supportPercent = planet.GetPopularSupport(faction.InstanceID);
-                    planetRaw = planetRaw * supportPercent / 100;
-                    planetRefined = planetRefined * supportPercent / 100;
-
-                    if (planet.IsBlockadePenalized())
-                    {
-                        int blockadeMod = planet.GetBlockadeModifier(
-                            production.BlockadeCapitalShipPenalty,
-                            production.BlockadeFighterPenalty
-                        );
-                        planetRaw = planetRaw * blockadeMod / 100;
-                        planetRefined = planetRefined * blockadeMod / 100;
-                    }
-
-                    rawIncome += planetRaw;
-                    refinedIncome += planetRefined;
-                }
-
-                faction.RawMaterialStockpile += rawIncome;
-                faction.RefinedMaterialStockpile += refinedIncome * multiplier;
-                faction.RefinedMaterialStockpile -= faction.GetTotalMaintenanceCost();
+                ApplyFactionIncome(faction);
             }
-
             return new List<GameResult>();
         }
 
         /// <summary>
-        /// Returns owned, colonized planets for a faction.
+        /// Sums income across the faction's planets, credits the stockpiles, and
+        /// deducts maintenance from the refined stockpile.
+        /// </summary>
+        /// <param name="faction">The faction to update.</param>
+        private void ApplyFactionIncome(Faction faction)
+        {
+            int multiplier = _game.GetConfig().Production.RefinementMultiplier;
+            int rawIncome = 0;
+            int refinedIncome = 0;
+
+            foreach (Planet planet in GetOwnedColonizedPlanets(faction))
+            {
+                (int planetRaw, int planetRefined) = ComputePlanetIncome(planet, faction);
+                rawIncome += planetRaw;
+                refinedIncome += planetRefined;
+            }
+
+            faction.RawMaterialStockpile += rawIncome;
+            faction.RefinedMaterialStockpile += refinedIncome * multiplier;
+            faction.RefinedMaterialStockpile -= faction.GetTotalMaintenanceCost();
+        }
+
+        /// <summary>
+        /// Computes a single planet's raw and refined income for the owning faction,
+        /// after support scaling and blockade penalty (if blockade-penalized).
+        /// </summary>
+        /// <param name="planet">The producing planet.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <returns>A tuple of (raw income, refined income) for this planet, pre-multiplier.</returns>
+        private (int raw, int refined) ComputePlanetIncome(Planet planet, Faction faction)
+        {
+            GameConfig.ProductionConfig production = _game.GetConfig().Production;
+            int planetRaw = planet.GetRawMinedResources();
+            int planetRefined = ComputePlanetRefinedCapacity(planet);
+
+            int supportPercent = planet.GetPopularSupport(faction.InstanceID);
+            planetRaw = planetRaw * supportPercent / 100;
+            planetRefined = planetRefined * supportPercent / 100;
+
+            if (planet.IsBlockadePenalized())
+            {
+                int blockadeMod = planet.GetBlockadeModifier(
+                    production.BlockadeCapitalShipPenalty,
+                    production.BlockadeFighterPenalty
+                );
+                planetRaw = planetRaw * blockadeMod / 100;
+                planetRefined = planetRefined * blockadeMod / 100;
+            }
+
+            return (planetRaw, planetRefined);
+        }
+
+        /// <summary>
+        /// Returns the colonized planets owned by a faction.
         /// </summary>
         /// <param name="faction">The faction whose planets to return.</param>
-        /// <returns>Enumerable of planets owned by the faction.</returns>
+        /// <returns>Enumerable of owned, colonized planets.</returns>
         private IEnumerable<Planet> GetOwnedColonizedPlanets(Faction faction)
         {
             return _game
