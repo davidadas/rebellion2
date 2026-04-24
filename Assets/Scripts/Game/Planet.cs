@@ -83,6 +83,7 @@ namespace Rebellion.Game
             return !Buildings.Any(b =>
                 b.DefenseFacilityClass == DefenseFacilityClass.KDY
                 && b.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && b.Movement == null
             );
         }
 

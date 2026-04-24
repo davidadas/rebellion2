@@ -62,7 +62,8 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Computes a single planet's raw and refined income for the owning faction,
-        /// after support scaling and blockade penalty (if blockade-penalized).
+        /// after support scaling and blockade penalty (if blockade-penalized). Only
+        /// completed (non-under-construction, stationary) mines and refineries count.
         /// </summary>
         /// <param name="planet">The producing planet.</param>
         /// <param name="faction">The owning faction.</param>
@@ -70,7 +71,7 @@ namespace Rebellion.Systems
         private (int raw, int refined) ComputePlanetIncome(Planet planet, Faction faction)
         {
             GameConfig.ProductionConfig production = _game.GetConfig().Production;
-            int planetRaw = planet.GetRawMinedResources();
+            int planetRaw = ComputePlanetRawIncome(planet);
             int planetRefined = ComputePlanetRefinedCapacity(planet);
 
             int supportPercent = planet.GetPopularSupport(faction.InstanceID);
@@ -103,14 +104,28 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the per-tick refined capacity of a planet: min of mines, refineries, and resource nodes.
+        /// Returns the per-tick raw income of a planet: capped by active mines and resource nodes.
+        /// Excludes mines still under construction.
+        /// </summary>
+        /// <param name="planet">The planet to measure.</param>
+        /// <returns>Raw income for this planet, before support and blockade modifiers.</returns>
+        private int ComputePlanetRawIncome(Planet planet)
+        {
+            int mines = planet.GetBuildingTypeCount(BuildingType.Mine);
+            int resourceNodes = planet.GetRawResourceNodes();
+            return System.Math.Min(mines, resourceNodes);
+        }
+
+        /// <summary>
+        /// Returns the per-tick refined capacity of a planet: min of active mines, active refineries,
+        /// and resource nodes. Excludes facilities still under construction.
         /// </summary>
         /// <param name="planet">The planet to measure.</param>
         /// <returns>Refined capacity for this planet, before support and blockade modifiers.</returns>
         private int ComputePlanetRefinedCapacity(Planet planet)
         {
-            int mines = planet.GetRawMinedResources();
-            int refineries = planet.GetRawRefinementCapacity();
+            int mines = planet.GetBuildingTypeCount(BuildingType.Mine);
+            int refineries = planet.GetBuildingTypeCount(BuildingType.Refinery);
             int resourceNodes = planet.GetRawResourceNodes();
             return System.Math.Min(System.Math.Min(mines, refineries), resourceNodes);
         }
