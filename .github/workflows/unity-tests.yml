@@ -10,11 +10,19 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        targetPlatform:
+          - StandaloneWindows64
+          - StandaloneLinux64
+          - StandaloneOSX
 
     steps:
       - name: Checkout repository
@@ -23,8 +31,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
+            Library-${{ matrix.targetPlatform }}-
             Library-
 
       - name: Build project
@@ -36,7 +45,7 @@ jobs:
         with:
           projectPath: .
           unityVersion: 6000.4.0f1
-          targetPlatform: StandaloneWindows64
+          targetPlatform: ${{ matrix.targetPlatform }}
 
       - name: Reset package files
         run: |
