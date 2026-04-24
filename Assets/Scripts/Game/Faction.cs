@@ -379,20 +379,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the total maintenance cost of all completed units and construction cost of all
-        /// units currently being built.
-        /// </summary>
-        public int GetTotalUnitCost()
-        {
-            return GetAllOwnedManufacturables()
-                .Sum(m =>
-                    m.GetManufacturingStatus() != ManufacturingStatus.Building
-                        ? m.GetMaintenanceCost()
-                        : m.GetConstructionCost()
-                );
-        }
-
-        /// <summary>
         /// Returns the total maintenance cost of all completed units. Excludes in-progress
         /// construction (which is deducted from the stockpile at enqueue time).
         /// </summary>
@@ -401,6 +387,25 @@ namespace Rebellion.Game
             return GetAllOwnedManufacturables()
                 .Where(m => m.GetManufacturingStatus() != ManufacturingStatus.Building)
                 .Sum(m => m.GetMaintenanceCost());
+        }
+
+        /// <summary>
+        /// Returns the total construction cost of all units currently under construction.
+        /// </summary>
+        public int GetTotalInProgressConstructionCost()
+        {
+            return GetAllOwnedManufacturables()
+                .Where(m => m.GetManufacturingStatus() == ManufacturingStatus.Building)
+                .Sum(m => m.GetConstructionCost());
+        }
+
+        /// <summary>
+        /// Returns the total maintenance cost of all completed units plus the construction
+        /// cost of all units currently being built.
+        /// </summary>
+        public int GetTotalUnitCost()
+        {
+            return GetTotalMaintenanceCost() + GetTotalInProgressConstructionCost();
         }
 
         /// <summary>

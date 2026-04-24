@@ -848,5 +848,125 @@ namespace Rebellion.Tests.Game
 
             Assert.IsTrue(populated);
         }
+
+        [Test]
+        public void IsBlockadePenalized_NotBlockaded_ReturnsFalse()
+        {
+            Planet planet = new Planet { OwnerInstanceID = "empire" };
+
+            Assert.IsFalse(planet.IsBlockadePenalized());
+        }
+
+        [Test]
+        public void IsBlockadePenalized_BlockadedWithoutKDY_ReturnsTrue()
+        {
+            Planet planet = new Planet { OwnerInstanceID = "empire" };
+            Fleet hostileFleet = new Fleet { OwnerInstanceID = "rebels" };
+            planet.AddChild(hostileFleet);
+
+            Assert.IsTrue(planet.IsBlockadePenalized());
+        }
+
+        [Test]
+        public void IsBlockadePenalized_BlockadedWithKDY_ReturnsFalse()
+        {
+            Planet planet = new Planet
+            {
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 5,
+            };
+            Fleet hostileFleet = new Fleet { OwnerInstanceID = "rebels" };
+            planet.AddChild(hostileFleet);
+            Building kdy = new Building
+            {
+                OwnerInstanceID = "empire",
+                DefenseFacilityClass = DefenseFacilityClass.KDY,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            planet.AddChild(kdy);
+
+            Assert.IsFalse(planet.IsBlockadePenalized());
+        }
+
+        [Test]
+        public void GetActiveMinedResources_OneCompleteOneBuildingMine_ReturnsOne()
+        {
+            Planet planet = new Planet
+            {
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 5,
+                NumRawResourceNodes = 10,
+            };
+            Building completeMine = new Building
+            {
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building buildingMine = new Building
+            {
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            planet.AddChild(completeMine);
+            planet.AddChild(buildingMine);
+
+            Assert.AreEqual(1, planet.GetActiveMinedResources());
+        }
+
+        [Test]
+        public void GetActiveMinedResources_MoreMinesThanNodes_CappedByNodes()
+        {
+            Planet planet = new Planet
+            {
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+                NumRawResourceNodes = 2,
+            };
+            for (int i = 0; i < 5; i++)
+            {
+                planet.AddChild(
+                    new Building
+                    {
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Mine,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
+            }
+
+            Assert.AreEqual(2, planet.GetActiveMinedResources());
+        }
+
+        [Test]
+        public void GetActiveRefinementCapacity_OneCompleteOneBuildingRefinery_ReturnsOne()
+        {
+            Planet planet = new Planet
+            {
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 5,
+            };
+            Building completeRefinery = new Building
+            {
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building buildingRefinery = new Building
+            {
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            planet.AddChild(completeRefinery);
+            planet.AddChild(buildingRefinery);
+
+            Assert.AreEqual(1, planet.GetActiveRefinementCapacity());
+        }
     }
 } // namespace Rebellion.Tests.Game

@@ -203,19 +203,25 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Gets the number of mined resources counting only completed, stationary mines.
+        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// should apply it separately or use <see cref="GetAvailableMinedResources"/>.
+        /// </summary>
+        /// <returns>The number of active mined resources, capped by resource nodes.</returns>
+        public int GetActiveMinedResources()
+        {
+            int mineCount = GetBuildingTypeCount(BuildingType.Mine);
+            return Math.Min(NumRawResourceNodes, mineCount);
+        }
+
+        /// <summary>
         /// Gets the number of mined resources that are available and not under construction.
         /// A blockade without a KDY defense blocks access entirely.
         /// </summary>
         /// <returns>The number of available mined resources, or 0 if blockade-penalized.</returns>
         public int GetAvailableMinedResources()
         {
-            if (IsBlockadePenalized())
-            {
-                return 0;
-            }
-
-            int mineCount = GetBuildingTypeCount(BuildingType.Mine);
-            return Math.Min(NumRawResourceNodes, mineCount);
+            return IsBlockadePenalized() ? 0 : GetActiveMinedResources();
         }
 
         /// <summary>
@@ -229,18 +235,24 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Gets the refinement capacity counting only completed, stationary refineries.
+        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// should apply it separately or use <see cref="GetAvailableRefinementCapacity"/>.
+        /// </summary>
+        /// <returns>The number of active refineries.</returns>
+        public int GetActiveRefinementCapacity()
+        {
+            return GetBuildingTypeCount(BuildingType.Refinery);
+        }
+
+        /// <summary>
         /// Gets the available refinement capacity, excluding refineries under construction.
         /// A blockade without a KDY defense blocks capacity entirely.
         /// </summary>
         /// <returns>The available refinement capacity, or 0 if blockade-penalized.</returns>
         public int GetAvailableRefinementCapacity()
         {
-            if (IsBlockadePenalized())
-            {
-                return 0;
-            }
-
-            return GetBuildingTypeCount(BuildingType.Refinery);
+            return IsBlockadePenalized() ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>

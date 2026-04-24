@@ -239,7 +239,7 @@ public sealed class StrategyController : MonoBehaviour
 
         refinedMaterialsText.text = game.GetRefinedMaterials(faction).ToString();
 
-        maintenanceText.text = faction.GetTotalUnitCost().ToString();
+        maintenanceText.text = faction.GetTotalMaintenanceCost().ToString();
     }
 
     private void HandleSystemSelected(PlanetSystem system)

@@ -825,5 +825,51 @@ namespace Rebellion.Tests.Game
                 "Should return empty list when no facilities are idle"
             );
         }
+
+        [Test]
+        public void GetTotalMaintenanceCost_MixedCompleteAndBuilding_SumsCompleteOnly()
+        {
+            Regiment completeUnit = new Regiment
+            {
+                OwnerInstanceID = "FACTION1",
+                MaintenanceCost = 10,
+                ConstructionCost = 50,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment buildingUnit = new Regiment
+            {
+                OwnerInstanceID = "FACTION1",
+                MaintenanceCost = 7,
+                ConstructionCost = 70,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _faction.AddOwnedUnit(completeUnit);
+            _faction.AddOwnedUnit(buildingUnit);
+
+            Assert.AreEqual(10, _faction.GetTotalMaintenanceCost());
+        }
+
+        [Test]
+        public void GetTotalInProgressConstructionCost_MixedCompleteAndBuilding_SumsBuildingOnly()
+        {
+            Regiment completeUnit = new Regiment
+            {
+                OwnerInstanceID = "FACTION1",
+                MaintenanceCost = 10,
+                ConstructionCost = 50,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment buildingUnit = new Regiment
+            {
+                OwnerInstanceID = "FACTION1",
+                MaintenanceCost = 7,
+                ConstructionCost = 70,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _faction.AddOwnedUnit(completeUnit);
+            _faction.AddOwnedUnit(buildingUnit);
+
+            Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
+        }
     }
 }

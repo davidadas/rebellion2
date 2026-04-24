@@ -71,8 +71,10 @@ namespace Rebellion.Systems
         private (int raw, int refined) ComputePlanetIncome(Planet planet, Faction faction)
         {
             GameConfig.ProductionConfig production = _game.GetConfig().Production;
-            int planetRaw = ComputePlanetRawIncome(planet);
-            int planetRefined = ComputePlanetRefinedCapacity(planet);
+            int activeMines = planet.GetActiveMinedResources();
+            int activeRefineries = planet.GetActiveRefinementCapacity();
+            int planetRaw = activeMines;
+            int planetRefined = System.Math.Min(activeMines, activeRefineries);
 
             int supportPercent = planet.GetPopularSupport(faction.InstanceID);
             planetRaw = planetRaw * supportPercent / 100;
@@ -101,33 +103,6 @@ namespace Rebellion.Systems
             return _game
                 .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
                 .Where(p => p.IsColonized && p.OwnerInstanceID == faction.InstanceID);
-        }
-
-        /// <summary>
-        /// Returns the per-tick raw income of a planet: capped by active mines and resource nodes.
-        /// Excludes mines still under construction.
-        /// </summary>
-        /// <param name="planet">The planet to measure.</param>
-        /// <returns>Raw income for this planet, before support and blockade modifiers.</returns>
-        private int ComputePlanetRawIncome(Planet planet)
-        {
-            int mines = planet.GetBuildingTypeCount(BuildingType.Mine);
-            int resourceNodes = planet.GetRawResourceNodes();
-            return System.Math.Min(mines, resourceNodes);
-        }
-
-        /// <summary>
-        /// Returns the per-tick refined capacity of a planet: min of active mines, active refineries,
-        /// and resource nodes. Excludes facilities still under construction.
-        /// </summary>
-        /// <param name="planet">The planet to measure.</param>
-        /// <returns>Refined capacity for this planet, before support and blockade modifiers.</returns>
-        private int ComputePlanetRefinedCapacity(Planet planet)
-        {
-            int mines = planet.GetBuildingTypeCount(BuildingType.Mine);
-            int refineries = planet.GetBuildingTypeCount(BuildingType.Refinery);
-            int resourceNodes = planet.GetRawResourceNodes();
-            return System.Math.Min(System.Math.Min(mines, refineries), resourceNodes);
         }
     }
 }

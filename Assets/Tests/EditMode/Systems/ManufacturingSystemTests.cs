@@ -457,6 +457,44 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Enqueue_WithSufficientStockpile_DeductsConstructionCost()
+        {
+            _empire.RefinedMaterialStockpile = 500;
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 200,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+
+            bool result = _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: false);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(300, _empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
+        public void Enqueue_WithIgnoreCostTrue_DoesNotDeductStockpile()
+        {
+            _empire.RefinedMaterialStockpile = 500;
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 200,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+
+            bool result = _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(500, _empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
         public void ProcessTick_BuildingComplete_SetsStatusComplete()
         {
             Building mine = new Building
