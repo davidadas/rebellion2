@@ -57,6 +57,17 @@ namespace Rebellion.Game
         public string PlayerID { get; set; }
 
         /// <summary>
+        /// Accumulated raw materials (pre-refinement). Filled each tick from planet income.
+        /// </summary>
+        public int RawMaterialStockpile { get; set; }
+
+        /// <summary>
+        /// Accumulated refined materials (post-refinement). This is the spendable pool —
+        /// builds and maintenance deduct from it.
+        /// </summary>
+        public int RefinedMaterialStockpile { get; set; }
+
+        /// <summary>
         /// Fog of war state - snapshots and entity tracking.
         /// </summary>
         public FogState Fog { get; set; } = new FogState();
@@ -368,17 +379,33 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the total maintenance cost of all completed units and construction cost of all
-        /// units currently being built.
+        /// Returns the total maintenance cost of all completed units. Excludes in-progress
+        /// construction (which is deducted from the stockpile at enqueue time).
+        /// </summary>
+        public int GetTotalMaintenanceCost()
+        {
+            return GetAllOwnedManufacturables()
+                .Where(m => m.GetManufacturingStatus() != ManufacturingStatus.Building)
+                .Sum(m => m.GetMaintenanceCost());
+        }
+
+        /// <summary>
+        /// Returns the total construction cost of all units currently under construction.
+        /// </summary>
+        public int GetTotalInProgressConstructionCost()
+        {
+            return GetAllOwnedManufacturables()
+                .Where(m => m.GetManufacturingStatus() == ManufacturingStatus.Building)
+                .Sum(m => m.GetConstructionCost());
+        }
+
+        /// <summary>
+        /// Returns the total maintenance cost of all completed units plus the construction
+        /// cost of all units currently being built.
         /// </summary>
         public int GetTotalUnitCost()
         {
-            return GetAllOwnedManufacturables()
-                .Sum(m =>
-                    m.GetManufacturingStatus() != ManufacturingStatus.Building
-                        ? m.GetMaintenanceCost()
-                        : m.GetConstructionCost()
-                );
+            return GetTotalMaintenanceCost() + GetTotalInProgressConstructionCost();
         }
 
         /// <summary>

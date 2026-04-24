@@ -57,13 +57,14 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the total maintenance cost of all owned units.
+        /// Returns the total maintenance cost of all completed units. Excludes in-progress
+        /// construction cost, which is paid upfront when the build is enqueued.
         /// </summary>
         /// <param name="faction">The faction to calculate maintenance for.</param>
-        /// <returns>The total maintenance cost of all owned units.</returns>
+        /// <returns>The total maintenance cost of completed owned units.</returns>
         public int GetMaintenanceRequired(Faction faction)
         {
-            return faction.GetTotalUnitCost();
+            return faction.GetTotalMaintenanceCost();
         }
 
         /// <summary>

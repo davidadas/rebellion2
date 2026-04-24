@@ -21,6 +21,7 @@ public class GameManager
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
     private ResourceRebalanceSystem _resourceRebalanceManager;
+    private ResourceIncomeSystem _resourceIncomeManager;
     private CombatSystem _combatManager;
     private FogOfWarSystem _fogOfWarManager;
     private BlockadeSystem _blockadeManager;
@@ -184,6 +185,9 @@ public class GameManager
         // 0. Resource rebalance: timer-based decay, facility suspension, resource walk
         ProcessResults(_resourceRebalanceManager.ProcessTick());
 
+        // 0b. Resource income: accumulate per-planet income into faction stockpiles
+        ProcessResults(_resourceIncomeManager.ProcessTick());
+
         // 1. Manufacturing: produces units before movement consumes capacity
         ProcessResults(_manufacturingManager.ProcessTick());
 
@@ -244,6 +248,7 @@ public class GameManager
         _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
         _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
         _resourceRebalanceManager = new ResourceRebalanceSystem(_game, _randomProvider);
+        _resourceIncomeManager = new ResourceIncomeSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
             _movementManager,

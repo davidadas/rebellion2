@@ -1518,6 +1518,8 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
+            empire.RefinedMaterialStockpile = 1000;
+
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
