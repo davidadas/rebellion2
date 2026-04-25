@@ -778,6 +778,12 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Starfighter> DestroyedStarfighters { get; set; } = new List<Starfighter>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
+
+        /// <summary>
+        /// Garrison requirement computed during Stage 5 (defender garrison wiped, attacker still has
+        /// troops aboard). Zero when Stage 5 is skipped.
+        /// </summary>
+        public int GarrisonRequirement { get; set; }
     }
 
     /// <summary>

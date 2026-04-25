@@ -151,6 +151,10 @@
               <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
               <xs:element name="DefenseFacilityResponseDivisor" type="PositiveIntType" />
               <xs:element name="RepeatTrialProbability" type="xs:nonNegativeInteger" />
+              <xs:element name="GroundCombatCommanderDivisor" type="PositiveIntType" />
+              <xs:element name="GroundCombatContestDiceRange" type="xs:nonNegativeInteger" />
+              <xs:element name="GroundCombatDefenderWinsThreshold" type="xs:integer" />
+              <xs:element name="GroundCombatAttackerWinsThreshold" type="xs:integer" />
             </xs:all>
           </xs:complexType>
         </xs:element>

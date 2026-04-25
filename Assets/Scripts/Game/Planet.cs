@@ -21,6 +21,12 @@ namespace Rebellion.Game
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
+        /// <summary>
+        /// Energy currently committed to in-progress allocations (mirror of original
+        /// system field +0x64). Decremented by the allocated-energy assault lane.
+        /// </summary>
+        public int AllocatedEnergy { get; set; }
+
         // Planet Asset Info
         public string PlanetIconPath { get; set; }
 

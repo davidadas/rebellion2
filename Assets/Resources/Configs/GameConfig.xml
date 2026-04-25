@@ -590,12 +590,20 @@
     <BombardmentStrikeThresholdHigh>10</BombardmentStrikeThresholdHigh>
     <!-- Resistance value for system energy lane (GENERAL_PARAM 1540) -->
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
-    <!-- Number of Shield facilities required to block bombardment entirely -->
-    <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
-    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) -->
-    <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
-    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 -->
-    <RepeatTrialProbability>50</RepeatTrialProbability>
+    <!-- Number of Shield facilities required to block bombardment entirely (GENERAL_PARAM_7683) -->
+    <BombardmentShieldBlockThreshold>2</BombardmentShieldBlockThreshold>
+    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) (GENERAL_PARAM_512) -->
+    <DefenseFacilityResponseDivisor>5</DefenseFacilityResponseDivisor>
+    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 (GENERAL_PARAM_517) -->
+    <RepeatTrialProbability>8</RepeatTrialProbability>
+    <!-- Divisor applied to a commander's leadership rating to produce a ground-combat bonus -->
+    <GroundCombatCommanderDivisor>30</GroundCombatCommanderDivisor>
+    <!-- Inclusive max for the ground-combat contest dice (roll is [0, range]) -->
+    <GroundCombatContestDiceRange>10</GroundCombatContestDiceRange>
+    <!-- Defender wins when the contest score is at or below this value -->
+    <GroundCombatDefenderWinsThreshold>4</GroundCombatDefenderWinsThreshold>
+    <!-- Attacker wins when the contest score is at or above this value -->
+    <GroundCombatAttackerWinsThreshold>6</GroundCombatAttackerWinsThreshold>
   </Combat>
   <!-- Uprising System Configuration -->
   <Uprising>

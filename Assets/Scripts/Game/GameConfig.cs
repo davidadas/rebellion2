@@ -353,6 +353,30 @@ public class GameConfig
         /// of planetary defense combat. Ported from the original's probability table.
         /// </summary>
         public int RepeatTrialProbability { get; set; }
+
+        /// <summary>
+        /// Divisor applied to a commander's leadership rating to produce the per-side
+        /// commander bonus added to the ground-combat troop kill contest.
+        /// </summary>
+        public int GroundCombatCommanderDivisor { get; set; }
+
+        /// <summary>
+        /// Inclusive maximum of the random roll added to the ground-combat contest score.
+        /// The roll range is [0, this value].
+        /// </summary>
+        public int GroundCombatContestDiceRange { get; set; }
+
+        /// <summary>
+        /// Defender wins the ground-combat duel when the contest score is at or below
+        /// this threshold.
+        /// </summary>
+        public int GroundCombatDefenderWinsThreshold { get; set; }
+
+        /// <summary>
+        /// Attacker wins the ground-combat duel when the contest score is at or above
+        /// this threshold. Scores strictly between the two thresholds are draws.
+        /// </summary>
+        public int GroundCombatAttackerWinsThreshold { get; set; }
     }
 
     /// <summary>

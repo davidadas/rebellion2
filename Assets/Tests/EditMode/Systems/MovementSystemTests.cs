@@ -1451,5 +1451,222 @@ namespace Rebellion.Tests.Systems
             );
             Assert.IsNull(building.Movement, "Building should have completed its transit");
         }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            // Precondition: destination has not yet been visited by anyone.
+            Assert.IsFalse(destination.WasVisitedBy("empire"));
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Fleet arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            game.DetachNode(officer);
+            game.AttachNode(officer, destination);
+            officer.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Officer arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtAlreadyVisitedPlanet_DoesNotDuplicate()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.AddVisitor("empire");
+            int countBefore = destination.VisitingFactionIDs.Count;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.AreEqual(
+                countBefore,
+                destination.VisitingFactionIDs.Count,
+                "Repeat arrivals must not duplicate visitor entries"
+            );
+        }
+
+        /// <summary>
+        /// Builds a fleet of the given faction parked over the given planet, holding one
+        /// idle regiment ready to drop. The planet has the faction as a visitor.
+        /// </summary>
+        private (Fleet fleet, Regiment regiment) StageFleetWithRegimentAt(
+            GameRoot game,
+            Planet planet,
+            string factionId
+        )
+        {
+            planet.AddVisitor(factionId);
+
+            Fleet fleet = new Fleet(factionId, $"{factionId}-fleet");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{factionId}-ship-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = $"{factionId}-reg-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            game.AttachNode(regiment, ship);
+
+            return (fleet, regiment);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ImmediatelyClaimsForFaction()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual(
+                "empire",
+                destination.GetOwnerInstanceID(),
+                "Planet should be claimed for the regiment's faction immediately, not next tick"
+            );
+            Assert.AreEqual(
+                game.Config.Planet.MaxPopularSupport,
+                destination.GetPopularSupport("empire")
+            );
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_ImmediatelyReleasesToNeutral()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = false;
+
+            // Garrison the planet directly, then stage an empty fleet to receive the regiment.
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.IsNull(
+                destination.GetOwnerInstanceID(),
+                "Removing the last regiment from an uncolonized planet should release it immediately"
+            );
+            Assert.AreEqual(0, destination.GetPopularSupport("empire"));
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffColonizedOwnedPlanet_OwnershipPersists()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = true;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
     }
 }

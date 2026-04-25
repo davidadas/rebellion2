@@ -469,6 +469,12 @@ namespace Rebellion.Systems
                 if (movable is Building && destination is Planet arrivalPlanet)
                     arrivalPlanet.IsColonized = true;
 
+                // Mark the destination planet as visited by the arriving unit's faction.
+                // Visitor status drives downstream rules like uncolonized claim eligibility.
+                string arrivingOwner = movable.GetOwnerInstanceID();
+                if (!string.IsNullOrEmpty(arrivingOwner))
+                    destinationPlanet.AddVisitor(arrivingOwner);
+
                 OnRegimentMoved(movable, surfaceBeforeArrival);
 
                 if (movable is Fleet fleet && _fogOfWar != null)
@@ -680,6 +686,7 @@ namespace Rebellion.Systems
             _game.MoveNode((ISceneNode)unit, destination);
             OnRegimentMoved(unit, surfaceBeforeMove);
 
+            // Movement set after parent change so in-call validation sees idle state.
             unit.Movement = new MovementState
             {
                 TransitTicks = transitTicks,
