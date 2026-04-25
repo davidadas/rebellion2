@@ -89,11 +89,21 @@ namespace Rebellion.Util.Common
             Log(message, LogLevel.Debug);
         }
 
+        /// <summary>
+        /// Logs a message at the Warning level.
+        /// </summary>
+        /// <typeparam name="T">The type of the message to log.</typeparam>
+        /// <param name="message">The message to log.</param>
         public static void Warning<T>(T message)
         {
             Log(message, LogLevel.Warning);
         }
 
+        /// <summary>
+        /// Logs a message at the Error level.
+        /// </summary>
+        /// <typeparam name="T">The type of the message to log.</typeparam>
+        /// <param name="message">The message to log.</param>
         public static void Error<T>(T message)
         {
             Log(message, LogLevel.Error);

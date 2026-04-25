@@ -151,6 +151,10 @@
               <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
               <xs:element name="DefenseFacilityResponseDivisor" type="PositiveIntType" />
               <xs:element name="RepeatTrialProbability" type="xs:nonNegativeInteger" />
+              <xs:element name="WeaponDamageVariancePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDogfightLossRatePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDamageBasePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDamageSpreadPercent" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
         </xs:element>

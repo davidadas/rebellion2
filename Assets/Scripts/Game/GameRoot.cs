@@ -160,6 +160,14 @@ namespace Rebellion.Game
             return Factions;
         }
 
+        /// <summary>
+        /// Returns the faction controlled by the local player, resolved from
+        /// <see cref="GameSummary.PlayerFactionID"/>.
+        /// </summary>
+        /// <returns>The player's <see cref="Faction"/>.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when no summary has been set or the summary has no player faction ID.
+        /// </exception>
         public Faction GetPlayerFaction()
         {
             if (Summary == null)
@@ -483,6 +491,13 @@ namespace Rebellion.Game
             }
         }
 
+        /// <summary>
+        /// Transfers ownership of a node to a different faction. Deregisters the node from
+        /// its current owner's index (if any), updates the owner ID on the node, and adds
+        /// it to the new owner's index.
+        /// </summary>
+        /// <param name="node">The node to transfer.</param>
+        /// <param name="ownerInstanceId">The new owner's faction instance ID.</param>
         public void ChangeUnitOwnership(ISceneNode node, string ownerInstanceId)
         {
             Faction faction = GetFactionByOwnerInstanceID(ownerInstanceId);
@@ -493,16 +508,29 @@ namespace Rebellion.Game
             faction.AddOwnedUnit(node);
         }
 
+        /// <summary>
+        /// Returns the full pool of active game events.
+        /// </summary>
+        /// <returns>The list backing <see cref="EventPool"/>.</returns>
         public List<GameEvent> GetEventPool()
         {
             return EventPool;
         }
 
+        /// <summary>
+        /// Removes the given event from the active event pool.
+        /// </summary>
+        /// <param name="gameEvent">The event to remove.</param>
         public void RemoveEvent(GameEvent gameEvent)
         {
             EventPool.Remove(gameEvent);
         }
 
+        /// <summary>
+        /// Finds an active event by its instance ID.
+        /// </summary>
+        /// <param name="instanceId">The event's instance ID.</param>
+        /// <returns>The matching event, or null if none is present in the pool.</returns>
         public GameEvent GetEventByInstanceID(string instanceId)
         {
             return EventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);

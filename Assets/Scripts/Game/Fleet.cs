@@ -114,11 +114,19 @@ namespace Rebellion.Game
             return CapitalShips.SelectMany(ship => ship.Starfighters);
         }
 
+        /// <summary>
+        /// Finds the first capital ship in this fleet with free starfighter-carrier capacity.
+        /// </summary>
+        /// <returns>A capital ship with excess starfighter capacity, or null if none has room.</returns>
         public CapitalShip FindShipForStarfighter()
         {
             return CapitalShips.FirstOrDefault(s => s.GetExcessStarfighterCapacity() > 0);
         }
 
+        /// <summary>
+        /// Finds the first capital ship in this fleet with free regiment-transport capacity.
+        /// </summary>
+        /// <returns>A capital ship with excess regiment capacity, or null if none has room.</returns>
         public CapitalShip FindShipForRegiment()
         {
             return CapitalShips.FirstOrDefault(s => s.GetExcessRegimentCapacity() > 0);
@@ -164,6 +172,11 @@ namespace Rebellion.Game
         public override bool CanAcceptChild(ISceneNode child) =>
             child is CapitalShip cs && cs.GetOwnerInstanceID() == GetOwnerInstanceID();
 
+        /// <summary>
+        /// Adds a child node to the fleet. Only capital ships are accepted directly;
+        /// any other scene-node type is rejected.
+        /// </summary>
+        /// <param name="child">The child node to add; must be a <see cref="CapitalShip"/>.</param>
         public override void AddChild(ISceneNode child)
         {
             if (child is CapitalShip capitalShip)
@@ -234,6 +247,24 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Planetary assault strength: <c>(personnel / divisor + 1) * combat_value</c>.
+        /// Personnel comes from the fleet commander's Leadership skill. The commander
+        /// must be a General — only ground officers contribute to assault personnel.
+        /// Fleets without a General get a baseline strength equal to the combat value.
+        /// </summary>
+        /// <param name="assaultPersonnelDivisor">
+        /// Divisor from <see cref="GameConfig.CombatConfig.AssaultPersonnelDivisor"/>.
+        /// </param>
+        /// <returns>The fleet's assault strength.</returns>
+        public int GetAssaultStrength(int assaultPersonnelDivisor)
+        {
+            Officer commander = GetOfficers()
+                .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
+            int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+            return (personnel / assaultPersonnelDivisor + 1) * GetCombatValue();
+        }
+
+        /// <summary>
         /// Determines if the fleet can move.
         /// </summary>
         /// <returns>True if the fleet is not currently moving.</returns>
@@ -243,6 +274,10 @@ namespace Rebellion.Game
             return Movement == null;
         }
 
+        /// <summary>
+        /// Enumerates the fleet's direct children (its capital ships) as scene nodes.
+        /// </summary>
+        /// <returns>An enumerable over the fleet's capital ships.</returns>
         public override IEnumerable<ISceneNode> GetChildren()
         {
             return CapitalShips.Cast<ISceneNode>();

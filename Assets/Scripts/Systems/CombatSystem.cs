@@ -350,7 +350,8 @@ namespace Rebellion.Systems
                 defender,
                 planet,
                 rng,
-                _game.CurrentTick
+                _game.CurrentTick,
+                _game.Config.Combat
             );
             result.Events = ApplyCombatResult(result);
 
@@ -380,13 +381,15 @@ namespace Rebellion.Systems
         /// <param name="planet">Planet where combat occurs.</param>
         /// <param name="rng">Random-number provider for damage variance.</param>
         /// <param name="tick">Current game tick (recorded on the result).</param>
+        /// <param name="config">Combat configuration supplying damage/variance tuning values.</param>
         /// <returns>The combat result with winner, per-ship damage, and fighter losses.</returns>
         private static SpaceCombatResult ResolveSpace(
             Fleet attackerFleet,
             Fleet defenderFleet,
             Planet planet,
             IRandomNumberProvider rng,
-            int tick
+            int tick,
+            GameConfig.CombatConfig config
         )
         {
             (List<ShipSnap> atkShips, List<int> atkFighters) = SnapshotFleet(attackerFleet);
@@ -402,8 +405,8 @@ namespace Rebellion.Systems
 
             if (anyArmed)
             {
-                PhaseWeaponFire(attackerFleet, atkShips, defShips, rng);
-                PhaseWeaponFire(defenderFleet, defShips, atkShips, rng);
+                PhaseWeaponFire(attackerFleet, atkShips, defShips, rng, config);
+                PhaseWeaponFire(defenderFleet, defShips, atkShips, rng, config);
                 PhaseFighterEngage(
                     attackerFleet,
                     defenderFleet,
@@ -411,7 +414,8 @@ namespace Rebellion.Systems
                     defFighters,
                     atkShips,
                     defShips,
-                    rng
+                    rng,
+                    config
                 );
             }
 
@@ -513,17 +517,19 @@ namespace Rebellion.Systems
         /// <summary>
         /// One side fires all primary weapon arcs at the other. Total firepower is scaled by
         /// each ship's weapon nibble, divided evenly across alive targets, and applied with
-        /// shield absorption and ±20% variance.
+        /// shield absorption and configured damage variance.
         /// </summary>
         /// <param name="firingFleet">Fleet doing the firing (used for weapon data).</param>
         /// <param name="firing">Firing side's ship snapshots.</param>
         /// <param name="targets">Target side's ship snapshots (mutated with damage).</param>
         /// <param name="rng">Random-number provider for variance.</param>
+        /// <param name="config">Combat configuration supplying damage variance.</param>
         private static void PhaseWeaponFire(
             Fleet firingFleet,
             List<ShipSnap> firing,
             List<ShipSnap> targets,
-            IRandomNumberProvider rng
+            IRandomNumberProvider rng,
+            GameConfig.CombatConfig config
         )
         {
             int totalFire = CalculateTotalFirepower(firingFleet, firing);
@@ -542,7 +548,7 @@ namespace Rebellion.Systems
             int firePerTarget = totalFire / aliveIndices.Count;
             foreach (int idx in aliveIndices)
             {
-                ApplyWeaponDamage(targets[idx], firePerTarget, rng);
+                ApplyWeaponDamage(targets[idx], firePerTarget, rng, config);
             }
         }
 
@@ -577,20 +583,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies weapon damage to a single target with ±20% variance and shield absorption.
+        /// Applies weapon damage to a single target with configured variance and shield absorption.
         /// Shield nibble / 15 of damage is absorbed; remainder reduces hull.
         /// </summary>
         /// <param name="target">Target ship snapshot (mutated).</param>
         /// <param name="baseDamage">Pre-variance damage to apply.</param>
         /// <param name="rng">Random-number provider for variance.</param>
+        /// <param name="config">Combat configuration supplying variance percentage.</param>
         private static void ApplyWeaponDamage(
             ShipSnap target,
             int baseDamage,
-            IRandomNumberProvider rng
+            IRandomNumberProvider rng,
+            GameConfig.CombatConfig config
         )
         {
             double roll = rng.NextDouble();
-            int variance = (int)(baseDamage * 0.2 * (roll * 2.0 - 1.0));
+            int variance = (int)(
+                (double)baseDamage * config.WeaponDamageVariancePercent * (roll * 2.0 - 1.0) / 100.0
+            );
             int damage = Math.Max(baseDamage + variance, 0);
 
             int absorbed = (int)(damage * target.ShieldNibble / 15.0);
@@ -612,6 +622,7 @@ namespace Rebellion.Systems
         /// <param name="atkShips">Attacker ship snapshots (targets for defender fighters).</param>
         /// <param name="defShips">Defender ship snapshots (targets for attacker fighters).</param>
         /// <param name="rng">Random-number provider.</param>
+        /// <param name="config">Combat configuration supplying damage/loss tuning.</param>
         private static void PhaseFighterEngage(
             Fleet attackerFleet,
             Fleet defenderFleet,
@@ -619,11 +630,12 @@ namespace Rebellion.Systems
             List<int> defFighters,
             List<ShipSnap> atkShips,
             List<ShipSnap> defShips,
-            IRandomNumberProvider rng
+            IRandomNumberProvider rng,
+            GameConfig.CombatConfig config
         )
         {
-            FightersAttackShips(atkFighters, attackerFleet, defShips, rng);
-            FightersAttackShips(defFighters, defenderFleet, atkShips, rng);
+            FightersAttackShips(atkFighters, attackerFleet, defShips, rng, config);
+            FightersAttackShips(defFighters, defenderFleet, atkShips, rng, config);
 
             int atkTotal = atkFighters.Sum();
             int defTotal = defFighters.Sum();
@@ -637,8 +649,9 @@ namespace Rebellion.Systems
             double atkHitRate = (double)defTotal / (atkTotal + defTotal);
             double defHitRate = (double)atkTotal / (atkTotal + defTotal);
 
-            int atkLosses = Math.Min((int)(atkTotal * atkHitRate * 0.3 * rollAtk), atkTotal);
-            int defLosses = Math.Min((int)(defTotal * defHitRate * 0.3 * rollDef), defTotal);
+            double lossRate = config.FighterDogfightLossRatePercent / 100.0;
+            int atkLosses = Math.Min((int)(atkTotal * atkHitRate * lossRate * rollAtk), atkTotal);
+            int defLosses = Math.Min((int)(defTotal * defHitRate * lossRate * rollDef), defTotal);
 
             ApplyFighterLosses(atkFighters, atkLosses);
             ApplyFighterLosses(defFighters, defLosses);
@@ -646,17 +659,19 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Each fighter squadron picks a random alive enemy capital ship and attacks it
-        /// with total squadron firepower times squadron size, ±20% variance.
+        /// with total squadron firepower times squadron size, with configured damage spread.
         /// </summary>
         /// <param name="squadrons">Squadron sizes for the attacking side.</param>
         /// <param name="fleet">Fleet owning the fighters (used for weapon data).</param>
         /// <param name="enemyShips">Enemy ship snapshots to attack (mutated).</param>
         /// <param name="rng">Random-number provider.</param>
+        /// <param name="config">Combat configuration supplying damage range.</param>
         private static void FightersAttackShips(
             List<int> squadrons,
             Fleet fleet,
             List<ShipSnap> enemyShips,
-            IRandomNumberProvider rng
+            IRandomNumberProvider rng,
+            GameConfig.CombatConfig config
         )
         {
             List<int> aliveTargets = enemyShips
@@ -685,7 +700,9 @@ namespace Rebellion.Systems
                 int targetIdx = aliveTargets[(int)(rng.NextDouble() * aliveTargets.Count)];
 
                 double roll = rng.NextDouble();
-                int damage = (int)(totalAttack * (0.8 + 0.4 * roll));
+                double basePct = config.FighterDamageBasePercent / 100.0;
+                double spreadPct = config.FighterDamageSpreadPercent / 100.0;
+                int damage = (int)(totalAttack * (basePct + spreadPct * roll));
 
                 enemyShips[targetIdx].HullCurrent = Math.Max(
                     enemyShips[targetIdx].HullCurrent - damage,
@@ -1009,12 +1026,10 @@ namespace Rebellion.Systems
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerFactionID);
 
             // Phase 1: total assault strength
+            int assaultDivisor = _game.Config.Combat.AssaultPersonnelDivisor;
             int totalAssaultStrength = 0;
             foreach (Fleet fleet in attackingFleets)
-                totalAssaultStrength += CalculateFleetAssaultStrength(
-                    fleet,
-                    fleet.GetCombatValue()
-                );
+                totalAssaultStrength += fleet.GetAssaultStrength(assaultDivisor);
             result.AssaultStrength = totalAssaultStrength;
 
             // Phase 2: total defense
@@ -1073,17 +1088,6 @@ namespace Rebellion.Systems
                 TransferPlanetOwnership(defendingPlanet, attackerFactionID, result);
 
             return result;
-        }
-
-        /// <summary>Fleet assault strength: (personnel / divisor + 1) * fleet_combat_value.</summary>
-        private int CalculateFleetAssaultStrength(Fleet fleet, int fleetCombatValue)
-        {
-            Officer commander = fleet
-                .GetOfficers()
-                .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-            int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
-            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
-            return (personnel / divisor + 1) * fleetCombatValue;
         }
 
         /// <summary>
