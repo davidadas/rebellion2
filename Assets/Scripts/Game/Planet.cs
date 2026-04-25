@@ -649,8 +649,7 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Validates if a building can be added to the planet. Uncolonized planets are
-        /// permitted: the first building to arrive is what colonizes the planet (handled
-        /// by <see cref="Rebellion.Systems.MovementSystem"/> on transit completion).
+        /// permitted — the first building to arrive is what colonizes the planet.
         /// </summary>
         /// <param name="building">The building to validate.</param>
         private void ValidateBuilding(Building building)
@@ -740,9 +739,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Adds a regiment to the planet. Owner-matched regiments are accepted normally.
         /// A neutral, uncolonized planet may also accept a regiment from any faction provided
-        /// the regiment is locally present and ready (see <see cref="CanAcceptRegiment"/>);
-        /// this stages a claim that <see cref="Rebellion.Systems.PlanetaryControlSystem"/>
-        /// resolves on its next tick.
+        /// the regiment is locally present and ready (see <see cref="CanAcceptRegiment"/>).
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)

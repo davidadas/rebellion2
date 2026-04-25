@@ -570,5 +570,39 @@ namespace Rebellion.Tests.Systems
                 "Officer should be evacuated when the planet flips back to neutral"
             );
         }
+
+        [Test]
+        public void ReconcilePlanet_NeutralUncolonizedPlanetWithRegiment_ClaimsImmediately()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild5", "empire");
+            _game.MoveNode(regiment, planet);
+
+            // No ProcessTick — single-planet reconcile should flip ownership in this call alone.
+            List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
+
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.AreEqual(
+                _game.Config.Planet.MaxPopularSupport,
+                planet.GetPopularSupport("empire")
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(r => r.Planet == planet && r.NewOwner == _empire)
+            );
+        }
+
+        [Test]
+        public void ReconcilePlanet_ColonizedPlanet_NoOp()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild6", "empire");
+            planet.IsColonized = true;
+            string priorOwner = planet.GetOwnerInstanceID();
+
+            List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
+
+            Assert.AreEqual(priorOwner, planet.GetOwnerInstanceID());
+            Assert.IsEmpty(results);
+        }
     }
 }

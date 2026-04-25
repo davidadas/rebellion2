@@ -254,6 +254,7 @@ public class GameManager
             _movementManager,
             _manufacturingManager
         );
+        _movementManager.SetPlanetaryControl(_planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(
             _game,

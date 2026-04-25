@@ -64,66 +64,87 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Reconciles ownership of uncolonized planets against the regiments currently on them.
-        /// An uncolonized planet with regiments but no owner is claimed for the regiment's faction.
-        /// An uncolonized planet with an owner but no regiments is released back to neutral.
-        /// Colonized planets are exempt — once colonized, ownership is sticky.
+        /// Reconciles a single planet's ownership against its regiment garrison. Called both
+        /// reactively (immediately after a regiment moves) and as a per-tick safety sweep so
+        /// non-movement paths — combat losses, scripted detachments — eventually catch up.
+        /// </summary>
+        /// <param name="planet">The planet to reconcile.</param>
+        /// <returns>Any ownership-change results produced by the reconciliation.</returns>
+        public List<GameResult> ReconcilePlanet(Planet planet)
+        {
+            List<GameResult> results = new List<GameResult>();
+            ReconcileSinglePlanet(planet, results);
+            return results;
+        }
+
+        /// <summary>
+        /// Reconciles every planet's ownership against its regiment garrison.
         /// </summary>
         /// <param name="results">Collection to append any ownership change results to.</param>
         private void ReconcileUncolonizedGarrisons(List<GameResult> results)
         {
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+                ReconcileSinglePlanet(planet, results);
+        }
+
+        /// <summary>
+        /// Inspects one planet and applies the uncolonized-claim/release rule:
+        /// neutral with regiments → claim; owned with no regiments → release.
+        /// Colonized planets are exempt; their ownership is sticky.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="results">Collection to append any ownership change results to.</param>
+        private void ReconcileSinglePlanet(Planet planet, List<GameResult> results)
+        {
+            if (planet.IsColonized)
+                return;
+
+            List<Regiment> regiments = planet.GetAllRegiments();
+            string currentOwner = planet.GetOwnerInstanceID();
+
+            if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
             {
-                if (planet.IsColonized)
-                    continue;
+                string claimantOwner = regiments[0].GetOwnerInstanceID();
+                if (string.IsNullOrEmpty(claimantOwner))
+                    return;
 
-                List<Regiment> regiments = planet.GetAllRegiments();
-                string currentOwner = planet.GetOwnerInstanceID();
+                Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwner);
+                if (claimant == null)
+                    return;
 
-                if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
-                {
-                    string claimantOwner = regiments[0].GetOwnerInstanceID();
-                    if (string.IsNullOrEmpty(claimantOwner))
-                        continue;
+                ClaimUncolonizedPlanet(planet, claimant);
+                results.Add(
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        PreviousOwner = null,
+                        NewOwner = claimant,
+                        Tick = _game.CurrentTick,
+                    }
+                );
 
-                    Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwner);
-                    if (claimant == null)
-                        continue;
+                GameLogger.Log(
+                    $"Planet {planet.GetDisplayName()} claimed by {claimant.DisplayName} (regiment garrison on uncolonized world)"
+                );
+            }
+            else if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+            {
+                Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
 
-                    ClaimUncolonizedPlanet(planet, claimant);
-                    results.Add(
-                        new PlanetOwnershipChangedResult
-                        {
-                            Planet = planet,
-                            PreviousOwner = null,
-                            NewOwner = claimant,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                ClearPlanetOwnership(planet);
+                results.Add(
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = planet,
+                        PreviousOwner = previousOwner,
+                        NewOwner = null,
+                        Tick = _game.CurrentTick,
+                    }
+                );
 
-                    GameLogger.Log(
-                        $"Planet {planet.GetDisplayName()} claimed by {claimant.DisplayName} (regiment garrison on uncolonized world)"
-                    );
-                }
-                else if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
-                {
-                    Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
-
-                    ClearPlanetOwnership(planet);
-                    results.Add(
-                        new PlanetOwnershipChangedResult
-                        {
-                            Planet = planet,
-                            PreviousOwner = previousOwner,
-                            NewOwner = null,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
-
-                    GameLogger.Log(
-                        $"Planet {planet.GetDisplayName()} released to neutral (last regiment removed from uncolonized world)"
-                    );
-                }
+                GameLogger.Log(
+                    $"Planet {planet.GetDisplayName()} released to neutral (last regiment removed from uncolonized world)"
+                );
             }
         }
 

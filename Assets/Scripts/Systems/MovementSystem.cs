@@ -21,6 +21,7 @@ namespace Rebellion.Systems
         private readonly FogOfWarSystem _fogOfWar;
         private readonly BlockadeSystem _blockade;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
+        private PlanetaryControlSystem _planetaryControl;
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
@@ -37,6 +38,44 @@ namespace Rebellion.Systems
             _game = game;
             _fogOfWar = fogOfWar;
             _blockade = blockade;
+        }
+
+        /// <summary>
+        /// Wires the planetary-control system used to reconcile uncolonized planet ownership
+        /// when a regiment lands on or leaves a planet. Set after construction to break the
+        /// constructor-time dependency cycle (PlanetaryControlSystem requires MovementSystem
+        /// to evacuate units on transfer).
+        /// </summary>
+        /// <param name="planetaryControl">The planetary-control system to consult on regiment moves.</param>
+        public void SetPlanetaryControl(PlanetaryControlSystem planetaryControl)
+        {
+            _planetaryControl = planetaryControl;
+        }
+
+        /// <summary>
+        /// Captures the planet a regiment is currently parented to (via fleet/ship ancestry)
+        /// before a move, and after the move queues reconciliation results for any planet
+        /// whose regiment count changed. Called immediately after every <see cref="GameRoot.MoveNode"/>
+        /// invocation in this system so uncolonized-planet ownership flips happen the same
+        /// frame as the move, not a tick later.
+        /// </summary>
+        /// <param name="moved">The unit that was moved.</param>
+        /// <param name="planetBefore">The planet the unit was at before the move, or null.</param>
+        private void ReconcileRegimentMove(IMovable moved, Planet planetBefore)
+        {
+            if (_planetaryControl == null)
+                return;
+            if (!(moved is Regiment))
+                return;
+
+            Planet planetAfter = ((ISceneNode)moved).GetParentOfType<Planet>();
+            if (planetBefore == planetAfter)
+                return;
+
+            if (planetBefore != null)
+                _pendingResults.AddRange(_planetaryControl.ReconcilePlanet(planetBefore));
+            if (planetAfter != null)
+                _pendingResults.AddRange(_planetaryControl.ReconcilePlanet(planetAfter));
         }
 
         /// <summary>
@@ -317,6 +356,7 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
+            Planet planetBeforeArrival = ((ISceneNode)movable).GetParentOfType<Planet>();
             try
             {
                 _game.MoveNode(movable, destination);
@@ -329,6 +369,8 @@ namespace Rebellion.Systems
                 // planet. That arrival is what colonizes the planet — production alone does not.
                 if (movable is Building && destination is Planet arrivalPlanet)
                     arrivalPlanet.IsColonized = true;
+
+                ReconcileRegimentMove(movable, planetBeforeArrival);
 
                 if (movable is Fleet fleet && _fogOfWar != null)
                 {
@@ -535,7 +577,9 @@ namespace Rebellion.Systems
                 return;
             }
 
+            Planet planetBeforeMove = ((ISceneNode)unit).GetParentOfType<Planet>();
             _game.MoveNode((ISceneNode)unit, destination);
+            ReconcileRegimentMove(unit, planetBeforeMove);
 
             unit.Movement = new MovementState
             {
