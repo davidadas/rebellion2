@@ -210,7 +210,7 @@ namespace Rebellion.Game
         /// Increments the research skill for the given manufacturing type by the specified amount.
         /// </summary>
         /// <param name="type">The manufacturing type whose skill to increment.</param>
-        /// <param name="amount">Amount to add (default 1).</param>
+        /// <param name="amount">Amount to add to the skill.</param>
         public void IncrementResearchSkill(ManufacturingType type, int amount = 1)
         {
             switch (type)

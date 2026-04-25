@@ -1067,8 +1067,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Picks a random owned core system and applies one random resource adjustment.
-        /// RESRC_TABLE has equal 25% probability for each of 4 cases.
+        /// Picks a random owned core system and applies one random resource adjustment
+        /// chosen with equal probability from the resource-rebalance table.
         /// </summary>
         private void ProcessResourceRebalancing(Faction faction)
         {

@@ -599,7 +599,7 @@ namespace Rebellion.Systems
         {
             double roll = rng.NextDouble();
             int variance = (int)(
-                baseDamage * config.WeaponDamageVariancePercent * (roll * 2.0 - 1.0) / 100.0
+                (double)baseDamage * config.WeaponDamageVariancePercent * (roll * 2.0 - 1.0) / 100.0
             );
             int damage = Math.Max(baseDamage + variance, 0);
 

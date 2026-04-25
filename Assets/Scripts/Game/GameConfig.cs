@@ -355,8 +355,7 @@ public class GameConfig
         public int RepeatTrialProbability { get; set; }
 
         /// <summary>
-        /// Percent variance applied to each weapon damage roll, symmetric around the
-        /// base damage. 20 produces a ±20% spread.
+        /// Percent variance applied to each weapon damage roll, symmetric around the base damage.
         /// </summary>
         public int WeaponDamageVariancePercent { get; set; }
 
@@ -374,7 +373,6 @@ public class GameConfig
 
         /// <summary>
         /// Percent spread added to the minimum fighter damage, scaled by a random roll.
-        /// With base 80 and spread 40, damage rolls in [80%, 120%] of nominal.
         /// </summary>
         public int FighterDamageSpreadPercent { get; set; }
     }
