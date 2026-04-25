@@ -41,26 +41,28 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// After a regiment move, reconciles uncolonized-planet ownership for both the planet
-        /// the regiment left and the planet it arrived at. Skips colonized planets entirely;
-        /// once colonized, ownership is sticky. Any ownership changes are appended to
-        /// <see cref="_pendingResults"/> so they flow out on the next tick.
+        /// the regiment left and the planet it arrived at. Only direct-child surface garrisons
+        /// count — a regiment moving between fleets at the same planet does not change that
+        /// planet's surface garrison and so does not trigger reconciliation. Any ownership
+        /// changes are appended to <see cref="_pendingResults"/>.
         /// </summary>
         /// <param name="moved">The unit that was moved.</param>
-        /// <param name="planetBefore">The planet the unit was at before the move, or null.</param>
-        private void ReconcileRegimentMove(IMovable moved, Planet planetBefore)
+        /// <param name="surfaceBefore">The planet the regiment was directly garrisoned on
+        /// before the move, or null if it was aboard a fleet/ship.</param>
+        private void ReconcileRegimentMove(IMovable moved, Planet surfaceBefore)
         {
             if (!(moved is Regiment))
                 return;
 
-            Planet planetAfter = ((ISceneNode)moved).GetParentOfType<Planet>();
-            if (planetBefore == planetAfter)
+            Planet surfaceAfter = ((ISceneNode)moved).GetParent() as Planet;
+            if (surfaceBefore == surfaceAfter)
                 return;
 
-            PlanetOwnershipChangedResult before = ReconcileGarrisonOwnership(planetBefore);
+            PlanetOwnershipChangedResult before = ReconcileGarrisonOwnership(surfaceBefore);
             if (before != null)
                 _pendingResults.Add(before);
 
-            PlanetOwnershipChangedResult after = ReconcileGarrisonOwnership(planetAfter);
+            PlanetOwnershipChangedResult after = ReconcileGarrisonOwnership(surfaceAfter);
             if (after != null)
                 _pendingResults.Add(after);
         }
@@ -82,7 +84,13 @@ namespace Rebellion.Systems
             List<Regiment> regiments = planet.GetAllRegiments();
 
             if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
-                return ClaimByGarrison(planet, regiments[0].GetOwnerInstanceID());
+            {
+                string claimant = regiments[0].GetOwnerInstanceID();
+                // Contested ground stays neutral until one faction is the only one present.
+                if (regiments.Any(r => r.GetOwnerInstanceID() != claimant))
+                    return null;
+                return ClaimByGarrison(planet, claimant);
+            }
 
             if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
                 return ReleaseToNeutral(planet, currentOwner);
@@ -440,7 +448,7 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
-            Planet planetBeforeArrival = ((ISceneNode)movable).GetParentOfType<Planet>();
+            Planet surfaceBeforeArrival = ((ISceneNode)movable).GetParent() as Planet;
             try
             {
                 _game.MoveNode(movable, destination);
@@ -454,7 +462,7 @@ namespace Rebellion.Systems
                 if (movable is Building && destination is Planet arrivalPlanet)
                     arrivalPlanet.IsColonized = true;
 
-                ReconcileRegimentMove(movable, planetBeforeArrival);
+                ReconcileRegimentMove(movable, surfaceBeforeArrival);
 
                 if (movable is Fleet fleet && _fogOfWar != null)
                 {
@@ -661,9 +669,9 @@ namespace Rebellion.Systems
                 return;
             }
 
-            Planet planetBeforeMove = ((ISceneNode)unit).GetParentOfType<Planet>();
+            Planet surfaceBeforeMove = ((ISceneNode)unit).GetParent() as Planet;
             _game.MoveNode((ISceneNode)unit, destination);
-            ReconcileRegimentMove(unit, planetBeforeMove);
+            ReconcileRegimentMove(unit, surfaceBeforeMove);
 
             unit.Movement = new MovementState
             {

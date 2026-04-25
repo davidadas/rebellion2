@@ -883,8 +883,9 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
-        /// accepted. Officers require owner match or captured status. Regiments and Starfighters
-        /// require owner match. Buildings require colonization, owner match, and available energy.
+        /// accepted. Officers require owner match or captured status. Regiments use the
+        /// regiment-specific rules (see <see cref="AddRegiment"/>). Starfighters require
+        /// owner match. Buildings require owner match and available energy.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -902,8 +903,7 @@ namespace Rebellion.Game
                 case Starfighter starfighter:
                     return starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:
-                    return IsColonized
-                        && building.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    return building.GetOwnerInstanceID() == GetOwnerInstanceID()
                         && GetAvailableEnergy() > 0;
                 default:
                     return false;

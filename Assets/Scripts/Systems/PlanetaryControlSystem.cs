@@ -108,6 +108,11 @@ namespace Rebellion.Systems
                 if (string.IsNullOrEmpty(claimantOwner))
                     return;
 
+                // Contested ground — multiple factions garrisoned on a neutral planet leaves
+                // it neutral until ground combat (or another reconciliation pass) thins them out.
+                if (regiments.Any(r => r.GetOwnerInstanceID() != claimantOwner))
+                    return;
+
                 Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwner);
                 if (claimant == null)
                     return;

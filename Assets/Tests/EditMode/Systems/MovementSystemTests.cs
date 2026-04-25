@@ -1432,8 +1432,8 @@ namespace Rebellion.Tests.Systems
                 AllowedOwnerInstanceIDs = new List<string> { "empire" },
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            // Stage the building as if it had just left origin: its scene parent is the
-            // destination (the arrival pipeline expects this), with one tick remaining.
+            // Stage the building scene-parented to the destination (the arrival pipeline
+            // expects this) and ready to complete on the next tick.
             game.AttachNode(building, destination);
             building.Movement = new MovementState
             {

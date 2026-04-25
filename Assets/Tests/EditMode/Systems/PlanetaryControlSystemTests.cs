@@ -437,10 +437,9 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
-        /// Builds a regiment-aboard-fleet at an uncolonized planet, in a state that
-        /// passes <see cref="Planet.CanAcceptRegiment"/>: complete, not-in-transit, parent
-        /// is the planet (via fleet → ship → regiment), and the planet has the faction
-        /// as a visitor.
+        /// Builds a regiment-aboard-fleet at an uncolonized planet, ready for the planet
+        /// to accept it: complete, not-in-transit, present at the planet via fleet → ship,
+        /// and the planet has the regiment's faction as a visitor.
         /// </summary>
         private (Planet planet, Regiment regiment) StageUncolonizedPlanetWithFleet(
             string planetId,
