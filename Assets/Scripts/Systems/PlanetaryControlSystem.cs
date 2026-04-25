@@ -64,52 +64,50 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Reconciles a single planet's ownership against its regiment garrison. Called both
-        /// reactively (immediately after a regiment moves) and as a per-tick safety sweep so
-        /// non-movement paths — combat losses, scripted detachments — eventually catch up.
+        /// Re-evaluates one planet's garrison-driven ownership; safety-net path used
+        /// when a regiment is added or removed outside of MovementSystem.
         /// </summary>
-        /// <param name="planet">The planet to reconcile.</param>
-        /// <returns>Any ownership-change results produced by the reconciliation.</returns>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>Any ownership-change results produced.</returns>
         public List<GameResult> ReconcilePlanet(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
-            ReconcileSinglePlanet(planet, results);
+            UpdateGarrisonOwnership(planet, results);
             return results;
         }
 
         /// <summary>
-        /// Reconciles every planet's ownership against its regiment garrison.
+        /// Sweeps every planet through <see cref="UpdateGarrisonOwnership"/>.
         /// </summary>
         /// <param name="results">Collection to append any ownership change results to.</param>
         private void ReconcileUncolonizedGarrisons(List<GameResult> results)
         {
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
-                ReconcileSinglePlanet(planet, results);
+                UpdateGarrisonOwnership(planet, results);
         }
 
         /// <summary>
-        /// Inspects one planet and applies the uncolonized-claim/release rule:
-        /// neutral with regiments → claim; owned with no regiments → release.
-        /// Colonized planets are exempt; their ownership is sticky.
+        /// Applies the uncolonized claim/release rule to one planet.
         /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="results">Collection to append any ownership change results to.</param>
-        private void ReconcileSinglePlanet(Planet planet, List<GameResult> results)
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="results">Collection to append any ownership-change result to.</param>
+        private void UpdateGarrisonOwnership(Planet planet, List<GameResult> results)
         {
+            // Colonized planets are sticky; their ownership doesn't follow garrison changes.
             if (planet.IsColonized)
                 return;
 
             List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
 
+            // Neutral world with a garrison present — claim for that faction.
             if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
             {
                 string claimantOwner = regiments[0].GetOwnerInstanceID();
                 if (string.IsNullOrEmpty(claimantOwner))
                     return;
 
-                // Contested ground — multiple factions garrisoned on a neutral planet leaves
-                // it neutral until ground combat (or another reconciliation pass) thins them out.
+                // Mixed-faction garrison is contested; leave neutral until it sorts out.
                 if (regiments.Any(r => r.GetOwnerInstanceID() != claimantOwner))
                     return;
 
@@ -117,7 +115,7 @@ namespace Rebellion.Systems
                 if (claimant == null)
                     return;
 
-                ClaimUncolonizedPlanet(planet, claimant);
+                ClaimPlanet(planet, claimant);
                 results.Add(
                     new PlanetOwnershipChangedResult
                     {
@@ -132,6 +130,7 @@ namespace Rebellion.Systems
                     $"Planet {planet.GetDisplayName()} claimed by {claimant.DisplayName} (regiment garrison on uncolonized world)"
                 );
             }
+            // Owned world with no garrison left — release back to neutral.
             else if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
             {
                 Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
@@ -154,18 +153,20 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Marks an uncolonized neutral planet as owned by the claimant faction and
-        /// installs the corresponding popular-support distribution: full support for
-        /// the claimant, zero for every other faction.
+        /// Marks an uncolonized neutral planet as owned by the claimant faction. No building,
+        /// queue, or mission cascade is needed: uncolonized planets have no construction
+        /// yards, no manufacturing queues, and rarely any mission targeting them.
         /// </summary>
         /// <param name="planet">The uncolonized neutral planet being claimed.</param>
         /// <param name="claimant">The faction taking ownership.</param>
-        private void ClaimUncolonizedPlanet(Planet planet, Faction claimant)
+        private void ClaimPlanet(Planet planet, Faction claimant)
         {
             int maxSupport = _game.Config.Planet.MaxPopularSupport;
 
+            // Move ownership through GameRoot so the faction's owned-unit index stays in sync.
             _game.ChangeUnitOwnership(planet, claimant.InstanceID);
 
+            // Full support for the claimant, zero for everyone else.
             planet.PopularSupport.Clear();
             foreach (Faction faction in _game.GetFactions())
             {

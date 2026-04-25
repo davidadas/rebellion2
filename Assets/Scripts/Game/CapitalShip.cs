@@ -145,9 +145,14 @@ namespace Rebellion.Game
         /// Adds a starfighter to the capital ship.
         /// </summary>
         /// <param name="starfighter">The starfighter to add</param>
+        /// <exception cref="SceneAccessException">Thrown when the starfighter belongs to a different faction.</exception>
         /// <exception cref="InvalidOperationException">Thrown when adding the starfighter would exceed the capacity.</exception>
         public void AddStarfighter(Starfighter starfighter)
         {
+            if (starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            {
+                throw new SceneAccessException(starfighter, this);
+            }
             if (Starfighters.Count >= StarfighterCapacity)
             {
                 throw new InvalidOperationException(
@@ -161,9 +166,14 @@ namespace Rebellion.Game
         /// Adds a regiment to the capital ship.
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
+        /// <exception cref="SceneAccessException">Thrown when the regiment belongs to a different faction.</exception>
         /// <exception cref="InvalidOperationException">Thrown when adding the regiment would exceed the capacity limit.</exception>
         public void AddRegiment(Regiment regiment)
         {
+            if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            {
+                throw new SceneAccessException(regiment, this);
+            }
             if (Regiments.Count >= RegimentCapacity)
             {
                 throw new InvalidOperationException(
@@ -195,10 +205,12 @@ namespace Rebellion.Game
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
         public override bool CanAcceptChild(ISceneNode child)
         {
-            if (child is Starfighter)
-                return GetExcessStarfighterCapacity() > 0;
-            if (child is Regiment)
-                return GetExcessRegimentCapacity() > 0;
+            if (child is Starfighter starfighter)
+                return starfighter.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    && GetExcessStarfighterCapacity() > 0;
+            if (child is Regiment regiment)
+                return regiment.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    && GetExcessRegimentCapacity() > 0;
             if (child is Officer officer)
                 return officer.IsCaptured || officer.GetOwnerInstanceID() == GetOwnerInstanceID();
             return false;

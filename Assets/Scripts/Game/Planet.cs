@@ -752,10 +752,6 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns true if this planet will accept the given regiment.
-        /// Owned planets accept any regiment of the owning faction. A neutral, uncolonized
-        /// planet additionally accepts a regiment from another faction only when the regiment
-        /// is locally present, ready, and that faction has visited the planet — modelling an
-        /// instant transfer from a fleet in orbit, not a long-distance dispatch.
         /// </summary>
         /// <param name="regiment">The regiment being placed.</param>
         /// <returns>True if the regiment may be added; otherwise false.</returns>
@@ -763,9 +759,11 @@ namespace Rebellion.Game
         {
             string regimentOwner = regiment.GetOwnerInstanceID();
 
+            // Owner-matched regiments always pass.
             if (regimentOwner == GetOwnerInstanceID())
                 return true;
 
+            // Foreign regiments are only allowed onto neutral, uncolonized planets.
             if (IsColonized || GetOwnerInstanceID() != null)
                 return false;
 
@@ -775,13 +773,12 @@ namespace Rebellion.Game
             if (regiment.Movement != null)
                 return false;
 
-            // The regiment may currently be parented to a fleet at this planet, OR have
-            // no parent (mid-transfer, between detach and attach). It must NOT already be
-            // at a different planet — that would be a long-distance dispatch, not a drop.
+            // Must be locally present (aboard a fleet at this planet, or mid-transfer with no parent).
             Planet currentPlanet = regiment.GetParentOfType<Planet>();
             if (currentPlanet != null && currentPlanet != this)
                 return false;
 
+            // Faction must have visited the planet first.
             if (!WasVisitedBy(regimentOwner))
                 return false;
 
