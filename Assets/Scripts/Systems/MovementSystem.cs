@@ -21,7 +21,6 @@ namespace Rebellion.Systems
         private readonly FogOfWarSystem _fogOfWar;
         private readonly BlockadeSystem _blockade;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
-        private PlanetaryControlSystem _planetaryControl;
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
@@ -41,30 +40,15 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Wires the planetary-control system used to reconcile uncolonized planet ownership
-        /// when a regiment lands on or leaves a planet. Set after construction to break the
-        /// constructor-time dependency cycle (PlanetaryControlSystem requires MovementSystem
-        /// to evacuate units on transfer).
-        /// </summary>
-        /// <param name="planetaryControl">The planetary-control system to consult on regiment moves.</param>
-        public void SetPlanetaryControl(PlanetaryControlSystem planetaryControl)
-        {
-            _planetaryControl = planetaryControl;
-        }
-
-        /// <summary>
-        /// Captures the planet a regiment is currently parented to (via fleet/ship ancestry)
-        /// before a move, and after the move queues reconciliation results for any planet
-        /// whose regiment count changed. Called immediately after every <see cref="GameRoot.MoveNode"/>
-        /// invocation in this system so uncolonized-planet ownership flips happen the same
-        /// frame as the move, not a tick later.
+        /// After a regiment move, reconciles uncolonized-planet ownership for both the planet
+        /// the regiment left and the planet it arrived at. Skips colonized planets entirely;
+        /// once colonized, ownership is sticky. Any ownership changes are appended to
+        /// <see cref="_pendingResults"/> so they flow out on the next tick.
         /// </summary>
         /// <param name="moved">The unit that was moved.</param>
         /// <param name="planetBefore">The planet the unit was at before the move, or null.</param>
         private void ReconcileRegimentMove(IMovable moved, Planet planetBefore)
         {
-            if (_planetaryControl == null)
-                return;
             if (!(moved is Regiment))
                 return;
 
@@ -72,10 +56,110 @@ namespace Rebellion.Systems
             if (planetBefore == planetAfter)
                 return;
 
-            if (planetBefore != null)
-                _pendingResults.AddRange(_planetaryControl.ReconcilePlanet(planetBefore));
-            if (planetAfter != null)
-                _pendingResults.AddRange(_planetaryControl.ReconcilePlanet(planetAfter));
+            PlanetOwnershipChangedResult before = ReconcileGarrisonOwnership(planetBefore);
+            if (before != null)
+                _pendingResults.Add(before);
+
+            PlanetOwnershipChangedResult after = ReconcileGarrisonOwnership(planetAfter);
+            if (after != null)
+                _pendingResults.Add(after);
+        }
+
+        /// <summary>
+        /// Inspects one planet and applies the uncolonized-claim/release rule:
+        /// neutral with regiments → claim it for the first regiment's faction;
+        /// owned with no regiments → release it back to neutral, evicting orphaned officers
+        /// and starfighters of the previous owner. Colonized planets are exempt.
+        /// </summary>
+        /// <param name="planet">The planet to reconcile, or null for a no-op.</param>
+        /// <returns>An ownership change result, or null when no flip occurred.</returns>
+        private PlanetOwnershipChangedResult ReconcileGarrisonOwnership(Planet planet)
+        {
+            if (planet?.IsColonized != false)
+                return null;
+
+            string currentOwner = planet.GetOwnerInstanceID();
+            List<Regiment> regiments = planet.GetAllRegiments();
+
+            if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
+                return ClaimByGarrison(planet, regiments[0].GetOwnerInstanceID());
+
+            if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+                return ReleaseToNeutral(planet, currentOwner);
+
+            return null;
+        }
+
+        /// <summary>
+        /// Claims a neutral uncolonized planet for the given faction: updates the faction
+        /// ownership index and installs full popular support for the claimant.
+        /// </summary>
+        /// <param name="planet">The neutral planet being claimed.</param>
+        /// <param name="claimantOwnerId">The instance ID of the claiming faction.</param>
+        /// <returns>The ownership change result, or null when the claimant cannot be resolved.</returns>
+        private PlanetOwnershipChangedResult ClaimByGarrison(Planet planet, string claimantOwnerId)
+        {
+            if (string.IsNullOrEmpty(claimantOwnerId))
+                return null;
+
+            Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwnerId);
+            if (claimant == null)
+                return null;
+
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+            _game.ChangeUnitOwnership(planet, claimant.InstanceID);
+
+            planet.PopularSupport.Clear();
+            foreach (Faction faction in _game.GetFactions())
+            {
+                int support = faction.InstanceID == claimant.InstanceID ? maxSupport : 0;
+                planet.SetPopularSupport(faction.InstanceID, support, maxSupport);
+            }
+
+            return new PlanetOwnershipChangedResult
+            {
+                Planet = planet,
+                PreviousOwner = null,
+                NewOwner = claimant,
+                Tick = _game.CurrentTick,
+            };
+        }
+
+        /// <summary>
+        /// Releases an uncolonized planet back to neutral: deregisters faction ownership,
+        /// zeroes popular support for every faction, and evacuates any officers or
+        /// starfighters that were left behind so they are not stranded on a now-ownerless world.
+        /// </summary>
+        /// <param name="planet">The planet being released.</param>
+        /// <param name="previousOwnerId">The instance ID of the previously owning faction.</param>
+        /// <returns>The ownership change result describing the release.</returns>
+        private PlanetOwnershipChangedResult ReleaseToNeutral(Planet planet, string previousOwnerId)
+        {
+            Faction previousOwner = _game.GetFactionByOwnerInstanceID(previousOwnerId);
+
+            List<IMovable> stranded = planet
+                .GetChildren<IMovable>(
+                    m => m is not Fleet && m is not Building && m is not Regiment,
+                    recurse: false
+                )
+                .ToList();
+            foreach (IMovable unit in stranded)
+                EvacuateToNearestFriendlyPlanet(unit);
+
+            _game.DeregsiterOwnedUnit(planet);
+            planet.SetOwnerInstanceID(null);
+
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+            foreach (Faction faction in _game.GetFactions())
+                planet.SetPopularSupport(faction.InstanceID, 0, maxSupport);
+
+            return new PlanetOwnershipChangedResult
+            {
+                Planet = planet,
+                PreviousOwner = previousOwner,
+                NewOwner = null,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>
