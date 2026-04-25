@@ -27,14 +27,24 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetText_MessageWithReadTrue_SetsReadToFalse()
+        public void GetText_UnreadMessage_MarksAsRead()
         {
             Message message = new Message(MessageType.Resource, "Resource alert");
-            message.Read = true;
+            Assert.IsFalse(message.Read, "Precondition: message should start unread");
 
             message.GetText();
 
-            Assert.IsFalse(message.Read, "GetText should set Read to false");
+            Assert.IsTrue(message.Read, "GetText should mark message as read");
+        }
+
+        [Test]
+        public void GetText_AlreadyReadMessage_StaysRead()
+        {
+            Message message = new Message(MessageType.Resource, "Resource alert") { Read = true };
+
+            message.GetText();
+
+            Assert.IsTrue(message.Read, "GetText should not un-read an already-read message");
         }
 
         [Test]

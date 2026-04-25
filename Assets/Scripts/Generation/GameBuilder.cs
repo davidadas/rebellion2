@@ -33,6 +33,12 @@ namespace Rebellion.Generation
             _randomProvider = new SystemRandomProvider(Environment.TickCount);
         }
 
+        /// <summary>
+        /// Runs the full game-generation pipeline and returns a fully populated
+        /// <see cref="GameRoot"/>. Phases cover template loading, system filtering,
+        /// classification, HQ placement, officer deployment, and balance passes.
+        /// </summary>
+        /// <returns>The newly built <see cref="GameRoot"/> ready for play.</returns>
         public GameRoot BuildGame()
         {
             GameConfig gameConfig = ResourceManager.GetConfig<GameConfig>();

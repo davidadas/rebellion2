@@ -513,6 +513,7 @@ namespace Rebellion.Systems
 
             int gateLow = _game.Config.AI.DeploymentGateLow;
             int gateHigh = _game.Config.AI.DeploymentGateHigh;
+            int assaultDivisor = _game.Config.Combat.AssaultPersonnelDivisor;
 
             foreach (PlanetSystem system in _game.GetGalaxyMap().PlanetSystems)
             {
@@ -576,7 +577,7 @@ namespace Rebellion.Systems
 
                     // Calculate available assault from remaining fleets
                     int availableAssault = remainingFleets.Sum(f =>
-                        CalculateFleetAssaultStrength(f)
+                        f.GetAssaultStrength(assaultDivisor)
                     );
                     int netStrength = availableAssault - targetDefense;
 
@@ -591,8 +592,8 @@ namespace Rebellion.Systems
                     // Deploy fleets strongest-first until deployed strength exceeds defense
                     remainingFleets.Sort(
                         (a, b) =>
-                            CalculateFleetAssaultStrength(b)
-                                .CompareTo(CalculateFleetAssaultStrength(a))
+                            b.GetAssaultStrength(assaultDivisor)
+                                .CompareTo(a.GetAssaultStrength(assaultDivisor))
                     );
 
                     int deployedStrength = 0;
@@ -603,7 +604,7 @@ namespace Rebellion.Systems
 
                         _movementManager.RequestMove(fleet, target);
                         dispatched.Add(fleet.GetInstanceID());
-                        deployedStrength += CalculateFleetAssaultStrength(fleet);
+                        deployedStrength += fleet.GetAssaultStrength(assaultDivisor);
                         remainingFleets.Remove(fleet);
 
                         GameLogger.Log(
@@ -1221,27 +1222,6 @@ namespace Rebellion.Systems
                 .LastOrDefault(tech =>
                     (tech.GetReference() as Building)?.GetBuildingType() == buildingType
                 );
-        }
-
-        /// <summary>
-        /// Calculates fleet assault strength including personnel morale modifier.
-        /// Formula: (personnel / divisor + 1) * fleet_combat_value.
-        /// Personnel comes from fleet commander's leadership skill.
-        /// </summary>
-        /// <param name="fleet">The fleet to evaluate.</param>
-        /// <returns>The calculated assault strength.</returns>
-        private int CalculateFleetAssaultStrength(Fleet fleet)
-        {
-            int fleetCombatValue = fleet.GetCombatValue();
-
-            // Get personnel morale from fleet commander
-            Officer commander = fleet.GetOfficers().FirstOrDefault();
-            int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
-
-            int divisor = _game.Config.Combat.AssaultPersonnelDivisor;
-            int assaultStrength = (personnel / divisor + 1) * fleetCombatValue;
-
-            return assaultStrength;
         }
     }
 }

@@ -585,10 +585,10 @@
   <Combat>
     <!-- Personnel divisor for assault strength: (personnel / divisor + 1) * fleet_combat_value -->
     <AssaultPersonnelDivisor>40</AssaultPersonnelDivisor>
-    <!-- Bombardment strike resistance check range (GENERAL_PARAM 1538/1539) -->
+    <!-- Bombardment strike resistance check range -->
     <BombardmentStrikeThresholdLow>1</BombardmentStrikeThresholdLow>
     <BombardmentStrikeThresholdHigh>10</BombardmentStrikeThresholdHigh>
-    <!-- Resistance value for system energy lane (GENERAL_PARAM 1540) -->
+    <!-- Resistance value for system energy lane -->
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
     <!-- Number of Shield facilities required to block bombardment entirely -->
     <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
@@ -596,6 +596,13 @@
     <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
     <!-- Per-trial repeat-damage success probability (stage 4), out of 100 -->
     <RepeatTrialProbability>50</RepeatTrialProbability>
+    <!-- Weapon damage variance: damage rolls uniformly in [base*(1-pct/100), base*(1+pct/100)] -->
+    <WeaponDamageVariancePercent>20</WeaponDamageVariancePercent>
+    <!-- Percent of squadrons lost per dogfight round, scaled by relative numbers and a roll -->
+    <FighterDogfightLossRatePercent>30</FighterDogfightLossRatePercent>
+    <!-- Fighter damage range: [Base%, (Base+Spread)%] of nominal, rolled uniformly -->
+    <FighterDamageBasePercent>80</FighterDamageBasePercent>
+    <FighterDamageSpreadPercent>40</FighterDamageSpreadPercent>
   </Combat>
   <!-- Uprising System Configuration -->
   <Uprising>

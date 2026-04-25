@@ -17,6 +17,11 @@ public class AndConditional : GameConditional
     public AndConditional()
         : base() { }
 
+    /// <summary>
+    /// Evaluates the AND composition: all child conditions must be met.
+    /// </summary>
+    /// <param name="game">The game state to evaluate against.</param>
+    /// <returns>True if every child condition is met; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         return Conditionals.All(conditional => conditional.IsMet(game));
@@ -35,6 +40,11 @@ public class OrConditional : GameConditional
     public OrConditional()
         : base() { }
 
+    /// <summary>
+    /// Evaluates the OR composition: at least one child condition must be met.
+    /// </summary>
+    /// <param name="game">The game state to evaluate against.</param>
+    /// <returns>True if any child condition is met; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         return Conditionals.Any(conditional => conditional.IsMet(game));
@@ -53,6 +63,11 @@ public class NotConditional : GameConditional
     public NotConditional()
         : base() { }
 
+    /// <summary>
+    /// Evaluates the NOT composition: no child condition may be met.
+    /// </summary>
+    /// <param name="game">The game state to evaluate against.</param>
+    /// <returns>True if every child condition is unmet; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         return Conditionals.All(conditional => !conditional.IsMet(game));
@@ -71,6 +86,11 @@ public class XorConditional : GameConditional
     public XorConditional()
         : base() { }
 
+    /// <summary>
+    /// Evaluates the XOR composition: exactly one child condition must be met.
+    /// </summary>
+    /// <param name="game">The game state to evaluate against.</param>
+    /// <returns>True if precisely one child condition is met; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         return Conditionals.Count(conditional => conditional.IsMet(game)) == 1;
@@ -89,6 +109,11 @@ public class AreOnSamePlanetConditional : GameConditional
     public AreOnSamePlanetConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether every referenced unit is parented to the same planet.
+    /// </summary>
+    /// <param name="game">The game state used to resolve unit references.</param>
+    /// <returns>True if all referenced units share a planet parent; false if any are missing or on a different planet.</returns>
     public override bool IsMet(GameRoot game)
     {
         List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
@@ -126,6 +151,11 @@ public class AreOnOpposingFactionsConditional : GameConditional
     public AreOnOpposingFactionsConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether the two referenced units belong to different owners.
+    /// </summary>
+    /// <param name="game">The game state used to resolve unit references.</param>
+    /// <returns>True if exactly two units are referenced and their owner instance IDs differ.</returns>
     public override bool IsMet(GameRoot game)
     {
         // Get the scene nodes for the units.
@@ -146,6 +176,11 @@ public class IsOnMissionConditional : GameConditional
     public IsOnMissionConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether the referenced unit is parented to a <see cref="Mission"/> node.
+    /// </summary>
+    /// <param name="game">The game state used to resolve the unit.</param>
+    /// <returns>True if the unit exists and its direct parent is a mission; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         string instanceId = this.GetConditionalValue();
@@ -164,6 +199,11 @@ public class IsMovableConditional : GameConditional
     public IsMovableConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether the referenced unit implements <see cref="IMovable"/> and is currently free to move.
+    /// </summary>
+    /// <param name="game">The game state used to resolve the unit.</param>
+    /// <returns>True if the unit is resolvable, movable, and not currently in transit; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         string instanceId = this.GetConditionalValue();
@@ -190,6 +230,11 @@ public class AreOnPlanetConditional : GameConditional
     public AreOnPlanetConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether every referenced unit has a planet somewhere in its ancestry.
+    /// </summary>
+    /// <param name="game">The game state used to resolve unit references.</param>
+    /// <returns>True if every referenced unit is on some planet; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         // Get the instance IDs of the units to check.
@@ -216,6 +261,12 @@ public class TickCountConditional : GameConditional
     public TickCountConditional()
         : base() { }
 
+    /// <summary>
+    /// Compares the current tick against the stored target value using the comparison
+    /// type selected by <see cref="GameConditional.GetConditionalType"/>. Unknown types fall back to EqualTo.
+    /// </summary>
+    /// <param name="game">The game state providing the current tick.</param>
+    /// <returns>True when the tick comparison holds; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         ComparisonType comparison = Enum.TryParse(
@@ -249,6 +300,11 @@ public class IsEventCompleteConditional : GameConditional
     public IsEventCompleteConditional()
         : base() { }
 
+    /// <summary>
+    /// Checks whether the event with the configured instance ID has been marked complete.
+    /// </summary>
+    /// <param name="game">The game state tracking completed events.</param>
+    /// <returns>True if the event is complete; otherwise false.</returns>
     public override bool IsMet(GameRoot game)
     {
         string eventInstanceId = this.GetConditionalValue();
