@@ -968,5 +968,169 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(1, planet.GetActiveRefinementCapacity());
         }
+
+        /// <summary>
+        /// Builds a regiment that's already aboard a fleet at the given planet, complete and
+        /// not in transit — the canonical "ready to drop" state for an instant transfer.
+        /// </summary>
+        private (GameRoot game, Planet planet, Regiment regiment) StageReadyRegimentAtPlanet(
+            string planetOwner,
+            string regimentOwner,
+            bool isColonized,
+            bool addVisitor = true
+        )
+        {
+            GameRoot game = new GameRoot();
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys" };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = planetOwner,
+                IsColonized = isColonized,
+                EnergyCapacity = 5,
+            };
+            game.AttachNode(planet, system);
+            if (addVisitor)
+                planet.AddVisitor(regimentOwner);
+
+            Fleet fleet = new Fleet(regimentOwner, "fleet");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = regimentOwner,
+                AllowedOwnerInstanceIDs = new List<string> { regimentOwner },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "reg",
+                OwnerInstanceID = regimentOwner,
+                AllowedOwnerInstanceIDs = new List<string> { regimentOwner },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            game.AttachNode(regiment, ship);
+
+            return (game, planet, regiment);
+        }
+
+        [Test]
+        public void CanAcceptChild_OwnerMatchedRegiment_AcceptsWithoutLocalityChecks()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: "empire",
+                regimentOwner: "empire",
+                isColonized: true,
+                addVisitor: false
+            );
+
+            Assert.IsTrue(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralUncolonizedPlanetReadyRegiment_Accepts()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: false
+            );
+
+            Assert.IsTrue(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralColonizedPlanet_RejectsForeignRegiment()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: true
+            );
+
+            Assert.IsFalse(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralUncolonizedPlanetRegimentBuilding_Rejects()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: false
+            );
+            regiment.ManufacturingStatus = ManufacturingStatus.Building;
+
+            Assert.IsFalse(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralUncolonizedPlanetRegimentInTransit_Rejects()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: false
+            );
+            regiment.Movement = new MovementState { TransitTicks = 5, TicksElapsed = 0 };
+
+            Assert.IsFalse(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralUncolonizedPlanetRegimentNotVisitor_Rejects()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: false,
+                addVisitor: false
+            );
+
+            Assert.IsFalse(planet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_NeutralUncolonizedPlanetRegimentAtDifferentPlanet_Rejects()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: null,
+                regimentOwner: "empire",
+                isColonized: false
+            );
+
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "other",
+                OwnerInstanceID = null,
+                IsColonized = false,
+            };
+            game.AttachNode(otherPlanet, planet.GetParentOfType<PlanetSystem>());
+            otherPlanet.AddVisitor("empire");
+
+            Assert.IsFalse(otherPlanet.CanAcceptChild(regiment));
+        }
+
+        [Test]
+        public void CanAcceptChild_OwnedByDifferentFactionUncolonized_RejectsForeignRegiment()
+        {
+            (GameRoot game, Planet planet, Regiment regiment) = StageReadyRegimentAtPlanet(
+                planetOwner: "rebels",
+                regimentOwner: "empire",
+                isColonized: false
+            );
+
+            Assert.IsFalse(planet.CanAcceptChild(regiment));
+        }
     }
 } // namespace Rebellion.Tests.Game

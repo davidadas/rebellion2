@@ -1414,5 +1414,42 @@ namespace Rebellion.Tests.Systems
         }
 
         #endregion
+
+        [Test]
+        public void ProcessTick_BuildingArrivesAtUncolonizedPlanet_MarksItColonized()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            destination.IsColonized = false;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            // Stage the building as if it had just left origin: its scene parent is the
+            // destination (the arrival pipeline expects this), with one tick remaining.
+            game.AttachNode(building, destination);
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.IsColonized,
+                "Building arrival at an uncolonized planet should colonize it"
+            );
+            Assert.IsNull(building.Movement, "Building should have completed its transit");
+        }
     }
 }

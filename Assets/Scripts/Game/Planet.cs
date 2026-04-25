@@ -648,19 +648,13 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Validates if a building can be added to the planet.
+        /// Validates if a building can be added to the planet. Uncolonized planets are
+        /// permitted: the first building to arrive is what colonizes the planet (handled
+        /// by <see cref="Rebellion.Systems.MovementSystem"/> on transit completion).
         /// </summary>
         /// <param name="building">The building to validate.</param>
         private void ValidateBuilding(Building building)
         {
-            // Check if the planet is colonized.
-            if (!IsColonized)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot add building {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is not colonized."
-                );
-            }
-
             // Check if the building is owned by the planet's owner.
             if (building.GetOwnerInstanceID() != this.GetOwnerInstanceID())
             {
@@ -744,15 +738,57 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Adds a regiment to the planet.
+        /// Adds a regiment to the planet. Owner-matched regiments are accepted normally.
+        /// A neutral, uncolonized planet may also accept a regiment from any faction provided
+        /// the regiment is locally present and ready (see <see cref="CanAcceptRegiment"/>);
+        /// this stages a claim that <see cref="Rebellion.Systems.PlanetaryControlSystem"/>
+        /// resolves on its next tick.
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)
         {
-            if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            if (!CanAcceptRegiment(regiment))
                 throw new SceneAccessException(regiment, this);
 
             Regiments.Add(regiment);
+        }
+
+        /// <summary>
+        /// Returns true if this planet will accept the given regiment.
+        /// Owned planets accept any regiment of the owning faction. A neutral, uncolonized
+        /// planet additionally accepts a regiment from another faction only when the regiment
+        /// is locally present, ready, and that faction has visited the planet — modelling an
+        /// instant transfer from a fleet in orbit, not a long-distance dispatch.
+        /// </summary>
+        /// <param name="regiment">The regiment being placed.</param>
+        /// <returns>True if the regiment may be added; otherwise false.</returns>
+        private bool CanAcceptRegiment(Regiment regiment)
+        {
+            string regimentOwner = regiment.GetOwnerInstanceID();
+
+            if (regimentOwner == GetOwnerInstanceID())
+                return true;
+
+            if (IsColonized || GetOwnerInstanceID() != null)
+                return false;
+
+            if (regiment.ManufacturingStatus != ManufacturingStatus.Complete)
+                return false;
+
+            if (regiment.Movement != null)
+                return false;
+
+            // The regiment may currently be parented to a fleet at this planet, OR have
+            // no parent (mid-transfer, between detach and attach). It must NOT already be
+            // at a different planet — that would be a long-distance dispatch, not a drop.
+            Planet currentPlanet = regiment.GetParentOfType<Planet>();
+            if (currentPlanet != null && currentPlanet != this)
+                return false;
+
+            if (!WasVisitedBy(regimentOwner))
+                return false;
+
+            return true;
         }
 
         /// <summary>
@@ -865,7 +901,7 @@ namespace Rebellion.Game
                 case Officer officer:
                     return officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID;
                 case Regiment regiment:
-                    return regiment.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    return CanAcceptRegiment(regiment);
                 case Starfighter starfighter:
                     return starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:

@@ -325,6 +325,11 @@ namespace Rebellion.Systems
                     $"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}"
                 );
 
+                // A building only counts as "deployed" once it has actually arrived at its
+                // planet. That arrival is what colonizes the planet — production alone does not.
+                if (movable is Building && destination is Planet arrivalPlanet)
+                    arrivalPlanet.IsColonized = true;
+
                 if (movable is Fleet fleet && _fogOfWar != null)
                 {
                     Faction faction = _game.Factions.FirstOrDefault(f =>

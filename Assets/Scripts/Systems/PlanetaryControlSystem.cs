@@ -34,7 +34,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies support shifts to all owned planets, then checks for ownership transfers.
+        /// Applies support shifts to all owned planets, reconciles uncolonized-planet
+        /// garrison ownership, then checks for ownership transfers.
         /// </summary>
         /// <returns>Any ownership change results generated this tick.</returns>
         public List<GameResult> ProcessTick()
@@ -56,9 +57,95 @@ namespace Rebellion.Systems
                 ApplySupportShift(planet, faction);
             }
 
+            ReconcileUncolonizedGarrisons(results);
             CheckOwnershipTransfers(results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Reconciles ownership of uncolonized planets against the regiments currently on them.
+        /// An uncolonized planet with regiments but no owner is claimed for the regiment's faction.
+        /// An uncolonized planet with an owner but no regiments is released back to neutral.
+        /// Colonized planets are exempt — once colonized, ownership is sticky.
+        /// </summary>
+        /// <param name="results">Collection to append any ownership change results to.</param>
+        private void ReconcileUncolonizedGarrisons(List<GameResult> results)
+        {
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                if (planet.IsColonized)
+                    continue;
+
+                List<Regiment> regiments = planet.GetAllRegiments();
+                string currentOwner = planet.GetOwnerInstanceID();
+
+                if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
+                {
+                    string claimantOwner = regiments[0].GetOwnerInstanceID();
+                    if (string.IsNullOrEmpty(claimantOwner))
+                        continue;
+
+                    Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwner);
+                    if (claimant == null)
+                        continue;
+
+                    ClaimUncolonizedPlanet(planet, claimant);
+                    results.Add(
+                        new PlanetOwnershipChangedResult
+                        {
+                            Planet = planet,
+                            PreviousOwner = null,
+                            NewOwner = claimant,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+
+                    GameLogger.Log(
+                        $"Planet {planet.GetDisplayName()} claimed by {claimant.DisplayName} (regiment garrison on uncolonized world)"
+                    );
+                }
+                else if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+                {
+                    Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
+
+                    ClearPlanetOwnership(planet);
+                    results.Add(
+                        new PlanetOwnershipChangedResult
+                        {
+                            Planet = planet,
+                            PreviousOwner = previousOwner,
+                            NewOwner = null,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+
+                    GameLogger.Log(
+                        $"Planet {planet.GetDisplayName()} released to neutral (last regiment removed from uncolonized world)"
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Marks an uncolonized neutral planet as owned by the claimant faction and
+        /// installs the corresponding popular-support distribution: full support for
+        /// the claimant, zero for every other faction.
+        /// </summary>
+        /// <param name="planet">The uncolonized neutral planet being claimed.</param>
+        /// <param name="claimant">The faction taking ownership.</param>
+        private void ClaimUncolonizedPlanet(Planet planet, Faction claimant)
+        {
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+
+            _game.ChangeUnitOwnership(planet, claimant.InstanceID);
+
+            planet.PopularSupport.Clear();
+            foreach (Faction faction in _game.GetFactions())
+            {
+                int support = faction.InstanceID == claimant.InstanceID ? maxSupport : 0;
+                planet.SetPopularSupport(faction.InstanceID, support, maxSupport);
+            }
         }
 
         /// <summary>
@@ -76,13 +163,23 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Clears the planet's owner, returning it to neutral control.
+        /// Clears the planet's owner, returning it to neutral control. Cancels competing
+        /// missions, evicts non-owner units, clears manufacturing queues, and zeroes
+        /// popular support for every faction. Buildings are left in place — they remain
+        /// where they were built and only transfer when a new faction claims the planet.
         /// </summary>
+        /// <param name="planet">The planet whose ownership is being cleared.</param>
         public void ClearPlanetOwnership(Planet planet)
         {
+            CancelCompetingMissions(planet, newOwnerID: null);
+            EvictEnemyUnits(planet, newOwnerID: null);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             _game.DeregsiterOwnedUnit(planet);
             planet.SetOwnerInstanceID(null);
+
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+            foreach (Faction faction in _game.GetFactions())
+                planet.SetPopularSupport(faction.InstanceID, 0, maxSupport);
         }
 
         /// <summary>

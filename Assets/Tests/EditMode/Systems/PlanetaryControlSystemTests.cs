@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -432,6 +433,141 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(
                 mine.GetParent(),
                 "In-progress building must be detached from planet on transfer"
+            );
+        }
+
+        /// <summary>
+        /// Builds a regiment-aboard-fleet at an uncolonized planet, in a state that
+        /// passes <see cref="Planet.CanAcceptRegiment"/>: complete, not-in-transit, parent
+        /// is the planet (via fleet → ship → regiment), and the planet has the faction
+        /// as a visitor.
+        /// </summary>
+        private (Planet planet, Regiment regiment) StageUncolonizedPlanetWithFleet(
+            string planetId,
+            string ownerInstanceId,
+            int positionX = 50
+        )
+        {
+            PlanetSystem system = _targetPlanet.GetParentOfType<PlanetSystem>();
+
+            Planet planet = new Planet
+            {
+                InstanceID = planetId,
+                DisplayName = planetId,
+                OwnerInstanceID = null,
+                IsColonized = false,
+                PositionX = positionX,
+                PositionY = 0,
+            };
+            _game.AttachNode(planet, system);
+            planet.AddVisitor(ownerInstanceId);
+
+            Fleet fleet = new Fleet(ownerInstanceId, $"{ownerInstanceId}-fleet");
+            _game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{planetId}-ship",
+                OwnerInstanceID = ownerInstanceId,
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            _game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = $"{planetId}-reg",
+                OwnerInstanceID = ownerInstanceId,
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            _game.AttachNode(regiment, ship);
+
+            return (planet, regiment);
+        }
+
+        [Test]
+        public void ProcessTick_UncolonizedNeutralPlanetWithRegiment_ClaimsForRegimentFaction()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild1", "empire");
+            _game.MoveNode(regiment, planet);
+
+            List<GameResult> results = _ownershipSystem.ProcessTick();
+
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.AreEqual(
+                _game.Config.Planet.MaxPopularSupport,
+                planet.GetPopularSupport("empire")
+            );
+            Assert.AreEqual(0, planet.GetPopularSupport("rebels"));
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(r =>
+                        r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
+                    )
+            );
+        }
+
+        [Test]
+        public void ProcessTick_UncolonizedOwnedPlanetWithoutRegiments_ReleasesToNeutral()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild2", "empire");
+            _game.MoveNode(regiment, planet);
+            _ownershipSystem.ProcessTick();
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID(), "Setup: claim should succeed");
+
+            _game.DetachNode(regiment);
+
+            List<GameResult> results = _ownershipSystem.ProcessTick();
+
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.AreEqual(0, planet.GetPopularSupport("empire"));
+            Assert.AreEqual(0, planet.GetPopularSupport("rebels"));
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(r =>
+                        r.Planet == planet && r.NewOwner == null && r.PreviousOwner == _empire
+                    )
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ColonizedPlanetLosesLastRegiment_OwnershipPersists()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
+            _game.MoveNode(regiment, planet);
+            _ownershipSystem.ProcessTick();
+
+            // Once colonized, regiment count no longer drives ownership.
+            planet.IsColonized = true;
+            _game.DetachNode(regiment);
+
+            _ownershipSystem.ProcessTick();
+
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void ProcessTick_UncolonizedOwnedPlanetReleased_EvictsPreviousOwnerOfficers()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild4", "empire");
+            _game.MoveNode(regiment, planet);
+            _ownershipSystem.ProcessTick();
+
+            Officer officer = EntityFactory.CreateOfficer("o-evict", "empire");
+            _game.AttachNode(officer, planet);
+
+            _game.DetachNode(regiment);
+            _ownershipSystem.ProcessTick();
+
+            Assert.AreNotEqual(
+                planet,
+                officer.GetParentOfType<Planet>(),
+                "Officer should be evacuated when the planet flips back to neutral"
             );
         }
     }
