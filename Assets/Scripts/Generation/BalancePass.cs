@@ -11,6 +11,13 @@ namespace Rebellion.Generation
     /// </summary>
     public class BalancePass
     {
+        /// <summary>
+        /// Applies post-placement support adjustments across every planet in the given systems:
+        /// HQ planets are bumped to full loyalty for their owning faction, and military presence
+        /// shifts support toward the unit owner.
+        /// </summary>
+        /// <param name="systems">All generated planet systems in the galaxy.</param>
+        /// <param name="factions">All factions participating in the game.</param>
         public void Apply(PlanetSystem[] systems, Faction[] factions)
         {
             string[] factionIds = factions.Select(f => f.InstanceID).ToArray();

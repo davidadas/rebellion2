@@ -377,6 +377,28 @@ public class GameConfig
         /// this threshold. Scores strictly between the two thresholds are draws.
         /// </summary>
         public int GroundCombatAttackerWinsThreshold { get; set; }
+
+        /// <summary>
+        /// Percent variance applied to each weapon damage roll, symmetric around the base damage.
+        /// </summary>
+        public int WeaponDamageVariancePercent { get; set; }
+
+        /// <summary>
+        /// Percent of each side's fighter squadrons that can be lost per dogfight round.
+        /// Actual losses scale by the enemy's relative squadron count and a random roll.
+        /// </summary>
+        public int FighterDogfightLossRatePercent { get; set; }
+
+        /// <summary>
+        /// Minimum percent of nominal fighter damage applied per strike. Combines with
+        /// <see cref="FighterDamageSpreadPercent"/> to form the damage range.
+        /// </summary>
+        public int FighterDamageBasePercent { get; set; }
+
+        /// <summary>
+        /// Percent spread added to the minimum fighter damage, scaled by a random roll.
+        /// </summary>
+        public int FighterDamageSpreadPercent { get; set; }
     }
 
     /// <summary>

@@ -585,16 +585,16 @@
   <Combat>
     <!-- Personnel divisor for assault strength: (personnel / divisor + 1) * fleet_combat_value -->
     <AssaultPersonnelDivisor>40</AssaultPersonnelDivisor>
-    <!-- Bombardment strike resistance check range (GENERAL_PARAM 1538/1539) -->
+    <!-- Bombardment strike resistance check range -->
     <BombardmentStrikeThresholdLow>1</BombardmentStrikeThresholdLow>
     <BombardmentStrikeThresholdHigh>10</BombardmentStrikeThresholdHigh>
-    <!-- Resistance value for system energy lane (GENERAL_PARAM 1540) -->
+    <!-- Resistance value for system energy lane -->
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
-    <!-- Number of Shield facilities required to block bombardment entirely (GENERAL_PARAM_7683) -->
+    <!-- Number of Shield facilities required to block bombardment entirely -->
     <BombardmentShieldBlockThreshold>2</BombardmentShieldBlockThreshold>
-    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) (GENERAL_PARAM_512) -->
+    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) -->
     <DefenseFacilityResponseDivisor>5</DefenseFacilityResponseDivisor>
-    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 (GENERAL_PARAM_517) -->
+    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 -->
     <RepeatTrialProbability>8</RepeatTrialProbability>
     <!-- Divisor applied to a commander's leadership rating to produce a ground-combat bonus -->
     <GroundCombatCommanderDivisor>30</GroundCombatCommanderDivisor>
@@ -604,6 +604,13 @@
     <GroundCombatDefenderWinsThreshold>4</GroundCombatDefenderWinsThreshold>
     <!-- Attacker wins when the contest score is at or above this value -->
     <GroundCombatAttackerWinsThreshold>6</GroundCombatAttackerWinsThreshold>
+    <!-- Weapon damage variance: damage rolls uniformly in [base*(1-pct/100), base*(1+pct/100)] -->
+    <WeaponDamageVariancePercent>20</WeaponDamageVariancePercent>
+    <!-- Percent of squadrons lost per dogfight round, scaled by relative numbers and a roll -->
+    <FighterDogfightLossRatePercent>30</FighterDogfightLossRatePercent>
+    <!-- Fighter damage range: [Base%, (Base+Spread)%] of nominal, rolled uniformly -->
+    <FighterDamageBasePercent>80</FighterDamageBasePercent>
+    <FighterDamageSpreadPercent>40</FighterDamageSpreadPercent>
   </Combat>
   <!-- Uprising System Configuration -->
   <Uprising>

@@ -18,6 +18,16 @@ namespace Rebellion.Generation
             public Officer[] Unrecruited;
         }
 
+        /// <summary>
+        /// Selects a subset of officers, deploys each to a starting planet, and returns
+        /// the deployed and unrecruited groups for the caller to attach.
+        /// </summary>
+        /// <param name="allOfficers">The full officer roster available for this game.</param>
+        /// <param name="systems">Generated planet systems, used for deployment target selection.</param>
+        /// <param name="rules">Generation rules controlling officer selection and placement.</param>
+        /// <param name="summary">Game summary (difficulty, galaxy size, etc.) influencing officer counts.</param>
+        /// <param name="rng">Random-number provider used for selection and placement rolls.</param>
+        /// <returns>An <see cref="OfficerResults"/> split into deployed and unrecruited officers.</returns>
         public OfficerResults Deploy(
             Officer[] allOfficers,
             PlanetSystem[] systems,

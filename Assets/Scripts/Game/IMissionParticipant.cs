@@ -22,6 +22,11 @@ namespace Rebellion.Game
         public Dictionary<MissionParticipantSkill, int> Skills { get; set; }
         public bool CanImproveMissionSkill { get; }
 
+        /// <summary>
+        /// Assigns a skill value for the given skill, overwriting any prior value.
+        /// </summary>
+        /// <param name="skill">The skill to assign.</param>
+        /// <param name="value">The new value.</param>
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value);
 
         /// <summary>

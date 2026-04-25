@@ -33,12 +33,12 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the type of the message.
+        /// Returns the message text and marks it as read.
         /// </summary>
         /// <returns>The text of the message.</returns>
         public string GetText()
         {
-            Read = false;
+            Read = true;
             return Text;
         }
     }

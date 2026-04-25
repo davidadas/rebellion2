@@ -11,6 +11,16 @@ namespace Rebellion.Generation
     /// </summary>
     public class SystemConfigurator
     {
+        /// <summary>
+        /// Populates per-planet properties (energy, raw materials, colonization, popular support,
+        /// visitors) across every system. Core and rim systems follow different rules derived
+        /// from the classification result and generation config.
+        /// </summary>
+        /// <param name="systems">All generated planet systems to configure.</param>
+        /// <param name="classification">Bucket/HQ assignments produced by <see cref="GalaxyClassifier"/>.</param>
+        /// <param name="rules">Generation rules supplying resource dice and support formulas.</param>
+        /// <param name="factionIds">IDs of every faction in the game, used to distribute support.</param>
+        /// <param name="rng">Random-number provider for dice rolls and colonization chances.</param>
         public void Configure(
             PlanetSystem[] systems,
             GalaxyClassificationResult classification,

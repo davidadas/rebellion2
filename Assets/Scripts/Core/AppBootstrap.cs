@@ -69,6 +69,10 @@ public sealed class AppBootstrap : MonoBehaviour
         return handler;
     }
 
+    /// <summary>
+    /// Returns the active <see cref="GameRuntime"/> held by this bootstrap.
+    /// </summary>
+    /// <returns>The runtime, or null if the bootstrap has not yet been initialized.</returns>
     public GameRuntime GetRuntime()
     {
         return _runtime;

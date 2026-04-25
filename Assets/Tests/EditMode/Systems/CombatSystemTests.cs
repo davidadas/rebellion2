@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_TwoFactionFleets_RunsSpaceCombat()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_NoHostileFleets_DoesNotRunCombat()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_SingleFactionFleets_DoesNotRunCombat()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
 
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_MultipleAttackerFleets_OnlyFirstPairFights()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_AttackerDestroysDefender_ReturnsAttackerVictory()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -222,7 +222,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_MutualDestruction_RemovesBothFleets()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -297,7 +297,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_ShipDestroyed_RemovedFromFleet()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -355,7 +355,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -421,7 +421,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_EmptyFleet_RemovedFromScene()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -456,7 +456,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_BothSidesZeroWeapons_AppliesNoDamage()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -493,7 +493,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_WeaponFire_DamagesTargets()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -519,7 +519,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_ShieldAbsorption_ReducesDamage()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -554,7 +554,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_FightersAttackCapitalShips_AppliesDamage()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -594,7 +594,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_RepeatedRuns_DamageVarianceWithinTwentyPercent()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -638,8 +638,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_SameRNGSeed_ProducesSameOutcome()
         {
-            GameRoot game1 = new GameRoot();
-            GameRoot game2 = new GameRoot();
+            GameRoot game1 = new GameRoot(TestConfig.Create());
+            GameRoot game2 = new GameRoot(TestConfig.Create());
 
             foreach (GameRoot game in new[] { game1, game2 })
             {
@@ -676,8 +676,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_DifferentRNGSeeds_ProduceDifferentOutcomes()
         {
-            GameRoot game1 = new GameRoot();
-            GameRoot game2 = new GameRoot();
+            GameRoot game1 = new GameRoot(TestConfig.Create());
+            GameRoot game2 = new GameRoot(TestConfig.Create());
 
             foreach (GameRoot game in new[] { game1, game2 })
             {
@@ -714,7 +714,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_EmptyFleets_DoesNotRunCombat()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -741,7 +741,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TryStartCombat_HostileFleets_ReturnsTrueAndSetsContext()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -768,7 +768,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TryStartCombat_TwoHostileFleets_SetsIsInCombatOnBothFleets()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -794,7 +794,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -825,7 +825,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TryStartCombat_FleetsInCombat_NotDetectedAgain()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
@@ -853,7 +853,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             // No PlayerID = IsAIControlled() returns true
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
@@ -904,7 +904,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
-            GameRoot game = new GameRoot();
+            GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);

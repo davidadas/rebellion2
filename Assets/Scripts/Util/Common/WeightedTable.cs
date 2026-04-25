@@ -38,6 +38,13 @@ namespace Rebellion.Util.Common
             _fallbackToLast = fallbackToLast;
         }
 
+        /// <summary>
+        /// Rolls against the cumulative weights and returns the matching entry's item.
+        /// Rolls in [rollMin, rollMax); a roll that exceeds every weight falls back to the
+        /// last entry when <c>fallbackToLast</c> is set, or returns <c>default(T)</c> otherwise.
+        /// </summary>
+        /// <param name="rng">Random-number provider supplying the roll.</param>
+        /// <returns>The selected item, or <c>default(T)</c> if the table is empty or the roll misses.</returns>
         public T Roll(IRandomNumberProvider rng)
         {
             if (_entries.Count == 0)

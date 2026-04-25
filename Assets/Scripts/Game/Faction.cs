@@ -139,6 +139,11 @@ namespace Rebellion.Game
             return _ownedEntities[typeof(T)].Cast<T>().ToList();
         }
 
+        /// <summary>
+        /// Returns the faction's owned fleets filtered by the given role type.
+        /// </summary>
+        /// <param name="roleType">The fleet role (Battle, Patrol, etc.) to match.</param>
+        /// <returns>The matching fleets, or an empty list if none qualify.</returns>
         public List<Fleet> GetFleetsByType(FleetRoleType roleType)
         {
             return GetOwnedUnitsByType<Fleet>().Where(f => f.RoleType == roleType).ToList();

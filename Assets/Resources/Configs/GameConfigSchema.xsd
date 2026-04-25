@@ -155,6 +155,10 @@
               <xs:element name="GroundCombatContestDiceRange" type="xs:nonNegativeInteger" />
               <xs:element name="GroundCombatDefenderWinsThreshold" type="xs:integer" />
               <xs:element name="GroundCombatAttackerWinsThreshold" type="xs:integer" />
+              <xs:element name="WeaponDamageVariancePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDogfightLossRatePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDamageBasePercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterDamageSpreadPercent" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
         </xs:element>
