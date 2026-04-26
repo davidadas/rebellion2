@@ -1480,6 +1480,44 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_BuildingArrivesAtNeutralPlanet_DestroysBuilding()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.EnergyCapacity = 1;
+
+            Building building = new Building
+            {
+                InstanceID = "bld1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, destination);
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            movement.ProcessTick();
+
+            CollectionAssert.DoesNotContain(
+                destination.Buildings,
+                building,
+                "Building must not auto-colonize a neutral planet — it should be destroyed"
+            );
+            Assert.IsFalse(
+                destination.IsColonized,
+                "Neutral planet must not be colonized by a building whose owner doesn't match"
+            );
+        }
+
+        [Test]
         public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =

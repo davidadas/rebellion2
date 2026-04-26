@@ -1960,9 +1960,9 @@ namespace Rebellion.Systems
         /// Scores between the two thresholds are draws (both troops survive).
         /// </summary>
         /// <param name="attackerStrength">The attacker regiment's offensive row strength.</param>
-        /// <param name="attackerCommanderRating">Leadership rating of the attacker's General (0 if none).</param>
+        /// <param name="attackerCommanderRating">Leadership rating of the attacker's Admiral (0 if none).</param>
         /// <param name="defenderStrength">The defender regiment's defensive row strength.</param>
-        /// <param name="defenderCommanderRating">Leadership rating of the defender's General (0 if none).</param>
+        /// <param name="defenderCommanderRating">Leadership rating of the defender's Admiral (0 if none).</param>
         /// <returns>Pair of flags: (defenderWins, attackerWins). Both false on a draw.</returns>
         private (bool DefenderWins, bool AttackerWins) ResolveTroopKillContest(
             int attackerStrength,

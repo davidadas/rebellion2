@@ -429,34 +429,29 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
-            // Destination changed sides since dispatch. Neutral (null owner) is allowed —
-            // arrivals at uncolonized worlds drive first contact and visitor tracking.
+            // Buildings can't auto-colonize a planet whose owner doesn't match — destroy them.
+            // Fleets/officers/regiments may land on neutral planets for first-contact tracking.
             string destinationOwner = destinationPlanet.GetOwnerInstanceID();
-            if (
-                !string.IsNullOrEmpty(destinationOwner)
-                && destinationOwner != movable.GetOwnerInstanceID()
-            )
+            bool ownerMatches = destinationOwner == movable.GetOwnerInstanceID();
+            if (!ownerMatches && movable is Building building)
             {
-                if (movable is Building building)
+                _game.DetachNode(building);
+                GameLogger.Log(
+                    $"Building {building.GetDisplayName()} destroyed: destination changed sides during transit."
+                );
+                return new List<GameResult>
                 {
-                    _game.DetachNode((ISceneNode)movable);
-                    GameLogger.Log(
-                        $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
-                    );
-                    return new List<GameResult>
+                    new GameObjectDestroyedOnArrivalResult
                     {
-                        new GameObjectDestroyedOnArrivalResult
-                        {
-                            DestroyedObject = building,
-                            Context = destinationPlanet,
-                            Tick = _game.CurrentTick,
-                        },
-                    };
-                }
-                else
-                {
-                    HandleArrivalRejection(movable, destinationPlanet);
-                }
+                        DestroyedObject = building,
+                        Context = destinationPlanet,
+                        Tick = _game.CurrentTick,
+                    },
+                };
+            }
+            if (!ownerMatches && !string.IsNullOrEmpty(destinationOwner))
+            {
+                HandleArrivalRejection(movable, destinationPlanet);
                 return new List<GameResult>();
             }
 
