@@ -1414,5 +1414,337 @@ namespace Rebellion.Tests.Systems
         }
 
         #endregion
+
+        [Test]
+        public void ProcessTick_BuildingArrivesAtUncolonizedPlanet_MarksItColonized()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            destination.IsColonized = false;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            // Stage the building scene-parented to the destination (the arrival pipeline
+            // expects this) and ready to complete on the next tick.
+            game.AttachNode(building, destination);
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.IsColonized,
+                "Building arrival at an uncolonized planet should colonize it"
+            );
+            Assert.IsNull(building.Movement, "Building should have completed its transit");
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            // Precondition: destination has not yet been visited by anyone.
+            Assert.IsFalse(destination.WasVisitedBy("empire"));
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Fleet arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingArrivesAtNeutralPlanet_DestroysBuilding()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.EnergyCapacity = 1;
+
+            Building building = new Building
+            {
+                InstanceID = "bld1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, destination);
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            movement.ProcessTick();
+
+            CollectionAssert.DoesNotContain(
+                destination.Buildings,
+                building,
+                "Building must not auto-colonize a neutral planet — it should be destroyed"
+            );
+            Assert.IsFalse(
+                destination.IsColonized,
+                "Neutral planet must not be colonized by a building whose owner doesn't match"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsNull(
+                fleet.Movement,
+                "Fleet should complete arrival at a neutral planet, clearing its movement state"
+            );
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Arrival at a neutral planet must record the visitor for first-contact tracking"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            game.DetachNode(officer);
+            game.AttachNode(officer, destination);
+            officer.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Officer arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtAlreadyVisitedPlanet_DoesNotDuplicate()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.AddVisitor("empire");
+            int countBefore = destination.VisitingFactionIDs.Count;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.AreEqual(
+                countBefore,
+                destination.VisitingFactionIDs.Count,
+                "Repeat arrivals must not duplicate visitor entries"
+            );
+        }
+
+        /// <summary>
+        /// Builds a fleet of the given faction parked over the given planet, holding one
+        /// idle regiment ready to drop. The planet has the faction as a visitor.
+        /// </summary>
+        private (Fleet fleet, Regiment regiment) StageFleetWithRegimentAt(
+            GameRoot game,
+            Planet planet,
+            string factionId
+        )
+        {
+            planet.AddVisitor(factionId);
+
+            Fleet fleet = new Fleet(factionId, $"{factionId}-fleet");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{factionId}-ship-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = $"{factionId}-reg-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            game.AttachNode(regiment, ship);
+
+            return (fleet, regiment);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ClaimsImmediately()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+            Assert.AreEqual(
+                game.Config.Planet.MaxPopularSupport,
+                destination.GetPopularSupport("empire")
+            );
+            Assert.AreEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = true;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.AreNotEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_DoesNotImmediatelyReleaseToNeutral()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = false;
+
+            // Garrison the planet directly, then stage an empty fleet to receive the regiment.
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffColonizedOwnedPlanet_OwnershipPersists()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = true;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
     }
 }

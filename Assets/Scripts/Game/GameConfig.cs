@@ -56,6 +56,57 @@ public class GameConfig
         /// <summary>Capital ship production pipeline parameters.</summary>
         public CapitalShipProductionConfig CapitalShipProduction { get; set; } =
             new CapitalShipProductionConfig();
+
+        /// <summary>Unit selection parameters for AI manufacturing.</summary>
+        public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
+
+        /// <summary>Infrastructure shortage parameters for AI manufacturing.</summary>
+        public AIInfrastructureConfig Infrastructure { get; set; } = new AIInfrastructureConfig();
+    }
+
+    [PersistableObject]
+    public class AISelectionConfig
+    {
+        public int CandidatePoolSize { get; set; }
+        public int RecentBuildHistoryLimit { get; set; }
+        public int RepeatBuildPenaltyPerSelection { get; set; }
+        public int LocalDuplicatePenaltyPerSelection { get; set; }
+        public int MaxFleetCapitalBeforeSplit { get; set; }
+        public int MaxDuplicateCapitalTypePerFleet { get; set; }
+        public int MaxDuplicateStarfighterTypePerFleet { get; set; }
+        public int MaxDuplicateRegimentTypePerDestination { get; set; }
+        public int PremiumCapitalConstructionCostThreshold { get; set; }
+        public int MaxPremiumCapitalsPerFaction { get; set; }
+        public int CapitalConstructionCostWeight { get; set; }
+        public int CapitalMaintenanceCostWeight { get; set; }
+        public int CapitalCombatWeight { get; set; }
+        public int CapitalStarfighterCapacityWeight { get; set; }
+        public int CapitalRegimentCapacityWeight { get; set; }
+        public int CapitalBombardmentWeight { get; set; }
+        public int CapitalGravityWellWeight { get; set; }
+        public int CapitalEmptyFleetCombatBoost { get; set; }
+        public int CapitalMissingStarfighterCapacityBoost { get; set; }
+        public int CapitalMissingRegimentCapacityBoost { get; set; }
+        public int CapitalMissingGravityWellBoost { get; set; }
+        public int StarfighterEscortWeight { get; set; }
+        public int StarfighterInterceptorWeight { get; set; }
+        public int StarfighterBomberWeight { get; set; }
+        public int StarfighterMissingInterceptorBoost { get; set; }
+        public int StarfighterMissingBomberBoost { get; set; }
+        public int RegimentDefenseWeight { get; set; }
+        public int RegimentAttackWeight { get; set; }
+        public int RegimentBombardmentDefenseWeight { get; set; }
+        public int RegimentGarrisonDefenseBoost { get; set; }
+        public int RegimentFleetAttackBoost { get; set; }
+    }
+
+    [PersistableObject]
+    public class AIInfrastructureConfig
+    {
+        public int PlanetsPerConstructionFacility { get; set; }
+        public int PlanetsPerShipyard { get; set; }
+        public int PlanetsPerTrainingFacility { get; set; }
+        public int MaxDefensePerPlanet { get; set; }
     }
 
     /// <summary>
@@ -122,6 +173,11 @@ public class GameConfig
         /// Multiplier applied to garrison requirement during an uprising.
         /// </summary>
         public int UprisingMultiplier { get; set; }
+
+        /// <summary>
+        /// Maximum remaining planet garrison deficit that still allows loading regiments into fleets.
+        /// </summary>
+        public int FleetLoadingDeficitThreshold { get; set; }
     }
 
     /// <summary>
@@ -150,6 +206,18 @@ public class GameConfig
         /// Negative = support drops during an uprising.
         /// </summary>
         public int ControllerSupportShift { get; set; }
+
+        /// <summary>Minimum ticks between active-uprising support drift pulses.</summary>
+        public int ActiveSupportDriftMinTicks { get; set; }
+
+        /// <summary>Maximum ticks between active-uprising support drift pulses.</summary>
+        public int ActiveSupportDriftMaxTicks { get; set; }
+
+        /// <summary>Minimum ticks between active-uprising incident pulses.</summary>
+        public int IncidentPulseMinTicks { get; set; }
+
+        /// <summary>Maximum ticks between active-uprising incident pulses.</summary>
+        public int IncidentPulseMaxTicks { get; set; }
     }
 
     /// <summary>
@@ -260,6 +328,9 @@ public class GameConfig
         /// <summary>Multiplier for raw to refined materials.</summary>
         public int RefinementMultiplier { get; set; }
 
+        /// <summary>Ticks between maintenance shortfall auto-scrap attempts.</summary>
+        public int MaintenanceShortfallAutoscrapInterval { get; set; }
+
         /// <summary>Production penalty per hostile capital ship during blockade.</summary>
         public int BlockadeCapitalShipPenalty { get; set; }
 
@@ -350,30 +421,24 @@ public class GameConfig
 
         /// <summary>
         /// Probability (out of 100) that a single repeat trial succeeds during stage 4
-        /// of planetary defense combat. Ported from the original's probability table.
+        /// of planetary defense combat.
         /// </summary>
         public int RepeatTrialProbability { get; set; }
 
-        /// <summary>
-        /// Percent variance applied to each weapon damage roll, symmetric around the base damage.
-        /// </summary>
+        public int GroundCombatCommanderDivisor { get; set; }
+
+        public int GroundCombatContestDiceRange { get; set; }
+
+        public int GroundCombatDefenderWinsThreshold { get; set; }
+
+        public int GroundCombatAttackerWinsThreshold { get; set; }
+
         public int WeaponDamageVariancePercent { get; set; }
 
-        /// <summary>
-        /// Percent of each side's fighter squadrons that can be lost per dogfight round.
-        /// Actual losses scale by the enemy's relative squadron count and a random roll.
-        /// </summary>
         public int FighterDogfightLossRatePercent { get; set; }
 
-        /// <summary>
-        /// Minimum percent of nominal fighter damage applied per strike. Combines with
-        /// <see cref="FighterDamageSpreadPercent"/> to form the damage range.
-        /// </summary>
         public int FighterDamageBasePercent { get; set; }
 
-        /// <summary>
-        /// Percent spread added to the minimum fighter damage, scaled by a random roll.
-        /// </summary>
         public int FighterDamageSpreadPercent { get; set; }
     }
 
@@ -458,73 +523,35 @@ public class GameConfig
         /// <summary>Base research points awarded per successful research mission.</summary>
         public int BaseResearchPoints { get; set; }
 
-        /// <summary>Random bonus range added to base research points on success.</summary>
+        /// <summary>Random bonus range: award random(0, DiceRange) extra points on success.</summary>
         public int ResearchDiceRange { get; set; }
     }
 
-    /// <summary>
-    /// Assassination mission outcome configuration.
-    /// Controls injury dice and survival probability on a successful hit.
-    /// </summary>
     [PersistableObject]
     public class AssassinationConfig
     {
-        /// <summary>Base injury always applied on a successful assassination hit.</summary>
         public int BaseInjury { get; set; }
-
-        /// <summary>Upper bound of the primary injury roll.</summary>
         public int PrimaryInjuryRange { get; set; }
-
-        /// <summary>Upper bound of the secondary injury roll.</summary>
         public int SecondaryInjuryRange { get; set; }
-
-        /// <summary>Probability (0–100) that a hit kills the target outright.</summary>
         public int KillProbability { get; set; }
     }
 
-    /// <summary>
-    /// Recovery system configuration.
-    /// Controls officer healing rates and ship repair rates.
-    /// </summary>
     [PersistableObject]
     public class RecoveryConfig
     {
-        /// <summary>Maximum injury points an officer can accumulate.</summary>
         public int MaxInjuryPoints { get; set; }
-
-        /// <summary>Injury points healed per tick for officers with FastHeal (Force users).</summary>
         public int FastHealAmount { get; set; }
-
-        /// <summary>Injury points healed per tick for normal officers.</summary>
         public int NormalHealAmount { get; set; }
-
-        /// <summary>Hull points repaired per tick for ships at a friendly shipyard.</summary>
         public int FastRepairAmount { get; set; }
-
-        /// <summary>Hull points repaired per tick for ships not at a shipyard.</summary>
         public int NormalRepairAmount { get; set; }
-
-        /// <summary>Fighters replaced per tick for squadrons at a friendly planet.</summary>
         public int FastReplacementAmount { get; set; }
-
-        /// <summary>Fighters replaced per tick for squadrons not at a friendly planet.</summary>
         public int NormalReplacementAmount { get; set; }
     }
 
-    /// <summary>
-    /// Captive system configuration.
-    /// Controls escape attempt probability and loyalty effects.
-    /// </summary>
     [PersistableObject]
     public class CaptiveConfig
     {
-        /// <summary>
-        /// Escape probability table. Maps (officerSkills - planetDefense) to escape
-        /// probability 0–100. Looked up each tick for captured officers with CanEscape.
-        /// </summary>
         public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
-
-        /// <summary>Loyalty shift applied to the officer on successful escape.</summary>
         public int EscapeLoyaltyShift { get; set; }
     }
 
@@ -552,14 +579,10 @@ public class GameConfig
         public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Decoy { get; set; } = new Dictionary<int, int>();
-
-        /// <summary>Percentage of defender espionage subtracted from decoy score.</summary>
-        public int DecoyDefenderScalingPercent { get; set; }
         public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> DeathStarSabotage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
-        public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
         public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();

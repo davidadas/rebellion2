@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void AddStarfighter_WithinCapacity_AddsStarfighter()
         {
-            Starfighter starfighter = new Starfighter();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddStarfighter(starfighter);
 
@@ -49,18 +49,18 @@ namespace Rebellion.Tests.Game
         [Test]
         public void AddStarfighter_ExceedsCapacity_ThrowsException()
         {
-            _capitalShip.AddStarfighter(new Starfighter());
-            _capitalShip.AddStarfighter(new Starfighter());
+            _capitalShip.AddStarfighter(new Starfighter { OwnerInstanceID = "FNALL1" });
+            _capitalShip.AddStarfighter(new Starfighter { OwnerInstanceID = "FNALL1" });
 
             Assert.Throws<InvalidOperationException>(() =>
-                _capitalShip.AddStarfighter(new Starfighter())
+                _capitalShip.AddStarfighter(new Starfighter { OwnerInstanceID = "FNALL1" })
             );
         }
 
         [Test]
         public void AddRegiment_WithinCapacity_AddsRegiment()
         {
-            Regiment regiment = new Regiment();
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddRegiment(regiment);
 
@@ -70,12 +70,12 @@ namespace Rebellion.Tests.Game
         [Test]
         public void AddRegiment_ExceedsCapacity_ThrowsException()
         {
-            _capitalShip.AddRegiment(new Regiment());
-            _capitalShip.AddRegiment(new Regiment());
-            _capitalShip.AddRegiment(new Regiment());
+            _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" });
+            _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" });
+            _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" });
 
             Assert.Throws<InvalidOperationException>(() =>
-                _capitalShip.AddRegiment(new Regiment())
+                _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" })
             );
         }
 
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RemoveStarfighter_ExistingStarfighter_RemovesItFromFleet()
         {
-            Starfighter starfighter = new Starfighter();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
             _capitalShip.AddStarfighter(starfighter);
 
             _capitalShip.RemoveChild(starfighter);
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RemoveRegiment_ExistingRegiment_RemovesItFromFleet()
         {
-            Regiment regiment = new Regiment();
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
             _capitalShip.AddRegiment(regiment);
 
             _capitalShip.RemoveChild(regiment);
@@ -160,8 +160,8 @@ namespace Rebellion.Tests.Game
         public void GetChildren_FleetWithChildren_ReturnsAllChildNodes()
         {
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-            Starfighter starfighter = new Starfighter();
-            Regiment regiment = new Regiment();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddOfficer(officer);
             _capitalShip.AddStarfighter(starfighter);
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void AddChild_ValidStarfighter_AddsToFleet()
         {
-            Starfighter starfighter = new Starfighter();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddChild(starfighter);
 
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void AddChild_ValidRegiment_AddsToFleet()
         {
-            Regiment regiment = new Regiment();
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddChild(regiment);
 
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RemoveChild_ExistingStarfighter_RemovesIt()
         {
-            Starfighter starfighter = new Starfighter();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
             _capitalShip.AddChild(starfighter);
 
             _capitalShip.RemoveChild(starfighter);
@@ -228,7 +228,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void RemoveChild_ExistingRegiment_RemovesIt()
         {
-            Regiment regiment = new Regiment();
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
             _capitalShip.AddChild(regiment);
 
             _capitalShip.RemoveChild(regiment);
@@ -251,8 +251,8 @@ namespace Rebellion.Tests.Game
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
-            Starfighter starfighter = new Starfighter();
-            Regiment regiment = new Regiment();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddOfficer(officer);
             _capitalShip.AddStarfighter(starfighter);
@@ -332,8 +332,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentStarfighterCount_WithStarfighters_ReturnsCorrectCount()
         {
-            _capitalShip.AddStarfighter(new Starfighter());
-            _capitalShip.AddStarfighter(new Starfighter());
+            _capitalShip.AddStarfighter(new Starfighter { OwnerInstanceID = "FNALL1" });
+            _capitalShip.AddStarfighter(new Starfighter { OwnerInstanceID = "FNALL1" });
 
             int count = _capitalShip.GetCurrentStarfighterCount();
 
@@ -359,8 +359,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentRegimentCount_WithRegiments_ReturnsCorrectCount()
         {
-            _capitalShip.AddRegiment(new Regiment());
-            _capitalShip.AddRegiment(new Regiment());
+            _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" });
+            _capitalShip.AddRegiment(new Regiment { OwnerInstanceID = "FNALL1" });
 
             int count = _capitalShip.GetCurrentRegimentCount();
 

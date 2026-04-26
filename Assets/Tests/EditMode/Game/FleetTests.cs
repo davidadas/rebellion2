@@ -115,8 +115,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentStarfighterCount_MultipleCapitalShips_ReturnsTotalSum()
         {
-            Starfighter starfighter1 = new Starfighter();
-            Starfighter starfighter2 = new Starfighter();
+            Starfighter starfighter1 = new Starfighter { OwnerInstanceID = "FACTION1" };
+            Starfighter starfighter2 = new Starfighter { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _capitalShip1.AddStarfighter(starfighter1);
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetExcessStarfighterCapacity_PartiallyFilledFleet_ReturnsRemainingCapacity()
         {
-            Starfighter starfighter = new Starfighter();
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _capitalShip1.AddStarfighter(starfighter);
@@ -143,8 +143,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentRegimentCount_MultipleCapitalShips_ReturnsTotalSum()
         {
-            Regiment regiment1 = new Regiment();
-            Regiment regiment2 = new Regiment();
+            Regiment regiment1 = new Regiment { OwnerInstanceID = "FACTION1" };
+            Regiment regiment2 = new Regiment { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _capitalShip1.AddRegiment(regiment1);
@@ -158,7 +158,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetExcessRegimentCapacity_PartiallyFilledFleet_ReturnsRemainingCapacity()
         {
-            Regiment regiment = new Regiment();
+            Regiment regiment = new Regiment { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _capitalShip1.AddRegiment(regiment);
@@ -230,9 +230,9 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetStarfighters_FleetWithStarfighters_ReturnsAllStarfightersAcrossFleet()
         {
-            Starfighter starfighter1 = new Starfighter();
-            Starfighter starfighter2 = new Starfighter();
-            Starfighter starfighter3 = new Starfighter();
+            Starfighter starfighter1 = new Starfighter { OwnerInstanceID = "FACTION1" };
+            Starfighter starfighter2 = new Starfighter { OwnerInstanceID = "FACTION1" };
+            Starfighter starfighter3 = new Starfighter { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _fleet.AddChild(_capitalShip2);
@@ -262,9 +262,9 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetRegiments_FleetWithRegiments_ReturnsAllRegimentsAcrossFleet()
         {
-            Regiment regiment1 = new Regiment();
-            Regiment regiment2 = new Regiment();
-            Regiment regiment3 = new Regiment();
+            Regiment regiment1 = new Regiment { OwnerInstanceID = "FACTION1" };
+            Regiment regiment2 = new Regiment { OwnerInstanceID = "FACTION1" };
+            Regiment regiment3 = new Regiment { OwnerInstanceID = "FACTION1" };
 
             _fleet.AddChild(_capitalShip1);
             _fleet.AddChild(_capitalShip2);

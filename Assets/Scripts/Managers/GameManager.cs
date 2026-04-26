@@ -21,7 +21,7 @@ public class GameManager
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
     private ResourceRebalanceSystem _resourceRebalanceManager;
-    private ResourceIncomeSystem _resourceIncomeManager;
+    private Rebellion.Systems.ResourceIncomeSystem _resourceIncomeManager;
     private CombatSystem _combatManager;
     private FogOfWarSystem _fogOfWarManager;
     private BlockadeSystem _blockadeManager;
@@ -248,7 +248,7 @@ public class GameManager
         _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
         _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
         _resourceRebalanceManager = new ResourceRebalanceSystem(_game, _randomProvider);
-        _resourceIncomeManager = new ResourceIncomeSystem(_game);
+        _resourceIncomeManager = new Rebellion.Systems.ResourceIncomeSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
             _movementManager,

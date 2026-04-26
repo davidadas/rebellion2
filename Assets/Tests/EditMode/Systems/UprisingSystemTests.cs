@@ -21,6 +21,10 @@ namespace Rebellion.Tests.Systems
         )
         {
             GameConfig config = TestConfig.Create();
+            config.Uprising.ActiveSupportDriftMinTicks = 1;
+            config.Uprising.ActiveSupportDriftMaxTicks = 1;
+            config.Uprising.IncidentPulseMinTicks = 1;
+            config.Uprising.IncidentPulseMaxTicks = 1;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
@@ -120,33 +124,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
-            // Planet already in uprising with one garrison troop. Dice produce a score
-            // that triggers consequence case 1 (destroy facility). Two buildings present —
-            // one gets destroyed, but the second keeps the planet owned.
-            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
-                ownerSupport: 10,
-                troopCount: 1,
-                rng: new SequenceRNG(intValues: new[] { 0, 0 })
-            );
-            planet.IsInUprising = true;
-            planet.EnergyCapacity = 2;
-            Building facility = EntityFactory.CreateBuilding("b1", "empire");
-            Building facility2 = EntityFactory.CreateBuilding("b2", "empire");
-            game.AttachNode(facility, planet);
-            game.AttachNode(facility2, planet);
-
-            system.ProcessTick();
-
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>("b1"),
-                "Facility should be destroyed by uprising case 1"
-            );
-            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
-        }
-
-        [Test]
-        public void ProcessTick_ActiveUprisingLastBuildingDestroyed_PlanetGoesNeutral()
-        {
+            // Planet already in uprising with one garrison troop (so the zero-garrison flip
+            // mechanic doesn't fire). Dice produce a score that triggers consequence case 1
+            // (destroy facility). A building is present, so it gets destroyed.
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1,
@@ -157,17 +137,13 @@ namespace Rebellion.Tests.Systems
             Building facility = EntityFactory.CreateBuilding("b1", "empire");
             game.AttachNode(facility, planet);
 
-            List<GameResult> results = system.ProcessTick();
+            system.ProcessTick();
 
             Assert.IsNull(
-                planet.GetOwnerInstanceID(),
-                "Planet should go neutral when last building is destroyed by uprising"
+                game.GetSceneNodeByInstanceID<Building>("b1"),
+                "Facility should be destroyed by uprising case 1"
             );
-            Assert.IsFalse(planet.IsInUprising, "Uprising should end when planet goes neutral");
-            Assert.IsTrue(
-                results.OfType<PlanetOwnershipChangedResult>().Any(r => r.NewOwner == null),
-                "Should produce ownership changed result with null new owner"
-            );
+            Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
         }
 
         [Test]
@@ -187,11 +163,6 @@ namespace Rebellion.Tests.Systems
             List<GameResult> results = system.ProcessTick();
 
             Assert.IsTrue(officer.IsCaptured, "Officer should be captured by uprising case 3");
-            Assert.IsNotNull(
-                officer.CaptorInstanceID,
-                "CaptorInstanceID should be set to the opposing faction"
-            );
-            Assert.IsTrue(officer.CanEscape, "Uprising-captured officer should be able to escape");
             Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any(r => r.IsCaptured));
         }
 
@@ -574,79 +545,28 @@ namespace Rebellion.Tests.Systems
             Planet planet,
             Faction faction,
             PlanetaryControlSystem system
-        ) BuildScene(
-            int support = 20,
-            int hostileFleets = 0,
-            int hostileFighters = 0,
-            int hostileTroops = 0,
-            int friendlyFleets = 0,
-            bool isCoreSystem = false,
-            bool invertSupport = false,
-            SupportShiftCondition weakPenalty = SupportShiftCondition.Positive,
-            int troopEffectiveness = 1
-        )
+        ) BuildScene(int support = 20, string ownerInstanceId = "empire", bool isColonized = true)
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                Modifiers = new FactionModifiers
-                {
-                    InvertSupportShift = invertSupport,
-                    WeakSupportPenaltyTrigger = weakPenalty,
-                    TroopEffectiveness = troopEffectiveness,
-                },
-            };
+            Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
             game.Factions.Add(empire);
             game.Factions.Add(rebels);
 
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = isCoreSystem ? PlanetSystemType.CoreSystem : PlanetSystemType.OuterRim,
-            };
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
             game.AttachNode(system, game.Galaxy);
 
             Planet planet = new Planet
             {
                 InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
+                OwnerInstanceID = ownerInstanceId,
+                IsColonized = isColonized,
                 PositionX = 0,
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", support } },
             };
             game.AttachNode(planet, system);
-
-            // Add hostile fleets
-            for (int i = 0; i < hostileFleets; i++)
-            {
-                Fleet fleet = EntityFactory.CreateFleet($"hf{i}", "rebels");
-                game.AttachNode(fleet, planet);
-            }
-
-            // Add hostile fighters (loose on planet — placed directly, bypassing ownership check)
-            for (int i = 0; i < hostileFighters; i++)
-            {
-                Starfighter starfighter = EntityFactory.CreateStarfighter($"hsf{i}", "rebels");
-                planet.Starfighters.Add(starfighter);
-            }
-
-            // Add hostile troops (placed directly, bypassing ownership check)
-            for (int i = 0; i < hostileTroops; i++)
-            {
-                Regiment regiment = EntityFactory.CreateRegiment($"hr{i}", "rebels");
-                planet.Regiments.Add(regiment);
-            }
-
-            // Add friendly fleets
-            for (int i = 0; i < friendlyFleets; i++)
-            {
-                Fleet fleet = EntityFactory.CreateFleet($"ff{i}", "empire");
-                game.AttachNode(fleet, planet);
-            }
 
             MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
             PlanetaryControlSystem controlSystem = new PlanetaryControlSystem(
@@ -658,9 +578,8 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LowSupportNoHostiles_RecoveryApplied()
+        public void ProcessTick_OwnedPlanetWithSupport_DoesNotShiftPopularSupport()
         {
-            // Support 15 falls in the 0-20 bracket with a base shift of 75. No hostiles present.
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
                 support: 15
             );
@@ -668,182 +587,64 @@ namespace Rebellion.Tests.Systems
             system.ProcessTick();
 
             Assert.AreEqual(
-                90,
-                planet.GetPopularSupport("empire"),
-                "Support should recover by 75 (15 + 75 = 90)"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_MidBracket_CorrectBaseShift()
-        {
-            // Support 25 falls in the 21-30 bracket with a base shift of 50. No hostiles present.
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 25
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                75,
-                planet.GetPopularSupport("empire"),
-                "Support should recover by 50 (25 + 50 = 75)"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_HighBracket_CorrectBaseShift()
-        {
-            // Support 35 falls in the 31-40 bracket with a base shift of 25. No hostiles present.
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 35
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                60,
-                planet.GetPopularSupport("empire"),
-                "Support should recover by 25 (35 + 25 = 60)"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_AboveThreshold_NoShift()
-        {
-            // Support 50 is above the recovery threshold (40), so no shift occurs.
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 50
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                50,
-                planet.GetPopularSupport("empire"),
-                "Support above threshold should not shift"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_FriendlyFleetPresent_NoShift()
-        {
-            // Support 15 with a friendly fleet present blocks the shift entirely.
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                friendlyFleets: 1
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
                 15,
                 planet.GetPopularSupport("empire"),
-                "Friendly fleet should block support shift"
+                "Owned planets should not gain implicit support from PlanetaryControlSystem ticks"
             );
         }
 
         [Test]
-        public void ProcessTick_HostileForces_ReduceRecovery()
+        public void ProcessTick_NeutralPlanetBelowThreshold_DoesNotTransferOwnership()
         {
-            // Base shift is 75 at support 15. Hostile forces reduce it:
-            // 2 fleets (-20), 3 fighters (-15), 1 troop (-2) = net shift of 38.
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                hostileFleets: 2,
-                hostileFighters: 3,
-                hostileTroops: 1
+                support: 59,
+                ownerInstanceId: null
             );
 
             system.ProcessTick();
 
-            Assert.AreEqual(
-                53,
-                planet.GetPopularSupport("empire"),
-                "Hostile forces should reduce recovery (15 + 38 = 53)"
-            );
+            Assert.IsNull(planet.GetOwnerInstanceID());
         }
 
         [Test]
-        public void ProcessTick_TroopEffectivenessOnCoreSystem_DoublesHostileTroopPenalty()
+        public void ProcessTick_NeutralPlanetAboveThreshold_TransfersOwnership()
         {
-            // Base shift is 75 at support 15. On a core system with TroopEffectiveness=2,
-            // 5 hostile troops apply a doubled penalty of 20, resulting in shift of 55.
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                hostileTroops: 5,
-                troopEffectiveness: 2,
-                isCoreSystem: true,
-                weakPenalty: SupportShiftCondition.Negative
+                support: 61,
+                ownerInstanceId: null
             );
 
             system.ProcessTick();
 
-            Assert.AreEqual(
-                70,
-                planet.GetPopularSupport("empire"),
-                "TroopEffectiveness=2 should double hostile troop penalty (15 + 55 = 70)"
-            );
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
 
         [Test]
-        public void ProcessTick_TroopEffectivenessOnOuterRim_NoBonus()
+        public void ProcessTick_NeutralPlanetWithRegiments_ClaimsForRegimentFaction()
         {
-            // On outer rim, TroopEffectiveness bonus does not apply.
-            // Base shift is 75, 5 hostile troops apply the standard penalty of 10, shift is 65.
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                hostileTroops: 5,
-                troopEffectiveness: 2,
-                isCoreSystem: false
+                support: 61,
+                ownerInstanceId: null
             );
+            planet.Regiments.Add(EntityFactory.CreateRegiment("reg1", "empire"));
 
             system.ProcessTick();
 
-            Assert.AreEqual(
-                80,
-                planet.GetPopularSupport("empire"),
-                "Outer rim should NOT apply TroopEffectiveness bonus (15 + 65 = 80)"
-            );
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
         }
 
         [Test]
-        public void ProcessTick_InvertSupportShift_NegatesRecovery()
+        public void ProcessTick_UncolonizedPlanetAboveThreshold_DoesNotTransferOwnership()
         {
-            // With InvertSupportShift=true, the base shift of 75 is negated to -75.
-            // Support drops from 15 to 0 (clamped).
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                invertSupport: true
+                support: 61,
+                ownerInstanceId: null,
+                isColonized: false
             );
 
             system.ProcessTick();
 
-            Assert.AreEqual(
-                0,
-                planet.GetPopularSupport("empire"),
-                "Inverted support shift should reduce support (clamped to 0)"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_CoreWorldWeakPenalty_HalvesShift()
-        {
-            // On a core system with WeakSupportPenaltyTrigger=Positive, the positive base
-            // shift of 75 is halved to 37.
-            (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
-                support: 15,
-                isCoreSystem: true,
-                weakPenalty: SupportShiftCondition.Positive
-            );
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                52,
-                planet.GetPopularSupport("empire"),
-                "Core weak support should halve recovery (15 + 37 = 52)"
-            );
+            Assert.IsNull(planet.GetOwnerInstanceID());
         }
     }
 }

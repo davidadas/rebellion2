@@ -120,8 +120,10 @@ namespace Rebellion.Systems
             // Destination changed sides since enqueue — same handling as mid-transit rejection.
             if (destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID())
             {
-                // Unit is already inside a fleet — the fleet handles its own routing.
-                if (((ISceneNode)unit).GetParent() is Fleet)
+                if (
+                    ((ISceneNode)unit).GetParent() is Fleet
+                    || ((ISceneNode)unit).GetParent() is CapitalShip
+                )
                 {
                     unit.Movement = null;
                     return;
@@ -291,32 +293,33 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
-            // Destination changed sides since dispatch.
-            if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
+            // Buildings can't auto-colonize a planet whose owner doesn't match — destroy them.
+            // Fleets/officers/regiments may land on neutral planets for first-contact tracking.
+            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            bool ownerMatches = destinationOwner == movable.GetOwnerInstanceID();
+            if (!ownerMatches && movable is Building building)
             {
-                if (movable is Building building)
+                _game.DetachNode(building);
+                GameLogger.Log(
+                    $"Building {building.GetDisplayName()} destroyed: destination changed sides during transit."
+                );
+                return new List<GameResult>
                 {
-                    _game.DetachNode((ISceneNode)movable);
-                    GameLogger.Log(
-                        $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
-                    );
-                    return new List<GameResult>
+                    new GameObjectDestroyedOnArrivalResult
                     {
-                        new GameObjectDestroyedOnArrivalResult
-                        {
-                            DestroyedObject = building,
-                            Context = destinationPlanet,
-                            Tick = _game.CurrentTick,
-                        },
-                    };
-                }
-                else
-                {
-                    HandleArrivalRejection(movable, destinationPlanet);
-                }
+                        DestroyedObject = building,
+                        Context = destinationPlanet,
+                        Tick = _game.CurrentTick,
+                    },
+                };
+            }
+            if (!ownerMatches && !string.IsNullOrEmpty(destinationOwner))
+            {
+                HandleArrivalRejection(movable, destinationPlanet);
                 return new List<GameResult>();
             }
 
+            Planet surfaceBeforeArrival = ((ISceneNode)movable).GetParent() as Planet;
             try
             {
                 _game.MoveNode(movable, destination);
@@ -324,6 +327,17 @@ namespace Rebellion.Systems
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}"
                 );
+
+                // A building only counts as "deployed" once it has actually arrived at its
+                // planet. That arrival is what colonizes the planet — production alone does not.
+                if (movable is Building && destination is Planet arrivalPlanet)
+                    arrivalPlanet.IsColonized = true;
+
+                // Mark the destination planet as visited by the arriving unit's faction.
+                // Visitor status drives downstream rules like uncolonized claim eligibility.
+                string arrivingOwner = movable.GetOwnerInstanceID();
+                if (!string.IsNullOrEmpty(arrivingOwner))
+                    destinationPlanet.AddVisitor(arrivingOwner);
 
                 if (movable is Fleet fleet && _fogOfWar != null)
                 {
@@ -531,7 +545,9 @@ namespace Rebellion.Systems
             }
 
             _game.MoveNode((ISceneNode)unit, destination);
+            ApplyImmediateUncolonizedClaim(unit, destinationPlanet);
 
+            // Movement set after parent change so in-call validation sees idle state.
             unit.Movement = new MovementState
             {
                 TransitTicks = transitTicks,
@@ -570,6 +586,46 @@ namespace Rebellion.Systems
 
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
+            );
+        }
+
+        private void ApplyImmediateUncolonizedClaim(IMovable unit, Planet destinationPlanet)
+        {
+            if (unit is not Regiment regiment)
+                return;
+
+            if (destinationPlanet.IsColonized)
+                return;
+
+            if (!string.IsNullOrEmpty(destinationPlanet.GetOwnerInstanceID()))
+                return;
+
+            string ownerInstanceId = regiment.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return;
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (faction == null)
+                return;
+
+            _game.ChangeUnitOwnership(destinationPlanet, ownerInstanceId);
+            destinationPlanet.PopularSupport.Clear();
+
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+            foreach (Faction supportFaction in _game.GetFactions())
+            {
+                int support = supportFaction.InstanceID == ownerInstanceId ? maxSupport : 0;
+                destinationPlanet.SetPopularSupport(supportFaction.InstanceID, support, maxSupport);
+            }
+
+            _pendingResults.Add(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = destinationPlanet,
+                    PreviousOwner = null,
+                    NewOwner = faction,
+                    Tick = _game.CurrentTick,
+                }
             );
         }
 

@@ -21,6 +21,12 @@ namespace Rebellion.Game
         public int PositionX { get; set; }
         public int PositionY { get; set; }
 
+        /// <summary>
+        /// Energy currently committed to in-progress allocations. Assault resolution can
+        /// reduce this pool independently from total energy capacity.
+        /// </summary>
+        public int AllocatedEnergy { get; set; }
+
         // Planet Asset Info
         public string PlanetIconPath { get; set; }
 
@@ -653,14 +659,6 @@ namespace Rebellion.Game
         /// <param name="building">The building to validate.</param>
         private void ValidateBuilding(Building building)
         {
-            // Check if the planet is colonized.
-            if (!IsColonized)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot add building {building.GetDisplayName()} to {this.GetDisplayName()}. Planet is not colonized."
-                );
-            }
-
             // Check if the building is owned by the planet's owner.
             if (building.GetOwnerInstanceID() != this.GetOwnerInstanceID())
             {
@@ -749,10 +747,35 @@ namespace Rebellion.Game
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)
         {
-            if (regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            if (!CanAcceptRegiment(regiment))
                 throw new SceneAccessException(regiment, this);
 
             Regiments.Add(regiment);
+        }
+
+        /// <summary>
+        /// Returns true if the planet can accept a regiment.
+        /// </summary>
+        /// <param name="regiment">The regiment being placed.</param>
+        /// <returns>True if the regiment can be added; otherwise false.</returns>
+        private bool CanAcceptRegiment(Regiment regiment)
+        {
+            string regimentOwner = regiment.GetOwnerInstanceID();
+
+            if (regimentOwner == GetOwnerInstanceID())
+                return true;
+
+            if (GetOwnerInstanceID() != null || IsColonized)
+                return false;
+
+            if (regiment.ManufacturingStatus != ManufacturingStatus.Complete)
+                return false;
+
+            if (regiment.Movement != null)
+                return false;
+
+            Planet currentPlanet = regiment.GetParentOfType<Planet>();
+            return currentPlanet == null || currentPlanet == this;
         }
 
         /// <summary>
@@ -850,8 +873,9 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
-        /// accepted. Officers require owner match or captured status. Regiments and Starfighters
-        /// require owner match. Buildings require colonization, owner match, and available energy.
+        /// accepted. Officers require owner match or captured status. Regiments follow the
+        /// planet regiment-acceptance rules. Starfighters require owner match. Buildings
+        /// require owner match and available energy.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -865,12 +889,11 @@ namespace Rebellion.Game
                 case Officer officer:
                     return officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID;
                 case Regiment regiment:
-                    return regiment.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    return CanAcceptRegiment(regiment);
                 case Starfighter starfighter:
                     return starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:
-                    return IsColonized
-                        && building.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    return building.GetOwnerInstanceID() == GetOwnerInstanceID()
                         && GetAvailableEnergy() > 0;
                 default:
                     return false;
