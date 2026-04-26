@@ -1639,6 +1639,7 @@ namespace Rebellion.Systems
                 }
                 else if (defenderWins)
                 {
+                    run.Result.DestroyedRegiments.Add(attackerTroop);
                     _game.DetachNode(attackerTroop);
                     run.RemainingAttackingTroopCount--;
                     GameLogger.Log(
@@ -1698,7 +1699,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the highest General-rank Leadership score across all hostile fleets, or 0.
+        /// Returns the highest Admiral-rank Leadership score across all hostile fleets, or 0.
         /// </summary>
         /// <param name="fleets">Attacking fleets to scan.</param>
         /// <param name="defenderOwnerId">Defender owner ID; same-owner fleets are skipped.</param>

@@ -779,7 +779,7 @@ namespace Rebellion.Game
             if (regiment.Movement != null)
                 return false;
 
-            // Must be locally present (aboard a fleet at this planet, or mid-transfer with no parent).
+            // Reject regiments currently parented under a different planet.
             Planet currentPlanet = regiment.GetParentOfType<Planet>();
             if (currentPlanet != null && currentPlanet != this)
                 return false;

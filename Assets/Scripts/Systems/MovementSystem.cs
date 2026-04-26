@@ -429,8 +429,13 @@ namespace Rebellion.Systems
                 return new List<GameResult>();
             }
 
-            // Destination changed sides since dispatch.
-            if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
+            // Destination changed sides since dispatch. Neutral (null owner) is allowed —
+            // arrivals at uncolonized worlds drive first contact and visitor tracking.
+            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            if (
+                !string.IsNullOrEmpty(destinationOwner)
+                && destinationOwner != movable.GetOwnerInstanceID()
+            )
             {
                 if (movable is Building building)
                 {

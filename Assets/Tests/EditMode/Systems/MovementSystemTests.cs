@@ -1480,6 +1480,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsNull(
+                fleet.Movement,
+                "Fleet should complete arrival at a neutral planet, clearing its movement state"
+            );
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Arrival at a neutral planet must record the visitor for first-contact tracking"
+            );
+        }
+
+        [Test]
         public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
         {
             (
