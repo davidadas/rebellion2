@@ -538,8 +538,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ColonizedPlanetLosesLastRegiment_OwnershipPersists()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
-            _game.MoveNode(regiment, planet);
-            _ownershipSystem.ProcessTick();
+            _game.ChangeUnitOwnership(planet, "empire");
 
             // Once colonized, regiment count no longer drives ownership.
             planet.IsColonized = true;
@@ -576,7 +575,6 @@ namespace Rebellion.Tests.Systems
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild5", "empire");
             _game.MoveNode(regiment, planet);
 
-            // No ProcessTick — single-planet reconcile should flip ownership in this call alone.
             List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
 
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
@@ -602,6 +600,27 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(priorOwner, planet.GetOwnerInstanceID());
             Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_ClaimsForRegimentFaction()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild7", "empire");
+            planet.IsColonized = true;
+            planet.OwnerInstanceID = "empire";
+            _game.MoveNode(regiment, planet);
+            planet.OwnerInstanceID = null;
+
+            List<GameResult> results = _ownershipSystem.ProcessTick();
+
+            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(r =>
+                        r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
+                    )
+            );
         }
     }
 }

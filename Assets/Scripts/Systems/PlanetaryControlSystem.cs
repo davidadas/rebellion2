@@ -34,29 +34,12 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies support shifts to all owned planets, reconciles uncolonized-planet
-        /// garrison ownership, then checks for ownership transfers.
+        /// Checks for support-driven ownership transfers.
         /// </summary>
         /// <returns>Any ownership change results generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
-            {
-                if (string.IsNullOrEmpty(planet.OwnerInstanceID))
-                    continue;
-
-                if (!planet.IsColonized)
-                    continue;
-
-                Faction faction = _game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
-                if (faction == null)
-                    continue;
-
-                ApplySupportShift(planet, faction);
-            }
-
             ReconcileUncolonizedGarrisons(results);
             CheckOwnershipTransfers(results);
 
@@ -64,8 +47,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Re-evaluates one planet's garrison-driven ownership; safety-net path used
-        /// when a regiment is added or removed outside of MovementSystem.
+        /// Re-evaluates one planet's control state.
         /// </summary>
         /// <param name="planet">The planet to evaluate.</param>
         /// <returns>Any ownership-change results produced.</returns>
@@ -77,9 +59,9 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Sweeps every planet through <see cref="UpdateGarrisonOwnership"/>.
+        /// Reconciles every planet against its current regiment presence.
         /// </summary>
-        /// <param name="results">Collection to append any ownership change results to.</param>
+        /// <param name="results">Collection to append any ownership-change results to.</param>
         private void ReconcileUncolonizedGarrisons(List<GameResult> results)
         {
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
@@ -87,31 +69,28 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the uncolonized claim/release rule to one planet.
+        /// Updates ownership for one planet from its current regiment presence.
         /// </summary>
         /// <param name="planet">The planet to evaluate.</param>
-        /// <param name="results">Collection to append any ownership-change result to.</param>
+        /// <param name="results">Collection to append any ownership-change results to.</param>
         private void UpdateGarrisonOwnership(Planet planet, List<GameResult> results)
         {
-            // Colonized planets are sticky; their ownership doesn't follow garrison changes.
-            if (planet.IsColonized)
+            if (planet == null)
                 return;
 
             List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
 
-            // Neutral world with a garrison present — claim for that faction.
             if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
             {
-                string claimantOwner = regiments[0].GetOwnerInstanceID();
-                if (string.IsNullOrEmpty(claimantOwner))
+                string claimantOwnerId = regiments[0].GetOwnerInstanceID();
+                if (string.IsNullOrEmpty(claimantOwnerId))
                     return;
 
-                // Mixed-faction garrison is contested; leave neutral until it sorts out.
-                if (regiments.Any(r => r.GetOwnerInstanceID() != claimantOwner))
+                if (regiments.Any(r => r.GetOwnerInstanceID() != claimantOwnerId))
                     return;
 
-                Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwner);
+                Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwnerId);
                 if (claimant == null)
                     return;
 
@@ -125,13 +104,10 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-
-                GameLogger.Log(
-                    $"Planet {planet.GetDisplayName()} claimed by {claimant.DisplayName} (regiment garrison on uncolonized world)"
-                );
+                return;
             }
-            // Owned world with no garrison left — release back to neutral.
-            else if (!string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+
+            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
             {
                 Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
 
@@ -145,33 +121,6 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-
-                GameLogger.Log(
-                    $"Planet {planet.GetDisplayName()} released to neutral (last regiment removed from uncolonized world)"
-                );
-            }
-        }
-
-        /// <summary>
-        /// Marks an uncolonized neutral planet as owned by the claimant faction. No building,
-        /// queue, or mission cascade is needed: uncolonized planets have no construction
-        /// yards, no manufacturing queues, and rarely any mission targeting them.
-        /// </summary>
-        /// <param name="planet">The uncolonized neutral planet being claimed.</param>
-        /// <param name="claimant">The faction taking ownership.</param>
-        private void ClaimPlanet(Planet planet, Faction claimant)
-        {
-            int maxSupport = _game.Config.Planet.MaxPopularSupport;
-
-            // Move ownership through GameRoot so the faction's owned-unit index stays in sync.
-            _game.ChangeUnitOwnership(planet, claimant.InstanceID);
-
-            // Full support for the claimant, zero for everyone else.
-            planet.PopularSupport.Clear();
-            foreach (Faction faction in _game.GetFactions())
-            {
-                int support = faction.InstanceID == claimant.InstanceID ? maxSupport : 0;
-                planet.SetPopularSupport(faction.InstanceID, support, maxSupport);
             }
         }
 
@@ -186,7 +135,26 @@ namespace Rebellion.Systems
             TransferBuildings(planet, newOwner);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             EvictEnemyUnits(planet, newOwner.InstanceID);
+            planet.EndUprising();
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
+        }
+
+        /// <summary>
+        /// Claims an uncolonized neutral planet for a faction.
+        /// </summary>
+        /// <param name="planet">The planet being claimed.</param>
+        /// <param name="newOwner">The faction taking control.</param>
+        private void ClaimPlanet(Planet planet, Faction newOwner)
+        {
+            int maxSupport = _game.Config.Planet.MaxPopularSupport;
+            _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
+            planet.PopularSupport.Clear();
+
+            foreach (Faction faction in _game.GetFactions())
+            {
+                int support = faction.InstanceID == newOwner.InstanceID ? maxSupport : 0;
+                planet.SetPopularSupport(faction.InstanceID, support, maxSupport);
+            }
         }
 
         /// <summary>
@@ -210,35 +178,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies periodic support shift for a single planet.
-        /// </summary>
-        /// <param name="planet">The planet to apply the shift to.</param>
-        /// <param name="faction">The controlling faction.</param>
-        private void ApplySupportShift(Planet planet, Faction faction)
-        {
-            int shift = CalculateSupportShift(planet, faction);
-            if (shift == 0)
-                return;
-
-            shift = ApplyCoreWeakSupport(planet, faction, shift);
-
-            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
-            int newSupport = Math.Max(
-                0,
-                Math.Min(_game.Config.Planet.MaxPopularSupport, currentSupport + shift)
-            );
-
-            if (newSupport != currentSupport)
-            {
-                planet.SetPopularSupport(
-                    faction.InstanceID,
-                    newSupport,
-                    _game.Config.Planet.MaxPopularSupport
-                );
-            }
-        }
-
-        /// <summary>
         /// Checks all planets for support above the ownership threshold and transfers if needed.
         /// </summary>
         /// <param name="results">Collection to append any ownership change results to.</param>
@@ -253,6 +192,9 @@ namespace Rebellion.Systems
 
                 // Only claim unowned planets — owned planets don't flip via support alone.
                 if (!string.IsNullOrEmpty(planet.GetOwnerInstanceID()))
+                    continue;
+
+                if (planet.GetAllRegiments().Count > 0)
                     continue;
 
                 foreach (Faction faction in _game.GetFactions())
@@ -280,107 +222,6 @@ namespace Rebellion.Systems
                     break;
                 }
             }
-        }
-
-        /// <summary>
-        /// Calculates the periodic support shift for a planet.
-        /// Only applies when support is at or below ShiftThreshold and no friendly fleets are present.
-        /// Uses a bracket system for base recovery, reduced by hostile force penalties.
-        /// Negated for factions with InvertSupportShift set.
-        /// </summary>
-        /// <param name="planet">The planet to calculate support shift for.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The net support shift to apply, or zero if none.</returns>
-        private int CalculateSupportShift(Planet planet, Faction faction)
-        {
-            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
-            string factionId = faction.InstanceID;
-            int support = planet.GetPopularSupport(factionId);
-
-            int friendlyFleetCount = planet
-                .GetFleets()
-                .Count(f => f.GetOwnerInstanceID() == factionId);
-
-            if (support > config.ShiftThreshold || friendlyFleetCount > 0)
-                return 0;
-
-            int baseShift;
-            if (support <= config.LowBracketCeiling)
-            {
-                baseShift = config.LowBracketShift;
-            }
-            else if (support <= config.MidBracketCeiling)
-            {
-                baseShift = config.MidBracketShift;
-            }
-            else
-            {
-                baseShift = config.HighBracketShift;
-            }
-
-            int hostileFleetCount = planet
-                .GetFleets()
-                .Count(f => f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != factionId);
-            int hostileFighterCount = planet
-                .GetAllStarfighters()
-                .Count(s => s.GetOwnerInstanceID() != null && s.GetOwnerInstanceID() != factionId);
-            int hostileTroopCount = planet
-                .GetAllRegiments()
-                .Count(r => r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != factionId);
-
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
-            if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
-                && faction.Modifiers.TroopEffectiveness > 1
-            )
-            {
-                hostileTroopCount *= faction.Modifiers.TroopEffectiveness;
-            }
-
-            int shift =
-                baseShift
-                - hostileFleetCount * config.FleetPenalty
-                - hostileFighterCount * config.FighterPenalty
-                - hostileTroopCount * config.TroopPenalty;
-
-            shift = Math.Max(0, Math.Min(100, shift));
-
-            if (faction.Modifiers.InvertSupportShift)
-            {
-                shift = -shift;
-            }
-
-            return shift;
-        }
-
-        /// <summary>
-        /// Halves the support shift on core systems when the faction's
-        /// WeakSupportPenaltyTrigger condition is met.
-        /// </summary>
-        /// <param name="planet">The planet being evaluated.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <param name="shift">The current support shift value.</param>
-        /// <returns>The adjusted shift, halved if the core penalty applies.</returns>
-        private int ApplyCoreWeakSupport(Planet planet, Faction faction, int shift)
-        {
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
-            if (parentSystem == null || parentSystem.SystemType != PlanetSystemType.CoreSystem)
-                return shift;
-
-            bool penaltyApplies = faction.Modifiers.WeakSupportPenaltyTrigger switch
-            {
-                SupportShiftCondition.Positive => shift > 0,
-                SupportShiftCondition.Negative => shift < 0,
-                _ => false,
-            };
-
-            if (penaltyApplies)
-            {
-                shift /= 2;
-            }
-
-            return shift;
         }
 
         /// <summary>

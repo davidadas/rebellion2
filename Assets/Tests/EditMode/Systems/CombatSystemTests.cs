@@ -1985,6 +1985,16 @@ namespace Rebellion.Tests.Systems
             CreateTargetBuilding(game, "bld1", "alliance", planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+            fleet.CapitalShips[0].RegimentCapacity = 1;
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "atk-reg",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet.CapitalShips[0]
+            );
 
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5, 0, 10 });
             CombatSystem combat = MakeCombat(game, rng);
@@ -2120,6 +2130,16 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defender, planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+            fleet.CapitalShips[0].RegimentCapacity = 1;
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "atk-reg",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet.CapitalShips[0]
+            );
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5, 5, 5, 5, 5, 5 });
             CombatSystem combat = MakeCombat(game, rng);
 
@@ -2134,10 +2154,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_SuccessfulAssault_LandsFleetUnitsOnPlanet()
+        public void ExecutePlanetaryAssault_SuccessfulAssault_LandsOnlyRequiredRegimentsOnPlanet()
         {
             GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 9);
+            (Planet planet, PlanetSystem system) = CreatePlanet(game, "p1", "alliance", energy: 9);
+            system.SystemType = PlanetSystemType.OuterRim;
+            game.SetPlanetPopularSupport(planet, "empire", 50);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
             CapitalShip ship = fleet.CapitalShips[0];
@@ -2170,11 +2192,11 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(result.OwnershipChanged);
             CollectionAssert.Contains(planet.GetAllRegiments(), regiment);
-            CollectionAssert.Contains(planet.GetAllOfficers(), officer);
-            CollectionAssert.Contains(planet.GetAllStarfighters(), starfighter);
+            CollectionAssert.DoesNotContain(planet.GetAllOfficers(), officer);
+            CollectionAssert.DoesNotContain(planet.GetAllStarfighters(), starfighter);
             Assert.IsEmpty(ship.Regiments);
-            Assert.IsEmpty(ship.Officers);
-            Assert.IsEmpty(ship.Starfighters);
+            CollectionAssert.Contains(ship.Officers, officer);
+            CollectionAssert.Contains(ship.Starfighters, starfighter);
         }
 
         [Test]
@@ -2192,6 +2214,16 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defender, planet);
 
             Fleet fleet = CreateAssaultFleet(game, "ef1", "empire", planet, weaponPower: 100);
+            fleet.CapitalShips[0].RegimentCapacity = 1;
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "atk-reg",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet.CapitalShips[0]
+            );
             SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 5, 5, 5, 5, 5, 5 });
             CombatSystem combat = MakeCombat(game, rng);
 

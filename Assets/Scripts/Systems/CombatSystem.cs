@@ -246,7 +246,10 @@ namespace Rebellion.Systems
             {
                 List<Fleet> fleets = planet
                     .GetChildren<Fleet>(
-                        f => !f.IsInCombat && !excludedIDs.Contains(f.GetInstanceID()),
+                        f =>
+                            !f.IsInCombat
+                            && !excludedIDs.Contains(f.GetInstanceID())
+                            && (f.CapitalShips.Count > 0 || f.GetStarfighters().Any()),
                         recurse: false
                     )
                     .ToList();
@@ -1067,12 +1070,15 @@ namespace Rebellion.Systems
                 result
             );
 
-            // Phase 6: successful assault captures the planet.
-            if (result.Success)
-            {
-                TransferPlanetOwnership(defendingPlanet, attackerFactionID, result);
-                LandFleetUnits(attackingFleets, defendingPlanet);
-            }
+            // Phase 6: transfer only after ground defenders are actually broken.
+            bool defendersEliminated = defendingPlanet.GetAllRegiments().Count == 0;
+            if (result.Success && defendersEliminated)
+                TryTransferPlanetOwnership(
+                    defendingPlanet,
+                    attackerFactionID,
+                    attackingFleets,
+                    result
+                );
 
             return result;
         }
@@ -1094,8 +1100,7 @@ namespace Rebellion.Systems
             int thresholdHigh = _game.Config.Combat.BombardmentStrikeThresholdHigh;
 
             // A) Initial pre-loop strike — gated by a probabilistic roll, then targets a
-            //    random production facility. Mirrors the gate in FUN_0058c580 (~91% with
-            //    default 1/10 thresholds).
+            //    random production facility.
             List<Building> productionBuildings = planet
                 .GetAllBuildings()
                 .Where(IsProductionBuilding)
@@ -1121,8 +1126,7 @@ namespace Rebellion.Systems
             }
 
             // B) Main loop — strikes always target the highest-priority remaining lane
-            //    (troops -> buildings -> energy -> allocated energy). The initial-lane-count
-            //    roll is preserved to match the original's RNG step consumption.
+            //    and consumes one lane-selection roll per strike attempt.
             int initialLaneCount = BuildAssaultLanes(
                 planet,
                 energyResistance,
@@ -1185,8 +1189,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Enumerates assault lanes in the original's priority order: troops, then defense
-        /// facilities, then production buildings, then the energy and allocated-energy lanes.
+        /// Enumerates assault lanes in priority order: troops, then defense facilities,
+        /// then production buildings, then the energy and allocated-energy lanes.
         /// </summary>
         /// <param name="planet">Planet being assaulted.</param>
         /// <param name="energyResistance">Resistance value for the energy lane.</param>
@@ -1345,15 +1349,24 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">Planet changing hands.</param>
         /// <param name="newOwnerID">Instance ID of the faction taking ownership.</param>
+        /// <param name="attackingFleets">Assaulting fleets that can contribute landed regiments.</param>
         /// <param name="result">Result object to record the ownership change on.</param>
-        private void TransferPlanetOwnership(
+        private void TryTransferPlanetOwnership(
             Planet planet,
             string newOwnerID,
+            List<Fleet> attackingFleets,
             PlanetaryAssaultResult result
         )
         {
             Faction newOwner = _game.GetFactionByOwnerInstanceID(newOwnerID);
+            int requiredGarrison = GetAssaultCaptureTroopRequirement(planet, newOwnerID);
+            int availableTroops = CountEmbarkedAssaultTroops(attackingFleets);
+
+            if (availableTroops < requiredGarrison)
+                return;
+
             _ownership.TransferPlanet(planet, newOwner);
+            LandAssaultGarrison(attackingFleets, planet, requiredGarrison);
 
             result.OwnershipChanged = true;
             result.NewOwner = newOwner;
@@ -1362,22 +1375,106 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves every regiment, officer, and starfighter from the assaulting fleets onto
-        /// the captured planet's surface.
+        /// Computes the troop requirement needed to hold a captured planet after a successful
+        /// assault.
         /// </summary>
-        /// <param name="fleets">The assaulting fleets whose units will land.</param>
-        /// <param name="planet">The captured planet receiving the units.</param>
-        private void LandFleetUnits(List<Fleet> fleets, Planet planet)
+        /// <param name="defendingPlanet">Planet being captured.</param>
+        /// <param name="attackerFactionId">Faction attempting to hold the planet.</param>
+        /// <returns>The number of regiments required to secure the planet.</returns>
+        private int GetAssaultCaptureTroopRequirement(
+            Planet defendingPlanet,
+            string attackerFactionId
+        )
         {
-            foreach (Fleet fleet in fleets)
+            int support = defendingPlanet.GetPopularSupport(attackerFactionId);
+            int systemSide = GetSystemSide(attackerFactionId);
+            int coreSupportFlag = GetCoreSupportFlag(defendingPlanet);
+            int uprisingActive = defendingPlanet.IsInUprising ? 1 : 0;
+
+            return CalculateGarrisonRequirement(
+                support,
+                coreSupportFlag,
+                systemSide,
+                uprisingActive,
+                applyUprisingMultiplier: uprisingActive
+            );
+        }
+
+        private static int CountEmbarkedAssaultTroops(IEnumerable<Fleet> attackingFleets)
+        {
+            return attackingFleets.Sum(fleet =>
+                fleet.CapitalShips.Sum(ship => ship.Regiments.Count)
+            );
+        }
+
+        private void LandAssaultGarrison(
+            IEnumerable<Fleet> attackingFleets,
+            Planet planet,
+            int requiredGarrison
+        )
+        {
+            if (requiredGarrison <= 0)
+                return;
+
+            int landedTroops = 0;
+            foreach (Fleet fleet in attackingFleets)
             {
-                foreach (Regiment regiment in fleet.GetRegiments().ToList())
-                    _game.MoveNode(regiment, planet);
-                foreach (Officer officer in fleet.GetOfficers().ToList())
-                    _game.MoveNode(officer, planet);
-                foreach (Starfighter starfighter in fleet.GetStarfighters().ToList())
-                    _game.MoveNode(starfighter, planet);
+                foreach (CapitalShip ship in fleet.CapitalShips)
+                {
+                    foreach (Regiment regiment in ship.Regiments.ToList())
+                    {
+                        if (landedTroops >= requiredGarrison)
+                            return;
+
+                        _game.MoveNode(regiment, planet);
+                        landedTroops++;
+                    }
+                }
             }
+        }
+
+        private int CalculateGarrisonRequirement(
+            int support,
+            int coreSupportFlag,
+            int systemSide,
+            int uprisingActive,
+            int applyUprisingMultiplier
+        )
+        {
+            GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
+            int requiredGarrison = 0;
+            if (support < config.SupportThreshold)
+            {
+                int supportGap = config.SupportThreshold - support;
+                requiredGarrison =
+                    (supportGap + config.GarrisonDivisor - 1) / config.GarrisonDivisor;
+            }
+
+            if (coreSupportFlag != 0 && systemSide == 2)
+                requiredGarrison /= 2;
+
+            if (uprisingActive != 0 && applyUprisingMultiplier != 0)
+                requiredGarrison *= config.UprisingMultiplier;
+
+            return requiredGarrison;
+        }
+
+        private static int GetSystemSide(string factionId)
+        {
+            if (string.Equals(factionId, "alliance", StringComparison.OrdinalIgnoreCase))
+                return 1;
+            if (string.Equals(factionId, "empire", StringComparison.OrdinalIgnoreCase))
+                return 2;
+            return 0;
+        }
+
+        private static int GetCoreSupportFlag(Planet planet)
+        {
+            return
+                planet.GetParent() is PlanetSystem system
+                && system.GetSystemType() == PlanetSystemType.CoreSystem
+                ? 1
+                : 0;
         }
 
         private class AssaultLane
@@ -1652,9 +1749,8 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Picks a random garrison regiment using the original's "roll over the initial
-        /// count, succeed only if index lands in the still-alive range" pattern. As
-        /// garrison shrinks, miss probability rises and Stage 3 progresses faster.
+        /// Picks a random garrison regiment using the initial troop count as the roll range.
+        /// As defenders are removed, more rolls miss and the stage resolves faster.
         /// </summary>
         /// <param name="run">Run state.</param>
         /// <returns>Selected garrison regiment, or null if the roll missed or none exist.</returns>
@@ -1808,22 +1904,41 @@ namespace Rebellion.Systems
             if (run.RemainingAttackingTroopCount <= 0 || run.GarrisonTroopCount > 0)
                 return true;
 
-            int systemSide = 0;
-            Faction owner = _game.GetFactionByOwnerInstanceID(run.Planet.GetOwnerInstanceID());
-            if (owner != null)
-                systemSide = owner.IsAIControlled() ? 1 : 2;
+            string defenderId = run.Planet.GetOwnerInstanceID();
+            int systemSide = GetSystemSide(defenderId);
+            int support = run.Planet.GetPopularSupport(defenderId);
+            int coreSupportFlag = GetCoreSupportFlag(run.Planet);
+            int uprisingActive = run.Planet.IsInUprising ? 1 : 0;
 
             run.GarrisonRequirement = CalculateGarrisonRequirement(
+                support,
+                coreSupportFlag,
                 systemSide,
-                support: 0,
-                coreSupportFlag: 0,
-                uprisingActive: 0,
-                applyUprisingMultiplier: 0
+                uprisingActive,
+                applyUprisingMultiplier: uprisingActive
             );
             run.Result.GarrisonRequirement = run.GarrisonRequirement;
 
             LandAttackerTroopsUpToRequirement(run, run.GarrisonRequirement);
             return true;
+        }
+
+        private static int GetSystemSide(string factionId)
+        {
+            if (string.Equals(factionId, "alliance", StringComparison.OrdinalIgnoreCase))
+                return 1;
+            if (string.Equals(factionId, "empire", StringComparison.OrdinalIgnoreCase))
+                return 2;
+            return 0;
+        }
+
+        private static int GetCoreSupportFlag(Planet planet)
+        {
+            return
+                planet.GetParent() is PlanetSystem system
+                && system.GetSystemType() == PlanetSystemType.CoreSystem
+                ? 1
+                : 0;
         }
 
         /// <summary>
@@ -2104,31 +2219,30 @@ namespace Rebellion.Systems
             run.Result.NetStrikes++;
         }
 
-        /// <summary>
-        /// How many garrison troops the defender needs on this planet: increases as popular
-        /// support drops, decreases for a strong core system, and increases during an active
-        /// uprising when the uprising multiplier applies.
-        /// </summary>
-        /// <param name="systemSide">1 = alliance-controlled, 2 = empire-controlled.</param>
-        /// <param name="support">Popular support for the controller (0-100).</param>
-        /// <param name="coreSupportFlag">Non-zero if this is a core system with strong support.</param>
-        /// <param name="uprisingActive">Non-zero if an uprising is currently active.</param>
-        /// <param name="applyUprisingMultiplier">Non-zero to apply the uprising multiplier.</param>
-        /// <returns>Required garrison troop count.</returns>
-        private static int CalculateGarrisonRequirement(
-            int systemSide,
+        private int CalculateGarrisonRequirement(
             int support,
             int coreSupportFlag,
+            int systemSide,
             int uprisingActive,
             int applyUprisingMultiplier
         )
         {
-            int required = Math.Max(0, 100 - support);
+            GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
+            int requiredGarrison = 0;
+            if (support < config.SupportThreshold)
+            {
+                int supportGap = config.SupportThreshold - support;
+                requiredGarrison =
+                    (supportGap + config.GarrisonDivisor - 1) / config.GarrisonDivisor;
+            }
+
             if (coreSupportFlag != 0 && systemSide == 2)
-                required /= 2;
+                requiredGarrison /= 2;
+
             if (uprisingActive != 0 && applyUprisingMultiplier != 0)
-                required *= 2;
-            return required;
+                requiredGarrison *= config.UprisingMultiplier;
+
+            return requiredGarrison;
         }
 
         /// <summary>Mutable state threaded through the 6 defense-combat stages.</summary>

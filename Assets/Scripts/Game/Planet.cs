@@ -22,8 +22,8 @@ namespace Rebellion.Game
         public int PositionY { get; set; }
 
         /// <summary>
-        /// Energy currently committed to in-progress allocations (mirror of original
-        /// system field +0x64). Decremented by the allocated-energy assault lane.
+        /// Energy currently committed to in-progress allocations. Assault resolution can
+        /// reduce this pool independently from total energy capacity.
         /// </summary>
         public int AllocatedEnergy { get; set; }
 
@@ -654,8 +654,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Validates if a building can be added to the planet. Uncolonized planets are
-        /// permitted — the first building to arrive is what colonizes the planet.
+        /// Validates if a building can be added to the planet.
         /// </summary>
         /// <param name="building">The building to validate.</param>
         private void ValidateBuilding(Building building)
@@ -743,9 +742,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Adds a regiment to the planet. Owner-matched regiments are accepted normally.
-        /// A neutral, uncolonized planet may also accept a regiment from any faction provided
-        /// the regiment is locally present and ready (see <see cref="CanAcceptRegiment"/>).
+        /// Adds a regiment to the planet.
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)
@@ -757,20 +754,18 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns true if this planet will accept the given regiment.
+        /// Returns true if the planet can accept a regiment.
         /// </summary>
         /// <param name="regiment">The regiment being placed.</param>
-        /// <returns>True if the regiment may be added; otherwise false.</returns>
+        /// <returns>True if the regiment can be added; otherwise false.</returns>
         private bool CanAcceptRegiment(Regiment regiment)
         {
             string regimentOwner = regiment.GetOwnerInstanceID();
 
-            // Owner-matched regiments always pass.
             if (regimentOwner == GetOwnerInstanceID())
                 return true;
 
-            // Foreign regiments are only allowed onto neutral, uncolonized planets.
-            if (IsColonized || GetOwnerInstanceID() != null)
+            if (GetOwnerInstanceID() != null || IsColonized)
                 return false;
 
             if (regiment.ManufacturingStatus != ManufacturingStatus.Complete)
@@ -779,16 +774,8 @@ namespace Rebellion.Game
             if (regiment.Movement != null)
                 return false;
 
-            // Reject regiments currently parented under a different planet.
             Planet currentPlanet = regiment.GetParentOfType<Planet>();
-            if (currentPlanet != null && currentPlanet != this)
-                return false;
-
-            // Faction must have visited the planet first.
-            if (!WasVisitedBy(regimentOwner))
-                return false;
-
-            return true;
+            return currentPlanet == null || currentPlanet == this;
         }
 
         /// <summary>
@@ -886,9 +873,9 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
-        /// accepted. Officers require owner match or captured status. Regiments use the
-        /// regiment-specific rules (see <see cref="AddRegiment"/>). Starfighters require
-        /// owner match. Buildings require owner match and available energy.
+        /// accepted. Officers require owner match or captured status. Regiments follow the
+        /// planet regiment-acceptance rules. Starfighters require owner match. Buildings
+        /// require owner match and available energy.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>

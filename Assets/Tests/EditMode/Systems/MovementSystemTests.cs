@@ -1643,7 +1643,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ImmediatelyClaimsForFaction()
+        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ClaimsImmediately()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
                 BuildScene();
@@ -1654,19 +1654,32 @@ namespace Rebellion.Tests.Systems
 
             movement.RequestMove(regiment, destination);
 
-            Assert.AreEqual(
-                "empire",
-                destination.GetOwnerInstanceID(),
-                "Planet should be claimed for the regiment's faction immediately, not next tick"
-            );
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
             Assert.AreEqual(
                 game.Config.Planet.MaxPopularSupport,
                 destination.GetPopularSupport("empire")
             );
+            Assert.AreEqual(destination, regiment.GetParent());
         }
 
         [Test]
-        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_ImmediatelyReleasesToNeutral()
+        public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = true;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.AreNotEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_DoesNotImmediatelyReleaseToNeutral()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
                 BuildScene();
@@ -1697,11 +1710,7 @@ namespace Rebellion.Tests.Systems
 
             movement.RequestMove(regiment, ship);
 
-            Assert.IsNull(
-                destination.GetOwnerInstanceID(),
-                "Removing the last regiment from an uncolonized planet should release it immediately"
-            );
-            Assert.AreEqual(0, destination.GetPopularSupport("empire"));
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
         }
 
         [Test]
