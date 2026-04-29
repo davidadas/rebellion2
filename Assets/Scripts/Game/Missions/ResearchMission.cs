@@ -173,13 +173,39 @@ public class ResearchMission : Mission
         researchOfficer?.IncrementBaseResearchRating(ResearchType);
 
         ResearchDiscipline discipline = Faction.ToResearchDiscipline(ResearchType);
-        int oldOrder = faction.GetHighestUnlockedOrder(ResearchType);
-        List<GameResult> results = faction.ApplyResearchCapacityChange(
-            discipline,
-            EarnedResearchPoints
-        );
+        ResearchProgressSnapshot before = faction.GetResearchProgressSnapshot(discipline);
+        faction.ApplyResearchCapacityChange(discipline, EarnedResearchPoints);
+        ResearchProgressSnapshot after = faction.GetResearchProgressSnapshot(discipline);
 
-        OrdersAdvanced = faction.GetHighestUnlockedOrder(ResearchType) - oldOrder;
+        OrdersAdvanced = after.CurrentOrder - before.CurrentOrder;
+
+        List<GameResult> results = new List<GameResult>();
+        ManufacturingType facilityType = Faction.ToManufacturingType(discipline);
+        if (after.CurrentOrder != before.CurrentOrder)
+        {
+            results.Add(
+                new ResearchOrderedResult
+                {
+                    Faction = faction,
+                    FacilityType = facilityType,
+                    ResearchOrder = after.CurrentOrder,
+                    Capacity = after.CapacityRemaining,
+                }
+            );
+        }
+
+        if (!before.IsExhausted && after.IsExhausted)
+        {
+            results.Add(
+                new ResearchExhaustedResult
+                {
+                    Faction = faction,
+                    FacilityType = facilityType,
+                    PreviousState = 0,
+                    NewState = 1,
+                }
+            );
+        }
 
         return results;
     }

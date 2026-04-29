@@ -85,4 +85,35 @@ namespace Rebellion.Game
         /// </summary>
         public int Difficulty { get; set; }
     }
+
+    /// <summary>
+    /// Snapshot of a faction's current research state for one discipline.
+    /// </summary>
+    public sealed class ResearchProgressSnapshot
+    {
+        /// <summary>
+        /// Current research order reached for the discipline.
+        /// </summary>
+        public int CurrentOrder { get; set; }
+
+        /// <summary>
+        /// Research capacity currently available for the discipline.
+        /// </summary>
+        public int CapacityRemaining { get; set; }
+
+        /// <summary>
+        /// Whether the discipline has no further advances available.
+        /// </summary>
+        public bool IsExhausted { get; set; }
+
+        /// <summary>
+        /// The next researchable catalog entry after the current order, if any.
+        /// </summary>
+        public ResearchCatalogEntry NextEntry { get; set; }
+
+        /// <summary>
+        /// The scaled difficulty cost for the next entry, if any.
+        /// </summary>
+        public int? NextEntryScaledDifficulty { get; set; }
+    }
 }

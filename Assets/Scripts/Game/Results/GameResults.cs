@@ -218,6 +218,7 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// <summary>
     /// A side research order advanced for one discipline.
     /// Covers SideShipyardResearchOrderEventRecord, SideTrainingFacilityResearchOrderEventRecord,
     /// and SideConstructionYardResearchOrderEventRecord.
@@ -252,19 +253,6 @@ namespace Rebellion.Game.Results
         public Faction Faction { get; set; }
         public int ConditionId { get; set; }
         public int Value { get; set; }
-    }
-
-    /// <summary>
-    /// Convenience projection of a research-order advance into a concrete manufacturable unlock.
-    /// This is a repo-level helper layered over the primary research-order event family and is
-    /// not emitted by the core research simulation path.
-    /// </summary>
-    public class TechnologyUnlockedResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public ManufacturingType ResearchType { get; set; }
-        public string TechnologyName { get; set; }
-        public int ResearchOrder { get; set; }
     }
 
     /// <summary>

@@ -247,7 +247,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(faction.InstanceID, result.Faction.InstanceID);
             Assert.AreEqual(ManufacturingType.Ship, result.FacilityType);
             Assert.AreEqual(1, result.ResearchOrder);
-            Assert.AreEqual(0, results.OfType<TechnologyUnlockedResult>().Count());
         }
 
         [Test]

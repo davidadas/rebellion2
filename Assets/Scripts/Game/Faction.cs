@@ -303,6 +303,30 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns a snapshot of the current research state for one discipline.
+        /// </summary>
+        /// <param name="discipline">The discipline to inspect.</param>
+        /// <returns>The current research snapshot for the discipline.</returns>
+        public ResearchProgressSnapshot GetResearchProgressSnapshot(ResearchDiscipline discipline)
+        {
+            ResearchDisciplineState state = ResearchState.Disciplines[discipline];
+            ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
+            int? nextEntryScaledDifficulty =
+                nextEntry == null
+                    ? null
+                    : nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
+
+            return new ResearchProgressSnapshot
+            {
+                CurrentOrder = state.CurrentOrder,
+                CapacityRemaining = state.CapacityRemaining,
+                IsExhausted = state.IsExhausted,
+                NextEntry = nextEntry,
+                NextEntryScaledDifficulty = nextEntryScaledDifficulty,
+            };
+        }
+
+        /// <summary>
         /// Calculates the sum of resources across all owned planets.
         /// </summary>
         /// <param name="selector">A function that selects the resource value from a planet.</param>
@@ -585,57 +609,26 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="discipline">The discipline to update.</param>
         /// <param name="capacityDelta">The capacity delta to add.</param>
-        /// <returns>Any primary research-state results produced by this change.</returns>
-        public List<Rebellion.Game.Results.GameResult> ApplyResearchCapacityChange(
-            ResearchDiscipline discipline,
-            int capacityDelta
-        )
+        public void ApplyResearchCapacityChange(ResearchDiscipline discipline, int capacityDelta)
         {
-            var results = new List<Rebellion.Game.Results.GameResult>();
             ResearchDisciplineState state = ResearchState.Disciplines[discipline];
-            ManufacturingType manufacturingType = ToManufacturingType(discipline);
 
             state.CapacityRemaining += capacityDelta;
 
             ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
             if (nextEntry == null)
             {
-                if (!state.IsExhausted)
-                {
-                    state.IsExhausted = true;
-                    results.Add(
-                        new Rebellion.Game.Results.ResearchExhaustedResult
-                        {
-                            Faction = this,
-                            FacilityType = manufacturingType,
-                            PreviousState = 0,
-                            NewState = 1,
-                        }
-                    );
-                }
-
-                return results;
+                state.IsExhausted = true;
+                return;
             }
 
             int scaledDifficulty = nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
             if (state.CapacityRemaining < scaledDifficulty)
-                return results;
+                return;
 
             state.CurrentOrder = nextEntry.Order;
             state.IsExhausted = false;
             state.CapacityRemaining -= scaledDifficulty;
-
-            results.Add(
-                new Rebellion.Game.Results.ResearchOrderedResult
-                {
-                    Faction = this,
-                    FacilityType = manufacturingType,
-                    ResearchOrder = state.CurrentOrder,
-                    Capacity = state.CapacityRemaining,
-                }
-            );
-
-            return results;
         }
 
         /// <summary>
