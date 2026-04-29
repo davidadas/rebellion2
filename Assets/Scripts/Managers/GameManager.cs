@@ -293,6 +293,7 @@ public class GameManager
             .Concat(ResourceManager.GetGameData<CapitalShip>())
             .Concat(ResourceManager.GetGameData<Starfighter>())
             .Concat(ResourceManager.GetGameData<Regiment>())
+            .Concat(ResourceManager.GetGameData<SpecialForces>())
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())
@@ -325,6 +326,8 @@ public class GameManager
     /// <param name="results">Batch of results from a system tick.</param>
     private void ProcessResults(List<GameResult> results)
     {
+        List<GameResult> projectedResults = new List<GameResult>();
+
         foreach (VictoryResult result in results.OfType<VictoryResult>())
         {
             // TODO: Set game over flag, trigger victory screen
@@ -357,10 +360,87 @@ public class GameManager
             }
         }
 
+        foreach (ResearchOrderedResult result in results.OfType<ResearchOrderedResult>())
+        {
+            if (
+                TryCreateTechnologyUnlockedResult(
+                    result,
+                    out TechnologyUnlockedResult unlockedTechnology
+                )
+            )
+            {
+                projectedResults.Add(unlockedTechnology);
+            }
+        }
+
+        foreach (TechnologyUnlockedResult result in results.OfType<TechnologyUnlockedResult>())
+        {
+            string messageText =
+                $"R&D Reports that the {result.TechnologyName} is now available for manufacture.";
+            result.Faction?.AddMessage(new Message(MessageType.Mission, messageText));
+            GameLogger.Log(messageText);
+        }
+
+        foreach (ResearchExhaustedResult result in results.OfType<ResearchExhaustedResult>())
+        {
+            string messageText = GetResearchExhaustedMessage(result.FacilityType);
+            result.Faction?.AddMessage(new Message(MessageType.Mission, messageText));
+            GameLogger.Log(messageText);
+        }
+
         foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
         {
             if (result.Outcome == MissionOutcome.Success)
                 ProcessResults(_jediSystem.ApplyForceGrowth(result.Mission.MainParticipants));
         }
+
+        if (projectedResults.Count > 0)
+            ProcessResults(projectedResults);
+    }
+
+    private static bool TryCreateTechnologyUnlockedResult(
+        ResearchOrderedResult result,
+        out TechnologyUnlockedResult unlockedTechnology
+    )
+    {
+        unlockedTechnology = null;
+
+        if (result?.Faction == null)
+            return false;
+
+        ResearchDiscipline discipline = Faction.ToResearchDiscipline(result.FacilityType);
+        if (
+            !result.Faction.TryResolveResearchEntry(
+                discipline,
+                result.ResearchOrder,
+                out ResearchCatalogEntry entry
+            )
+        )
+        {
+            return false;
+        }
+
+        unlockedTechnology = new TechnologyUnlockedResult
+        {
+            Tick = result.Tick,
+            Faction = result.Faction,
+            ResearchType = result.FacilityType,
+            TechnologyName = entry.Technology.GetReference().GetDisplayName(),
+            ResearchOrder = result.ResearchOrder,
+        };
+        return true;
+    }
+
+    private static string GetResearchExhaustedMessage(ManufacturingType facilityType)
+    {
+        return facilityType switch
+        {
+            ManufacturingType.Ship =>
+                "There are no further advances expected in ship construction.",
+            ManufacturingType.Troop => "There are no further advances expected in troop training.",
+            ManufacturingType.Building =>
+                "There are no further advances expected in facility construction.",
+            _ => "There are no further advances expected in this research area.",
+        };
     }
 }

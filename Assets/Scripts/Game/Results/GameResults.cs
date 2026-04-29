@@ -218,9 +218,9 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A faction placed a research order at a facility.
+    /// A side research order advanced for one discipline.
     /// Covers SideShipyardResearchOrderEventRecord, SideTrainingFacilityResearchOrderEventRecord,
-    /// SideConstructionYardResearchOrderEventRecord.
+    /// and SideConstructionYardResearchOrderEventRecord.
     /// </summary>
     public class ResearchOrderedResult : GameResult
     {
@@ -231,16 +231,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A research cycle completed at a facility (success or failure).
+    /// A side research discipline became exhausted and has no further advances available.
     /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
-    /// SideConstructionYardResearchDoneEventRecord.
+    /// and SideConstructionYardResearchDoneEventRecord.
     /// </summary>
-    public class ResearchCompletedResult : GameResult
+    public class ResearchExhaustedResult : GameResult
     {
         public Faction Faction { get; set; }
         public ManufacturingType FacilityType { get; set; }
-        public bool Success { get; set; }
-        public int ResultCode { get; set; }
+        public int PreviousState { get; set; }
+        public int NewState { get; set; }
     }
 
     /// <summary>
@@ -255,9 +255,9 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A faction unlocked a new technology.
-    /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
-    /// SideConstructionYardResearchDoneEventRecord.
+    /// Convenience projection of a research-order advance into a concrete manufacturable unlock.
+    /// This is a repo-level helper layered over the primary research-order event family and is
+    /// not emitted by the core research simulation path.
     /// </summary>
     public class TechnologyUnlockedResult : GameResult
     {

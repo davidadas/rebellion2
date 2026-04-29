@@ -75,16 +75,34 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetAgentProbability_OfficerWithSkill_ReturnsSkillBasedProbability()
+        public void TryCreate_EnemyPlanet_ReturnsNull()
+        {
+            Officer officer = CreateOfficer();
+
+            planet.OwnerInstanceID = "rebels";
+
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+
+            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
+        }
+
+        [Test]
+        public void Execute_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
             ResearchMission mission = CreateMission(officer, ManufacturingType.Ship);
 
-            // Execute with RNG=0.0 guarantees success (0 <= 75)
             mission.Execute(game, new FixedRNG(0.0));
 
-            // If success path ran, capacity should have increased
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
+            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -93,22 +111,26 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            int before = faction.ResearchCapacity[ManufacturingType.Ship];
+            int before = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
             mission.Execute(game, new FixedRNG(0.0));
-            int after = faction.ResearchCapacity[ManufacturingType.Ship];
+            int after = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.Greater(after, before, "Successful research mission should award capacity");
         }
 
         [Test]
-        public void Execute_Success_IncrementsResearchSkill()
+        public void Execute_Success_IncrementsMatchingResearchSkill()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
             ResearchMission mission = CreateMission(officer);
 
             mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.AreEqual(51, officer.ShipResearch, "Research skill should increment by 1");
+            Assert.AreEqual(
+                51,
+                officer.ShipResearch,
+                "Successful research should improve the acting officer's matching research stat"
+            );
         }
 
         [Test]
@@ -117,10 +139,32 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void Execute_ZeroResearchSkillAndMinimumRoll_DoesNotAwardCapacity()
+        {
+            Officer officer = CreateOfficer(shipSkill: 0);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void Execute_RollEqualsResearchChance_DoesNotAwardCapacity()
+        {
+            Officer officer = CreateOfficer(shipSkill: 50);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(50, officer.ShipResearch);
         }
 
         [Test]
@@ -135,6 +179,36 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_SecondParticipantOnlyCouldSucceed_DoesNotAwardCapacity()
+        {
+            Officer firstOfficer = CreateOfficer(shipSkill: 10);
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "off2",
+                OwnerInstanceID = "empire",
+                ShipResearch = 100,
+            };
+            game.AttachNode(secondOfficer, planet);
+
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+            game.AttachNode(mission, planet);
+
+            mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(10, firstOfficer.ShipResearch);
+            Assert.AreEqual(100, secondOfficer.ShipResearch);
+        }
+
+        [Test]
         public void Execute_TroopResearchType_AwardsTroopCapacity()
         {
             Officer officer = CreateOfficer(troopSkill: 100);
@@ -142,20 +216,22 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Troop], 0);
-            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
+            Assert.Greater(
+                faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining),
+                0
+            );
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
         }
 
         [Test]
-        public void Execute_MaxSkillOfficer_NeverFoiled()
+        public void Execute_MaxSkillOfficer_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            // Even with a high RNG roll, skill 100 always succeeds since foil is 0.
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
+            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -214,34 +290,12 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.IsTrue(
                 mission.CanContinue(game),
                 "Mission should continue after failed research"
             );
-        }
-
-        [Test]
-        public void TryCreate_EnemyPlanet_ReturnsNull()
-        {
-            Officer officer = CreateOfficer();
-
-            // Change ownership after officer is already placed
-            planet.OwnerInstanceID = "rebels";
-
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = "empire",
-                Target = planet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
-
-            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
 
         [Test]

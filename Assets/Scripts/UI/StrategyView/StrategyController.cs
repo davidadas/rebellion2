@@ -92,12 +92,14 @@ public sealed class StrategyController : MonoBehaviour
         AudioManager.Instance.PlayPlaylistPaths(tracks, true);
 
         ApplyFactionUI();
+        Canvas.ForceUpdateCanvases();
 
         // Build faction-specific galaxy view using fog of war system
         // GalaxyMap galaxy = gameManager
         //     .GetFogOfWarSystem()
         //     .BuildFactionView(gameManager.GetPlayerFaction());
         GalaxyMap galaxy = gameManager.GetGame().Galaxy;
+        GalaxyCoordinateMapper mapper = new(mapViewport);
 
         galaxyView.OnSystemSelected -= HandleSystemSelected;
         galaxyView.OnSystemOpened -= HandleSystemOpened;
@@ -105,7 +107,7 @@ public sealed class StrategyController : MonoBehaviour
         galaxyView.OnSystemSelected += HandleSystemSelected;
         galaxyView.OnSystemOpened += HandleSystemOpened;
 
-        galaxyView.Initialize(galaxy, uiContext);
+        galaxyView.Initialize(galaxy, uiContext, mapViewport, mapper);
     }
 
     /// <summary>
@@ -121,7 +123,10 @@ public sealed class StrategyController : MonoBehaviour
             .GetFogOfWarSystem()
             .BuildFactionView(gameManager.GetPlayerFaction());
 
-        galaxyView.Initialize(updatedGalaxy, uiContext);
+        Canvas.ForceUpdateCanvases();
+        GalaxyCoordinateMapper mapper = new(mapViewport);
+
+        galaxyView.Initialize(updatedGalaxy, uiContext, mapViewport, mapper);
         RefreshActivePanels(updatedGalaxy);
     }
 

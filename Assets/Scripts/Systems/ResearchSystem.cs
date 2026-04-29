@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
@@ -10,6 +11,7 @@ namespace Rebellion.Systems
     /// </summary>
     public class ResearchSystem : IGameSystem
     {
+        private const int CapacityRefreshPulseTicks = 10;
         private readonly GameRoot _game;
 
         /// <summary>
@@ -24,79 +26,58 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes research for the current tick across all factions.
         /// </summary>
-        /// <returns>Any technology unlock results generated this tick.</returns>
+        /// <returns>Any primary research results generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            if (_game.CurrentTick % CapacityRefreshPulseTicks != 0)
+                return results;
 
             foreach (Faction faction in _game.GetFactions())
-            {
-                AccumulateIdleFacilityCapacity(faction);
-                CheckUnitUnlock(faction, results);
-            }
+                RefreshResearchCapacity(faction, results);
 
             return results;
         }
 
         /// <summary>
-        /// Each idle facility contributes +1 research capacity per tick.
+        /// Refreshes discipline research capacity from completed facilities on owned core systems
+        /// and immediately applies any resulting single-step order advances.
         /// </summary>
         /// <param name="faction">The faction to accumulate research capacity for.</param>
-        private void AccumulateIdleFacilityCapacity(Faction faction)
+        /// <param name="results">Collection to append any research results to.</param>
+        private void RefreshResearchCapacity(Faction faction, List<GameResult> results)
         {
-            List<Planet> planets = faction.GetOwnedUnitsByType<Planet>();
+            List<Planet> corePlanets = faction
+                .GetOwnedUnitsByType<Planet>()
+                .Where(planet =>
+                    planet.GetParent() is PlanetSystem system
+                    && system.GetSystemType() == PlanetSystemType.CoreSystem
+                )
+                .ToList();
 
-            foreach (Planet planet in planets)
-            {
-                foreach (ManufacturingType type in ResearchableTypes)
-                {
-                    int idleCount = planet.GetIdleManufacturingFacilities(type);
-                    if (idleCount > 0)
-                    {
-                        faction.ResearchCapacity[type] += idleCount;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Unlocks the next technology in the queue when accumulated capacity
-        /// meets the target's ResearchDifficulty. Loops to handle carry-over.
-        /// </summary>
-        /// <param name="faction">The faction to check unlocks for.</param>
-        /// <param name="results">Collection to append any unlock results to.</param>
-        private void CheckUnitUnlock(Faction faction, List<GameResult> results)
-        {
             foreach (ManufacturingType type in ResearchableTypes)
             {
-                while (true)
+                int capacityDelta = 0;
+                ResearchDiscipline discipline = Faction.ToResearchDiscipline(type);
+
+                foreach (Planet planet in corePlanets)
                 {
-                    Technology target = faction.GetCurrentResearchTarget(type);
-                    if (target == null)
-                        break;
+                    capacityDelta += planet
+                        .GetBuildings(type)
+                        .Count(building =>
+                            building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                            && building.Movement == null
+                        );
+                }
 
-                    int difficulty = target.GetResearchDifficulty();
-                    if (faction.ResearchCapacity[type] < difficulty)
-                        break;
-
-                    faction.ResearchCapacity[type] -= difficulty;
-                    faction.SetHighestUnlockedOrder(type, target.GetResearchOrder());
-
-                    string techName = target.GetReference().GetDisplayName();
-                    results.Add(
-                        new TechnologyUnlockedResult
-                        {
-                            Tick = _game.CurrentTick,
-                            Faction = faction,
-                            ResearchType = type,
-                            TechnologyName = techName,
-                            ResearchOrder = target.GetResearchOrder(),
-                        }
-                    );
-
-                    GameLogger.Log(
-                        $"{faction.DisplayName} unlocked {type} technology: {techName} (order {target.GetResearchOrder()})"
-                    );
+                List<GameResult> disciplineResults = faction.ApplyResearchCapacityChange(
+                    discipline,
+                    capacityDelta
+                );
+                foreach (GameResult result in disciplineResults)
+                {
+                    result.Tick = _game.CurrentTick;
+                    results.Add(result);
                 }
             }
         }
