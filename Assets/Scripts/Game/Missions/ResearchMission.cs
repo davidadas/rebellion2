@@ -44,7 +44,7 @@ public class ResearchMission : Mission
             return null;
 
         List<IMissionParticipant> actingParticipants = new List<IMissionParticipant>();
-        if (ctx.MainParticipants != null && ctx.MainParticipants.Count > 0)
+        if (ctx.MainParticipants?.Count > 0)
             actingParticipants.Add(ctx.MainParticipants[0]);
 
         return new ResearchMission(

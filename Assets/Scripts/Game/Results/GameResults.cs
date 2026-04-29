@@ -218,7 +218,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// <summary>
     /// A side research order advanced for one discipline.
     /// Covers SideShipyardResearchOrderEventRecord, SideTrainingFacilityResearchOrderEventRecord,
     /// and SideConstructionYardResearchOrderEventRecord.
