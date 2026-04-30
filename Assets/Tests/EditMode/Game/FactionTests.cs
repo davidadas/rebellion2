@@ -398,6 +398,89 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void SerializeAndDeserialize_ResearchState_RetainsAllDisciplinesAndIgnoresDerivedCatalogs()
+        {
+            _faction.ResearchState.CostScalePercent = 125;
+            _faction.ResearchState.ReservedState = 7;
+
+            _faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 2);
+            _faction.SetHighestUnlockedOrder(ManufacturingType.Building, 4);
+            _faction.SetHighestUnlockedOrder(ManufacturingType.Troop, 6);
+
+            _faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 11);
+            _faction.SetResearchCapacityRemaining(ResearchDiscipline.FacilityDesign, 22);
+            _faction.SetResearchCapacityRemaining(ResearchDiscipline.TroopTraining, 33);
+
+            _faction.SetResearchExhausted(ResearchDiscipline.ShipDesign, true);
+            _faction.SetResearchExhausted(ResearchDiscipline.FacilityDesign, false);
+            _faction.SetResearchExhausted(ResearchDiscipline.TroopTraining, true);
+
+            Building buildingTechnology = new Building
+            {
+                DisplayName = "Advanced Mine",
+                ResearchOrder = 4,
+                ResearchDifficulty = 60,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            CapitalShip shipTechnology = new CapitalShip
+            {
+                DisplayName = "Cruiser",
+                ResearchOrder = 2,
+                ResearchDifficulty = 24,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            Regiment troopTechnology = new Regiment
+            {
+                DisplayName = "Elite Troopers",
+                ResearchOrder = 6,
+                ResearchDifficulty = 48,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+
+            _faction.RebuildResearchQueues(
+                new IManufacturable[] { buildingTechnology, shipTechnology, troopTechnology }
+            );
+
+            string serialized = SerializationHelper.Serialize(_faction);
+            Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
+
+            Assert.AreEqual(125, deserialized.ResearchState.CostScalePercent);
+            Assert.AreEqual(7, deserialized.ResearchState.ReservedState);
+
+            Assert.AreEqual(2, deserialized.GetHighestUnlockedOrder(ManufacturingType.Ship));
+            Assert.AreEqual(4, deserialized.GetHighestUnlockedOrder(ManufacturingType.Building));
+            Assert.AreEqual(6, deserialized.GetHighestUnlockedOrder(ManufacturingType.Troop));
+
+            Assert.AreEqual(
+                11,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
+            Assert.AreEqual(
+                22,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.FacilityDesign)
+            );
+            Assert.AreEqual(
+                33,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining)
+            );
+
+            Assert.IsTrue(deserialized.IsResearchExhausted(ResearchDiscipline.ShipDesign));
+            Assert.IsFalse(deserialized.IsResearchExhausted(ResearchDiscipline.FacilityDesign));
+            Assert.IsTrue(deserialized.IsResearchExhausted(ResearchDiscipline.TroopTraining));
+
+            Assert.AreEqual(
+                0,
+                deserialized.ResearchQueue.Count,
+                "ResearchQueue should be rebuilt after load, not serialized."
+            );
+            Assert.AreEqual(
+                0,
+                deserialized.ResearchCatalog.Count,
+                "ResearchCatalog should be rebuilt after load, not serialized."
+            );
+        }
+
+        [Test]
         public void GetHQInstanceID_FactionWithHQ_ReturnsHQInstanceID()
         {
             _faction.HQInstanceID = "HQ1";

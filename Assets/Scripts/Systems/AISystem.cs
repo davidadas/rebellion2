@@ -567,7 +567,7 @@ namespace Rebellion.Systems
                         break;
 
                     // Calculate target defense: buildings + hostile fleets
-                    int targetDefense = target.GetDefenseStrength(EntityStateFilter.All);
+                    int targetDefense = target.GetTotalDefenseStrength();
                     targetDefense += target
                         .GetFleets()
                         .Where(f =>
@@ -1090,14 +1090,11 @@ namespace Rebellion.Systems
 
             Planet planet = corePlanets[_randomProvider.NextInt(0, corePlanets.Count)];
 
-            int mines = planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+            int mines = planet.GetTotalBuildingTypeCount(BuildingType.Mine);
             int facilities =
-                planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All)
-                + planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All)
-                + planet.GetBuildingTypeCount(
-                    BuildingType.ConstructionFacility,
-                    EntityStateFilter.All
-                );
+                planet.GetTotalBuildingTypeCount(BuildingType.Shipyard)
+                + planet.GetTotalBuildingTypeCount(BuildingType.TrainingFacility)
+                + planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility);
 
             int rawMaterials = planet.NumRawResourceNodes;
             int energy = planet.EnergyCapacity;
@@ -1132,10 +1129,7 @@ namespace Rebellion.Systems
             return buildingType switch
             {
                 BuildingType.Mine => CalculateMinePriority(planet),
-                BuildingType.Defense => planet.GetBuildingTypeCount(
-                    BuildingType.Defense,
-                    EntityStateFilter.All
-                ),
+                BuildingType.Defense => planet.GetTotalBuildingTypeCount(BuildingType.Defense),
                 BuildingType.Refinery => CalculateRefineryPriority(planet),
                 BuildingType.Shipyard
                 or BuildingType.TrainingFacility
@@ -1152,12 +1146,9 @@ namespace Rebellion.Systems
         /// </summary>
         private int CalculateMinePriority(Planet planet)
         {
-            return planet.GetBuildingTypeCount(BuildingType.TrainingFacility, EntityStateFilter.All)
-                + planet.GetBuildingTypeCount(
-                    BuildingType.ConstructionFacility,
-                    EntityStateFilter.All
-                )
-                + planet.GetBuildingTypeCount(BuildingType.Shipyard, EntityStateFilter.All);
+            return planet.GetTotalBuildingTypeCount(BuildingType.TrainingFacility)
+                + planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+                + planet.GetTotalBuildingTypeCount(BuildingType.Shipyard);
         }
 
         /// <summary>
@@ -1176,10 +1167,7 @@ namespace Rebellion.Systems
         /// </summary>
         private int CalculateFacilityPriority(Planet planet, BuildingType facilityType)
         {
-            int sameFacilityCount = planet.GetBuildingTypeCount(
-                facilityType,
-                EntityStateFilter.All
-            );
+            int sameFacilityCount = planet.GetTotalBuildingTypeCount(facilityType);
             int otherFacilityCount = new[]
             {
                 BuildingType.Shipyard,
@@ -1187,7 +1175,7 @@ namespace Rebellion.Systems
                 BuildingType.ConstructionFacility,
             }
                 .Where(type => type != facilityType)
-                .Sum(type => planet.GetBuildingTypeCount(type, EntityStateFilter.All));
+                .Sum(type => planet.GetTotalBuildingTypeCount(type));
 
             return otherFacilityCount * 1000 - sameFacilityCount;
         }

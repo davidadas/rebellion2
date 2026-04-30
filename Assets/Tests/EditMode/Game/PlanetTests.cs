@@ -371,7 +371,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetBuildingTypeCount_ActiveFilter_ExcludesUnderConstruction()
+        public void GetBuildingTypeCount_UnderConstructionBuilding_ExcludesUnderConstruction()
         {
             Building completedMine = new Building
             {
@@ -389,10 +389,7 @@ namespace Rebellion.Tests.Game
             _planet.AddChild(completedMine);
             _planet.AddChild(underConstructionMine);
 
-            int mineCount = _planet.GetBuildingTypeCount(
-                BuildingType.Mine,
-                EntityStateFilter.Active
-            );
+            int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine);
 
             Assert.AreEqual(
                 1,
@@ -402,7 +399,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetBuildingTypeCount_AllFilter_IncludesUnderConstruction()
+        public void GetTotalBuildingTypeCount_UnderConstructionBuilding_IncludesUnderConstruction()
         {
             Building completedMine = new Building
             {
@@ -420,7 +417,7 @@ namespace Rebellion.Tests.Game
             _planet.AddChild(completedMine);
             _planet.AddChild(underConstructionMine);
 
-            int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+            int mineCount = _planet.GetTotalBuildingTypeCount(BuildingType.Mine);
 
             Assert.AreEqual(
                 2,

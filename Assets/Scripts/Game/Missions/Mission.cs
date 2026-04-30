@@ -259,10 +259,7 @@ public abstract class Mission : ContainerNode
     /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
     /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
     /// <returns>True if the roll succeeds.</returns>
-    protected virtual bool IsSuccessfulProbabilityRoll(
-        double rolledValue,
-        double successThreshold
-    )
+    protected virtual bool IsSuccessfulProbabilityRoll(double rolledValue, double successThreshold)
     {
         return rolledValue <= successThreshold;
     }
