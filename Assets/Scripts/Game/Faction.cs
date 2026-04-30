@@ -30,29 +30,21 @@ namespace Rebellion.Game
             new Dictionary<ManufacturingType, List<Technology>>();
 
         /// <summary>
-        /// Highest research order unlocked per manufacturing type.
-        /// Units with ResearchOrder &lt;= this value are available for production.
+        /// Side-level research progression state.
         /// </summary>
-        public Dictionary<ManufacturingType, int> UnlockedResearchOrders { get; set; } =
-            new Dictionary<ManufacturingType, int>()
-            {
-                { ManufacturingType.Building, 0 },
-                { ManufacturingType.Ship, 0 },
-                { ManufacturingType.Troop, 0 },
-            };
+        public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
 
         /// <summary>
-        /// Running research capacity accumulator per manufacturing type.
-        /// Incremented by idle facilities and officer research each tick.
-        /// When capacity >= level cost threshold, research level advances.
+        /// Sorted research catalog entries per discipline.
+        /// NOT serialized â€” rebuilt from templates on load to respect mods.
         /// </summary>
-        public Dictionary<ManufacturingType, int> ResearchCapacity { get; set; } =
-            new Dictionary<ManufacturingType, int>()
-            {
-                { ManufacturingType.Building, 0 },
-                { ManufacturingType.Ship, 0 },
-                { ManufacturingType.Troop, 0 },
-            };
+        [PersistableIgnore]
+        public Dictionary<
+            ResearchDiscipline,
+            List<ResearchCatalogEntry>
+        > ResearchCatalog { get; set; } =
+            new Dictionary<ResearchDiscipline, List<ResearchCatalogEntry>>();
+
         public string HQInstanceID { get; set; }
         public string PlayerID { get; set; }
 
@@ -179,17 +171,20 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Returns technologies unlocked for a specific manufacturing type.
-        /// A technology is unlocked when its ResearchOrder &lt;= UnlockedResearchOrders[type].
         /// </summary>
         /// <param name="manufacturingType">The manufacturing type to query.</param>
         /// <returns>Unlocked technologies for the given type.</returns>
         public List<Technology> GetUnlockedTechnologies(ManufacturingType manufacturingType)
         {
-            if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
+            ResearchDiscipline discipline = ToResearchDiscipline(manufacturingType);
+            if (!ResearchCatalog.TryGetValue(discipline, out List<ResearchCatalogEntry> entries))
                 return new List<Technology>();
 
             int unlockedOrder = GetHighestUnlockedOrder(manufacturingType);
-            return queue.Where(t => t.GetResearchOrder() <= unlockedOrder).ToList();
+            return entries
+                .Where(entry => entry.Order <= unlockedOrder)
+                .Select(entry => entry.Technology)
+                .ToList();
         }
 
         /// <summary>
@@ -200,11 +195,10 @@ namespace Rebellion.Game
         /// <returns>The next technology to research, or null if all are unlocked.</returns>
         public Technology GetCurrentResearchTarget(ManufacturingType manufacturingType)
         {
-            if (!ResearchQueue.TryGetValue(manufacturingType, out List<Technology> queue))
-                return null;
-
-            int unlockedOrder = GetHighestUnlockedOrder(manufacturingType);
-            return queue.FirstOrDefault(t => t.GetResearchOrder() > unlockedOrder);
+            ResearchCatalogEntry nextEntry = GetNextResearchEntry(
+                ToResearchDiscipline(manufacturingType)
+            );
+            return nextEntry?.Technology;
         }
 
         /// <summary>
@@ -214,7 +208,7 @@ namespace Rebellion.Game
         /// <returns>The highest unlocked research order.</returns>
         public int GetHighestUnlockedOrder(ManufacturingType manufacturingType)
         {
-            return UnlockedResearchOrders[manufacturingType];
+            return ResearchState.Disciplines[ToResearchDiscipline(manufacturingType)].CurrentOrder;
         }
 
         /// <summary>
@@ -224,7 +218,112 @@ namespace Rebellion.Game
         /// <param name="order">The new highest unlocked research order.</param>
         public void SetHighestUnlockedOrder(ManufacturingType manufacturingType, int order)
         {
-            UnlockedResearchOrders[manufacturingType] = order;
+            ResearchDiscipline discipline = ToResearchDiscipline(manufacturingType);
+            ResearchState.Disciplines[discipline].CurrentOrder = order;
+            ResearchState.Disciplines[discipline].IsExhausted = false;
+        }
+
+        /// <summary>
+        /// Returns the remaining research capacity for a discipline.
+        /// </summary>
+        /// <param name="discipline">The discipline to query.</param>
+        /// <returns>The remaining research capacity.</returns>
+        public int GetResearchCapacityRemaining(ResearchDiscipline discipline)
+        {
+            return ResearchState.Disciplines[discipline].CapacityRemaining;
+        }
+
+        /// <summary>
+        /// Sets the remaining research capacity for a discipline.
+        /// </summary>
+        /// <param name="discipline">The discipline to update.</param>
+        /// <param name="capacityRemaining">The new remaining capacity value.</param>
+        public void SetResearchCapacityRemaining(
+            ResearchDiscipline discipline,
+            int capacityRemaining
+        )
+        {
+            ResearchState.Disciplines[discipline].CapacityRemaining = capacityRemaining;
+        }
+
+        /// <summary>
+        /// Returns whether a discipline has no further advances available.
+        /// </summary>
+        /// <param name="discipline">The discipline to query.</param>
+        /// <returns>True if the discipline is exhausted.</returns>
+        public bool IsResearchExhausted(ResearchDiscipline discipline)
+        {
+            return ResearchState.Disciplines[discipline].IsExhausted;
+        }
+
+        /// <summary>
+        /// Sets whether a discipline has no further advances available.
+        /// </summary>
+        /// <param name="discipline">The discipline to update.</param>
+        /// <param name="isExhausted">The new exhausted state.</param>
+        public void SetResearchExhausted(ResearchDiscipline discipline, bool isExhausted)
+        {
+            ResearchState.Disciplines[discipline].IsExhausted = isExhausted;
+        }
+
+        /// <summary>
+        /// Returns the next catalog entry after the current order for a discipline.
+        /// </summary>
+        /// <param name="discipline">The discipline to query.</param>
+        /// <returns>The next catalog entry, or null if none remain.</returns>
+        public ResearchCatalogEntry GetNextResearchEntry(ResearchDiscipline discipline)
+        {
+            if (!ResearchCatalog.TryGetValue(discipline, out List<ResearchCatalogEntry> entries))
+                return null;
+
+            int currentOrder = ResearchState.Disciplines[discipline].CurrentOrder;
+            return entries.FirstOrDefault(entry => entry.Order > currentOrder);
+        }
+
+        /// <summary>
+        /// Tries to resolve the catalog entry for a specific discipline and research order.
+        /// </summary>
+        /// <param name="discipline">The discipline to resolve within.</param>
+        /// <param name="order">The research order to resolve.</param>
+        /// <param name="entry">The resolved catalog entry, if found.</param>
+        /// <returns>True if a matching catalog entry was found.</returns>
+        public bool TryResolveResearchEntry(
+            ResearchDiscipline discipline,
+            int order,
+            out ResearchCatalogEntry entry
+        )
+        {
+            entry = null;
+
+            if (!ResearchCatalog.TryGetValue(discipline, out List<ResearchCatalogEntry> entries))
+                return false;
+
+            entry = entries.FirstOrDefault(candidate => candidate.Order == order);
+            return entry != null;
+        }
+
+        /// <summary>
+        /// Returns a snapshot of the current research state for one discipline.
+        /// </summary>
+        /// <param name="discipline">The discipline to inspect.</param>
+        /// <returns>The current research snapshot for the discipline.</returns>
+        public ResearchProgressSnapshot GetResearchProgressSnapshot(ResearchDiscipline discipline)
+        {
+            ResearchDisciplineState state = ResearchState.Disciplines[discipline];
+            ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
+            int? nextEntryScaledDifficulty =
+                nextEntry == null
+                    ? null
+                    : nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
+
+            return new ResearchProgressSnapshot
+            {
+                CurrentOrder = state.CurrentOrder,
+                CapacityRemaining = state.CapacityRemaining,
+                IsExhausted = state.IsExhausted,
+                NextEntry = nextEntry,
+                NextEntryScaledDifficulty = nextEntryScaledDifficulty,
+            };
         }
 
         /// <summary>
@@ -504,13 +603,42 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Rebuilds ResearchQueue from the given templates.
-        /// Groups by ManufacturingType, sorts by ResearchOrder.
+        /// Applies a research capacity delta and evaluates at most one order advance.
+        /// This mirrors the original side-capacity setter callbacks, which process one
+        /// next candidate per invocation instead of draining the full queue in one pass.
+        /// </summary>
+        /// <param name="discipline">The discipline to update.</param>
+        /// <param name="capacityDelta">The capacity delta to add.</param>
+        public void ApplyResearchCapacityChange(ResearchDiscipline discipline, int capacityDelta)
+        {
+            ResearchDisciplineState state = ResearchState.Disciplines[discipline];
+
+            state.CapacityRemaining += capacityDelta;
+
+            ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
+            if (nextEntry == null)
+            {
+                state.IsExhausted = true;
+                return;
+            }
+
+            int scaledDifficulty = nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
+            if (state.CapacityRemaining < scaledDifficulty)
+                return;
+
+            state.CurrentOrder = nextEntry.Order;
+            state.IsExhausted = false;
+            state.CapacityRemaining -= scaledDifficulty;
+        }
+
+        /// <summary>
+        /// Rebuilds the compatibility queue and discipline catalog from the given templates.
         /// </summary>
         /// <param name="templates">The manufacturable templates to build queues from.</param>
         public void RebuildResearchQueues(IManufacturable[] templates)
         {
             ResearchQueue.Clear();
+            ResearchCatalog.Clear();
 
             foreach (IManufacturable template in templates)
             {
@@ -521,17 +649,73 @@ namespace Rebellion.Game
                     continue;
 
                 ManufacturingType type = template.GetManufacturingType();
+                ResearchDiscipline discipline = ToResearchDiscipline(type);
+                Technology technology = new Technology(template);
+
                 if (!ResearchQueue.TryGetValue(type, out List<Technology> queue))
                 {
                     queue = new List<Technology>();
                     ResearchQueue[type] = queue;
                 }
 
-                queue.Add(new Technology(template));
+                queue.Add(technology);
+
+                if (
+                    !ResearchCatalog.TryGetValue(discipline, out List<ResearchCatalogEntry> entries)
+                )
+                {
+                    entries = new List<ResearchCatalogEntry>();
+                    ResearchCatalog[discipline] = entries;
+                }
+
+                entries.Add(
+                    new ResearchCatalogEntry
+                    {
+                        Discipline = discipline,
+                        Order = technology.GetResearchOrder(),
+                        Technology = technology,
+                        Difficulty = technology.GetResearchDifficulty(),
+                    }
+                );
             }
 
             foreach (List<Technology> queue in ResearchQueue.Values)
                 queue.Sort((a, b) => a.GetResearchOrder().CompareTo(b.GetResearchOrder()));
+
+            foreach (List<ResearchCatalogEntry> entries in ResearchCatalog.Values)
+                entries.Sort((left, right) => left.Order.CompareTo(right.Order));
+        }
+
+        /// <summary>
+        /// Maps a manufacturing type to the matching research discipline.
+        /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to map.</param>
+        /// <returns>The matching research discipline.</returns>
+        public static ResearchDiscipline ToResearchDiscipline(ManufacturingType manufacturingType)
+        {
+            return manufacturingType switch
+            {
+                ManufacturingType.Ship => ResearchDiscipline.ShipDesign,
+                ManufacturingType.Building => ResearchDiscipline.FacilityDesign,
+                ManufacturingType.Troop => ResearchDiscipline.TroopTraining,
+                _ => throw new ArgumentOutOfRangeException(nameof(manufacturingType)),
+            };
+        }
+
+        /// <summary>
+        /// Maps a research discipline to the matching manufacturing type.
+        /// </summary>
+        /// <param name="discipline">The research discipline to map.</param>
+        /// <returns>The matching manufacturing type.</returns>
+        public static ManufacturingType ToManufacturingType(ResearchDiscipline discipline)
+        {
+            return discipline switch
+            {
+                ResearchDiscipline.ShipDesign => ManufacturingType.Ship,
+                ResearchDiscipline.FacilityDesign => ManufacturingType.Building,
+                ResearchDiscipline.TroopTraining => ManufacturingType.Troop,
+                _ => throw new ArgumentOutOfRangeException(nameof(discipline)),
+            };
         }
     }
 }

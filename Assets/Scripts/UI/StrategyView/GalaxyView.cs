@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Rebellion.Game;
 using UnityEngine;
 
@@ -10,6 +10,9 @@ public sealed class GalaxyView : MonoBehaviour
 {
     private GalaxyMap galaxyMap;
     private UIContext context;
+    private RectTransform viewport;
+    private RectTransform renderLayer;
+    private GalaxyCoordinateMapper mapper;
 
     public event Action<PlanetSystem> OnSystemSelected;
     public event Action<PlanetSystem> OnSystemOpened;
@@ -17,7 +20,12 @@ public sealed class GalaxyView : MonoBehaviour
     /// <summary>
     /// Initializes the map view with galaxy data.
     /// </summary>
-    public void Initialize(GalaxyMap galaxyMap, UIContext context)
+    public void Initialize(
+        GalaxyMap galaxyMap,
+        UIContext context,
+        RectTransform viewport,
+        GalaxyCoordinateMapper mapper
+    )
     {
         if (galaxyMap == null)
             throw new ArgumentNullException(nameof(galaxyMap));
@@ -25,11 +33,45 @@ public sealed class GalaxyView : MonoBehaviour
         if (context == null)
             throw new ArgumentNullException(nameof(context));
 
+        if (viewport == null)
+            throw new ArgumentNullException(nameof(viewport));
+
+        if (mapper == null)
+            throw new ArgumentNullException(nameof(mapper));
+
         this.galaxyMap = galaxyMap;
         this.context = context;
+        this.viewport = viewport;
+        this.mapper = mapper;
 
+        EnsureRenderLayer();
         Clear();
         BuildSystems();
+    }
+
+    /// <summary>
+    /// Ensures the icon layer exists inside the active map viewport.
+    /// </summary>
+    private void EnsureRenderLayer()
+    {
+        if (renderLayer != null)
+            return;
+
+        Transform existing = viewport.Find("GalaxyIcons");
+        if (existing != null)
+        {
+            renderLayer = existing as RectTransform;
+            return;
+        }
+
+        GameObject go = new GameObject("GalaxyIcons");
+        renderLayer = go.AddComponent<RectTransform>();
+        renderLayer.SetParent(viewport, false);
+        renderLayer.anchorMin = Vector2.zero;
+        renderLayer.anchorMax = Vector2.one;
+        renderLayer.offsetMin = Vector2.zero;
+        renderLayer.offsetMax = Vector2.zero;
+        renderLayer.pivot = new Vector2(0.5f, 0.5f);
     }
 
     /// <summary>
@@ -37,9 +79,12 @@ public sealed class GalaxyView : MonoBehaviour
     /// </summary>
     private void Clear()
     {
-        for (int i = transform.childCount - 1; i >= 0; i--)
+        if (renderLayer == null)
+            return;
+
+        for (int i = renderLayer.childCount - 1; i >= 0; i--)
         {
-            Destroy(transform.GetChild(i).gameObject);
+            Destroy(renderLayer.GetChild(i).gameObject);
         }
     }
 
@@ -60,10 +105,10 @@ public sealed class GalaxyView : MonoBehaviour
     private void CreateSystem(PlanetSystem system)
     {
         GameObject go = new GameObject(system.DisplayName);
-        go.transform.SetParent(transform, false);
+        go.transform.SetParent(renderLayer, false);
 
         PlanetSystemIcon icon = go.AddComponent<PlanetSystemIcon>();
-        icon.Initialize(system, context, transform);
+        icon.Initialize(system, context, renderLayer, mapper);
 
         icon.OnClicked += HandleSystemClicked;
         icon.OnDoubleClicked += HandleSystemDoubleClicked;
@@ -83,5 +128,33 @@ public sealed class GalaxyView : MonoBehaviour
     private void HandleSystemDoubleClicked(PlanetSystem system)
     {
         OnSystemOpened?.Invoke(system);
+    }
+}
+
+/// <summary>
+/// Maps original Rebellion galaxy coordinates into the active map viewport.
+/// </summary>
+public sealed class GalaxyCoordinateMapper
+{
+    private const float LogicalMapSize = 1024.0f;
+
+    private readonly RectTransform viewport;
+
+    public GalaxyCoordinateMapper(RectTransform viewport)
+    {
+        this.viewport = viewport;
+    }
+
+    /// <summary>
+    /// Converts original map coordinates into viewport-local UI coordinates.
+    /// </summary>
+    public Vector2 Map(float x, float y)
+    {
+        Rect rect = viewport.rect;
+
+        return new Vector2(
+            (x / LogicalMapSize) * rect.width,
+            (1.0f - (y / LogicalMapSize)) * rect.height
+        );
     }
 }

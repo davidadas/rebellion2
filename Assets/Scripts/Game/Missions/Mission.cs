@@ -253,6 +253,21 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
+    /// Evaluates whether a rolled probability succeeds against the given threshold.
+    /// Default mission behavior uses an inclusive comparison.
+    /// </summary>
+    /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
+    /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
+    /// <returns>True if the roll succeeds.</returns>
+    protected virtual bool IsSuccessfulProbabilityRoll(
+        double rolledValue,
+        double successThreshold
+    )
+    {
+        return rolledValue <= successThreshold;
+    }
+
+    /// <summary>
     /// Returns true if at least one main participant beats the success threshold.
     /// Foil detection is handled separately per-tick by MissionSystem.
     /// </summary>
@@ -262,8 +277,9 @@ public abstract class Mission : ContainerNode
     {
         foreach (IMissionParticipant participant in MainParticipants)
         {
-            double successProbability = GetAgentProbability(participant);
-            if (provider.NextDouble() * 100 <= successProbability)
+            double successThreshold = GetAgentProbability(participant);
+            double rolledValue = provider.NextDouble() * 100;
+            if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
                 return true;
         }
         return false;

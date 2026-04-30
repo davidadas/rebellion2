@@ -207,6 +207,27 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns the officer's base research rating for the given manufacturing type.
+        /// </summary>
+        /// <param name="type">The manufacturing type to query.</param>
+        /// <returns>The officer's base research rating for that type.</returns>
+        public int GetBaseResearchRating(ManufacturingType type)
+        {
+            return GetResearchSkill(type);
+        }
+
+        /// <summary>
+        /// Returns the officer's base research rating for the given manufacturing type.
+        /// This rating is also the direct success chance used by research missions.
+        /// </summary>
+        /// <param name="type">The manufacturing type to query.</param>
+        /// <returns>The officer's base research rating for that type.</returns>
+        public int GetResearchSuccessChance(ManufacturingType type)
+        {
+            return GetBaseResearchRating(type);
+        }
+
+        /// <summary>
         /// Increments the research skill for the given manufacturing type by the specified amount.
         /// </summary>
         /// <param name="type">The manufacturing type whose skill to increment.</param>
@@ -225,6 +246,16 @@ namespace Rebellion.Game
                     TroopResearch += amount;
                     break;
             }
+        }
+
+        /// <summary>
+        /// Increments the officer's base research rating for the given manufacturing type.
+        /// </summary>
+        /// <param name="type">The manufacturing type whose rating to increment.</param>
+        /// <param name="amount">Amount to add to the rating.</param>
+        public void IncrementBaseResearchRating(ManufacturingType type, int amount = 1)
+        {
+            IncrementResearchSkill(type, amount);
         }
 
         /// <summary>

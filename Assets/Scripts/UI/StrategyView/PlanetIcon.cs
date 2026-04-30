@@ -10,6 +10,7 @@ public sealed class PlanetIcon : MonoBehaviour
 {
     private Planet planet;
     private UIContext context;
+    private GalaxyCoordinateMapper mapper;
 
     /// <summary>
     ///
@@ -17,17 +18,18 @@ public sealed class PlanetIcon : MonoBehaviour
     /// <param name="planet"></param>
     /// <param name="context"></param>
     /// <exception cref="InvalidOperationException"></exception>
-    public void Initialize(Planet planet, UIContext context)
+    public void Initialize(Planet planet, UIContext context, GalaxyCoordinateMapper mapper)
     {
         this.planet = planet;
         this.context = context;
+        this.mapper = mapper;
 
         RectTransform rect = gameObject.AddComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.zero;
         rect.pivot = new Vector2(0.5f, 0.5f);
 
-        rect.anchoredPosition = new Vector2(planet.PositionX, planet.PositionY);
+        rect.anchoredPosition = this.mapper.Map(planet.PositionX, planet.PositionY);
         rect.sizeDelta = new Vector2(30, 30);
         string factionOwnerId = planet.WasVisitedBy(context.GetPlayerFactionInstanceID())
             ? planet.GetOwnerInstanceID()

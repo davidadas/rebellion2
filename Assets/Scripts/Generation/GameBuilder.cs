@@ -52,6 +52,7 @@ namespace Rebellion.Generation
             CapitalShip[] shipTemplates = ResourceManager.GetGameData<CapitalShip>();
             Starfighter[] fighterTemplates = ResourceManager.GetGameData<Starfighter>();
             Regiment[] regimentTemplates = ResourceManager.GetGameData<Regiment>();
+            SpecialForces[] specialForcesTemplates = ResourceManager.GetGameData<SpecialForces>();
             Officer[] officerTemplates = ResourceManager.GetGameData<Officer>();
             GameEvent[] gameEvents = ResourceManager.GetGameData<GameEvent>();
 
@@ -132,7 +133,8 @@ namespace Rebellion.Generation
                 buildingTemplates,
                 shipTemplates,
                 fighterTemplates,
-                regimentTemplates
+                regimentTemplates,
+                specialForcesTemplates
             );
 
             // Create the game
@@ -168,7 +170,8 @@ namespace Rebellion.Generation
             Building[] buildings,
             CapitalShip[] capitalShips,
             Starfighter[] starfighters,
-            Regiment[] regiments
+            Regiment[] regiments,
+            SpecialForces[] specialForces
         )
         {
             IManufacturable[] allTech = buildings
@@ -176,6 +179,7 @@ namespace Rebellion.Generation
                 .Concat(capitalShips)
                 .Concat(starfighters)
                 .Concat(regiments)
+                .Concat(specialForces)
                 .ToArray();
 
             foreach (Faction faction in factions)
