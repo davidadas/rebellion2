@@ -130,15 +130,15 @@ public class ResearchMission : Mission
     /// <summary>
     /// Research mission success uses a strict probability comparison.
     /// </summary>
-    /// <param name="rolledProbability">The rolled value on the 0-100 probability scale.</param>
-    /// <param name="successProbability">The success threshold on the 0-100 probability scale.</param>
+    /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
+    /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
     /// <returns>True if the roll is strictly below the threshold.</returns>
     protected override bool IsSuccessfulProbabilityRoll(
-        double rolledProbability,
-        double successProbability
+        double rolledValue,
+        double successThreshold
     )
     {
-        return rolledProbability < successProbability;
+        return rolledValue < successThreshold;
     }
 
     /// <summary>

@@ -256,15 +256,15 @@ public abstract class Mission : ContainerNode
     /// Evaluates whether a rolled probability succeeds against the given threshold.
     /// Default mission behavior uses an inclusive comparison.
     /// </summary>
-    /// <param name="rolledProbability">The rolled value on the 0-100 probability scale.</param>
-    /// <param name="successProbability">The success threshold on the 0-100 probability scale.</param>
+    /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
+    /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
     /// <returns>True if the roll succeeds.</returns>
     protected virtual bool IsSuccessfulProbabilityRoll(
-        double rolledProbability,
-        double successProbability
+        double rolledValue,
+        double successThreshold
     )
     {
-        return rolledProbability <= successProbability;
+        return rolledValue <= successThreshold;
     }
 
     /// <summary>
@@ -277,9 +277,9 @@ public abstract class Mission : ContainerNode
     {
         foreach (IMissionParticipant participant in MainParticipants)
         {
-            double successProbability = GetAgentProbability(participant);
-            double rolledProbability = provider.NextDouble() * 100;
-            if (IsSuccessfulProbabilityRoll(rolledProbability, successProbability))
+            double successThreshold = GetAgentProbability(participant);
+            double rolledValue = provider.NextDouble() * 100;
+            if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
                 return true;
         }
         return false;
