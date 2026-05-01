@@ -427,6 +427,38 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void GetTotalDefenseStrength_UnderConstructionShield_IncludesShieldStrength()
+        {
+            Building completedShield = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 50,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building underConstructionShield = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 75,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            _planet.AddChild(completedShield);
+            _planet.AddChild(underConstructionShield);
+
+            int defenseStrength = _planet.GetTotalDefenseStrength();
+
+            Assert.AreEqual(
+                125,
+                defenseStrength,
+                "Total defense strength should include under-construction shield buildings."
+            );
+        }
+
+        [Test]
         public void GetAllBuildings_MultipleSlots_ReturnsAllBuildings()
         {
             Building groundBuilding = new Building { OwnerInstanceID = "FNALL1" };

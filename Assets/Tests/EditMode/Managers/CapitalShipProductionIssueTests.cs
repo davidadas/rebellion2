@@ -750,6 +750,64 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        [Test]
+        public void Execute_UnderConstructionEnemyShield_PreventsAssaultStrike()
+        {
+            Fleet fleet = EntityFactory.CreateFleet("fleet1", "empire");
+            _game.AttachNode(fleet, _empPlanet);
+
+            CapitalShip warship = new CapitalShip
+            {
+                InstanceID = "warship1",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 999,
+                CurrentHullStrength = 999,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                PrimaryWeapons = new Dictionary<PrimaryWeaponType, int[]>
+                {
+                    { PrimaryWeaponType.Turbolaser, new int[] { 100, 100, 100, 100, 100 } },
+                },
+            };
+            _game.AttachNode(warship, fleet);
+
+            Building underConstructionShield = new Building
+            {
+                InstanceID = "shield1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 200,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(underConstructionShield, _rebelPlanet);
+
+            Regiment targetRegiment = EntityFactory.CreateRegiment("reg1", "rebels");
+            targetRegiment.DefenseRating = 0;
+            _game.AttachNode(targetRegiment, _rebelPlanet);
+
+            EnqueueShip(_empPlanet, "cs1", "empire", constructionCost: 10000);
+
+            CapitalShipProductionIssue issue = new CapitalShipProductionIssue(
+                CapitalShipProductionIssue.Variant.SetupContributionAssault,
+                _game,
+                _empire,
+                _system,
+                new StubRNG()
+            );
+            issue.Execute();
+
+            List<Regiment> remainingRegiments = _rebelPlanet
+                .GetAllRegiments()
+                .Where(regiment => regiment.GetOwnerInstanceID() == "rebels")
+                .ToList();
+
+            Assert.AreEqual(
+                1,
+                remainingRegiments.Count,
+                "Under-construction shield defense should still count and prevent the strike."
+            );
+        }
+
         // --- Variant tests ---
 
         [Test]
