@@ -30,7 +30,7 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            if (_game.CurrentTick % CapacityRefreshPulseTicks != 0)
+            if (_game.CurrentTick <= 0 || _game.CurrentTick % CapacityRefreshPulseTicks != 0)
                 return results;
 
             foreach (Faction faction in _game.GetFactions())

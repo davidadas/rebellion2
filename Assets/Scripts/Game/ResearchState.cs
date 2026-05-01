@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Util.Attributes;
 
 namespace Rebellion.Game
 {
@@ -15,6 +16,7 @@ namespace Rebellion.Game
     /// <summary>
     /// Persisted side-level research state for a faction.
     /// </summary>
+    [PersistableObject]
     public sealed class FactionResearchState
     {
         /// <summary>
@@ -42,6 +44,7 @@ namespace Rebellion.Game
     /// <summary>
     /// Persisted research progression state for one discipline.
     /// </summary>
+    [PersistableObject]
     public sealed class ResearchDisciplineState
     {
         /// <summary>
