@@ -1072,8 +1072,8 @@ namespace Rebellion.Systems
         /// </summary>
         private void ProcessResourceRebalancing(Faction faction)
         {
-            int maxEnergy = _game.Config.ResourceRebalance.MaxEnergy;
-            int maxRawMaterials = _game.Config.ResourceRebalance.MaxRawMaterials;
+            int maxEnergy = _game.Config.Planet.MaxEnergy;
+            int maxRawMaterials = _game.Config.Planet.MaxRawMaterials;
 
             // Pick a random owned core system
             List<Planet> corePlanets = faction

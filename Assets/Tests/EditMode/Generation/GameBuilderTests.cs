@@ -154,6 +154,7 @@ namespace Rebellion.Tests.Generation
                 .Concat(ResourceManager.GetGameData<CapitalShip>())
                 .Concat(ResourceManager.GetGameData<Starfighter>())
                 .Concat(ResourceManager.GetGameData<Regiment>())
+                .Concat(ResourceManager.GetGameData<SpecialForces>())
                 .ToArray();
 
             foreach (Faction faction in _game.Factions)

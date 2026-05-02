@@ -17,7 +17,6 @@ public class GameConfig
     public AIConfig AI { get; set; } = new AIConfig();
     public MovementConfig Movement { get; set; } = new MovementConfig();
     public ProductionConfig Production { get; set; } = new ProductionConfig();
-    public ResourceRebalanceConfig ResourceRebalance { get; set; } = new ResourceRebalanceConfig();
     public PlanetConfig Planet { get; set; } = new PlanetConfig();
     public CombatConfig Combat { get; set; } = new CombatConfig();
     public UprisingConfig Uprising { get; set; } = new UprisingConfig();
@@ -306,6 +305,12 @@ public class GameConfig
 
         /// <summary>Maximum popular support value.</summary>
         public int MaxPopularSupport { get; set; }
+
+        /// <summary>Maximum energy capacity per planet.</summary>
+        public int MaxEnergy { get; set; }
+
+        /// <summary>Maximum raw resource nodes per planet.</summary>
+        public int MaxRawMaterials { get; set; }
     }
 
     /// <summary>
@@ -460,6 +465,12 @@ public class GameConfig
 
         /// <summary>Random bonus range added to base research points on success.</summary>
         public int ResearchDiceRange { get; set; }
+
+        /// <summary>Base ticks between research capacity refresh pulses.</summary>
+        public int RefreshIntervalBase { get; set; }
+
+        /// <summary>Random spread added to the base interval on each pulse.</summary>
+        public int RefreshIntervalSpread { get; set; }
     }
 
     /// <summary>
@@ -637,34 +648,5 @@ public class GameConfig
                 _ => null,
             };
         }
-    }
-
-    /// <summary>
-    /// Resource rebalance configuration.
-    /// Controls periodic resource decay, facility suspension, and resource random walk.
-    /// </summary>
-    [PersistableObject]
-    public class ResourceRebalanceConfig
-    {
-        /// <summary>Probability multiplier for per-unit resource decay. Default: 5.</summary>
-        public int DecayMultiplier { get; set; }
-
-        /// <summary>Base delay for rebalance timer in ticks.</summary>
-        public int RebalanceTimerBase { get; set; }
-
-        /// <summary>Random spread added to rebalance timer. Range: 0..spread-1.</summary>
-        public int RebalanceTimerSpread { get; set; }
-
-        /// <summary>Base delay for resource walk timer in ticks.</summary>
-        public int ResourceWalkTimerBase { get; set; }
-
-        /// <summary>Random spread for resource walk timer.</summary>
-        public int ResourceWalkTimerSpread { get; set; }
-
-        /// <summary>Maximum energy value per planet.</summary>
-        public int MaxEnergy { get; set; }
-
-        /// <summary>Maximum raw materials value per planet.</summary>
-        public int MaxRawMaterials { get; set; }
     }
 }

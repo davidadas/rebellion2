@@ -187,6 +187,7 @@ public class ResearchMission : Mission
                     FacilityType = facilityType,
                     ResearchOrder = after.CurrentOrder,
                     Capacity = after.CapacityRemaining,
+                    Technology = before.NextEntry?.Technology,
                 }
             );
         }

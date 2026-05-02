@@ -770,13 +770,15 @@ namespace Rebellion.Tests.Managers
             };
             _game.AttachNode(warship, fleet);
 
+            // Shield must exceed the warship's 5×100 = 500 attack strength so that
+            // assault netStrength <= 0 and the strike loop is gated off entirely.
             Building underConstructionShield = new Building
             {
                 InstanceID = "shield1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Defense,
                 DefenseFacilityClass = DefenseFacilityClass.Shield,
-                ShieldStrength = 200,
+                ShieldStrength = 1000,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             _game.AttachNode(underConstructionShield, _rebelPlanet);

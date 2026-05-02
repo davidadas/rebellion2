@@ -401,7 +401,7 @@ namespace Rebellion.Tests.Game
         public void SerializeAndDeserialize_ResearchState_RetainsAllDisciplinesAndIgnoresDerivedCatalogs()
         {
             _faction.ResearchState.CostScalePercent = 125;
-            _faction.ResearchState.ReservedState = 7;
+            _faction.ResearchState.NextRefreshTick = 47;
 
             _faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 2);
             _faction.SetHighestUnlockedOrder(ManufacturingType.Building, 4);
@@ -445,7 +445,7 @@ namespace Rebellion.Tests.Game
             Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
 
             Assert.AreEqual(125, deserialized.ResearchState.CostScalePercent);
-            Assert.AreEqual(7, deserialized.ResearchState.ReservedState);
+            Assert.AreEqual(47, deserialized.ResearchState.NextRefreshTick);
 
             Assert.AreEqual(2, deserialized.GetHighestUnlockedOrder(ManufacturingType.Ship));
             Assert.AreEqual(4, deserialized.GetHighestUnlockedOrder(ManufacturingType.Building));

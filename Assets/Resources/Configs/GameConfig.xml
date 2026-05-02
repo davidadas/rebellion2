@@ -558,20 +558,6 @@
     <BuildingCompletionSupportShift>1</BuildingCompletionSupportShift>
     <TroopCompletionSupportShift>1</TroopCompletionSupportShift>
   </Production>
-  <!-- Resource Rebalance Configuration (GENERAL_PARAM 7712-7720) -->
-  <ResourceRebalance>
-    <!-- Probability multiplier for per-unit resource decay (PARAM_7715) -->
-    <DecayMultiplier>5</DecayMultiplier>
-    <!-- Rebalance timer: base delay + random(0..spread-1) ticks (PARAM_7717/7718) -->
-    <RebalanceTimerBase>1</RebalanceTimerBase>
-    <RebalanceTimerSpread>399</RebalanceTimerSpread>
-    <!-- Resource walk timer: base delay + random(0..spread-1) ticks (PARAM_7719/7720) -->
-    <ResourceWalkTimerBase>1</ResourceWalkTimerBase>
-    <ResourceWalkTimerSpread>399</ResourceWalkTimerSpread>
-    <!-- Max per-planet caps (PARAM_7712, PARAM_7714) -->
-    <MaxEnergy>15</MaxEnergy>
-    <MaxRawMaterials>15</MaxRawMaterials>
-  </ResourceRebalance>
   <!-- Planet Mechanics Configuration -->
   <Planet>
     <!-- Distance divisor for planet formula calculations (default: 5) -->
@@ -580,6 +566,10 @@
     <DistanceBase>100</DistanceBase>
     <!-- Maximum popular support value (default: 100) -->
     <MaxPopularSupport>100</MaxPopularSupport>
+    <!-- Maximum energy capacity per planet -->
+    <MaxEnergy>15</MaxEnergy>
+    <!-- Maximum raw resource nodes per planet -->
+    <MaxRawMaterials>15</MaxRawMaterials>
   </Planet>
   <!-- Combat System Configuration -->
   <Combat>
@@ -727,10 +717,14 @@
   <!-- Controls technology advancement from idle facilities and officer research missions.
        Per-unit unlock costs are defined by ResearchDifficulty in the unit data XMLs. -->
   <Research>
-    <!-- Base research points per successful research mission (GENERAL_PARAM_6171) -->
+    <!-- Base research points per successful research mission -->
     <BaseResearchPoints>1</BaseResearchPoints>
-    <!-- Random bonus range: award random(0, DiceRange) extra points (GENERAL_PARAM_6172) -->
+    <!-- Random bonus range: award random(0, DiceRange) extra points -->
     <ResearchDiceRange>6</ResearchDiceRange>
+    <!-- Base ticks between research capacity refresh pulses -->
+    <RefreshIntervalBase>30</RefreshIntervalBase>
+    <!-- Random spread added to the base interval per pulse -->
+    <RefreshIntervalSpread>30</RefreshIntervalSpread>
   </Research>
   <!-- Assassination Mission Configuration -->
   <Assassination>

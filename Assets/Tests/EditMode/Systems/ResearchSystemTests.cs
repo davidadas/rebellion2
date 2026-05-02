@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, sys);
 
-            system = new ResearchSystem(game);
+            system = new ResearchSystem(game, new StubRNG());
         }
 
         private Building CreateShipyard(string id)
@@ -85,12 +85,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_TenthTickCoreSystemShipyard_AddsCapacity()
+        public void ProcessTick_OneCoreSystemShipyard_AddsOneCapacity()
         {
             Building shipyard = CreateShipyard("SY1");
             game.AttachNode(shipyard, planet);
 
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             int before = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
             system.ProcessTick();
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateShipyard("SY1"), planet);
             game.AttachNode(CreateShipyard("SY2"), planet);
             game.AttachNode(CreateShipyard("SY3"), planet);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Systems
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Systems
             Building shipyard = CreateShipyard("SY1");
             shipyard.ManufacturingStatus = ManufacturingStatus.Building;
             game.AttachNode(shipyard, planet);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Systems
             Building shipyard = CreateShipyard("SY1");
             shipyard.Movement = new MovementState();
             game.AttachNode(shipyard, planet);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -174,7 +174,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
             system.ProcessTick();
 
             Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(outerRimPlanet, outerRimSystem);
             game.AttachNode(CreateShipyard("SY-OUTER"), outerRimPlanet);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Systems
         {
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 12);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Systems
         {
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 12);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             List<GameResult> results = system.ProcessTick();
 
@@ -247,6 +247,8 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(faction.InstanceID, result.Faction.InstanceID);
             Assert.AreEqual(ManufacturingType.Ship, result.FacilityType);
             Assert.AreEqual(1, result.ResearchOrder);
+            Assert.IsNotNull(result.Technology, "Result should carry the unlocked technology");
+            Assert.AreEqual("Frigate", result.Technology.GetReference().DisplayName);
         }
 
         [Test]
@@ -254,7 +256,7 @@ namespace Rebellion.Tests.Systems
         {
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
             faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 40);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -271,7 +273,7 @@ namespace Rebellion.Tests.Systems
         {
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 5);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -285,7 +287,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 1);
             faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 9999);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -302,7 +304,7 @@ namespace Rebellion.Tests.Systems
             SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             game.AttachNode(CreateShipyard("SY1"), planet);
 
-            for (int i = 1; i <= 120; i++)
+            for (int i = 1; i <= 360; i++)
             {
                 game.CurrentTick = i;
                 system.ProcessTick();
@@ -311,7 +313,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 1,
                 faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
-                "Twelve 10-tick pulses of +1 should reach Frigate's difficulty of 12"
+                "Repeated pulses of +1 capacity should reach Frigate's difficulty of 12"
             );
         }
 
@@ -346,7 +348,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(empSy1, empirePlanet);
             game.AttachNode(empSy2, empirePlanet);
             game.AttachNode(empSy3, empirePlanet);
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 
@@ -390,7 +392,7 @@ namespace Rebellion.Tests.Systems
                 Faction.ToResearchDiscipline(type),
                 target.GetResearchDifficulty()
             );
-            game.CurrentTick = 10;
+            game.CurrentTick = 30;
 
             system.ProcessTick();
 

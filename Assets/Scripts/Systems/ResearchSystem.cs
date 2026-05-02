@@ -11,16 +11,29 @@ namespace Rebellion.Systems
     /// </summary>
     public class ResearchSystem : IGameSystem
     {
-        private const int CapacityRefreshPulseTicks = 10;
         private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
 
         /// <summary>
         /// Creates a new ResearchSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        public ResearchSystem(GameRoot game)
+        /// <param name="provider">The random number provider.</param>
+        public ResearchSystem(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game;
+            _provider = provider;
+
+            // Arm the initial timer for any faction that hasn't already had one
+            // persisted from a save. NextRefreshTick == 0 is the default-uninitialized
+            // sentinel; loaded saves carry a non-zero value that we keep as-is.
+            GameConfig.ResearchConfig config = _game.Config.Research;
+            foreach (Faction faction in _game.GetFactions())
+            {
+                FactionResearchState state = faction.ResearchState;
+                if (state.NextRefreshTick == 0)
+                    state.NextRefreshTick = _game.CurrentTick + RollRefreshDelay(config);
+            }
         }
 
         /// <summary>
@@ -30,11 +43,21 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
-            if (_game.CurrentTick <= 0 || _game.CurrentTick % CapacityRefreshPulseTicks != 0)
+            if (_game.CurrentTick <= 0)
                 return results;
 
+            GameConfig.ResearchConfig config = _game.Config.Research;
+
             foreach (Faction faction in _game.GetFactions())
+            {
+                FactionResearchState state = faction.ResearchState;
+                if (_game.CurrentTick < state.NextRefreshTick)
+                    continue;
+
                 RefreshResearchCapacity(faction, results);
+
+                state.NextRefreshTick = _game.CurrentTick + RollRefreshDelay(config);
+            }
 
             return results;
         }
@@ -114,6 +137,7 @@ namespace Rebellion.Systems
                         FacilityType = facilityType,
                         ResearchOrder = after.CurrentOrder,
                         Capacity = after.CapacityRemaining,
+                        Technology = before.NextEntry?.Technology,
                     }
                 );
             }
@@ -131,6 +155,17 @@ namespace Rebellion.Systems
                     }
                 );
             }
+        }
+
+        /// <summary>
+        /// Rolls the next refresh delay using the configured base and random spread.
+        /// </summary>
+        /// <param name="config">The research configuration.</param>
+        /// <returns>Number of ticks until the next refresh should fire.</returns>
+        private int RollRefreshDelay(GameConfig.ResearchConfig config)
+        {
+            return config.RefreshIntervalBase
+                + _provider.NextInt(0, config.RefreshIntervalSpread + 1);
         }
 
         private static readonly ManufacturingType[] ResearchableTypes = new[]

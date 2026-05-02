@@ -25,9 +25,9 @@ namespace Rebellion.Game
         public int CostScalePercent { get; set; } = 100;
 
         /// <summary>
-        /// Preserved persisted side research field. Defaults to 1.
+        /// Tick at which the next research capacity refresh fires for this faction.
         /// </summary>
-        public int ReservedState { get; set; } = 1;
+        public int NextRefreshTick { get; set; }
 
         /// <summary>
         /// Per-discipline research progression state.

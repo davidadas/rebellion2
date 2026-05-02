@@ -123,6 +123,39 @@ do_coverage() {
         -coverageResultsPath "$coverage_dir" \
         -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
     echo "Coverage report written to $coverage_dir/Report/index.html"
+
+    # Keep thresholds in sync with .github/workflows/unity-tests.yml
+    local summary_xml="$coverage_dir/Report/Summary.xml"
+    local line_threshold=62.8
+    local method_threshold=67.4
+
+    if [ ! -f "$summary_xml" ]; then
+        echo "Coverage summary not found at $summary_xml"
+        exit 1
+    fi
+
+    local line_pct method_pct
+    line_pct=$(sed -n 's:.*<Linecoverage>\([0-9.]*\)</Linecoverage>.*:\1:p' "$summary_xml")
+    method_pct=$(sed -n 's:.*<Methodcoverage>\([0-9.]*\)</Methodcoverage>.*:\1:p' "$summary_xml")
+
+    printf "Line coverage:   %s%% (threshold %s%%)\n" "$line_pct" "$line_threshold"
+    printf "Method coverage: %s%% (threshold %s%%)\n" "$method_pct" "$method_threshold"
+
+    local failed=0
+    if [ "$(echo "$line_pct < $line_threshold" | bc -l)" = "1" ]; then
+        echo "FAIL: line coverage ${line_pct}% is below threshold ${line_threshold}%"
+        failed=1
+    fi
+    if [ "$(echo "$method_pct < $method_threshold" | bc -l)" = "1" ]; then
+        echo "FAIL: method coverage ${method_pct}% is below threshold ${method_threshold}%"
+        failed=1
+    fi
+
+    if [ "$failed" = "1" ]; then
+        exit 1
+    fi
+
+    echo "OK: all coverage thresholds met"
 }
 
 do_build() {

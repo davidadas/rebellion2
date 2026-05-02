@@ -20,7 +20,6 @@ public class GameManager
     private MovementSystem _movementManager;
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
-    private ResourceRebalanceSystem _resourceRebalanceManager;
     private ResourceIncomeSystem _resourceIncomeManager;
     private CombatSystem _combatManager;
     private FogOfWarSystem _fogOfWarManager;
@@ -182,10 +181,7 @@ public class GameManager
         _game.CurrentTick++;
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-        // 0. Resource rebalance: timer-based decay, facility suspension, resource walk
-        ProcessResults(_resourceRebalanceManager.ProcessTick());
-
-        // 0b. Resource income: accumulate per-planet income into faction stockpiles
+        // 0. Resource income: accumulate per-planet income into faction stockpiles
         ProcessResults(_resourceIncomeManager.ProcessTick());
 
         // 1. Manufacturing: produces units before movement consumes capacity
@@ -247,7 +243,6 @@ public class GameManager
         _movementManager = new MovementSystem(_game, _fogOfWarManager, _blockadeManager);
         _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
         _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
-        _resourceRebalanceManager = new ResourceRebalanceSystem(_game, _randomProvider);
         _resourceIncomeManager = new ResourceIncomeSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
@@ -268,7 +263,7 @@ public class GameManager
             _planetaryControlSystem
         );
         _deathStarManager = new DeathStarSystem(_game);
-        _researchManager = new ResearchSystem(_game);
+        _researchManager = new ResearchSystem(_game, _randomProvider);
         _betrayalManager = new BetrayalSystem(_game);
         _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _victoryManager = new VictorySystem(_game);
