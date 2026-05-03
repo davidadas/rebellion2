@@ -21,6 +21,25 @@ public class InciteUprisingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
+    private InciteUprisingMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
+    )
+        : base(
+            "InciteUprising",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Leadership,
+            null
+        )
+    {
+        DisplayName = "Incite Uprising";
+    }
+
     /// <summary>
     /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.
     /// </summary>
@@ -41,25 +60,6 @@ public class InciteUprisingMission : Mission
             ctx.MainParticipants,
             ctx.DecoyParticipants
         );
-    }
-
-    private InciteUprisingMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants
-    )
-        : base(
-            "InciteUprising",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Leadership,
-            null
-        )
-    {
-        DisplayName = "Incite Uprising";
     }
 
     /// <summary>

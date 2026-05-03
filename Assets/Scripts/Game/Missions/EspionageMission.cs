@@ -23,6 +23,26 @@ public class EspionageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Espionage;
     }
 
+    private EspionageMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        FogOfWarSystem fogOfWar
+    )
+        : base(
+            "Espionage",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Espionage").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Espionage,
+            null
+        )
+    {
+        _fogOfWar = fogOfWar;
+    }
+
     /// <summary>
     /// Returns a new EspionageMission if the target is a visited planet, or null.
     /// </summary>
@@ -43,26 +63,6 @@ public class EspionageMission : Mission
             ctx.DecoyParticipants,
             ctx.FogOfWar
         );
-    }
-
-    private EspionageMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        FogOfWarSystem fogOfWar
-    )
-        : base(
-            "Espionage",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Espionage").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Espionage,
-            null
-        )
-    {
-        _fogOfWar = fogOfWar;
     }
 
     /// <summary>

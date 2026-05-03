@@ -18,6 +18,22 @@ public class DiplomacyMission : Mission
         ParticipantSkill = MissionParticipantSkill.Diplomacy;
     }
 
+    private DiplomacyMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
+    )
+        : base(
+            "Diplomacy",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Diplomacy,
+            null
+        ) { }
+
     /// <summary>
     /// Returns a new DiplomacyMission if the target is a valid planet, or null.
     /// </summary>
@@ -47,22 +63,6 @@ public class DiplomacyMission : Mission
             ctx.DecoyParticipants
         );
     }
-
-    private DiplomacyMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants
-    )
-        : base(
-            "Diplomacy",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Diplomacy,
-            null
-        ) { }
 
     /// <summary>
     /// Extends base cancellation to also cancel when the target planet enters uprising or
