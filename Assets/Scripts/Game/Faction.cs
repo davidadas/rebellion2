@@ -220,7 +220,6 @@ namespace Rebellion.Game
         {
             ResearchDiscipline discipline = ToResearchDiscipline(manufacturingType);
             ResearchState.Disciplines[discipline].CurrentOrder = order;
-            ResearchState.Disciplines[discipline].IsExhausted = false;
         }
 
         /// <summary>
@@ -234,36 +233,14 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Sets the remaining research capacity for a discipline.
-        /// </summary>
-        /// <param name="discipline">The discipline to update.</param>
-        /// <param name="capacityRemaining">The new remaining capacity value.</param>
-        public void SetResearchCapacityRemaining(
-            ResearchDiscipline discipline,
-            int capacityRemaining
-        )
-        {
-            ResearchState.Disciplines[discipline].CapacityRemaining = capacityRemaining;
-        }
-
-        /// <summary>
         /// Returns whether a discipline has no further advances available.
+        /// Derived from the catalog: true iff there is no entry above the current order.
         /// </summary>
         /// <param name="discipline">The discipline to query.</param>
         /// <returns>True if the discipline is exhausted.</returns>
         public bool IsResearchExhausted(ResearchDiscipline discipline)
         {
-            return ResearchState.Disciplines[discipline].IsExhausted;
-        }
-
-        /// <summary>
-        /// Sets whether a discipline has no further advances available.
-        /// </summary>
-        /// <param name="discipline">The discipline to update.</param>
-        /// <param name="isExhausted">The new exhausted state.</param>
-        public void SetResearchExhausted(ResearchDiscipline discipline, bool isExhausted)
-        {
-            ResearchState.Disciplines[discipline].IsExhausted = isExhausted;
+            return GetNextResearchEntry(discipline) == null;
         }
 
         /// <summary>
@@ -320,7 +297,7 @@ namespace Rebellion.Game
             {
                 CurrentOrder = state.CurrentOrder,
                 CapacityRemaining = state.CapacityRemaining,
-                IsExhausted = state.IsExhausted,
+                IsExhausted = nextEntry == null,
                 NextEntry = nextEntry,
                 NextEntryScaledDifficulty = nextEntryScaledDifficulty,
             };
@@ -603,32 +580,28 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Applies a research capacity delta and evaluates at most one order advance.
-        /// This mirrors the original side-capacity setter callbacks, which process one
-        /// next candidate per invocation instead of draining the full queue in one pass.
+        /// Adds research progress to a discipline and advances the order if the new
+        /// capacity covers the next entry's cost.
         /// </summary>
         /// <param name="discipline">The discipline to update.</param>
-        /// <param name="capacityDelta">The capacity delta to add.</param>
-        public void ApplyResearchCapacityChange(ResearchDiscipline discipline, int capacityDelta)
+        /// <param name="amount">The progress amount to add (may be negative).</param>
+        /// <returns>The technology unlocked by this call, or null if no advance occurred.</returns>
+        public Technology ApplyResearchProgress(ResearchDiscipline discipline, int amount)
         {
             ResearchDisciplineState state = ResearchState.Disciplines[discipline];
-
-            state.CapacityRemaining += capacityDelta;
+            state.CapacityRemaining += amount;
 
             ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
             if (nextEntry == null)
-            {
-                state.IsExhausted = true;
-                return;
-            }
+                return null;
 
             int scaledDifficulty = nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
             if (state.CapacityRemaining < scaledDifficulty)
-                return;
+                return null;
 
             state.CurrentOrder = nextEntry.Order;
-            state.IsExhausted = false;
             state.CapacityRemaining -= scaledDifficulty;
+            return nextEntry.Technology;
         }
 
         /// <summary>

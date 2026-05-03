@@ -56,11 +56,6 @@ namespace Rebellion.Game
         /// Current research order reached for this discipline.
         /// </summary>
         public int CurrentOrder { get; set; }
-
-        /// <summary>
-        /// Whether this discipline has no further advances available.
-        /// </summary>
-        public bool IsExhausted { get; set; }
     }
 
     /// <summary>

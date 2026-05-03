@@ -214,89 +214,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
         }
 
-        // --- Per-unit sequential unlocking ---
-
-        [Test]
-        public void ProcessTick_CapacityMeetsDifficulty_UnlocksUnit()
-        {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
-            faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 12);
-            game.CurrentTick = 30;
-
-            system.ProcessTick();
-
-            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
-            Assert.AreEqual(
-                0,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
-                "Cost should be subtracted from capacity"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_CapacityMeetsDifficulty_EmitsOrderAdvance()
-        {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
-            faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 12);
-            game.CurrentTick = 30;
-
-            List<GameResult> results = system.ProcessTick();
-
-            ResearchOrderedResult result = results.OfType<ResearchOrderedResult>().FirstOrDefault();
-            Assert.IsNotNull(result, "Should emit a ResearchOrderedResult");
-            Assert.AreEqual(faction.InstanceID, result.Faction.InstanceID);
-            Assert.AreEqual(ManufacturingType.Ship, result.FacilityType);
-            Assert.AreEqual(1, result.ResearchOrder);
-            Assert.IsNotNull(result.Technology, "Result should carry the unlocked technology");
-            Assert.AreEqual("Frigate", result.Technology.GetReference().DisplayName);
-        }
-
-        [Test]
-        public void ProcessTick_ExcessCapacity_CarriesOverAndUnlocksSingleAdvance()
-        {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
-            faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 40);
-            game.CurrentTick = 30;
-
-            system.ProcessTick();
-
-            Assert.AreEqual(1, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
-            Assert.AreEqual(
-                28,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
-                "One pulse should advance only one order and carry the remainder"
-            );
-        }
-
-        [Test]
-        public void ProcessTick_CapacityBelowDifficulty_NoUnlock()
-        {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
-            faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 5);
-            game.CurrentTick = 30;
-
-            system.ProcessTick();
-
-            Assert.AreEqual(0, faction.GetHighestUnlockedOrder(ManufacturingType.Ship));
-            Assert.AreEqual(5, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
-        }
-
-        [Test]
-        public void ProcessTick_AllUnlocked_NoFurtherAdvancement()
-        {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
-            faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 1);
-            faction.SetResearchCapacityRemaining(ResearchDiscipline.ShipDesign, 9999);
-            game.CurrentTick = 30;
-
-            system.ProcessTick();
-
-            Assert.AreEqual(
-                1,
-                faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
-                "Should not advance beyond last technology"
-            );
-        }
+        // --- Accumulation through real facility flow ---
 
         [Test]
         public void ProcessTick_CoreSystemFacilityAcrossMultiplePulses_AccumulatesCapacity()
@@ -354,56 +272,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(3, empire.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
-        }
-
-        // --- Technology unlocking with real templates ---
-
-        private IManufacturable[] LoadTemplates()
-        {
-            return ResourceManager
-                .GetGameData<Building>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetGameData<CapitalShip>())
-                .Concat(ResourceManager.GetGameData<Starfighter>())
-                .Concat(ResourceManager.GetGameData<Regiment>())
-                .ToArray();
-        }
-
-        [Test]
-        public void ProcessTick_ResearchTargetReached_UnlocksNewTechnologies(
-            [Values(ManufacturingType.Ship, ManufacturingType.Building, ManufacturingType.Troop)]
-                ManufacturingType type
-        )
-        {
-            IManufacturable[] templates = LoadTemplates();
-            faction.RebuildResearchQueues(templates);
-
-            // Start at order 0
-            faction.SetHighestUnlockedOrder(type, 0);
-            List<Technology> techsAtOrder0 = faction.GetUnlockedTechnologies(type);
-
-            // Find the first technology with order > 0
-            Technology target = faction.GetCurrentResearchTarget(type);
-            if (target == null)
-                Assert.Ignore($"No researchable {type} technologies for {faction.InstanceID}");
-
-            // Set capacity to meet its difficulty
-            faction.SetResearchCapacityRemaining(
-                Faction.ToResearchDiscipline(type),
-                target.GetResearchDifficulty()
-            );
-            game.CurrentTick = 30;
-
-            system.ProcessTick();
-
-            Assert.AreEqual(target.GetResearchOrder(), faction.GetHighestUnlockedOrder(type));
-
-            List<Technology> techsAfter = faction.GetUnlockedTechnologies(type);
-            Assert.Greater(
-                techsAfter.Count,
-                techsAtOrder0.Count,
-                $"Unlocking {type} technology should increase available technologies"
-            );
         }
     }
 }

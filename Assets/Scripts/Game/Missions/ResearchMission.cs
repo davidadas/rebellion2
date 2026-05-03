@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
@@ -14,8 +13,14 @@ public class ResearchMission : Mission
 {
     public ManufacturingType ResearchType { get; set; }
 
+    /// <summary>
+    /// Total research points earned across all participants in the most recent execution.
+    /// </summary>
     public int EarnedResearchPoints { get; set; }
 
+    /// <summary>
+    /// Net order advance applied to the faction's discipline in the most recent execution.
+    /// </summary>
     public int OrdersAdvanced { get; set; }
 
     /// <summary>
@@ -56,11 +61,6 @@ public class ResearchMission : Mission
         );
     }
 
-    /// <summary>
-    /// Returns the display name for a research mission based on the manufacturing type.
-    /// </summary>
-    /// <param name="type">The manufacturing type to look up.</param>
-    /// <returns>The human-readable mission name.</returns>
     private static string GetMissionName(ManufacturingType type)
     {
         return type switch
@@ -94,6 +94,86 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
+    /// Resolves the mission: each participant rolls independently; successful rolls
+    /// accumulate research points and bump the rolling officer's base rating, then the
+    /// total is applied to the faction in one shot and any transition results are emitted.
+    /// </summary>
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for chance rolls and reward rolls.</param>
+    /// <returns>Transition results produced this execution, with a MissionCompletedResult appended.</returns>
+    public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+    {
+        EarnedResearchPoints = 0;
+        OrdersAdvanced = 0;
+
+        List<GameResult> results = new List<GameResult>();
+        Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+        MissionOutcome outcome = MissionOutcome.Failed;
+
+        if (faction != null && IsMissionSatisfied(game))
+        {
+            GameConfig.ResearchConfig config = game.Config.Research;
+
+            foreach (IMissionParticipant participant in MainParticipants)
+            {
+                if (!(participant is Officer officer))
+                    continue;
+
+                int chance = officer.GetResearchSuccessChance(ResearchType);
+                double roll = provider.NextDouble() * 100;
+                if (roll >= chance)
+                    continue;
+
+                int reward =
+                    config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
+                EarnedResearchPoints += reward;
+                officer.IncrementBaseResearchRating(ResearchType);
+            }
+
+            if (EarnedResearchPoints > 0)
+            {
+                outcome = MissionOutcome.Success;
+                ResearchDiscipline discipline = Faction.ToResearchDiscipline(ResearchType);
+                Technology unlocked = faction.ApplyResearchProgress(
+                    discipline,
+                    EarnedResearchPoints
+                );
+                if (unlocked != null)
+                {
+                    OrdersAdvanced = 1;
+                    results.Add(
+                        new ResearchOrderedResult
+                        {
+                            Tick = game.CurrentTick,
+                            Faction = faction,
+                            FacilityType = ResearchType,
+                            ResearchOrder = faction.GetHighestUnlockedOrder(ResearchType),
+                            Capacity = faction.GetResearchCapacityRemaining(discipline),
+                            Technology = unlocked,
+                        }
+                    );
+                    if (faction.IsResearchExhausted(discipline))
+                    {
+                        results.Add(
+                            new ResearchExhaustedResult
+                            {
+                                Tick = game.CurrentTick,
+                                Faction = faction,
+                                FacilityType = ResearchType,
+                                PreviousState = 0,
+                                NewState = 1,
+                            }
+                        );
+                    }
+                }
+            }
+        }
+
+        results.Add(BuildCompletedResult(outcome, game));
+        return results;
+    }
+
+    /// <summary>
     /// Checks whether the mission target planet is still owned by the mission's faction.
     /// </summary>
     /// <param name="game">The game instance.</param>
@@ -104,122 +184,11 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Returns the participant's research success chance for this subtype.
-    /// Only officers are expected here; unsupported participant types return 0.
-    /// </summary>
-    /// <param name="agent">The mission participant to evaluate.</param>
-    /// <returns>The participant's research success chance, or 0 if unsupported.</returns>
-    protected override double GetAgentProbability(IMissionParticipant agent)
-    {
-        if (agent is Officer officer)
-        {
-            int researchChance = officer.GetResearchSuccessChance(ResearchType);
-            return researchChance == 0 ? -0.01 : researchChance;
-        }
-
-        return 0;
-    }
-
-    /// <summary>
     /// Research missions target own planets and are never foiled.
     /// </summary>
     /// <param name="defenseScore">The defense score (unused).</param>
     /// <returns>Always 0.</returns>
     protected override double GetFoilProbability(double defenseScore) => 0;
-
-    /// <summary>
-    /// Research mission success uses a strict probability comparison.
-    /// </summary>
-    /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
-    /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
-    /// <returns>True if the roll is strictly below the threshold.</returns>
-    protected override bool IsSuccessfulProbabilityRoll(double rolledValue, double successThreshold)
-    {
-        return rolledValue < successThreshold;
-    }
-
-    /// <summary>
-    /// Mission-base skill growth remains disabled. Research-stat growth is handled
-    /// explicitly inside the success path for the acting officer.
-    /// </summary>
-    protected override void ImproveMissionParticipantsSkill() { }
-
-    /// <summary>
-    /// Awards research points into the faction's side-level research discipline state
-    /// and improves the acting officer's matching base research rating.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">The random number provider.</param>
-    /// <returns>Research progression results produced by the awarded points.</returns>
-    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
-    {
-        EarnedResearchPoints = 0;
-        OrdersAdvanced = 0;
-
-        Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-        if (faction == null)
-            return new List<GameResult>();
-
-        Officer researchOfficer =
-            MainParticipants.Count > 0 ? MainParticipants[0] as Officer : null;
-
-        GameConfig.ResearchConfig config = game.Config.Research;
-        EarnedResearchPoints =
-            config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
-
-        researchOfficer?.IncrementBaseResearchRating(ResearchType);
-
-        ResearchDiscipline discipline = Faction.ToResearchDiscipline(ResearchType);
-        ResearchProgressSnapshot before = faction.GetResearchProgressSnapshot(discipline);
-        faction.ApplyResearchCapacityChange(discipline, EarnedResearchPoints);
-        ResearchProgressSnapshot after = faction.GetResearchProgressSnapshot(discipline);
-
-        OrdersAdvanced = after.CurrentOrder - before.CurrentOrder;
-
-        List<GameResult> results = new List<GameResult>();
-        ManufacturingType facilityType = Faction.ToManufacturingType(discipline);
-        if (after.CurrentOrder != before.CurrentOrder)
-        {
-            results.Add(
-                new ResearchOrderedResult
-                {
-                    Faction = faction,
-                    FacilityType = facilityType,
-                    ResearchOrder = after.CurrentOrder,
-                    Capacity = after.CapacityRemaining,
-                    Technology = before.NextEntry?.Technology,
-                }
-            );
-        }
-
-        if (!before.IsExhausted && after.IsExhausted)
-        {
-            results.Add(
-                new ResearchExhaustedResult
-                {
-                    Faction = faction,
-                    FacilityType = facilityType,
-                    PreviousState = 0,
-                    NewState = 1,
-                }
-            );
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Returns research mission failure results.
-    /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">The random number provider.</param>
-    /// <returns>Mission failure results.</returns>
-    protected override List<GameResult> OnFailed(GameRoot game, IRandomNumberProvider provider)
-    {
-        EarnedResearchPoints = 0;
-        OrdersAdvanced = 0;
-        return new List<GameResult>();
-    }
 
     /// <summary>
     /// Research missions repeat as long as the planet remains owned by this faction.
