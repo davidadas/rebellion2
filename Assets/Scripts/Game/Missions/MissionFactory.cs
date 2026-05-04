@@ -30,13 +30,15 @@ public class MissionFactory
     /// <param name="target">The target scene node.</param>
     /// <param name="provider">RNG provider for target selection; pass the game's live provider — missions like Recruitment always need it.</param>
     /// <param name="targetOfficer">Optional pre-selected officer target.</param>
+    /// <param name="discipline">Research discipline for Research missions.</param>
     /// <returns>True if the mission can be created with the given parameters.</returns>
     public bool CanCreateMission(
         MissionType missionType,
         string ownerInstanceId,
         ISceneNode target,
         IRandomNumberProvider provider,
-        Officer targetOfficer = null
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null
     )
     {
         Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
@@ -53,6 +55,7 @@ public class MissionFactory
             RandomProvider = provider,
             FogOfWar = _fogOfWar,
             TargetOfficer = targetOfficer,
+            Discipline = discipline,
         };
 
         return TryCreateByType(missionType, ctx) != null;
@@ -69,7 +72,8 @@ public class MissionFactory
         List<IMissionParticipant> decoyParticipants,
         ISceneNode target,
         IRandomNumberProvider provider = null,
-        Officer targetOfficer = null
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null
     )
     {
         if (mainParticipants == null || mainParticipants.Count == 0)
@@ -102,6 +106,7 @@ public class MissionFactory
             RandomProvider = provider,
             FogOfWar = _fogOfWar,
             TargetOfficer = targetOfficer,
+            Discipline = discipline,
         };
 
         Mission mission =
@@ -140,18 +145,9 @@ public class MissionFactory
             MissionType.Sabotage => SabotageMission.TryCreate(ctx),
             MissionType.InciteUprising => InciteUprisingMission.TryCreate(ctx),
             MissionType.Rescue => RescueMission.TryCreate(ctx),
-            MissionType.ShipDesignResearch => ResearchMission.TryCreate(
-                ctx,
-                ManufacturingType.Ship
-            ),
-            MissionType.TroopTrainingResearch => ResearchMission.TryCreate(
-                ctx,
-                ManufacturingType.Troop
-            ),
-            MissionType.FacilityDesignResearch => ResearchMission.TryCreate(
-                ctx,
-                ManufacturingType.Building
-            ),
+            MissionType.Research => ctx.Discipline.HasValue
+                ? ResearchMission.TryCreate(ctx, ctx.Discipline.Value)
+                : null,
             MissionType.JediTraining => JediTrainingMission.TryCreate(ctx),
             _ => null,
         };

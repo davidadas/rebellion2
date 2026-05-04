@@ -225,7 +225,7 @@ namespace Rebellion.Game.Results
     public class ResearchOrderedResult : GameResult
     {
         public Faction Faction { get; set; }
-        public ManufacturingType FacilityType { get; set; }
+        public ResearchDiscipline Discipline { get; set; }
         public int ResearchOrder { get; set; }
         public int Capacity { get; set; }
         public Technology Technology { get; set; }
@@ -239,7 +239,7 @@ namespace Rebellion.Game.Results
     public class ResearchExhaustedResult : GameResult
     {
         public Faction Faction { get; set; }
-        public ManufacturingType FacilityType { get; set; }
+        public ResearchDiscipline Discipline { get; set; }
         public int PreviousState { get; set; }
         public int NewState { get; set; }
     }

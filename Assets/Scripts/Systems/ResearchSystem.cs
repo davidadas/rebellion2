@@ -78,50 +78,65 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
-            foreach (ManufacturingType type in ResearchableTypes)
+            foreach (ResearchDiscipline discipline in ResearchDisciplines)
             {
-                int capacityDelta = 0;
-                ResearchDiscipline discipline = Faction.ToResearchDiscipline(type);
-
-                foreach (Planet planet in corePlanets)
-                {
-                    capacityDelta += planet
-                        .GetBuildings(type)
-                        .Count(building =>
-                            building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                            && building.Movement == null
-                        );
-                }
+                int capacityDelta = CountCompleteFacilities(corePlanets, discipline);
 
                 Technology unlocked = faction.ApplyResearchProgress(discipline, capacityDelta);
-                if (unlocked != null)
+                if (unlocked == null)
+                    continue;
+
+                results.Add(
+                    new ResearchOrderedResult
+                    {
+                        Tick = _game.CurrentTick,
+                        Faction = faction,
+                        Discipline = discipline,
+                        ResearchOrder = faction.GetHighestUnlockedOrder(discipline),
+                        Capacity = faction.GetResearchCapacityRemaining(discipline),
+                        Technology = unlocked,
+                    }
+                );
+                if (faction.IsResearchExhausted(discipline))
                 {
                     results.Add(
-                        new ResearchOrderedResult
+                        new ResearchExhaustedResult
                         {
                             Tick = _game.CurrentTick,
                             Faction = faction,
-                            FacilityType = type,
-                            ResearchOrder = faction.GetHighestUnlockedOrder(type),
-                            Capacity = faction.GetResearchCapacityRemaining(discipline),
-                            Technology = unlocked,
+                            Discipline = discipline,
+                            PreviousState = 0,
+                            NewState = 1,
                         }
                     );
-                    if (faction.IsResearchExhausted(discipline))
-                    {
-                        results.Add(
-                            new ResearchExhaustedResult
-                            {
-                                Tick = _game.CurrentTick,
-                                Faction = faction,
-                                FacilityType = type,
-                                PreviousState = 0,
-                                NewState = 1,
-                            }
-                        );
-                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Counts complete, stationary facilities across the given planets that contribute to
+        /// the specified research discipline.
+        /// </summary>
+        /// <param name="planets">The planets to inspect.</param>
+        /// <param name="discipline">The research discipline whose facilities to count.</param>
+        /// <returns>The number of contributing facilities.</returns>
+        private static int CountCompleteFacilities(
+            List<Planet> planets,
+            ResearchDiscipline discipline
+        )
+        {
+            ManufacturingType facilityType = discipline.ToManufacturingType();
+            int total = 0;
+            foreach (Planet planet in planets)
+            {
+                total += planet
+                    .GetBuildings(facilityType)
+                    .Count(building =>
+                        building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    );
+            }
+            return total;
         }
 
         /// <summary>
@@ -135,11 +150,11 @@ namespace Rebellion.Systems
                 + _provider.NextInt(0, config.RefreshIntervalSpread + 1);
         }
 
-        private static readonly ManufacturingType[] ResearchableTypes = new[]
+        private static readonly ResearchDiscipline[] ResearchDisciplines = new[]
         {
-            ManufacturingType.Ship,
-            ManufacturingType.Building,
-            ManufacturingType.Troop,
+            ResearchDiscipline.ShipDesign,
+            ResearchDiscipline.FacilityDesign,
+            ResearchDiscipline.TroopTraining,
         };
     }
 }

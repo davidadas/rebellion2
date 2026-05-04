@@ -54,7 +54,9 @@ namespace Rebellion.Tests.Systems
             };
         }
 
-        private void SetupShipResearchQueue(params (string name, int order, int difficulty)[] techs)
+        private void SetupShipResearchCatalog(
+            params (string name, int order, int difficulty)[] techs
+        )
         {
             IManufacturable[] templates = techs
                 .Select(t =>
@@ -68,7 +70,7 @@ namespace Rebellion.Tests.Systems
                         }
                 )
                 .ToArray();
-            faction.RebuildResearchQueues(templates);
+            faction.RebuildResearchCatalog(templates);
         }
 
         // --- Capacity refresh from core-system facilities ---
@@ -219,7 +221,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CoreSystemFacilityAcrossMultiplePulses_AccumulatesCapacity()
         {
-            SetupShipResearchQueue(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
+            SetupShipResearchCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
             game.AttachNode(CreateShipyard("SY1"), planet);
 
             for (int i = 1; i <= 360; i++)
@@ -230,7 +232,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 1,
-                faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
                 "Repeated pulses of +1 capacity should reach Frigate's difficulty of 12"
             );
         }

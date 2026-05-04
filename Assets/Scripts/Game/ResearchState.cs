@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Util.Attributes;
 
@@ -11,6 +12,36 @@ namespace Rebellion.Game
         ShipDesign = 0,
         FacilityDesign = 1,
         TroopTraining = 2,
+    }
+
+    /// <summary>
+    /// Conversions between <see cref="ResearchDiscipline"/> and <see cref="ManufacturingType"/>.
+    /// </summary>
+    public static class ResearchDisciplineExtensions
+    {
+        /// <summary>
+        /// Returns the manufacturing type corresponding to a research discipline.
+        /// </summary>
+        public static ManufacturingType ToManufacturingType(this ResearchDiscipline discipline) =>
+            discipline switch
+            {
+                ResearchDiscipline.ShipDesign => ManufacturingType.Ship,
+                ResearchDiscipline.FacilityDesign => ManufacturingType.Building,
+                ResearchDiscipline.TroopTraining => ManufacturingType.Troop,
+                _ => throw new ArgumentOutOfRangeException(nameof(discipline)),
+            };
+
+        /// <summary>
+        /// Returns the research discipline corresponding to a manufacturing type.
+        /// </summary>
+        public static ResearchDiscipline ToResearchDiscipline(this ManufacturingType type) =>
+            type switch
+            {
+                ManufacturingType.Ship => ResearchDiscipline.ShipDesign,
+                ManufacturingType.Building => ResearchDiscipline.FacilityDesign,
+                ManufacturingType.Troop => ResearchDiscipline.TroopTraining,
+                _ => throw new ArgumentOutOfRangeException(nameof(type)),
+            };
     }
 
     /// <summary>

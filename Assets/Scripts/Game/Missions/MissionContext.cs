@@ -21,4 +21,9 @@ public class MissionContext
     /// The specific officer to target for Abduction, Assassination, and Rescue missions.
     /// </summary>
     public Officer TargetOfficer { get; set; }
+
+    /// <summary>
+    /// The research discipline for Research missions.
+    /// </summary>
+    public ResearchDiscipline? Discipline { get; set; }
 }

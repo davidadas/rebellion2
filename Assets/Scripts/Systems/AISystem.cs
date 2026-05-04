@@ -187,7 +187,7 @@ namespace Rebellion.Systems
         {
             Technology tech = GetHighestTierTechnology(
                 faction,
-                ManufacturingType.Building,
+                ResearchDiscipline.FacilityDesign,
                 buildingType
             );
             if (tech == null)
@@ -233,7 +233,7 @@ namespace Rebellion.Systems
             // Original game selects randomly from ALL researched capital ship types,
             // not just the highest tier. Each shipyard gets a random ship type.
             List<Technology> availableTechs = faction
-                .GetUnlockedTechnologies(ManufacturingType.Ship)
+                .GetUnlockedTechnologies(ResearchDiscipline.ShipDesign)
                 .Where(tech => tech.GetReference().GetType() == typeof(CapitalShip))
                 .ToList();
 
@@ -298,7 +298,7 @@ namespace Rebellion.Systems
 
             Technology starfighterTech = GetHighestTierTechnology(
                 faction,
-                ManufacturingType.Ship,
+                ResearchDiscipline.ShipDesign,
                 typeof(Starfighter)
             );
             if (starfighterTech == null)
@@ -368,7 +368,7 @@ namespace Rebellion.Systems
 
             Technology regimentTech = GetHighestTierTechnology(
                 faction,
-                ManufacturingType.Troop,
+                ResearchDiscipline.TroopTraining,
                 typeof(Regiment)
             );
             if (regimentTech == null)
@@ -666,27 +666,29 @@ namespace Rebellion.Systems
                 Planet friendlyTarget = FindMissionTarget(faction);
                 if (friendlyTarget != null)
                 {
-                    MissionType? missionType = SelectMissionType(
-                        faction,
-                        officer,
-                        friendlyTarget,
-                        tables
-                    );
-                    if (missionType != null)
+                    (MissionType Type, ResearchDiscipline? Discipline)? friendlySelection =
+                        SelectMissionType(faction, officer, friendlyTarget, tables);
+                    if (friendlySelection != null)
                     {
                         if (
                             !_missionManager.CanCreateMission(
-                                missionType.Value,
+                                friendlySelection.Value.Type,
                                 faction.InstanceID,
-                                friendlyTarget
+                                friendlyTarget,
+                                discipline: friendlySelection.Value.Discipline
                             )
                         )
                             continue;
 
                         GameLogger.Log(
-                            $"Sending {officer.GetDisplayName()} on {missionType} mission to {friendlyTarget.GetDisplayName()}."
+                            $"Sending {officer.GetDisplayName()} on {friendlySelection.Value.Type} mission to {friendlyTarget.GetDisplayName()}."
                         );
-                        _missionManager.InitiateMission(missionType.Value, officer, friendlyTarget);
+                        _missionManager.InitiateMission(
+                            friendlySelection.Value.Type,
+                            officer,
+                            friendlyTarget,
+                            discipline: friendlySelection.Value.Discipline
+                        );
                         continue;
                     }
                 }
@@ -883,7 +885,7 @@ namespace Rebellion.Systems
         /// <param name="officer">The officer to assign.</param>
         /// <param name="target">The friendly or neutral planet being targeted.</param>
         /// <param name="tables">Cached probability tables for mission dispatch.</param>
-        private MissionType? SelectMissionType(
+        private (MissionType Type, ResearchDiscipline? Discipline)? SelectMissionType(
             Faction faction,
             Officer officer,
             Planet target,
@@ -904,7 +906,7 @@ namespace Rebellion.Systems
                     - (int)popularSupport
                     + rank;
                 if (tables.SubdueUprising.Lookup(score) > 0)
-                    return MissionType.SubdueUprising;
+                    return (MissionType.SubdueUprising, null);
             }
 
             // Research: if the officer's best research skill exceeds their diplomacy,
@@ -914,9 +916,9 @@ namespace Rebellion.Systems
 
             if (bestResearchSkill > diplomacySkill && owner == factionId)
             {
-                MissionType? researchMission = SelectResearchMissionType(officer, target);
-                if (researchMission != null)
-                    return researchMission;
+                ResearchDiscipline? researchDiscipline = SelectResearchDiscipline(officer, target);
+                if (researchDiscipline != null)
+                    return (MissionType.Research, researchDiscipline);
             }
 
             // Diplomacy: owned or neutral planet with room for support growth
@@ -927,7 +929,7 @@ namespace Rebellion.Systems
             {
                 int score = diplomacySkill - (int)popularSupport + rank;
                 if (tables.Diplomacy.Lookup(score) > 0)
-                    return MissionType.Diplomacy;
+                    return (MissionType.Diplomacy, null);
             }
 
             // JediTraining: force-eligible Jedi below qualification threshold on owned planet
@@ -937,7 +939,7 @@ namespace Rebellion.Systems
                 && officer.IsForceEligible
                 && officer.ForceRank < _game.Config.Jedi.ForceQualifiedThreshold
             )
-                return MissionType.JediTraining;
+                return (MissionType.JediTraining, null);
 
             // Recruitment: main characters only, owned planet, unrecruited officers available
             if (
@@ -945,79 +947,70 @@ namespace Rebellion.Systems
                 && owner == factionId
                 && _game.GetUnrecruitedOfficers(factionId).Any()
             )
-                return MissionType.Recruitment;
+                return (MissionType.Recruitment, null);
 
             // Research: fallback for officers whose best skill isn't research
             // but who can still contribute if nothing else matched
             if (bestResearchSkill <= diplomacySkill && owner == factionId)
             {
-                MissionType? researchMission = SelectResearchMissionType(officer, target);
-                if (researchMission != null)
-                    return researchMission;
+                ResearchDiscipline? researchDiscipline = SelectResearchDiscipline(officer, target);
+                if (researchDiscipline != null)
+                    return (MissionType.Research, researchDiscipline);
             }
 
             return null;
         }
 
         /// <summary>
-        /// Selects the best research mission type for the officer at the given planet.
-        /// Picks the manufacturing type where the officer has the highest research skill
-        /// and the planet has at least one idle facility of that type.
+        /// Selects the research discipline for the officer at the given planet.
+        /// Picks the discipline where the officer has the highest research skill
+        /// and the planet has at least one idle facility of the matching type.
         /// </summary>
         /// <param name="officer">The officer to assign.</param>
         /// <param name="target">The owned planet being targeted.</param>
-        /// <returns>The research mission type to dispatch, or null if none viable.</returns>
-        private MissionType? SelectResearchMissionType(Officer officer, Planet target)
+        /// <returns>The research discipline to dispatch, or null if none viable.</returns>
+        private static ResearchDiscipline? SelectResearchDiscipline(Officer officer, Planet target)
         {
             int bestSkill = 0;
-            ManufacturingType bestType = ManufacturingType.Ship;
+            ResearchDiscipline? bestDiscipline = null;
 
-            foreach (ManufacturingType type in ResearchableTypes)
+            foreach (ResearchDiscipline discipline in ResearchDisciplines)
             {
-                int skill = officer.GetResearchSkill(type);
+                int skill = officer.GetResearchSkill(discipline);
                 if (skill <= 0)
                     continue;
-                if (target.GetIdleManufacturingFacilities(type) <= 0)
+                if (target.GetIdleManufacturingFacilities(discipline.ToManufacturingType()) <= 0)
                     continue;
                 if (skill > bestSkill)
                 {
                     bestSkill = skill;
-                    bestType = type;
+                    bestDiscipline = discipline;
                 }
             }
 
-            if (bestSkill <= 0)
-                return null;
-
-            return bestType switch
-            {
-                ManufacturingType.Ship => MissionType.ShipDesignResearch,
-                ManufacturingType.Building => MissionType.FacilityDesignResearch,
-                ManufacturingType.Troop => MissionType.TroopTrainingResearch,
-                _ => null,
-            };
+            return bestDiscipline;
         }
 
         /// <summary>
-        /// Returns the officer's highest research skill across all manufacturing types.
+        /// Returns the officer's highest research skill across all disciplines.
         /// </summary>
         private static int GetBestResearchSkill(Officer officer)
         {
             int best = 0;
-            foreach (ManufacturingType type in ResearchableTypes)
+            foreach (ResearchDiscipline discipline in ResearchDisciplines)
             {
-                int skill = officer.GetResearchSkill(type);
+                int skill = officer.GetResearchSkill(discipline);
                 if (skill > best)
                     best = skill;
             }
             return best;
         }
 
-        private static readonly ManufacturingType[] ResearchableTypes = new[]
+        private static readonly ResearchDiscipline[] ResearchDisciplines = new[]
         {
-            ManufacturingType.Ship,
-            ManufacturingType.Building,
-            ManufacturingType.Troop,
+            ResearchDiscipline.ShipDesign,
+            ResearchDiscipline.FacilityDesign,
+            ResearchDiscipline.TroopTraining,
         };
 
         /// <summary>
@@ -1181,32 +1174,32 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the highest-tier researched technology of the given manufacturing type
+        /// Returns the highest-tier researched technology in the given discipline
         /// whose reference object matches <paramref name="referenceType"/>.
         /// </summary>
         private Technology GetHighestTierTechnology(
             Faction faction,
-            ManufacturingType manufacturingType,
+            ResearchDiscipline discipline,
             Type referenceType
         )
         {
             return faction
-                .GetUnlockedTechnologies(manufacturingType)
+                .GetUnlockedTechnologies(discipline)
                 .LastOrDefault(tech => tech.GetReference().GetType() == referenceType);
         }
 
         /// <summary>
-        /// Returns the highest-tier researched technology of the given manufacturing type
+        /// Returns the highest-tier researched technology in the given discipline
         /// whose reference object is a building of <paramref name="buildingType"/>.
         /// </summary>
         private Technology GetHighestTierTechnology(
             Faction faction,
-            ManufacturingType manufacturingType,
+            ResearchDiscipline discipline,
             BuildingType buildingType
         )
         {
             return faction
-                .GetUnlockedTechnologies(manufacturingType)
+                .GetUnlockedTechnologies(discipline)
                 .LastOrDefault(tech =>
                     (tech.GetReference() as Building)?.GetBuildingType() == buildingType
                 );

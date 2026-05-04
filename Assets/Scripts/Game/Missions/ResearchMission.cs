@@ -6,22 +6,11 @@ using Rebellion.Util.Common;
 
 /// <summary>
 /// Research mission that awards side research capacity for one discipline.
-/// Three subtypes (Ship Design, Troop Training, Facility Design) share this class,
-/// differing only in which <see cref="ManufacturingType"/> they target.
+/// The targeted <see cref="ResearchDiscipline"/> is carried as data on the mission.
 /// </summary>
 public class ResearchMission : Mission
 {
-    public ManufacturingType ResearchType { get; set; }
-
-    /// <summary>
-    /// Total research points earned across all participants in the most recent execution.
-    /// </summary>
-    public int EarnedResearchPoints { get; set; }
-
-    /// <summary>
-    /// Net order advance applied to the faction's discipline in the most recent execution.
-    /// </summary>
-    public int OrdersAdvanced { get; set; }
+    public ResearchDiscipline Discipline { get; set; }
 
     /// <summary>
     /// Default constructor used for deserialization.
@@ -39,7 +28,7 @@ public class ResearchMission : Mission
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        ManufacturingType researchType
+        ResearchDiscipline discipline
     )
         : base(
             "Research",
@@ -51,17 +40,17 @@ public class ResearchMission : Mission
             null
         )
     {
-        ResearchType = researchType;
-        DisplayName = GetMissionName(researchType);
+        Discipline = discipline;
+        DisplayName = GetMissionName(discipline);
     }
 
     /// <summary>
     /// Returns a new ResearchMission if the target is an own planet, or null.
     /// </summary>
     /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-    /// <param name="researchType">The manufacturing category this mission advances.</param>
+    /// <param name="discipline">The research discipline this mission advances.</param>
     /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
-    public static ResearchMission TryCreate(MissionContext ctx, ManufacturingType researchType)
+    public static ResearchMission TryCreate(MissionContext ctx, ResearchDiscipline discipline)
     {
         if (!(ctx.Target is Planet planet))
             return null;
@@ -78,17 +67,17 @@ public class ResearchMission : Mission
             ctx.Target,
             actingParticipants,
             ctx.DecoyParticipants,
-            researchType
+            discipline
         );
     }
 
-    private static string GetMissionName(ManufacturingType type)
+    private static string GetMissionName(ResearchDiscipline discipline)
     {
-        return type switch
+        return discipline switch
         {
-            ManufacturingType.Ship => "Ship Design",
-            ManufacturingType.Troop => "Troop Training",
-            ManufacturingType.Building => "Facility Design",
+            ResearchDiscipline.ShipDesign => "Ship Design",
+            ResearchDiscipline.TroopTraining => "Troop Training",
+            ResearchDiscipline.FacilityDesign => "Facility Design",
             _ => "Research",
         };
     }
@@ -120,20 +109,17 @@ public class ResearchMission : Mission
     /// <returns>Transition results, with a MissionCompletedResult appended.</returns>
     public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
-        EarnedResearchPoints = 0;
-        OrdersAdvanced = 0;
-
         List<GameResult> results = new List<GameResult>();
         MissionOutcome outcome = MissionOutcome.Failed;
         Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
 
         if (faction != null && IsMissionSatisfied(game))
         {
-            AccumulatePointsFromParticipants(game.Config.Research, provider);
-            if (EarnedResearchPoints > 0)
+            int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
+            if (earnedPoints > 0)
             {
                 outcome = MissionOutcome.Success;
-                AwardAccumulatedPoints(faction, game, results);
+                AwardAccumulatedPoints(faction, earnedPoints, game, results);
             }
         }
 
@@ -142,24 +128,27 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Rolls each officer's success chance; on success, rolls a reward, adds it to
-    /// <see cref="EarnedResearchPoints"/>, and bumps that officer's base research rating.
+    /// Rolls each officer's success chance; on success, rolls a reward and bumps that
+    /// officer's research rating. Returns the total points earned across all participants.
     /// </summary>
     /// <param name="config">Research configuration providing reward parameters.</param>
     /// <param name="provider">RNG provider for chance and reward rolls.</param>
-    private void AccumulatePointsFromParticipants(
+    /// <returns>Total research points earned this execution.</returns>
+    private int AccumulatePointsFromParticipants(
         GameConfig.ResearchConfig config,
         IRandomNumberProvider provider
     )
     {
+        int earnedPoints = 0;
         foreach (IMissionParticipant participant in MainParticipants)
         {
             if (!(participant is Officer officer) || !RollSuccess(officer, provider))
                 continue;
 
-            EarnedResearchPoints += RollReward(config, provider);
-            officer.IncrementBaseResearchRating(ResearchType);
+            earnedPoints += RollReward(config, provider);
+            officer.IncrementResearchSkill(Discipline);
         }
+        return earnedPoints;
     }
 
     /// <summary>
@@ -170,7 +159,7 @@ public class ResearchMission : Mission
     /// <returns>True if the participant succeeded this attempt.</returns>
     private bool RollSuccess(Officer officer, IRandomNumberProvider provider)
     {
-        int chance = officer.GetResearchSuccessChance(ResearchType);
+        int chance = officer.GetResearchSkill(Discipline);
         return provider.NextDouble() * 100 < chance;
     }
 
@@ -186,23 +175,26 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Applies <see cref="EarnedResearchPoints"/> to the faction and emits an
-    /// ordered result if the order advanced, plus an exhausted result if the
-    /// discipline now has no further advances.
+    /// Applies the earned points to the faction and emits an ordered result if the
+    /// order advanced, plus an exhausted result if the discipline now has no further advances.
     /// </summary>
     /// <param name="faction">The owning faction whose research state advances.</param>
+    /// <param name="earnedPoints">The total research points earned this execution.</param>
     /// <param name="game">The current game state.</param>
     /// <param name="results">Result list to append transition results to.</param>
-    private void AwardAccumulatedPoints(Faction faction, GameRoot game, List<GameResult> results)
+    private void AwardAccumulatedPoints(
+        Faction faction,
+        int earnedPoints,
+        GameRoot game,
+        List<GameResult> results
+    )
     {
-        ResearchDiscipline discipline = Faction.ToResearchDiscipline(ResearchType);
-        Technology unlocked = faction.ApplyResearchProgress(discipline, EarnedResearchPoints);
+        Technology unlocked = faction.ApplyResearchProgress(Discipline, earnedPoints);
         if (unlocked == null)
             return;
 
-        OrdersAdvanced = 1;
-        results.Add(BuildOrderedResult(faction, discipline, unlocked, game));
-        if (faction.IsResearchExhausted(discipline))
+        results.Add(BuildOrderedResult(faction, unlocked, game));
+        if (faction.IsResearchExhausted(Discipline))
             results.Add(BuildExhaustedResult(faction, game));
     }
 
@@ -211,13 +203,11 @@ public class ResearchMission : Mission
     /// research order and the technology that became available.
     /// </summary>
     /// <param name="faction">The owning faction.</param>
-    /// <param name="discipline">The discipline that advanced.</param>
     /// <param name="unlocked">The technology that just became available.</param>
     /// <param name="game">The current game state.</param>
     /// <returns>A populated ordered result.</returns>
     private ResearchOrderedResult BuildOrderedResult(
         Faction faction,
-        ResearchDiscipline discipline,
         Technology unlocked,
         GameRoot game
     )
@@ -226,9 +216,9 @@ public class ResearchMission : Mission
         {
             Tick = game.CurrentTick,
             Faction = faction,
-            FacilityType = ResearchType,
-            ResearchOrder = faction.GetHighestUnlockedOrder(ResearchType),
-            Capacity = faction.GetResearchCapacityRemaining(discipline),
+            Discipline = Discipline,
+            ResearchOrder = faction.GetHighestUnlockedOrder(Discipline),
+            Capacity = faction.GetResearchCapacityRemaining(Discipline),
             Technology = unlocked,
         };
     }
@@ -246,19 +236,16 @@ public class ResearchMission : Mission
         {
             Tick = game.CurrentTick,
             Faction = faction,
-            FacilityType = ResearchType,
+            Discipline = Discipline,
             PreviousState = 0,
             NewState = 1,
         };
     }
 
     /// <summary>
-    /// Research missions repeat as long as the planet remains owned by this faction.
+    /// Research missions repeat as long as the mission target is still satisfied.
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>True if the mission should continue.</returns>
-    public override bool CanContinue(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
+    public override bool CanContinue(GameRoot game) => IsMissionSatisfied(game);
 }

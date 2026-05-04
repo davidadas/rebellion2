@@ -159,9 +159,9 @@ namespace Rebellion.Generation
             int startingOrder = _summary.StartingResearchLevel;
             foreach (Faction faction in factions)
             {
-                faction.SetHighestUnlockedOrder(ManufacturingType.Building, startingOrder);
-                faction.SetHighestUnlockedOrder(ManufacturingType.Ship, startingOrder);
-                faction.SetHighestUnlockedOrder(ManufacturingType.Troop, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.TroopTraining, startingOrder);
             }
         }
 
@@ -184,7 +184,7 @@ namespace Rebellion.Generation
 
             foreach (Faction faction in factions)
             {
-                faction.RebuildResearchQueues(allTech);
+                faction.RebuildResearchCatalog(allTech);
             }
         }
 

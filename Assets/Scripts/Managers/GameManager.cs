@@ -292,7 +292,7 @@ public class GameManager
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())
-            faction.RebuildResearchQueues(templates);
+            faction.RebuildResearchCatalog(templates);
 
         _manufacturingManager.RebuildQueues();
     }

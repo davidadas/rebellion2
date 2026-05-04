@@ -127,19 +127,22 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsFactionResearchQueues()
+        public void BuildGame_ValidConfig_SetsFactionResearchCatalog()
         {
             foreach (Faction faction in _game.Factions)
             {
-                Assert.IsNotEmpty(faction.ResearchQueue, "Faction should have research queues.");
+                Assert.IsNotEmpty(faction.ResearchCatalog, "Faction should have research catalog.");
 
                 foreach (
-                    KeyValuePair<ManufacturingType, List<Technology>> entry in faction.ResearchQueue
+                    KeyValuePair<
+                        ResearchDiscipline,
+                        List<ResearchCatalogEntry>
+                    > entry in faction.ResearchCatalog
                 )
                 {
                     Assert.IsNotEmpty(
                         entry.Value,
-                        $"Faction should have technologies in {entry.Key} research queue."
+                        $"Faction should have technologies in {entry.Key} research catalog."
                     );
                 }
             }
@@ -159,7 +162,7 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in _game.Factions)
             {
-                int techCountBefore = faction.ResearchQueue.Values.Sum(q => q.Count);
+                int techCountBefore = faction.ResearchCatalog.Values.Sum(q => q.Count);
 
                 Assert.Greater(
                     techCountBefore,
@@ -167,14 +170,14 @@ namespace Rebellion.Tests.Generation
                     $"Faction {faction.GetDisplayName()} should have technologies before rebuild."
                 );
 
-                faction.RebuildResearchQueues(templates);
+                faction.RebuildResearchCatalog(templates);
 
-                int techCountAfter = faction.ResearchQueue.Values.Sum(q => q.Count);
+                int techCountAfter = faction.ResearchCatalog.Values.Sum(q => q.Count);
 
                 Assert.Greater(
                     techCountAfter,
                     0,
-                    $"Faction {faction.GetDisplayName()} should still have technologies after RebuildResearchQueues."
+                    $"Faction {faction.GetDisplayName()} should still have technologies after RebuildResearchCatalog."
                 );
 
                 Assert.AreEqual(
@@ -198,20 +201,20 @@ namespace Rebellion.Tests.Generation
 
             foreach (Faction faction in _game.Factions)
             {
-                faction.RebuildResearchQueues(templates);
+                faction.RebuildResearchCatalog(templates);
 
                 Assert.IsTrue(
-                    faction.GetUnlockedTechnologies(ManufacturingType.Ship).Count > 0,
+                    faction.GetUnlockedTechnologies(ResearchDiscipline.ShipDesign).Count > 0,
                     $"Faction {faction.GetDisplayName()} should have Ship technologies after rebuild."
                 );
 
                 Assert.IsTrue(
-                    faction.GetUnlockedTechnologies(ManufacturingType.Building).Count > 0,
+                    faction.GetUnlockedTechnologies(ResearchDiscipline.FacilityDesign).Count > 0,
                     $"Faction {faction.GetDisplayName()} should have Building technologies after rebuild."
                 );
 
                 Assert.IsTrue(
-                    faction.GetUnlockedTechnologies(ManufacturingType.Troop).Count > 0,
+                    faction.GetUnlockedTechnologies(ResearchDiscipline.TroopTraining).Count > 0,
                     $"Faction {faction.GetDisplayName()} should have Troop technologies after rebuild."
                 );
             }

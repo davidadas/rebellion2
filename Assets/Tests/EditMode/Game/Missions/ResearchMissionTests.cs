@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Missions
 
         private ResearchMission CreateMission(
             Officer officer,
-            ManufacturingType type = ManufacturingType.Ship
+            ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
         )
         {
             MissionContext ctx = new MissionContext
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
                 MainParticipants = new List<IMissionParticipant> { officer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, type);
+            ResearchMission mission = ResearchMission.TryCreate(ctx, discipline);
             game.AttachNode(mission, planet);
             return mission;
         }
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game.Missions
                 MainParticipants = new List<IMissionParticipant> { officer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
 
             Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
-            ResearchMission mission = CreateMission(officer, ManufacturingType.Ship);
+            ResearchMission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
 
             mission.Execute(game, new FixedRNG(0.0));
 
@@ -198,7 +198,7 @@ namespace Rebellion.Tests.Game.Missions
                 MainParticipants = new List<IMissionParticipant> { firstOfficer, secondOfficer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
             game.AttachNode(mission, planet);
 
             mission.Execute(game, new FixedRNG(0.5));
@@ -209,10 +209,10 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TroopResearchType_AwardsTroopCapacity()
+        public void Execute_TroopTrainingDiscipline_AwardsTroopCapacity()
         {
             Officer officer = CreateOfficer(troopSkill: 100);
-            ResearchMission mission = CreateMission(officer, ManufacturingType.Troop);
+            ResearchMission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
 
             mission.Execute(game, new FixedRNG(0.0));
 
@@ -309,7 +309,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "Ship Design",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Leadership,
-                ResearchType = ManufacturingType.Ship,
+                Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
                 MaxProgress = 15,
                 CurrentProgress = 7,
@@ -324,7 +324,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Leadership, deserialized.ParticipantSkill);
-            Assert.AreEqual(ManufacturingType.Ship, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, deserialized.Discipline);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(15, deserialized.MaxProgress);
             Assert.AreEqual(7, deserialized.CurrentProgress);
@@ -340,7 +340,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Troop Training",
                 TargetInstanceID = "PLANET1",
-                ResearchType = ManufacturingType.Troop,
+                Discipline = ResearchDiscipline.TroopTraining,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -348,7 +348,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Troop Training", deserialized.DisplayName);
-            Assert.AreEqual(ManufacturingType.Troop, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.TroopTraining, deserialized.Discipline);
         }
 
         [Test]
@@ -361,7 +361,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Facility Design",
                 TargetInstanceID = "PLANET1",
-                ResearchType = ManufacturingType.Building,
+                Discipline = ResearchDiscipline.FacilityDesign,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -369,7 +369,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Facility Design", deserialized.DisplayName);
-            Assert.AreEqual(ManufacturingType.Building, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.FacilityDesign, deserialized.Discipline);
         }
     }
 }

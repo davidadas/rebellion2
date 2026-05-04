@@ -634,7 +634,7 @@ namespace Rebellion.Tests.Managers
                 RegimentCapacity = 0,
             };
 
-            testEmpire.RebuildResearchQueues(
+            testEmpire.RebuildResearchCatalog(
                 new IManufacturable[] { dreadnaught, galleon, carrack }
             );
             testEmpire.RefinedMaterialStockpile = 10000;
