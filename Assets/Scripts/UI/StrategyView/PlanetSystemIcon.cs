@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Rebellion.Game;
 using UnityEngine;
@@ -17,6 +17,7 @@ public sealed class PlanetSystemIcon
     private PlanetSystem system;
     private UIContext context;
     private Transform rootLayer;
+    private GalaxyCoordinateMapper mapper;
 
     private GameObject hoverOverlay;
 
@@ -29,7 +30,12 @@ public sealed class PlanetSystemIcon
     /// <summary>
     /// Initializes this view.
     /// </summary>
-    public void Initialize(PlanetSystem system, UIContext context, Transform rootLayer)
+    public void Initialize(
+        PlanetSystem system,
+        UIContext context,
+        Transform rootLayer,
+        GalaxyCoordinateMapper mapper
+    )
     {
         if (system == null)
             throw new ArgumentNullException(nameof(system));
@@ -40,9 +46,13 @@ public sealed class PlanetSystemIcon
         if (rootLayer == null)
             throw new ArgumentNullException(nameof(rootLayer));
 
+        if (mapper == null)
+            throw new ArgumentNullException(nameof(mapper));
+
         this.system = system;
         this.context = context;
         this.rootLayer = rootLayer;
+        this.mapper = mapper;
 
         BuildContainer();
         BuildPlanets();
@@ -57,10 +67,14 @@ public sealed class PlanetSystemIcon
         if (system.Planets == null || system.Planets.Count == 0)
             return;
 
-        float minX = system.Planets.Min(p => p.PositionX);
-        float maxX = system.Planets.Max(p => p.PositionX);
-        float minY = system.Planets.Min(p => p.PositionY);
-        float maxY = system.Planets.Max(p => p.PositionY);
+        Vector2[] positions = system
+            .Planets.Select(p => mapper.Map(p.PositionX, p.PositionY))
+            .ToArray();
+
+        float minX = positions.Min(p => p.x);
+        float maxX = positions.Max(p => p.x);
+        float minY = positions.Min(p => p.y);
+        float maxY = positions.Max(p => p.y);
 
         float padding = 30f;
 
@@ -93,7 +107,7 @@ public sealed class PlanetSystemIcon
             go.transform.SetParent(rootLayer, false);
 
             PlanetIcon icon = go.AddComponent<PlanetIcon>();
-            icon.Initialize(planet, context);
+            icon.Initialize(planet, context, mapper);
         }
     }
 

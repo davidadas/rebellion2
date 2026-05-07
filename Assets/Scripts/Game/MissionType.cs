@@ -12,8 +12,6 @@ public enum MissionType
     Sabotage,
     InciteUprising,
     Rescue,
-    ShipDesignResearch,
-    TroopTrainingResearch,
-    FacilityDesignResearch,
+    Research,
     JediTraining,
 }

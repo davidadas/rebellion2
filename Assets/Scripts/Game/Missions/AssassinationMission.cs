@@ -24,6 +24,26 @@ public class AssassinationMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
+    private AssassinationMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        string targetOfficerInstanceId
+    )
+        : base(
+            "Assassination",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Assassination").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Combat,
+            null
+        )
+    {
+        TargetOfficerInstanceID = targetOfficerInstanceId;
+    }
+
     /// <summary>
     /// Returns a new AssassinationMission for the specified target officer, or null if the
     /// target is not a valid assassination target (not an enemy, captured, killed, wrong planet).
@@ -52,26 +72,6 @@ public class AssassinationMission : Mission
             ctx.DecoyParticipants,
             target.InstanceID
         );
-    }
-
-    private AssassinationMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId
-    )
-        : base(
-            "Assassination",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Assassination").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Combat,
-            null
-        )
-    {
-        TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
     /// <summary>

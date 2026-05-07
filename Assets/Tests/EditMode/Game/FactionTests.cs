@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game
@@ -128,7 +129,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetUnlockedTechnologies_FactionBelowOrder_ReturnsOnlyUnlockedTechnologies()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Building, 2);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, 2);
 
             Building advancedBuilding = new Building
             {
@@ -150,10 +151,10 @@ namespace Rebellion.Tests.Game
                 advancedBuilding,
                 futureBuilding,
             };
-            _faction.RebuildResearchQueues(templates);
+            _faction.RebuildResearchCatalog(templates);
 
             List<Technology> unlocked = _faction.GetUnlockedTechnologies(
-                ManufacturingType.Building
+                ResearchDiscipline.FacilityDesign
             );
 
             Assert.AreEqual(
@@ -170,12 +171,14 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentResearchTarget_WithUnresearched_ReturnsNextUnlocked()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Building, 0);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, 0);
 
             IManufacturable[] templates = new IManufacturable[] { _building };
-            _faction.RebuildResearchQueues(templates);
+            _faction.RebuildResearchCatalog(templates);
 
-            Technology target = _faction.GetCurrentResearchTarget(ManufacturingType.Building);
+            Technology target = _faction.GetCurrentResearchTarget(
+                ResearchDiscipline.FacilityDesign
+            );
 
             Assert.IsNotNull(target, "Should return the next technology to research");
             Assert.AreEqual(1, target.GetResearchOrder());
@@ -184,12 +187,14 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetCurrentResearchTarget_AllUnlocked_ReturnsNull()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Building, 99);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, 99);
 
             IManufacturable[] templates = new IManufacturable[] { _building };
-            _faction.RebuildResearchQueues(templates);
+            _faction.RebuildResearchCatalog(templates);
 
-            Technology target = _faction.GetCurrentResearchTarget(ManufacturingType.Building);
+            Technology target = _faction.GetCurrentResearchTarget(
+                ResearchDiscipline.FacilityDesign
+            );
 
             Assert.IsNull(target, "Should return null when all technologies are unlocked");
         }
@@ -197,9 +202,9 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetHighestUnlockedOrder_WithSetOrder_ReturnsCorrectOrder()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 5);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 5);
 
-            int order = _faction.GetHighestUnlockedOrder(ManufacturingType.Ship);
+            int order = _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign);
 
             Assert.AreEqual(5, order, "Should return the correct unlocked order");
         }
@@ -207,17 +212,17 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SetHighestUnlockedOrder_ValidOrder_SetsOrder()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Troop, 3);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.TroopTraining, 3);
 
             Assert.AreEqual(
                 3,
-                _faction.GetHighestUnlockedOrder(ManufacturingType.Troop),
+                _faction.GetHighestUnlockedOrder(ResearchDiscipline.TroopTraining),
                 "Should set the unlocked order correctly"
             );
         }
 
         [Test]
-        public void RebuildResearchQueues_WithRestrictedBuilding_FiltersOwnership()
+        public void RebuildResearchCatalog_WithRestrictedBuilding_FiltersOwnership()
         {
             Building restrictedBuilding = new Building
             {
@@ -230,14 +235,16 @@ namespace Rebellion.Tests.Game
             _building.AllowedOwnerInstanceIDs = new List<string> { "FACTION1" };
 
             IManufacturable[] templates = new IManufacturable[] { _building, restrictedBuilding };
-            _faction.RebuildResearchQueues(templates);
+            _faction.RebuildResearchCatalog(templates);
 
-            List<Technology> queue = _faction.ResearchQueue[ManufacturingType.Building];
-            Assert.AreEqual(1, queue.Count, "Should only include technologies for this faction");
+            List<ResearchCatalogEntry> entries = _faction.ResearchCatalog[
+                ResearchDiscipline.FacilityDesign
+            ];
+            Assert.AreEqual(1, entries.Count, "Should only include technologies for this faction");
         }
 
         [Test]
-        public void RebuildResearchQueues_WithMultipleBuildings_SortsByResearchOrder()
+        public void RebuildResearchCatalog_WithMultipleBuildings_SortsByResearchOrder()
         {
             Building b1 = new Building
             {
@@ -261,12 +268,146 @@ namespace Rebellion.Tests.Game
                 AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
             };
 
-            _faction.RebuildResearchQueues(new IManufacturable[] { b1, b2, b3 });
+            _faction.RebuildResearchCatalog(new IManufacturable[] { b1, b2, b3 });
 
-            List<Technology> queue = _faction.ResearchQueue[ManufacturingType.Building];
-            Assert.AreEqual(0, queue[0].GetResearchOrder());
-            Assert.AreEqual(1, queue[1].GetResearchOrder());
-            Assert.AreEqual(3, queue[2].GetResearchOrder());
+            List<ResearchCatalogEntry> entries = _faction.ResearchCatalog[
+                ResearchDiscipline.FacilityDesign
+            ];
+            Assert.AreEqual(0, entries[0].Order);
+            Assert.AreEqual(1, entries[1].Order);
+            Assert.AreEqual(3, entries[2].Order);
+        }
+
+        // --- ApplyResearchProgress ---
+
+        private void SetupShipCatalog(params (string name, int order, int difficulty)[] techs)
+        {
+            IManufacturable[] templates = techs
+                .Select(t =>
+                    (IManufacturable)
+                        new CapitalShip
+                        {
+                            DisplayName = t.name,
+                            ResearchOrder = t.order,
+                            ResearchDifficulty = t.difficulty,
+                            AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+                        }
+                )
+                .ToArray();
+            _faction.RebuildResearchCatalog(templates);
+        }
+
+        [Test]
+        public void ApplyResearchProgress_MeetsDifficulty_ReturnsUnlockedTechnology()
+        {
+            SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
+
+            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 12);
+
+            Assert.IsNotNull(unlocked, "Apply should return the technology that was unlocked");
+            Assert.AreEqual("Frigate", unlocked.GetReference().DisplayName);
+            Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
+                "Cost should be subtracted from capacity"
+            );
+        }
+
+        [Test]
+        public void ApplyResearchProgress_ExcessCapacity_AdvancesOnceAndCarriesRemainder()
+        {
+            SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12), ("Cruiser", 2, 24));
+
+            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 40);
+
+            Assert.AreEqual("Frigate", unlocked.GetReference().DisplayName);
+            Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                28,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
+                "One call should advance only one order and carry the remainder"
+            );
+        }
+
+        [Test]
+        public void ApplyResearchProgress_BelowDifficulty_ReturnsNullAndAccumulates()
+        {
+            SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
+
+            Technology unlocked = _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 5);
+
+            Assert.IsNull(unlocked, "Below-difficulty progress should not unlock anything");
+            Assert.AreEqual(0, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                5,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
+        }
+
+        [Test]
+        public void ApplyResearchProgress_AllUnlocked_ReturnsNull()
+        {
+            SetupShipCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 1);
+
+            Technology unlocked = _faction.ApplyResearchProgress(
+                ResearchDiscipline.ShipDesign,
+                9999
+            );
+
+            Assert.IsNull(unlocked, "Exhausted disciplines should never unlock anything");
+            Assert.AreEqual(1, _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void ApplyResearchProgress_WithRealTemplates_UnlocksNextTechnology(
+            [Values(
+                ResearchDiscipline.ShipDesign,
+                ResearchDiscipline.FacilityDesign,
+                ResearchDiscipline.TroopTraining
+            )]
+                ResearchDiscipline discipline
+        )
+        {
+            // Real game-data templates restrict ownership to in-game faction IDs;
+            // use a known faction so RebuildResearchCatalog retains entries.
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+
+            IManufacturable[] templates = ResourceManager
+                .GetGameData<Building>()
+                .Cast<IManufacturable>()
+                .Concat(ResourceManager.GetGameData<CapitalShip>())
+                .Concat(ResourceManager.GetGameData<Starfighter>())
+                .Concat(ResourceManager.GetGameData<Regiment>())
+                .Concat(ResourceManager.GetGameData<SpecialForces>())
+                .ToArray();
+            alliance.RebuildResearchCatalog(templates);
+
+            alliance.SetHighestUnlockedOrder(discipline, 0);
+            int techsBefore = alliance.GetUnlockedTechnologies(discipline).Count;
+
+            Technology target = alliance.GetCurrentResearchTarget(discipline);
+            if (target == null)
+                Assert.Ignore(
+                    $"No researchable {discipline} technologies for {alliance.InstanceID}"
+                );
+
+            Technology unlocked = alliance.ApplyResearchProgress(
+                discipline,
+                target.GetResearchDifficulty()
+            );
+
+            Assert.AreEqual(target.GetResearchOrder(), unlocked.GetResearchOrder());
+            Assert.AreEqual(
+                target.GetResearchOrder(),
+                alliance.GetHighestUnlockedOrder(discipline)
+            );
+            Assert.Greater(
+                alliance.GetUnlockedTechnologies(discipline).Count,
+                techsBefore,
+                $"Unlocking {discipline} technology should increase available technologies"
+            );
         }
 
         [Test]
@@ -365,7 +506,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_MaintainsState()
         {
-            _faction.SetHighestUnlockedOrder(ManufacturingType.Ship, 3);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);
             _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
 
@@ -391,9 +532,85 @@ namespace Rebellion.Tests.Game
                 "PlayerID should be correctly deserialized."
             );
             Assert.AreEqual(
-                _faction.GetHighestUnlockedOrder(ManufacturingType.Ship),
-                deserialized.GetHighestUnlockedOrder(ManufacturingType.Ship),
+                _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
+                deserialized.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
                 "Research orders should be correctly deserialized."
+            );
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_ResearchState_RetainsAllDisciplinesAndIgnoresDerivedCatalogs()
+        {
+            _faction.ResearchState.CostScalePercent = 125;
+            _faction.ResearchState.NextRefreshTick = 47;
+
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 2);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, 4);
+            _faction.SetHighestUnlockedOrder(ResearchDiscipline.TroopTraining, 6);
+
+            _faction.ApplyResearchProgress(ResearchDiscipline.ShipDesign, 11);
+            _faction.ApplyResearchProgress(ResearchDiscipline.FacilityDesign, 22);
+            _faction.ApplyResearchProgress(ResearchDiscipline.TroopTraining, 33);
+
+            Building buildingTechnology = new Building
+            {
+                DisplayName = "Advanced Mine",
+                ResearchOrder = 4,
+                ResearchDifficulty = 60,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            CapitalShip shipTechnology = new CapitalShip
+            {
+                DisplayName = "Cruiser",
+                ResearchOrder = 2,
+                ResearchDifficulty = 24,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+            Regiment troopTechnology = new Regiment
+            {
+                DisplayName = "Elite Troopers",
+                ResearchOrder = 6,
+                ResearchDifficulty = 48,
+                AllowedOwnerInstanceIDs = new List<string> { "FACTION1" },
+            };
+
+            _faction.RebuildResearchCatalog(
+                new IManufacturable[] { buildingTechnology, shipTechnology, troopTechnology }
+            );
+
+            string serialized = SerializationHelper.Serialize(_faction);
+            Faction deserialized = SerializationHelper.Deserialize<Faction>(serialized);
+
+            Assert.AreEqual(125, deserialized.ResearchState.CostScalePercent);
+            Assert.AreEqual(47, deserialized.ResearchState.NextRefreshTick);
+
+            Assert.AreEqual(2, deserialized.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                4,
+                deserialized.GetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign)
+            );
+            Assert.AreEqual(
+                6,
+                deserialized.GetHighestUnlockedOrder(ResearchDiscipline.TroopTraining)
+            );
+
+            Assert.AreEqual(
+                11,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
+            Assert.AreEqual(
+                22,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.FacilityDesign)
+            );
+            Assert.AreEqual(
+                33,
+                deserialized.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining)
+            );
+
+            Assert.AreEqual(
+                0,
+                deserialized.ResearchCatalog.Count,
+                "ResearchCatalog should be rebuilt after load, not serialized."
             );
         }
 

@@ -171,5 +171,39 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNotNull(mission);
             Assert.IsInstanceOf<RecruitmentMission>(mission);
         }
+
+        [Test]
+        public void CreateMission_ResearchWithDiscipline_BuildsResearchMissionWithMatchingDiscipline()
+        {
+            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+
+            Mission mission = factory.CreateMission(
+                MissionType.Research,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                discipline: ResearchDiscipline.ShipDesign
+            );
+
+            Assert.IsInstanceOf<ResearchMission>(mission);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
+        }
+
+        [Test]
+        public void CreateMission_ResearchWithoutDiscipline_Throws()
+        {
+            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                factory.CreateMission(
+                    MissionType.Research,
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    new List<IMissionParticipant>(),
+                    planet
+                )
+            );
+        }
     }
 }

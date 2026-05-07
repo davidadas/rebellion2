@@ -25,6 +25,27 @@ public class JediTrainingMission : Mission
         DisplayName = "Jedi Training";
     }
 
+    private JediTrainingMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        string trainerInstanceId
+    )
+        : base(
+            "JediTraining",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Diplomacy,
+            null,
+            displayName: "Jedi Training"
+        )
+    {
+        TrainerInstanceID = trainerInstanceId;
+    }
+
     /// <summary>
     /// Returns a new JediTrainingMission if an eligible trainer exists on an own planet, or null.
     /// Selects the highest-ranked available trainer automatically.
@@ -67,27 +88,6 @@ public class JediTrainingMission : Mission
             .OrderByDescending(o => o.ForceRank)
             .FirstOrDefault();
         return trainer?.InstanceID;
-    }
-
-    private JediTrainingMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        string trainerInstanceId
-    )
-        : base(
-            "JediTraining",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Diplomacy,
-            null
-        )
-    {
-        TrainerInstanceID = trainerInstanceId;
-        DisplayName = "Jedi Training";
     }
 
     /// <summary>

@@ -1113,6 +1113,28 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void InitiateMission_ResearchWithDiscipline_AttachesResearchMissionToPlanet()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement, fog);
+
+            system.InitiateMission(
+                MissionType.Research,
+                officer,
+                planet,
+                discipline: ResearchDiscipline.FacilityDesign
+            );
+
+            ResearchMission mission = game.GetSceneNodesByType<ResearchMission>().FirstOrDefault();
+            Assert.IsNotNull(mission, "Research mission should be created and attached");
+            Assert.AreEqual(ResearchDiscipline.FacilityDesign, mission.Discipline);
+            Assert.AreEqual(planet, mission.GetParent());
+        }
+
+        [Test]
         public void TearDownMission_CapturedParticipant_SkipsMovement()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(

@@ -22,31 +22,6 @@ public class RecruitmentMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    /// <summary>
-    /// Returns a new RecruitmentMission targeting a random unrecruited officer, or null.
-    /// </summary>
-    /// <param name="ctx">Mission context; must include a RandomProvider and a valid target.</param>
-    /// <returns>A configured mission, or null if no unrecruited officers exist or provider is missing.</returns>
-    public static RecruitmentMission TryCreate(MissionContext ctx)
-    {
-        if (ctx.RandomProvider == null)
-            return null;
-
-        List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
-        if (unrecruited.Count == 0)
-            return null;
-
-        string targetId = unrecruited.RandomElement(ctx.RandomProvider).InstanceID;
-
-        return new RecruitmentMission(
-            ctx.OwnerInstanceId,
-            ctx.Target,
-            ctx.MainParticipants,
-            ctx.DecoyParticipants,
-            targetId
-        );
-    }
-
     private RecruitmentMission(
         string ownerInstanceId,
         ISceneNode target,
@@ -71,6 +46,31 @@ public class RecruitmentMission : Mission
             );
 
         TargetOfficerInstanceID = targetOfficerInstanceId;
+    }
+
+    /// <summary>
+    /// Returns a new RecruitmentMission targeting a random unrecruited officer, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context; must include a RandomProvider and a valid target.</param>
+    /// <returns>A configured mission, or null if no unrecruited officers exist or provider is missing.</returns>
+    public static RecruitmentMission TryCreate(MissionContext ctx)
+    {
+        if (ctx.RandomProvider == null)
+            return null;
+
+        List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
+        if (unrecruited.Count == 0)
+            return null;
+
+        string targetId = unrecruited.RandomElement(ctx.RandomProvider).InstanceID;
+
+        return new RecruitmentMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            ctx.MainParticipants,
+            ctx.DecoyParticipants,
+            targetId
+        );
     }
 
     /// <summary>

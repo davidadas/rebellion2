@@ -58,7 +58,8 @@ public static class ResourceManager
     public static T[] GetGameData<T>()
         where T : BaseGameEntity
     {
-        string pluralizedType = $"{typeof(T).Name}s";
+        string typeName = typeof(T).Name;
+        string pluralizedType = typeName.EndsWith("s") ? typeName : $"{typeName}s";
         string filePath = Path.Combine("Data", pluralizedType);
 
         TextAsset asset = Resources.Load<TextAsset>(filePath);

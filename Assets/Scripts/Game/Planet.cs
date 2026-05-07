@@ -198,7 +198,7 @@ namespace Rebellion.Game
         /// <returns>The total number of mined resource nodes, limited by the raw node count.</returns>
         public int GetRawMinedResources()
         {
-            int mineCount = GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+            int mineCount = GetTotalBuildingTypeCount(BuildingType.Mine);
             return Math.Min(NumRawResourceNodes, mineCount);
         }
 
@@ -231,7 +231,7 @@ namespace Rebellion.Game
         /// <returns>The total refinement capacity.</returns>
         public int GetRawRefinementCapacity()
         {
-            return GetBuildingTypeCount(BuildingType.Refinery, EntityStateFilter.All);
+            return GetTotalBuildingTypeCount(BuildingType.Refinery);
         }
 
         /// <summary>
@@ -596,42 +596,59 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Calculates total defense strength from shield and DeathStarShield buildings.
+        /// Calculates defense strength from completed, stationary shield buildings.
         /// </summary>
-        /// <param name="filter">Which building states to include (default Active).</param>
-        /// <returns>Sum of ShieldStrength across matching buildings.</returns>
-        public int GetDefenseStrength(EntityStateFilter filter = EntityStateFilter.Active)
+        /// <returns>Sum of ShieldStrength across active shield buildings.</returns>
+        public int GetDefenseStrength()
         {
             return GetAllBuildings()
                 .Where(b =>
                     (
                         b.DefenseFacilityClass == DefenseFacilityClass.Shield
                         || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
-                    ) && IsEntityActive(b, filter)
+                    ) && IsEntityActive(b)
                 )
                 .Sum(b => b.ShieldStrength);
         }
 
         /// <summary>
-        /// Gets the count of buildings of a specific type.
+        /// Calculates defense strength across all shield buildings, including those under
+        /// construction and in transit.
         /// </summary>
-        /// <param name="buildingType">The type of building to count.</param>
-        /// <param name="filter">Active (default) counts only operational buildings; All includes under construction and in transit.</param>
-        /// <returns>The count of buildings of the specified type.</returns>
-        public int GetBuildingTypeCount(
-            BuildingType buildingType,
-            EntityStateFilter filter = EntityStateFilter.Active
-        )
+        /// <returns>Sum of ShieldStrength across all shield buildings.</returns>
+        public int GetTotalDefenseStrength()
         {
-            return Buildings.Count(b =>
-                b.GetBuildingType() == buildingType && IsEntityActive(b, filter)
-            );
+            return GetAllBuildings()
+                .Where(b =>
+                    b.DefenseFacilityClass == DefenseFacilityClass.Shield
+                    || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
+                )
+                .Sum(b => b.ShieldStrength);
         }
 
-        private static bool IsEntityActive(IManufacturable entity, EntityStateFilter filter)
+        /// <summary>
+        /// Gets the count of completed, stationary buildings of a specific type.
+        /// </summary>
+        /// <param name="buildingType">The type of building to count.</param>
+        /// <returns>The count of active buildings of the specified type.</returns>
+        public int GetBuildingTypeCount(BuildingType buildingType)
         {
-            if (filter == EntityStateFilter.All)
-                return true;
+            return Buildings.Count(b => b.GetBuildingType() == buildingType && IsEntityActive(b));
+        }
+
+        /// <summary>
+        /// Gets the total count of buildings of a specific type, including those under
+        /// construction and in transit.
+        /// </summary>
+        /// <param name="buildingType">The type of building to count.</param>
+        /// <returns>The total count of buildings of the specified type.</returns>
+        public int GetTotalBuildingTypeCount(BuildingType buildingType)
+        {
+            return Buildings.Count(b => b.GetBuildingType() == buildingType);
+        }
+
+        private static bool IsEntityActive(IManufacturable entity)
+        {
             return entity.ManufacturingStatus == ManufacturingStatus.Complete
                 && ((IMovable)entity).Movement == null;
         }

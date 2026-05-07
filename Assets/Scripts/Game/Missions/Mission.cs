@@ -87,11 +87,12 @@ public abstract class Mission : ContainerNode
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
-        ProbabilityTable successProbabilityTable
+        ProbabilityTable successProbabilityTable,
+        string displayName = null
     )
     {
         ConfigKey = configKey ?? throw new ArgumentNullException(nameof(configKey));
-        DisplayName = configKey;
+        DisplayName = displayName ?? configKey;
         AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;
@@ -253,6 +254,18 @@ public abstract class Mission : ContainerNode
     }
 
     /// <summary>
+    /// Evaluates whether a rolled probability succeeds against the given threshold.
+    /// Default mission behavior uses an inclusive comparison.
+    /// </summary>
+    /// <param name="rolledValue">The rolled value on the 0-100 probability scale.</param>
+    /// <param name="successThreshold">The success threshold on the 0-100 probability scale.</param>
+    /// <returns>True if the roll succeeds.</returns>
+    protected virtual bool IsSuccessfulProbabilityRoll(double rolledValue, double successThreshold)
+    {
+        return rolledValue <= successThreshold;
+    }
+
+    /// <summary>
     /// Returns true if at least one main participant beats the success threshold.
     /// Foil detection is handled separately per-tick by MissionSystem.
     /// </summary>
@@ -262,8 +275,9 @@ public abstract class Mission : ContainerNode
     {
         foreach (IMissionParticipant participant in MainParticipants)
         {
-            double successProbability = GetAgentProbability(participant);
-            if (provider.NextDouble() * 100 <= successProbability)
+            double successThreshold = GetAgentProbability(participant);
+            double rolledValue = provider.NextDouble() * 100;
+            if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
                 return true;
         }
         return false;
@@ -356,7 +370,7 @@ public abstract class Mission : ContainerNode
     /// <param name="game">The current game state.</param>
     /// <param name="provider">RNG provider for all probability rolls.</param>
     /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
-    public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+    public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
         List<GameResult> results = new List<GameResult>();
         MissionOutcome outcome;
@@ -381,22 +395,28 @@ public abstract class Mission : ContainerNode
             results.AddRange(OnFailed(game, provider));
         }
 
-        List<IMissionParticipant> allParticipants = GetAllParticipants();
-        string targetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty;
-
-        results.Add(
-            new MissionCompletedResult
-            {
-                Mission = this,
-                MissionName = DisplayName,
-                TargetName = targetName,
-                Participants = allParticipants,
-                Outcome = outcome,
-                Tick = game.CurrentTick,
-            }
-        );
-
+        results.Add(BuildCompletedResult(outcome, game));
         return results;
+    }
+
+    /// <summary>
+    /// Builds the <see cref="MissionCompletedResult"/> that terminates an Execute call.
+    /// Shared by the base implementation and any subclass that overrides Execute.
+    /// </summary>
+    /// <param name="outcome">The resolved mission outcome.</param>
+    /// <param name="game">The current game state.</param>
+    /// <returns>A populated MissionCompletedResult.</returns>
+    protected MissionCompletedResult BuildCompletedResult(MissionOutcome outcome, GameRoot game)
+    {
+        return new MissionCompletedResult
+        {
+            Mission = this,
+            MissionName = DisplayName,
+            TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
+            Participants = GetAllParticipants(),
+            Outcome = outcome,
+            Tick = game.CurrentTick,
+        };
     }
 
     /// <summary>
@@ -429,11 +449,14 @@ public abstract class Mission : ContainerNode
 
     /// <summary>
     /// Override to apply effects and return results when the mission succeeds.
+    /// Default returns no results — required for subclasses that own <see cref="Execute"/>
+    /// and resolve outcomes inline.
     /// </summary>
     /// <param name="game">The current game state.</param>
     /// <param name="provider">RNG provider for any randomized effects.</param>
-    /// <returns>Results produced by the success outcome.</returns>
-    protected abstract List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider);
+    /// <returns>Results produced by the success outcome; empty by default.</returns>
+    protected virtual List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider) =>
+        new List<GameResult>();
 
     /// <summary>
     /// Override to apply effects when the mission fails. Default returns no results.

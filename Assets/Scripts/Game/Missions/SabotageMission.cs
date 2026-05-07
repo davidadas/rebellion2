@@ -20,6 +20,22 @@ public class SabotageMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
+    private SabotageMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
+    )
+        : base(
+            "Sabotage",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Sabotage").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Combat,
+            null
+        ) { }
+
     /// <summary>
     /// Returns a new SabotageMission if the target is a planet, or null.
     /// </summary>
@@ -37,22 +53,6 @@ public class SabotageMission : Mission
             ctx.DecoyParticipants
         );
     }
-
-    private SabotageMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants
-    )
-        : base(
-            "Sabotage",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Sabotage").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Combat,
-            null
-        ) { }
 
     /// <summary>
     /// Returns false if the target planet has no buildings remaining before execution.

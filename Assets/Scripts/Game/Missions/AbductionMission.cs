@@ -24,6 +24,26 @@ public class AbductionMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
+    private AbductionMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        string targetOfficerInstanceId
+    )
+        : base(
+            "Abduction",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Abduction").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Combat,
+            null
+        )
+    {
+        TargetOfficerInstanceID = targetOfficerInstanceId;
+    }
+
     /// <summary>
     /// Returns a new AbductionMission for the specified target officer, or null if the
     /// target is not a valid abduction target (not an enemy, already captured, wrong planet).
@@ -51,26 +71,6 @@ public class AbductionMission : Mission
             ctx.DecoyParticipants,
             target.InstanceID
         );
-    }
-
-    private AbductionMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId
-    )
-        : base(
-            "Abduction",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Abduction").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Combat,
-            null
-        )
-    {
-        TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
     /// <summary>

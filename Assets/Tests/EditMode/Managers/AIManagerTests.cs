@@ -641,7 +641,7 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(yard, planet);
 
             // Add a mine tech so the AI has something to try to build
-            empire.RebuildResearchQueues(
+            empire.RebuildResearchCatalog(
                 new IManufacturable[]
                 {
                     new Building
@@ -1354,7 +1354,7 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(stationaryFleet, planet);
 
-            empire.RebuildResearchQueues(
+            empire.RebuildResearchCatalog(
                 new IManufacturable[]
                 {
                     new CapitalShip
@@ -1456,7 +1456,7 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(refinery, planet);
 
-            empire.RebuildResearchQueues(
+            empire.RebuildResearchCatalog(
                 new IManufacturable[]
                 {
                     new CapitalShip

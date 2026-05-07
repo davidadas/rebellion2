@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Missions
 
         private ResearchMission CreateMission(
             Officer officer,
-            ManufacturingType type = ManufacturingType.Ship
+            ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
         )
         {
             MissionContext ctx = new MissionContext
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
                 MainParticipants = new List<IMissionParticipant> { officer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, type);
+            ResearchMission mission = ResearchMission.TryCreate(ctx, discipline);
             game.AttachNode(mission, planet);
             return mission;
         }
@@ -75,16 +75,34 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetAgentProbability_OfficerWithSkill_ReturnsSkillBasedProbability()
+        public void TryCreate_EnemyPlanet_ReturnsNull()
+        {
+            Officer officer = CreateOfficer();
+
+            planet.OwnerInstanceID = "rebels";
+
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
+
+            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
+        }
+
+        [Test]
+        public void Execute_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
-            ResearchMission mission = CreateMission(officer, ManufacturingType.Ship);
+            ResearchMission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
 
-            // Execute with RNG=0.0 guarantees success (0 <= 75)
             mission.Execute(game, new FixedRNG(0.0));
 
-            // If success path ran, capacity should have increased
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
+            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -93,22 +111,26 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            int before = faction.ResearchCapacity[ManufacturingType.Ship];
+            int before = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
             mission.Execute(game, new FixedRNG(0.0));
-            int after = faction.ResearchCapacity[ManufacturingType.Ship];
+            int after = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.Greater(after, before, "Successful research mission should award capacity");
         }
 
         [Test]
-        public void Execute_Success_IncrementsResearchSkill()
+        public void Execute_Success_IncrementsMatchingResearchSkill()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
             ResearchMission mission = CreateMission(officer);
 
             mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.AreEqual(51, officer.ShipResearch, "Research skill should increment by 1");
+            Assert.AreEqual(
+                51,
+                officer.ShipResearch,
+                "Successful research should improve the acting officer's matching research stat"
+            );
         }
 
         [Test]
@@ -117,10 +139,32 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void Execute_ZeroResearchSkillAndMinimumRoll_DoesNotAwardCapacity()
+        {
+            Officer officer = CreateOfficer(shipSkill: 0);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void Execute_RollEqualsResearchChance_DoesNotAwardCapacity()
+        {
+            Officer officer = CreateOfficer(shipSkill: 50);
+            ResearchMission mission = CreateMission(officer);
+
+            mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(50, officer.ShipResearch);
         }
 
         [Test]
@@ -135,27 +179,59 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TroopResearchType_AwardsTroopCapacity()
+        public void Execute_SecondParticipantOnlyCouldSucceed_DoesNotAwardCapacity()
         {
-            Officer officer = CreateOfficer(troopSkill: 100);
-            ResearchMission mission = CreateMission(officer, ManufacturingType.Troop);
+            Officer firstOfficer = CreateOfficer(shipSkill: 10);
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "off2",
+                OwnerInstanceID = "empire",
+                ShipResearch = 100,
+            };
+            game.AttachNode(secondOfficer, planet);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
+            game.AttachNode(mission, planet);
 
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Troop], 0);
-            Assert.AreEqual(0, faction.ResearchCapacity[ManufacturingType.Ship]);
+            mission.Execute(game, new FixedRNG(0.5));
+
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(10, firstOfficer.ShipResearch);
+            Assert.AreEqual(100, secondOfficer.ShipResearch);
         }
 
         [Test]
-        public void Execute_MaxSkillOfficer_NeverFoiled()
+        public void Execute_TroopTrainingDiscipline_AwardsTroopCapacity()
+        {
+            Officer officer = CreateOfficer(troopSkill: 100);
+            ResearchMission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
+
+            mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.Greater(
+                faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining),
+                0
+            );
+            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+        }
+
+        [Test]
+        public void Execute_MaxSkillOfficer_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            // Even with a high RNG roll, skill 100 always succeeds since foil is 0.
             mission.Execute(game, new FixedRNG(0.99));
 
-            Assert.Greater(faction.ResearchCapacity[ManufacturingType.Ship], 0);
+            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -214,34 +290,12 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            // High RNG roll exceeds the low skill value, causing failure.
             mission.Execute(game, new FixedRNG(0.99));
 
             Assert.IsTrue(
                 mission.CanContinue(game),
                 "Mission should continue after failed research"
             );
-        }
-
-        [Test]
-        public void TryCreate_EnemyPlanet_ReturnsNull()
-        {
-            Officer officer = CreateOfficer();
-
-            // Change ownership after officer is already placed
-            planet.OwnerInstanceID = "rebels";
-
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = "empire",
-                Target = planet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ManufacturingType.Ship);
-
-            Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
 
         [Test]
@@ -255,7 +309,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "Ship Design",
                 TargetInstanceID = "PLANET1",
                 ParticipantSkill = MissionParticipantSkill.Leadership,
-                ResearchType = ManufacturingType.Ship,
+                Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
                 MaxProgress = 15,
                 CurrentProgress = 7,
@@ -270,7 +324,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(MissionParticipantSkill.Leadership, deserialized.ParticipantSkill);
-            Assert.AreEqual(ManufacturingType.Ship, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, deserialized.Discipline);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(15, deserialized.MaxProgress);
             Assert.AreEqual(7, deserialized.CurrentProgress);
@@ -286,7 +340,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Troop Training",
                 TargetInstanceID = "PLANET1",
-                ResearchType = ManufacturingType.Troop,
+                Discipline = ResearchDiscipline.TroopTraining,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -294,7 +348,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Troop Training", deserialized.DisplayName);
-            Assert.AreEqual(ManufacturingType.Troop, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.TroopTraining, deserialized.Discipline);
         }
 
         [Test]
@@ -307,7 +361,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Facility Design",
                 TargetInstanceID = "PLANET1",
-                ResearchType = ManufacturingType.Building,
+                Discipline = ResearchDiscipline.FacilityDesign,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -315,7 +369,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Facility Design", deserialized.DisplayName);
-            Assert.AreEqual(ManufacturingType.Building, deserialized.ResearchType);
+            Assert.AreEqual(ResearchDiscipline.FacilityDesign, deserialized.Discipline);
         }
     }
 }

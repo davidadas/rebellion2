@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Results;
@@ -6,13 +5,12 @@ using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 /// <summary>
-/// Research mission that awards capacity points to a faction's research pool.
-/// Three subtypes (Ship Design, Troop Training, Facility Design) share this class,
-/// differing only in which <see cref="ManufacturingType"/> they target.
+/// Research mission that awards side research capacity for one discipline.
+/// The targeted <see cref="ResearchDiscipline"/> is carried as data on the mission.
 /// </summary>
 public class ResearchMission : Mission
 {
-    public ManufacturingType ResearchType { get; set; }
+    public ResearchDiscipline Discipline { get; set; }
 
     /// <summary>
     /// Default constructor used for deserialization.
@@ -25,51 +23,12 @@ public class ResearchMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
-    /// <summary>
-    /// Returns a new ResearchMission if the target is an own planet, or null.
-    /// </summary>
-    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-    /// <param name="researchType">The manufacturing category this mission advances.</param>
-    /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
-    public static ResearchMission TryCreate(MissionContext ctx, ManufacturingType researchType)
-    {
-        if (!(ctx.Target is Planet planet))
-            return null;
-
-        if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
-            return null;
-
-        return new ResearchMission(
-            ctx.OwnerInstanceId,
-            ctx.Target,
-            ctx.MainParticipants,
-            ctx.DecoyParticipants,
-            researchType
-        );
-    }
-
-    /// <summary>
-    /// Returns the display name for a research mission based on the manufacturing type.
-    /// </summary>
-    /// <param name="type">The manufacturing type to look up.</param>
-    /// <returns>The human-readable mission name.</returns>
-    private static string GetMissionName(ManufacturingType type)
-    {
-        return type switch
-        {
-            ManufacturingType.Ship => "Ship Design",
-            ManufacturingType.Troop => "Troop Training",
-            ManufacturingType.Building => "Facility Design",
-            _ => "Research",
-        };
-    }
-
     private ResearchMission(
         string ownerInstanceId,
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
-        ManufacturingType researchType
+        ResearchDiscipline discipline
     )
         : base(
             "Research",
@@ -78,11 +37,49 @@ public class ResearchMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            null
+            null,
+            displayName: GetMissionName(discipline)
         )
     {
-        ResearchType = researchType;
-        DisplayName = GetMissionName(researchType);
+        Discipline = discipline;
+    }
+
+    /// <summary>
+    /// Returns a new ResearchMission if the target is an own planet, or null.
+    /// </summary>
+    /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
+    /// <param name="discipline">The research discipline this mission advances.</param>
+    /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
+    public static ResearchMission TryCreate(MissionContext ctx, ResearchDiscipline discipline)
+    {
+        if (!(ctx.Target is Planet planet))
+            return null;
+
+        if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+            return null;
+
+        List<IMissionParticipant> actingParticipants = new List<IMissionParticipant>();
+        if (ctx.MainParticipants?.Count > 0)
+            actingParticipants.Add(ctx.MainParticipants[0]);
+
+        return new ResearchMission(
+            ctx.OwnerInstanceId,
+            ctx.Target,
+            actingParticipants,
+            ctx.DecoyParticipants,
+            discipline
+        );
+    }
+
+    private static string GetMissionName(ResearchDiscipline discipline)
+    {
+        return discipline switch
+        {
+            ResearchDiscipline.ShipDesign => "Ship Design",
+            ResearchDiscipline.TroopTraining => "Troop Training",
+            ResearchDiscipline.FacilityDesign => "Facility Design",
+            _ => "Research",
+        };
     }
 
     /// <summary>
@@ -96,20 +93,6 @@ public class ResearchMission : Mission
     }
 
     /// <summary>
-    /// Returns the officer's research skill as a direct probability (0-100).
-    /// Only Officers should be assigned to research missions; non-Officer participants
-    /// return 0 and will always fail the success check.
-    /// </summary>
-    /// <param name="agent">The mission participant to evaluate.</param>
-    /// <returns>The officer's research skill for this mission's type, or 0 if not an officer.</returns>
-    protected override double GetAgentProbability(IMissionParticipant agent)
-    {
-        if (agent is Officer officer)
-            return officer.GetResearchSkill(ResearchType);
-        return 0;
-    }
-
-    /// <summary>
     /// Research missions target own planets and are never foiled.
     /// </summary>
     /// <param name="defenseScore">The defense score (unused).</param>
@@ -117,55 +100,152 @@ public class ResearchMission : Mission
     protected override double GetFoilProbability(double defenseScore) => 0;
 
     /// <summary>
-    /// Improves the officer's research skill for this mission's manufacturing type
-    /// instead of the base ParticipantSkill (Leadership).
+    /// Resolves one mission execution: each main participant rolls independently;
+    /// each success accumulates a reward and bumps that officer's research rating.
+    /// The total is then applied to the faction and any transitions are emitted.
     /// </summary>
-    protected override void ImproveMissionParticipantsSkill()
+    /// <param name="game">The current game state.</param>
+    /// <param name="provider">RNG provider for chance rolls and reward rolls.</param>
+    /// <returns>Transition results, with a MissionCompletedResult appended.</returns>
+    public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
     {
-        foreach (IMissionParticipant participant in MainParticipants)
+        List<GameResult> results = new List<GameResult>();
+        MissionOutcome outcome = MissionOutcome.Failed;
+        Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+
+        if (faction != null && IsMissionSatisfied(game))
         {
-            if (participant is Officer officer)
-                officer.IncrementResearchSkill(ResearchType);
+            int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
+            if (earnedPoints > 0)
+            {
+                outcome = MissionOutcome.Success;
+                AwardAccumulatedPoints(faction, earnedPoints, game, results);
+            }
         }
+
+        results.Add(BuildCompletedResult(outcome, game));
+        return results;
     }
 
     /// <summary>
-    /// Awards research capacity points to the faction's research pool.
+    /// Rolls each officer's success chance; on success, rolls a reward and bumps that
+    /// officer's research rating. Returns the total points earned across all participants.
     /// </summary>
-    /// <param name="game">The game instance.</param>
-    /// <param name="provider">The random number provider.</param>
-    /// <returns>An empty list (no additional results).</returns>
-    protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+    /// <param name="config">Research configuration providing reward parameters.</param>
+    /// <param name="provider">RNG provider for chance and reward rolls.</param>
+    /// <returns>Total research points earned this execution.</returns>
+    private int AccumulatePointsFromParticipants(
+        GameConfig.ResearchConfig config,
+        IRandomNumberProvider provider
+    )
     {
-        Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-        if (faction == null)
-            return new List<GameResult>();
-
-        GameConfig.ResearchConfig config = game.Config.Research;
-        int reward = config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
-
-        if (faction.ResearchCapacity.ContainsKey(ResearchType))
-            faction.ResearchCapacity[ResearchType] += reward;
-
-        return new List<GameResult>
+        int earnedPoints = 0;
+        foreach (IMissionParticipant participant in MainParticipants)
         {
-            new ResearchCompletedResult
-            {
-                Faction = faction,
-                FacilityType = ResearchType,
-                Success = true,
-                Tick = game.CurrentTick,
-            },
+            if (!(participant is Officer officer) || !RollSuccess(officer, provider))
+                continue;
+
+            earnedPoints += RollReward(config, provider);
+            officer.IncrementResearchSkill(Discipline);
+        }
+        return earnedPoints;
+    }
+
+    /// <summary>
+    /// Returns true when the officer's roll comes in strictly under their research chance.
+    /// </summary>
+    /// <param name="officer">The officer attempting the research.</param>
+    /// <param name="provider">RNG provider for the chance roll.</param>
+    /// <returns>True if the participant succeeded this attempt.</returns>
+    private bool RollSuccess(Officer officer, IRandomNumberProvider provider)
+    {
+        int chance = officer.GetResearchSkill(Discipline);
+        return provider.NextDouble() * 100 < chance;
+    }
+
+    /// <summary>
+    /// Rolls one successful participant's reward.
+    /// </summary>
+    /// <param name="config">Research configuration providing reward parameters.</param>
+    /// <param name="provider">RNG provider for the reward roll.</param>
+    /// <returns>The number of research points awarded for this success.</returns>
+    private static int RollReward(GameConfig.ResearchConfig config, IRandomNumberProvider provider)
+    {
+        return config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
+    }
+
+    /// <summary>
+    /// Applies the earned points to the faction and emits an ordered result if the
+    /// order advanced, plus an exhausted result if the discipline now has no further advances.
+    /// </summary>
+    /// <param name="faction">The owning faction whose research state advances.</param>
+    /// <param name="earnedPoints">The total research points earned this execution.</param>
+    /// <param name="game">The current game state.</param>
+    /// <param name="results">Result list to append transition results to.</param>
+    private void AwardAccumulatedPoints(
+        Faction faction,
+        int earnedPoints,
+        GameRoot game,
+        List<GameResult> results
+    )
+    {
+        Technology unlocked = faction.ApplyResearchProgress(Discipline, earnedPoints);
+        if (unlocked == null)
+            return;
+
+        results.Add(BuildOrderedResult(faction, unlocked, game));
+        if (faction.IsResearchExhausted(Discipline))
+            results.Add(BuildExhaustedResult(faction, game));
+    }
+
+    /// <summary>
+    /// Builds a <see cref="ResearchOrderedResult"/> capturing the just-advanced
+    /// research order and the technology that became available.
+    /// </summary>
+    /// <param name="faction">The owning faction.</param>
+    /// <param name="unlocked">The technology that just became available.</param>
+    /// <param name="game">The current game state.</param>
+    /// <returns>A populated ordered result.</returns>
+    private ResearchOrderedResult BuildOrderedResult(
+        Faction faction,
+        Technology unlocked,
+        GameRoot game
+    )
+    {
+        return new ResearchOrderedResult
+        {
+            Tick = game.CurrentTick,
+            Faction = faction,
+            Discipline = Discipline,
+            ResearchOrder = faction.GetHighestUnlockedOrder(Discipline),
+            Capacity = faction.GetResearchCapacityRemaining(Discipline),
+            Technology = unlocked,
         };
     }
 
     /// <summary>
-    /// Research missions repeat as long as the planet remains owned by this faction.
+    /// Builds a <see cref="ResearchExhaustedResult"/> for a discipline that now
+    /// has no further advances available.
+    /// </summary>
+    /// <param name="faction">The owning faction.</param>
+    /// <param name="game">The current game state.</param>
+    /// <returns>A populated exhausted result.</returns>
+    private ResearchExhaustedResult BuildExhaustedResult(Faction faction, GameRoot game)
+    {
+        return new ResearchExhaustedResult
+        {
+            Tick = game.CurrentTick,
+            Faction = faction,
+            Discipline = Discipline,
+            PreviousState = 0,
+            NewState = 1,
+        };
+    }
+
+    /// <summary>
+    /// Research missions repeat as long as the mission target is still satisfied.
     /// </summary>
     /// <param name="game">The game instance.</param>
     /// <returns>True if the mission should continue.</returns>
-    public override bool CanContinue(GameRoot game)
-    {
-        return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID;
-    }
+    public override bool CanContinue(GameRoot game) => IsMissionSatisfied(game);
 }

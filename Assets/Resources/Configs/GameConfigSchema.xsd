@@ -117,26 +117,14 @@
           </xs:complexType>
         </xs:element>
 
-        <xs:element name="ResourceRebalance">
-          <xs:complexType>
-            <xs:all>
-              <xs:element name="DecayMultiplier" type="PositiveIntType" />
-              <xs:element name="RebalanceTimerBase" type="PositiveIntType" />
-              <xs:element name="RebalanceTimerSpread" type="PositiveIntType" />
-              <xs:element name="ResourceWalkTimerBase" type="PositiveIntType" />
-              <xs:element name="ResourceWalkTimerSpread" type="PositiveIntType" />
-              <xs:element name="MaxEnergy" type="PositiveIntType" />
-              <xs:element name="MaxRawMaterials" type="PositiveIntType" />
-            </xs:all>
-          </xs:complexType>
-        </xs:element>
-
         <xs:element name="Planet">
           <xs:complexType>
             <xs:all>
               <xs:element name="DistanceDivisor" type="PositiveIntType" />
               <xs:element name="DistanceBase" type="xs:nonNegativeInteger" />
               <xs:element name="MaxPopularSupport" type="PositiveIntType" />
+              <xs:element name="MaxEnergy" type="PositiveIntType" />
+              <xs:element name="MaxRawMaterials" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -238,6 +226,8 @@
             <xs:all>
               <xs:element name="BaseResearchPoints" type="PositiveIntType" />
               <xs:element name="ResearchDiceRange" type="xs:nonNegativeInteger" />
+              <xs:element name="RefreshIntervalBase" type="PositiveIntType" />
+              <xs:element name="RefreshIntervalSpread" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
         </xs:element>

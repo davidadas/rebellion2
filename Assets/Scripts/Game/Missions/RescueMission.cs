@@ -24,6 +24,26 @@ public class RescueMission : Mission
         ParticipantSkill = MissionParticipantSkill.Combat;
     }
 
+    private RescueMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        string targetOfficerInstanceId
+    )
+        : base(
+            "Rescue",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Rescue").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Combat,
+            null
+        )
+    {
+        TargetOfficerInstanceID = targetOfficerInstanceId;
+    }
+
     /// <summary>
     /// Returns a new RescueMission for the specified captured friendly officer, or null if the
     /// target is not a valid rescue target (not friendly, not captured, wrong planet).
@@ -51,26 +71,6 @@ public class RescueMission : Mission
             ctx.DecoyParticipants,
             target.InstanceID
         );
-    }
-
-    private RescueMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants,
-        string targetOfficerInstanceId
-    )
-        : base(
-            "Rescue",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Rescue").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Combat,
-            null
-        )
-    {
-        TargetOfficerInstanceID = targetOfficerInstanceId;
     }
 
     /// <summary>

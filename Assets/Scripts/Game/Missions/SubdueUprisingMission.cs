@@ -18,6 +18,23 @@ public class SubdueUprisingMission : Mission
         ParticipantSkill = MissionParticipantSkill.Leadership;
     }
 
+    private SubdueUprisingMission(
+        string ownerInstanceId,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants
+    )
+        : base(
+            "SubdueUprising",
+            ownerInstanceId,
+            RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
+            mainParticipants,
+            decoyParticipants,
+            MissionParticipantSkill.Leadership,
+            null,
+            displayName: "Subdue Uprising"
+        ) { }
+
     /// <summary>
     /// Returns a new SubdueUprisingMission if the target is an own planet in uprising, or null.
     /// </summary>
@@ -37,25 +54,6 @@ public class SubdueUprisingMission : Mission
             ctx.MainParticipants,
             ctx.DecoyParticipants
         );
-    }
-
-    private SubdueUprisingMission(
-        string ownerInstanceId,
-        ISceneNode target,
-        List<IMissionParticipant> mainParticipants,
-        List<IMissionParticipant> decoyParticipants
-    )
-        : base(
-            "SubdueUprising",
-            ownerInstanceId,
-            RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
-            mainParticipants,
-            decoyParticipants,
-            MissionParticipantSkill.Leadership,
-            null
-        )
-    {
-        DisplayName = "Subdue Uprising";
     }
 
     /// <summary>

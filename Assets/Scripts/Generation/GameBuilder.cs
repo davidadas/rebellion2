@@ -52,6 +52,7 @@ namespace Rebellion.Generation
             CapitalShip[] shipTemplates = ResourceManager.GetGameData<CapitalShip>();
             Starfighter[] fighterTemplates = ResourceManager.GetGameData<Starfighter>();
             Regiment[] regimentTemplates = ResourceManager.GetGameData<Regiment>();
+            SpecialForces[] specialForcesTemplates = ResourceManager.GetGameData<SpecialForces>();
             Officer[] officerTemplates = ResourceManager.GetGameData<Officer>();
             GameEvent[] gameEvents = ResourceManager.GetGameData<GameEvent>();
 
@@ -132,7 +133,8 @@ namespace Rebellion.Generation
                 buildingTemplates,
                 shipTemplates,
                 fighterTemplates,
-                regimentTemplates
+                regimentTemplates,
+                specialForcesTemplates
             );
 
             // Create the game
@@ -157,9 +159,9 @@ namespace Rebellion.Generation
             int startingOrder = _summary.StartingResearchLevel;
             foreach (Faction faction in factions)
             {
-                faction.SetHighestUnlockedOrder(ManufacturingType.Building, startingOrder);
-                faction.SetHighestUnlockedOrder(ManufacturingType.Ship, startingOrder);
-                faction.SetHighestUnlockedOrder(ManufacturingType.Troop, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, startingOrder);
+                faction.SetHighestUnlockedOrder(ResearchDiscipline.TroopTraining, startingOrder);
             }
         }
 
@@ -168,7 +170,8 @@ namespace Rebellion.Generation
             Building[] buildings,
             CapitalShip[] capitalShips,
             Starfighter[] starfighters,
-            Regiment[] regiments
+            Regiment[] regiments,
+            SpecialForces[] specialForces
         )
         {
             IManufacturable[] allTech = buildings
@@ -176,11 +179,12 @@ namespace Rebellion.Generation
                 .Concat(capitalShips)
                 .Concat(starfighters)
                 .Concat(regiments)
+                .Concat(specialForces)
                 .ToArray();
 
             foreach (Faction faction in factions)
             {
-                faction.RebuildResearchQueues(allTech);
+                faction.RebuildResearchCatalog(allTech);
             }
         }
 

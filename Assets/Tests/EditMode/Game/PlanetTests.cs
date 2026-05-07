@@ -371,7 +371,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetBuildingTypeCount_ActiveFilter_ExcludesUnderConstruction()
+        public void GetBuildingTypeCount_UnderConstructionBuilding_ExcludesUnderConstruction()
         {
             Building completedMine = new Building
             {
@@ -389,10 +389,7 @@ namespace Rebellion.Tests.Game
             _planet.AddChild(completedMine);
             _planet.AddChild(underConstructionMine);
 
-            int mineCount = _planet.GetBuildingTypeCount(
-                BuildingType.Mine,
-                EntityStateFilter.Active
-            );
+            int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine);
 
             Assert.AreEqual(
                 1,
@@ -402,7 +399,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void GetBuildingTypeCount_AllFilter_IncludesUnderConstruction()
+        public void GetTotalBuildingTypeCount_UnderConstructionBuilding_IncludesUnderConstruction()
         {
             Building completedMine = new Building
             {
@@ -420,12 +417,44 @@ namespace Rebellion.Tests.Game
             _planet.AddChild(completedMine);
             _planet.AddChild(underConstructionMine);
 
-            int mineCount = _planet.GetBuildingTypeCount(BuildingType.Mine, EntityStateFilter.All);
+            int mineCount = _planet.GetTotalBuildingTypeCount(BuildingType.Mine);
 
             Assert.AreEqual(
                 2,
                 mineCount,
                 "All filter should include buildings under construction."
+            );
+        }
+
+        [Test]
+        public void GetTotalDefenseStrength_UnderConstructionShield_IncludesShieldStrength()
+        {
+            Building completedShield = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 50,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building underConstructionShield = new Building
+            {
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ShieldStrength = 75,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            _planet.AddChild(completedShield);
+            _planet.AddChild(underConstructionShield);
+
+            int defenseStrength = _planet.GetTotalDefenseStrength();
+
+            Assert.AreEqual(
+                125,
+                defenseStrength,
+                "Total defense strength should include under-construction shield buildings."
             );
         }
 

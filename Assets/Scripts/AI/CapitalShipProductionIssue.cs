@@ -502,7 +502,7 @@ public class CapitalShipProductionIssue
         {
             if (planet.GetOwnerInstanceID() == null || planet.GetOwnerInstanceID() == factionId)
                 continue;
-            totalDefense += planet.GetDefenseStrength(EntityStateFilter.All);
+            totalDefense += planet.GetTotalDefenseStrength();
         }
 
         // 3. Calculate net strength

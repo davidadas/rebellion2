@@ -63,19 +63,22 @@ namespace Rebellion.Systems
         /// <param name="ownerInstanceId">The faction attempting the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
+        /// <param name="discipline">Research discipline for Research missions.</param>
         /// <returns>True if a mission of this type can be created.</returns>
         public bool CanCreateMission(
             MissionType missionType,
             string ownerInstanceId,
             ISceneNode target,
-            Officer targetOfficer = null
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
         ) =>
             _missionFactory.CanCreateMission(
                 missionType,
                 ownerInstanceId,
                 target,
                 _provider,
-                targetOfficer
+                targetOfficer,
+                discipline
             );
 
         /// <summary>
@@ -85,11 +88,13 @@ namespace Rebellion.Systems
         /// <param name="participant">The officer or unit performing the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
+        /// <param name="discipline">Research discipline for Research missions.</param>
         public void InitiateMission(
             MissionType missionType,
             IMissionParticipant participant,
             ISceneNode target,
-            Officer targetOfficer = null
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
         )
         {
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>
@@ -106,7 +111,8 @@ namespace Rebellion.Systems
                 decoyParticipants,
                 target,
                 _provider,
-                targetOfficer
+                targetOfficer,
+                discipline
             );
 
             Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();

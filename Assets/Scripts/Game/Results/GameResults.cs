@@ -218,29 +218,30 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A faction placed a research order at a facility.
+    /// A side research order advanced for one discipline.
     /// Covers SideShipyardResearchOrderEventRecord, SideTrainingFacilityResearchOrderEventRecord,
-    /// SideConstructionYardResearchOrderEventRecord.
+    /// and SideConstructionYardResearchOrderEventRecord.
     /// </summary>
     public class ResearchOrderedResult : GameResult
     {
         public Faction Faction { get; set; }
-        public ManufacturingType FacilityType { get; set; }
+        public ResearchDiscipline Discipline { get; set; }
         public int ResearchOrder { get; set; }
         public int Capacity { get; set; }
+        public Technology Technology { get; set; }
     }
 
     /// <summary>
-    /// A research cycle completed at a facility (success or failure).
+    /// A side research discipline became exhausted and has no further advances available.
     /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
-    /// SideConstructionYardResearchDoneEventRecord.
+    /// and SideConstructionYardResearchDoneEventRecord.
     /// </summary>
-    public class ResearchCompletedResult : GameResult
+    public class ResearchExhaustedResult : GameResult
     {
         public Faction Faction { get; set; }
-        public ManufacturingType FacilityType { get; set; }
-        public bool Success { get; set; }
-        public int ResultCode { get; set; }
+        public ResearchDiscipline Discipline { get; set; }
+        public int PreviousState { get; set; }
+        public int NewState { get; set; }
     }
 
     /// <summary>
@@ -252,19 +253,6 @@ namespace Rebellion.Game.Results
         public Faction Faction { get; set; }
         public int ConditionId { get; set; }
         public int Value { get; set; }
-    }
-
-    /// <summary>
-    /// A faction unlocked a new technology.
-    /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
-    /// SideConstructionYardResearchDoneEventRecord.
-    /// </summary>
-    public class TechnologyUnlockedResult : GameResult
-    {
-        public Faction Faction { get; set; }
-        public ManufacturingType ResearchType { get; set; }
-        public string TechnologyName { get; set; }
-        public int ResearchOrder { get; set; }
     }
 
     /// <summary>

@@ -191,37 +191,37 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns the research skill value for the given manufacturing type.
+        /// Returns the research skill value for the given discipline.
         /// </summary>
-        /// <param name="type">The manufacturing type to query.</param>
-        /// <returns>The officer's research skill value for that type.</returns>
-        public int GetResearchSkill(ManufacturingType type)
+        /// <param name="discipline">The research discipline to query.</param>
+        /// <returns>The officer's research skill value for that discipline.</returns>
+        public int GetResearchSkill(ResearchDiscipline discipline)
         {
-            return type switch
+            return discipline switch
             {
-                ManufacturingType.Ship => ShipResearch,
-                ManufacturingType.Building => FacilityResearch,
-                ManufacturingType.Troop => TroopResearch,
+                ResearchDiscipline.ShipDesign => ShipResearch,
+                ResearchDiscipline.FacilityDesign => FacilityResearch,
+                ResearchDiscipline.TroopTraining => TroopResearch,
                 _ => 0,
             };
         }
 
         /// <summary>
-        /// Increments the research skill for the given manufacturing type by the specified amount.
+        /// Increments the research skill for the given discipline by the specified amount.
         /// </summary>
-        /// <param name="type">The manufacturing type whose skill to increment.</param>
+        /// <param name="discipline">The research discipline whose skill to increment.</param>
         /// <param name="amount">Amount to add to the skill.</param>
-        public void IncrementResearchSkill(ManufacturingType type, int amount = 1)
+        public void IncrementResearchSkill(ResearchDiscipline discipline, int amount = 1)
         {
-            switch (type)
+            switch (discipline)
             {
-                case ManufacturingType.Ship:
+                case ResearchDiscipline.ShipDesign:
                     ShipResearch += amount;
                     break;
-                case ManufacturingType.Building:
+                case ResearchDiscipline.FacilityDesign:
                     FacilityResearch += amount;
                     break;
-                case ManufacturingType.Troop:
+                case ResearchDiscipline.TroopTraining:
                     TroopResearch += amount;
                     break;
             }
