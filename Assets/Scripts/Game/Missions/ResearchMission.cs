@@ -37,11 +37,11 @@ public class ResearchMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            null
+            null,
+            displayName: GetMissionName(discipline)
         )
     {
         Discipline = discipline;
-        DisplayName = GetMissionName(discipline);
     }
 
     /// <summary>

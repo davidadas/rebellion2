@@ -34,11 +34,9 @@ public class InciteUprisingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            null
-        )
-    {
-        DisplayName = "Incite Uprising";
-    }
+            null,
+            displayName: "Incite Uprising"
+        ) { }
 
     /// <summary>
     /// Returns a new InciteUprisingMission if the target is an enemy planet not in uprising, or null.

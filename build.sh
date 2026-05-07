@@ -111,6 +111,11 @@ do_test() {
 }
 
 do_coverage() {
+    if ! command -v bc >/dev/null 2>&1; then
+        echo "FAIL: 'bc' is required for coverage threshold checks but is not installed."
+        exit 1
+    fi
+
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
     "$UNITY" \
         -runTests \
@@ -135,8 +140,17 @@ do_coverage() {
     fi
 
     local line_pct method_pct
-    line_pct=$(sed -n 's:.*<Linecoverage>\([0-9.]*\)</Linecoverage>.*:\1:p' "$summary_xml")
-    method_pct=$(sed -n 's:.*<Methodcoverage>\([0-9.]*\)</Methodcoverage>.*:\1:p' "$summary_xml")
+    line_pct=$(sed -n 's:.*<Linecoverage>\([0-9.]*\)</Linecoverage>.*:\1:p' "$summary_xml" | head -n 1)
+    method_pct=$(sed -n 's:.*<Methodcoverage>\([0-9.]*\)</Methodcoverage>.*:\1:p' "$summary_xml" | head -n 1)
+
+    if ! [[ "$line_pct" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo "FAIL: could not parse line coverage from $summary_xml (got '$line_pct')"
+        exit 1
+    fi
+    if ! [[ "$method_pct" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo "FAIL: could not parse method coverage from $summary_xml (got '$method_pct')"
+        exit 1
+    fi
 
     printf "Line coverage:   %s%% (threshold %s%%)\n" "$line_pct" "$line_threshold"
     printf "Method coverage: %s%% (threshold %s%%)\n" "$method_pct" "$method_threshold"

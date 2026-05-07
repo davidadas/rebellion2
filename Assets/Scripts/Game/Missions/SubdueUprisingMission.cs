@@ -31,11 +31,9 @@ public class SubdueUprisingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Leadership,
-            null
-        )
-    {
-        DisplayName = "Subdue Uprising";
-    }
+            null,
+            displayName: "Subdue Uprising"
+        ) { }
 
     /// <summary>
     /// Returns a new SubdueUprisingMission if the target is an own planet in uprising, or null.

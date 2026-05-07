@@ -28,7 +28,6 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Sorted research catalog entries per discipline.
-        /// NOT serialized — rebuilt from templates on load to respect mods.
         /// </summary>
         [PersistableIgnore]
         public Dictionary<

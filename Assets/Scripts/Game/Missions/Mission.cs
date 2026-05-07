@@ -87,11 +87,12 @@ public abstract class Mission : ContainerNode
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants,
         MissionParticipantSkill participantSkill,
-        ProbabilityTable successProbabilityTable
+        ProbabilityTable successProbabilityTable,
+        string displayName = null
     )
     {
         ConfigKey = configKey ?? throw new ArgumentNullException(nameof(configKey));
-        DisplayName = configKey;
+        DisplayName = displayName ?? configKey;
         AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
         OwnerInstanceID = ownerInstanceId;
         TargetInstanceID = targetInstanceId;

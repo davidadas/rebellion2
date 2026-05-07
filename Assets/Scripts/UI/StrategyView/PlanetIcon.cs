@@ -20,6 +20,15 @@ public sealed class PlanetIcon : MonoBehaviour
     /// <exception cref="InvalidOperationException"></exception>
     public void Initialize(Planet planet, UIContext context, GalaxyCoordinateMapper mapper)
     {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        if (context == null)
+            throw new ArgumentNullException(nameof(context));
+
+        if (mapper == null)
+            throw new ArgumentNullException(nameof(mapper));
+
         this.planet = planet;
         this.context = context;
         this.mapper = mapper;

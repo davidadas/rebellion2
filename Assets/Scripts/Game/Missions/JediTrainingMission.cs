@@ -39,11 +39,11 @@ public class JediTrainingMission : Mission
             mainParticipants,
             decoyParticipants,
             MissionParticipantSkill.Diplomacy,
-            null
+            null,
+            displayName: "Jedi Training"
         )
     {
         TrainerInstanceID = trainerInstanceId;
-        DisplayName = "Jedi Training";
     }
 
     /// <summary>
