@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<GameGenerationRules>
+<GameGenerationConfig>
   <Officers>
     <NumInitialOfficers>
       <Small>8</Small>
@@ -184,31 +184,92 @@
        Rim raw: roll(14) + 1, clamp(0,15), then clamp to energy
        Rim colonization: GENERAL_PARAM_7731 = 31 -->
   <SystemResources>
-    <CoreEnergy>
-      <Base>10</Base>
-      <Random1>4</Random1>
-      <Random2>0</Random2>
-    </CoreEnergy>
-    <RimEnergy>
-      <Base>1</Base>
-      <Random1>9</Random1>
-      <Random2>4</Random2>
-    </RimEnergy>
-    <CoreRawMaterials>
-      <Base>5</Base>
-      <Random1>9</Random1>
-      <Random2>0</Random2>
-    </CoreRawMaterials>
-    <RimRawMaterials>
-      <Base>1</Base>
-      <Random1>14</Random1>
-      <Random2>0</Random2>
-    </RimRawMaterials>
-    <EnergyMin>0</EnergyMin>
-    <EnergyMax>15</EnergyMax>
-    <RawMaterialsMin>0</RawMaterialsMin>
-    <RawMaterialsMax>15</RawMaterialsMax>
-    <RimColonizationPct>31</RimColonizationPct>
+    <Profiles>
+      <SystemResourceProfile>
+        <Availability>Limited</Availability>
+        <CoreEnergy>
+          <Base>6</Base>
+          <Random1>3</Random1>
+          <Random2>0</Random2>
+        </CoreEnergy>
+        <RimEnergy>
+          <Base>1</Base>
+          <Random1>6</Random1>
+          <Random2>2</Random2>
+        </RimEnergy>
+        <CoreRawMaterials>
+          <Base>3</Base>
+          <Random1>6</Random1>
+          <Random2>0</Random2>
+        </CoreRawMaterials>
+        <RimRawMaterials>
+          <Base>1</Base>
+          <Random1>9</Random1>
+          <Random2>0</Random2>
+        </RimRawMaterials>
+        <EnergyMin>0</EnergyMin>
+        <EnergyMax>10</EnergyMax>
+        <RawMaterialsMin>0</RawMaterialsMin>
+        <RawMaterialsMax>10</RawMaterialsMax>
+        <RimColonizationPct>20</RimColonizationPct>
+      </SystemResourceProfile>
+      <SystemResourceProfile>
+        <Availability>Normal</Availability>
+        <CoreEnergy>
+          <Base>10</Base>
+          <Random1>4</Random1>
+          <Random2>0</Random2>
+        </CoreEnergy>
+        <RimEnergy>
+          <Base>1</Base>
+          <Random1>9</Random1>
+          <Random2>4</Random2>
+        </RimEnergy>
+        <CoreRawMaterials>
+          <Base>5</Base>
+          <Random1>9</Random1>
+          <Random2>0</Random2>
+        </CoreRawMaterials>
+        <RimRawMaterials>
+          <Base>1</Base>
+          <Random1>14</Random1>
+          <Random2>0</Random2>
+        </RimRawMaterials>
+        <EnergyMin>0</EnergyMin>
+        <EnergyMax>15</EnergyMax>
+        <RawMaterialsMin>0</RawMaterialsMin>
+        <RawMaterialsMax>15</RawMaterialsMax>
+        <RimColonizationPct>31</RimColonizationPct>
+      </SystemResourceProfile>
+      <SystemResourceProfile>
+        <Availability>Abundant</Availability>
+        <CoreEnergy>
+          <Base>14</Base>
+          <Random1>6</Random1>
+          <Random2>0</Random2>
+        </CoreEnergy>
+        <RimEnergy>
+          <Base>2</Base>
+          <Random1>12</Random1>
+          <Random2>6</Random2>
+        </RimEnergy>
+        <CoreRawMaterials>
+          <Base>7</Base>
+          <Random1>13</Random1>
+          <Random2>0</Random2>
+        </CoreRawMaterials>
+        <RimRawMaterials>
+          <Base>2</Base>
+          <Random1>18</Random1>
+          <Random2>0</Random2>
+        </RimRawMaterials>
+        <EnergyMin>0</EnergyMin>
+        <EnergyMax>20</EnergyMax>
+        <RawMaterialsMin>0</RawMaterialsMin>
+        <RawMaterialsMax>20</RawMaterialsMax>
+        <RimColonizationPct>45</RimColonizationPct>
+      </SystemResourceProfile>
+    </Profiles>
   </SystemResources>
   <!-- System Support: formulas from original disassembly.
        StrongAlliance: roll(random) + base (SIDE_PARAM_CAT15_7682/7683_ALLIANCE)
@@ -369,6 +430,7 @@
        Budget deployment: maintenance-based loop with weighted unit tables -->
   <UnitDeployment>
     <UprisingPreventionThreshold>60</UprisingPreventionThreshold>
+    <SupportDeficitPerGarrisonTroop>10</SupportDeficitPerGarrisonTroop>
     <FixedGarrisons>
       <FixedGarrison>
         <PlanetInstanceID>YAVIN</PlanetInstanceID>
@@ -920,4 +982,8 @@
       </FactionBudget>
     </FactionBudgets>
   </UnitDeployment>
-</GameGenerationRules>
+  <Balance>
+    <SupportBoostPerUnit>2</SupportBoostPerUnit>
+    <MaxMilitaryPresenceBoost>10</MaxMilitaryPresenceBoost>
+  </Balance>
+</GameGenerationConfig>

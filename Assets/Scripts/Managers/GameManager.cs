@@ -48,8 +48,7 @@ public class GameManager
         if (_game.Config == null)
             _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
 
-        // TODO: Make seed configurable from game settings
-        _randomProvider = new SystemRandomProvider(0);
+        _randomProvider = _game.Random;
         _stopwatch = new Stopwatch();
 
         InitializeSystems();
@@ -71,6 +70,8 @@ public class GameManager
 
         if (_game.Config == null)
             _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
+
+        _randomProvider = _game.Random;
 
         InitializeSystems();
         RebuildDerivedState();

@@ -11,7 +11,6 @@ namespace Rebellion.Tests.Game
         {
             GameSummary summary = new GameSummary();
 
-            Assert.IsTrue(summary.IsNewGame, "IsNewGame should be true by default");
             Assert.AreEqual(
                 GameSize.Large,
                 summary.GalaxySize,
@@ -40,11 +39,34 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void Constructor_DefaultConstruction_SeedDiffersAcrossInstances()
+        {
+            GameSummary a = new GameSummary();
+            GameSummary b = new GameSummary();
+
+            Assert.AreNotEqual(
+                a.Seed,
+                b.Seed,
+                "Each new GameSummary should roll a fresh default seed."
+            );
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_ExplicitSeed_RoundTripsExactly()
+        {
+            GameSummary summary = new GameSummary { Seed = 12345 };
+
+            string serialized = SerializationHelper.Serialize(summary);
+            GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
+
+            Assert.AreEqual(12345, deserialized.Seed);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_PopulatedSummary_MaintainsState()
         {
             GameSummary summary = new GameSummary
             {
-                IsNewGame = false,
                 GalaxySize = GameSize.Medium,
                 Difficulty = GameDifficulty.Hard,
                 VictoryCondition = GameVictoryCondition.Headquarters,
@@ -57,11 +79,6 @@ namespace Rebellion.Tests.Game
             string serialized = SerializationHelper.Serialize(summary);
             GameSummary deserialized = SerializationHelper.Deserialize<GameSummary>(serialized);
 
-            Assert.AreEqual(
-                summary.IsNewGame,
-                deserialized.IsNewGame,
-                "IsNewGame should be correctly deserialized."
-            );
             Assert.AreEqual(
                 summary.GalaxySize,
                 deserialized.GalaxySize,

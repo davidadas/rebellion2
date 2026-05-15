@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game;
 using Rebellion.Util.Attributes;
 
 namespace Rebellion.Generation
@@ -8,7 +9,7 @@ namespace Rebellion.Generation
     /// This is the strongly-typed replacement for the old JSON config.
     /// </summary>
     [PersistableObject]
-    public class GameGenerationRules
+    public class GameGenerationConfig
     {
         /// <summary>
         /// Sentinel value for PlanetInstanceID fields (HQFacilityLoadout, FixedGarrison)
@@ -45,19 +46,18 @@ namespace Rebellion.Generation
         /// Unit deployment: fixed garrisons, fleets, and budget-based deployment.
         /// </summary>
         public UnitDeploymentSection UnitDeployment;
+
+        /// <summary>
+        /// Post-seeding balance pass: HQ loyalty pinning and military-presence boosts.
+        /// </summary>
+        public BalanceSection Balance;
     }
 
     #region OFFICERS
 
-    /// <summary>
-    /// Officer generation rules.
-    /// </summary>
     [PersistableObject]
     public class OfficerSection
     {
-        /// <summary>
-        /// Number of initial officers keyed by galaxy size.
-        /// </summary>
         public PlanetSizeProfile NumInitialOfficers;
     }
 
@@ -68,14 +68,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class GalaxyClassificationSection
     {
-        /// <summary>
-        /// Per-faction setup: starting planets, garrison troop types, etc.
-        /// </summary>
         public List<FactionSetup> FactionSetups;
-
-        /// <summary>
-        /// Bucket percentages keyed by difficulty profile name (e.g. "Easy_Alliance").
-        /// </summary>
         public List<DifficultyProfile> Profiles;
     }
 
@@ -103,19 +96,15 @@ namespace Rebellion.Generation
         public string Name;
 
         /// <summary>
-        /// Which faction the player chose. Null or empty means any (fallback).
-        /// Original SDPRTB param 7680/7681 values vary by player faction.
+        /// The faction the player chose. Null or empty means any (fallback).
         /// </summary>
         public string PlayerFactionID;
 
         /// <summary>
-        /// Difficulty level: 0=Easy, 1=Medium, 2=Hard. -1 means any (fallback).
+        /// The difficulty level this profile applies to. -1 means any (fallback).
         /// </summary>
         public int Difficulty = -1;
 
-        /// <summary>
-        /// Per-faction bucket size percentages.
-        /// </summary>
         public List<FactionBucketConfig> FactionBuckets;
     }
 
@@ -134,6 +123,13 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class SystemResourcesSection
     {
+        public List<SystemResourceProfile> Profiles;
+    }
+
+    [PersistableObject]
+    public class SystemResourceProfile
+    {
+        public GameResourceAvailability Availability;
         public DiceFormula CoreEnergy;
         public DiceFormula RimEnergy;
         public DiceFormula CoreRawMaterials;
@@ -211,6 +207,12 @@ namespace Rebellion.Generation
     public class UnitDeploymentSection
     {
         public int UprisingPreventionThreshold;
+
+        /// <summary>
+        /// Each garrison troop counters this much popular-support deficit when seeding
+        /// uprising-prevention garrisons.
+        /// </summary>
+        public int SupportDeficitPerGarrisonTroop = 10;
         public List<FixedGarrison> FixedGarrisons;
         public List<FixedFleet> FixedFleets;
         public List<FactionBudget> FactionBudgets;
@@ -255,9 +257,7 @@ namespace Rebellion.Generation
         public int GalaxySize;
 
         /// <summary>
-        /// Difficulty level: 0=Easy, 1=Medium, 2=Hard. -1 means any difficulty (fallback).
-        /// From SDPRTB params 5168-5170: Easy gives equal budgets, Medium/Hard give
-        /// the AI faction a higher budget than the player faction.
+        /// The difficulty level this budget level applies to. -1 means any (fallback).
         /// </summary>
         public int Difficulty = -1;
 
@@ -278,45 +278,40 @@ namespace Rebellion.Generation
 
     #endregion
 
+    #region BALANCE
+
+    [PersistableObject]
+    public class BalanceSection
+    {
+        /// <summary>
+        /// Each unit of military presence (regiment, fleet, or starfighter) boosts the
+        /// owner's popular support by this many points.
+        /// </summary>
+        public int SupportBoostPerUnit = 2;
+
+        /// <summary>
+        /// Upper bound on the total support boost a single planet can receive from
+        /// military presence, regardless of how many units are stationed there.
+        /// </summary>
+        public int MaxMilitaryPresenceBoost = 10;
+    }
+
+    #endregion
+
     #region SHARED
 
-    /// <summary>
-    /// Simple mapping keyed by galaxy size.
-    /// Used for NumInitialPlanets and NumInitialOfficers.
-    /// </summary>
     [PersistableObject]
     public class PlanetSizeProfile
     {
-        /// <summary>
-        /// Value for a Small galaxy.
-        /// </summary>
         public int Small;
-
-        /// <summary>
-        /// Value for a Medium galaxy.
-        /// </summary>
         public int Medium;
-
-        /// <summary>
-        /// Value for a Large galaxy.
-        /// </summary>
         public int Large;
     }
 
-    /// <summary>
-    /// Represents an inclusive integer min/max range.
-    /// </summary>
     [PersistableObject]
     public class IntRange
     {
-        /// <summary>
-        /// Inclusive minimum value.
-        /// </summary>
         public int Min;
-
-        /// <summary>
-        /// Inclusive maximum value.
-        /// </summary>
         public int Max;
     }
 

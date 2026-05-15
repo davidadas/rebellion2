@@ -8,7 +8,7 @@ using Rebellion.Util.Attributes;
 ///
 /// DO NOT serialize this with GameSummary - it should reload from XML every time.
 /// Player choices belong in GameSummary.
-/// New game setup belongs in GameGenerationRules.xml.
+/// New game setup belongs in GameGenerationConfig.xml.
 /// </summary>
 [PersistableObject]
 public class GameConfig

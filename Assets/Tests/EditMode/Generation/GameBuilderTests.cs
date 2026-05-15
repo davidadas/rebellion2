@@ -38,11 +38,11 @@ namespace Rebellion.Tests.Generation
             };
 
             GameBuilder builder = new GameBuilder(summary);
-            _game = builder.BuildGame();
+            _game = builder.Build();
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsConsistentOwners()
+        public void Build_ValidConfig_SetsConsistentOwners()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsChildParentRelationships()
+        public void Build_ValidConfig_SetsChildParentRelationships()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsGameSummary()
+        public void Build_ValidConfig_SetsGameSummary()
         {
             Assert.IsNotNull(_game, "Game should not be null.");
             Assert.IsNotNull(_game.Summary, "Game summary should not be null.");
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsFactions()
+        public void Build_ValidConfig_SetsFactions()
         {
             Assert.IsNotNull(_game.Factions, "Factions should not be null.");
 
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsFactionResearchCatalog()
+        public void Build_ValidConfig_SetsFactionResearchCatalog()
         {
             foreach (Faction faction in _game.Factions)
             {
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_AfterRebuild_TechnologiesSurvive()
+        public void Build_AfterRebuild_TechnologiesSurvive()
         {
             IManufacturable[] templates = ResourceManager
                 .GetGameData<Building>()
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_RebuildTechnologies_IncludesAllManufacturingTypes()
+        public void Build_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
             IManufacturable[] templates = ResourceManager
                 .GetGameData<Building>()
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsHQs()
+        public void Build_ValidConfig_SetsHQs()
         {
             Assert.IsNotNull(_game.Factions, "Factions should not be null.");
             Assert.IsNotNull(_game.Galaxy, "GalaxyMap should not be null.");
@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_AssignsFactionsPlanets()
+        public void Build_ValidConfig_AssignsFactionsPlanets()
         {
             Dictionary<string, List<Planet>> factionPlanets =
                 new Dictionary<string, List<Planet>>();
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ColonizedPlanets_FillBuildingsProportionalToEnergyCapacity()
+        public void Build_ColonizedPlanets_FillBuildingsProportionalToEnergyCapacity()
         {
             int totalEnergy = 0;
             int totalBuildings = 0;
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_EachFaction_OwnsAtLeastOneConstructionFacility()
+        public void Build_EachFaction_OwnsAtLeastOneConstructionFacility()
         {
             AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.ConstructionFacility);
         }
@@ -314,7 +314,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_DeploysOfficers()
+        public void Build_ValidConfig_DeploysOfficers()
         {
             List<Officer> officers = new List<Officer>();
 
@@ -330,7 +330,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_InitializesOfficerSkills()
+        public void Build_ValidConfig_InitializesOfficerSkills()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -346,7 +346,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_DeploysFleets()
+        public void Build_ValidConfig_DeploysFleets()
         {
             Dictionary<string, int> fleetsPerFaction = new Dictionary<string, int>();
 
@@ -376,7 +376,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_DeploysMaxOneFleetPerPlanet()
+        public void Build_ValidConfig_DeploysMaxOneFleetPerPlanet()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_DeploysCapitalShips()
+        public void Build_ValidConfig_DeploysCapitalShips()
         {
             _game.Galaxy.Traverse(node =>
             {
@@ -409,7 +409,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_ValidConfig_SetsGameEvents()
+        public void Build_ValidConfig_SetsGameEvents()
         {
             Assert.GreaterOrEqual(
                 _game.GetEventPool().Count,
@@ -419,7 +419,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_FogOfWar_CoreSystemsHaveInitialSnapshotsForNonOwners()
+        public void Build_FogOfWar_CoreSystemsHaveInitialSnapshotsForNonOwners()
         {
             foreach (
                 PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
@@ -451,9 +451,9 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_FogOfWar_OuterRimPlanetsStartUnexplored()
+        public void Build_FogOfWar_OuterRimPlanetsStartUnexplored()
         {
-            GameGenerationRules rules = ResourceManager.GetConfig<GameGenerationRules>();
+            GameGenerationConfig rules = ResourceManager.GetConfig<GameGenerationConfig>();
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
                 string planetId,
                 string factionId
@@ -503,7 +503,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_FogOfWar_OuterRimOwnerCanSeeOwnPlanet()
+        public void Build_FogOfWar_OuterRimOwnerCanSeeOwnPlanet()
         {
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 
@@ -528,7 +528,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void BuildGame_FogOfWar_OuterRimEnemyPlanetNotVisible()
+        public void Build_FogOfWar_OuterRimEnemyPlanetNotVisible()
         {
             FogOfWarSystem fogSystem = new FogOfWarSystem(_game);
 

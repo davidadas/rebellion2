@@ -37,7 +37,6 @@ namespace Rebellion.Game
     public sealed class GameSummary
     {
         // Game Options
-        public bool IsNewGame = true;
         public GameSize GalaxySize = GameSize.Large;
         public GameDifficulty Difficulty = GameDifficulty.Easy;
         public GameVictoryCondition VictoryCondition = GameVictoryCondition.Conquest;
@@ -45,6 +44,7 @@ namespace Rebellion.Game
         public string[] StartingFactionIDs = Array.Empty<string>();
         public int StartingResearchLevel = 1;
         public string PlayerFactionID;
+        public int Seed = Guid.NewGuid().GetHashCode();
 
         /// <summary>
         /// Default constructor used for deserialization.

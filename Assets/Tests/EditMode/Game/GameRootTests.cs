@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game
 {
@@ -701,6 +702,44 @@ namespace Rebellion.Tests.Game
 
             // Remove non-existent officer (should not throw exception).
             Assert.DoesNotThrow(() => _game.RemoveUnrecruitedOfficer(officer));
+        }
+
+        [Test]
+        public void Random_NotPreviouslySet_LazyConstructsFromSummarySeed()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+
+            int firstRoll = game.Random.NextInt(0, int.MaxValue);
+            int expected = new Random(12345).Next(0, int.MaxValue);
+
+            Assert.AreEqual(expected, firstRoll);
+        }
+
+        [Test]
+        public void RandomIndex_AfterRandomCalls_ReadsLiveCallCount()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+
+            game.Random.NextInt(0, 10);
+            game.Random.NextInt(0, 10);
+            game.Random.NextInt(0, 10);
+
+            Assert.AreEqual(3, game.RandomIndex);
+        }
+
+        [Test]
+        public void RandomIndex_SetAfterRandomConstructed_RebuildsToMatchPosition()
+        {
+            GameRoot game = new GameRoot { Summary = new GameSummary { Seed = 12345 } };
+            // Force lazy construction at position 0.
+            _ = game.Random;
+
+            game.RandomIndex = 7;
+
+            Assert.AreEqual(7, game.RandomIndex);
+            // Next roll should match what a fresh provider at position 7 would yield.
+            int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
+            Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
         }
     }
 } // namespace Rebellion.Tests.Game

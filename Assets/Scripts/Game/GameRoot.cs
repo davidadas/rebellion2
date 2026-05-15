@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Attributes;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Game
 {
@@ -24,7 +25,7 @@ namespace Rebellion.Game
         private GalaxyMap _galaxy;
 
         // Game Details
-        public GameSummary Summary { get; set; }
+        public GameSummary Summary { get; set; } = new GameSummary();
         public GameMetadata Metadata { get; set; } = new GameMetadata();
 
         /// <summary>
@@ -32,6 +33,30 @@ namespace Rebellion.Game
         /// </summary>
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
+
+        // Random
+        [PersistableIgnore]
+        private IRandomNumberProvider _random;
+
+        [PersistableIgnore]
+        public IRandomNumberProvider Random
+        {
+            get => _random ??= new SystemRandomProvider(Summary.Seed, _restoredIndex);
+            set => _random = value;
+        }
+
+        [PersistableIgnore]
+        private long _restoredIndex;
+        public long RandomIndex
+        {
+            get => (_random as SystemRandomProvider)?.CallCount ?? _restoredIndex;
+            set
+            {
+                _restoredIndex = value;
+                if (_random is SystemRandomProvider srp && srp.CallCount != value)
+                    _random = new SystemRandomProvider(Summary.Seed, value);
+            }
+        }
 
         // Game State
         public int CurrentTick;

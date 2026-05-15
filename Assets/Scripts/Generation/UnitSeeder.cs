@@ -9,15 +9,35 @@ using Rebellion.Util.Extensions;
 namespace Rebellion.Generation
 {
     /// <summary>
-    /// Handles all unit deployment during game generation.
-    /// Reproduces the original game's 8-step unit seeding pipeline:
-    /// 1. Uprising prevention garrisons
-    /// 2-4. Fixed garrisons (configured per planet)
-    /// 5-6. Fixed fleets (configured per planet)
-    /// 7-8. Budget-based deployment (per faction)
+    /// Seeds starting units across the galaxy: uprising-prevention garrisons,
+    /// configured fixed garrisons, configured fixed fleets, and budget-driven
+    /// per-faction unit rolls.
     /// </summary>
-    public class UnitDeployer
+    public sealed class UnitSeeder : IGameSeeder
     {
+        /// <summary>
+        /// Seeds starting units (regiments, starfighters, capital ships, fleets) across
+        /// every planet in the generation context.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        public void Seed(GenerationContext ctx)
+        {
+            Deploy(
+                ctx.Systems,
+                ctx.Factions,
+                ctx.Regiments,
+                ctx.Starfighters,
+                ctx.CapitalShips,
+                ctx.Config,
+                ctx.Classification,
+                ctx.GameConfig,
+                ctx.Rng,
+                (int)ctx.Summary.GalaxySize,
+                (int)ctx.Summary.Difficulty,
+                ctx.Summary.PlayerFactionID
+            );
+        }
+
         /// <summary>
         /// Runs the full unit deployment pipeline across all systems.
         /// </summary>
@@ -25,21 +45,21 @@ namespace Rebellion.Generation
         /// <param name="factions">All factions in the game.</param>
         /// <param name="regimentTemplates">Regiment templates to clone from.</param>
         /// <param name="fighterTemplates">Starfighter templates to clone from.</param>
-        /// <param name="shipTemplates">Capital ship templates to clone from.</param>
-        /// <param name="rules">Generation rules containing garrison/fleet/budget config.</param>
+        /// <param name="shipTemplates">Capital-ship templates to clone from.</param>
+        /// <param name="rules">Generation rules containing garrison, fleet, and budget config.</param>
         /// <param name="classification">Galaxy classification result with HQ and bucket mappings.</param>
-        /// <param name="gameConfig">Game config for production/maintenance multipliers.</param>
+        /// <param name="gameConfig">Game config for production and maintenance multipliers.</param>
         /// <param name="rng">Random number provider.</param>
-        /// <param name="galaxySize">Galaxy size index (0=Small, 1=Medium, 2=Large).</param>
-        /// <param name="difficulty">Difficulty index (0=Easy, 1=Medium, 2=Hard).</param>
+        /// <param name="galaxySize">Galaxy size index.</param>
+        /// <param name="difficulty">Difficulty index.</param>
         /// <param name="playerFactionID">The player's faction ID, used for AI budget scaling.</param>
-        public void Deploy(
+        private void Deploy(
             PlanetSystem[] systems,
             Faction[] factions,
             Regiment[] regimentTemplates,
             Starfighter[] fighterTemplates,
             CapitalShip[] shipTemplates,
-            GameGenerationRules rules,
+            GameGenerationConfig rules,
             GalaxyClassificationResult classification,
             GameConfig gameConfig,
             IRandomNumberProvider rng,
@@ -117,9 +137,9 @@ namespace Rebellion.Generation
                     )
                         continue;
 
-                    // Original uses ceiling division: (divisor - 1 + dividend) / divisor
                     int deficit = config.UprisingPreventionThreshold - ownerSupport;
-                    int troopsNeeded = (9 + deficit) / 10;
+                    int divisor = config.SupportDeficitPerGarrisonTroop;
+                    int troopsNeeded = (deficit + divisor - 1) / divisor;
 
                     for (int i = 0; i < troopsNeeded; i++)
                     {
@@ -149,7 +169,7 @@ namespace Rebellion.Generation
             foreach (FixedGarrison garrison in garrisons)
             {
                 string planetId = garrison.PlanetInstanceID;
-                if (planetId == GameGenerationRules.FactionHqSentinel)
+                if (planetId == GameGenerationConfig.FactionHqSentinel)
                 {
                     if (
                         classification.FactionHQs.TryGetValue(
