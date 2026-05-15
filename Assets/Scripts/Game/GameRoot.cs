@@ -50,7 +50,12 @@ namespace Rebellion.Game
         public long RandomIndex
         {
             get => (_random as SystemRandomProvider)?.CallCount ?? _restoredIndex;
-            set => _restoredIndex = value;
+            set
+            {
+                _restoredIndex = value;
+                if (_random is SystemRandomProvider srp && srp.CallCount != value)
+                    _random = new SystemRandomProvider(Summary.Seed, value);
+            }
         }
 
         // Game State
