@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Common;
 
@@ -16,13 +17,7 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Configure(
-                ctx.Systems,
-                ctx.Classification,
-                ctx.Config,
-                ctx.Summary.StartingFactionIDs,
-                ctx.Rng
-            );
+            Configure(ctx.Systems, ctx.Classification, ctx.Config, ctx.Summary, ctx.Rng);
         }
 
         /// <summary>
@@ -32,18 +27,22 @@ namespace Rebellion.Generation
         /// <param name="systems">All generated planet systems to configure.</param>
         /// <param name="classification">Bucket and HQ assignments produced by <see cref="GalaxySeeder"/>.</param>
         /// <param name="rules">Generation rules supplying resource dice and support formulas.</param>
-        /// <param name="factionIds">IDs of every faction in the game, used to distribute support.</param>
+        /// <param name="summary">Game summary; resource availability selects the resource profile, faction IDs drive support distribution.</param>
         /// <param name="rng">Random number provider for dice rolls and colonization chances.</param>
         private void Configure(
             PlanetSystem[] systems,
             GalaxyClassificationResult classification,
             GameGenerationConfig rules,
-            string[] factionIds,
+            GameSummary summary,
             IRandomNumberProvider rng
         )
         {
-            SystemResourcesSection res = rules.SystemResources;
+            SystemResourceProfile res = ResolveResourceProfile(
+                rules.SystemResources,
+                summary.ResourceAvailability
+            );
             SystemSupportSection sup = rules.SystemSupport;
+            string[] factionIds = summary.StartingFactionIDs;
 
             foreach (PlanetSystem system in systems)
             {
@@ -60,6 +59,25 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
+        /// Picks the resource profile matching the player's chosen availability, falling
+        /// back to Normal (or the first profile) if no exact match is configured.
+        /// </summary>
+        /// <param name="section">The resource section with all profiles.</param>
+        /// <param name="availability">The availability tier chosen on the new-game screen.</param>
+        /// <returns>The matching <see cref="SystemResourceProfile"/>.</returns>
+        private SystemResourceProfile ResolveResourceProfile(
+            SystemResourcesSection section,
+            GameResourceAvailability availability
+        )
+        {
+            return section.Profiles.FirstOrDefault(p => p.Availability == availability)
+                ?? section.Profiles.FirstOrDefault(p =>
+                    p.Availability == GameResourceAvailability.Normal
+                )
+                ?? section.Profiles[0];
+        }
+
+        /// <summary>
         /// Rolls a planet's energy capacity and raw-resource node count, clamped to the
         /// configured min/max range. Raw materials are further capped at the rolled
         /// energy so a planet never has more mineable nodes than energy slots.
@@ -71,7 +89,7 @@ namespace Rebellion.Generation
         private void RollPlanetResources(
             Planet planet,
             bool isCore,
-            SystemResourcesSection res,
+            SystemResourceProfile res,
             IRandomNumberProvider rng
         )
         {

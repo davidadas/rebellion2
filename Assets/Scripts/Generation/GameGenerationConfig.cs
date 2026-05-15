@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game;
 using Rebellion.Util.Attributes;
 
 namespace Rebellion.Generation
@@ -122,6 +123,13 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class SystemResourcesSection
     {
+        public List<SystemResourceProfile> Profiles;
+    }
+
+    [PersistableObject]
+    public class SystemResourceProfile
+    {
+        public GameResourceAvailability Availability;
         public DiceFormula CoreEnergy;
         public DiceFormula RimEnergy;
         public DiceFormula CoreRawMaterials;

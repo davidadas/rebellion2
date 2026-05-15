@@ -105,20 +105,27 @@ namespace Rebellion.Tests.Generation
 
             _res = new SystemResourcesSection
             {
-                CoreEnergy = new DiceFormula { Base = 10, Random1 = 4 },
-                RimEnergy = new DiceFormula
+                Profiles = new List<SystemResourceProfile>
                 {
-                    Base = 1,
-                    Random1 = 9,
-                    Random2 = 4,
+                    new SystemResourceProfile
+                    {
+                        Availability = GameResourceAvailability.Normal,
+                        CoreEnergy = new DiceFormula { Base = 10, Random1 = 4 },
+                        RimEnergy = new DiceFormula
+                        {
+                            Base = 1,
+                            Random1 = 9,
+                            Random2 = 4,
+                        },
+                        CoreRawMaterials = new DiceFormula { Base = 5, Random1 = 9 },
+                        RimRawMaterials = new DiceFormula { Base = 1, Random1 = 14 },
+                        EnergyMin = 0,
+                        EnergyMax = 15,
+                        RawMaterialsMin = 0,
+                        RawMaterialsMax = 15,
+                        RimColonizationPct = 31,
+                    },
                 },
-                CoreRawMaterials = new DiceFormula { Base = 5, Random1 = 9 },
-                RimRawMaterials = new DiceFormula { Base = 1, Random1 = 14 },
-                EnergyMin = 0,
-                EnergyMax = 15,
-                RawMaterialsMin = 0,
-                RawMaterialsMax = 15,
-                RimColonizationPct = 31,
             };
 
             _factionIds = new[] { "FNALL1", "FNEMP1" };
@@ -458,6 +465,125 @@ namespace Rebellion.Tests.Generation
             Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
 
             Assert.IsTrue(planet.IsColonized);
+        }
+
+        [Test]
+        public void Seed_AbundantAvailability_SelectsMatchingResourceProfile()
+        {
+            Planet planet = new Planet { InstanceID = "p1" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            system.Planets.Add(planet);
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = _gc,
+                SystemSupport = _sup,
+                SystemResources = new SystemResourcesSection
+                {
+                    Profiles = new List<SystemResourceProfile>
+                    {
+                        new SystemResourceProfile
+                        {
+                            Availability = GameResourceAvailability.Normal,
+                            CoreEnergy = new DiceFormula { Base = 5 },
+                            RimEnergy = new DiceFormula { Base = 5 },
+                            CoreRawMaterials = new DiceFormula { Base = 0 },
+                            RimRawMaterials = new DiceFormula { Base = 0 },
+                            EnergyMin = 0,
+                            EnergyMax = 100,
+                            RawMaterialsMin = 0,
+                            RawMaterialsMax = 100,
+                            RimColonizationPct = 0,
+                        },
+                        new SystemResourceProfile
+                        {
+                            Availability = GameResourceAvailability.Abundant,
+                            CoreEnergy = new DiceFormula { Base = 50 },
+                            RimEnergy = new DiceFormula { Base = 50 },
+                            CoreRawMaterials = new DiceFormula { Base = 0 },
+                            RimRawMaterials = new DiceFormula { Base = 0 },
+                            EnergyMin = 0,
+                            EnergyMax = 100,
+                            RawMaterialsMin = 0,
+                            RawMaterialsMax = 100,
+                            RimColonizationPct = 0,
+                        },
+                    },
+                },
+            };
+
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = new[] { system },
+                Classification = new GalaxyClassificationResult(),
+                Config = config,
+                Summary = new GameSummary
+                {
+                    StartingFactionIDs = _factionIds,
+                    ResourceAvailability = GameResourceAvailability.Abundant,
+                },
+                Rng = new StubRNG(),
+            };
+            new PlanetSeeder().Seed(ctx);
+
+            Assert.AreEqual(50, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void Seed_AvailabilityHasNoProfile_FallsBackToNormalProfile()
+        {
+            Planet planet = new Planet { InstanceID = "p1" };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            system.Planets.Add(planet);
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = _gc,
+                SystemSupport = _sup,
+                SystemResources = new SystemResourcesSection
+                {
+                    Profiles = new List<SystemResourceProfile>
+                    {
+                        new SystemResourceProfile
+                        {
+                            Availability = GameResourceAvailability.Normal,
+                            CoreEnergy = new DiceFormula { Base = 7 },
+                            RimEnergy = new DiceFormula { Base = 7 },
+                            CoreRawMaterials = new DiceFormula { Base = 0 },
+                            RimRawMaterials = new DiceFormula { Base = 0 },
+                            EnergyMin = 0,
+                            EnergyMax = 100,
+                            RawMaterialsMin = 0,
+                            RawMaterialsMax = 100,
+                            RimColonizationPct = 0,
+                        },
+                    },
+                },
+            };
+
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = new[] { system },
+                Classification = new GalaxyClassificationResult(),
+                Config = config,
+                Summary = new GameSummary
+                {
+                    StartingFactionIDs = _factionIds,
+                    ResourceAvailability = GameResourceAvailability.Abundant,
+                },
+                Rng = new StubRNG(),
+            };
+            new PlanetSeeder().Seed(ctx);
+
+            Assert.AreEqual(7, planet.EnergyCapacity);
         }
     }
 } // namespace Rebellion.Tests.Generation
