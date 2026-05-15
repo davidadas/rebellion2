@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Results;
+using Rebellion.Generation;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -323,5 +325,56 @@ public static class EntityFactory
     )
     {
         return new StubMission(ownerInstanceId, targetInstanceId) { InstanceID = id };
+    }
+}
+
+/// <summary>
+/// Produces a fully-populated <see cref="GenerationContext"/> with empty arrays and
+/// minimal config sections, so tests can override only the fields they care about
+/// without tripping null-deref inside seeders.
+/// </summary>
+public static class GenerationContextFactory
+{
+    public static GenerationContext CreateDefault()
+    {
+        return new GenerationContext
+        {
+            Systems = Array.Empty<PlanetSystem>(),
+            Factions = Array.Empty<Faction>(),
+            Buildings = Array.Empty<Building>(),
+            CapitalShips = Array.Empty<CapitalShip>(),
+            Starfighters = Array.Empty<Starfighter>(),
+            Regiments = Array.Empty<Regiment>(),
+            SpecialForces = Array.Empty<SpecialForces>(),
+            Officers = Array.Empty<Officer>(),
+            Events = Array.Empty<GameEvent>(),
+            Classification = new GalaxyClassificationResult(),
+            Summary = new GameSummary(),
+            Config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                    Profiles = new List<DifficultyProfile>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>(),
+                },
+                Balance = new BalanceSection
+                {
+                    SupportBoostPerUnit = 2,
+                    MaxMilitaryPresenceBoost = 10,
+                },
+            },
+            GameConfig = new GameConfig
+            {
+                Production = new GameConfig.ProductionConfig { RefinementMultiplier = 1 },
+                Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 },
+            },
+            Rng = new StubRNG(),
+        };
     }
 }

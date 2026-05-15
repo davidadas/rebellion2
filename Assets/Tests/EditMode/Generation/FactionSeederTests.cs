@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Generation;
@@ -10,16 +9,10 @@ namespace Rebellion.Tests.Generation
     {
         private static GenerationContext BuildContext(Faction[] factions, int startingResearchLevel)
         {
-            return new GenerationContext
-            {
-                Factions = factions,
-                Summary = new GameSummary { StartingResearchLevel = startingResearchLevel },
-                Buildings = Array.Empty<Building>(),
-                CapitalShips = Array.Empty<CapitalShip>(),
-                Starfighters = Array.Empty<Starfighter>(),
-                Regiments = Array.Empty<Regiment>(),
-                SpecialForces = Array.Empty<SpecialForces>(),
-            };
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Factions = factions;
+            ctx.Summary.StartingResearchLevel = startingResearchLevel;
+            return ctx;
         }
 
         [Test]

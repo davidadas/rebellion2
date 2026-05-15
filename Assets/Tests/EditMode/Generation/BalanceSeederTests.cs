@@ -11,23 +11,10 @@ namespace Rebellion.Tests.Generation
 
         private static GenerationContext BuildContext(PlanetSystem system, Faction[] factions)
         {
-            return new GenerationContext
-            {
-                Systems = new[] { system },
-                Factions = factions,
-                Config = new GameGenerationConfig
-                {
-                    Balance = new BalanceSection
-                    {
-                        SupportBoostPerUnit = 2,
-                        MaxMilitaryPresenceBoost = 10,
-                    },
-                },
-                GameConfig = new GameConfig
-                {
-                    Planet = new GameConfig.PlanetConfig { MaxPopularSupport = MaxSupport },
-                },
-            };
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Systems = new[] { system };
+            ctx.Factions = factions;
+            return ctx;
         }
 
         private static Planet MakePlanet(string id, string owner, bool isHq = false)

@@ -19,28 +19,19 @@ namespace Rebellion.Tests.Generation
             Starfighter[] fighterTemplates = null
         )
         {
-            return new GenerationContext
-            {
-                Systems = systems,
-                Factions = factions,
-                Regiments = regimentTemplates ?? new Regiment[0],
-                CapitalShips = shipTemplates ?? new CapitalShip[0],
-                Starfighters = fighterTemplates ?? new Starfighter[0],
-                Config = config,
-                Classification = classification,
-                GameConfig = new GameConfig
-                {
-                    Production = new GameConfig.ProductionConfig { RefinementMultiplier = 1 },
-                    Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 },
-                },
-                Summary = new GameSummary
-                {
-                    GalaxySize = GameSize.Small,
-                    Difficulty = GameDifficulty.Easy,
-                    PlayerFactionID = "FNALL1",
-                },
-                Rng = new StubRNG(),
-            };
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Systems = systems;
+            ctx.Factions = factions;
+            ctx.Config = config;
+            ctx.Classification = classification;
+            ctx.Summary.PlayerFactionID = "FNALL1";
+            if (regimentTemplates != null)
+                ctx.Regiments = regimentTemplates;
+            if (shipTemplates != null)
+                ctx.CapitalShips = shipTemplates;
+            if (fighterTemplates != null)
+                ctx.Starfighters = fighterTemplates;
+            return ctx;
         }
 
         private static Planet OwnedPlanet(string id, string owner, int ownerSupport)

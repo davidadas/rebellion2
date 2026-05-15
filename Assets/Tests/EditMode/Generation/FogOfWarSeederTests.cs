@@ -45,19 +45,11 @@ namespace Rebellion.Tests.Generation
 
         private static GenerationContext Wrap(GameRoot game, GameGenerationConfig config = null)
         {
-            return new GenerationContext
-            {
-                Game = game,
-                Config =
-                    config
-                    ?? new GameGenerationConfig
-                    {
-                        GalaxyClassification = new GalaxyClassificationSection
-                        {
-                            FactionSetups = new List<FactionSetup>(),
-                        },
-                    },
-            };
+            GenerationContext ctx = GenerationContextFactory.CreateDefault();
+            ctx.Game = game;
+            if (config != null)
+                ctx.Config = config;
+            return ctx;
         }
 
         [Test]
