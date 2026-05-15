@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<GameGenerationRules>
+<GameGenerationConfig>
   <Officers>
     <NumInitialOfficers>
       <Small>8</Small>
@@ -369,6 +369,7 @@
        Budget deployment: maintenance-based loop with weighted unit tables -->
   <UnitDeployment>
     <UprisingPreventionThreshold>60</UprisingPreventionThreshold>
+    <SupportDeficitPerGarrisonTroop>10</SupportDeficitPerGarrisonTroop>
     <FixedGarrisons>
       <FixedGarrison>
         <PlanetInstanceID>YAVIN</PlanetInstanceID>
@@ -920,4 +921,8 @@
       </FactionBudget>
     </FactionBudgets>
   </UnitDeployment>
-</GameGenerationRules>
+  <Balance>
+    <SupportBoostPerUnit>2</SupportBoostPerUnit>
+    <MaxMilitaryPresenceBoost>10</MaxMilitaryPresenceBoost>
+  </Balance>
+</GameGenerationConfig>

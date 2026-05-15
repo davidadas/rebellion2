@@ -7,29 +7,43 @@ using Rebellion.Util.Common;
 namespace Rebellion.Generation
 {
     /// <summary>
-    /// Classifies core system planets into faction buckets (Strong, Weak, Neutral)
-    /// using difficulty-dependent percentages. Supports N factions via config-driven
-    /// FactionSetups and FactionBucketConfigs.
-    ///
-    /// Faithfully reproduces the original game's seed_galaxy function for 2-faction
-    /// configurations while generalizing to any number of factions.
+    /// Seeds starting territory: assigns ownership and a Strong / Weak / Neutral
+    /// strength tag to every core planet based on difficulty-driven percentages,
+    /// places named starting planets, and records each faction's headquarters.
     /// </summary>
-    public class GalaxyClassifier
+    public sealed class GalaxySeeder : IGameSeeder
     {
         /// <summary>
-        /// Classifies all planets into faction buckets and assigns starting planet ownership.
+        /// Seeds galaxy ownership, HQs, and strength tags into the generation context.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        public void Seed(GenerationContext ctx)
+        {
+            ctx.Classification = BuildClassification(
+                ctx.Systems,
+                ctx.Factions,
+                ctx.Summary,
+                ctx.Config,
+                ctx.Rng
+            );
+        }
+
+        /// <summary>
+        /// Builds the classification result: assigns ownership to starting planets and
+        /// to bucket-assigned core planets, picks each faction's HQ, and tags every core
+        /// planet with a Strong / Weak / Neutral strength bucket.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="factions">All factions in the game.</param>
         /// <param name="summary">Game summary with player faction and difficulty settings.</param>
         /// <param name="rules">Generation rules containing faction setups and difficulty profiles.</param>
         /// <param name="rng">Random number provider.</param>
-        /// <returns>Classification result with bucket map, faction HQs, and starting planet loyalty.</returns>
-        public GalaxyClassificationResult Classify(
+        /// <returns>Classification result with bucket map, faction HQs, and starting-planet loyalty.</returns>
+        private GalaxyClassificationResult BuildClassification(
             PlanetSystem[] systems,
             Faction[] factions,
             GameSummary summary,
-            GameGenerationRules rules,
+            GameGenerationConfig rules,
             IRandomNumberProvider rng
         )
         {
@@ -98,9 +112,7 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Separates all planets into core, rim, and starting planet lists.
-        /// Static starting planets (with a known PlanetInstanceID) are pulled out first,
-        /// then dynamic starting planets (PickFromRim) are randomly selected from rim planets.
+        /// Separates all planets into core, rim, and starting-planet lists.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="config">Galaxy classification config with faction setups.</param>
@@ -122,7 +134,6 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            // Build lookup for static starting planets
             Dictionary<string, (FactionSetup setup, StartingPlanet config)> staticStartingPlanets =
                 new Dictionary<string, (FactionSetup setup, StartingPlanet config)>();
             foreach (FactionSetup setup in config.FactionSetups)
@@ -166,7 +177,6 @@ namespace Rebellion.Generation
                 }
             }
 
-            // Resolve dynamic starting planets (PickFromRim)
             foreach (FactionSetup setup in config.FactionSetups)
             {
                 if (setup.StartingPlanets == null)
@@ -274,9 +284,8 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Shuffles core planets and assigns them to faction buckets (Strong, Weak, Neutral)
-        /// based on difficulty profile percentages. Pre-assigned core starting planets are
-        /// subtracted from the strong count to avoid double-counting.
+        /// Assigns the remaining core planets to faction buckets (Strong, Weak, Neutral)
+        /// based on the difficulty profile's per-faction percentages.
         /// </summary>
         /// <param name="corePlanets">Unassigned core planets to classify.</param>
         /// <param name="profile">Difficulty profile with per-faction bucket percentages.</param>
@@ -293,8 +302,6 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            // Original includes pre-assigned core planets in total count for bucket percentage
-            // calculation, then subtracts them afterward.
             int totalCore = corePlanets.Count + preassignedCoreCount;
 
             List<(string factionID, int strongCount, int weakCount)> factionBucketCounts =
@@ -310,14 +317,12 @@ namespace Rebellion.Generation
                 factionBucketCounts.Add((fb.FactionID, strong, weak));
             }
 
-            // Shuffle core planets for random bucket assignment (Fisher-Yates)
             for (int i = corePlanets.Count - 1; i > 0; i--)
             {
                 int j = rng.NextInt(0, i + 1);
                 (corePlanets[i], corePlanets[j]) = (corePlanets[j], corePlanets[i]);
             }
 
-            // Assign: Strong-F1, Weak-F1, Strong-F2, Weak-F2, ..., then Neutral for remainder
             int idx = 0;
             foreach ((string factionID, int strongCount, int weakCount) in factionBucketCounts)
             {

@@ -118,15 +118,13 @@ public class TriggerEventAction : GameAction
 
     /// <summary>
     /// Resolves the referenced <see cref="GameEvent"/> and runs its action chain.
-    /// Falls back to a freshly seeded RNG if no provider has been injected.
+    /// Falls back to <see cref="GameRoot.Random"/> if no provider has been injected.
     /// </summary>
     /// <param name="game">The game state used to resolve the event.</param>
     /// <returns>The results produced by the triggered event's actions.</returns>
     public override List<GameResult> Execute(GameRoot game)
     {
         GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
-        IRandomNumberProvider eventProvider =
-            _provider ?? new SystemRandomProvider(new Random().Next());
-        return gameEvent.Execute(game, eventProvider);
+        return gameEvent.Execute(game, _provider ?? game.Random);
     }
 }

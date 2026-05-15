@@ -48,13 +48,11 @@ public sealed class GameFlowController : MonoBehaviour
         }
 
         GameBuilder builder = new GameBuilder(summary);
-        game = builder.BuildGame();
+        game = builder.Build();
 
         Faction playerFaction = game.GetPlayerFaction();
 
         PlayFactionIntro(playerFaction);
-
-        summary.IsNewGame = false;
     }
 
     /// <summary>

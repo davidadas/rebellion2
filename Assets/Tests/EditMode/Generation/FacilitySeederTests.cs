@@ -10,6 +10,26 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class FacilitySeederTests
     {
+        private static List<Building> SeedFacilities(
+            PlanetSystem[] systems,
+            Building[] templates,
+            GameGenerationConfig config,
+            GalaxyClassificationResult classification,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = systems,
+                Buildings = templates,
+                Config = config,
+                Classification = classification,
+                Rng = rng,
+            };
+            new FacilitySeeder().Seed(ctx);
+            return ctx.DeployedBuildings;
+        }
+
         /// <summary>
         /// Records the (min, max) of every NextInt call and returns min, so the test
         /// can assert the facility seeder never rolls past the original table's range.
@@ -46,9 +66,9 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        private GameGenerationRules CreateRules()
+        private GameGenerationConfig CreateRules()
         {
-            return new GameGenerationRules
+            return new GameGenerationConfig
             {
                 FacilityGeneration = new FacilityGenerationSection
                 {
@@ -119,7 +139,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSystem system = CreateCoreSystem(energy: 3, rawNodes: 0);
 
-            List<Building> deployed = new FacilitySeeder().Seed(
+            List<Building> deployed = SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 CreateRules(),
@@ -138,7 +158,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSystem system = CreateRimSystem(energy: 3, rawNodes: 0, colonized: true);
 
-            List<Building> deployed = new FacilitySeeder().Seed(
+            List<Building> deployed = SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 CreateRules(),
@@ -154,7 +174,7 @@ namespace Rebellion.Tests.Generation
         {
             PlanetSystem system = CreateRimSystem(energy: 3, rawNodes: 0, colonized: false);
 
-            List<Building> deployed = new FacilitySeeder().Seed(
+            List<Building> deployed = SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 CreateRules(),
@@ -171,7 +191,7 @@ namespace Rebellion.Tests.Generation
             PlanetSystem coreSystem = CreateCoreSystem(energy: 3, rawNodes: 0);
             PlanetSystem rimSystem = CreateRimSystem(energy: 3, rawNodes: 0, colonized: true);
 
-            GameGenerationRules rules = CreateRules();
+            GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.CoreFacilityTable = new List<WeightedFacilityEntry>
             {
                 new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDFA01" },
@@ -181,7 +201,7 @@ namespace Rebellion.Tests.Generation
                 new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDFA02" },
             };
 
-            new FacilitySeeder().Seed(
+            SeedFacilities(
                 new[] { coreSystem, rimSystem },
                 CreateTemplates(),
                 rules,
@@ -205,7 +225,7 @@ namespace Rebellion.Tests.Generation
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
             RecordingRNG rng = new RecordingRNG();
 
-            new FacilitySeeder().Seed(
+            SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 CreateRules(),
@@ -227,7 +247,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesFirst()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
-            GameGenerationRules rules = CreateRules();
+            GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
@@ -237,7 +257,7 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            List<Building> deployed = new FacilitySeeder().Seed(
+            List<Building> deployed = SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 rules,
@@ -262,18 +282,18 @@ namespace Rebellion.Tests.Generation
             GalaxyClassificationResult classification = new GalaxyClassificationResult();
             classification.FactionHQs["FNALL1"] = hqPlanet;
 
-            GameGenerationRules rules = CreateRules();
+            GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = GameGenerationRules.FactionHqSentinel,
+                    PlanetInstanceID = GameGenerationConfig.FactionHqSentinel,
                     FactionID = "FNALL1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },
             };
 
-            List<Building> deployed = new FacilitySeeder().Seed(
+            List<Building> deployed = SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 rules,
@@ -291,7 +311,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_HQLoadoutExceedsEnergy_RaisesEnergyCapacity()
         {
             PlanetSystem system = CreateCoreSystem(energy: 2, rawNodes: 0);
-            GameGenerationRules rules = CreateRules();
+            GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
@@ -301,7 +321,7 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            new FacilitySeeder().Seed(
+            SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 rules,
@@ -326,7 +346,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_HQLoadoutIncludesMineAboveRawNodes_RaisesRawResourceNodes()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
-            GameGenerationRules rules = CreateRules();
+            GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
@@ -336,7 +356,7 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            new FacilitySeeder().Seed(
+            SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
                 rules,

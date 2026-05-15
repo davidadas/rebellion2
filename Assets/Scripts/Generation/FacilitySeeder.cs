@@ -8,25 +8,38 @@ namespace Rebellion.Generation
 {
     /// <summary>
     /// Seeds facilities on populated planets using weighted probability tables.
-    /// Reproduces the original game's seed_core_system and seed_rim_system functions.
-    /// For each energy slot: check mine probability first, then roll on facility table.
     /// </summary>
-    public class FacilitySeeder
+    public sealed class FacilitySeeder : IGameSeeder
     {
         /// <summary>
+        /// Seeds initial facilities into every eligible planet in the generation context.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        public void Seed(GenerationContext ctx)
+        {
+            ctx.DeployedBuildings = SeedFacilities(
+                ctx.Systems,
+                ctx.Buildings,
+                ctx.Config,
+                ctx.Classification,
+                ctx.Rng
+            );
+        }
+
+        /// <summary>
         /// Seeds all eligible planets with facilities using weighted probability tables.
-        /// Configured HQ loadouts are placed before the random roll on their target planet.
+        /// HQ loadouts are placed before the random roll on their target planet.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="templates">Building templates to clone from.</param>
         /// <param name="rules">Generation rules containing facility tables and mine multipliers.</param>
         /// <param name="classification">Classification result used to resolve FACTION_HQ loadout entries.</param>
         /// <param name="rng">Random number provider.</param>
-        /// <returns>All buildings that were placed during seeding.</returns>
-        public List<Building> Seed(
+        /// <returns>All buildings placed during seeding.</returns>
+        private List<Building> SeedFacilities(
             PlanetSystem[] systems,
             Building[] templates,
-            GameGenerationRules rules,
+            GameGenerationConfig rules,
             GalaxyClassificationResult classification,
             IRandomNumberProvider rng
         )
@@ -52,7 +65,7 @@ namespace Rebellion.Generation
 
                 foreach (Planet planet in system.Planets)
                 {
-                    if (!ShouldSeedPlanet(planet, isCore))
+                    if (!isCore && !planet.IsColonized)
                         continue;
 
                     if (loadoutsByPlanetId.TryGetValue(planet.InstanceID, out List<string> loadout))
@@ -76,21 +89,7 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Returns true if the planet should receive facilities.
-        /// Core planets are always seeded; rim planets require colonization and an owner.
-        /// </summary>
-        /// <param name="planet">The planet to check.</param>
-        /// <param name="isCore">Whether the planet is in a core system.</param>
-        /// <returns>True if the planet is eligible for facility seeding.</returns>
-        private bool ShouldSeedPlanet(Planet planet, bool isCore)
-        {
-            return isCore || planet.IsColonized;
-        }
-
-        /// <summary>
-        /// Fills a planet's energy slots with facilities. Iterates slots sequentially,
-        /// rolling for mine or facility each time. Stops on first roll failure
-        /// to match original behavior.
+        /// Fills a planet's energy slots with facilities.
         /// </summary>
         /// <param name="planet">The planet to seed.</param>
         /// <param name="isCore">Whether the planet is in a core system.</param>
@@ -126,8 +125,6 @@ namespace Rebellion.Generation
                     ref mineCount
                 );
 
-                // Original terminates the loop on first failure (null table
-                // result or missing template), not continue to next slot
                 if (typeID == null || !templateMap.TryGetValue(typeID, out Building template))
                     break;
 
@@ -206,7 +203,7 @@ namespace Rebellion.Generation
             foreach (HQFacilityLoadout loadout in loadouts)
             {
                 string planetId = loadout.PlanetInstanceID;
-                if (planetId == GameGenerationRules.FactionHqSentinel)
+                if (planetId == GameGenerationConfig.FactionHqSentinel)
                 {
                     if (string.IsNullOrEmpty(loadout.FactionID))
                         continue;
@@ -227,9 +224,9 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Places configured loadout facilities on a planet. Raises energy capacity and
-        /// raw-resource count first so the forced facilities fit without tripping the
-        /// Planet's capacity validator. Matches the original HQ seed path.
+        /// Places configured loadout facilities on a planet. Energy capacity and
+        /// raw-resource count are raised first so the forced facilities fit without
+        /// tripping the planet's capacity validator.
         /// </summary>
         /// <param name="planet">The target planet.</param>
         /// <param name="facilityTypeIDs">Facility TypeIDs to place in order.</param>

@@ -3,21 +3,40 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Generation;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Generation
 {
     [TestFixture]
-    public class OfficerGeneratorTests
+    public class OfficerSeederTests
     {
-        private OfficerGenerator _generator;
-        private GameGenerationRules _rules;
+        private GameGenerationConfig _rules;
         private GameSummary _summary;
+
+        private static (Officer[] Deployed, Officer[] Unrecruited) Deploy(
+            Officer[] officers,
+            PlanetSystem[] systems,
+            GameGenerationConfig config,
+            GameSummary summary,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Officers = officers,
+                Systems = systems,
+                Config = config,
+                Summary = summary,
+                Rng = rng,
+            };
+            new OfficerSeeder().Seed(ctx);
+            return (ctx.DeployedOfficers, ctx.UnrecruitedOfficers);
+        }
 
         [SetUp]
         public void SetUp()
         {
-            _generator = new OfficerGenerator();
-            _rules = new GameGenerationRules
+            _rules = new GameGenerationConfig
             {
                 Officers = new OfficerSection
                 {
@@ -60,48 +79,36 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_WithRecruitableOfficer_IncludesInDeployed()
+        public void Seed_WithRecruitableOfficer_IncludesInDeployed()
         {
             Officer officer = MakeOfficer("O1", "FNALL1", isRecruitable: true);
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
-                new[] { officer },
-                new[] { sys },
-                _rules,
-                _summary,
-                new StubRNG()
-            );
+            var results = Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.Contains(officer, results.Deployed);
         }
 
         [Test]
-        public void Deploy_WithNonRecruitableOfficer_ExcludesFromDeployed()
+        public void Seed_WithNonRecruitableOfficer_ExcludesFromDeployed()
         {
             Officer officer = MakeOfficer("O1", "FNALL1", isMain: false, isRecruitable: false);
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
-                new[] { officer },
-                new[] { sys },
-                _rules,
-                _summary,
-                new StubRNG()
-            );
+            var results = Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.IsFalse(results.Deployed.Contains(officer));
         }
 
         [Test]
-        public void Deploy_WithMainOfficersExceedingLimit_DeploysAllMain()
+        public void Seed_WithMainOfficersExceedingLimit_DeploysAllMain()
         {
             Officer m1 = MakeOfficer("M1", "FNALL1", isMain: true);
             Officer m2 = MakeOfficer("M2", "FNALL1", isMain: true);
             Officer m3 = MakeOfficer("M3", "FNALL1", isMain: true);
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
+            var results = Deploy(
                 new[] { m1, m2, m3 },
                 new[] { sys },
                 _rules,
@@ -113,14 +120,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_WithMoreRecruitableThanLimit_DeploysOnlyAllowed()
+        public void Seed_WithMoreRecruitableThanLimit_DeploysOnlyAllowed()
         {
             Officer officer1 = MakeOfficer("O1", "FNALL1");
             Officer officer2 = MakeOfficer("O2", "FNALL1");
             Officer officer3 = MakeOfficer("O3", "FNALL1");
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
+            var results = Deploy(
                 new[] { officer1, officer2, officer3 },
                 new[] { sys },
                 _rules,
@@ -132,7 +139,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_OfficerWithAmbiguousAllowedFactions_IsExcluded()
+        public void Seed_OfficerWithAmbiguousAllowedFactions_IsExcluded()
         {
             Officer ambiguous = new Officer
             {
@@ -143,7 +150,7 @@ namespace Rebellion.Tests.Generation
             };
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
+            var results = Deploy(
                 new[] { ambiguous },
                 new[] { sys },
                 _rules,
@@ -155,14 +162,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_UnrecruitedOfficers_AreComplementOfDeployed()
+        public void Seed_UnrecruitedOfficers_AreComplementOfDeployed()
         {
             Officer officer1 = MakeOfficer("O1", "FNALL1");
             Officer officer2 = MakeOfficer("O2", "FNALL1");
             Officer officer3 = MakeOfficer("O3", "FNALL1");
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
+            var results = Deploy(
                 new[] { officer1, officer2, officer3 },
                 new[] { sys },
                 _rules,
@@ -175,7 +182,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
+        public void Seed_WithMultipleFactions_SelectsOfficersPerFactionIndependently()
         {
             Officer allianceOfficer1 = MakeOfficer("A1", "FNALL1");
             Officer allianceOfficer2 = MakeOfficer("A2", "FNALL1");
@@ -185,7 +192,7 @@ namespace Rebellion.Tests.Generation
             sys.Planets.Add(new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" });
             sys.Planets.Add(new Planet { InstanceID = "p2", OwnerInstanceID = "FNEMP1" });
 
-            OfficerGenerator.OfficerResults results = _generator.Deploy(
+            var results = Deploy(
                 new[] { allianceOfficer1, allianceOfficer2, empireOfficer1, empireOfficer2 },
                 new[] { sys },
                 _rules,
@@ -197,46 +204,46 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Deploy_WithZeroVariance_SkillsMatchBase()
+        public void Seed_WithZeroVariance_SkillsMatchBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.Skills[MissionParticipantSkill.Diplomacy] = 10;
             officer.DiplomacyVariance = 0;
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.AreEqual(10, officer.Skills[MissionParticipantSkill.Diplomacy]);
         }
 
         [Test]
-        public void Deploy_WithVariance_SkillsAtLeastBase()
+        public void Seed_WithVariance_SkillsAtLeastBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.Skills[MissionParticipantSkill.Espionage] = 5;
             officer.EspionageVariance = 10;
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.GreaterOrEqual(officer.Skills[MissionParticipantSkill.Espionage], 5);
         }
 
         [Test]
-        public void Deploy_WithOwnedPlanet_OfficerAddedToPlanet()
+        public void Seed_WithOwnedPlanet_OfficerAddedToPlanet()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             sys.Planets.Add(planet);
 
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.Contains(officer, planet.Officers);
         }
 
         [Test]
-        public void Deploy_WithInitialParentId_OfficerAddedToDesignatedPlanet()
+        public void Seed_WithInitialParentId_OfficerAddedToDesignatedPlanet()
         {
             Planet other = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
             Planet target = new Planet { InstanceID = "target", OwnerInstanceID = "FNALL1" };
@@ -247,7 +254,7 @@ namespace Rebellion.Tests.Generation
             Officer officer = MakeOfficer("O1", "FNALL1");
             officer.InitialParentInstanceID = "target";
 
-            _generator.Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
+            Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
             Assert.Contains(officer, target.Officers);
             Assert.IsEmpty(other.Officers);

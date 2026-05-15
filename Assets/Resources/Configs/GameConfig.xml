@@ -7,19 +7,13 @@
   Loaded on every game start/load via Resources.Load<TextAsset>("Configs/GameConfig").
 
   DO NOT put player choices here - those belong in GameSummary.
-  DO NOT put new game setup here - those belong in GameGenerationRules.xml.
+  DO NOT put new game setup here - those belong in GameGenerationConfig.xml.
 -->
 <GameConfig>
-  <!-- AI System Configuration -->
+  <!-- AI decision cadence, mission-dispatch tables, garrison and fleet thresholds, and capital-ship production rules. -->
   <AI>
-    <!-- Tick interval between AI decision cycles (default: 7) -->
     <TickInterval>7</TickInterval>
-    <!-- Mission dispatch tables (from original MSTB .DAT files)
-         Each table maps a score to a dispatch probability.
-         Score formula: (officer_skill - planet_state) + officer_leadership_rank
-         Lookup returns 0 = don't dispatch; >0 = dispatch mission -->
     <MissionTables>
-      <!-- Diplomacy: score = (diplomacy_skill - popular_support) + leadership (DIPLMSTB_DAT) -->
       <Diplomacy>
         <Entry>
           <Key>-39</Key>
@@ -62,7 +56,6 @@
           <Value>70</Value>
         </Entry>
       </Diplomacy>
-      <!-- SubdueUprising: score = (combat_skill - popular_support) + leadership (SUBDMSTB_DAT) -->
       <SubdueUprising>
         <Entry>
           <Key>-20</Key>
@@ -117,7 +110,6 @@
           <Value>99</Value>
         </Entry>
       </SubdueUprising>
-      <!-- Espionage: for future use (ESPIMSTB_DAT) -->
       <Espionage>
         <Entry>
           <Key>-1</Key>
@@ -168,7 +160,6 @@
           <Value>99</Value>
         </Entry>
       </Espionage>
-      <!-- InciteUprising: for future use (INCTMSTB_DAT) -->
       <InciteUprising>
         <Entry>
           <Key>-20</Key>
@@ -223,7 +214,6 @@
           <Value>99</Value>
         </Entry>
       </InciteUprising>
-      <!-- Rescue: for future use (RESCMSTB_DAT) -->
       <Rescue>
         <Entry>
           <Key>-1</Key>
@@ -274,8 +264,6 @@
           <Value>99</Value>
         </Entry>
       </Rescue>
-      <!-- Sabotage dispatch table (SBTGMSTB_DAT) -->
-      <!-- Score = (attacker.espionage + defender.combat) / 2 -->
       <Sabotage>
         <Entry>
           <Key>-1</Key>
@@ -326,8 +314,6 @@
           <Value>99</Value>
         </Entry>
       </Sabotage>
-      <!-- Abduction dispatch table (ABDCMSTB_DAT) -->
-      <!-- Score = our_officer.combat - target_officer.combat -->
       <Abduction>
         <Entry>
           <Key>-100</Key>
@@ -378,8 +364,6 @@
           <Value>99</Value>
         </Entry>
       </Abduction>
-      <!-- Assassination dispatch table (ASSNMSTB_DAT) -->
-      <!-- Score = attacker.combat - target.combat -->
       <Assassination>
         <Entry>
           <Key>-100</Key>
@@ -430,8 +414,6 @@
           <Value>55</Value>
         </Entry>
       </Assassination>
-      <!-- Recruitment dispatch table (RCRTMSTB_DAT) -->
-      <!-- Score = officer.diplomacy -->
       <Recruitment>
         <Entry>
           <Key>0</Key>
@@ -479,50 +461,31 @@
         </Entry>
       </Recruitment>
     </MissionTables>
-    <!-- Garrison requirement parameters -->
     <Garrison>
-      <!-- Popular support threshold below which garrison troops are required -->
       <SupportThreshold>60</SupportThreshold>
-      <!-- Divisor for garrison calculation: ceil((threshold - support) / divisor) -->
       <GarrisonDivisor>10</GarrisonDivisor>
-      <!-- Multiplier applied to garrison requirement during an uprising -->
       <UprisingMultiplier>2</UprisingMultiplier>
     </Garrison>
-    <!-- Fleet deployment probability gate bounds (PARAM_1538, PARAM_1539) -->
-    <!-- AI rolls random(low, high); deploys only if roll < net_strength_ratio -->
     <DeploymentGateLow>20</DeploymentGateLow>
     <DeploymentGateHigh>80</DeploymentGateHigh>
-    <!-- Capital ship production pipeline parameters -->
     <CapitalShipProduction>
-      <!-- Personnel divisor for facility contribution: (skill / divisor + 1) * modifier -->
-      <!-- GNPR param 1537, same value as Combat.AssaultPersonnelDivisor -->
       <FacilityPersonnelDivisor>40</FacilityPersonnelDivisor>
-      <!-- Strike target evaluation thresholds -->
       <StrikeThresholdLow>1</StrikeThresholdLow>
       <StrikeThresholdHigh>10</StrikeThresholdHigh>
-      <!-- Energy resistance values for strike evaluation -->
       <EnergyStrikeResistance>9</EnergyStrikeResistance>
       <AllocatedEnergyStrikeResistance>9</AllocatedEnergyStrikeResistance>
-      <!-- Support shift applied to PRODUCING faction's own support (Death Star only) -->
-      <!-- FUN_00558860 returns GENERAL_PARAM_7705 = -20 (negative = military disruption) -->
       <OrbitalStrikeSupportShift>-20</OrbitalStrikeSupportShift>
     </CapitalShipProduction>
   </AI>
-  <!-- Movement System Configuration -->
+  <!-- Distance scaling, transit minimums, and hyperdrive defaults for fleet and unit movement. -->
   <Movement>
-    <!-- Distance scaling factor for transit time calculation (default: 2) -->
     <DistanceScale>2</DistanceScale>
-    <!-- Minimum transit ticks regardless of distance (default: 10) -->
     <MinTransitTicks>10</MinTransitTicks>
-    <!-- Default hyperdrive rating for fighters/troops (default: 60) -->
     <DefaultFighterHyperdrive>60</DefaultFighterHyperdrive>
   </Movement>
-  <!-- Production System Configuration -->
+  <!-- Capital-ship production rolls, refinement multiplier, and blockade-driven production penalties. -->
   <Production>
-    <!-- Multiplier for raw materials to refined materials (default: 50) -->
     <RefinementMultiplier>50</RefinementMultiplier>
-    <!-- CSCRHT: Capital Ship Construction Rate Hit Table -->
-    <!-- Maps roll threshold to progress increment (original: 0->2, 16->3, 31->4, 41->5, 46->6) -->
     <CapitalShipProgressTable>
       <Entry>
         <Key>0</Key>
@@ -545,62 +508,41 @@
         <Value>6</Value>
       </Entry>
     </CapitalShipProgressTable>
-    <!-- CSCRHT roll parameters (original GENERAL_PARAM 2049-2051, all 50) -->
     <CapitalShipProgressRollRange>50</CapitalShipProgressRollRange>
     <CapitalShipSuccessThreshold>50</CapitalShipSuccessThreshold>
     <CapitalShipSuccessRollRange>50</CapitalShipSuccessRollRange>
-    <!-- Production penalty per hostile capital ship during blockade -->
     <BlockadeCapitalShipPenalty>5</BlockadeCapitalShipPenalty>
-    <!-- Production penalty per hostile fighter during blockade -->
     <BlockadeFighterPenalty>2</BlockadeFighterPenalty>
-    <!-- Popular support shift on manufacturing completion -->
     <CapitalShipCompletionSupportShift>3</CapitalShipCompletionSupportShift>
     <BuildingCompletionSupportShift>1</BuildingCompletionSupportShift>
     <TroopCompletionSupportShift>1</TroopCompletionSupportShift>
   </Production>
-  <!-- Planet Mechanics Configuration -->
+  <!-- Per-planet caps and distance-formula constants. -->
   <Planet>
-    <!-- Distance divisor for planet formula calculations (default: 5) -->
     <DistanceDivisor>5</DistanceDivisor>
-    <!-- Base value for distance calculations (default: 100) -->
     <DistanceBase>100</DistanceBase>
-    <!-- Maximum popular support value (default: 100) -->
     <MaxPopularSupport>100</MaxPopularSupport>
-    <!-- Maximum energy capacity per planet -->
     <MaxEnergy>15</MaxEnergy>
-    <!-- Maximum raw resource nodes per planet -->
     <MaxRawMaterials>15</MaxRawMaterials>
   </Planet>
-  <!-- Combat System Configuration -->
+  <!-- Personnel scaling, bombardment resistance, and damage-roll parameters for space and ground combat. -->
   <Combat>
-    <!-- Personnel divisor for assault strength: (personnel / divisor + 1) * fleet_combat_value -->
     <AssaultPersonnelDivisor>40</AssaultPersonnelDivisor>
-    <!-- Bombardment strike resistance check range -->
     <BombardmentStrikeThresholdLow>1</BombardmentStrikeThresholdLow>
     <BombardmentStrikeThresholdHigh>10</BombardmentStrikeThresholdHigh>
-    <!-- Resistance value for system energy lane -->
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
-    <!-- Number of Shield facilities required to block bombardment entirely -->
     <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
-    <!-- Divisor applied to defense facility ProductionModifier for fire-back roll (stage 2) -->
     <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
-    <!-- Per-trial repeat-damage success probability (stage 4), out of 100 -->
     <RepeatTrialProbability>50</RepeatTrialProbability>
-    <!-- Weapon damage variance: damage rolls uniformly in [base*(1-pct/100), base*(1+pct/100)] -->
     <WeaponDamageVariancePercent>20</WeaponDamageVariancePercent>
-    <!-- Percent of squadrons lost per dogfight round, scaled by relative numbers and a roll -->
     <FighterDogfightLossRatePercent>30</FighterDogfightLossRatePercent>
-    <!-- Fighter damage range: [Base%, (Base+Spread)%] of nominal, rolled uniformly -->
     <FighterDamageBasePercent>80</FighterDamageBasePercent>
     <FighterDamageSpreadPercent>40</FighterDamageSpreadPercent>
   </Combat>
-  <!-- Uprising System Configuration -->
+  <!-- Dice rolls and consequence tables that drive uprising resolution. -->
   <Uprising>
-    <!-- Dice roll range (random 0..N) -->
     <DiceRange>10</DiceRange>
-    <!-- Addend to each dice roll (so rolls become 1-9 with default values) -->
     <DiceAddend>1</DiceAddend>
-    <!-- Maps uprising score to a property damage consequence code -->
     <PrimaryConsequenceTable>
       <Entry>
         <Key>1</Key>
@@ -615,7 +557,6 @@
         <Value>2</Value>
       </Entry>
     </PrimaryConsequenceTable>
-    <!-- Maps uprising score to a personnel consequence code -->
     <SecondaryConsequenceTable>
       <Entry>
         <Key>1</Key>
@@ -634,129 +575,84 @@
         <Value>5</Value>
       </Entry>
     </SecondaryConsequenceTable>
-    <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
-    <!-- Negative = support erodes while uprising is active (GENERAL_PARAM_7697 = -1) -->
     <ControllerSupportShift>-1</ControllerSupportShift>
   </Uprising>
-  <!-- Support Shift Configuration -->
-  <!-- Controls periodic popular support recovery and hostile force penalties -->
+  <!-- Popular-support drift brackets, hostile-force penalties, and ownership-transfer threshold. -->
   <SupportShift>
-    <!-- Support must be at or below this for shift to apply -->
     <ShiftThreshold>40</ShiftThreshold>
-    <!-- Lower boundary of middle bracket -->
     <LowBracketCeiling>20</LowBracketCeiling>
-    <!-- Upper boundary of middle bracket -->
     <MidBracketCeiling>30</MidBracketCeiling>
-    <!-- Base shift for support 0-20 -->
     <LowBracketShift>75</LowBracketShift>
-    <!-- Base shift for support 21-30 -->
     <MidBracketShift>50</MidBracketShift>
-    <!-- Base shift for support 31-40 -->
     <HighBracketShift>25</HighBracketShift>
-    <!-- Penalty per hostile fleet -->
     <FleetPenalty>10</FleetPenalty>
-    <!-- Penalty per hostile fighter squadron -->
     <FighterPenalty>5</FighterPenalty>
-    <!-- Penalty per (adjusted) hostile troop -->
     <TroopPenalty>2</TroopPenalty>
-    <!-- Popular support threshold above which a neutral planet transfers to the faction -->
     <OwnershipTransferThreshold>60</OwnershipTransferThreshold>
-    <!-- Support shift when blockading fleet matches popular support side -->
     <BlockadeMatchShift>1</BlockadeMatchShift>
-    <!-- Support shift when blockading fleet opposes popular support side -->
     <BlockadeOpposeShift>-1</BlockadeOpposeShift>
   </SupportShift>
-  <!-- Blockade System Configuration -->
+  <!-- Blockade-time penalties such as evacuation losses. -->
   <Blockade>
-    <!-- Percent chance each regiment is destroyed when evacuating through a blockade -->
     <EvacuationLossPercent>25</EvacuationLossPercent>
   </Blockade>
-  <!-- Victory System Configuration -->
+  <!-- Victory-condition parameters. -->
   <Victory></Victory>
 
-  <!-- Jedi / Force System Configuration -->
+  <!-- Force-rank thresholds, growth per mission, and Force-user encounter eligibility. -->
   <Jedi>
-    <!-- ForceRank threshold to enter "discovering force user" state (GP_2580) -->
     <DiscoveringForceUserThreshold>80</DiscoveringForceUserThreshold>
 
-    <!-- ForceRank threshold for full Jedi qualification (GP_2581) -->
     <ForceQualifiedThreshold>100</ForceQualifiedThreshold>
 
-    <!-- ForceRank threshold for Force-based fast healing (GP_2560) -->
     <FastHealThreshold>80</FastHealThreshold>
 
-    <!-- ForceValue increment per successful mission (GP_3081) -->
     <ForceGrowthPerMission>1</ForceGrowthPerMission>
 
-    <!-- Percent of rank gap used as catch-up range in Jedi training (GP_6173) -->
     <TrainingCatchUpPercent>50</TrainingCatchUpPercent>
 
-    <!-- ForceRank threshold for Luke to learn heritage (GP_3078) -->
     <HeritageThreshold>60</HeritageThreshold>
 
-    <!-- Percent bonus to force_rank on Dagobah completion (GP_6174) -->
     <DagobahCompletionBonusPercent>60</DagobahCompletionBonusPercent>
 
-    <!-- Local force user minimum rank for encounter eligibility (GP_3585) -->
     <EncounterLocalMinRank>1</EncounterLocalMinRank>
 
-    <!-- Cross-side force user minimum rank for encounter eligibility (GP_3586) -->
     <EncounterCrossSideMinRank>60</EncounterCrossSideMinRank>
 
-    <!-- Offset applied to encounter probability: local_rank + hostile_rank + this (GP_3587) -->
     <EncounterProbabilityOffset>-100</EncounterProbabilityOffset>
 
-    <!-- Force rank label thresholds -->
     <RankLabelNovice>10</RankLabelNovice>
     <RankLabelTrainee>20</RankLabelTrainee>
     <RankLabelForceStudent>80</RankLabelForceStudent>
     <RankLabelForceKnight>100</RankLabelForceKnight>
     <RankLabelForceMaster>120</RankLabelForceMaster>
   </Jedi>
-  <!-- Research System Configuration -->
-  <!-- Controls technology advancement from idle facilities and officer research missions.
-       Per-unit unlock costs are defined by ResearchDifficulty in the unit data XMLs. -->
+  <!-- Research-point rewards and research-capacity refresh cadence. -->
   <Research>
-    <!-- Base research points per successful research mission -->
     <BaseResearchPoints>1</BaseResearchPoints>
-    <!-- Random bonus range: award random(0, DiceRange) extra points -->
     <ResearchDiceRange>6</ResearchDiceRange>
-    <!-- Base ticks between research capacity refresh pulses -->
     <RefreshIntervalBase>30</RefreshIntervalBase>
-    <!-- Random spread added to the base interval per pulse -->
     <RefreshIntervalSpread>30</RefreshIntervalSpread>
   </Research>
-  <!-- Assassination Mission Configuration -->
+  <!-- Injury rolls and lethality probability for assassination missions. -->
   <Assassination>
-    <!-- Base injury always applied on a successful hit -->
     <BaseInjury>1</BaseInjury>
-    <!-- Upper bound of the primary injury roll -->
     <PrimaryInjuryRange>100</PrimaryInjuryRange>
-    <!-- Upper bound of the secondary injury roll -->
     <SecondaryInjuryRange>29</SecondaryInjuryRange>
-    <!-- Probability (0-100) that a hit kills the target outright -->
     <KillProbability>25</KillProbability>
   </Assassination>
-  <!-- Recovery System Configuration -->
+  <!-- Per-tick recovery rates for officer injuries, hull damage, and fighter losses. -->
   <Recovery>
-    <!-- Maximum injury points an officer can accumulate -->
     <MaxInjuryPoints>32767</MaxInjuryPoints>
-    <!-- Injury points healed per tick for Force users -->
     <FastHealAmount>2</FastHealAmount>
-    <!-- Injury points healed per tick for normal officers -->
     <NormalHealAmount>1</NormalHealAmount>
-    <!-- Hull points repaired per tick at a friendly shipyard -->
     <FastRepairAmount>2</FastRepairAmount>
-    <!-- Hull points repaired per tick elsewhere -->
     <NormalRepairAmount>1</NormalRepairAmount>
-    <!-- Fighters replaced per tick at a friendly planet -->
     <FastReplacementAmount>2</FastReplacementAmount>
-    <!-- Fighters replaced per tick elsewhere -->
     <NormalReplacementAmount>1</NormalReplacementAmount>
   </Recovery>
-  <!-- Captive System Configuration -->
+  <!-- Escape probability and loyalty effects for captured officers. -->
   <Captive>
-    <!-- Escape probability table: maps (officerSkills - planetDefense) to escape probability -->
     <EscapeTable>
       <Entry>
         <Key>-50</Key>
@@ -795,13 +691,10 @@
         <Value>30</Value>
       </Entry>
     </EscapeTable>
-    <!-- Loyalty shift on successful escape -->
     <EscapeLoyaltyShift>-10</EscapeLoyaltyShift>
   </Captive>
-  <!-- Probability Tables -->
-  <!-- All probability tables live together, grouped by data type not usage -->
+  <!-- Score-to-probability lookup tables used by missions and other rolls. -->
   <ProbabilityTables>
-    <!-- Non-mission probability tables -->
     <UprisingStart>
       <Entry>
         <Key>1</Key>
@@ -816,7 +709,6 @@
         <Value>2</Value>
       </Entry>
     </UprisingStart>
-    <!-- Mission-related probability tables -->
     <Mission>
       <Abduction>
         <Entry>
@@ -1314,9 +1206,7 @@
           <Value>99</Value>
         </Entry>
       </SubdueUprising>
-      <!-- Percentage of defender espionage subtracted from decoy score -->
       <DecoyDefenderScalingPercent>35</DecoyDefenderScalingPercent>
-      <!-- Decoy probability table -->
       <Decoy>
         <Entry>
           <Key>-20</Key>
@@ -1375,7 +1265,6 @@
           <Value>99</Value>
         </Entry>
       </Decoy>
-      <!-- Tick ranges: Base + random(0, Spread) inclusive. Source: MISSNSD.json -->
       <TickRanges>
         <Abduction>
           <Base>1</Base>
@@ -1422,7 +1311,6 @@
           <Spread>10</Spread>
         </JediTraining>
       </TickRanges>
-      <!-- Foil: regiment defense score (derived from original FoilQuadratic: -0.001999x²+0.8879x+84.61) -->
       <Foil>
         <Entry>
           <Key>0</Key>
@@ -1445,7 +1333,6 @@
           <Value>99</Value>
         </Entry>
       </Foil>
-      <!-- KillOrCapture: (defenderCombat - spyCombat) → capture probability -->
       <KillOrCapture>
         <Entry>
           <Key>-20</Key>

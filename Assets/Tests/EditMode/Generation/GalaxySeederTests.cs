@@ -3,11 +3,12 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Generation;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Generation
 {
     [TestFixture]
-    public class GalaxyClassifierTests
+    public class GalaxySeederTests
     {
         private Faction[] _factions;
         private GameSummary _summary;
@@ -28,14 +29,14 @@ namespace Rebellion.Tests.Generation
             };
         }
 
-        private GameGenerationRules CreateRules(
+        private GameGenerationConfig CreateRules(
             int allianceStrongPct,
             int allianceWeakPct,
             int empireStrongPct,
             int empireWeakPct
         )
         {
-            return new GameGenerationRules
+            return new GameGenerationConfig
             {
                 GalaxyClassification = new GalaxyClassificationSection
                 {
@@ -79,6 +80,26 @@ namespace Rebellion.Tests.Generation
             };
         }
 
+        private static GalaxyClassificationResult Classify(
+            PlanetSystem[] systems,
+            Faction[] factions,
+            GameSummary summary,
+            GameGenerationConfig config,
+            IRandomNumberProvider rng
+        )
+        {
+            GenerationContext ctx = new GenerationContext
+            {
+                Systems = systems,
+                Factions = factions,
+                Summary = summary,
+                Config = config,
+                Rng = rng,
+            };
+            new GalaxySeeder().Seed(ctx);
+            return ctx.Classification;
+        }
+
         private PlanetSystem[] CreateCoreGalaxy(int planetCount)
         {
             PlanetSystem system = new PlanetSystem
@@ -94,17 +115,17 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Classify_StrongBucketPlanet_IsAssignedOwnership()
+        public void Seed_StrongBucketPlanet_IsAssignedOwnership()
         {
             PlanetSystem[] systems = CreateCoreGalaxy(10);
-            GameGenerationRules rules = CreateRules(
+            GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
                 empireStrongPct: 0,
                 empireWeakPct: 0
             );
 
-            GalaxyClassificationResult result = new GalaxyClassifier().Classify(
+            GalaxyClassificationResult result = Classify(
                 systems,
                 _factions,
                 _summary,
@@ -126,17 +147,17 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Classify_WeakBucketPlanet_IsAssignedOwnership()
+        public void Seed_WeakBucketPlanet_IsAssignedOwnership()
         {
             PlanetSystem[] systems = CreateCoreGalaxy(10);
-            GameGenerationRules rules = CreateRules(
+            GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 0,
                 allianceWeakPct: 30,
                 empireStrongPct: 0,
                 empireWeakPct: 0
             );
 
-            GalaxyClassificationResult result = new GalaxyClassifier().Classify(
+            GalaxyClassificationResult result = Classify(
                 systems,
                 _factions,
                 _summary,
@@ -169,17 +190,17 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Classify_NeutralBucketPlanet_RemainsUnowned()
+        public void Seed_NeutralBucketPlanet_RemainsUnowned()
         {
             PlanetSystem[] systems = CreateCoreGalaxy(10);
-            GameGenerationRules rules = CreateRules(
+            GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 10,
                 allianceWeakPct: 10,
                 empireStrongPct: 10,
                 empireWeakPct: 10
             );
 
-            GalaxyClassificationResult result = new GalaxyClassifier().Classify(
+            GalaxyClassificationResult result = Classify(
                 systems,
                 _factions,
                 _summary,
@@ -207,17 +228,17 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Classify_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
+        public void Seed_ProfileWithStrongAndWeakBuckets_OwnsSumOfBoth()
         {
             PlanetSystem[] systems = CreateCoreGalaxy(20);
-            GameGenerationRules rules = CreateRules(
+            GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 20,
                 allianceWeakPct: 0,
                 empireStrongPct: 25,
                 empireWeakPct: 10
             );
 
-            GalaxyClassificationResult result = new GalaxyClassifier().Classify(
+            GalaxyClassificationResult result = Classify(
                 systems,
                 _factions,
                 _summary,
@@ -241,7 +262,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Classify_StartingPlanetInBucket_PreservesOriginalOwnership()
+        public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {
             PlanetSystem system = new PlanetSystem
             {
@@ -255,7 +276,7 @@ namespace Rebellion.Tests.Generation
                 system.Planets.Add(new Planet { InstanceID = $"p{i}" });
             }
 
-            GameGenerationRules rules = CreateRules(
+            GameGenerationConfig rules = CreateRules(
                 allianceStrongPct: 0,
                 allianceWeakPct: 50,
                 empireStrongPct: 0,
@@ -272,13 +293,7 @@ namespace Rebellion.Tests.Generation
                     }
                 );
 
-            new GalaxyClassifier().Classify(
-                new[] { system },
-                _factions,
-                _summary,
-                rules,
-                new StubRNG()
-            );
+            Classify(new[] { system }, _factions, _summary, rules, new StubRNG());
 
             Assert.AreEqual(
                 "FNEMP1",
