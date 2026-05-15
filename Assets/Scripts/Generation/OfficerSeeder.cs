@@ -132,20 +132,19 @@ namespace Rebellion.Generation
         /// <param name="factionId">The owning faction ID.</param>
         /// <param name="recruitableLimit">Maximum recruitable (non-main) officers to pick.</param>
         /// <returns>The officers picked for this faction.</returns>
-        private IEnumerable<Officer> PickFactionRoster(
+        private List<Officer> PickFactionRoster(
             List<Officer> officers,
             string factionId,
             int recruitableLimit
         )
         {
-            return officers
+            List<Officer> picked = officers
                 .Where(o => o.IsMain || o.IsRecruitable)
                 .TakeWhile((o, index) => o.IsMain || index < recruitableLimit)
-                .Select(o =>
-                {
-                    o.OwnerInstanceID = factionId;
-                    return o;
-                });
+                .ToList();
+            foreach (Officer officer in picked)
+                officer.OwnerInstanceID = factionId;
+            return picked;
         }
 
         /// <summary>
@@ -183,10 +182,10 @@ namespace Rebellion.Generation
                     rng
                 );
 
-                officer.Loyalty += rng.NextInt(0, officer.LoyaltyVariance);
-                officer.ShipResearch += rng.NextInt(0, officer.ShipResearchVariance);
-                officer.TroopResearch += rng.NextInt(0, officer.TroopResearchVariance);
-                officer.FacilityResearch += rng.NextInt(0, officer.FacilityResearchVariance);
+                officer.Loyalty += RollVariance(officer.LoyaltyVariance, rng);
+                officer.ShipResearch += RollVariance(officer.ShipResearchVariance, rng);
+                officer.TroopResearch += RollVariance(officer.TroopResearchVariance, rng);
+                officer.FacilityResearch += RollVariance(officer.FacilityResearchVariance, rng);
 
                 if (officer.IsKnownJedi)
                 {
@@ -222,7 +221,23 @@ namespace Rebellion.Generation
             IRandomNumberProvider rng
         )
         {
-            officer.SetSkillValue(skill, officer.GetSkillValue(skill) + rng.NextInt(0, variance));
+            officer.SetSkillValue(
+                skill,
+                officer.GetSkillValue(skill) + RollVariance(variance, rng)
+            );
+        }
+
+        /// <summary>
+        /// Returns a non-negative variance roll, returning 0 when <paramref name="variance"/>
+        /// is non-positive to avoid calling <see cref="IRandomNumberProvider.NextInt"/> with
+        /// an empty range.
+        /// </summary>
+        /// <param name="variance">Exclusive upper bound for the roll.</param>
+        /// <param name="rng">Random number provider.</param>
+        /// <returns>A value in [0, variance), or 0 when variance is non-positive.</returns>
+        private int RollVariance(int variance, IRandomNumberProvider rng)
+        {
+            return variance <= 0 ? 0 : rng.NextInt(0, variance);
         }
 
         /// <summary>

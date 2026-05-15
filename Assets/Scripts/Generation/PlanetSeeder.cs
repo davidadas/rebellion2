@@ -70,6 +70,13 @@ namespace Rebellion.Generation
             GameResourceAvailability availability
         )
         {
+            if (section?.Profiles == null || section.Profiles.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "SystemResources must define at least one profile. Check GameGenerationConfig.xml."
+                );
+            }
+
             return section.Profiles.FirstOrDefault(p => p.Availability == availability)
                 ?? section.Profiles.FirstOrDefault(p =>
                     p.Availability == GameResourceAvailability.Normal
