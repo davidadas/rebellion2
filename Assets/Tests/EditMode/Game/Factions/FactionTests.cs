@@ -297,8 +297,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(3, entries[2].Order);
         }
 
-        // --- ApplyResearchProgress ---
-
         private void SetupShipCatalog(params (string name, int order, int difficulty)[] techs)
         {
             IManufacturable[] templates = techs

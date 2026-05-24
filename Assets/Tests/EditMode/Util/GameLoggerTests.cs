@@ -26,8 +26,6 @@ namespace Rebellion.Tests.Util
                 File.Delete(_tempFile);
         }
 
-        // ── Log ──────────────────────────────────────────────────────────────
-
         [Test]
         public void Log_FileLoggingEnabled_WritesMessageToFile()
         {
@@ -95,8 +93,6 @@ namespace Rebellion.Tests.Util
             Assert.IsEmpty(File.ReadAllText(_tempFile));
         }
 
-        // ── Warning / Debug / Error ───────────────────────────────────────────
-
         [Test]
         public void Warning_FileLoggingEnabled_WritesMessageToFile()
         {
@@ -124,8 +120,6 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("debug info", File.ReadAllText(_tempFile));
         }
 
-        // ── LogFormat ─────────────────────────────────────────────────────────
-
         [Test]
         public void LogFormat_FileLoggingEnabled_WritesFormattedMessage()
         {
@@ -139,8 +133,6 @@ namespace Rebellion.Tests.Util
 
             StringAssert.Contains("Player Alice scored 42", File.ReadAllText(_tempFile));
         }
-
-        // ── LogException ──────────────────────────────────────────────────────
 
         [Test]
         public void LogException_WithException_WritesTypeAndMessage()
@@ -160,8 +152,6 @@ namespace Rebellion.Tests.Util
             StringAssert.Contains("InvalidOperationException", content);
             StringAssert.Contains("boom", content);
         }
-
-        // ── SetMinimumLevel ───────────────────────────────────────────────────
 
         [Test]
         public void SetMinimumLevel_ToError_SuppressesInfoMessages()
@@ -194,8 +184,6 @@ namespace Rebellion.Tests.Util
 
             StringAssert.Contains("should appear", File.ReadAllText(_tempFile));
         }
-
-        // ── Configure ────────────────────────────────────────────────────────
 
         [Test]
         public void Configure_FileLoggingEnabled_CreatesNewFile()

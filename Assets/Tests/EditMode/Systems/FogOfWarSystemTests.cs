@@ -954,8 +954,6 @@ namespace Rebellion.Tests.Systems
         private StubMission CreateMission(string id, Faction owner, Planet target) =>
             EntityFactory.CreateMission(id, owner.InstanceID, target.InstanceID);
 
-        // --- Partial visibility: missions ---
-
         [Test]
         public void BuildFactionView_OwnPlanet_EnemyMissionsNotVisible()
         {
@@ -1058,8 +1056,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // --- Partial visibility: enemy units visible when you have live intel ---
-
         [Test]
         public void BuildFactionView_FleetAtEnemyPlanet_EnemyOfficerVisible()
         {
@@ -1086,8 +1082,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("PALPATINE", viewCoruscant.Officers[0].InstanceID);
         }
 
-        // --- Snapshot does not reveal post-snapshot changes ---
-
         [Test]
         public void BuildFactionView_SnapshotPlanet_EntityAddedAfterSnapshot_NotVisible()
         {
@@ -1110,8 +1104,6 @@ namespace Rebellion.Tests.Systems
                 "Officer added after snapshot should not appear in the view"
             );
         }
-
-        // --- Live planet + snapshot: own stale data ignored, enemy snapshot data surfaced ---
 
         [Test]
         public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
@@ -1246,8 +1238,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("FLEET1", viewCoruscant.Fleets[0].InstanceID);
         }
 
-        // --- Blockade visibility ---
-
         [Test]
         public void BuildFactionView_BlockadedOwnPlanet_StationaryEnemyFleet_IsVisible()
         {
@@ -1332,8 +1322,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("FLEET1", viewHoth.Fleets[0].InstanceID);
         }
 
-        // --- Snapshot fleet de-duplication ---
-
         [Test]
         public void BuildFactionView_LivePlanet_OrbingEnemyFleet_NotDuplicatedFromSnapshot()
         {
@@ -1387,8 +1375,6 @@ namespace Rebellion.Tests.Systems
                 "Enemy missions must never be surfaced"
             );
         }
-
-        // --- Outer rim: support hidden in snapshots ---
 
         [Test]
         public void BuildFactionView_OuterRimSnapshot_PopularSupportHidden()

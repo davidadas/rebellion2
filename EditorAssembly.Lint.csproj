@@ -15,7 +15,24 @@
     <ProjectReference Include="GameAssembly.Lint.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="UnityEditor">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEditor.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEditor.CoreModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEditor.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Assets/Editor/**/*.cs" />
-    <Compile Include="Lint/UnityEditorStubs.cs" />
   </ItemGroup>
 </Project>

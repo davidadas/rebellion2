@@ -11,8 +11,29 @@
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.JSONSerializeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.VideoModule">
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
-    <Compile Include="Lint/UnityEngineStubs.cs" />
     <Compile Remove="Assets/Scripts/UI/**/*.cs" />
     <Compile Remove="Assets/Scripts/Core/AppBootstrap.cs" />
     <Compile Remove="Assets/Scripts/Core/GameRuntime.cs" />

@@ -76,8 +76,6 @@ namespace Rebellion.Tests.Systems
             _faction.RebuildResearchCatalog(templates);
         }
 
-        // --- Capacity refresh from core-system facilities ---
-
         [Test]
         public void ProcessTick_PulseNotReached_DoesNotAddCapacity()
         {
@@ -231,8 +229,6 @@ namespace Rebellion.Tests.Systems
             );
         }
 
-        // --- Accumulation through real facility flow ---
-
         [Test]
         public void ProcessTick_CoreSystemFacilityAcrossMultiplePulses_AccumulatesCapacity()
         {
@@ -251,8 +247,6 @@ namespace Rebellion.Tests.Systems
                 "Repeated pulses of +1 capacity should reach Frigate's difficulty of 12"
             );
         }
-
-        // --- Multi-faction isolation ---
 
         [Test]
         public void ProcessTick_MultipleFactions_IndependentCapacity()
