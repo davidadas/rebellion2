@@ -26,15 +26,17 @@ namespace Rebellion.AI.Phases
                 }
             ) { }
 
-        /// <summary>
-        /// Creates a scoring phase with the provided scorers.
-        /// </summary>
-        /// <param name="proposalScorers">Scorers used to score proposals.</param>
-        private AIScoringPhase(IEnumerable<IAIProposalScorer> proposalScorers)
+        internal AIScoringPhase(IEnumerable<IAIProposalScorer> proposalScorers)
         {
-            _proposalScorers =
-                proposalScorers?.Where(proposalScorer => proposalScorer != null).ToList()
-                ?? new List<IAIProposalScorer>();
+            if (proposalScorers == null)
+                throw new System.ArgumentNullException(nameof(proposalScorers));
+
+            _proposalScorers = proposalScorers.ToList();
+            if (_proposalScorers.Any(proposalScorer => proposalScorer == null))
+                throw new System.ArgumentException(
+                    "Scorer list cannot contain null entries.",
+                    nameof(proposalScorers)
+                );
         }
 
         /// <summary>

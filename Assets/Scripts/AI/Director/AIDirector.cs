@@ -26,9 +26,9 @@ namespace Rebellion.AI.Director
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="missions">Mission system used by mission proposals.</param>
-        /// <param name="movement">Movement system reserved for later AI phases.</param>
-        /// <param name="manufacturing">Manufacturing system reserved for later AI phases.</param>
-        /// <param name="combat">Combat system reserved for later AI phases.</param>
+        /// <param name="movement">Movement system used by movement proposals.</param>
+        /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
+        /// <param name="combat">Combat system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         public AIDirector(
             GameRoot game,

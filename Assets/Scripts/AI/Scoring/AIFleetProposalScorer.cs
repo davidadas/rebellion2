@@ -204,15 +204,15 @@ namespace Rebellion.AI.Scoring
             AIAssessment assessment = context.Assessment;
             int requiredRegimentCount = assessment.GetRequiredAttackRegimentCount(targetPlanet);
             double combatReadiness = GetFulfillmentRatio(
-                assessment.GetFleetCombatValue(fleet),
+                assessment.GetReadyFleetCombatValue(fleet),
                 assessment.GetRequiredAttackCombatStrength(targetPlanet)
             );
             double regimentReadiness = GetFulfillmentRatio(
-                assessment.GetFleetLoadedRegimentCount(fleet),
+                assessment.GetReadyFleetRegimentCount(fleet),
                 requiredRegimentCount
             );
             double transportReadiness = GetFulfillmentRatio(
-                assessment.GetFleetRegimentCapacity(fleet),
+                assessment.GetReadyFleetRegimentCapacity(fleet),
                 requiredRegimentCount
             );
 
@@ -257,17 +257,17 @@ namespace Rebellion.AI.Scoring
             AIAssessment assessment = context.Assessment;
             int requiredRegimentCount = assessment.GetRequiredAttackRegimentCount(targetPlanet);
             double combatReadiness = GetFulfillmentRatio(
-                assessment.GetFleetCombatValue(targetFleet) + capitalShip.GetCombatValue(),
+                assessment.GetReadyFleetCombatValue(targetFleet) + capitalShip.GetCombatValue(),
                 assessment.GetRequiredAttackCombatStrength(targetPlanet)
             );
             double regimentReadiness = GetFulfillmentRatio(
-                assessment.GetFleetLoadedRegimentCount(targetFleet)
-                    + capitalShip.GetCurrentRegimentCount(),
+                assessment.GetReadyFleetRegimentCount(targetFleet)
+                    + assessment.GetReadyCapitalShipRegimentCount(capitalShip),
                 requiredRegimentCount
             );
             double transportReadiness = GetFulfillmentRatio(
-                assessment.GetFleetRegimentCapacity(targetFleet)
-                    + capitalShip.GetRegimentCapacity(),
+                assessment.GetReadyFleetRegimentCapacity(targetFleet)
+                    + assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
                 requiredRegimentCount
             );
 
@@ -295,7 +295,7 @@ namespace Rebellion.AI.Scoring
                 assessment.GetRequiredAttackCombatStrength(targetPlanet)
             );
             double troopRatio = GetFulfillmentRatio(
-                assessment.GetFleetLoadedRegimentCount(fleet),
+                assessment.GetReadyFleetRegimentCount(fleet),
                 requiredRegimentCount
             );
 
@@ -376,8 +376,8 @@ namespace Rebellion.AI.Scoring
                 + assessment.GetPlanetDefenseStrength(targetPlanet)
                 + assessment.GetDefendingRegimentStrength(targetPlanet);
             int attackPressure =
-                assessment.GetFleetCombatValue(fleet)
-                + assessment.GetFleetLoadedRegimentAttackStrength(fleet);
+                assessment.GetReadyFleetCombatValue(fleet)
+                + assessment.GetReadyFleetLoadedRegimentAttackStrength(fleet);
 
             return GetPressureRatio(defensePressure, attackPressure);
         }

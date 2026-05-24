@@ -39,7 +39,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithAssemblingAttackFleet_DoesNotAssignNewAttackOrder()
+        public void Plan_WithAssemblingAttackFleet_AddsDifferentAttackOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 proposals
                     .OfType<AIFleetAttackProposal>()
                     .Any(proposal =>

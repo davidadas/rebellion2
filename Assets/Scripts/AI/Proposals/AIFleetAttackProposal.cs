@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Director;
-using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.Game.World;
-using Rebellion.Systems;
 
 namespace Rebellion.AI.Proposals
 {
@@ -243,7 +240,8 @@ namespace Rebellion.AI.Proposals
                 / 100;
             int requiredStrength = System.Math.Max(minimumStrength, defenseRequirement);
 
-            return assaultStrength >= requiredStrength && GetReadyRegimentCount() > 0;
+            return assaultStrength >= requiredStrength
+                && context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0;
         }
 
         /// <summary>
@@ -253,107 +251,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the fleet is ready to launch.</returns>
         private bool IsReadyToLaunch(AITurnContext context)
         {
-            int requiredRegimentCount = GetRequiredRegimentCount(context);
-
-            return Fleet.HasOperationalCapitalShips()
-                && Fleet.GetCombatValue() >= GetRequiredCombatStrength(context)
-                && GetReadyRegimentCount() >= requiredRegimentCount
-                && GetReadyRegimentCapacity() >= requiredRegimentCount;
-        }
-
-        /// <summary>
-        /// Returns loaded complete regiments on ships that can participate.
-        /// </summary>
-        /// <returns>The ready loaded regiment count.</returns>
-        private int GetReadyRegimentCount()
-        {
-            return Fleet
-                .CapitalShips.Where(IsReadyCapitalShip)
-                .SelectMany(ship => ship.Regiments)
-                .Count(regiment =>
-                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                );
-        }
-
-        /// <summary>
-        /// Returns ready regiment capacity on ships that can participate.
-        /// </summary>
-        /// <returns>The ready regiment capacity.</returns>
-        private int GetReadyRegimentCapacity()
-        {
-            return Fleet
-                .CapitalShips.Where(IsReadyCapitalShip)
-                .Sum(ship => ship.GetRegimentCapacity());
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship can participate in the current attack order.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the ship is ready.</returns>
-        private bool IsReadyCapitalShip(CapitalShip capitalShip)
-        {
-            return capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
-                && capitalShip.Movement == null;
-        }
-
-        /// <summary>
-        /// Returns the combat strength required for the target planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The required combat strength.</returns>
-        private int GetRequiredCombatStrength(AITurnContext context)
-        {
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            int shieldDefenseRequirement =
-                TargetPlanet.GetDefenseStrength() * config.AttackStrengthPercentOfDefense / 100;
-            int fleetDefenseRequirement =
-                GetStrongestHostileFleetStrength(context)
-                * config.AttackStrengthPercentOfStrongestHostileFleet
-                / 100;
-
-            return System.Math.Max(
-                config.MinimumAttackStrength,
-                System.Math.Max(shieldDefenseRequirement, fleetDefenseRequirement)
-            );
-        }
-
-        /// <summary>
-        /// Returns the regiment count required for the target planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The required regiment count.</returns>
-        private int GetRequiredRegimentCount(AITurnContext context)
-        {
-            return System.Math.Max(
-                1,
-                TargetPlanet.GetAllRegiments().Count
-                    + UprisingSystem.CalculateGarrisonRequirement(
-                        TargetPlanet,
-                        context.Faction,
-                        context.Game.Config.AI.Garrison
-                    )
-            );
-        }
-
-        /// <summary>
-        /// Returns the strongest hostile fleet strength at the target planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The strongest hostile fleet strength.</returns>
-        private int GetStrongestHostileFleetStrength(AITurnContext context)
-        {
-            return TargetPlanet
-                .GetFleets()
-                .Where(fleet =>
-                    fleet.GetOwnerInstanceID() != null
-                    && fleet.GetOwnerInstanceID() != context.Faction.InstanceID
-                    && fleet.Movement == null
-                )
-                .Select(fleet => fleet.GetCombatValue())
-                .DefaultIfEmpty()
-                .Max();
+            return context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
         }
 
         /// <summary>

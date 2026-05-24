@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Phases;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -37,6 +39,35 @@ namespace Rebellion.Tests.AI.Phases
                     .Proposals.OfType<AIMissionProposal>()
                     .Any(proposal => proposal.MissionType == MissionType.Diplomacy)
             );
+        }
+
+        [Test]
+        public void Execute_WithInjectedPlanner_AddsPlannerProposals()
+        {
+            TestAIProposal proposal = new TestAIProposal();
+            AIPlanningPhase phase = new AIPlanningPhase(
+                new IAIProposalPlanner[] { new TestPlanner(proposal) }
+            );
+            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+
+            phase.Execute(context);
+
+            Assert.AreSame(proposal, context.Proposals.Single());
+        }
+
+        private sealed class TestPlanner : IAIProposalPlanner
+        {
+            private readonly AIProposal _proposal;
+
+            public TestPlanner(AIProposal proposal)
+            {
+                _proposal = proposal;
+            }
+
+            public List<AIProposal> Plan(AITurnContext context)
+            {
+                return new List<AIProposal> { _proposal };
+            }
         }
     }
 }

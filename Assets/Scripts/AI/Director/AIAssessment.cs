@@ -14,8 +14,6 @@ namespace Rebellion.AI.Director
     /// </summary>
     public sealed class AIAssessment
     {
-        private const int _minimumCaptureRegimentCount = 1;
-
         private readonly AITurnContext _context;
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
@@ -445,14 +443,14 @@ namespace Rebellion.AI.Director
         public int GetRequiredAttackRegimentCount(Planet planet)
         {
             if (planet == null || _context?.Game?.Config == null || _context.Faction == null)
-                return _minimumCaptureRegimentCount;
+                return 0;
 
             return GetOrAdd(
                 _planetRequiredAttackRegimentCounts,
                 planet.InstanceID,
                 () =>
                     Math.Max(
-                        _minimumCaptureRegimentCount,
+                        _context.Game.Config.AI.FleetDeployment.MinimumCaptureRegimentCount,
                         GetPlanetRegimentCount(planet)
                             + UprisingSystem.CalculateGarrisonRequirement(
                                 planet,
@@ -522,6 +520,133 @@ namespace Rebellion.AI.Director
                 return 0;
 
             return GetOrAdd(_fleetCombatValues, fleet.InstanceID, fleet.GetCombatValue);
+        }
+
+        /// <summary>
+        /// Returns whether a fleet has enough ready force to attack a planet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>True if the fleet is ready to attack.</returns>
+        public bool IsFleetReadyToAttack(Fleet fleet, Planet targetPlanet)
+        {
+            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            return fleet?.HasOperationalCapitalShips() == true
+                && GetReadyFleetCombatValue(fleet) >= requiredCombat
+                && GetReadyFleetRegimentCount(fleet) >= requiredRegiments
+                && GetReadyFleetRegimentCapacity(fleet) >= requiredRegiments;
+        }
+
+        /// <summary>
+        /// Returns the number of attack readiness gates satisfied by a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>The satisfied readiness gate count.</returns>
+        public int GetFleetAttackReadinessGateCount(Fleet fleet, Planet targetPlanet)
+        {
+            int requiredCombat = GetRequiredAttackCombatStrength(targetPlanet);
+            int requiredRegiments = GetRequiredAttackRegimentCount(targetPlanet);
+            int gateCount = 0;
+
+            if (fleet?.HasOperationalCapitalShips() == true)
+                gateCount++;
+
+            if (GetReadyFleetCombatValue(fleet) >= requiredCombat)
+                gateCount++;
+
+            if (GetReadyFleetRegimentCount(fleet) >= requiredRegiments)
+                gateCount++;
+
+            if (GetReadyFleetRegimentCapacity(fleet) >= requiredRegiments)
+                gateCount++;
+
+            return gateCount;
+        }
+
+        /// <summary>
+        /// Returns combat value from ready units in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready combat value.</returns>
+        public int GetReadyFleetCombatValue(Fleet fleet)
+        {
+            return fleet?.GetCombatValue() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns loaded ready regiments in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready regiment count.</returns>
+        public int GetReadyFleetRegimentCount(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet
+                .CapitalShips.Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.Regiments)
+                .Count(IsReadyRegiment);
+        }
+
+        /// <summary>
+        /// Returns ready regiment capacity in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready regiment capacity.</returns>
+        public int GetReadyFleetRegimentCapacity(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet
+                .CapitalShips.Where(IsReadyCapitalShip)
+                .Sum(ship => ship.GetRegimentCapacity());
+        }
+
+        /// <summary>
+        /// Returns attack strength from ready loaded regiments in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready loaded regiment attack strength.</returns>
+        public int GetReadyFleetLoadedRegimentAttackStrength(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet
+                .CapitalShips.Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.Regiments)
+                .Where(IsReadyRegiment)
+                .Sum(regiment => regiment.AttackRating);
+        }
+
+        /// <summary>
+        /// Returns loaded ready regiments on a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>The ready regiment count.</returns>
+        public int GetReadyCapitalShipRegimentCount(CapitalShip capitalShip)
+        {
+            if (!IsReadyCapitalShip(capitalShip))
+                return 0;
+
+            return capitalShip.Regiments.Count(IsReadyRegiment);
+        }
+
+        /// <summary>
+        /// Returns ready regiment capacity on a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>The ready regiment capacity.</returns>
+        public int GetReadyCapitalShipRegimentCapacity(CapitalShip capitalShip)
+        {
+            if (!IsReadyCapitalShip(capitalShip))
+                return 0;
+
+            return capitalShip.GetRegimentCapacity();
         }
 
         /// <summary>
@@ -1089,6 +1214,20 @@ namespace Rebellion.AI.Director
         private int ScaleByPercent(int value, int percent)
         {
             return value * percent / 100;
+        }
+
+        private static bool IsReadyCapitalShip(CapitalShip capitalShip)
+        {
+            return capitalShip != null
+                && capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
+                && capitalShip.Movement == null;
+        }
+
+        private static bool IsReadyRegiment(Regiment regiment)
+        {
+            return regiment != null
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null;
         }
 
         /// <summary>

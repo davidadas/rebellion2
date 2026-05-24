@@ -17,30 +17,6 @@ namespace Rebellion.Systems
         private readonly AIDirector _director;
 
         /// <summary>
-        /// Creates an AI system without combat access.
-        /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="missionManager">The mission system.</param>
-        /// <param name="movementManager">The movement system.</param>
-        /// <param name="manufacturingManager">The manufacturing system.</param>
-        /// <param name="randomProvider">Random number provider for AI choices.</param>
-        public AISystem(
-            GameRoot game,
-            MissionSystem missionManager,
-            MovementSystem movementManager,
-            ManufacturingSystem manufacturingManager,
-            IRandomNumberProvider randomProvider
-        )
-            : this(
-                game,
-                missionManager,
-                movementManager,
-                manufacturingManager,
-                combatManager: null,
-                randomProvider
-            ) { }
-
-        /// <summary>
         /// Creates an AI system.
         /// </summary>
         /// <param name="game">The game instance.</param>

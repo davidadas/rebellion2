@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.AI.Director;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scoring;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
@@ -34,12 +35,41 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Execute_WithInjectedScorer_AssignsScore()
+        {
+            TestAIProposal proposal = new TestAIProposal();
+            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            context.AddProposal(proposal);
+            AIScoringPhase phase = new AIScoringPhase(
+                new IAIProposalScorer[] { new TestProposalScorer() }
+            );
+
+            phase.Execute(context);
+
+            Assert.IsTrue(proposal.HasScore);
+            Assert.AreEqual(42, proposal.Score);
+        }
+
+        [Test]
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
             AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
             context.AddProposal(new TestAIProposal());
 
             Assert.Throws<InvalidOperationException>(() => new AIScoringPhase().Execute(context));
+        }
+
+        private sealed class TestProposalScorer : IAIProposalScorer
+        {
+            public bool CanScore(AIProposal proposal)
+            {
+                return proposal is TestAIProposal;
+            }
+
+            public double Score(AITurnContext context, AIProposal proposal)
+            {
+                return 42;
+            }
         }
     }
 }

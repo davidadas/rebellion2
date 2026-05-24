@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 
@@ -9,12 +10,30 @@ namespace Rebellion.AI.Phases
     /// </summary>
     public sealed class AIPlanningPhase : IAITurnPhase
     {
-        private readonly List<IAIProposalPlanner> _planners = new List<IAIProposalPlanner>
+        private readonly List<IAIProposalPlanner> _planners;
+
+        public AIPlanningPhase()
+            : this(
+                new IAIProposalPlanner[]
+                {
+                    new AIMissionPlanner(),
+                    new AIFleetPlanner(),
+                    new AIProductionPlanner(),
+                }
+            ) { }
+
+        internal AIPlanningPhase(IEnumerable<IAIProposalPlanner> planners)
         {
-            new AIMissionPlanner(),
-            new AIFleetPlanner(),
-            new AIProductionPlanner(),
-        };
+            if (planners == null)
+                throw new System.ArgumentNullException(nameof(planners));
+
+            _planners = planners.ToList();
+            if (_planners.Any(planner => planner == null))
+                throw new System.ArgumentException(
+                    "Planner list cannot contain null entries.",
+                    nameof(planners)
+                );
+        }
 
         /// <summary>
         /// Runs all proposal planners for the current turn.

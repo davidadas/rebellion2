@@ -30,7 +30,6 @@ namespace Rebellion.AI.Planners
                 AddFleetProposal(context, fleet, proposals);
 
             AddCapitalShipTransferProposals(context, proposals);
-            // AddAttackFleetCreationProposals(context, proposals);
 
             return proposals;
         }
@@ -95,9 +94,6 @@ namespace Rebellion.AI.Planners
             if (!CanStartAttackOrder(fleet))
                 return;
 
-            if (HasAttackFleetStillAssembling(context))
-                return;
-
             foreach (Planet targetPlanet in context.Assessment.EnemyPlanets)
             {
                 if (HasAttackFleetForTarget(context, targetPlanet, fleet))
@@ -141,37 +137,6 @@ namespace Rebellion.AI.Planners
                 ? FleetOrderStatus.Ready
                 : FleetOrderStatus.Staging;
         }
-
-        /*
-        private void AddAttackFleetCreationProposals(
-            AITurnContext context,
-            List<AIProposal> proposals
-        )
-        {
-            if (!CanCreateAttackFleet(context))
-                return;
-
-            foreach (Planet targetPlanet in context.Assessment.EnemyPlanets)
-            {
-                if (HasAttackFleetForTarget(context, targetPlanet, null))
-                    continue;
-
-                Planet stagingPlanet = FindAttackStagingPlanet(context, targetPlanet);
-                if (stagingPlanet == null)
-                    continue;
-
-                proposals.Add(
-                    new AICreateFleetForOrderProposal(
-                        context.Faction.InstanceID,
-                        stagingPlanet,
-                        FleetOrderType.Attack,
-                        FleetOrderStatus.Building,
-                        targetPlanet
-                    )
-                );
-            }
-        }
-        */
 
         /// <summary>
         /// Adds transfer proposals that can reinforce an assembling attack fleet.
@@ -246,43 +211,6 @@ namespace Rebellion.AI.Planners
                     )
                 );
             }
-        }
-
-        /*
-        private bool CanCreateAttackFleet(AITurnContext context)
-        {
-            return context.Assessment.IdleBattleFleets.Count == 0
-                && !HasAttackFleetStillAssembling(context);
-        }
-        */
-
-        /// <summary>
-        /// Returns whether any attack fleet is still waiting for enough force.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True if an attack fleet is still assembling.</returns>
-        private bool HasAttackFleetStillAssembling(AITurnContext context)
-        {
-            foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
-            {
-                Planet targetPlanet = context.Game.GetSceneNodeByInstanceID<Planet>(
-                    fleet.Order?.TargetPlanetId
-                );
-                if (targetPlanet == null)
-                    continue;
-
-                string targetOwnerId = targetPlanet.GetOwnerInstanceID();
-                if (
-                    string.IsNullOrEmpty(targetOwnerId)
-                    || targetOwnerId == context.Faction.InstanceID
-                )
-                    continue;
-
-                if (!IsAttackReady(context, fleet, targetPlanet))
-                    return true;
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -371,7 +299,7 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            return !IsAttackReady(context, targetFleet, targetPlanet)
+            return !context.Assessment.IsFleetReadyToAttack(targetFleet, targetPlanet)
                 && !CanFillCapitalShipNeedWithProduction(context, targetFleet, targetPlanet);
         }
 
@@ -392,7 +320,10 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    GetAttackReadinessGateCount(context, candidate.Fleet, candidate.TargetPlanet)
+                    context.Assessment.GetFleetAttackReadinessGateCount(
+                        candidate.Fleet,
+                        candidate.TargetPlanet
+                    )
                 )
                 .ThenByDescending(candidate =>
                     context.Assessment.GetPlanetValue(candidate.TargetPlanet)
@@ -722,11 +653,12 @@ namespace Rebellion.AI.Planners
             int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
 
-            return targetFleet.GetCombatValue() < requiredCombat && capitalShip.GetCombatValue() > 0
-                || targetFleet.GetCurrentRegimentCount() < requiredRegiments
-                    && capitalShip.GetCurrentRegimentCount() > 0
-                || targetFleet.GetRegimentCapacity() < requiredRegiments
-                    && capitalShip.GetRegimentCapacity() > 0;
+            return context.Assessment.GetReadyFleetCombatValue(targetFleet) < requiredCombat
+                    && capitalShip.GetCombatValue() > 0
+                || context.Assessment.GetReadyFleetRegimentCount(targetFleet) < requiredRegiments
+                    && context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip) > 0
+                || context.Assessment.GetReadyFleetRegimentCapacity(targetFleet) < requiredRegiments
+                    && context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip) > 0;
         }
 
         /// <summary>
@@ -746,81 +678,28 @@ namespace Rebellion.AI.Planners
         {
             int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
             int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
-            int combatGap = System.Math.Max(0, requiredCombat - targetFleet.GetCombatValue());
+            int combatGap = System.Math.Max(
+                0,
+                requiredCombat - context.Assessment.GetReadyFleetCombatValue(targetFleet)
+            );
             int loadedRegimentGap = System.Math.Max(
                 0,
-                requiredRegiments - targetFleet.GetCurrentRegimentCount()
+                requiredRegiments - context.Assessment.GetReadyFleetRegimentCount(targetFleet)
             );
             int regimentCapacityGap = System.Math.Max(
                 0,
-                requiredRegiments - targetFleet.GetRegimentCapacity()
+                requiredRegiments - context.Assessment.GetReadyFleetRegimentCapacity(targetFleet)
             );
 
             return System.Math.Min(combatGap, capitalShip.GetCombatValue())
-                + System.Math.Min(loadedRegimentGap, capitalShip.GetCurrentRegimentCount())
-                + System.Math.Min(regimentCapacityGap, capitalShip.GetRegimentCapacity());
+                + System.Math.Min(
+                    loadedRegimentGap,
+                    context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip)
+                )
+                + System.Math.Min(
+                    regimentCapacityGap,
+                    context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip)
+                );
         }
-
-        /// <summary>
-        /// Returns whether a fleet has met the attack readiness gates.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The fleet attack target.</param>
-        /// <returns>True if the fleet is attack ready.</returns>
-        private bool IsAttackReady(AITurnContext context, Fleet fleet, Planet targetPlanet)
-        {
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
-            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
-            return fleet.HasOperationalCapitalShips()
-                && fleet.GetCombatValue() >= requiredCombat
-                && fleet.GetCurrentRegimentCount() >= requiredRegiments
-                && fleet.GetRegimentCapacity() >= requiredRegiments;
-        }
-
-        /// <summary>
-        /// Returns how many attack readiness gates the fleet currently satisfies.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The fleet attack target.</param>
-        /// <returns>The number of satisfied readiness gates.</returns>
-        private int GetAttackReadinessGateCount(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
-            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
-            int gateCount = 0;
-
-            if (fleet.HasOperationalCapitalShips())
-                gateCount++;
-
-            if (fleet.GetCombatValue() >= requiredCombat)
-                gateCount++;
-
-            if (fleet.GetCurrentRegimentCount() >= requiredRegiments)
-                gateCount++;
-
-            if (fleet.GetRegimentCapacity() >= requiredRegiments)
-                gateCount++;
-
-            return gateCount;
-        }
-
-        /*
-        private Planet FindAttackStagingPlanet(AITurnContext context, Planet targetPlanet)
-        {
-            return context
-                .Assessment.OwnedPlanets.Where(planet => planet.IsColonized && !planet.IsDestroyed)
-                .OrderBy(planet => planet.GetRawDistanceTo(targetPlanet))
-                .ThenByDescending(planet => planet.GetProductionRate(ManufacturingType.Ship))
-                .ThenByDescending(planet => planet.GetProductionRate(ManufacturingType.Troop))
-                .ThenBy(planet => planet.InstanceID)
-                .FirstOrDefault();
-        }
-        */
     }
 }

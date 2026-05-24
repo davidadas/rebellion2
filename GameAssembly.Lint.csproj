@@ -11,23 +11,38 @@
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="UnityEngine">
+    <Reference
+      Include="UnityEngine"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.AudioModule">
+    <Reference
+      Include="UnityEngine.AudioModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AudioModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AudioModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.CoreModule">
+    <Reference
+      Include="UnityEngine.CoreModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.JSONSerializeModule">
+    <Reference
+      Include="UnityEngine.JSONSerializeModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.JSONSerializeModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.JSONSerializeModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.VideoModule">
+    <Reference
+      Include="UnityEngine.VideoModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll</HintPath>
       <Private>false</Private>
     </Reference>

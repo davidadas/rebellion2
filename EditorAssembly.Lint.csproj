@@ -15,19 +15,31 @@
     <ProjectReference Include="GameAssembly.Lint.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="UnityEditor">
+    <Reference
+      Include="UnityEditor"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEditor.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEditor.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEditor.CoreModule">
+    <Reference
+      Include="UnityEditor.CoreModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEditor.CoreModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEditor.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine">
+    <Reference
+      Include="UnityEngine"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.CoreModule">
+    <Reference
+      Include="UnityEngine.CoreModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll')"
+    >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>

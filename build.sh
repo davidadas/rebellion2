@@ -4,6 +4,8 @@ set -eE
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
 ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
+GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
+EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
 
 set_dotnet_root() {
     if [ -n "$DOTNET_ROOT" ] || ! command -v dotnet >/dev/null 2>&1; then
@@ -140,7 +142,8 @@ do_lint() {
     fi
 
     echo "=== Format Rules ==="
-    dotnet format EditorAssembly.Lint.csproj --verify-no-changes --severity error
+    dotnet restore "$EDITOR_LINT_PROJECT"
+    dotnet format style "$EDITOR_LINT_PROJECT" --verify-no-changes --severity error --no-restore
     echo ""
 
     echo "=== Naming Rules ==="
@@ -153,19 +156,19 @@ do_lint() {
     # Roslynator uses a committed portable project file so it works in CI without Unity.
     # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
-    roslynator analyze GameAssembly.Lint.csproj \
+    roslynator analyze "$GAME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    roslynator analyze GameAssembly.Lint.csproj \
+    roslynator analyze "$GAME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
-    roslynator analyze EditorAssembly.Lint.csproj \
+    roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    roslynator analyze EditorAssembly.Lint.csproj \
+    roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
