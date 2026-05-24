@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 
 namespace Rebellion.Tests.Managers
 {

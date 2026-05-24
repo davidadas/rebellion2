@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,7 +33,7 @@ public sealed class StrategyController : MonoBehaviour
     [SerializeField]
     private PlanetPanel planetPanelPrefab;
 
-    // HUD text
+    // HUD text.
     [SerializeField]
     private TextMeshProUGUI tickCounterText;
 
@@ -39,7 +41,7 @@ public sealed class StrategyController : MonoBehaviour
     private TextMeshProUGUI rawMaterialsText;
 
     [SerializeField]
-    private TextMeshProUGUI refinedMaterialsText;
+    private TextMeshProUGUI maintenanceHeadroomText;
 
     [SerializeField]
     private TextMeshProUGUI maintenanceText;
@@ -94,11 +96,10 @@ public sealed class StrategyController : MonoBehaviour
         ApplyFactionUI();
         Canvas.ForceUpdateCanvases();
 
-        // Build faction-specific galaxy view using fog of war system
-        // GalaxyMap galaxy = gameManager
-        //     .GetFogOfWarSystem()
-        //     .BuildFactionView(gameManager.GetPlayerFaction());
-        GalaxyMap galaxy = gameManager.GetGame().Galaxy;
+        // Build faction-specific galaxy view using fog of war system.
+        GalaxyMap galaxy = gameManager
+            .GetFogOfWarSystem()
+            .BuildFactionView(gameManager.GetPlayerFaction());
         GalaxyCoordinateMapper mapper = new(mapViewport);
 
         galaxyView.OnSystemSelected -= HandleSystemSelected;
@@ -155,7 +156,7 @@ public sealed class StrategyController : MonoBehaviour
         gameManager.Update();
         int currentTick = gameManager.GetCurrentTick();
 
-        // Refresh galaxy view and open panels if game tick advanced
+        // Refresh galaxy view and open panels if game tick advanced.
         if (currentTick != previousTick)
         {
             RefreshGalaxyView();
@@ -217,7 +218,7 @@ public sealed class StrategyController : MonoBehaviour
 
         ApplyTextLayout(tickCounterText, hud.TickCounterTextLayout, factionColor);
         ApplyTextLayout(rawMaterialsText, hud.RawMaterialsTextLayout, factionColor);
-        ApplyTextLayout(refinedMaterialsText, hud.RefinedMaterialsTextLayout, factionColor);
+        ApplyTextLayout(maintenanceHeadroomText, hud.MaintenanceHeadroomTextLayout, factionColor);
         ApplyTextLayout(maintenanceText, hud.MaintenanceTextLayout, factionColor);
     }
 
@@ -236,13 +237,12 @@ public sealed class StrategyController : MonoBehaviour
     private void UpdateHUDValues()
     {
         Faction faction = gameManager.GetPlayerFaction();
-        GameRoot game = gameManager.GetGame();
 
         tickCounterText.text = gameManager.GetCurrentTick().ToString();
 
-        rawMaterialsText.text = game.GetRawMaterials(faction).ToString();
+        rawMaterialsText.text = faction.RawMaterials.ToString();
 
-        refinedMaterialsText.text = game.GetRefinedMaterials(faction).ToString();
+        maintenanceHeadroomText.text = faction.MaintenanceHeadroom.ToString();
 
         maintenanceText.text = faction.GetTotalMaintenanceCost().ToString();
     }

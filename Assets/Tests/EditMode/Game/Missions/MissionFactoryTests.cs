@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Systems;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -92,12 +96,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_RecruitmentWithoutProvider_ReturnsFalse()
+        public void CanCreateMission_RecruitmentWithoutProvider_ReturnsTrue()
         {
             (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 factory.CanCreateMission(MissionType.Recruitment, "empire", planet, provider: null)
             );
         }

@@ -17,6 +17,7 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <ProcessRate>4</ProcessRate>
+    <SourceDataId>3</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -34,6 +35,7 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>3</Bombardment>
     <ProcessRate>4</ProcessRate>
+    <SourceDataId>2</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -51,6 +53,7 @@
     <MaintenanceCost>13</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>4</ProcessRate>
+    <SourceDataId>1</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -68,6 +71,7 @@
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>5</Bombardment>
     <ProcessRate>5</ProcessRate>
+    <SourceDataId>1</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -85,6 +89,7 @@
     <MaintenanceCost>0</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>5</ProcessRate>
+    <SourceDataId>2</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -102,6 +107,7 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>4</Bombardment>
     <ProcessRate>2</ProcessRate>
+    <SourceDataId>5</SourceDataId>
     <ResearchOrder>1</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
   </Building>
@@ -119,6 +125,7 @@
     <MaintenanceCost>20</MaintenanceCost>
     <Bombardment>2</Bombardment>
     <ProcessRate>2</ProcessRate>
+    <SourceDataId>4</SourceDataId>
     <ResearchOrder>5</ResearchOrder>
     <ResearchDifficulty>60</ResearchDifficulty>
   </Building>
@@ -136,6 +143,7 @@
     <MaintenanceCost>10</MaintenanceCost>
     <Bombardment>4</Bombardment>
     <ProcessRate>2</ProcessRate>
+    <SourceDataId>6</SourceDataId>
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
@@ -159,6 +167,7 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>LNR</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
+    <SourceDataId>2</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -178,6 +187,7 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>40</ShieldStrength>
     <DefenseFacilityClass>Shield</DefenseFacilityClass>
+    <SourceDataId>3</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -198,6 +208,7 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>KDY</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
+    <SourceDataId>1</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Building>
@@ -217,6 +228,7 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>DeathStarShield</DefenseFacilityClass>
+    <SourceDataId>4</SourceDataId>
     <ResearchOrder>3</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
   </Building>
@@ -237,6 +249,7 @@
     <ShieldStrength>0</ShieldStrength>
     <DefenseFacilityClass>LNR</DefenseFacilityClass>
     <ProductionModifier>42</ProductionModifier>
+    <SourceDataId>5</SourceDataId>
     <ResearchOrder>4</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
@@ -256,6 +269,7 @@
     <WeaponPower>0</WeaponPower>
     <ShieldStrength>80</ShieldStrength>
     <DefenseFacilityClass>Shield</DefenseFacilityClass>
+    <SourceDataId>6</SourceDataId>
     <ResearchOrder>6</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Building>

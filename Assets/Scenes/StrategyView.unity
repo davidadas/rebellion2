@@ -971,7 +971,7 @@ GameObject:
   - component: {fileID: 1002214893}
   - component: {fileID: 1002214892}
   m_Layer: 0
-  m_Name: RefinedMaterialsText
+  m_Name: MaintenanceHeadroomText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1970,7 +1970,7 @@ MonoBehaviour:
   planetPanelPrefab: {fileID: 9025928735717063813, guid: 22c3f7c77a1324a6aa622a1e34ef1636, type: 3}
   tickCounterText: {fileID: 182832744}
   rawMaterialsText: {fileID: 1232911401}
-  refinedMaterialsText: {fileID: 1002214892}
+  maintenanceHeadroomText: {fileID: 1002214892}
   maintenanceText: {fileID: 188368747}
 --- !u!114 &1863660325
 MonoBehaviour:

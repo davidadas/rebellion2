@@ -1,0 +1,90 @@
+using System;
+using Rebellion.Util.Serialization;
+
+namespace Rebellion.Game.Factions
+{
+    /// <summary>
+    /// Defines faction-specific gameplay settings.
+    /// These settings affect game mechanics for all players controlling this faction,
+    /// not just AI behavior.
+    /// </summary>
+    [PersistableObject]
+    public class FactionSettings
+    {
+        private int _refinementMultiplier = 50;
+        private int _garrisonEfficiency = 1;
+        private int _troopEffectiveness = 1;
+        private int _uprisingResistance = 1;
+
+        /// <summary>
+        /// Multiplier applied when converting raw/refined production into material supply.
+        /// Must be >= 1.
+        /// </summary>
+        public int RefinementMultiplier
+        {
+            get => _refinementMultiplier;
+            set => _refinementMultiplier = Math.Max(1, value);
+        }
+
+        /// <summary>
+        /// Garrison requirement divisor on core systems.
+        /// Higher values mean fewer troops needed (2 = half garrison required).
+        /// Alliance: 1 (normal), Empire: 2 (halved on core worlds).
+        /// Must be >= 1.
+        /// </summary>
+        public int GarrisonEfficiency
+        {
+            get => _garrisonEfficiency;
+            set => _garrisonEfficiency = Math.Max(1, value);
+        }
+
+        /// <summary>
+        /// Hostile troop weight multiplier in support calculations.
+        /// Higher values mean enemy troops count for more when evaluating support.
+        /// Alliance: 1 (normal), Empire: 2 (troops count double).
+        /// Must be >= 1.
+        /// </summary>
+        public int TroopEffectiveness
+        {
+            get => _troopEffectiveness;
+            set => _troopEffectiveness = Math.Max(1, value);
+        }
+
+        /// <summary>
+        /// Uprising resistance multiplier.
+        /// Higher values mean the faction is better at suppressing uprisings.
+        /// Alliance: 1 (normal), Empire: 2 (double effectiveness).
+        /// Must be >= 1.
+        /// </summary>
+        public int UprisingResistance
+        {
+            get => _uprisingResistance;
+            set => _uprisingResistance = Math.Max(1, value);
+        }
+
+        /// <summary>
+        /// Whether support shift calculations are inverted for this faction.
+        /// Alliance: false (normal), Empire: true (inverted).
+        /// </summary>
+        public bool InvertSupportShift { get; set; } = false;
+
+        /// <summary>
+        /// Condition under which the weak support penalty triggers.
+        /// Alliance: Positive (penalty when shift > 0), Empire: Negative (penalty when shift &lt; 0).
+        /// </summary>
+        public SupportShiftCondition WeakSupportPenaltyTrigger { get; set; } =
+            SupportShiftCondition.Positive;
+    }
+
+    /// <summary>
+    /// Determines when the weak support penalty applies to a faction.
+    /// </summary>
+    public enum SupportShiftCondition
+    {
+        /// <summary>Penalty triggers when support shift is positive.</summary>
+        Positive,
+
+        /// <summary>Penalty triggers when support shift is negative.</summary>
+        Negative,
+    }
+}

@@ -2,7 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -586,7 +591,7 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
 
@@ -640,7 +645,7 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
 
@@ -834,6 +839,34 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_DetectionSucceedsWithoutCaptureTable_UsesConfiguredDefault()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability = 100;
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = null;
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured, "Officer should use default capture probability");
+            Assert.IsTrue(
+                results.Any(r => r is OfficerCaptureStateResult),
+                "Should produce OfficerCaptureStateResult"
+            );
+        }
+
+        [Test]
         public void UpdateMission_DetectionOnOwnPlanet_NeverDetected()
         {
             (GameRoot game, Planet planet, Officer spy, MovementSystem movement) = BuildScene(
@@ -896,6 +929,7 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
+            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
@@ -983,6 +1017,7 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
+            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 0 }, { 200, 100 } }
             );
@@ -1023,6 +1058,7 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
+            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
@@ -1119,7 +1155,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement, fog);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             system.InitiateMission(
                 MissionType.Research,

@@ -1,24 +1,22 @@
 using System;
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Metadata about the game, such as save name, player faction, last saved time, and version.
+    /// Metadata about the game (e.g. save game name, player id, etc).
     /// </summary>
     [PersistableObject]
     public sealed class GameMetadata
     {
+        public const int CurrentSaveVersion = 1;
+
         public string SaveDisplayName;
 
         public string PlayerFactionID;
 
         public DateTime LastSavedUtc;
 
-        /// <summary>
-        /// Schema version of the save file. Stamped on save, checked on load.
-        /// See <see cref="Rebellion.Util.Serialization.SaveSchema"/>.
-        /// </summary>
         public int SaveVersion;
     }
 }

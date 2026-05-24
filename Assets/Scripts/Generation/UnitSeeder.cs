@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -22,78 +24,32 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Deploy(
-                ctx.Systems,
-                ctx.Factions,
+            UnitFactory factory = new UnitFactory(
                 ctx.Regiments,
                 ctx.Starfighters,
                 ctx.CapitalShips,
-                ctx.Config,
-                ctx.Classification,
-                ctx.GameConfig,
-                ctx.Rng,
-                (int)ctx.Summary.GalaxySize,
-                (int)ctx.Summary.Difficulty,
-                ctx.Summary.PlayerFactionID
+                ctx.SpecialForces
             );
+            UnitDeploymentSection config = ctx.Config.UnitDeployment;
+            Dictionary<string, Planet> planetMap = BuildPlanetMap(ctx.Systems);
+
+            SeedLowSupportGarrisons(ctx.Systems, config, ctx.Config.GalaxyClassification, factory);
+            DeployFixedGarrisons(config.FixedGarrisons, planetMap, ctx.Classification, factory);
+            DeployFixedFleets(config.FixedFleets, planetMap, factory, ctx.Factions, ctx.Rng);
+            DeployBudgetUnits(ctx, factory, config);
         }
 
         /// <summary>
-        /// Runs the full unit deployment pipeline across all systems.
+        /// Builds a planet lookup keyed by instance ID.
         /// </summary>
-        /// <param name="systems">All planet systems in the galaxy.</param>
-        /// <param name="factions">All factions in the game.</param>
-        /// <param name="regimentTemplates">Regiment templates to clone from.</param>
-        /// <param name="fighterTemplates">Starfighter templates to clone from.</param>
-        /// <param name="shipTemplates">Capital-ship templates to clone from.</param>
-        /// <param name="rules">Generation rules containing garrison, fleet, and budget config.</param>
-        /// <param name="classification">Galaxy classification result with HQ and bucket mappings.</param>
-        /// <param name="gameConfig">Game config for production and maintenance multipliers.</param>
-        /// <param name="rng">Random number provider.</param>
-        /// <param name="galaxySize">Galaxy size index.</param>
-        /// <param name="difficulty">Difficulty index.</param>
-        /// <param name="playerFactionID">The player's faction ID, used for AI budget scaling.</param>
-        private void Deploy(
-            PlanetSystem[] systems,
-            Faction[] factions,
-            Regiment[] regimentTemplates,
-            Starfighter[] fighterTemplates,
-            CapitalShip[] shipTemplates,
-            GameGenerationConfig rules,
-            GalaxyClassificationResult classification,
-            GameConfig gameConfig,
-            IRandomNumberProvider rng,
-            int galaxySize,
-            int difficulty,
-            string playerFactionID
-        )
+        /// <param name="systems">All planet systems to scan.</param>
+        /// <returns>Planets keyed by instance ID.</returns>
+        private Dictionary<string, Planet> BuildPlanetMap(PlanetSystem[] systems)
         {
-            UnitFactory factory = new UnitFactory(
-                regimentTemplates,
-                fighterTemplates,
-                shipTemplates
-            );
-            UnitDeploymentSection config = rules.UnitDeployment;
-
-            Dictionary<string, Planet> planetMap = systems
+            return systems
                 .SelectMany(s => s.Planets)
                 .Where(p => p.InstanceID != null)
                 .ToDictionary(p => p.InstanceID);
-
-            DeployUprisingPreventionGarrisons(systems, config, rules.GalaxyClassification, factory);
-            DeployFixedGarrisons(config.FixedGarrisons, planetMap, classification, factory);
-            DeployFixedFleets(config.FixedFleets, planetMap, factory, factions, rng);
-            DeployBudgetUnits(
-                systems,
-                factions,
-                config.FactionBudgets,
-                factory,
-                gameConfig,
-                rng,
-                galaxySize,
-                difficulty,
-                playerFactionID
-            );
         }
 
         /// <summary>
@@ -104,19 +60,14 @@ namespace Rebellion.Generation
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
         /// <param name="gcConfig">Galaxy classification config with per-faction garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
-        private void DeployUprisingPreventionGarrisons(
+        private void SeedLowSupportGarrisons(
             PlanetSystem[] systems,
             UnitDeploymentSection config,
             GalaxyClassificationSection gcConfig,
             UnitFactory factory
         )
         {
-            Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
-            foreach (FactionSetup setup in gcConfig.FactionSetups)
-            {
-                if (!string.IsNullOrEmpty(setup.GarrisonTroopTypeID))
-                    garrisonTroopMap[setup.FactionID] = setup.GarrisonTroopTypeID;
-            }
+            Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(gcConfig);
 
             foreach (PlanetSystem system in systems)
             {
@@ -149,6 +100,23 @@ namespace Rebellion.Generation
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Builds a faction-to-garrison-troop lookup from generation config.
+        /// </summary>
+        /// <param name="config">Galaxy classification config.</param>
+        /// <returns>Garrison troop TypeIDs keyed by faction ID.</returns>
+        private Dictionary<string, string> BuildGarrisonTroopMap(GalaxyClassificationSection config)
+        {
+            Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
+            foreach (FactionSetup setup in config.FactionSetups)
+            {
+                if (!string.IsNullOrEmpty(setup.GarrisonTroopTypeID))
+                    garrisonTroopMap[setup.FactionID] = setup.GarrisonTroopTypeID;
+            }
+
+            return garrisonTroopMap;
         }
 
         /// <summary>
@@ -262,78 +230,140 @@ namespace Rebellion.Generation
         /// rolled from a weighted table and placed on random owned core planets
         /// until the budget is exhausted.
         /// </summary>
-        /// <param name="systems">All planet systems (for maintenance and planet queries).</param>
-        /// <param name="factions">All factions in the game.</param>
-        /// <param name="budgets">Per-faction budget configs with unit tables and budget levels.</param>
+        /// <param name="ctx">The generation context.</param>
         /// <param name="factory">Unit factory for creating and costing unit instances.</param>
-        /// <param name="gameConfig">Game config for the refinement multiplier.</param>
-        /// <param name="rng">Random number provider.</param>
-        /// <param name="galaxySize">Galaxy size index for budget level lookup.</param>
-        /// <param name="difficulty">Difficulty index for budget level lookup.</param>
-        /// <param name="playerFactionID">Player's faction ID for AI budget scaling.</param>
+        /// <param name="config">Unit deployment config.</param>
         private void DeployBudgetUnits(
-            PlanetSystem[] systems,
-            Faction[] factions,
-            List<FactionBudget> budgets,
+            GenerationContext ctx,
             UnitFactory factory,
-            GameConfig gameConfig,
-            IRandomNumberProvider rng,
-            int galaxySize,
-            int difficulty,
-            string playerFactionID
+            UnitDeploymentSection config
         )
         {
-            foreach (FactionBudget budget in budgets)
+            foreach (FactionBudget budget in config.FactionBudgets)
             {
-                Faction faction = factions.FirstOrDefault(f => f.InstanceID == budget.FactionID);
+                Faction faction = ctx.Factions.FirstOrDefault(f =>
+                    f.InstanceID == budget.FactionID
+                );
                 if (faction == null)
                     continue;
 
-                int deployBudget = CalculateDeployBudget(
-                    systems,
-                    faction,
-                    budget,
-                    gameConfig,
-                    galaxySize,
-                    difficulty,
-                    playerFactionID
-                );
+                int deployBudget = CalculateDeployBudget(ctx, faction, budget, config);
                 if (deployBudget <= 0)
                     continue;
 
-                List<Planet> ownedCorePlanets = systems
-                    .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
-                    .SelectMany(s => s.Planets)
-                    .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
-                    .ToList();
+                List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Systems, faction);
 
                 if (ownedCorePlanets.Count == 0)
                     continue;
 
-                WeightedTable<List<UnitEntry>> unitTable = new WeightedTable<List<UnitEntry>>(
-                    budget.UnitTable.ConvertAll(e => (e.CumulativeWeight, e.Units)),
-                    rollMin: 1,
-                    rollMax: 101,
-                    fallbackToLast: true
-                );
+                WeightedTable<List<UnitEntry>> unitTable = BuildBudgetUnitTable(budget);
 
                 while (deployBudget > 0)
                 {
-                    List<UnitEntry> rolledUnits = unitTable.Roll(rng);
-                    if (rolledUnits == null || rolledUnits.Count == 0)
-                        break;
-
-                    int totalCost = rolledUnits.Sum(e =>
-                        factory.GetMaintenanceCost(e.TypeID) * e.Count
+                    bool deployed = TryDeployBudgetRoll(
+                        ctx,
+                        unitTable,
+                        ownedCorePlanets,
+                        faction,
+                        factory,
+                        ref deployBudget
                     );
-                    deployBudget -= totalCost;
-                    if (deployBudget < 0)
+                    if (!deployed)
                         break;
-
-                    Planet targetPlanet = ownedCorePlanets[rng.NextInt(0, ownedCorePlanets.Count)];
-                    DeployRolledUnits(targetPlanet, rolledUnits, faction, factory);
                 }
             }
+        }
+
+        /// <summary>
+        /// Rolls one budget deployment and places it if the remaining budget can pay for it.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        /// <param name="unitTable">Weighted unit table for the faction.</param>
+        /// <param name="targetPlanets">Planets eligible to receive rolled units.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="factory">Unit factory for creating and costing unit instances.</param>
+        /// <param name="deployBudget">Remaining deployment budget.</param>
+        /// <returns>True when a roll was deployed and the loop may continue.</returns>
+        private bool TryDeployBudgetRoll(
+            GenerationContext ctx,
+            WeightedTable<List<UnitEntry>> unitTable,
+            List<Planet> targetPlanets,
+            Faction faction,
+            UnitFactory factory,
+            ref int deployBudget
+        )
+        {
+            List<UnitEntry> rolledUnits = unitTable.Roll(ctx.Rng);
+            if (rolledUnits == null || rolledUnits.Count == 0)
+                return false;
+
+            int totalCost = CalculateRolledMaintenanceCost(rolledUnits, factory);
+            if (totalCost <= 0 || totalCost > deployBudget)
+                return false;
+
+            deployBudget -= totalCost;
+            DeployRolledUnits(
+                SelectBudgetTargetPlanet(targetPlanets, ctx.Rng),
+                rolledUnits,
+                faction,
+                factory
+            );
+            return true;
+        }
+
+        /// <summary>
+        /// Calculates the maintenance cost for a rolled unit bundle.
+        /// </summary>
+        /// <param name="entries">Rolled unit entries.</param>
+        /// <param name="factory">Unit factory used to look up maintenance costs.</param>
+        /// <returns>The total maintenance cost.</returns>
+        private int CalculateRolledMaintenanceCost(List<UnitEntry> entries, UnitFactory factory)
+        {
+            return entries.Sum(e => factory.GetMaintenanceCost(e.TypeID) * e.Count);
+        }
+
+        /// <summary>
+        /// Selects the planet that receives a budget deployment roll.
+        /// </summary>
+        /// <param name="targetPlanets">Planets eligible to receive rolled units.</param>
+        /// <param name="rng">Random number provider.</param>
+        /// <returns>The selected target planet.</returns>
+        private Planet SelectBudgetTargetPlanet(
+            List<Planet> targetPlanets,
+            IRandomNumberProvider rng
+        )
+        {
+            return targetPlanets[rng.NextInt(0, targetPlanets.Count)];
+        }
+
+        /// <summary>
+        /// Returns owned, colonized core planets for a faction.
+        /// </summary>
+        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="faction">The faction whose planets are returned.</param>
+        /// <returns>Owned, colonized core planets.</returns>
+        private List<Planet> GetOwnedCorePlanets(PlanetSystem[] systems, Faction faction)
+        {
+            return systems
+                .Where(s => s.SystemType == PlanetSystemType.CoreSystem)
+                .SelectMany(s => s.Planets)
+                .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds the weighted unit deployment table for a faction budget.
+        /// </summary>
+        /// <param name="budget">The faction budget configuration.</param>
+        /// <returns>The weighted unit table.</returns>
+        private WeightedTable<List<UnitEntry>> BuildBudgetUnitTable(FactionBudget budget)
+        {
+            return new WeightedTable<List<UnitEntry>>(
+                budget.UnitTable.ConvertAll(e => (e.CumulativeWeight, e.Units)),
+                rollMin: 1,
+                rollMax: 101,
+                fallbackToLast: true
+            );
         }
 
         /// <summary>
@@ -341,58 +371,101 @@ namespace Rebellion.Generation
         /// capacity. Selects the appropriate budget level from config using galaxy size,
         /// difficulty, and whether the faction is AI-controlled.
         /// </summary>
-        /// <param name="systems">All planet systems (for maintenance capacity calculation).</param>
+        /// <param name="ctx">The generation context.</param>
         /// <param name="faction">The faction to calculate budget for.</param>
         /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="gameConfig">Game config for the refinement multiplier.</param>
-        /// <param name="galaxySize">Galaxy size index for budget level lookup.</param>
-        /// <param name="difficulty">Difficulty index for budget level lookup.</param>
-        /// <param name="playerFactionID">Player's faction ID to determine AI status.</param>
+        /// <param name="config">Unit deployment config.</param>
         /// <returns>The deployment budget in maintenance cost units.</returns>
         private int CalculateDeployBudget(
-            PlanetSystem[] systems,
+            GenerationContext ctx,
             Faction faction,
             FactionBudget budget,
-            GameConfig gameConfig,
-            int galaxySize,
-            int difficulty,
-            string playerFactionID
+            UnitDeploymentSection config
         )
         {
-            bool isAI = playerFactionID != null && faction.InstanceID != playerFactionID;
-            int effectiveDifficulty = difficulty >= 2 ? 1 : difficulty;
+            bool isAI =
+                ctx.Summary.PlayerFactionID != null
+                && faction.InstanceID != ctx.Summary.PlayerFactionID;
+            int effectiveDifficulty = ResolveBudgetDifficulty(config, (int)ctx.Summary.Difficulty);
+            BudgetLevel level = ResolveBudgetLevel(
+                budget,
+                (int)ctx.Summary.GalaxySize,
+                effectiveDifficulty,
+                isAI
+            );
+            int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Systems, faction);
+            int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Systems, faction.InstanceID);
+            int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
 
-            BudgetLevel level =
-                budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize
-                    && b.Difficulty == effectiveDifficulty
-                    && b.IsAI == isAI
+            return availableCapacity * level.Percentage / 100;
+        }
+
+        /// <summary>
+        /// Resolves the budget difficulty used by unit deployment.
+        /// </summary>
+        /// <param name="config">Unit deployment config.</param>
+        /// <param name="difficulty">Requested game difficulty.</param>
+        /// <returns>The mapped budget difficulty.</returns>
+        private int ResolveBudgetDifficulty(UnitDeploymentSection config, int difficulty)
+        {
+            BudgetDifficultyMapping mapping = config.BudgetDifficultyMappings?.FirstOrDefault(m =>
+                m.Difficulty == difficulty
+            );
+
+            return mapping?.BudgetDifficulty ?? difficulty;
+        }
+
+        /// <summary>
+        /// Resolves the budget level that best matches the generation parameters.
+        /// </summary>
+        /// <param name="budget">The faction budget configuration.</param>
+        /// <param name="galaxySize">Galaxy size index.</param>
+        /// <param name="difficulty">Difficulty index.</param>
+        /// <param name="isAI">Whether the faction is AI-controlled.</param>
+        /// <returns>The selected budget level.</returns>
+        private BudgetLevel ResolveBudgetLevel(
+            FactionBudget budget,
+            int galaxySize,
+            int difficulty,
+            bool isAI
+        )
+        {
+            return budget.BudgetLevels.FirstOrDefault(b =>
+                    b.GalaxySize == galaxySize && b.Difficulty == difficulty && b.IsAI == isAI
                 )
                 ?? budget.BudgetLevels.FirstOrDefault(b =>
                     b.GalaxySize == galaxySize && b.Difficulty == -1
                 )
                 ?? budget.BudgetLevels.FirstOrDefault(b => b.GalaxySize == galaxySize)
                 ?? budget.BudgetLevels[0];
+        }
 
-            int refinementMultiplier = gameConfig.Production.RefinementMultiplier;
-            List<Planet> allOwnedPlanets = systems
-                .SelectMany(s => s.Planets)
-                .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
-                .ToList();
+        /// <summary>
+        /// Calculates a faction's starting maintenance capacity from owned resources.
+        /// </summary>
+        /// <param name="systems">All planet systems to scan.</param>
+        /// <param name="faction">The faction to calculate capacity for.</param>
+        /// <returns>The starting maintenance capacity.</returns>
+        private int CalculateMaintenanceCapacity(PlanetSystem[] systems, Faction faction)
+        {
+            int refinementMultiplier = faction.Settings.RefinementMultiplier;
+            return systems
+                    .SelectMany(s => s.Planets)
+                    .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
+                    .Sum(GetPlanetMaintenanceCapacity) * refinementMultiplier;
+        }
 
-            int maintenanceCapacity =
-                allOwnedPlanets.Sum(p =>
-                {
-                    int resourceNodes = p.NumRawResourceNodes;
-                    int mines = p.GetRawMinedResources();
-                    int refineries = p.GetRawRefinementCapacity();
-                    return Math.Min(Math.Min(resourceNodes, mines), refineries);
-                }) * refinementMultiplier;
-
-            int maintenanceUsed = CalculateDeployedMaintenanceCost(systems, faction.InstanceID);
-            int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
-
-            return availableCapacity * level.Percentage / 100;
+        /// <summary>
+        /// Gets the maintenance capacity contributed by one planet before faction multiplier.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The planet's maintenance capacity.</returns>
+        private static int GetPlanetMaintenanceCapacity(Planet planet)
+        {
+            int resourceNodes = planet.NumRawResourceNodes;
+            int mines = planet.GetRawMinedResources();
+            int refineries = planet.GetRawRefinementCapacity();
+            return Math.Min(Math.Min(resourceNodes, mines), refineries);
         }
 
         /// <summary>
@@ -412,9 +485,37 @@ namespace Rebellion.Generation
             UnitFactory factory
         )
         {
-            List<CapitalShip> shipsForFleet = new List<CapitalShip>();
-            List<Starfighter> cargoFighters = new List<Starfighter>();
-            List<Regiment> cargoRegiments = new List<Regiment>();
+            (
+                List<CapitalShip> capitalShips,
+                List<Starfighter> starfighters,
+                List<Regiment> regiments,
+                List<SpecialForces> specialForces
+            ) = CreateRolledUnits(entries, faction, factory);
+
+            if (capitalShips.Count > 0)
+                DeployToFleets(planet, faction, capitalShips, starfighters, regiments);
+            else
+                DeployPlanetUnits(planet, starfighters, regiments, specialForces);
+        }
+
+        /// <summary>
+        /// Creates units for a rolled budget table entry and groups them by deployment role.
+        /// </summary>
+        /// <param name="entries">Unit entries rolled from the weighted table.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="factory">Unit factory for creating unit instances.</param>
+        /// <returns>Created capital ships, starfighters, regiments, and special forces.</returns>
+        private (
+            List<CapitalShip> capitalShips,
+            List<Starfighter> starfighters,
+            List<Regiment> regiments,
+            List<SpecialForces> specialForces
+        ) CreateRolledUnits(List<UnitEntry> entries, Faction faction, UnitFactory factory)
+        {
+            List<CapitalShip> capitalShips = new List<CapitalShip>();
+            List<Starfighter> starfighters = new List<Starfighter>();
+            List<Regiment> regiments = new List<Regiment>();
+            List<SpecialForces> specialForces = new List<SpecialForces>();
 
             foreach (UnitEntry entry in entries)
             {
@@ -422,47 +523,90 @@ namespace Rebellion.Generation
                 {
                     ISceneNode unit = factory.Create(entry.TypeID, faction.InstanceID);
                     if (unit is CapitalShip ship)
-                        shipsForFleet.Add(ship);
-                    else if (unit is Regiment reg)
-                        cargoRegiments.Add(reg);
-                    else if (unit is Starfighter sf)
-                        cargoFighters.Add(sf);
+                        capitalShips.Add(ship);
+                    else if (unit is Regiment regiment)
+                        regiments.Add(regiment);
+                    else if (unit is Starfighter starfighter)
+                        starfighters.Add(starfighter);
+                    else if (unit is SpecialForces specialForce)
+                        specialForces.Add(specialForce);
                 }
             }
 
-            if (shipsForFleet.Count > 0)
+            return (capitalShips, starfighters, regiments, specialForces);
+        }
+
+        /// <summary>
+        /// Deploys capital ships to an existing or newly created fleet.
+        /// </summary>
+        /// <param name="planet">The planet receiving the fleet units.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="capitalShips">Capital ships to attach to a fleet.</param>
+        /// <param name="starfighters">Starfighters to load as cargo.</param>
+        /// <param name="regiments">Regiments to load as cargo.</param>
+        private void DeployToFleets(
+            Planet planet,
+            Faction faction,
+            List<CapitalShip> capitalShips,
+            List<Starfighter> starfighters,
+            List<Regiment> regiments
+        )
+        {
+            AttachUnitsToShip(capitalShips[0], starfighters, regiments);
+
+            Fleet existingFleet = planet
+                .GetFleets()
+                .FirstOrDefault(f => f.OwnerInstanceID == faction.InstanceID);
+
+            if (existingFleet != null)
             {
-                CapitalShip cargoShip = shipsForFleet[0];
-                foreach (Starfighter fighter in cargoFighters)
-                    cargoShip.AddChild(fighter);
-                foreach (Regiment troop in cargoRegiments)
-                    cargoShip.AddChild(troop);
-
-                Fleet existingFleet = planet
-                    .GetFleets()
-                    .FirstOrDefault(f => f.OwnerInstanceID == faction.InstanceID);
-
-                if (existingFleet != null)
-                {
-                    foreach (CapitalShip ship in shipsForFleet)
-                        existingFleet.AddChild(ship);
-                }
-                else
-                {
-                    Fleet newFleet = faction.CreateFleet(
-                        shipsForFleet.ToArray(),
-                        FleetRoleType.Battle
-                    );
-                    planet.AddChild(newFleet);
-                }
+                foreach (CapitalShip ship in capitalShips)
+                    existingFleet.AddChild(ship);
+                return;
             }
-            else
-            {
-                foreach (Regiment troop in cargoRegiments)
-                    planet.AddChild(troop);
-                foreach (Starfighter fighter in cargoFighters)
-                    planet.AddChild(fighter);
-            }
+
+            Fleet newFleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
+            planet.AddChild(newFleet);
+        }
+
+        /// <summary>
+        /// Attaches starfighters and regiments to a capital ship.
+        /// </summary>
+        /// <param name="ship">The ship receiving cargo.</param>
+        /// <param name="starfighters">Starfighters to load.</param>
+        /// <param name="regiments">Regiments to load.</param>
+        private void AttachUnitsToShip(
+            CapitalShip ship,
+            List<Starfighter> starfighters,
+            List<Regiment> regiments
+        )
+        {
+            foreach (Starfighter starfighter in starfighters)
+                ship.AddChild(starfighter);
+            foreach (Regiment regiment in regiments)
+                ship.AddChild(regiment);
+        }
+
+        /// <summary>
+        /// Deploys non-fleet rolled units directly to the planet.
+        /// </summary>
+        /// <param name="planet">The planet receiving the units.</param>
+        /// <param name="starfighters">Starfighters to place.</param>
+        /// <param name="regiments">Regiments to place.</param>
+        /// <param name="specialForces">Special forces to place.</param>
+        private void DeployPlanetUnits(
+            Planet planet,
+            List<Starfighter> starfighters,
+            List<Regiment> regiments,
+            List<SpecialForces> specialForces
+        )
+        {
+            foreach (Regiment regiment in regiments)
+                planet.AddChild(regiment);
+            foreach (SpecialForces specialForce in specialForces)
+                planet.AddChild(specialForce);
+            foreach (Starfighter starfighter in starfighters)
+                planet.AddChild(starfighter);
         }
 
         /// <summary>
@@ -485,10 +629,7 @@ namespace Rebellion.Generation
 
                     foreach (ISceneNode child in planet.GetChildren())
                     {
-                        if (child is Building)
-                            continue;
-                        if (child is IManufacturable m)
-                            total += m.GetMaintenanceCost();
+                        total += GetPlanetChildMaintenanceCost(child);
                     }
 
                     foreach (Fleet fleet in planet.GetFleets())
@@ -497,15 +638,7 @@ namespace Rebellion.Generation
                             continue;
                         foreach (ISceneNode ship in fleet.GetChildren())
                         {
-                            if (ship is IManufacturable ms)
-                            {
-                                total += ms.GetMaintenanceCost();
-                                foreach (ISceneNode cargo in ship.GetChildren())
-                                {
-                                    if (cargo is IManufacturable mc)
-                                        total += mc.GetMaintenanceCost();
-                                }
-                            }
+                            total += GetShipAndCargoMaintenanceCost(ship);
                         }
                     }
                 }
@@ -514,8 +647,43 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
+        /// Gets maintenance cost for a direct planet child during generation budgeting.
+        /// </summary>
+        /// <param name="child">The planet child to inspect.</param>
+        /// <returns>The maintenance cost, or 0 for non-unit children.</returns>
+        private static int GetPlanetChildMaintenanceCost(ISceneNode child)
+        {
+            if (child is Building)
+                return 0;
+
+            return child is IManufacturable manufacturable
+                ? manufacturable.GetMaintenanceCost()
+                : 0;
+        }
+
+        /// <summary>
+        /// Gets maintenance cost for a ship and its loaded cargo.
+        /// </summary>
+        /// <param name="ship">The fleet child to inspect.</param>
+        /// <returns>The ship and cargo maintenance cost.</returns>
+        private static int GetShipAndCargoMaintenanceCost(ISceneNode ship)
+        {
+            if (ship is not IManufacturable manufacturable)
+                return 0;
+
+            int total = manufacturable.GetMaintenanceCost();
+            foreach (ISceneNode cargo in ship.GetChildren())
+            {
+                if (cargo is IManufacturable cargoManufacturable)
+                    total += cargoManufacturable.GetMaintenanceCost();
+            }
+
+            return total;
+        }
+
+        /// <summary>
         /// Encapsulates unit template lookups and the create-and-initialize boilerplate.
-        /// Holds regiment, starfighter, and capital ship template dictionaries and provides
+        /// Holds unit template dictionaries and provides
         /// a single Create method that clones, sets ownership, and marks as complete.
         /// </summary>
         private class UnitFactory
@@ -523,8 +691,14 @@ namespace Rebellion.Generation
             private readonly Dictionary<string, Regiment> _regimentMap;
             private readonly Dictionary<string, Starfighter> _fighterMap;
             private readonly Dictionary<string, CapitalShip> _shipMap;
+            private readonly Dictionary<string, SpecialForces> _specialForcesMap;
 
-            public UnitFactory(Regiment[] regiments, Starfighter[] fighters, CapitalShip[] ships)
+            public UnitFactory(
+                Regiment[] regiments,
+                Starfighter[] fighters,
+                CapitalShip[] ships,
+                SpecialForces[] specialForces
+            )
             {
                 _regimentMap = regiments
                     .GroupBy(r => r.TypeID)
@@ -533,6 +707,9 @@ namespace Rebellion.Generation
                     .GroupBy(s => s.TypeID)
                     .ToDictionary(g => g.Key, g => g.First());
                 _shipMap = ships.GroupBy(s => s.TypeID).ToDictionary(g => g.Key, g => g.First());
+                _specialForcesMap = specialForces
+                    .GroupBy(s => s.TypeID)
+                    .ToDictionary(g => g.Key, g => g.First());
             }
 
             /// <summary>
@@ -540,7 +717,7 @@ namespace Rebellion.Generation
             /// </summary>
             /// <param name="typeID">The template TypeID to look up.</param>
             /// <param name="ownerID">The faction ID to assign as owner.</param>
-            /// <returns>The created unit, or null if the TypeID was not found in any template map.</returns>
+            /// <returns>The created unit.</returns>
             public ISceneNode Create(string typeID, string ownerID)
             {
                 if (_shipMap.TryGetValue(typeID, out CapitalShip shipTemplate))
@@ -570,14 +747,25 @@ namespace Rebellion.Generation
                     return sf;
                 }
 
-                return null;
+                if (_specialForcesMap.TryGetValue(typeID, out SpecialForces specialForcesTemplate))
+                {
+                    SpecialForces specialForces = specialForcesTemplate.GetDeepCopy();
+                    specialForces.SetOwnerInstanceID(ownerID);
+                    specialForces.ManufacturingStatus = ManufacturingStatus.Complete;
+                    specialForces.Movement = null;
+                    return specialForces;
+                }
+
+                throw new InvalidOperationException(
+                    $"Unit type '{typeID}' is not present in generation unit templates."
+                );
             }
 
             /// <summary>
             /// Returns the maintenance cost for a unit type without creating an instance.
             /// </summary>
             /// <param name="typeID">The template TypeID to look up.</param>
-            /// <returns>The maintenance cost, or 1 if the TypeID was not found.</returns>
+            /// <returns>The maintenance cost.</returns>
             public int GetMaintenanceCost(string typeID)
             {
                 if (_shipMap.TryGetValue(typeID, out CapitalShip ship))
@@ -586,7 +774,12 @@ namespace Rebellion.Generation
                     return reg.MaintenanceCost;
                 if (_fighterMap.TryGetValue(typeID, out Starfighter sf))
                     return sf.MaintenanceCost;
-                return 1;
+                if (_specialForcesMap.TryGetValue(typeID, out SpecialForces specialForces))
+                    return specialForces.MaintenanceCost;
+
+                throw new InvalidOperationException(
+                    $"Unit type '{typeID}' is not present in generation unit templates."
+                );
             }
         }
     }

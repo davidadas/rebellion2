@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game;
+using Rebellion.Game.World;
 
 namespace Rebellion.Generation
 {
@@ -16,7 +16,7 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            Apply(ctx.Systems, ctx.Config.Balance, ctx.GameConfig.Planet.MaxPopularSupport);
+            Apply(ctx.Systems, ctx.Config.Balance);
         }
 
         /// <summary>
@@ -24,42 +24,68 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="balance">Balance-pass tuning values from generation config.</param>
-        /// <param name="maxSupport">The maximum popular-support value the game allows.</param>
-        private void Apply(PlanetSystem[] systems, BalanceSection balance, int maxSupport)
+        private void Apply(PlanetSystem[] systems, BalanceSection balance)
         {
             foreach (PlanetSystem system in systems)
             {
                 foreach (Planet planet in system.Planets)
-                {
-                    if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
-                    {
-                        planet.SetPopularSupport(planet.OwnerInstanceID, maxSupport, maxSupport);
-                    }
-
-                    if (!string.IsNullOrEmpty(planet.OwnerInstanceID))
-                    {
-                        int militaryPresence =
-                            planet.GetRegimentCount()
-                            + planet.GetFleets().Count
-                            + planet.GetStarfighterCount();
-
-                        if (militaryPresence > 0)
-                        {
-                            int currentSupport = planet.GetPopularSupport(planet.OwnerInstanceID);
-                            int boost = Math.Min(
-                                militaryPresence * balance.SupportBoostPerUnit,
-                                balance.MaxMilitaryPresenceBoost
-                            );
-                            int newSupport = Math.Min(maxSupport, currentSupport + boost);
-                            planet.SetPopularSupport(
-                                planet.OwnerInstanceID,
-                                newSupport,
-                                maxSupport
-                            );
-                        }
-                    }
-                }
+                    ApplyPlanetSupportAdjustments(planet, balance);
             }
+        }
+
+        /// <summary>
+        /// Applies all post-seeding support adjustments to one planet.
+        /// </summary>
+        /// <param name="planet">The planet to adjust.</param>
+        /// <param name="balance">Balance-pass tuning values.</param>
+        private void ApplyPlanetSupportAdjustments(Planet planet, BalanceSection balance)
+        {
+            PinHeadquartersSupport(planet);
+            ApplyMilitaryPresenceSupportBoost(planet, balance);
+        }
+
+        /// <summary>
+        /// Pins headquarters support to the maximum for its owner.
+        /// </summary>
+        /// <param name="planet">The planet to adjust.</param>
+        private void PinHeadquartersSupport(Planet planet)
+        {
+            if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
+                planet.SetFullPopularSupport(planet.OwnerInstanceID);
+        }
+
+        /// <summary>
+        /// Applies the military-presence popular-support boost to an owned planet.
+        /// </summary>
+        /// <param name="planet">The planet to adjust.</param>
+        /// <param name="balance">Balance-pass tuning values.</param>
+        private void ApplyMilitaryPresenceSupportBoost(Planet planet, BalanceSection balance)
+        {
+            if (string.IsNullOrEmpty(planet.OwnerInstanceID))
+                return;
+
+            int militaryPresence = GetMilitaryPresence(planet);
+            if (militaryPresence <= 0)
+                return;
+
+            int currentSupport = planet.GetPopularSupport(planet.OwnerInstanceID);
+            int boost = Math.Min(
+                militaryPresence * balance.SupportBoostPerUnit,
+                balance.MaxMilitaryPresenceBoost
+            );
+            planet.SetPopularSupport(planet.OwnerInstanceID, currentSupport + boost);
+        }
+
+        /// <summary>
+        /// Gets the seeded military presence count on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The number of present military units or fleets.</returns>
+        private static int GetMilitaryPresence(Planet planet)
+        {
+            return planet.GetRegimentCount()
+                + planet.GetFleets().Count
+                + planet.GetStarfighterCount();
         }
     }
 }

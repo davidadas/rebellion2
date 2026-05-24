@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.World;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Generation
@@ -17,9 +19,7 @@ namespace Rebellion.Tests.Generation
         ) BuildScene()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary() };
-            game.SetConfig(
-                new GameConfig { Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 } }
-            );
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
@@ -82,9 +82,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_RimPlanetWithoutOverride_NoSnapshotForOtherFactions()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary() };
-            game.SetConfig(
-                new GameConfig { Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 } }
-            );
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
             game.Factions.Add(empire);
@@ -117,9 +115,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_VisibilityOverride_CapturesSnapshotForListedFaction()
         {
             GameRoot game = new GameRoot { Summary = new GameSummary() };
-            game.SetConfig(
-                new GameConfig { Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 } }
-            );
+            game.SetConfig(new GameConfig { Planet = new GameConfig.PlanetConfig() });
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             Faction alliance = new Faction { InstanceID = "FNALL1" };
             game.Factions.Add(empire);

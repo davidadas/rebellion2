@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -45,14 +48,11 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Checks if a faction's HQ has been captured.
-        /// HQ capture = planet ownership changed to enemy faction.
-        /// For Conquest mode, also requires all main characters to be captured.
         /// </summary>
         /// <param name="defender">The faction to check for HQ capture.</param>
         /// <returns>A victory result if the HQ was captured, or null.</returns>
         private VictoryResult CheckHQCapture(Faction defender)
         {
-            // Get the defender's HQ planet via Faction.HQInstanceID
             string hqInstanceId = defender.GetHQInstanceID();
             if (string.IsNullOrEmpty(hqInstanceId))
                 return null;
@@ -61,33 +61,27 @@ namespace Rebellion.Systems
             if (hqPlanet == null)
                 return null;
 
-            // Check if HQ is now owned by a different faction
             string currentOwner = hqPlanet.GetOwnerInstanceID();
 
-            // No capture if still owned by defender or unowned
             if (currentOwner == null || currentOwner == defender.InstanceID)
             {
                 return null;
             }
 
-            // HQ has been captured - find the capturing faction
             Faction attacker = _game.Factions.FirstOrDefault(f => f.InstanceID == currentOwner);
             if (attacker == null)
                 return null;
 
-            // Check victory mode
             GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
 
             if (victoryMode == GameVictoryCondition.Conquest)
             {
-                // Conquest mode: also check if all main characters are captured
                 if (!CheckAllMainCharactersCaptured(defender))
                 {
-                    return null; // HQ captured but leaders still free
+                    return null;
                 }
             }
 
-            // Victory condition met
             return new VictoryResult
             {
                 Winner = attacker,
@@ -109,11 +103,9 @@ namespace Rebellion.Systems
                 .Where(o => o.GetOwnerInstanceID() == faction.InstanceID && o.IsMain)
                 .ToList();
 
-            // If no main characters exist, treat as captured (prevents softlock)
             if (mainCharacters.Count == 0)
                 return true;
 
-            // All main characters must be captured
             return mainCharacters.All(o => o.IsCaptured);
         }
     }

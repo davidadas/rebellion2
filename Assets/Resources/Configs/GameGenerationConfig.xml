@@ -7,12 +7,9 @@
       <Large>11</Large>
     </NumInitialOfficers>
   </Officers>
-  <!-- Galaxy Classification: bucket percentages from SDPRTB params 7680/7681.
-       These vary by player faction AND difficulty level.
-       The AI faction gets more strong planets on harder difficulties.
-       Values extracted verbatim from sdpr.json. -->
+  <!-- Starting planet strength distribution by player faction and difficulty. -->
   <GalaxyClassification>
-    <!-- Per-faction setup: starting planets, garrison troop types, etc. -->
+    <!-- Starting planet and garrison setup by faction. -->
     <FactionSetups>
       <FactionSetup>
         <FactionID>FNALL1</FactionID>
@@ -23,12 +20,12 @@
             <IsHeadquarters>false</IsHeadquarters>
             <Loyalty>100</Loyalty>
             <PickFromRim>false</PickFromRim>
-            <!-- Empire can see Yavin at game start (original setup_rim_system behavior) -->
+            <!-- Factions that can see this planet at game start. -->
             <VisibleToFactionIDs>
               <FactionID>FNEMP1</FactionID>
             </VisibleToFactionIDs>
           </StartingPlanet>
-          <!-- Alliance HQ: randomly picked from rim planets -->
+          <!-- Alliance headquarters is randomly picked from rim planets. -->
           <StartingPlanet>
             <IsHeadquarters>true</IsHeadquarters>
             <Loyalty>100</Loyalty>
@@ -50,7 +47,7 @@
       </FactionSetup>
     </FactionSetups>
     <Profiles>
-      <!-- Player=Alliance, Easy: both sides equal -->
+      <!-- Alliance player on Easy. -->
       <DifficultyProfile>
         <Name>Alliance_Easy</Name>
         <PlayerFactionID>FNALL1</PlayerFactionID>
@@ -68,7 +65,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Player=Alliance, Medium: Empire (AI) gets advantage -->
+      <!-- Alliance player on Medium. -->
       <DifficultyProfile>
         <Name>Alliance_Medium</Name>
         <PlayerFactionID>FNALL1</PlayerFactionID>
@@ -86,7 +83,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Player=Alliance, Hard: Empire (AI) gets strong advantage -->
+      <!-- Alliance player on Hard. -->
       <DifficultyProfile>
         <Name>Alliance_Hard</Name>
         <PlayerFactionID>FNALL1</PlayerFactionID>
@@ -104,7 +101,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Player=Empire, Easy: both sides equal -->
+      <!-- Empire player on Easy. -->
       <DifficultyProfile>
         <Name>Empire_Easy</Name>
         <PlayerFactionID>FNEMP1</PlayerFactionID>
@@ -122,7 +119,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Player=Empire, Medium: Alliance (AI) gets advantage -->
+      <!-- Empire player on Medium. -->
       <DifficultyProfile>
         <Name>Empire_Medium</Name>
         <PlayerFactionID>FNEMP1</PlayerFactionID>
@@ -140,7 +137,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Player=Empire, Hard: Alliance (AI) gets strong advantage -->
+      <!-- Empire player on Hard. -->
       <DifficultyProfile>
         <Name>Empire_Hard</Name>
         <PlayerFactionID>FNEMP1</PlayerFactionID>
@@ -158,7 +155,7 @@
           </FactionBucketConfig>
         </FactionBuckets>
       </DifficultyProfile>
-      <!-- Fallback: balanced (multiplayer / unknown) -->
+      <!-- Fallback profile for unspecified setup. -->
       <DifficultyProfile>
         <Name>Default</Name>
         <Difficulty>-1</Difficulty>
@@ -177,12 +174,7 @@
       </DifficultyProfile>
     </Profiles>
   </GalaxyClassification>
-  <!-- System Resources: dice formulas from original disassembly.
-       Core energy: roll(4) + 10, clamp(0,15)
-       Rim energy: roll(9) + roll(4) + 1, clamp(0,15)
-       Core raw: roll(9) + 5, clamp(0,15), then clamp to energy
-       Rim raw: roll(14) + 1, clamp(0,15), then clamp to energy
-       Rim colonization: GENERAL_PARAM_7731 = 31 -->
+  <!-- Resource ranges by availability setting. -->
   <SystemResources>
     <Profiles>
       <SystemResourceProfile>
@@ -271,24 +263,7 @@
       </SystemResourceProfile>
     </Profiles>
   </SystemResources>
-  <!-- System Support: formulas from original disassembly.
-       StrongAlliance: roll(random) + base (SIDE_PARAM_CAT15_7682/7683_ALLIANCE)
-       StrongEmpire: 100 - (roll(random) + base) (SIDE_PARAM_CAT15_7682/7683_EMPIRE) — inverted
-       WeakAlliance: roll(random) + base (SIDE_PARAM_CAT15_7684/7685_ALLIANCE)
-       WeakEmpire: 100 - (roll(random) + base) (SIDE_PARAM_CAT15_7684/7685_EMPIRE) — inverted
-       Neutral: roll(base) + (50 - base/2) where base = GENERAL_PARAM_7764
-       Confirmed values from SDPRTB params 7682-7685 and GNPRTB param 7764:
-       Strong Alliance = 60 + roll(30) => 60-90  (SDPRTB 7682/7683)
-       Weak Alliance = 20 + roll(30) => 20-50    (SDPRTB 7684/7685)
-       Strong Empire = 100 - (60 + roll(30)) = 10-40
-       Weak Empire = 100 - (20 + roll(30)) = 50-80
-       Neutral = roll(18) + 41 => 41-59           (GNPRTB 7764=18) -->
-  <!-- System Support: formulas per bucket strength.
-       Strong: support for the owning faction = base + roll(random) = 60-90
-       Weak: support for the owning faction = base + roll(random) = 20-50
-       Neutral: support for first faction = base + roll(random) = 41-59
-       Remainder is distributed evenly among other factions.
-       Original values from SDPRTB params 7682-7685 and GNPRTB param 7764. -->
+  <!-- Starting support ranges by system strength. -->
   <SystemSupport>
     <Strong>
       <Base>60</Base>
@@ -304,18 +279,7 @@
     </Neutral>
     <RimSupportRandom>0</RimSupportRandom>
   </SystemSupport>
-  <!-- Facility Generation: from original disassembly.
-       Core mine multiplier = 4 (GENERAL_PARAM_CAT15_7766)
-       Rim mine multiplier = 2 (GENERAL_PARAM_CAT15_7767)
-       SYFCCR_TABLE (Core):
-         0-36: Refinery (BDFA05)
-         37-79: Orbital Shipyard (BDFA03)
-         80-82: Training Facility (BDFA02)
-         83-85: Construction Yard (BDFA01)
-         86-88: GenCore Level I (BDDF02)
-         89-96: LNR Series I (BDDF01)
-         97-99: KDY-150 (BDDF03)
-       SYFCRM_TABLE (Rim): same weights per disassembly comment -->
+  <!-- Facility and infrastructure placement tables. -->
   <FacilityGeneration>
     <CoreMineMultiplier>4</CoreMineMultiplier>
     <RimMineMultiplier>2</RimMineMultiplier>
@@ -323,131 +287,127 @@
     <CoreFacilityTable>
       <WeightedFacilityEntry>
         <CumulativeWeight>36</CumulativeWeight>
-        <!-- Refinery -->
+        <!-- Refinery. -->
         <TypeID>BDFA05</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>79</CumulativeWeight>
-        <!-- Orbital Shipyard -->
+        <!-- Orbital Shipyard. -->
         <TypeID>BDFA03</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>82</CumulativeWeight>
-        <!-- Training Facility -->
+        <!-- Training Facility. -->
         <TypeID>BDFA02</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>85</CumulativeWeight>
-        <!-- Construction Yard -->
+        <!-- Construction Yard. -->
         <TypeID>BDFA01</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>88</CumulativeWeight>
-        <!-- GenCore Level I -->
+        <!-- GenCore Level I. -->
         <TypeID>BDDF02</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>96</CumulativeWeight>
-        <!-- LNR Series I -->
+        <!-- LNR Series I. -->
         <TypeID>BDDF01</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
-        <CumulativeWeight>99</CumulativeWeight>
-        <!-- KDY-150 -->
+        <CumulativeWeight>100</CumulativeWeight>
+        <!-- KDY-150. -->
         <TypeID>BDDF03</TypeID>
       </WeightedFacilityEntry>
     </CoreFacilityTable>
-    <!-- SYFCRM table from syfcrm.json: rim systems heavily favor refineries -->
+    <!-- Rim facility table. -->
     <RimFacilityTable>
       <WeightedFacilityEntry>
         <CumulativeWeight>91</CumulativeWeight>
-        <!-- Refinery -->
+        <!-- Refinery. -->
         <TypeID>BDFA05</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>96</CumulativeWeight>
-        <!-- Orbital Shipyard -->
+        <!-- Orbital Shipyard. -->
         <TypeID>BDFA03</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>97</CumulativeWeight>
-        <!-- Training Facility -->
+        <!-- Training Facility. -->
         <TypeID>BDFA02</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>98</CumulativeWeight>
-        <!-- Construction Yard -->
+        <!-- Construction Yard. -->
         <TypeID>BDFA01</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>99</CumulativeWeight>
-        <!-- GenCore Level I -->
+        <!-- GenCore Level I. -->
         <TypeID>BDDF02</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>100</CumulativeWeight>
-        <!-- LNR Series I -->
+        <!-- LNR Series I. -->
         <TypeID>BDDF01</TypeID>
       </WeightedFacilityEntry>
-      <!-- KDY-150 absent from rim table per syfcrm.json -->
+      <!-- Rim systems do not start with KDY-150 defenses. -->
     </RimFacilityTable>
     <HQLoadouts>
-      <!-- Coruscant: FACLCR table, one group, guarantees a Construction Yard. -->
+      <!-- Coruscant fixed facilities. -->
       <HQFacilityLoadout>
         <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
         <FacilityTypeIDs>
+          <!-- Construction Yard. -->
           <string>BDFA01</string>
-          <!-- Construction Yard -->
         </FacilityTypeIDs>
       </HQFacilityLoadout>
-      <!-- Alliance HQ (dynamically picked rim planet): FACLHQ table, groups 1..2.
-           Group 1's Alliance HQ building is represented by the IsHeadquarters flag. -->
+      <!-- Alliance headquarters fixed facilities. -->
       <HQFacilityLoadout>
         <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
         <FactionID>FNALL1</FactionID>
         <FacilityTypeIDs>
+          <!-- Mine. -->
           <string>BDFA04</string>
-          <!-- Mine -->
+          <!-- Refinery. -->
           <string>BDFA05</string>
-          <!-- Refinery -->
+          <!-- Construction Yard. -->
           <string>BDFA01</string>
-          <!-- Construction Yard -->
+          <!-- GenCore Level I. -->
           <string>BDDF02</string>
-          <!-- GenCore Level I -->
         </FacilityTypeIDs>
       </HQFacilityLoadout>
     </HQLoadouts>
   </FacilityGeneration>
-  <!-- Unit Deployment: from original disassembly.
-       Uprising prevention: support < 60 triggers garrison placement
-       Fixed garrisons from disassembly:
-         Yavin: 2x Alliance Army, 1x X-wing, 1x Y-wing
-         Alliance HQ: 2x Alliance Army, 1x Alliance Fleet, 4x X-wing, 2x Y-wing
-         Coruscant: 6x Stormtrooper, 10x TIE Fighter
-       Fixed fleets:
-         Yavin fleet (50% chance): not decoded (export failed)
-         Coruscant fleet: 1x ISD, 6x TIE, 3x Stormtrooper
-       Budget deployment: maintenance-based loop with weighted unit tables -->
+  <!-- Starting unit, fleet, and deployment budget tables. -->
   <UnitDeployment>
     <UprisingPreventionThreshold>60</UprisingPreventionThreshold>
     <SupportDeficitPerGarrisonTroop>10</SupportDeficitPerGarrisonTroop>
+    <BudgetDifficultyMappings>
+      <BudgetDifficultyMapping>
+        <Difficulty>2</Difficulty>
+        <BudgetDifficulty>1</BudgetDifficulty>
+      </BudgetDifficultyMapping>
+    </BudgetDifficultyMappings>
     <FixedGarrisons>
       <FixedGarrison>
         <PlanetInstanceID>YAVIN</PlanetInstanceID>
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
-            <!-- Alliance Army Regiment -->
+            <!-- Alliance Army Regiment. -->
             <TypeID>REAL002</TypeID>
             <Count>2</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- X-Wing -->
+            <!-- X-Wing. -->
             <TypeID>SFAL02</TypeID>
             <Count>1</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- Y-Wing -->
+            <!-- Y-Wing. -->
             <TypeID>SFAL01</TypeID>
             <Count>1</Count>
           </UnitEntry>
@@ -458,22 +418,22 @@
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
-            <!-- Alliance Army Regiment -->
+            <!-- Alliance Army Regiment. -->
             <TypeID>REAL002</TypeID>
             <Count>2</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- Alliance Fleet Regiment -->
+            <!-- Alliance Fleet Regiment. -->
             <TypeID>REAL001</TypeID>
             <Count>1</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- X-Wing -->
+            <!-- X-Wing. -->
             <TypeID>SFAL02</TypeID>
             <Count>4</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- Y-Wing -->
+            <!-- Y-Wing. -->
             <TypeID>SFAL01</TypeID>
             <Count>2</Count>
           </UnitEntry>
@@ -484,12 +444,12 @@
         <FactionID>FNEMP1</FactionID>
         <Units>
           <UnitEntry>
-            <!-- Stormtrooper Regiment -->
+            <!-- Stormtrooper Regiment. -->
             <TypeID>REEM003</TypeID>
             <Count>6</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- TIE Fighter -->
+            <!-- TIE Fighter. -->
             <TypeID>SFEM01</TypeID>
             <Count>10</Count>
           </UnitEntry>
@@ -503,40 +463,39 @@
         <SpawnChancePct>100</SpawnChancePct>
         <Ships>
           <UnitEntry>
-            <!-- Imperial Star Destroyer -->
+            <!-- Imperial Star Destroyer. -->
             <TypeID>CSEM006</TypeID>
             <Count>1</Count>
           </UnitEntry>
         </Ships>
         <Cargo>
           <UnitEntry>
-            <!-- TIE Fighter -->
+            <!-- TIE Fighter. -->
             <TypeID>SFEM01</TypeID>
             <Count>6</Count>
           </UnitEntry>
           <UnitEntry>
-            <!-- Stormtrooper Regiment -->
+            <!-- Stormtrooper Regiment. -->
             <TypeID>REEM003</TypeID>
             <Count>3</Count>
           </UnitEntry>
         </Cargo>
       </FixedFleet>
-      <!-- CMUNAFTB: Yavin fleet, 50% spawn chance (Step 5 in original pipeline)
-           Dominant composition (99%): Medium Transport + 2x Alliance Fleet Regiment -->
+      <!-- Yavin starting fleet. -->
       <FixedFleet>
         <PlanetInstanceID>YAVIN</PlanetInstanceID>
         <FactionID>FNALL1</FactionID>
         <SpawnChancePct>50</SpawnChancePct>
         <Ships>
           <UnitEntry>
-            <!-- Medium Transport -->
+            <!-- Medium Transport. -->
             <TypeID>ALCS003</TypeID>
             <Count>1</Count>
           </UnitEntry>
         </Ships>
         <Cargo>
           <UnitEntry>
-            <!-- Alliance Fleet Regiment -->
+            <!-- Alliance Fleet Regiment. -->
             <TypeID>REAL001</TypeID>
             <Count>2</Count>
           </UnitEntry>
@@ -546,11 +505,9 @@
     <FactionBudgets>
       <FactionBudget>
         <FactionID>FNALL1</FactionID>
-        <!-- SDPRTB params 5168-5170: budget % by difficulty and player/AI role.
-             Easy: equal budgets for both sides.
-             Medium/Hard: AI faction gets higher budget, player gets lower. -->
+        <!-- Budget percentage by galaxy size, difficulty, and AI/player role. -->
         <BudgetLevels>
-          <!-- Easy: equal budgets (33/25/20) -->
+          <!-- Easy role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>0</Difficulty>
@@ -566,7 +523,7 @@
             <Difficulty>0</Difficulty>
             <Percentage>20</Percentage>
           </BudgetLevel>
-          <!-- Medium/Hard as player faction (25/20/15) -->
+          <!-- Player role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>1</Difficulty>
@@ -582,7 +539,7 @@
             <Difficulty>1</Difficulty>
             <Percentage>15</Percentage>
           </BudgetLevel>
-          <!-- Medium/Hard as AI faction (38/30/25) -->
+          <!-- AI role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>1</Difficulty>
@@ -603,24 +560,12 @@
           </BudgetLevel>
         </BudgetLevels>
         <UnitTable>
-          <!-- CMUNALTB from cmunal.json:
-               1: Bulk Cruiser (CSAL002)
-               2-9: Alliance Escort Carrier (ALCS005) + X-Wing (SFAL02) + Y-Wing (SFAL01)
-               10-13: Corellian Corvette (ALCS006)
-               14-27: Medium Transport (ALCS003) + 2x Alliance Army (REAL002)
-               28-36: X-Wing (SFAL02)
-               37-40: Y-Wing (SFAL01)
-               41-54: Alliance Fleet Regiment (REAL001)
-               55-58: Alliance Army Regiment (REAL002)
-               59-89: Guerrillas (SPAL001)
-               90: Infiltrators (SPAL002)
-               91-93: Longprobe Y-wing Recon (SPAL003)
-               94-97: Bothan Spies (SPAL004) -->
+          <!-- Alliance budget unit table. -->
           <WeightedUnitEntry>
             <CumulativeWeight>1</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Bulk Cruiser -->
+                <!-- Bulk Cruiser. -->
                 <TypeID>CSAL002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -630,17 +575,17 @@
             <CumulativeWeight>9</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Alliance Escort Carrier -->
+                <!-- Alliance Escort Carrier. -->
                 <TypeID>ALCS005</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- X-Wing -->
+                <!-- X-Wing. -->
                 <TypeID>SFAL02</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Y-Wing -->
+                <!-- Y-Wing. -->
                 <TypeID>SFAL01</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -650,7 +595,7 @@
             <CumulativeWeight>13</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Corellian Corvette -->
+                <!-- Corellian Corvette. -->
                 <TypeID>ALCS006</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -660,12 +605,12 @@
             <CumulativeWeight>27</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Medium Transport -->
+                <!-- Medium Transport. -->
                 <TypeID>ALCS003</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Alliance Army Regiment -->
+                <!-- Alliance Army Regiment. -->
                 <TypeID>REAL002</TypeID>
                 <Count>2</Count>
               </UnitEntry>
@@ -675,7 +620,7 @@
             <CumulativeWeight>36</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- X-Wing -->
+                <!-- X-Wing. -->
                 <TypeID>SFAL02</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -685,7 +630,7 @@
             <CumulativeWeight>40</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Y-Wing -->
+                <!-- Y-Wing. -->
                 <TypeID>SFAL01</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -695,7 +640,7 @@
             <CumulativeWeight>54</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Alliance Fleet Regiment -->
+                <!-- Alliance Fleet Regiment. -->
                 <TypeID>REAL001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -705,7 +650,7 @@
             <CumulativeWeight>58</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Alliance Army Regiment -->
+                <!-- Alliance Army Regiment. -->
                 <TypeID>REAL002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -715,7 +660,7 @@
             <CumulativeWeight>89</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Guerrillas -->
+                <!-- Guerrillas. -->
                 <TypeID>SPAL001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -725,7 +670,7 @@
             <CumulativeWeight>90</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Infiltrators -->
+                <!-- Infiltrators. -->
                 <TypeID>SPAL002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -735,7 +680,7 @@
             <CumulativeWeight>93</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Longprobe Y-wing Recon -->
+                <!-- Longprobe Y-wing Recon. -->
                 <TypeID>SPAL003</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -745,7 +690,7 @@
             <CumulativeWeight>97</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Bothan Spies -->
+                <!-- Bothan Spies. -->
                 <TypeID>SPAL004</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -755,9 +700,9 @@
       </FactionBudget>
       <FactionBudget>
         <FactionID>FNEMP1</FactionID>
-        <!-- SDPRTB params 5168-5170: same structure as Alliance — role-based, not faction-based -->
+        <!-- Budget percentage by galaxy size, difficulty, and AI/player role. -->
         <BudgetLevels>
-          <!-- Easy: equal budgets (33/25/20) -->
+          <!-- Easy role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>0</Difficulty>
@@ -773,7 +718,7 @@
             <Difficulty>0</Difficulty>
             <Percentage>20</Percentage>
           </BudgetLevel>
-          <!-- Medium/Hard as player faction (25/20/15) -->
+          <!-- Player role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>1</Difficulty>
@@ -789,7 +734,7 @@
             <Difficulty>1</Difficulty>
             <Percentage>15</Percentage>
           </BudgetLevel>
-          <!-- Medium/Hard as AI faction (38/30/25) -->
+          <!-- AI role budget by small, medium, and large galaxy size. -->
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
             <Difficulty>1</Difficulty>
@@ -810,24 +755,12 @@
           </BudgetLevel>
         </BudgetLevels>
         <UnitTable>
-          <!-- CMUNEMTB from cmunem.json:
-               1: Carrack Light Cruiser (CSEM004)
-               2-9: Victory Destroyer (CSEM005) + Imperial Fleet (REEM001) + TIE (SFEM01)
-               10-20: ISD (CSEM006) + 2x Stormtrooper (REEM003) + 2x TIE (SFEM01)
-               21-24: Dreadnaught (CSEM001) + Imperial Fleet (REEM001) + TIE (SFEM01)
-               25-29: Galleon (CSEM002) + 2x Imperial Fleet (REEM001)
-               30-39: TIE Fighter (SFEM01)
-               40-61: Stormtrooper Regiment (REEM003)
-               62-69: Imperial Army Regiment (REEM002)
-               70-84: Imperial Probe Droid (SPEM001)
-               85-89: Imperial Espionage Droid (SPEM002)
-               90-94: Imperial Commandos (SPEM003)
-               95-98: Noghri Death Commandos (SPEM004) -->
+          <!-- Empire budget unit table. -->
           <WeightedUnitEntry>
             <CumulativeWeight>1</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Carrack Light Cruiser -->
+                <!-- Carrack Light Cruiser. -->
                 <TypeID>CSEM004</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -837,17 +770,17 @@
             <CumulativeWeight>9</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Victory Destroyer -->
+                <!-- Victory Destroyer. -->
                 <TypeID>CSEM005</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Imperial Fleet Regiment -->
+                <!-- Imperial Fleet Regiment. -->
                 <TypeID>REEM001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- TIE Fighter -->
+                <!-- TIE Fighter. -->
                 <TypeID>SFEM01</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -857,17 +790,17 @@
             <CumulativeWeight>20</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Imperial Star Destroyer -->
+                <!-- Imperial Star Destroyer. -->
                 <TypeID>CSEM006</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Stormtrooper Regiment -->
+                <!-- Stormtrooper Regiment. -->
                 <TypeID>REEM003</TypeID>
                 <Count>2</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- TIE Fighter -->
+                <!-- TIE Fighter. -->
                 <TypeID>SFEM01</TypeID>
                 <Count>2</Count>
               </UnitEntry>
@@ -877,17 +810,17 @@
             <CumulativeWeight>24</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Dreadnaught -->
+                <!-- Dreadnaught. -->
                 <TypeID>CSEM001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Imperial Fleet Regiment -->
+                <!-- Imperial Fleet Regiment. -->
                 <TypeID>REEM001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- TIE Fighter -->
+                <!-- TIE Fighter. -->
                 <TypeID>SFEM01</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -897,12 +830,12 @@
             <CumulativeWeight>29</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Galleon -->
+                <!-- Galleon. -->
                 <TypeID>CSEM002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
               <UnitEntry>
-                <!-- Imperial Fleet Regiment -->
+                <!-- Imperial Fleet Regiment. -->
                 <TypeID>REEM001</TypeID>
                 <Count>2</Count>
               </UnitEntry>
@@ -912,7 +845,7 @@
             <CumulativeWeight>39</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- TIE Fighter -->
+                <!-- TIE Fighter. -->
                 <TypeID>SFEM01</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -922,7 +855,7 @@
             <CumulativeWeight>61</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Stormtrooper Regiment -->
+                <!-- Stormtrooper Regiment. -->
                 <TypeID>REEM003</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -932,7 +865,7 @@
             <CumulativeWeight>69</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Imperial Army Regiment -->
+                <!-- Imperial Army Regiment. -->
                 <TypeID>REEM002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -942,7 +875,7 @@
             <CumulativeWeight>84</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Imperial Probe Droid -->
+                <!-- Imperial Probe Droid. -->
                 <TypeID>SPEM001</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -952,7 +885,7 @@
             <CumulativeWeight>89</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Imperial Espionage Droid -->
+                <!-- Imperial Espionage Droid. -->
                 <TypeID>SPEM002</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -962,7 +895,7 @@
             <CumulativeWeight>94</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Imperial Commandos -->
+                <!-- Imperial Commandos. -->
                 <TypeID>SPEM003</TypeID>
                 <Count>1</Count>
               </UnitEntry>
@@ -972,7 +905,7 @@
             <CumulativeWeight>98</CumulativeWeight>
             <Units>
               <UnitEntry>
-                <!-- Noghri Death Commandos -->
+                <!-- Noghri Death Commandos. -->
                 <TypeID>SPEM004</TypeID>
                 <Count>1</Count>
               </UnitEntry>

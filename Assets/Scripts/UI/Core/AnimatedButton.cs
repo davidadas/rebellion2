@@ -41,7 +41,7 @@ public sealed class AnimatedButton : MonoBehaviour
             return;
         }
 
-        // Subscribe to UIButton events
+        // Subscribe to UIButton events.
         uiButton.OnHoverEnter.AddListener(HandleStateChange);
         uiButton.OnHoverExit.AddListener(HandleStateChange);
         uiButton.OnPressDown.AddListener(HandleStateChange);

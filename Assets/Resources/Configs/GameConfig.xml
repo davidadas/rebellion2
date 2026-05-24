@@ -13,7 +13,62 @@
   <!-- AI decision cadence, mission-dispatch tables, garrison and fleet thresholds, and capital-ship production rules. -->
   <AI>
     <TickInterval>7</TickInterval>
+    <EnablePlanetaryAssaults>true</EnablePlanetaryAssaults>
+    <DiplomacyMinimumSkill>69</DiplomacyMinimumSkill>
+    <RecruitmentMinimumLeadership>80</RecruitmentMinimumLeadership>
+    <!-- Mission dispatch tables. Each table maps a mission score to a dispatch probability. -->
     <MissionTables>
+      <Reconnaissance>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Reconnaissance>
+      <!-- Diplomacy dispatch table. -->
       <Diplomacy>
         <Entry>
           <Key>-39</Key>
@@ -56,6 +111,7 @@
           <Value>70</Value>
         </Entry>
       </Diplomacy>
+      <!-- Subdue uprising dispatch table. -->
       <SubdueUprising>
         <Entry>
           <Key>-20</Key>
@@ -110,6 +166,7 @@
           <Value>99</Value>
         </Entry>
       </SubdueUprising>
+      <!-- Espionage dispatch table. -->
       <Espionage>
         <Entry>
           <Key>-1</Key>
@@ -160,6 +217,7 @@
           <Value>99</Value>
         </Entry>
       </Espionage>
+      <!-- Incite uprising dispatch table. -->
       <InciteUprising>
         <Entry>
           <Key>-20</Key>
@@ -214,6 +272,7 @@
           <Value>99</Value>
         </Entry>
       </InciteUprising>
+      <!-- Rescue dispatch table. -->
       <Rescue>
         <Entry>
           <Key>-1</Key>
@@ -264,6 +323,7 @@
           <Value>99</Value>
         </Entry>
       </Rescue>
+      <!-- Sabotage dispatch table. -->
       <Sabotage>
         <Entry>
           <Key>-1</Key>
@@ -314,6 +374,7 @@
           <Value>99</Value>
         </Entry>
       </Sabotage>
+      <!-- Abduction dispatch table. -->
       <Abduction>
         <Entry>
           <Key>-100</Key>
@@ -364,6 +425,7 @@
           <Value>99</Value>
         </Entry>
       </Abduction>
+      <!-- Assassination dispatch table. -->
       <Assassination>
         <Entry>
           <Key>-100</Key>
@@ -414,6 +476,7 @@
           <Value>55</Value>
         </Entry>
       </Assassination>
+      <!-- Recruitment dispatch table. -->
       <Recruitment>
         <Entry>
           <Key>0</Key>
@@ -461,10 +524,17 @@
         </Entry>
       </Recruitment>
     </MissionTables>
+    <MissionPlanning>
+      <DiplomacyCandidatePlanetLimit>8</DiplomacyCandidatePlanetLimit>
+      <ResearchCandidatePlanetLimit>4</ResearchCandidatePlanetLimit>
+      <SabotageCandidatePlanetLimit>5</SabotageCandidatePlanetLimit>
+      <OfficerTargetCandidateLimit>4</OfficerTargetCandidateLimit>
+    </MissionPlanning>
     <Garrison>
       <SupportThreshold>60</SupportThreshold>
       <GarrisonDivisor>10</GarrisonDivisor>
       <UprisingMultiplier>2</UprisingMultiplier>
+      <FleetLoadingDeficitThreshold>1</FleetLoadingDeficitThreshold>
     </Garrison>
     <DeploymentGateLow>20</DeploymentGateLow>
     <DeploymentGateHigh>80</DeploymentGateHigh>
@@ -476,6 +546,109 @@
       <AllocatedEnergyStrikeResistance>9</AllocatedEnergyStrikeResistance>
       <OrbitalStrikeSupportShift>-20</OrbitalStrikeSupportShift>
     </CapitalShipProduction>
+    <Selection>
+      <MinimumSelectableScore>0</MinimumSelectableScore>
+      <CandidatePoolSize>3</CandidatePoolSize>
+      <RecentBuildHistoryLimit>12</RecentBuildHistoryLimit>
+      <RepeatBuildPenaltyPerSelection>15</RepeatBuildPenaltyPerSelection>
+      <LocalDuplicatePenaltyPerSelection>45</LocalDuplicatePenaltyPerSelection>
+      <MaxDuplicateCapitalTypePerFleet>1</MaxDuplicateCapitalTypePerFleet>
+      <MaxDuplicateStarfighterTypePerFleet>4</MaxDuplicateStarfighterTypePerFleet>
+      <MaxDuplicateRegimentTypePerDestination>3</MaxDuplicateRegimentTypePerDestination>
+      <PremiumCapitalConstructionCostThreshold>275</PremiumCapitalConstructionCostThreshold>
+      <MaxPremiumCapitalsPerFaction>2</MaxPremiumCapitalsPerFaction>
+      <CapitalConstructionCostWeight>4</CapitalConstructionCostWeight>
+      <CapitalMaintenanceCostWeight>2</CapitalMaintenanceCostWeight>
+      <CapitalCombatWeight>1</CapitalCombatWeight>
+      <CapitalExcessCombatPenaltyWeight>1</CapitalExcessCombatPenaltyWeight>
+      <CapitalStarfighterCapacityWeight>14</CapitalStarfighterCapacityWeight>
+      <CapitalRegimentCapacityWeight>14</CapitalRegimentCapacityWeight>
+      <CapitalBombardmentWeight>8</CapitalBombardmentWeight>
+      <CapitalGravityWellWeight>20</CapitalGravityWellWeight>
+      <CapitalEmptyFleetCombatBoost>120</CapitalEmptyFleetCombatBoost>
+      <CapitalMissingStarfighterCapacityBoost>80</CapitalMissingStarfighterCapacityBoost>
+      <CapitalMissingRegimentCapacityBoost>80</CapitalMissingRegimentCapacityBoost>
+      <CapitalMissingGravityWellBoost>60</CapitalMissingGravityWellBoost>
+      <StarfighterEscortWeight>6</StarfighterEscortWeight>
+      <StarfighterInterceptorWeight>7</StarfighterInterceptorWeight>
+      <StarfighterBomberWeight>9</StarfighterBomberWeight>
+      <StarfighterMissingInterceptorBoost>60</StarfighterMissingInterceptorBoost>
+      <StarfighterMissingBomberBoost>60</StarfighterMissingBomberBoost>
+      <RegimentDefenseWeight>8</RegimentDefenseWeight>
+      <RegimentAttackWeight>8</RegimentAttackWeight>
+      <RegimentBombardmentDefenseWeight>6</RegimentBombardmentDefenseWeight>
+      <RegimentMaintenanceCostWeight>10</RegimentMaintenanceCostWeight>
+      <RegimentGarrisonDefenseBoost>50</RegimentGarrisonDefenseBoost>
+      <RegimentFleetAttackBoost>50</RegimentFleetAttackBoost>
+      <MinimumMaintenanceHeadroomAfterProduction>200</MinimumMaintenanceHeadroomAfterProduction>
+      <MaintenanceHeadroomHardFloor>0</MaintenanceHeadroomHardFloor>
+      <MaintenanceHeadroomPenaltyWeight>50</MaintenanceHeadroomPenaltyWeight>
+      <MaintenanceShortfallPenalty>1000</MaintenanceShortfallPenalty>
+    </Selection>
+    <NonCapitalSummary>
+      <MajorThreatWeaponDefenseCapacity>3</MajorThreatWeaponDefenseCapacity>
+      <MajorThreatShieldDefenseCapacity>3</MajorThreatShieldDefenseCapacity>
+      <StrategicThreatShieldDefenseCapacity>2</StrategicThreatShieldDefenseCapacity>
+      <StrategicThreatWeaponDefenseCapacity>1</StrategicThreatWeaponDefenseCapacity>
+      <MinimumShieldDefenseCapacity>1</MinimumShieldDefenseCapacity>
+      <SupportThreatWeaponDefenseCapacity>0</SupportThreatWeaponDefenseCapacity>
+      <SubtypeSelectorRatioThreshold>1.5</SubtypeSelectorRatioThreshold>
+      <SupportThreshold>70</SupportThreshold>
+      <SupportDivisor>10</SupportDivisor>
+      <SupportUrgencyCap>6</SupportUrgencyCap>
+      <BaseRequirementDefault>0</BaseRequirementDefault>
+      <BaseRequirementInfrastructure>3</BaseRequirementInfrastructure>
+      <BaseRequirementHeadquarters>9</BaseRequirementHeadquarters>
+      <StarfighterRequirementDefault>0</StarfighterRequirementDefault>
+      <StarfighterRequirementInfrastructure>6</StarfighterRequirementInfrastructure>
+      <StarfighterRequirementHeadquarters>12</StarfighterRequirementHeadquarters>
+    </NonCapitalSummary>
+    <Infrastructure>
+      <PlanetsPerConstructionFacility>2</PlanetsPerConstructionFacility>
+      <MinimumConstructionFacilityLanes>1</MinimumConstructionFacilityLanes>
+      <ConstructionFacilityTargetClearTicks>80</ConstructionFacilityTargetClearTicks>
+      <PlanetsPerShipyard>6</PlanetsPerShipyard>
+      <PlanetsPerTrainingFacility>6</PlanetsPerTrainingFacility>
+      <ManufacturingFacilityBaseDemandPercent>30</ManufacturingFacilityBaseDemandPercent>
+      <ConstructionFacilityDemandPercent>100</ConstructionFacilityDemandPercent>
+      <ShipyardDemandPercent>90</ShipyardDemandPercent>
+      <TrainingFacilityDemandPercent>70</TrainingFacilityDemandPercent>
+      <FleetCapitalShipDemandPercent>80</FleetCapitalShipDemandPercent>
+      <FleetStarfighterDemandPercent>50</FleetStarfighterDemandPercent>
+      <FleetRegimentDemandPercent>60</FleetRegimentDemandPercent>
+      <StarfighterParentFillPercent>100</StarfighterParentFillPercent>
+      <StarfighterLocalReservePercent>20</StarfighterLocalReservePercent>
+      <AssaultRegimentLoadPercent>100</AssaultRegimentLoadPercent>
+      <GarrisonRegimentReservePercent>20</GarrisonRegimentReservePercent>
+      <MaxDefensePerPlanet>1</MaxDefensePerPlanet>
+      <EconomyDefaultBatchSize>1</EconomyDefaultBatchSize>
+      <EconomyDemandPercent>90</EconomyDemandPercent>
+      <EconomySevereDemandPercent>100</EconomySevereDemandPercent>
+      <EconomySevereDeficitPercent>25</EconomySevereDeficitPercent>
+      <EconomyCompetingNeedSlotReserve>1</EconomyCompetingNeedSlotReserve>
+      <EconomyMaintenanceShortfallPressure>40</EconomyMaintenanceShortfallPressure>
+      <EconomyMaintenanceReservePressure>20</EconomyMaintenanceReservePressure>
+      <FleetTargetValuePressureWeight>20</FleetTargetValuePressureWeight>
+      <FleetReadinessPressureWeight>35</FleetReadinessPressureWeight>
+      <FleetFinalReadinessGatePressure>35</FleetFinalReadinessGatePressure>
+      <FleetFinalReadinessGateUnitCount>2</FleetFinalReadinessGateUnitCount>
+      <FleetStarfighterFillPressureWeight>20</FleetStarfighterFillPressureWeight>
+      <FleetReinforcementTravelPenaltyWeight>1</FleetReinforcementTravelPenaltyWeight>
+    </Infrastructure>
+    <FleetDeployment>
+      <MinimumAttackStrength>1750</MinimumAttackStrength>
+      <MinimumDefenseStrength>1000</MinimumDefenseStrength>
+      <AttackStrengthPercentOfDefense>175</AttackStrengthPercentOfDefense>
+      <AttackStrengthPercentOfStrongestHostileFleet>125</AttackStrengthPercentOfStrongestHostileFleet>
+      <AttackStrategicValueWeight>55</AttackStrategicValueWeight>
+      <AttackReadinessWeight>35</AttackReadinessWeight>
+      <AttackCaptureViabilityWeight>45</AttackCaptureViabilityWeight>
+      <AttackTravelEfficiencyWeight>20</AttackTravelEfficiencyWeight>
+      <AttackExpectedLossPenaltyWeight>50</AttackExpectedLossPenaltyWeight>
+      <AttackOpportunityCostPenaltyWeight>30</AttackOpportunityCostPenaltyWeight>
+      <ExistingAttackOrderBonus>25</ExistingAttackOrderBonus>
+      <HeadquartersAttackBonus>45</HeadquartersAttackBonus>
+    </FleetDeployment>
   </AI>
   <!-- Distance scaling, transit minimums, and hyperdrive defaults for fleet and unit movement. -->
   <Movement>
@@ -483,9 +656,9 @@
     <MinTransitTicks>10</MinTransitTicks>
     <DefaultFighterHyperdrive>60</DefaultFighterHyperdrive>
   </Movement>
-  <!-- Capital-ship production rolls, refinement multiplier, and blockade-driven production penalties. -->
+  <!-- Capital-ship production rolls and blockade-driven production penalties. -->
   <Production>
-    <RefinementMultiplier>50</RefinementMultiplier>
+    <MaintenanceShortfallAutoscrapInterval>10</MaintenanceShortfallAutoscrapInterval>
     <CapitalShipProgressTable>
       <Entry>
         <Key>0</Key>
@@ -517,11 +690,8 @@
     <BuildingCompletionSupportShift>1</BuildingCompletionSupportShift>
     <TroopCompletionSupportShift>1</TroopCompletionSupportShift>
   </Production>
-  <!-- Per-planet caps and distance-formula constants. -->
+  <!-- Per-planet generation limits. -->
   <Planet>
-    <DistanceDivisor>5</DistanceDivisor>
-    <DistanceBase>100</DistanceBase>
-    <MaxPopularSupport>100</MaxPopularSupport>
     <MaxEnergy>15</MaxEnergy>
     <MaxRawMaterials>15</MaxRawMaterials>
   </Planet>
@@ -534,6 +704,10 @@
     <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
     <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
     <RepeatTrialProbability>50</RepeatTrialProbability>
+    <GroundCombatCommanderDivisor>30</GroundCombatCommanderDivisor>
+    <GroundCombatContestDiceRange>10</GroundCombatContestDiceRange>
+    <GroundCombatDefenderWinsThreshold>4</GroundCombatDefenderWinsThreshold>
+    <GroundCombatAttackerWinsThreshold>6</GroundCombatAttackerWinsThreshold>
     <WeaponDamageVariancePercent>20</WeaponDamageVariancePercent>
     <FighterDogfightLossRatePercent>30</FighterDogfightLossRatePercent>
     <FighterDamageBasePercent>80</FighterDamageBasePercent>
@@ -575,7 +749,17 @@
         <Value>5</Value>
       </Entry>
     </SecondaryConsequenceTable>
+    <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
     <ControllerSupportShift>-1</ControllerSupportShift>
+    <WeakSupportPenaltyDivisor>2</WeakSupportPenaltyDivisor>
+    <!-- Minimum ticks between active-uprising support drift pulses -->
+    <ActiveSupportDriftMinTicks>144</ActiveSupportDriftMinTicks>
+    <!-- Maximum ticks between active-uprising support drift pulses -->
+    <ActiveSupportDriftMaxTicks>152</ActiveSupportDriftMaxTicks>
+    <!-- Minimum ticks between active-uprising incident pulses -->
+    <IncidentPulseMinTicks>144</IncidentPulseMinTicks>
+    <!-- Maximum ticks between active-uprising incident pulses -->
+    <IncidentPulseMaxTicks>152</IncidentPulseMaxTicks>
   </Uprising>
   <!-- Popular-support drift brackets, hostile-force penalties, and ownership-transfer threshold. -->
   <SupportShift>
@@ -693,6 +877,11 @@
     </EscapeTable>
     <EscapeLoyaltyShift>-10</EscapeLoyaltyShift>
   </Captive>
+  <GameSpeed>
+    <FastTickIntervalSeconds>1</FastTickIntervalSeconds>
+    <MediumTickIntervalSeconds>10</MediumTickIntervalSeconds>
+    <SlowTickIntervalSeconds>60</SlowTickIntervalSeconds>
+  </GameSpeed>
   <!-- Score-to-probability lookup tables used by missions and other rolls. -->
   <ProbabilityTables>
     <UprisingStart>
@@ -952,6 +1141,56 @@
           <Value>99</Value>
         </Entry>
       </Espionage>
+      <Reconnaissance>
+        <Entry>
+          <Key>-1</Key>
+          <Value>0</Value>
+        </Entry>
+        <Entry>
+          <Key>0</Key>
+          <Value>1</Value>
+        </Entry>
+        <Entry>
+          <Key>10</Key>
+          <Value>10</Value>
+        </Entry>
+        <Entry>
+          <Key>20</Key>
+          <Value>20</Value>
+        </Entry>
+        <Entry>
+          <Key>30</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>40</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>50</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>60</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>70</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>80</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>90</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>100</Key>
+          <Value>99</Value>
+        </Entry>
+      </Reconnaissance>
       <InciteUprising>
         <Entry>
           <Key>-20</Key>
@@ -1282,6 +1521,10 @@
           <Base>1</Base>
           <Spread>20</Spread>
         </Espionage>
+        <Reconnaissance>
+          <Base>1</Base>
+          <Spread>5</Spread>
+        </Reconnaissance>
         <InciteUprising>
           <Base>2</Base>
           <Spread>10</Spread>
@@ -1391,6 +1634,7 @@
           <Value>99</Value>
         </Entry>
       </KillOrCapture>
+      <DefaultKillOrCaptureProbability>50</DefaultKillOrCaptureProbability>
     </Mission>
   </ProbabilityTables>
 </GameConfig>

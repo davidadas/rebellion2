@@ -1,4 +1,5 @@
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Extensions;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
 {

@@ -151,6 +151,8 @@ namespace Rebellion.Util.Common
                 return content;
             if (targetType == typeof(int))
                 return int.Parse(content);
+            if (targetType == typeof(short))
+                return short.Parse(content);
             if (targetType == typeof(double))
                 return double.Parse(content, CultureInfo.InvariantCulture);
             if (targetType == typeof(bool))

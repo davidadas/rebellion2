@@ -1,9 +1,11 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Missions
@@ -104,25 +106,29 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_TargetAlreadyJoinedFaction_ReturnsFailed()
+        public void Execute_CreatedBeforePoolChanges_RecruitsCurrentAvailableOfficer()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
-            Officer target = EntityFactory.CreateOfficer("target", "rebels");
-            target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
-            game.UnrecruitedOfficers.Add(target);
+            Officer removedTarget = EntityFactory.CreateOfficer("target", "rebels");
+            removedTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(removedTarget);
 
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
 
-            // Target joins before mission executes
-            target.OwnerInstanceID = "empire";
+            game.UnrecruitedOfficers.Remove(removedTarget);
+            Officer replacementTarget = EntityFactory.CreateOfficer("replacement", "rebels");
+            replacementTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(replacementTarget);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+            Assert.AreEqual("empire", replacementTarget.OwnerInstanceID);
+            Assert.AreEqual("replacement", mission.TargetOfficerInstanceID);
         }
 
         [Test]
@@ -159,6 +165,31 @@ namespace Rebellion.Tests.Game.Missions
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
 
             Assert.IsTrue(mission.CanContinue(game));
+        }
+
+        [Test]
+        public void Execute_SecondSuccess_SelectsNextOfficerFromCurrentPool()
+        {
+            (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
+
+            Officer firstTarget = EntityFactory.CreateOfficer("first", "rebels");
+            firstTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            Officer secondTarget = EntityFactory.CreateOfficer("second", "rebels");
+            secondTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(firstTarget);
+            game.UnrecruitedOfficers.Add(secondTarget);
+
+            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            mission.Initiate(new StubRNG());
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
+            Assert.AreEqual("empire", secondTarget.OwnerInstanceID);
+            Assert.IsFalse(game.UnrecruitedOfficers.Contains(firstTarget));
+            Assert.IsFalse(game.UnrecruitedOfficers.Contains(secondTarget));
+            Assert.AreEqual("second", mission.TargetOfficerInstanceID);
         }
 
         [Test]
@@ -201,7 +232,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreate_NonMainParticipant_ThrowsArgumentException()
+        public void TryCreate_NonMainParticipant_ReturnsNull()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
             officer.IsMain = false;
@@ -210,15 +241,15 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            Assert.Throws<ArgumentException>(() =>
-                CreateRecruitmentMission(
-                    game,
-                    "empire",
-                    empPlanet,
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>()
-                )
+            RecruitmentMission mission = CreateRecruitmentMission(
+                game,
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
             );
+
+            Assert.IsNull(mission);
         }
 
         [Test]

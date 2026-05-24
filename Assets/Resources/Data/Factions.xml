@@ -7,25 +7,27 @@
     <DisallowedMissionTypes>
       <MissionType>Assassination</MissionType>
     </DisallowedMissionTypes>
-    <Modifiers>
+    <Settings>
+      <RefinementMultiplier>50</RefinementMultiplier>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>
       <UprisingResistance>1</UprisingResistance>
       <InvertSupportShift>false</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Positive</WeakSupportPenaltyTrigger>
-    </Modifiers>
+    </Settings>
   </Faction>
   <Faction>
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID>CORUSCANT</HQInstanceID>
     <DisallowedMissionTypes />
-    <Modifiers>
+    <Settings>
+      <RefinementMultiplier>50</RefinementMultiplier>
       <GarrisonEfficiency>2</GarrisonEfficiency>
       <TroopEffectiveness>2</TroopEffectiveness>
       <UprisingResistance>2</UprisingResistance>
       <InvertSupportShift>true</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Negative</WeakSupportPenaltyTrigger>
-    </Modifiers>
+    </Settings>
   </Faction>
 </Factions>

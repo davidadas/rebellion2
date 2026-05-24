@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -48,6 +52,23 @@ namespace Rebellion.Tests.Game
             _game = new GameRoot(_summary, config);
             _game.Factions.Add(_faction1);
             _game.Factions.Add(_faction2);
+        }
+
+        private static Building CreateBuilding(
+            string instanceId,
+            BuildingType buildingType,
+            int maintenanceCost,
+            ManufacturingStatus manufacturingStatus = ManufacturingStatus.Complete
+        )
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "FACTION1",
+                BuildingType = buildingType,
+                MaintenanceCost = maintenanceCost,
+                ManufacturingStatus = manufacturingStatus,
+            };
         }
 
         [Test]
@@ -106,6 +127,47 @@ namespace Rebellion.Tests.Game
                 retrievedGalaxyMap,
                 "Should return the correct galaxy map"
             );
+        }
+
+        [Test]
+        public void FactionMaterialSupplies_WithUnevenMinesAndRefineries_SplitsRawAndRefined()
+        {
+            _planet.NumRawResourceNodes = 10;
+            _planet.IsColonized = true;
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planetSystem, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("MINE2", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("MINE3", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
+
+            Assert.AreEqual(150, _faction1.RawMaterialSupply);
+            Assert.AreEqual(50, _faction1.RefinedMaterialSupply);
+            Assert.AreEqual(50, _faction1.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void FactionMaintenanceHeadroom_WithInProgressUnit_UsesProjectedMaintenance()
+        {
+            _planet.NumRawResourceNodes = 10;
+            _planet.IsColonized = true;
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planetSystem, _game.GetGalaxyMap());
+            _game.AttachNode(_planet, _planetSystem);
+            _game.AttachNode(CreateBuilding("MINE1", BuildingType.Mine, 0), _planet);
+            _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
+            _game.AttachNode(
+                CreateBuilding(
+                    "SHIPYARD1",
+                    BuildingType.Shipyard,
+                    12,
+                    ManufacturingStatus.Building
+                ),
+                _planet
+            );
+
+            Assert.AreEqual(38, _faction1.MaintenanceHeadroom);
         }
 
         [Test]

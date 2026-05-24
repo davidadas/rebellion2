@@ -4,7 +4,12 @@ using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Generation;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -144,14 +149,14 @@ public class SequenceRNG : IRandomNumberProvider
 
 public static class TestConfig
 {
-    private static readonly string ConfigPath = Path.Combine(
+    private static readonly string _configPath = Path.Combine(
         UnityEngine.Application.dataPath,
         "Resources",
         "Configs",
         "GameConfig.xml"
     );
 
-    private static readonly string SchemaPath = Path.Combine(
+    private static readonly string _schemaPath = Path.Combine(
         UnityEngine.Application.dataPath,
         "Resources",
         "Configs",
@@ -160,7 +165,7 @@ public static class TestConfig
 
     public static GameConfig Create()
     {
-        string xml = File.ReadAllText(ConfigPath);
+        string xml = File.ReadAllText(_configPath);
         GameSerializer serializer = new GameSerializer(typeof(GameConfig));
         using StringReader reader = new StringReader(xml);
         GameConfig config = (GameConfig)serializer.Deserialize(reader);
@@ -169,7 +174,7 @@ public static class TestConfig
 
     public static GameConfig CreateWithSchema()
     {
-        string xml = File.ReadAllText(ConfigPath);
+        string xml = File.ReadAllText(_configPath);
         GameSerializerSettings settings = BuildSchemaSettings();
         GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
         using StringReader reader = new StringReader(xml);
@@ -187,7 +192,7 @@ public static class TestConfig
     private static GameSerializerSettings BuildSchemaSettings()
     {
         XmlSchemaSet schemas = new XmlSchemaSet();
-        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(SchemaPath))));
+        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(_schemaPath))));
         return new GameSerializerSettings { Schemas = schemas };
     }
 }
@@ -371,8 +376,8 @@ public static class GenerationContextFactory
             },
             GameConfig = new GameConfig
             {
-                Production = new GameConfig.ProductionConfig { RefinementMultiplier = 1 },
-                Planet = new GameConfig.PlanetConfig { MaxPopularSupport = 100 },
+                Production = new GameConfig.ProductionConfig(),
+                Planet = new GameConfig.PlanetConfig(),
             },
             Rng = new StubRNG(),
         };

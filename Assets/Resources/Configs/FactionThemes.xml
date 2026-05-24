@@ -20,7 +20,7 @@
         AnchorMaxX="0.5205845"
         AnchorMaxY="0.965625"
       />
-      <RefinedMaterialsTextLayout
+      <MaintenanceHeadroomTextLayout
         AnchorMinX="0.5254592"
         AnchorMinY="0.9351389"
         AnchorMaxX="0.670872"
@@ -173,7 +173,7 @@
         AnchorMaxX="0.483"
         AnchorMaxY="0.688"
       />
-      <RefinedMaterialsTextLayout
+      <MaintenanceHeadroomTextLayout
         AnchorMinX="0.546"
         AnchorMinY="0.688"
         AnchorMaxX="0.546"
@@ -323,7 +323,7 @@
         AnchorMaxX="0.483"
         AnchorMaxY="0.688"
       />
-      <RefinedMaterialsTextLayout
+      <MaintenanceHeadroomTextLayout
         AnchorMinX="0.546"
         AnchorMinY="0.688"
         AnchorMaxX="0.546"

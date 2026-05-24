@@ -1,7 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -25,18 +30,16 @@ namespace Rebellion.Systems
         /// <param name="game">The active game state.</param>
         /// <param name="provider">Random number provider for mission execution and duration rolls.</param>
         /// <param name="movementManager">Used to move participants to and from missions.</param>
-        /// <param name="fogOfWar">Optional fog-of-war system passed to MissionFactory for visibility checks.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
-            MovementSystem movementManager,
-            FogOfWarSystem fogOfWar = null
+            MovementSystem movementManager
         )
         {
             _game = game;
             _provider = provider;
             _movementManager = movementManager;
-            _missionFactory = new MissionFactory(game, fogOfWar);
+            _missionFactory = new MissionFactory(game);
         }
 
         /// <summary>
@@ -64,13 +67,15 @@ namespace Rebellion.Systems
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
+        /// <param name="participant">Optional acting participant for participant-specific mission gates.</param>
         /// <returns>True if a mission of this type can be created.</returns>
         public bool CanCreateMission(
             MissionType missionType,
             string ownerInstanceId,
             ISceneNode target,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            IMissionParticipant participant = null
         ) =>
             _missionFactory.CanCreateMission(
                 missionType,
@@ -78,7 +83,8 @@ namespace Rebellion.Systems
                 target,
                 _provider,
                 targetOfficer,
-                discipline
+                discipline,
+                participant
             );
 
         /// <summary>
@@ -186,36 +192,77 @@ namespace Rebellion.Systems
         {
             Planet missionPlanet = mission.GetParent() as Planet;
             Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            ISceneNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
 
-            // Resolve the recorded origin (planet or fleet). If the origin has moved away from
-            // the mission planet since the mission started, don't chase it — fall back instead.
-            ISceneNode origin =
-                mission.OriginInstanceID != null
-                    ? _game.GetSceneNodeByInstanceID<ISceneNode>(mission.OriginInstanceID)
-                    : null;
-            if (origin != null)
-            {
-                Planet originPlanet = origin is Planet p ? p : origin.GetParentOfType<Planet>();
-                if (originPlanet != missionPlanet)
-                    origin = null;
-            }
+            MoveParticipantsToOrigin(mission, origin);
+            _game.DetachNode(mission);
+        }
+
+        /// <summary>
+        /// Resolves the location mission participants should return to.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <param name="missionPlanet">The planet that hosts the mission.</param>
+        /// <param name="faction">The faction that owns the mission.</param>
+        /// <returns>The return location, or null if no valid location exists.</returns>
+        private ISceneNode ResolveReturnOrigin(
+            Mission mission,
+            Planet missionPlanet,
+            Faction faction
+        )
+        {
+            ISceneNode origin = GetRecordedOriginStillAtMissionPlanet(mission, missionPlanet);
 
             if (origin == null)
                 origin = faction.GetNearestFriendlyPlanetTo(mission);
+
             if (origin == null && missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
                 origin = missionPlanet;
 
-            List<IMissionParticipant> allParticipants = mission.GetAllParticipants();
+            return origin;
+        }
 
-            foreach (IMovable movable in allParticipants.Cast<IMovable>())
+        /// <summary>
+        /// Returns the recorded origin when it is still at the mission planet.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <param name="missionPlanet">The planet that hosts the mission.</param>
+        /// <returns>The recorded origin, or null if it is unavailable or no longer local.</returns>
+        private ISceneNode GetRecordedOriginStillAtMissionPlanet(
+            Mission mission,
+            Planet missionPlanet
+        )
+        {
+            if (mission.OriginInstanceID == null)
+                return null;
+
+            ISceneNode origin = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                mission.OriginInstanceID
+            );
+            if (origin == null)
+                return null;
+
+            Planet originPlanet = origin is Planet planet
+                ? planet
+                : origin.GetParentOfType<Planet>();
+            return originPlanet == missionPlanet ? origin : null;
+        }
+
+        /// <summary>
+        /// Moves all eligible mission participants to the resolved return location.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <param name="origin">The location participants should return to.</param>
+        private void MoveParticipantsToOrigin(Mission mission, ISceneNode origin)
+        {
+            foreach (IMovable movable in mission.GetAllParticipants().Cast<IMovable>())
             {
-                if (movable is Officer o && (o.IsCaptured || o.IsKilled))
+                if (movable is Officer officer && (officer.IsCaptured || officer.IsKilled))
                     continue;
+
                 if (origin != null)
                     _movementManager.RequestMove(movable, origin);
             }
-
-            _game.DetachNode(mission);
         }
 
         /// <summary>
@@ -229,46 +276,82 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            // Roll the per-tick foil detection check.
             if (!mission.RollFoilCheck(_provider))
                 return results;
 
-            // A successful decoy negates the consequences of detection for this tick.
-            // No capture, kill, or destruction is applied and the mission continues.
             if (mission.RollDecoyCheck(_provider))
                 return results;
 
-            // Use the first defending officer's combat for kill-or-capture, or 0 if none.
-            Officer defender = mission.FindDefender();
-            int defenderCombat =
-                defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
+            int defenderCombat = GetDefenderCombat(mission);
             Planet planet = mission.GetParent() as Planet;
 
-            // Apply consequences to each participant: officers face kill-or-capture,
-            // SpecialForces are destroyed outright.
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-            {
-                if (participant is Officer spy)
-                {
-                    if (spy.IsCaptured || spy.IsKilled)
-                        continue;
-                    results.AddRange(ResolveKillOrCapture(spy, defenderCombat, planet, mission));
-                }
-                else if (participant is SpecialForces sf)
-                {
-                    _game.DetachNode(sf);
-                    results.Add(
-                        new GameObjectDestroyedResult
-                        {
-                            DestroyedObject = sf,
-                            Context = planet,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
-                }
-            }
+                ResolveDetectedParticipant(participant, defenderCombat, planet, mission, results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Gets the combat value used by the mission foil consequence roll.
+        /// </summary>
+        /// <param name="mission">The detected mission.</param>
+        /// <returns>The defender's combat skill, or 0 when no defender is present.</returns>
+        private static int GetDefenderCombat(Mission mission)
+        {
+            Officer defender = mission.FindDefender();
+            return defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
+        }
+
+        /// <summary>
+        /// Applies detection consequences to one mission participant.
+        /// </summary>
+        /// <param name="participant">The detected participant.</param>
+        /// <param name="defenderCombat">The defender combat value.</param>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="mission">The detected mission.</param>
+        /// <param name="results">Collection to append generated results to.</param>
+        private void ResolveDetectedParticipant(
+            IMissionParticipant participant,
+            int defenderCombat,
+            Planet planet,
+            Mission mission,
+            List<GameResult> results
+        )
+        {
+            if (participant is Officer spy)
+            {
+                if (spy.IsCaptured || spy.IsKilled)
+                    return;
+
+                results.AddRange(ResolveKillOrCapture(spy, defenderCombat, planet, mission));
+                return;
+            }
+
+            if (participant is SpecialForces specialForces)
+                DestroyDetectedSpecialForces(specialForces, planet, results);
+        }
+
+        /// <summary>
+        /// Destroys a detected special-forces unit.
+        /// </summary>
+        /// <param name="specialForces">The unit to destroy.</param>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="results">Collection to append generated results to.</param>
+        private void DestroyDetectedSpecialForces(
+            SpecialForces specialForces,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
+            _game.DetachNode(specialForces);
+            results.Add(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = specialForces,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -293,7 +376,7 @@ namespace Rebellion.Systems
             double captureProbability =
                 mission.KillOrCaptureProbabilityTable != null
                     ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
-                    : 50;
+                    : _game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability;
 
             if (_provider.NextDouble() * 100 <= captureProbability)
             {

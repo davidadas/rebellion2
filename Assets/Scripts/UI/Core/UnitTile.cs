@@ -32,7 +32,7 @@ public sealed class UnitTile
 
     public IGameEntity Entity => entity;
 
-    // Interaction Events
+    // Interaction Events.
     public event Action<UnitTile> Clicked;
     public event Action<UnitTile> RightClicked;
     public event Action<UnitTile> DragStarted;

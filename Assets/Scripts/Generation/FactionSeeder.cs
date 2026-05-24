@@ -1,5 +1,7 @@
 using System.Linq;
-using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Generation
 {

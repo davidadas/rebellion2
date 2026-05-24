@@ -1,5 +1,10 @@
+using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Generation
@@ -13,6 +18,7 @@ namespace Rebellion.Generation
     {
         private readonly GameSummary _summary;
         private readonly IRandomNumberProvider _randomProvider;
+        private const string _defaultPlayerId = "PLAYER1";
 
         /// <summary>
         /// Creates a builder that will generate a game matching the given summary.
@@ -21,9 +27,30 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="summary">The summary describing galaxy size, difficulty, factions, and starting research.</param>
         public GameBuilder(GameSummary summary)
+            : this(summary, CreateRandomProvider(summary)) { }
+
+        /// <summary>
+        /// Creates a builder that will generate a game with the given RNG provider.
+        /// </summary>
+        /// <param name="summary">The summary describing the game to generate.</param>
+        /// <param name="randomProvider">Random number provider used by the generation pipeline.</param>
+        public GameBuilder(GameSummary summary, IRandomNumberProvider randomProvider)
         {
-            _summary = summary;
-            _randomProvider = new SystemRandomProvider(_summary.Seed);
+            _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+            _randomProvider =
+                randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
+        }
+
+        /// <summary>
+        /// Creates the deterministic RNG provider for a summary.
+        /// </summary>
+        /// <param name="summary">The summary whose seed is used.</param>
+        /// <returns>The random number provider for generation.</returns>
+        private static IRandomNumberProvider CreateRandomProvider(GameSummary summary)
+        {
+            return new SystemRandomProvider(
+                (summary ?? throw new ArgumentNullException(nameof(summary))).Seed
+            );
         }
 
         /// <summary>
@@ -35,25 +62,22 @@ namespace Rebellion.Generation
         {
             GenerationContext ctx = LoadContext();
 
-            // Set StartingFactionIDs if not specified.
             SetStartingFactionIDs(ctx);
-
-            // Run each seeder in order.
-            new GalaxySeeder().Seed(ctx);
-            new PlanetSeeder().Seed(ctx);
-            new FactionSeeder().Seed(ctx);
-            new FacilitySeeder().Seed(ctx);
-            new UnitSeeder().Seed(ctx);
-            new OfficerSeeder().Seed(ctx);
-            new BalanceSeeder().Seed(ctx);
-
-            // Final assembly of the game root.
+            RunSeeders(ctx);
+            AssignPlayerControl(ctx);
             AssembleGame(ctx);
-
-            // Seed the fog of war after the game root is assembled.
             new FogOfWarSeeder().Seed(ctx);
 
             return ctx.Game;
+        }
+
+        /// <summary>
+        /// Runs the game-generation pipeline.
+        /// </summary>
+        /// <returns>A <see cref="GameRoot"/> ready for play.</returns>
+        public GameRoot BuildGame()
+        {
+            return Build();
         }
 
         /// <summary>
@@ -101,6 +125,34 @@ namespace Rebellion.Generation
             }
 
             ctx.Summary.StartingFactionIDs = ctx.Factions.Select(f => f.InstanceID).ToArray();
+        }
+
+        /// <summary>
+        /// Runs the pre-assembly seeders in generation order.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        private static void RunSeeders(GenerationContext ctx)
+        {
+            new GalaxySeeder().Seed(ctx);
+            new PlanetSeeder().Seed(ctx);
+            new FactionSeeder().Seed(ctx);
+            new FacilitySeeder().Seed(ctx);
+            new UnitSeeder().Seed(ctx);
+            new OfficerSeeder().Seed(ctx);
+            new BalanceSeeder().Seed(ctx);
+        }
+
+        /// <summary>
+        /// Assigns the player ID to the selected faction and clears it from AI factions.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        private static void AssignPlayerControl(GenerationContext ctx)
+        {
+            foreach (Faction faction in ctx.Factions)
+            {
+                faction.PlayerID =
+                    faction.InstanceID == ctx.Summary.PlayerFactionID ? _defaultPlayerId : null;
+            }
         }
 
         /// <summary>

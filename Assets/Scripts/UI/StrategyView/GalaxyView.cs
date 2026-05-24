@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game;
+using Rebellion.Game.World;
 using UnityEngine;
 
 /// <summary>
@@ -132,11 +132,11 @@ public sealed class GalaxyView : MonoBehaviour
 }
 
 /// <summary>
-/// Maps original Rebellion galaxy coordinates into the active map viewport.
+/// Maps galaxy coordinates into the active map viewport.
 /// </summary>
 public sealed class GalaxyCoordinateMapper
 {
-    private const float LogicalMapSize = 1024.0f;
+    private const float _logicalMapSize = 1024.0f;
 
     private readonly RectTransform viewport;
 
@@ -146,15 +146,15 @@ public sealed class GalaxyCoordinateMapper
     }
 
     /// <summary>
-    /// Converts original map coordinates into viewport-local UI coordinates.
+    /// Converts map coordinates into viewport-local UI coordinates.
     /// </summary>
     public Vector2 Map(float x, float y)
     {
         Rect rect = viewport.rect;
 
         return new Vector2(
-            (x / LogicalMapSize) * rect.width,
-            (1.0f - (y / LogicalMapSize)) * rect.height
+            (x / _logicalMapSize) * rect.width,
+            (1.0f - (y / _logicalMapSize)) * rect.height
         );
     }
 }

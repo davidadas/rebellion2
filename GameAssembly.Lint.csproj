@@ -1,10 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!--
-    Portable project file for Roslynator static analysis in CI.
-    Does not depend on Unity-generated files or Unity being installed.
-    Excludes the small set of files that directly reference Unity runtime types.
-    Unity tests in the CI pipeline prove compilation; this file is for lint only.
-  -->
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>GameAssembly</AssemblyName>
@@ -13,25 +7,14 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultItems>false</EnableDefaultItems>
     <UnityVersion>6000.4.0f1</UnityVersion>
-    <!-- CS8019: unnecessary using directive (stray Unity/Drawing usings in game files) -->
-    <NoWarn>0169;0649;1701;1702;8019;1591</NoWarn>
-    <!-- CS1573: param tag has no matching parameter; CS1587: comment not on valid element -->
-    <WarningsAsErrors>CS1573;CS1587</WarningsAsErrors>
+    <NoWarn>0169;0649;1701;1702;1591</NoWarn>
+    <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Unity3D" Version="3.1.1" />
-  </ItemGroup>
-  <ItemGroup>
-    <!--
-      Include all game source files. Exclude the UI layer and its entry points — UI scripts
-      reference UnityEngine.UI and TMPro which are not available without Unity installed.
-      Unity compilation and tests in the CI pipeline prove those files compile correctly.
-    -->
     <Compile Include="Assets/Scripts/**/*.cs" />
+    <Compile Include="Lint/UnityEngineStubs.cs" />
     <Compile Remove="Assets/Scripts/UI/**/*.cs" />
-    <!-- AppBootstrap references GlobalInputHandler (UI), which is excluded above -->
     <Compile Remove="Assets/Scripts/Core/AppBootstrap.cs" />
-    <!-- GameRuntime references GameLaunchContext (UI), which is excluded above -->
     <Compile Remove="Assets/Scripts/Core/GameRuntime.cs" />
   </ItemGroup>
 </Project>

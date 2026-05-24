@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using Rebellion.Game;
-using Rebellion.Util.Attributes;
+using Rebellion.Game.World;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Generation
 {

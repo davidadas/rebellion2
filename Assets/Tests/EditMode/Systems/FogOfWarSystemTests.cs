@@ -2,10 +2,13 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.SceneGraph;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Systems
 {

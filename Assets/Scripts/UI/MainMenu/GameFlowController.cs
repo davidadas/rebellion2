@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Generation;
 using UnityEngine;
 using UnityEngine.Video;

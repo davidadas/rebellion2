@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game;
+using Rebellion.Game.World;
 using UnityEngine;
 
 public sealed class MissionsPane : MonoBehaviour

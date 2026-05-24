@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using UnityEngine;
 using UnityEngine.UI;
 

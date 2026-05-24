@@ -1,62 +1,64 @@
 using System.Collections.Generic;
-using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
-/// <summary>
-/// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
-/// Execute returns the results of those actions for notification and logging.
-/// </summary>
-public class GameEvent : BaseGameEntity
+namespace Rebellion.Game.Events
 {
-    public bool IsRepeatable { get; set; }
-    public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-    public List<GameAction> Actions { get; set; } = new List<GameAction>();
-
-    public GameEvent() { }
-
-    public GameEvent(List<GameConditional> conditionals, List<GameAction> actions)
-    {
-        Conditionals = conditionals;
-        Actions = actions;
-    }
-
     /// <summary>
-    /// Returns true if all conditions are met.
+    /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
+    /// Execute returns the results of those actions for notification and logging.
     /// </summary>
-    /// <param name="game">The current game state.</param>
-    /// <returns>True if every conditional is satisfied.</returns>
-    public bool AreConditionsMet(GameRoot game)
+    public class GameEvent : BaseGameEntity
     {
-        foreach (GameConditional conditional in Conditionals)
+        public bool IsRepeatable { get; set; }
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+
+        public GameEvent() { }
+
+        public GameEvent(List<GameConditional> conditionals, List<GameAction> actions)
         {
-            if (!conditional.IsMet(game))
-                return false;
-        }
-        return true;
-    }
-
-    /// <summary>
-    /// Executes the event's actions and returns all results.
-    /// </summary>
-    /// <param name="game">The current game state.</param>
-    /// <param name="provider">Random number provider for stochastic actions.</param>
-    /// <returns>Combined results from all executed actions.</returns>
-    public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
-    {
-        List<GameResult> results = new List<GameResult>();
-
-        foreach (GameAction action in Actions)
-        {
-            if (action is RandomOutcomeAction randomAction)
-                randomAction.SetRandomProvider(provider);
-            else if (action is TriggerEventAction triggerAction)
-                triggerAction.SetRandomProvider(provider);
-
-            results.AddRange(action.Execute(game));
+            Conditionals = conditionals;
+            Actions = actions;
         }
 
-        return results;
+        /// <summary>
+        /// Returns true if all conditions are met.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True if every conditional is satisfied.</returns>
+        public bool AreConditionsMet(GameRoot game)
+        {
+            foreach (GameConditional conditional in Conditionals)
+            {
+                if (!conditional.IsMet(game))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Executes the event's actions and returns all results.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">Random number provider for stochastic actions.</param>
+        /// <returns>Combined results from all executed actions.</returns>
+        public List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            List<GameResult> results = new List<GameResult>();
+
+            foreach (GameAction action in Actions)
+            {
+                if (action is RandomOutcomeAction randomAction)
+                    randomAction.SetRandomProvider(provider);
+                else if (action is TriggerEventAction triggerAction)
+                    triggerAction.SetRandomProvider(provider);
+
+                results.AddRange(action.Execute(game));
+            }
+
+            return results;
+        }
     }
 }

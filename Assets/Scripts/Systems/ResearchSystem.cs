@@ -1,7 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -24,9 +28,14 @@ namespace Rebellion.Systems
             _game = game;
             _provider = provider;
 
-            // Arm the initial timer for any faction that hasn't already had one
-            // persisted from a save. NextRefreshTick == 0 is the default-uninitialized
-            // sentinel; loaded saves carry a non-zero value that we keep as-is.
+            InitializeResearchTimers();
+        }
+
+        /// <summary>
+        /// Initializes research timers for factions that do not already have one.
+        /// </summary>
+        private void InitializeResearchTimers()
+        {
             GameConfig.ResearchConfig config = _game.Config.Research;
             foreach (Faction faction in _game.GetFactions())
             {
@@ -78,7 +87,7 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
-            foreach (ResearchDiscipline discipline in ResearchDisciplines)
+            foreach (ResearchDiscipline discipline in _researchDisciplines)
             {
                 int capacityDelta = CountCompleteFacilities(corePlanets, discipline);
 
@@ -150,7 +159,7 @@ namespace Rebellion.Systems
                 + _provider.NextInt(0, config.RefreshIntervalSpread + 1);
         }
 
-        private static readonly ResearchDiscipline[] ResearchDisciplines = new[]
+        private static readonly ResearchDiscipline[] _researchDisciplines = new[]
         {
             ResearchDiscipline.ShipDesign,
             ResearchDiscipline.FacilityDesign,

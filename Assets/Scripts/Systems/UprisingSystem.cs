@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -19,6 +22,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates a new UprisingSystem.
         /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for uprising rolls.</param>
+        /// <param name="planetaryControl">Planetary control system for ownership changes.</param>
         public UprisingSystem(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -57,6 +63,8 @@ namespace Rebellion.Systems
         /// Returns the controlling faction for a planet, or null if the planet is
         /// unowned, unpopulated, or its faction cannot be resolved.
         /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The controlling faction, or null if no faction controls the planet.</returns>
         private Faction GetControllingFaction(Planet planet)
         {
             if (string.IsNullOrEmpty(planet.OwnerInstanceID))
@@ -69,6 +77,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Starts an uprising if the garrison is too weak to hold the planet.
         /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">Collection to append uprising results to.</param>
         private void CheckForNewUprising(Planet planet, Faction faction, List<GameResult> results)
         {
             int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
@@ -96,6 +107,9 @@ namespace Rebellion.Systems
         /// Rolls uprising dice, applies consequences, and shifts controller support.
         /// If all controller buildings are destroyed, the planet goes neutral.
         /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">Collection to append uprising results to.</param>
         private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
         {
             int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
@@ -157,44 +171,59 @@ namespace Rebellion.Systems
             int rollA = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
             int rollB = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
 
-            int troopMultiplier = 1;
-            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
-            if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
-                && faction.Modifiers.UprisingResistance > 1
-            )
-            {
-                troopMultiplier = faction.Modifiers.UprisingResistance;
-            }
-
+            int troopMultiplier = GetUprisingTroopMultiplier(planet, faction);
             int threshold = CalculateUprisingThreshold(supportForController);
-
-            // Hostile fleet and troop presence increases the uprising score.
-            int hostileFleetCount = planet
-                .GetFleets()
-                .Count(f =>
-                    f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != faction.InstanceID
-                );
-            int hostileTroopCount = planet
-                .GetAllRegiments()
-                .Count(r =>
-                    r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != faction.InstanceID
-                );
-
-            // Typed garrison term — regiment type metadata is not modelled, so this is zero.
-            int attachedTroopState = 0;
+            int hostilePresence = CountHostilePresence(planet, faction.InstanceID);
 
             int combinedScore =
                 rollA
                 + rollB
                 + (threshold - troopMultiplier * controllerTroopCount)
-                + (hostileFleetCount + hostileTroopCount - attachedTroopState);
+                + hostilePresence;
 
             uprisingEffect = LookupTable(config.PrimaryConsequenceTable, combinedScore);
 
             if (uprisingEffect > 0)
                 uprisingSeverity = LookupTable(config.SecondaryConsequenceTable, combinedScore);
+        }
+
+        /// <summary>
+        /// Gets the troop multiplier applied to the controller's garrison strength.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <returns>The troop multiplier for this planet and faction.</returns>
+        private static int GetUprisingTroopMultiplier(Planet planet, Faction faction)
+        {
+            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            if (
+                parentSystem != null
+                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                && faction.Settings.UprisingResistance > 1
+            )
+            {
+                return faction.Settings.UprisingResistance;
+            }
+
+            return 1;
+        }
+
+        /// <summary>
+        /// Counts hostile fleet and regiment presence on the planet.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="factionId">The controlling faction instance ID.</param>
+        /// <returns>The combined hostile presence count.</returns>
+        private static int CountHostilePresence(Planet planet, string factionId)
+        {
+            int hostileFleetCount = planet
+                .GetFleets()
+                .Count(f => f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != factionId);
+            int hostileTroopCount = planet
+                .GetAllRegiments()
+                .Count(r => r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != factionId);
+
+            return hostileFleetCount + hostileTroopCount;
         }
 
         /// <summary>
@@ -406,35 +435,26 @@ namespace Rebellion.Systems
             PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
             if (parentSystem != null && parentSystem.SystemType == PlanetSystemType.CoreSystem)
             {
-                bool penaltyApplies = faction.Modifiers.WeakSupportPenaltyTrigger switch
+                bool penaltyApplies = faction.Settings.WeakSupportPenaltyTrigger switch
                 {
                     SupportShiftCondition.Positive => shift > 0,
                     SupportShiftCondition.Negative => shift < 0,
                     _ => false,
                 };
                 if (penaltyApplies)
-                    shift /= 2;
+                    shift /= _game.Config.Uprising.WeakSupportPenaltyDivisor;
             }
 
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);
-            int newSupport = Math.Max(
-                0,
-                Math.Min(_game.Config.Planet.MaxPopularSupport, currentSupport + shift)
-            );
+            int newSupport = Math.Clamp(currentSupport + shift, 0, 100);
             if (newSupport != currentSupport)
-            {
-                planet.SetPopularSupport(
-                    faction.InstanceID,
-                    newSupport,
-                    _game.Config.Planet.MaxPopularSupport
-                );
-            }
+                planet.SetPopularSupport(faction.InstanceID, newSupport);
         }
 
         /// <summary>
         /// Calculates how many garrison troops a planet requires for the given faction.
         /// Returns 0 when popular support is at or above the threshold.
-        /// Core worlds with a faction GarrisonEfficiency modifier receive a reduced requirement.
+        /// Core worlds with faction garrison efficiency receive a reduced requirement.
         /// Planets in active uprisings apply the uprising multiplier.
         /// </summary>
         /// <param name="planet">The planet to calculate garrison requirements for.</param>
@@ -461,10 +481,10 @@ namespace Rebellion.Systems
             if (
                 parentSystem != null
                 && parentSystem.SystemType == PlanetSystemType.CoreSystem
-                && faction.Modifiers.GarrisonEfficiency > 1
+                && faction.Settings.GarrisonEfficiency > 1
             )
             {
-                garrison /= faction.Modifiers.GarrisonEfficiency;
+                garrison /= faction.Settings.GarrisonEfficiency;
             }
 
             if (planet.IsInUprising)
@@ -474,11 +494,10 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates the uprising threshold used in the dice score formula.
-        /// This is the simplified garrison requirement without efficiency or uprising multipliers.
+        /// Calculates the garrison threshold for an uprising check.
         /// </summary>
         /// <param name="supportForController">Popular support for the controlling faction.</param>
-        /// <returns>The uprising threshold value for the score formula.</returns>
+        /// <returns>The garrison threshold.</returns>
         private int CalculateUprisingThreshold(int supportForController)
         {
             GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;

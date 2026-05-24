@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
+using Rebellion.Game.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -138,7 +138,7 @@ public sealed class PlanetView : MonoBehaviour
         FactionTheme ownerTheme = uiContext.GetTheme(planet.GetOwnerInstanceID());
         PlanetOverlayTheme ownerOverlay = ownerTheme?.PlanetOverlayTheme;
 
-        // Missions
+        // Missions.
         string missionFactionId = planet.GetMissionFactionInstanceIDs()?.FirstOrDefault();
         PlanetOverlayTheme missionTheme = uiContext.GetTheme(missionFactionId)?.PlanetOverlayTheme;
 
@@ -148,19 +148,19 @@ public sealed class PlanetView : MonoBehaviour
             missionTheme != null
         );
 
-        // Buildings
+        // Buildings.
         bool hasBuildings = planet.GetAllBuildings().Count > 0;
 
         SetOverlayState(buildingsIcon, ownerOverlay?.PlanetOverlayIcons?.Buildings, hasBuildings);
 
-        // Defenses
+        // Defenses.
         SetOverlayState(
             defensesIcon,
             ownerOverlay?.PlanetOverlayIcons?.Defenses,
             planet.HasGarrison()
         );
 
-        // Fleets
+        // Fleets.
         string fleetOwnerId = planet.GetFleets()?.FirstOrDefault()?.GetOwnerInstanceID();
         PlanetOverlayTheme fleetTheme = uiContext.GetTheme(fleetOwnerId)?.PlanetOverlayTheme;
 
@@ -265,7 +265,7 @@ public sealed class PlanetView : MonoBehaviour
         public Action OnDragStart;
 
         private float lastClickTime;
-        private const float DoubleClickThreshold = 0.25f;
+        private const float _doubleClickThreshold = 0.25f;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -280,7 +280,7 @@ public sealed class PlanetView : MonoBehaviour
 
             float now = Time.unscaledTime;
 
-            if (now - lastClickTime <= DoubleClickThreshold)
+            if (now - lastClickTime <= _doubleClickThreshold)
                 OnDoubleClick?.Invoke();
 
             lastClickTime = now;

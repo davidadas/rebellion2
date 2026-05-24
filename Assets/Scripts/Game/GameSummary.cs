@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
 {
@@ -36,7 +36,7 @@ namespace Rebellion.Game
     [PersistableObject]
     public sealed class GameSummary
     {
-        // Game Options
+        // Game Options.
         public GameSize GalaxySize = GameSize.Large;
         public GameDifficulty Difficulty = GameDifficulty.Easy;
         public GameVictoryCondition VictoryCondition = GameVictoryCondition.Conquest;

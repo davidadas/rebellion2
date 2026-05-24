@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
@@ -27,6 +28,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Processes all eligible events and returns the aggregate results.
         /// </summary>
+        /// <param name="gameEvents">The events to evaluate.</param>
+        /// <returns>Results produced by events that executed.</returns>
         public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
         {
             List<GameResult> allResults = new List<GameResult>();
@@ -49,6 +52,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Executes a single game event if its conditions are met.
         /// </summary>
+        /// <param name="gameEvent">The event to process.</param>
+        /// <returns>Results produced by the event, or an empty list.</returns>
         private List<GameResult> ProcessEvent(GameEvent gameEvent)
         {
             if (!gameEvent.AreConditionsMet(_game))

@@ -1,4 +1,3 @@
-using Rebellion.Util.Common;
 using UnityEngine;
 
 public static class GameInput

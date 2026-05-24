@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game;
+using Rebellion.Game.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -157,7 +157,7 @@ public sealed class PlanetSystemPanel : MonoBehaviour
 
             view.Initialize(planet, uiContext);
 
-            // Unified bubbling
+            // Unified bubbling.
             view.PlanetIconInteracted += (iconType, interactionType) =>
             {
                 PlanetIconActionRequested?.Invoke(planet, iconType, interactionType);

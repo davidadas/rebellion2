@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 using Rebellion.Generation;
 using Rebellion.Util.Common;
 

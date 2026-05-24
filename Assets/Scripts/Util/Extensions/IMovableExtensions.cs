@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
-using Rebellion.Game;
+using Rebellion.Game.Units;
+using Rebellion.Game.World;
 
 namespace Rebellion.Util.Extensions
 {

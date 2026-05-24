@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Linq;
 using Rebellion.Util.Extensions;
 using UnityEngine;
