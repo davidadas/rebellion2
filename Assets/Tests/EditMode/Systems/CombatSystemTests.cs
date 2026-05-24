@@ -884,13 +884,14 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            // No PlayerID = IsAIControlled() returns true
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.Factions.Add(empire);
             game.Factions.Add(alliance);
 
-            // Three planets, each with one empire fleet and one alliance fleet
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
             for (int i = 1; i <= 3; i++)
             {
                 PlanetSystem sys = new PlanetSystem { InstanceID = $"sys{i}" };
@@ -901,7 +902,6 @@ namespace Rebellion.Tests.Systems
                 CreateFleet(game, $"af{i}", "alliance", planet, 1, 1000, 20);
             }
 
-            // 2 RNG calls per engagement (one per side firing), 3 engagements = 6
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
@@ -914,21 +914,82 @@ namespace Rebellion.Tests.Systems
 
             for (int i = 1; i <= 3; i++)
             {
-                Fleet ef = game.GetSceneNodeByInstanceID<Fleet>($"ef{i}");
-                Fleet af = game.GetSceneNodeByInstanceID<Fleet>($"af{i}");
-                Assert.IsNotNull(ef, $"Empire fleet at planet {i} should survive");
-                Assert.IsNotNull(af, $"Alliance fleet at planet {i} should survive");
-                Assert.Less(
-                    ef.CapitalShips[0].CurrentHullStrength,
-                    1000,
-                    $"Empire fleet at planet {i} should have taken damage"
-                );
-                Assert.Less(
-                    af.CapitalShips[0].CurrentHullStrength,
-                    1000,
-                    $"Alliance fleet at planet {i} should have taken damage"
-                );
+                Planet planet = game.GetSceneNodeByInstanceID<Planet>($"p{i}");
+                Assert.IsFalse(HasHostileFleets(planet));
             }
+        }
+
+        [Test]
+        public void ProcessTick_WeakerAIFleetCanRetreat_MovesToFriendlyPlanet()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
+            Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            CreateFleet(game, "ef1", "empire", combatPlanet, 1, 1, 1, shieldRechargeRate: 0);
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "af1",
+                "alliance",
+                combatPlanet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+            Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_UnarmedAIFleets_RetreatsBoth()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
+            allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.AreSame(allianceHome, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
         [Test]
@@ -1128,9 +1189,11 @@ namespace Rebellion.Tests.Systems
                 CapitalShip ship = new CapitalShip
                 {
                     InstanceID = $"{instanceId}_ship{i}",
+                    OwnerInstanceID = ownerId,
                     MaxHullStrength = hullStrength,
                     CurrentHullStrength = hullStrength,
                     ShieldRechargeRate = shieldRechargeRate,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
 
                 // Add weapon arcs
@@ -1151,6 +1214,19 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(fleet, planet);
             return fleet;
+        }
+
+        private static bool HasHostileFleets(Planet planet)
+        {
+            List<string> owners = planet
+                .GetFleets()
+                .Where(fleet => fleet.Movement == null)
+                .Select(fleet => fleet.GetOwnerInstanceID())
+                .Where(owner => !string.IsNullOrEmpty(owner))
+                .Distinct()
+                .ToList();
+
+            return owners.Count > 1;
         }
 
         private Fleet CreateFleetWithFighters(
@@ -1180,11 +1256,13 @@ namespace Rebellion.Tests.Systems
                 Starfighter fighter = new Starfighter
                 {
                     InstanceID = $"{instanceId}_fighter",
+                    OwnerInstanceID = ownerId,
                     MaxSquadronSize = squadronSize,
                     CurrentSquadronSize = squadronSize,
                     LaserCannon = 5,
                     IonCannon = 3,
                     Torpedoes = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 fleet.CapitalShips[0].Starfighters.Add(fighter);
             }

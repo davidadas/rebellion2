@@ -40,7 +40,7 @@ namespace Rebellion.Systems
 
     /// <summary>
     /// Facade over the three combat resolvers (space combat, planetary assault, orbital
-    /// bombardment). Also owns fleet-collision detection.
+    /// bombardment). Also owns fleet encounter detection.
     /// </summary>
     public class CombatSystem
     {
@@ -110,13 +110,26 @@ namespace Rebellion.Systems
             if (!BothSidesAIControlled(decision))
                 return false;
 
-            SpaceCombatResult combatResult = Resolve(decision, autoResolve: true);
-            if (combatResult != null)
-                results.AddRange(combatResult.Events);
+            results.AddRange(_spaceCombat.ResolveAutomaticFleetEncounter(decision));
 
-            resolvedFleetIds.Add(decision.AttackerFleetInstanceID);
-            resolvedFleetIds.Add(decision.DefenderFleetInstanceID);
+            if (IsEncounterStillContested(decision))
+            {
+                resolvedFleetIds.Add(decision.AttackerFleetInstanceID);
+                resolvedFleetIds.Add(decision.DefenderFleetInstanceID);
+            }
             return true;
+        }
+
+        private bool IsEncounterStillContested(CombatDecisionContext decision)
+        {
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
+
+            return AreFleetsContestingPlanet(attacker, defender);
         }
 
         /// <summary>
@@ -205,8 +218,8 @@ namespace Rebellion.Systems
         ) => _defenseCombat.Execute(attackingFleets, targetPlanet);
 
         /// <summary>
-        /// Detects a hostile fleet encounter while skipping any fleet IDs already resolved
-        /// this tick. Used by ProcessTick to prevent Draw outcomes from being re-detected.
+        /// Detects a hostile fleet encounter while skipping any fleet IDs already handled
+        /// this tick.
         /// </summary>
         /// <param name="excludedFleetIds">Fleet instance IDs to skip.</param>
         /// <param name="decision">Output: populated with the encounter context on success.</param>
@@ -218,7 +231,9 @@ namespace Rebellion.Systems
         {
             decision = null;
 
-            if (!DetectFleetCollision(excludedFleetIds, out Fleet attacker, out Fleet defender))
+            if (
+                !TryFindContestedFleetPair(excludedFleetIds, out Fleet attacker, out Fleet defender)
+            )
                 return false;
 
             attacker.IsInCombat = true;
@@ -242,7 +257,7 @@ namespace Rebellion.Systems
         /// <param name="attacker">Output attacker fleet.</param>
         /// <param name="defender">Output defender fleet.</param>
         /// <returns>True if a hostile fleet pair was found.</returns>
-        private bool DetectFleetCollision(
+        private bool TryFindContestedFleetPair(
             HashSet<string> excludedFleetIds,
             out Fleet attacker,
             out Fleet defender
@@ -283,6 +298,21 @@ namespace Rebellion.Systems
 
             return false;
         }
+
+        private static bool AreFleetsContestingPlanet(Fleet firstFleet, Fleet secondFleet)
+        {
+            if (firstFleet == null || secondFleet == null)
+                return false;
+
+            Planet firstPlanet = firstFleet.GetParentOfType<Planet>();
+            Planet secondPlanet = secondFleet.GetParentOfType<Planet>();
+
+            return firstPlanet != null
+                && firstPlanet == secondPlanet
+                && firstFleet.Movement == null
+                && secondFleet.Movement == null
+                && firstFleet.GetOwnerInstanceID() != secondFleet.GetOwnerInstanceID();
+        }
     }
 
     internal class SpaceCombatResolver
@@ -314,7 +344,7 @@ namespace Rebellion.Systems
             SpaceCombatResult result = null;
 
             if (autoResolve)
-                result = AutoResolveCombat(decision, _provider);
+                result = ResolveCombatRound(decision, _provider);
             else
                 RunManualCombat();
 
@@ -332,6 +362,178 @@ namespace Rebellion.Systems
             return result;
         }
 
+        public List<GameResult> ResolveAutomaticFleetEncounter(CombatDecisionContext decision)
+        {
+            List<GameResult> results = new List<GameResult>();
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
+
+            try
+            {
+                while (AreFleetsContestingPlanet(attacker, defender))
+                {
+                    if (TryRetreatOutmatchedFleet(attacker, defender))
+                        break;
+
+                    SpaceCombatResult combatResult = ResolveCombatRound(
+                        attacker,
+                        defender,
+                        _provider
+                    );
+                    if (combatResult != null)
+                        results.AddRange(combatResult.Events);
+
+                    attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                        decision.AttackerFleetInstanceID
+                    );
+                    defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                        decision.DefenderFleetInstanceID
+                    );
+
+                    if (!AreFleetsContestingPlanet(attacker, defender))
+                        break;
+
+                    if (CannotResolveWithMoreCombat(attacker, defender, combatResult))
+                    {
+                        TryOrderRetreat(attacker, defender, ignoreGravityWell: true);
+                        TryOrderRetreat(defender, attacker, ignoreGravityWell: true);
+                        break;
+                    }
+                }
+            }
+            finally
+            {
+                attacker = _game.GetSceneNodeByInstanceID<Fleet>(decision.AttackerFleetInstanceID);
+                defender = _game.GetSceneNodeByInstanceID<Fleet>(decision.DefenderFleetInstanceID);
+                if (attacker != null)
+                    attacker.IsInCombat = false;
+                if (defender != null)
+                    defender.IsInCombat = false;
+            }
+
+            return results;
+        }
+
+        private bool TryRetreatOutmatchedFleet(Fleet attacker, Fleet defender)
+        {
+            int attackerPower = attacker.GetCombatValue();
+            int defenderPower = defender.GetCombatValue();
+
+            if (attackerPower == defenderPower)
+            {
+                bool attackerRetreated = TryOrderRetreat(
+                    attacker,
+                    defender,
+                    ignoreGravityWell: false
+                );
+                bool defenderRetreated = TryOrderRetreat(
+                    defender,
+                    attacker,
+                    ignoreGravityWell: false
+                );
+                return attackerRetreated || defenderRetreated;
+            }
+
+            if (attackerPower < defenderPower)
+                return TryOrderRetreat(attacker, defender, ignoreGravityWell: false);
+
+            return TryOrderRetreat(defender, attacker, ignoreGravityWell: false);
+        }
+
+        private bool TryOrderRetreat(Fleet fleet, Fleet opponent, bool ignoreGravityWell)
+        {
+            if (fleet == null)
+                return false;
+
+            if (!ignoreGravityWell && IsRetreatBlockedByGravityWell(fleet, opponent))
+                return false;
+
+            Planet originalPlanet = fleet.GetParentOfType<Planet>();
+            _movement.EvacuateToNearestFriendlyPlanet(fleet);
+            return fleet.Movement != null || fleet.GetParentOfType<Planet>() != originalPlanet;
+        }
+
+        private static bool IsRetreatBlockedByGravityWell(Fleet fleet, Fleet opponent)
+        {
+            if (fleet == null || opponent == null)
+                return false;
+
+            Planet fleetPlanet = fleet.GetParentOfType<Planet>();
+            if (fleetPlanet == null || fleetPlanet != opponent.GetParentOfType<Planet>())
+                return false;
+
+            return opponent?.CapitalShips.Any(ship =>
+                    ship.HasGravityWell
+                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && ship.CurrentHullStrength > 0
+                ) == true;
+        }
+
+        private static bool AreFleetsContestingPlanet(Fleet attacker, Fleet defender)
+        {
+            if (attacker == null || defender == null)
+                return false;
+
+            Planet attackerPlanet = attacker.GetParentOfType<Planet>();
+            Planet defenderPlanet = defender.GetParentOfType<Planet>();
+
+            return attackerPlanet != null
+                && attackerPlanet == defenderPlanet
+                && attacker.Movement == null
+                && defender.Movement == null
+                && attacker.GetOwnerInstanceID() != defender.GetOwnerInstanceID();
+        }
+
+        private static bool CannotResolveWithMoreCombat(
+            Fleet attacker,
+            Fleet defender,
+            SpaceCombatResult combatResult
+        )
+        {
+            return (!HasOperationalSpaceWeapons(attacker) && !HasOperationalSpaceWeapons(defender))
+                || !DidCombatChangeState(combatResult);
+        }
+
+        private static bool DidCombatChangeState(SpaceCombatResult combatResult)
+        {
+            if (combatResult == null)
+                return false;
+
+            return combatResult.Winner != CombatSide.Draw
+                || combatResult.ShipDamage.Any(damage => damage.HullBefore != damage.HullAfter)
+                || combatResult.FighterLosses.Any(loss => loss.SquadsBefore != loss.SquadsAfter);
+        }
+
+        private static bool HasOperationalSpaceWeapons(Fleet fleet)
+        {
+            if (fleet == null)
+                return false;
+
+            return fleet.CapitalShips.Any(IsArmedOperationalCapitalShip)
+                || fleet.GetStarfighters().Any(IsArmedOperationalStarfighter);
+        }
+
+        private static bool IsArmedOperationalCapitalShip(CapitalShip ship)
+        {
+            return ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.CurrentHullStrength > 0
+                && ship.GetPrimaryWeaponStrength() > 0;
+        }
+
+        private static bool IsArmedOperationalStarfighter(Starfighter starfighter)
+        {
+            return starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                && starfighter.Movement == null
+                && starfighter.CurrentSquadronSize > 0
+                && starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes > 0;
+        }
+
         /// <summary>
         /// Runs the 7-phase combat pipeline for an AI encounter and applies the outcome to
         /// the game world.
@@ -339,7 +541,7 @@ namespace Rebellion.Systems
         /// <param name="decision">The encounter to resolve.</param>
         /// <param name="rng">Random-number provider for damage variance.</param>
         /// <returns>The combat result with winner and per-ship damage, or null if either fleet is missing.</returns>
-        private SpaceCombatResult AutoResolveCombat(
+        private SpaceCombatResult ResolveCombatRound(
             CombatDecisionContext decision,
             IRandomNumberProvider rng
         )
@@ -351,9 +553,18 @@ namespace Rebellion.Systems
                 decision.DefenderFleetInstanceID
             );
 
+            return ResolveCombatRound(attacker, defender, rng);
+        }
+
+        private SpaceCombatResult ResolveCombatRound(
+            Fleet attacker,
+            Fleet defender,
+            IRandomNumberProvider rng
+        )
+        {
             if (attacker == null || defender == null)
             {
-                GameLogger.Warning("AutoResolveCombat: one or both fleets no longer exist.");
+                GameLogger.Warning("ResolveCombatRound: one or both fleets no longer exist.");
                 return null;
             }
 
@@ -361,7 +572,7 @@ namespace Rebellion.Systems
             if (planet == null)
             {
                 GameLogger.Warning(
-                    $"AutoResolveCombat: attacker {attacker.GetDisplayName()} is not at a planet."
+                    $"ResolveCombatRound: attacker {attacker.GetDisplayName()} is not at a planet."
                 );
                 return null;
             }
@@ -416,10 +627,8 @@ namespace Rebellion.Systems
             List<int> defInitialFighters = defFighters.ToList();
 
             bool anyArmed =
-                atkShips.Any(s => s.Alive && s.WeaponNibble > 0)
-                || defShips.Any(s => s.Alive && s.WeaponNibble > 0)
-                || HasArmedFighters(attackerFleet, atkFighters)
-                || HasArmedFighters(defenderFleet, defFighters);
+                HasOperationalSpaceWeapons(attackerFleet)
+                || HasOperationalSpaceWeapons(defenderFleet);
 
             if (anyArmed)
             {
@@ -507,29 +716,6 @@ namespace Rebellion.Systems
                 .ToList();
 
             return (ships, fighters);
-        }
-
-        /// <summary>
-        /// Returns true if any squadron in the fleet has both fighters remaining and non-zero
-        /// weapon strength (laser + ion + torpedo).
-        /// </summary>
-        /// <param name="fleet">Fleet owning the fighter groups.</param>
-        /// <param name="squadrons">Current squadron sizes.</param>
-        /// <returns>True if at least one squadron can attack.</returns>
-        private static bool HasArmedFighters(Fleet fleet, List<int> squadrons)
-        {
-            List<Starfighter> fighters = fleet.GetStarfighters().ToList();
-            for (int i = 0; i < squadrons.Count && i < fighters.Count; i++)
-            {
-                if (squadrons[i] > 0)
-                {
-                    Starfighter fighter = fighters[i];
-                    int totalAttack = fighter.LaserCannon + fighter.IonCannon + fighter.Torpedoes;
-                    if (totalAttack > 0)
-                        return true;
-                }
-            }
-            return false;
         }
 
         /// <summary>
