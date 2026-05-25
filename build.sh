@@ -143,7 +143,7 @@ do_lint() {
 
     echo "=== Format Rules ==="
     dotnet restore "$EDITOR_LINT_PROJECT"
-    dotnet format style "$EDITOR_LINT_PROJECT" --verify-no-changes --severity error --no-restore
+    dotnet format "$EDITOR_LINT_PROJECT" style --verify-no-changes --severity error --no-restore
     echo ""
 
     echo "=== Naming Rules ==="
