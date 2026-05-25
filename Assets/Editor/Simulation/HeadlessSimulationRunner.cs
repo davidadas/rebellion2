@@ -11,7 +11,6 @@ using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
-using UnityEditor;
 using UnityEngine;
 
 public static class HeadlessSimulationRunner
@@ -40,12 +39,12 @@ public static class HeadlessSimulationRunner
         {
             SimulationOptions options = SimulationOptions.Parse(Environment.GetCommandLineArgs());
             RunSimulation(options);
-            EditorApplication.Exit(0);
+            UnityEditor.EditorApplication.Exit(0);
         }
         catch (Exception ex)
         {
             Debug.LogException(ex);
-            EditorApplication.Exit(1);
+            UnityEditor.EditorApplication.Exit(1);
         }
     }
 

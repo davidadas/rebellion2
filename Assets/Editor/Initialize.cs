@@ -1,6 +1,4 @@
-using UnityEditor;
-
-[InitializeOnLoad]
+[UnityEditor.InitializeOnLoad]
 public static class Startup
 {
     static Startup() { }

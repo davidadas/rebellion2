@@ -1,12 +1,11 @@
-using UnityEditor;
 using UnityEngine;
 
 public static class RectTransformTools
 {
-    [MenuItem("Tools/UI/Convert To Relative Anchors")]
+    [UnityEditor.MenuItem("Tools/UI/Convert To Relative Anchors")]
     private static void ConvertToAnchors()
     {
-        if (!(Selection.activeTransform is RectTransform rect))
+        if (!(UnityEditor.Selection.activeTransform is RectTransform rect))
             return;
 
         RectTransform parent = rect.parent as RectTransform;

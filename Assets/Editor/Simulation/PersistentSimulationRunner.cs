@@ -2,10 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using Rebellion.Util.Common;
-using UnityEditor;
 using UnityEngine;
 
-[InitializeOnLoad]
+[UnityEditor.InitializeOnLoad]
 public static class PersistentSimulationRunner
 {
     private const string _jobDirectory = "/tmp/rebellion2-sim-jobs";
@@ -17,18 +16,18 @@ public static class PersistentSimulationRunner
 
     static PersistentSimulationRunner()
     {
-        EditorApplication.update += OnEditorUpdate;
+        UnityEditor.EditorApplication.update += OnEditorUpdate;
     }
 
     private static void OnEditorUpdate()
     {
-        if (_isRunningJob || EditorApplication.isCompiling)
+        if (_isRunningJob || UnityEditor.EditorApplication.isCompiling)
             return;
 
-        if (EditorApplication.timeSinceStartup < _nextPollAt)
+        if (UnityEditor.EditorApplication.timeSinceStartup < _nextPollAt)
             return;
 
-        _nextPollAt = EditorApplication.timeSinceStartup + _pollIntervalSeconds;
+        _nextPollAt = UnityEditor.EditorApplication.timeSinceStartup + _pollIntervalSeconds;
         TryRunNextJob();
     }
 
@@ -36,8 +35,8 @@ public static class PersistentSimulationRunner
     {
         try
         {
-            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-            if (EditorApplication.isCompiling)
+            UnityEditor.AssetDatabase.Refresh(UnityEditor.ImportAssetOptions.ForceUpdate);
+            if (UnityEditor.EditorApplication.isCompiling)
                 return;
 
             Directory.CreateDirectory(_jobDirectory);
@@ -57,7 +56,7 @@ public static class PersistentSimulationRunner
         }
     }
 
-    [MenuItem("Tools/UI/Run Simulation")]
+    [UnityEditor.MenuItem("Tools/UI/Run Simulation")]
     private static void RunJob()
     {
         string jobPath = "dummy.txt";
