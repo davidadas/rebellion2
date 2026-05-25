@@ -4,8 +4,6 @@ using System.Xml;
 using System.Xml.Schema;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
-using UnityEngine;
-using UnityEngine.Video;
 
 /// <summary>
 /// Loads all game resources including configs, game data, audio, video, and sprites.
@@ -24,13 +22,13 @@ public static class ResourceManager
         string typeName = typeof(T).Name;
         string filePath = Path.Combine("Configs", typeName);
 
-        TextAsset asset = Resources.Load<TextAsset>(filePath);
+        UnityEngine.TextAsset asset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(filePath);
         if (asset == null)
             throw new Exception($"Config not found at: {filePath}");
 
         GameSerializerSettings settings = new GameSerializerSettings { RootName = typeName };
 
-        TextAsset schemaAsset = Resources.Load<TextAsset>(
+        UnityEngine.TextAsset schemaAsset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(
             Path.Combine("Configs", $"{typeName}Schema")
         );
         if (schemaAsset != null)
@@ -62,7 +60,7 @@ public static class ResourceManager
         string pluralizedType = typeName.EndsWith("s") ? typeName : $"{typeName}s";
         string filePath = Path.Combine("Data", pluralizedType);
 
-        TextAsset asset = Resources.Load<TextAsset>(filePath);
+        UnityEngine.TextAsset asset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(filePath);
 
         if (asset == null)
         {
@@ -88,9 +86,9 @@ public static class ResourceManager
     /// </summary>
     /// <param name="path">Resources path to the audio file.</param>
     /// <returns>The loaded AudioClip.</returns>
-    public static AudioClip GetAudio(string path)
+    public static UnityEngine.AudioClip GetAudio(string path)
     {
-        return LoadResource<AudioClip>(path, "Audio not found at: ");
+        return LoadResource<UnityEngine.AudioClip>(path, "Audio not found at: ");
     }
 
     /// <summary>
@@ -98,18 +96,18 @@ public static class ResourceManager
     /// </summary>
     /// <param name="paths">Array of Resources paths to load.</param>
     /// <returns>Array of loaded AudioClips.</returns>
-    public static AudioClip[] GetAudioSet(string[] paths)
+    public static UnityEngine.AudioClip[] GetAudioSet(string[] paths)
     {
         if (paths == null || paths.Length == 0)
         {
             throw new Exception("Audio set paths cannot be null or empty.");
         }
 
-        AudioClip[] clips = new AudioClip[paths.Length];
+        UnityEngine.AudioClip[] clips = new UnityEngine.AudioClip[paths.Length];
 
         for (int i = 0; i < paths.Length; i++)
         {
-            clips[i] = LoadResource<AudioClip>(paths[i], "Audio not found at: ");
+            clips[i] = LoadResource<UnityEngine.AudioClip>(paths[i], "Audio not found at: ");
         }
 
         return clips;
@@ -120,9 +118,9 @@ public static class ResourceManager
     /// </summary>
     /// <param name="path">Resources path to the video file.</param>
     /// <returns>The loaded VideoClip.</returns>
-    public static VideoClip GetVideo(string path)
+    public static UnityEngine.Video.VideoClip GetVideo(string path)
     {
-        return LoadResource<VideoClip>(path, "Video not found at: ");
+        return LoadResource<UnityEngine.Video.VideoClip>(path, "Video not found at: ");
     }
 
     /// <summary>
@@ -130,9 +128,12 @@ public static class ResourceManager
     /// </summary>
     /// <param name="folderPath">Resources folder path containing video files.</param>
     /// <returns>Array of loaded VideoClips.</returns>
-    public static VideoClip[] GetVideoGroup(string folderPath)
+    public static UnityEngine.Video.VideoClip[] GetVideoGroup(string folderPath)
     {
-        return LoadResourceGroup<VideoClip>(folderPath, "No videos found in folder: ");
+        return LoadResourceGroup<UnityEngine.Video.VideoClip>(
+            folderPath,
+            "No videos found in folder: "
+        );
     }
 
     /// <summary>
@@ -140,15 +141,15 @@ public static class ResourceManager
     /// </summary>
     /// <param name="path">Resources path to the sprite.</param>
     /// <returns>The loaded Sprite.</returns>
-    public static Sprite GetSprite(string path)
+    public static UnityEngine.Sprite GetSprite(string path)
     {
-        return LoadResource<Sprite>(path, "Sprite not found at: ");
+        return LoadResource<UnityEngine.Sprite>(path, "Sprite not found at: ");
     }
 
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = Resources.Load<T>(path);
+        T resource = UnityEngine.Resources.Load<T>(path);
 
         if (resource == null)
         {
@@ -161,7 +162,7 @@ public static class ResourceManager
     private static T[] LoadResourceGroup<T>(string folderPath, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T[] resources = Resources.LoadAll<T>(folderPath);
+        T[] resources = UnityEngine.Resources.LoadAll<T>(folderPath);
 
         if (resources == null || resources.Length == 0)
         {

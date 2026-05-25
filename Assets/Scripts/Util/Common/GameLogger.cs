@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using UnityEngine;
 
 namespace Rebellion.Util.Common
 {
@@ -24,7 +23,8 @@ namespace Rebellion.Util.Common
         }
 
         // Default log file path and configuration settings.
-        private static string _logFilePath = $"{Application.persistentDataPath}/log.txt";
+        private static string _logFilePath =
+            $"{UnityEngine.Application.persistentDataPath}/log.txt";
         private static bool _logToFile;
         private static bool _includeTimestamp = true;
 
@@ -140,7 +140,7 @@ namespace Rebellion.Util.Common
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
         public static void LogObject(object obj, LogLevel level = LogLevel.Info)
         {
-            string message = JsonUtility.ToJson(obj, true);
+            string message = UnityEngine.JsonUtility.ToJson(obj, true);
             Log(message, level);
         }
 

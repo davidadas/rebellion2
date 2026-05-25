@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Serialization;
-using UnityEngine;
 
 /// <summary>
 /// Represents a discovered save file paired with its deserialized metadata.
@@ -48,7 +47,7 @@ public class SaveGameManager
     /// <returns>The directory path for saving game data.</returns>
     public string GetSaveDirectoryPath()
     {
-        return Path.Combine(Application.persistentDataPath, "saves");
+        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves");
     }
 
     /// <summary>
@@ -58,7 +57,7 @@ public class SaveGameManager
     /// <returns>The full path to the save file.</returns>
     public string GetSaveFilePath(string fileName)
     {
-        return Path.Combine(Application.persistentDataPath, "saves", $"{fileName}.sav");
+        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves", $"{fileName}.sav");
     }
 
     /// <summary>
@@ -101,7 +100,9 @@ public class SaveGameManager
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to read save metadata for {file.Name}: {ex.Message}");
+                UnityEngine.Debug.LogWarning(
+                    $"Failed to read save metadata for {file.Name}: {ex.Message}"
+                );
                 // Skip corrupted/bad files.
             }
         }
