@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using Rebellion.Util.Common;
-using UnityEngine;
 
 [UnityEditor.InitializeOnLoad]
 public static class PersistentSimulationRunner
@@ -52,7 +51,7 @@ public static class PersistentSimulationRunner
         }
         catch (Exception ex)
         {
-            Debug.LogException(ex);
+            UnityEngine.Debug.LogException(ex);
         }
     }
 
@@ -77,7 +76,9 @@ public static class PersistentSimulationRunner
 
         try
         {
-            SimulationJob job = JsonUtility.FromJson<SimulationJob>(File.ReadAllText(runningPath));
+            SimulationJob job = UnityEngine.JsonUtility.FromJson<SimulationJob>(
+                File.ReadAllText(runningPath)
+            );
             if (job == null)
                 throw new InvalidOperationException(
                     $"Could not parse simulation job: {runningPath}"
@@ -94,7 +95,7 @@ public static class PersistentSimulationRunner
             GameLogger.Configure(logPath, enableFileLogging: true);
             string startMessage =
                 $"[PersistentSim] running job={Path.GetFileName(runningPath)} seed={(job.Seed >= 0 ? job.Seed.ToString() : "random")} ticks={job.TickCount} output={job.OutputPath}";
-            Debug.Log(startMessage);
+            UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
             HeadlessSimulationRunner.SimulationRunResult result =
@@ -108,7 +109,7 @@ public static class PersistentSimulationRunner
 
             File.WriteAllText(
                 completePath,
-                JsonUtility.ToJson(
+                UnityEngine.JsonUtility.ToJson(
                     new SimulationJobResult
                     {
                         JobPath = runningPath,
@@ -123,7 +124,7 @@ public static class PersistentSimulationRunner
             File.Delete(runningPath);
             string completeMessage =
                 $"[PersistentSim] completed job={Path.GetFileName(completePath)}";
-            Debug.Log(completeMessage);
+            UnityEngine.Debug.Log(completeMessage);
             LogToFile(logPath, completeMessage);
         }
         catch (Exception ex)
@@ -131,7 +132,7 @@ public static class PersistentSimulationRunner
             File.WriteAllText(failedPath, ex.ToString());
             if (File.Exists(runningPath))
                 File.Delete(runningPath);
-            Debug.LogException(ex);
+            UnityEngine.Debug.LogException(ex);
         }
         finally
         {

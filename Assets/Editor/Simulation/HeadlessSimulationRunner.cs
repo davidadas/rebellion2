@@ -11,7 +11,6 @@ using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
-using UnityEngine;
 
 public static class HeadlessSimulationRunner
 {
@@ -43,7 +42,7 @@ public static class HeadlessSimulationRunner
         }
         catch (Exception ex)
         {
-            Debug.LogException(ex);
+            UnityEngine.Debug.LogException(ex);
             UnityEditor.EditorApplication.Exit(1);
         }
     }
@@ -90,7 +89,7 @@ public static class HeadlessSimulationRunner
 
         string startMessage =
             $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} playerFaction={options.PlayerFactionId} galaxySize={summary.GalaxySize}";
-        Debug.Log(startMessage);
+        UnityEngine.Debug.Log(startMessage);
         LogToFile(logPath, startMessage);
 
         GameRoot game = CreateGameBuilder(summary, options.Seed).BuildGame();
@@ -124,7 +123,7 @@ public static class HeadlessSimulationRunner
         string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
         string completeMessage =
             $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
-        Debug.Log(completeMessage);
+        UnityEngine.Debug.Log(completeMessage);
         LogToFile(logPath, completeMessage);
 
         return new SimulationRunResult
@@ -425,7 +424,7 @@ public static class HeadlessSimulationRunner
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        File.WriteAllText(resolvedPath, JsonUtility.ToJson(report, true));
+        File.WriteAllText(resolvedPath, UnityEngine.JsonUtility.ToJson(report, true));
         return resolvedPath;
     }
 

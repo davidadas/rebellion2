@@ -43,6 +43,13 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="UnityEngine.JSONSerializeModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.JSONSerializeModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.JSONSerializeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Editor/**/*.cs" />
