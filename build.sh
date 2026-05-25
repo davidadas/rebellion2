@@ -88,6 +88,10 @@ assert_coverage_threshold() {
     return 0
 }
 
+run_roslynator() {
+    dotnet tool run roslynator -- "$@"
+}
+
 set_dotnet_root
 set_platform_defaults
 
@@ -125,6 +129,8 @@ do_xmlformat() {
 }
 
 do_lint() {
+    dotnet tool restore
+
     local extra_args=()
     if [ -n "$FRAMEWORK_PATH" ]; then
         extra_args+=("-p:FrameworkPathOverride=$FRAMEWORK_PATH")
@@ -156,19 +162,19 @@ do_lint() {
     # Roslynator uses a committed portable project file so it works in CI without Unity.
     # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
-    roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$GAME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$GAME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
-    roslynator analyze "$EDITOR_LINT_PROJECT" \
+    run_roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    roslynator analyze "$EDITOR_LINT_PROJECT" \
+    run_roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
