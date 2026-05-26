@@ -233,7 +233,6 @@ public class GameManager
 
     /// <summary>
     /// Resolves the pending combat encounter and resumes ticking.
-    /// Must be called by the UI after presenting the combat decision to the player.
     /// </summary>
     /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
     public void ResolveCombat(bool autoResolve)
@@ -241,12 +240,7 @@ public class GameManager
         if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
-        SpaceCombatResult combatResult = _combatManager.Resolve(
-            _pendingCombatDecision,
-            autoResolve
-        );
-        if (combatResult != null)
-            ProcessResults(combatResult.Events);
+        ProcessResults(_combatManager.Resolve(_pendingCombatDecision, autoResolve));
         _pendingCombatDecision = null;
     }
 

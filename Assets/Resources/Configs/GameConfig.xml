@@ -638,7 +638,7 @@
     <FleetDeployment>
       <MinimumAttackStrength>1750</MinimumAttackStrength>
       <MinimumDefenseStrength>1000</MinimumDefenseStrength>
-      <MinimumCaptureRegimentCount>1</MinimumCaptureRegimentCount>
+      <MinimumPlanetaryAssaultRegimentCount>1</MinimumPlanetaryAssaultRegimentCount>
       <AttackStrengthPercentOfDefense>175</AttackStrengthPercentOfDefense>
       <AttackStrengthPercentOfStrongestHostileFleet>125</AttackStrengthPercentOfStrongestHostileFleet>
       <AttackStrategicValueWeight>55</AttackStrategicValueWeight>

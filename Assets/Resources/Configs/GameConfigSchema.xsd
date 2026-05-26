@@ -387,7 +387,7 @@
                   <xs:all>
                     <xs:element name="MinimumAttackStrength" type="PositiveIntType" />
                     <xs:element name="MinimumDefenseStrength" type="PositiveIntType" />
-                    <xs:element name="MinimumCaptureRegimentCount" type="PositiveIntType" />
+                    <xs:element name="MinimumPlanetaryAssaultRegimentCount" type="PositiveIntType" />
                     <xs:element
                       name="AttackStrengthPercentOfDefense"
                       type="PositiveIntType"

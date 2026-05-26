@@ -27,27 +27,9 @@ public static class PersistentSimulationRunner
             return;
 
         _nextPollAt = UnityEditor.EditorApplication.timeSinceStartup + _pollIntervalSeconds;
-        TryRunNextJob();
-    }
-
-    private static void TryRunNextJob()
-    {
         try
         {
-            UnityEditor.AssetDatabase.Refresh(UnityEditor.ImportAssetOptions.ForceUpdate);
-            if (UnityEditor.EditorApplication.isCompiling)
-                return;
-
-            Directory.CreateDirectory(_jobDirectory);
-            string nextJob = Directory
-                .GetFiles(_jobDirectory, "*.json")
-                .OrderBy(path => path, StringComparer.Ordinal)
-                .FirstOrDefault();
-
-            if (string.IsNullOrEmpty(nextJob))
-                return;
-
-            RunJob(nextJob);
+            TryRunNextJob();
         }
         catch (Exception ex)
         {
@@ -55,11 +37,42 @@ public static class PersistentSimulationRunner
         }
     }
 
-    [UnityEditor.MenuItem("Tools/UI/Run Simulation")]
-    private static void RunJob()
+    private static bool TryRunNextJob()
     {
-        string jobPath = "dummy.txt";
-        RunJob(jobPath);
+        if (UnityEditor.EditorApplication.isCompiling)
+            return false;
+
+        string nextJob = GetNextJobPath();
+        if (string.IsNullOrWhiteSpace(nextJob))
+            return false;
+
+        RunJob(nextJob);
+        return true;
+    }
+
+    [UnityEditor.MenuItem("Tools/Simulation/Run Next Queued Simulation")]
+    private static void RunNextQueuedJob()
+    {
+        try
+        {
+            if (!TryRunNextJob())
+                UnityEngine.Debug.Log("No queued simulation job found.");
+        }
+        catch (Exception ex)
+        {
+            UnityEngine.Debug.LogException(ex);
+        }
+    }
+
+    private static string GetNextJobPath()
+    {
+        if (!Directory.Exists(_jobDirectory))
+            return null;
+
+        return Directory
+            .GetFiles(_jobDirectory, "*.json")
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .FirstOrDefault();
     }
 
     private static void RunJob(string jobPath)
@@ -68,14 +81,18 @@ public static class PersistentSimulationRunner
         string completePath = Path.ChangeExtension(jobPath, ".done");
         string failedPath = Path.ChangeExtension(jobPath, ".failed");
 
-        if (File.Exists(runningPath) || File.Exists(completePath) || File.Exists(failedPath))
-            return;
-
-        File.Move(jobPath, runningPath);
         _isRunningJob = true;
 
         try
         {
+            if (string.IsNullOrWhiteSpace(jobPath) || !File.Exists(jobPath))
+                throw new FileNotFoundException("Simulation job file does not exist.", jobPath);
+
+            if (File.Exists(runningPath) || File.Exists(completePath) || File.Exists(failedPath))
+                return;
+
+            File.Move(jobPath, runningPath);
+
             SimulationJob job = UnityEngine.JsonUtility.FromJson<SimulationJob>(
                 File.ReadAllText(runningPath)
             );
@@ -129,7 +146,8 @@ public static class PersistentSimulationRunner
         }
         catch (Exception ex)
         {
-            File.WriteAllText(failedPath, ex.ToString());
+            if (!string.IsNullOrWhiteSpace(failedPath))
+                File.WriteAllText(failedPath, ex.ToString());
             if (File.Exists(runningPath))
                 File.Delete(runningPath);
             UnityEngine.Debug.LogException(ex);

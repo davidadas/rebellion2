@@ -133,7 +133,6 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Injects runtime configuration.
-        /// Called by GameManager during initialization.
         /// </summary>
         /// <param name="config">The configuration to inject.</param>
         public void SetConfig(GameConfig config)

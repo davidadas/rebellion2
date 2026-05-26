@@ -238,7 +238,7 @@ namespace Rebellion.AI.Proposals
             if (destinationPlanet.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
-            if (!destinationPlanet.IsColonized || destinationPlanet.IsDestroyed)
+            if (destinationPlanet.IsDestroyed)
                 return false;
 
             if (

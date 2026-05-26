@@ -110,6 +110,9 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
+            if (TryClearCompletedAttackOrder(context))
+                return;
+
             if (!CanExecute(context))
                 return;
 
@@ -177,7 +180,7 @@ namespace Rebellion.AI.Proposals
             }
 
             context.Combat.ExecuteOrbitalBombardment(new List<Fleet> { Fleet }, TargetPlanet);
-            if (ClearOrderIfTargetCaptured(context) || !CanExecute(context))
+            if (TryClearCompletedAttackOrder(context) || !CanExecute(context))
                 return;
 
             if (ShouldAssault(context))
@@ -191,7 +194,7 @@ namespace Rebellion.AI.Proposals
         private void ExecuteAssault(AITurnContext context)
         {
             context.Combat.ExecutePlanetaryAssault(new List<Fleet> { Fleet }, TargetPlanet);
-            ClearOrderIfTargetCaptured(context);
+            TryClearCompletedAttackOrder(context);
         }
 
         /// <summary>
@@ -199,8 +202,22 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>True if the order was cleared.</returns>
-        private bool ClearOrderIfTargetCaptured(AITurnContext context)
+        private bool TryClearCompletedAttackOrder(AITurnContext context)
         {
+            if (context?.Faction == null || Fleet == null || TargetPlanet == null)
+                return false;
+
+            if (Fleet.GetOwnerInstanceID() != context.Faction.InstanceID)
+                return false;
+
+            FleetOrder order = Fleet.Order;
+            if (
+                order == null
+                || order.OrderType != FleetOrderType.Attack
+                || order.TargetPlanetId != TargetPlanet.InstanceID
+            )
+                return false;
+
             if (TargetPlanet.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 

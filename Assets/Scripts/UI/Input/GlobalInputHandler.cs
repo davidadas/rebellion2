@@ -20,7 +20,6 @@ public sealed class GlobalInputHandler : MonoBehaviour
 
     /// <summary>
     /// Initialize with the application runtime.
-    /// Called by AppBootstrap.
     /// </summary>
     public void Initialize(GameRuntime runtime)
     {

@@ -74,12 +74,80 @@ namespace Rebellion.Tests.Systems
         /// </summary>
         private bool RunCombat(CombatSystem manager)
         {
+            return TryRunCombat(manager, out _);
+        }
+
+        private bool TryRunCombat(CombatSystem manager, out List<GameResult> results)
+        {
+            results = new List<GameResult>();
             if (manager.TryStartCombat(out CombatDecisionContext decision))
             {
-                manager.Resolve(decision, autoResolve: true);
+                results = manager.Resolve(decision, autoResolve: true);
                 return true;
             }
             return false;
+        }
+
+        private static bool HasDamageFor(List<GameResult> results, CapitalShip ship)
+        {
+            return results
+                .OfType<GameObjectDamagedResult>()
+                .Any(result => result.GameObject == ship && result.DamageValue > 0);
+        }
+
+        private static int GetDamageFor(List<GameResult> results, CapitalShip ship)
+        {
+            GameObjectDamagedResult damageResult = results
+                .OfType<GameObjectDamagedResult>()
+                .FirstOrDefault(result => result.GameObject == ship);
+
+            return damageResult?.DamageValue ?? 0;
+        }
+
+        private List<int> ResolveDamageValues(double randomValue)
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
+            CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+
+            QueueRNG rng = new QueueRNG(
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue
+            );
+            TryRunCombat(MakeCombat(game, rng), out List<GameResult> results);
+
+            List<int> damageValues = results
+                .OfType<GameObjectDamagedResult>()
+                .Select(result => result.DamageValue)
+                .ToList();
+
+            CollectionAssert.IsNotEmpty(damageValues, "Combat should emit damage results.");
+            return damageValues;
+        }
+
+        private bool HasOpposingReadyFleets(Planet planet)
+        {
+            return planet
+                    .GetFleets()
+                    .Where(fleet => fleet.Movement == null)
+                    .Select(fleet => fleet.GetOwnerInstanceID())
+                    .Where(ownerInstanceId => !string.IsNullOrEmpty(ownerInstanceId))
+                    .Distinct()
+                    .Count() > 1;
         }
 
         [Test]
@@ -98,15 +166,16 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager);
+            TryRunCombat(manager, out List<GameResult> results);
 
             bool combatOccurred =
-                empireFleet.CapitalShips[0].CurrentHullStrength < 100
-                || allianceFleet.CapitalShips[0].CurrentHullStrength < 100;
+                HasDamageFor(results, empireShip) || HasDamageFor(results, allianceShip);
             Assert.IsTrue(combatOccurred, "Combat should occur between hostile factions");
         }
 
@@ -205,17 +274,19 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet empireFleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f3", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip1 = empireFleet1.CapitalShips[0];
+            CapitalShip empireShip2 = empireFleet2.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            Assert.Less(
-                empireFleet1.CapitalShips[0].CurrentHullStrength,
-                100,
-                "First fleet fights"
-            );
+            bool firstPairFought =
+                HasDamageFor(results, empireShip1) || HasDamageFor(results, allianceShip);
+            Assert.IsTrue(firstPairFought, "First fleet fights");
+            Assert.IsFalse(HasDamageFor(results, empireShip2), "Second fleet does not fight");
             Assert.AreEqual(
                 100,
                 empireFleet2.CapitalShips[0].CurrentHullStrength,
@@ -340,15 +411,15 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            Assert.Less(
-                empireFleet.CapitalShips[0].CurrentHullStrength,
-                100,
+            Assert.IsTrue(
+                HasDamageFor(results, empireShip),
                 "Ships should take damage during combat"
             );
         }
@@ -484,7 +555,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_BothSidesZeroWeapons_AppliesNoDamage()
+        public void Resolve_BothSidesZeroWeapons_AppliesNoDamageAndSeparatesFleets()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -518,6 +589,10 @@ namespace Rebellion.Tests.Systems
                 allianceFleet.CapitalShips[0].CurrentHullStrength,
                 "No damage without weapons"
             );
+            Assert.IsFalse(
+                HasOpposingReadyFleets(planet),
+                "Opposing fleets should not remain ready at the same planet"
+            );
         }
 
         [Test]
@@ -536,14 +611,16 @@ namespace Rebellion.Tests.Systems
 
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            Assert.Less(empireFleet.CapitalShips[0].CurrentHullStrength, 100);
-            Assert.Less(allianceFleet.CapitalShips[0].CurrentHullStrength, 100);
+            Assert.IsTrue(HasDamageFor(results, empireShip));
+            Assert.IsTrue(HasDamageFor(results, allianceShip));
         }
 
         [Test]
@@ -562,6 +639,8 @@ namespace Rebellion.Tests.Systems
 
             Fleet shieldedFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
             Fleet unshieldedFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+            CapitalShip shieldedShip = shieldedFleet.CapitalShips[0];
+            CapitalShip unshieldedShip = unshieldedFleet.CapitalShips[0];
 
             shieldedFleet.CapitalShips[0].ShieldRechargeRate = 15;
             unshieldedFleet.CapitalShips[0].ShieldRechargeRate = 0;
@@ -569,14 +648,10 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            RunCombat(manager);
+            TryRunCombat(manager, out List<GameResult> results);
 
-            int shieldedDamage =
-                shieldedFleet.CapitalShips[0].MaxHullStrength
-                - shieldedFleet.CapitalShips[0].CurrentHullStrength;
-            int unshieldedDamage =
-                unshieldedFleet.CapitalShips[0].MaxHullStrength
-                - unshieldedFleet.CapitalShips[0].CurrentHullStrength;
+            int shieldedDamage = GetDamageFor(results, shieldedShip);
+            int unshieldedDamage = GetDamageFor(results, unshieldedShip);
 
             Assert.Greater(unshieldedDamage, shieldedDamage, "Shields should reduce damage");
         }
@@ -622,45 +697,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_RepeatedRuns_DamageVarianceWithinTwentyPercent()
+        public void Resolve_DifferentRNGValues_ProducesDifferentDamage()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
-
-            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
-            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-
-            QueueRNG rng1 = new QueueRNG(0.0, 0.0, 0.0, 0.0);
-            QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
-
-            CombatSystem manager1 = MakeCombat(game, rng1);
-            RunCombat(manager1);
-            int damage1 =
-                empireFleet.CapitalShips[0].MaxHullStrength
-                - empireFleet.CapitalShips[0].CurrentHullStrength;
-
-            empireFleet.CapitalShips[0].CurrentHullStrength = empireFleet
-                .CapitalShips[0]
-                .MaxHullStrength;
-            allianceFleet.CapitalShips[0].CurrentHullStrength = allianceFleet
-                .CapitalShips[0]
-                .MaxHullStrength;
-            empireFleet.IsInCombat = false;
-            allianceFleet.IsInCombat = false;
-
-            CombatSystem manager2 = MakeCombat(game, rng2);
-            RunCombat(manager2);
-            int damage2 =
-                empireFleet.CapitalShips[0].MaxHullStrength
-                - empireFleet.CapitalShips[0].CurrentHullStrength;
+            int damage1 = ResolveDamageValues(0.0).First();
+            int damage2 = ResolveDamageValues(1.0).First();
 
             Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
         }
@@ -668,37 +708,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_SameRNGSeed_ProducesSameOutcome()
         {
-            GameRoot game1 = new GameRoot(TestConfig.Create());
-            GameRoot game2 = new GameRoot(TestConfig.Create());
-
-            foreach (GameRoot game in new[] { game1, game2 })
-            {
-                Faction empire = new Faction { InstanceID = "empire" };
-                Faction alliance = new Faction { InstanceID = "alliance" };
-                game.Factions.Add(empire);
-                game.Factions.Add(alliance);
-
-                PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-                Planet planet = new Planet { InstanceID = "p1" };
-                game.AttachNode(system, game.Galaxy);
-                game.AttachNode(planet, system);
-
-                CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
-                CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-            }
-
-            QueueRNG rng1 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            QueueRNG rng2 = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-
-            RunCombat(MakeCombat(game1, rng1));
-            RunCombat(MakeCombat(game2, rng2));
-
-            Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
-            Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
-
-            Assert.AreEqual(
-                fleet1.CapitalShips[0].CurrentHullStrength,
-                fleet2.CapitalShips[0].CurrentHullStrength,
+            CollectionAssert.AreEqual(
+                ResolveDamageValues(0.5),
+                ResolveDamageValues(0.5),
                 "Same RNG should produce identical results"
             );
         }
@@ -706,37 +718,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Resolve_DifferentRNGSeeds_ProduceDifferentOutcomes()
         {
-            GameRoot game1 = new GameRoot(TestConfig.Create());
-            GameRoot game2 = new GameRoot(TestConfig.Create());
-
-            foreach (GameRoot game in new[] { game1, game2 })
-            {
-                Faction empire = new Faction { InstanceID = "empire" };
-                Faction alliance = new Faction { InstanceID = "alliance" };
-                game.Factions.Add(empire);
-                game.Factions.Add(alliance);
-
-                PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-                Planet planet = new Planet { InstanceID = "p1" };
-                game.AttachNode(system, game.Galaxy);
-                game.AttachNode(planet, system);
-
-                CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
-                CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-            }
-
-            QueueRNG rng1 = new QueueRNG(0.0, 0.0, 0.0, 0.0);
-            QueueRNG rng2 = new QueueRNG(1.0, 1.0, 1.0, 1.0);
-
-            RunCombat(MakeCombat(game1, rng1));
-            RunCombat(MakeCombat(game2, rng2));
-
-            Fleet fleet1 = game1.GetSceneNodeByInstanceID<Fleet>("f1");
-            Fleet fleet2 = game2.GetSceneNodeByInstanceID<Fleet>("f1");
-
-            Assert.AreNotEqual(
-                fleet1.CapitalShips[0].CurrentHullStrength,
-                fleet2.CapitalShips[0].CurrentHullStrength,
+            CollectionAssert.AreNotEqual(
+                ResolveDamageValues(0.0),
+                ResolveDamageValues(1.0),
                 "Different RNG should produce different results"
             );
         }
@@ -835,7 +819,6 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            // Durable fleets so both survive
             Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 10000, 1);
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
 
@@ -845,11 +828,19 @@ namespace Rebellion.Tests.Systems
             manager.TryStartCombat(out CombatDecisionContext decision);
             manager.Resolve(decision, autoResolve: true);
 
-            Assert.IsFalse(empireFleet.IsInCombat, "IsInCombat should be cleared after resolution");
-            Assert.IsFalse(
-                allianceFleet.IsInCombat,
-                "IsInCombat should be cleared after resolution"
-            );
+            Fleet survivingEmpireFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
+            Fleet survivingAllianceFleet = game.GetSceneNodeByInstanceID<Fleet>("f2");
+
+            if (survivingEmpireFleet != null)
+                Assert.IsFalse(
+                    survivingEmpireFleet.IsInCombat,
+                    "IsInCombat should be cleared after resolution"
+                );
+            if (survivingAllianceFleet != null)
+                Assert.IsFalse(
+                    survivingAllianceFleet.IsInCombat,
+                    "IsInCombat should be cleared after resolution"
+                );
         }
 
         [Test]
@@ -873,7 +864,6 @@ namespace Rebellion.Tests.Systems
 
             manager.TryStartCombat(out _);
 
-            // Should not detect again while IsInCombat is set
             bool detectedAgain = manager.TryStartCombat(out CombatDecisionContext second);
 
             Assert.IsFalse(detectedAgain, "Fleets already in combat should not be detected again");

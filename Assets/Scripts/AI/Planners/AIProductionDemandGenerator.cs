@@ -703,7 +703,7 @@ namespace Rebellion.AI.Planners
         /// <returns>Economy destination planets.</returns>
         private IEnumerable<Planet> GetEconomyDestinationPlanets(AITurnContext context)
         {
-            return context.Assessment.OwnedPlanets.Where(IsOwnedColonizedUsablePlanet);
+            return context.Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet);
         }
 
         /// <summary>
@@ -717,7 +717,7 @@ namespace Rebellion.AI.Planners
             if (planet == null)
                 return false;
 
-            return IsOwnedColonizedUsablePlanet(planet)
+            return IsOwnedUsablePlanet(planet)
                 && (
                     planet.GetAvailableEnergy() > 0
                     || GetReplaceableExcessFacilityCount(context, planet) > 0
@@ -729,9 +729,9 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
         /// <returns>True if the planet is usable.</returns>
-        private bool IsOwnedColonizedUsablePlanet(Planet planet)
+        private bool IsOwnedUsablePlanet(Planet planet)
         {
-            return planet?.IsColonized == true && !planet.IsDestroyed;
+            return planet?.IsDestroyed == false;
         }
 
         /// <summary>

@@ -100,7 +100,7 @@ namespace Rebellion.Game
         {
             public int MinimumAttackStrength { get; set; }
             public int MinimumDefenseStrength { get; set; } = 1000;
-            public int MinimumCaptureRegimentCount { get; set; } = 1;
+            public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
             public int AttackStrengthPercentOfDefense { get; set; }
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
             public int AttackStrategicValueWeight { get; set; } = 55;

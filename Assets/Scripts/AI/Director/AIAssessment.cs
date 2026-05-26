@@ -445,12 +445,18 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null || _context.Faction == null)
                 return 0;
 
+            GameConfig.AIFleetDeploymentConfig fleetConfig = _context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment;
+
             return GetOrAdd(
                 _planetRequiredAttackRegimentCounts,
                 planet.InstanceID,
                 () =>
                     Math.Max(
-                        _context.Game.Config.AI.FleetDeployment.MinimumCaptureRegimentCount,
+                        fleetConfig.MinimumPlanetaryAssaultRegimentCount,
                         GetPlanetRegimentCount(planet)
                             + UprisingSystem.CalculateGarrisonRequirement(
                                 planet,

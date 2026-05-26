@@ -62,6 +62,33 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsFalse(canExecute);
         }
 
+        [Test]
+        public void Execute_WithCompletedAttackOrder_ClearsOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", empire.InstanceID);
+            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.IsNull(fleet.Order);
+        }
+
         private static Fleet AddBattleFleet(GameRoot game, Planet planet, string ownerInstanceId)
         {
             Fleet fleet = EntityFactory.CreateFleet("fleet", ownerInstanceId);
