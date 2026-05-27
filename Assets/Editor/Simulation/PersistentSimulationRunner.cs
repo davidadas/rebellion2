@@ -119,9 +119,7 @@ public static class PersistentSimulationRunner
                 HeadlessSimulationRunner.RunPersistentSimulation(
                     job.TickCount > 0 ? job.TickCount : 300,
                     job.OutputPath,
-                    job.PlayerFactionId,
-                    job.Seed >= 0 ? job.Seed : (int?)null,
-                    job.AIProfile
+                    job.Seed >= 0 ? job.Seed : (int?)null
                 );
 
             File.WriteAllText(
@@ -133,7 +131,6 @@ public static class PersistentSimulationRunner
                         OutputPath = result.OutputPath,
                         TicksCompleted = result.TicksCompleted,
                         Seed = result.Seed,
-                        PlayerFactionId = result.PlayerFactionId,
                     },
                     true
                 )
@@ -178,9 +175,7 @@ public static class PersistentSimulationRunner
     {
         public int TickCount = 300;
         public string OutputPath = string.Empty;
-        public string PlayerFactionId = string.Empty;
         public int Seed = -1;
-        public string AIProfile = string.Empty;
     }
 
     [Serializable]
@@ -190,6 +185,5 @@ public static class PersistentSimulationRunner
         public string OutputPath;
         public int TicksCompleted;
         public int Seed = -1;
-        public string PlayerFactionId;
     }
 }

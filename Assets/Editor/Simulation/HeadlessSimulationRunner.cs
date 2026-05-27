@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
@@ -14,23 +13,10 @@ using Rebellion.Util.Common;
 
 public static class HeadlessSimulationRunner
 {
-    public const string SimulationCodeVersion = "2026-04-27-ai-manufacturing-idle-v1";
     private const string _tickCountFlag = "-simTicks";
     private const string _outputPathFlag = "-simOut";
-    private const string _playerFactionFlag = "-simPlayerFaction";
     private const string _seedFlag = "-simSeed";
-    private const string _aiProfileFlag = "-aiProfile";
-    private const string _aiProfileDefault = "default";
-    private const string _aiProfileMigrationOn = "migration-on";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
-    private static readonly MethodInfo _processTickMethod = typeof(GameManager).GetMethod(
-        "ProcessTick",
-        BindingFlags.Instance | BindingFlags.NonPublic
-    );
-    private static readonly FieldInfo _pendingCombatField = typeof(GameManager).GetField(
-        "_pendingCombatDecision",
-        BindingFlags.Instance | BindingFlags.NonPublic
-    );
 
     public static void RunDefaultSimulation()
     {
@@ -50,9 +36,7 @@ public static class HeadlessSimulationRunner
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
         string outputPath,
-        string playerFactionId,
-        int? seed,
-        string aiProfile = null
+        int? seed
     )
     {
         return RunSimulation(
@@ -60,21 +44,15 @@ public static class HeadlessSimulationRunner
             {
                 TickCount = tickCount,
                 OutputPath = outputPath,
-                PlayerFactionId = string.IsNullOrWhiteSpace(playerFactionId)
-                    ? null
-                    : playerFactionId,
                 Seed = seed,
-                AIProfile = aiProfile,
             }
         );
     }
 
     private static SimulationRunResult RunSimulation(SimulationOptions options)
     {
-        EnsureSimulationInternals();
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
-        LogToFile(logPath, $"[HeadlessSimVersion] {SimulationCodeVersion}");
 
         GameSummary summary = new GameSummary
         {
@@ -83,18 +61,15 @@ public static class HeadlessSimulationRunner
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
             StartingResearchLevel = 1,
-            PlayerFactionID = options.PlayerFactionId,
             StartingFactionIDs = new[] { "FNALL1", "FNEMP1" },
         };
 
         string startMessage =
-            $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} playerFaction={options.PlayerFactionId} galaxySize={summary.GalaxySize}";
+            $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
         UnityEngine.Debug.Log(startMessage);
         LogToFile(logPath, startMessage);
 
         GameRoot game = CreateGameBuilder(summary, options.Seed).BuildGame();
-        ValidateAIOptions(options);
-        ApplyAIOptions(game, options);
         GameManager manager = new GameManager(game);
         ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
         ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
@@ -104,9 +79,7 @@ public static class HeadlessSimulationRunner
 
         for (int i = 0; i < options.TickCount; i++)
         {
-            AutoResolvePendingCombat(manager);
-            _processTickMethod.Invoke(manager, null);
-            AutoResolvePendingCombat(manager);
+            manager.ProcessTick();
             idleTracker.RecordTick(game);
             manufacturedUnitTracker.RecordTick(game);
             fleetHistoryTracker.RecordTick(game);
@@ -131,18 +104,7 @@ public static class HeadlessSimulationRunner
             TicksCompleted = report.TicksCompleted,
             OutputPath = resolvedPath,
             Seed = options.Seed ?? -1,
-            PlayerFactionId = options.PlayerFactionId,
         };
-    }
-
-    private static void EnsureSimulationInternals()
-    {
-        if (_processTickMethod == null || _pendingCombatField == null)
-        {
-            throw new InvalidOperationException(
-                "Headless simulation could not access GameManager tick internals."
-            );
-        }
     }
 
     private static GameBuilder CreateGameBuilder(GameSummary summary, int? seed)
@@ -150,30 +112,6 @@ public static class HeadlessSimulationRunner
         return seed.HasValue
             ? new GameBuilder(summary, new SystemRandomProvider(seed.Value))
             : new GameBuilder(summary);
-    }
-
-    private static void ValidateAIOptions(SimulationOptions options)
-    {
-        if (options == null)
-            return;
-
-        string profile = string.IsNullOrWhiteSpace(options.AIProfile)
-            ? _aiProfileDefault
-            : options.AIProfile.Trim();
-        switch (profile)
-        {
-            case _aiProfileDefault:
-            case _aiProfileMigrationOn:
-                break;
-            default:
-                throw new InvalidOperationException($"Unknown AI simulation profile: {profile}");
-        }
-    }
-
-    private static void ApplyAIOptions(GameRoot game, SimulationOptions options)
-    {
-        if (game?.Config?.AI?.Infrastructure == null || options == null)
-            return;
     }
 
     private static string GetLogPath(string outputPath)
@@ -191,12 +129,6 @@ public static class HeadlessSimulationRunner
         File.AppendAllText(logPath, message + Environment.NewLine);
     }
 
-    private static void AutoResolvePendingCombat(GameManager manager)
-    {
-        if (_pendingCombatField.GetValue(manager) != null)
-            manager.ResolveCombat(true);
-    }
-
     private static SimulationSummary BuildSimulationSummary(
         GameRoot game,
         GameSummary summary,
@@ -210,7 +142,6 @@ public static class HeadlessSimulationRunner
         {
             TicksRequested = options.TickCount,
             TicksCompleted = game.CurrentTick,
-            PlayerFactionId = options.PlayerFactionId,
             Seed = options.Seed ?? -1,
             GalaxySize = summary.GalaxySize.ToString(),
             OutputPath = options.OutputPath,
@@ -663,7 +594,6 @@ public static class HeadlessSimulationRunner
         public int TicksCompleted;
         public string OutputPath;
         public int Seed = -1;
-        public string PlayerFactionId;
     }
 
     [Serializable]
@@ -671,7 +601,6 @@ public static class HeadlessSimulationRunner
     {
         public int TicksRequested;
         public int TicksCompleted;
-        public string PlayerFactionId;
         public int Seed = -1;
         public string GalaxySize;
         public string OutputPath;
@@ -1188,9 +1117,7 @@ public static class HeadlessSimulationRunner
     {
         public int TickCount { get; set; }
         public string OutputPath { get; set; }
-        public string PlayerFactionId { get; set; }
         public int? Seed { get; set; }
-        public string AIProfile { get; set; }
 
         public static SimulationOptions Parse(string[] args)
         {
@@ -1202,9 +1129,7 @@ public static class HeadlessSimulationRunner
                     _outputPathFlag,
                     "SimulationResults/headless-simulation-summary.json"
                 ),
-                PlayerFactionId = ParseString(args, _playerFactionFlag, null),
                 Seed = ParseNullableInt(args, _seedFlag),
-                AIProfile = ParseString(args, _aiProfileFlag, null),
             };
         }
 

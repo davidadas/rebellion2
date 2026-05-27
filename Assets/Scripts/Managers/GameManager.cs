@@ -247,7 +247,7 @@ public class GameManager
     /// <summary>
     /// Runs one game tick.
     /// </summary>
-    private void ProcessTick()
+    public void ProcessTick()
     {
         _game.CurrentTick++;
         GameLogger.Debug("Tick: " + _game.CurrentTick);
