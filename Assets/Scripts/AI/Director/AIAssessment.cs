@@ -14,6 +14,8 @@ namespace Rebellion.AI.Director
     /// </summary>
     public sealed class AIAssessment
     {
+        private const string _missionSupportPressureRegimentTypeId = "REEM003";
+
         private readonly AITurnContext _context;
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
@@ -265,9 +267,19 @@ namespace Rebellion.AI.Director
                         .GetAllRegiments()
                         .Count(regiment =>
                             regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                            && regiment.CountsForMissionSupportPressure
+                            && RegimentAddsMissionSupportPressure(regiment)
                         )
             );
+        }
+
+        /// <summary>
+        /// Returns whether a regiment contributes pressure to diplomacy scoring.
+        /// </summary>
+        /// <param name="regiment">The regiment to inspect.</param>
+        /// <returns>True if the regiment contributes pressure.</returns>
+        private static bool RegimentAddsMissionSupportPressure(Regiment regiment)
+        {
+            return regiment?.GetTypeID() == _missionSupportPressureRegimentTypeId;
         }
 
         /// <summary>

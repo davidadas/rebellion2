@@ -16,7 +16,6 @@
     <DefenseRating>3</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <SourceDataId>7</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
@@ -33,7 +32,6 @@
     <DefenseRating>5</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <SourceDataId>8</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
@@ -50,8 +48,6 @@
     <DefenseRating>6</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>25</DetectionRating>
-    <CountsForMissionSupportPressure>true</CountsForMissionSupportPressure>
-    <SourceDataId>6</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
@@ -68,7 +64,6 @@
     <DefenseRating>2</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>5</DetectionRating>
-    <SourceDataId>9</SourceDataId>
     <ResearchOrder>1</ResearchOrder>
     <ResearchDifficulty>46</ResearchDifficulty>
   </Regiment>
@@ -85,7 +80,6 @@
     <DefenseRating>8</DefenseRating>
     <BombardmentDefense>6</BombardmentDefense>
     <DetectionRating>30</DetectionRating>
-    <SourceDataId>10</SourceDataId>
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>66</ResearchDifficulty>
   </Regiment>
@@ -105,7 +99,6 @@
     <DefenseRating>3</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <SourceDataId>1</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
@@ -122,7 +115,6 @@
     <DefenseRating>5</DefenseRating>
     <BombardmentDefense>5</BombardmentDefense>
     <DetectionRating>15</DetectionRating>
-    <SourceDataId>2</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Regiment>
@@ -139,7 +131,6 @@
     <DefenseRating>4</DefenseRating>
     <BombardmentDefense>2</BombardmentDefense>
     <DetectionRating>35</DetectionRating>
-    <SourceDataId>3</SourceDataId>
     <ResearchOrder>1</ResearchOrder>
     <ResearchDifficulty>12</ResearchDifficulty>
   </Regiment>
@@ -156,7 +147,6 @@
     <DefenseRating>8</DefenseRating>
     <BombardmentDefense>9</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <SourceDataId>5</SourceDataId>
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Regiment>
@@ -173,7 +163,6 @@
     <DefenseRating>4</DefenseRating>
     <BombardmentDefense>4</BombardmentDefense>
     <DetectionRating>20</DetectionRating>
-    <SourceDataId>4</SourceDataId>
     <ResearchOrder>3</ResearchOrder>
     <ResearchDifficulty>60</ResearchDifficulty>
   </Regiment>

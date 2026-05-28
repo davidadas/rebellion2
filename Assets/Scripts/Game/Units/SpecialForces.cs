@@ -2,19 +2,9 @@ using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
-    public enum SpecialForcesProductionClass
-    {
-        None = 0,
-        Diplomacy = 1,
-        Espionage = 2,
-        Combat = 3,
-        Leadership = 4,
-    }
-
     /// <summary>
     /// Represents a special forces unit that can be used in missions.
     /// </summary>
@@ -26,7 +16,6 @@ namespace Rebellion.Game.Units
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
-        public int SourceDataId { get; set; }
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -40,10 +29,7 @@ namespace Rebellion.Game.Units
         // Mission Qualification.
         public List<MissionType> AllowedMissionTypes { get; set; } = new List<MissionType>();
 
-        [PersistableMember]
-        public SpecialForcesProductionClass ProductionClass { get; set; }
-
-        // Mission Skill Related.
+        // Mission Skill Info.
         public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
             new Dictionary<MissionParticipantSkill, int>
             {
@@ -54,6 +40,11 @@ namespace Rebellion.Game.Units
             };
         public bool CanImproveMissionSkill => false;
 
+        /// <summary>
+        /// Returns whether this unit can perform a mission type.
+        /// </summary>
+        /// <param name="missionType">The mission type to inspect.</param>
+        /// <returns>True if this unit is allowed to perform the mission type.</returns>
         public bool CanPerformMission(MissionType missionType) =>
             AllowedMissionTypes.Contains(missionType);
 
@@ -71,6 +62,11 @@ namespace Rebellion.Game.Units
             return ManufacturingType.Troop;
         }
 
+        /// <summary>
+        /// Sets this unit's value for a mission skill.
+        /// </summary>
+        /// <param name="skill">The mission skill to update.</param>
+        /// <param name="value">The new skill value.</param>
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
             Skills[skill] = value;
 
@@ -91,7 +87,5 @@ namespace Rebellion.Game.Units
         {
             return GetParent() is Mission;
         }
-
-        public SpecialForcesProductionClass GetProductionClass() => ProductionClass;
     }
 }

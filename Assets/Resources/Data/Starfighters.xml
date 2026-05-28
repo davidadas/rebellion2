@@ -26,7 +26,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <SourceDataId>5</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
@@ -53,7 +52,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>12</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <SourceDataId>7</SourceDataId>
     <ResearchOrder>1</ResearchOrder>
     <ResearchDifficulty>8</ResearchDifficulty>
   </Starfighter>
@@ -80,7 +78,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <SourceDataId>6</SourceDataId>
     <ResearchOrder>3</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
   </Starfighter>
@@ -107,7 +104,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>10</TorpedoRange>
-    <SourceDataId>8</SourceDataId>
     <ResearchOrder>8</ResearchOrder>
     <ResearchDifficulty>50</ResearchDifficulty>
   </Starfighter>
@@ -137,7 +133,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>12</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <SourceDataId>4</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
@@ -164,7 +159,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <SourceDataId>3</SourceDataId>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
   </Starfighter>
@@ -191,7 +185,6 @@
     <LaserRange>12</LaserRange>
     <IonRange>0</IonRange>
     <TorpedoRange>0</TorpedoRange>
-    <SourceDataId>1</SourceDataId>
     <ResearchOrder>3</ResearchOrder>
     <ResearchDifficulty>24</ResearchDifficulty>
   </Starfighter>
@@ -218,7 +211,6 @@
     <LaserRange>20</LaserRange>
     <IonRange>18</IonRange>
     <TorpedoRange>7</TorpedoRange>
-    <SourceDataId>2</SourceDataId>
     <ResearchOrder>5</ResearchOrder>
     <ResearchDifficulty>50</ResearchDifficulty>
   </Starfighter>

@@ -37,7 +37,6 @@ namespace Rebellion.Game.Units
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
-        public int SourceDataId { get; set; }
 
         // Hull, Shield, and Repair Info.
         public int MaxHullStrength;
@@ -128,32 +127,34 @@ namespace Rebellion.Game.Units
             return RegimentCapacity;
         }
 
+        /// <summary>
+        /// Returns the ship roles used by fleet and production planning.
+        /// </summary>
+        /// <returns>The roles assigned to this ship type.</returns>
         public IReadOnlyList<CapitalShipRole> GetRoles()
         {
             return Roles;
         }
 
+        /// <summary>
+        /// Returns whether this ship has the requested role.
+        /// </summary>
+        /// <param name="role">The role to inspect.</param>
+        /// <returns>True if this ship has the requested role.</returns>
         public bool HasRole(CapitalShipRole role)
         {
             return GetRoles().Contains(role);
         }
 
+        /// <summary>
+        /// Returns whether this ship has any of the requested roles.
+        /// </summary>
+        /// <param name="roles">The roles to inspect.</param>
+        /// <returns>True if this ship has at least one requested role.</returns>
         public bool HasAnyRole(params CapitalShipRole[] roles)
         {
             IReadOnlyList<CapitalShipRole> shipRoles = GetRoles();
             return roles.Any(shipRoles.Contains);
-        }
-
-        /// <summary>
-        /// Returns true when this ship is present or already committed to its fleet.
-        /// </summary>
-        /// <returns>True when the ship is complete or building and not in transit.</returns>
-        public bool IsCommittedToFleet()
-        {
-            return ManufacturingStatus
-                    is ManufacturingStatus.Complete
-                        or ManufacturingStatus.Building
-                && Movement == null;
         }
 
         /// <summary>
@@ -165,6 +166,11 @@ namespace Rebellion.Game.Units
             return PrimaryWeapons.Values.Sum(GetWeaponStrength);
         }
 
+        /// <summary>
+        /// Returns primary weapon strength from weapon values.
+        /// </summary>
+        /// <param name="weaponValues">The weapon values to inspect.</param>
+        /// <returns>The summed weapon strength.</returns>
         private static int GetWeaponStrength(int[] weaponValues)
         {
             if (weaponValues == null)
@@ -224,7 +230,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Adds a starfighter to the capital ship.
         /// </summary>
-        /// <param name="starfighter">The starfighter to add</param>
+        /// <param name="starfighter">The starfighter to add.</param>
         /// <exception cref="InvalidOperationException">Thrown when adding the starfighter would exceed the capacity.</exception>
         public void AddStarfighter(Starfighter starfighter)
         {
@@ -256,7 +262,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Adds an officer to the capital ship.
         /// </summary>
-        /// <param name="officer"></param>
+        /// <param name="officer">The officer to add.</param>
         /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
         public void AddOfficer(Officer officer)
         {
@@ -287,7 +293,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Adds a child to the capital ship.
         /// </summary>
-        /// <param name="child">The child to add</param>
+        /// <param name="child">The child to add.</param>
         /// <exception cref="SceneAccessException">Thrown when the child does not share OwnerInstanceID with parent.</exception>
         public override void AddChild(ISceneNode child)
         {
@@ -306,9 +312,9 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Adds a child to the capital ship.
+        /// Removes a child from the capital ship.
         /// </summary>
-        /// <param name="child">The child to remove</param>
+        /// <param name="child">The child to remove.</param>
         public override void RemoveChild(ISceneNode child)
         {
             if (child is Starfighter starfighter)
@@ -328,7 +334,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns true if this ship has hull damage that can be repaired.
         /// </summary>
-        /// <returns>True if CurrentHullStrength is below MaxHullStrength.</returns>
+        /// <returns>True if current hull strength is below maximum hull strength.</returns>
         public bool IsDamaged() => CurrentHullStrength < MaxHullStrength;
 
         /// <summary>
@@ -341,28 +347,27 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the manufacturing manufacturing type of the manufacturable.
+        /// Returns the manufacturing type of this ship.
         /// </summary>
-        /// <returns>ManufacturingType.Ship</returns>
+        /// <returns>The ship manufacturing type.</returns>
         public ManufacturingType GetManufacturingType()
         {
             return ManufacturingType.Ship;
         }
 
         /// <summary>
-        /// The movement status of the capital ship.
+        /// Returns whether this ship can start movement.
         /// </summary>
-        /// <returns>True if the capital ship is movable, false otherwise.</returns>
+        /// <returns>True if this ship is not currently moving.</returns>
         public bool IsMovable()
         {
-            // Movement == null means not moving (can be moved)
             return Movement == null;
         }
 
         /// <summary>
-        /// Retrieves the children of the node.
+        /// Returns the ship's carried units and officers.
         /// </summary>
-        /// <returns>The children of the node.</returns>
+        /// <returns>The children carried by this ship.</returns>
         public override IEnumerable<ISceneNode> GetChildren()
         {
             return Officers

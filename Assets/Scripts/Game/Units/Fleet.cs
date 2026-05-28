@@ -183,32 +183,6 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns raw fleet payload strength from completed ships, starfighters, and regiments.
-        /// </summary>
-        /// <returns>The fleet's raw payload strength.</returns>
-        public int GetRawAssaultPayloadStrength()
-        {
-            int capitalStrength = CapitalShips.Sum(ship =>
-                ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    ? ship.GetPrimaryWeaponStrength()
-                    : 0
-            );
-            int fighterStrength = GetStarfighters()
-                .Sum(fighter =>
-                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        ? fighter.LaserCannon + fighter.IonCannon + fighter.Torpedoes
-                        : 0
-                );
-            int regimentStrength = GetRegiments()
-                .Sum(regiment =>
-                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                        ? regiment.AttackRating
-                        : 0
-                );
-            return capitalStrength + fighterStrength + regimentStrength;
-        }
-
-        /// <summary>
         /// Adds a capital ship to the fleet.
         /// </summary>
         /// <param name="capitalShip">The capital ship to add.</param>

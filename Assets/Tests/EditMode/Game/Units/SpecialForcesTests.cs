@@ -1,4 +1,3 @@
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -48,40 +47,6 @@ namespace Rebellion.Tests.Game.Units
             _specialForces.SetMissionSkillValue(MissionParticipantSkill.Combat, 99);
 
             Assert.AreEqual(99, _specialForces.Skills[MissionParticipantSkill.Combat]);
-        }
-
-        [Test]
-        public void GetProductionClass_WhenConfigured_ReturnsConfiguredBucket()
-        {
-            _specialForces.ProductionClass = SpecialForcesProductionClass.Combat;
-
-            Assert.AreEqual(
-                SpecialForcesProductionClass.Combat,
-                _specialForces.GetProductionClass()
-            );
-        }
-
-        [Test]
-        public void GetGameData_WithSpecialForces_LoadsProductionClasssFromData()
-        {
-            SpecialForces[] templates = ResourceManager.GetGameData<SpecialForces>();
-
-            Assert.AreEqual(
-                SpecialForcesProductionClass.Diplomacy,
-                templates.Single(team => team.TypeID == "SPAL001").GetProductionClass()
-            );
-            Assert.AreEqual(
-                SpecialForcesProductionClass.Espionage,
-                templates.Single(team => team.TypeID == "SPEM002").GetProductionClass()
-            );
-            Assert.AreEqual(
-                SpecialForcesProductionClass.Combat,
-                templates.Single(team => team.TypeID == "SPAL003").GetProductionClass()
-            );
-            Assert.AreEqual(
-                SpecialForcesProductionClass.Leadership,
-                templates.Single(team => team.TypeID == "SPEM004").GetProductionClass()
-            );
         }
 
         [Test]

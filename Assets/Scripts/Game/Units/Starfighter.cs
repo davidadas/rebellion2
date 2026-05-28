@@ -15,7 +15,6 @@ namespace Rebellion.Game.Units
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
-        public int SourceDataId { get; set; }
 
         // General Info.
         public int MaxSquadronSize;

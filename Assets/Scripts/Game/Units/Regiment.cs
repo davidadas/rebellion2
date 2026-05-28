@@ -14,14 +14,12 @@ namespace Rebellion.Game.Units
         public int BaseBuildSpeed { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
-        public int SourceDataId { get; set; }
 
         // Regiment Info.
         public int AttackRating { get; set; }
         public int DefenseRating { get; set; }
         public int DetectionRating { get; set; }
         public int BombardmentDefense { get; set; }
-        public bool CountsForMissionSupportPressure { get; set; }
 
         // Status Info.
         public string ProducerOwnerID { get; set; }

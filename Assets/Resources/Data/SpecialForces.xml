@@ -16,8 +16,6 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>1</SourceDataId>
-    <ProductionClass>Diplomacy</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
@@ -42,8 +40,6 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>2</SourceDataId>
-    <ProductionClass>Espionage</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
@@ -69,8 +65,6 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>3</SourceDataId>
-    <ProductionClass>Combat</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>40</Espionage>
@@ -94,8 +88,6 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>4</SourceDataId>
-    <ProductionClass>Leadership</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>70</Espionage>
@@ -122,8 +114,6 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>5</SourceDataId>
-    <ProductionClass>Diplomacy</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>30</Espionage>
@@ -147,8 +137,6 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>6</SourceDataId>
-    <ProductionClass>Espionage</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
@@ -172,8 +160,6 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>7</SourceDataId>
-    <ProductionClass>Combat</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
@@ -199,8 +185,6 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <SourceDataId>8</SourceDataId>
-    <ProductionClass>Leadership</ProductionClass>
     <Skills>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>

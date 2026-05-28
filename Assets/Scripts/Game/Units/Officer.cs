@@ -52,57 +52,31 @@ namespace Rebellion.Game.Units
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
         public int Loyalty { get; set; }
-        public int HyperdriveModifier { get; set; } // Han Solo speed bonus (subtracts from transit time)
+        public int HyperdriveModifier { get; set; }
 
-        // Injury.
+        // Injury Info.
         public int InjuryPoints { get; set; }
         public bool CanHeal { get; set; }
         public bool FastHeal { get; set; }
 
-        // Jedi / Force Info.
+        // Force Info.
         public int JediProbability { get; set; }
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
         public bool IsJediTrainer { get; set; }
         public bool GrowsForceOnMission { get; set; }
 
-        /// <summary>
-        /// Template flag for characters who start the game as known Jedi.
-        /// </summary>
         [PersistableIgnore]
         public bool IsKnownJedi { get; set; }
 
-        /// <summary>
-        /// True if Force potential has been activated for this character.
-        /// </summary>
         public bool IsJedi { get; set; }
-
-        /// <summary>
-        /// True if this character's Force ability has been discovered/activated.
-        /// Known Jedi have this at start. Potential Jedi gain this when discovered
-        /// by a scanning Jedi.
-        /// </summary>
         public bool IsForceEligible { get; set; }
-
-        /// <summary>
-        /// Base Force ability for this character.
-        /// </summary>
         public int ForceValue { get; set; }
-
-        /// <summary>
-        /// Training progress applied to this officer's Force rank.
-        /// </summary>
         public int ForceTrainingAdjustment { get; set; }
 
-        /// <summary>
-        /// Calculated Force rank used by labels and threshold checks.
-        /// </summary>
         [PersistableIgnore]
         public int ForceRank => ForceValue + ForceTrainingAdjustment;
 
-        /// <summary>
-        /// True if this Jedi is actively scanning for hidden Force users nearby.
-        /// </summary>
         public bool IsDiscoveringForceUser { get; set; }
 
         // Rank Info.
@@ -140,7 +114,7 @@ namespace Rebellion.Game.Units
         // Movement Info.
         public MovementState Movement { get; set; }
 
-        // Mission Skill Related.
+        // Mission Skill Info.
         public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
             new Dictionary<MissionParticipantSkill, int>
             {
@@ -151,10 +125,18 @@ namespace Rebellion.Game.Units
             };
         public bool CanImproveMissionSkill => true;
 
-        // Officers have no mission type restrictions — unlike SpecialForces, any officer.
-        // can be assigned to any mission type.
+        /// <summary>
+        /// Returns whether this officer can perform a mission type.
+        /// </summary>
+        /// <param name="missionType">The mission type to inspect.</param>
+        /// <returns>True for every mission type.</returns>
         public bool CanPerformMission(MissionType missionType) => true;
 
+        /// <summary>
+        /// Sets this officer's value for a mission skill.
+        /// </summary>
+        /// <param name="skill">The mission skill to update.</param>
+        /// <param name="value">The new skill value.</param>
         public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
             Skills[skill] = value;
 
@@ -166,7 +148,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns the officer's current value for the specified mission skill.
         /// </summary>
-        /// <param name="skill"></param>
+        /// <param name="skill">The mission skill to query.</param>
         /// <returns>The skill value.</returns>
         public int GetSkillValue(MissionParticipantSkill skill)
         {
@@ -176,8 +158,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Sets the officer's value for the specified mission skill.
         /// </summary>
-        /// <param name="skill"></param>
-        /// <param name="value"></param>
+        /// <param name="skill">The mission skill to update.</param>
+        /// <param name="value">The new skill value.</param>
         /// <returns>The new skill value.</returns>
         public int SetSkillValue(MissionParticipantSkill skill, int value)
         {
@@ -253,6 +235,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns whether the officer is a Jedi whose Force potential has not yet been revealed.
         /// </summary>
+        /// <returns>True if this officer is an undiscovered Force user.</returns>
         public bool IsUndiscoveredForceUser()
         {
             return IsJedi && !IsForceEligible && !IsCaptured && !IsKilled && !IsOnMission();

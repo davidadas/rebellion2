@@ -1186,7 +1186,7 @@ namespace Rebellion.AI.Planners
             return fleet != null
                 && fleet.RoleType == FleetRoleType.Battle
                 && (
-                    HasCommittedCapitalShips(fleet)
+                    HasPresentOrUnderConstructionCapitalShips(fleet)
                     || fleet.Order?.OrderType == FleetOrderType.Attack
                 );
         }
@@ -1197,14 +1197,22 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int committedCapitalCombat = fleet
-                .CapitalShips.Where(ship => ship?.IsCommittedToFleet() == true)
+                .CapitalShips.Where(IsPresentOrUnderConstruction)
                 .Sum(ship => ship.GetPrimaryWeaponStrength());
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
         }
 
-        private static bool HasCommittedCapitalShips(Fleet fleet)
+        private static bool HasPresentOrUnderConstructionCapitalShips(Fleet fleet)
         {
-            return fleet?.CapitalShips.Any(ship => ship?.IsCommittedToFleet() == true) == true;
+            return fleet?.CapitalShips.Any(IsPresentOrUnderConstruction) == true;
+        }
+
+        private static bool IsPresentOrUnderConstruction(CapitalShip capitalShip)
+        {
+            return capitalShip?.ManufacturingStatus
+                    is ManufacturingStatus.Complete
+                        or ManufacturingStatus.Building
+                && capitalShip.Movement == null;
         }
 
         /// <summary>

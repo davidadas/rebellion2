@@ -545,7 +545,7 @@ namespace Rebellion.AI.Planners
                     .Faction.GetOwnedUnitsByType<CapitalShip>()
                     .Count(ship =>
                         ship.ConstructionCost >= config.PremiumCapitalConstructionCostThreshold
-                        && ship.IsCommittedToFleet()
+                        && IsPresentOrUnderConstruction(ship)
                     ) < config.MaxPremiumCapitalsPerFaction;
         }
 
@@ -596,9 +596,17 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int committedCapitalCombat = fleet
-                .CapitalShips.Where(ship => ship?.IsCommittedToFleet() == true)
+                .CapitalShips.Where(IsPresentOrUnderConstruction)
                 .Sum(ship => ship.GetPrimaryWeaponStrength());
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
+        }
+
+        private static bool IsPresentOrUnderConstruction(CapitalShip capitalShip)
+        {
+            return capitalShip?.ManufacturingStatus
+                    is ManufacturingStatus.Complete
+                        or ManufacturingStatus.Building
+                && capitalShip.Movement == null;
         }
 
         /// <summary>
