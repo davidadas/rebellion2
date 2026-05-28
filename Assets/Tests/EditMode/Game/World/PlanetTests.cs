@@ -211,6 +211,32 @@ namespace Rebellion.Tests.Game.World
         }
 
         [Test]
+        public void SetPopularSupport_IncreaseExceedingTotalSupport_ReducesMultipleOtherFactions()
+        {
+            _planet.SetPopularSupport("FNEMP1", 40);
+            _planet.SetPopularSupport("FNHUTT1", 60);
+
+            _planet.SetPopularSupport("FNALL1", 80);
+
+            Assert.AreEqual(80, _planet.GetPopularSupport("FNALL1"));
+            Assert.AreEqual(20, _planet.GetPopularSupport("FNEMP1"));
+            Assert.AreEqual(0, _planet.GetPopularSupport("FNHUTT1"));
+        }
+
+        [Test]
+        public void SetFullPopularSupport_WithExistingSupport_ClearsOtherFactions()
+        {
+            _planet.SetPopularSupport("FNEMP1", 40);
+            _planet.SetPopularSupport("FNHUTT1", 60);
+
+            _planet.SetFullPopularSupport("FNALL1");
+
+            Assert.AreEqual(100, _planet.GetPopularSupport("FNALL1"));
+            Assert.AreEqual(0, _planet.GetPopularSupport("FNEMP1"));
+            Assert.AreEqual(0, _planet.GetPopularSupport("FNHUTT1"));
+        }
+
+        [Test]
         public void GetDistanceTo_ValidTargetPlanet_ReturnsCorrectTime()
         {
             Planet targetPlanet = new Planet

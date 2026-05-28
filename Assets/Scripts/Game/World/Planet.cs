@@ -328,6 +328,10 @@ namespace Rebellion.Game.World
             }
         }
 
+        /// <summary>
+        /// Sets popular support fully to one faction.
+        /// </summary>
+        /// <param name="factionInstanceId">The instance ID of the faction.</param>
         public void SetFullPopularSupport(string factionInstanceId)
         {
             SetPopularSupport(factionInstanceId, 100);
@@ -344,6 +348,7 @@ namespace Rebellion.Game.World
                 KeyValuePair<string, int> supportByFaction in PopularSupport
                     .Where(kvp => kvp.Key != excludedFactionId)
                     .OrderByDescending(kvp => kvp.Value)
+                    .ThenBy(kvp => kvp.Key, StringComparer.Ordinal)
                     .ToList()
             )
             {
