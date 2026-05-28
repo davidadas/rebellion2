@@ -41,11 +41,6 @@ namespace Rebellion.Game.FogOfWar
         public List<Fleet> Fleets;
 
         /// <summary>
-        /// Capital ships stationed at the planet.
-        /// </summary>
-        public List<CapitalShip> CapitalShips;
-
-        /// <summary>
         /// Regiments stationed at the planet.
         /// </summary>
         public List<Regiment> Regiments;
@@ -73,7 +68,6 @@ namespace Rebellion.Game.FogOfWar
             PopularSupport = new Dictionary<string, int>();
             Officers = new List<Officer>();
             Fleets = new List<Fleet>();
-            CapitalShips = new List<CapitalShip>();
             Regiments = new List<Regiment>();
             Buildings = new List<Building>();
             Starfighters = new List<Starfighter>();

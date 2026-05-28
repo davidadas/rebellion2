@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Game.World
+namespace Rebellion.Game.Galaxy
 {
     /// <summary>
     /// Represents a galaxy map in the game world. A galaxy map is a collection of planet systems.

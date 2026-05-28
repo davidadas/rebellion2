@@ -26,6 +26,10 @@ namespace Rebellion.AI.Phases
                 }
             ) { }
 
+        /// <summary>
+        /// Creates a scoring phase with the supplied proposal scorers.
+        /// </summary>
+        /// <param name="proposalScorers">Proposal scorers run by this phase.</param>
         internal AIScoringPhase(IEnumerable<IAIProposalScorer> proposalScorers)
         {
             if (proposalScorers == null)

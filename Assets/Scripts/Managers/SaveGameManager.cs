@@ -153,7 +153,7 @@ public class SaveGameManager
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
 
         int saveVersion = PeekSaveVersion(saveFilePath, serializer);
-        GuardCanLoad(saveVersion);
+        ValidateSaveVersion(saveVersion);
 
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
         return (GameRoot)serializer.Deserialize(fileStream);
@@ -182,7 +182,7 @@ public class SaveGameManager
         return metadata?.SaveVersion ?? 0;
     }
 
-    private void GuardCanLoad(int saveVersion)
+    private void ValidateSaveVersion(int saveVersion)
     {
         if (saveVersion > GameMetadata.CurrentSaveVersion)
         {

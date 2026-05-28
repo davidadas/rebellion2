@@ -5,8 +5,8 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 

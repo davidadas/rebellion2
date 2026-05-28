@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Generation

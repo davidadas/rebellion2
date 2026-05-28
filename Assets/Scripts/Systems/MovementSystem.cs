@@ -4,11 +4,11 @@ using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -98,9 +98,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Sets up visual transit for a unit that is already at its destination in the scene
-        /// graph. Used after manufacturing completes: the unit was pre-placed at its destination
-        /// during enqueue, and this sets it travelling visually from the production planet.
-        /// If the destination has changed sides since enqueue, routes via HandleArrivalRejection.
+        /// graph. If the destination has changed sides since enqueue, routes via HandleArrivalRejection.
         /// </summary>
         /// <param name="unit">The unit to set in transit.</param>
         /// <param name="destination">The pre-assigned destination scene node.</param>

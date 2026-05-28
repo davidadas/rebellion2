@@ -4,32 +4,57 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Runtime simulation configuration.
-    /// Loaded from Resources/Configs/GameConfig.xml on every game start/load.
-    /// Changes to this file apply to ALL saves (NOT frozen into save files).
-    ///
-    /// DO NOT serialize this with GameSummary - it should reload from XML every time.
-    /// Player choices belong in GameSummary.
-    /// New game setup belongs in GameGenerationConfig.xml.
+    /// Runtime configuration loaded from the game config XML.
     /// </summary>
     [PersistableObject]
     public class GameConfig
     {
+        /// <summary>AI scheduling, planning, and scoring settings.</summary>
         public AIConfig AI { get; set; } = new AIConfig();
+
+        /// <summary>Movement timing settings.</summary>
         public MovementConfig Movement { get; set; } = new MovementConfig();
+
+        /// <summary>Manufacturing and maintenance settings.</summary>
         public ProductionConfig Production { get; set; } = new ProductionConfig();
+
+        /// <summary>Planet limit settings.</summary>
         public PlanetConfig Planet { get; set; } = new PlanetConfig();
+
+        /// <summary>Combat resolution settings.</summary>
         public CombatConfig Combat { get; set; } = new CombatConfig();
+
+        /// <summary>Uprising resolution settings.</summary>
         public UprisingConfig Uprising { get; set; } = new UprisingConfig();
+
+        /// <summary>Popular support drift settings.</summary>
         public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
+
+        /// <summary>Blockade resolution settings.</summary>
         public BlockadeConfig Blockade { get; set; } = new BlockadeConfig();
+
+        /// <summary>Victory condition settings.</summary>
         public VictoryConfig Victory { get; set; } = new VictoryConfig();
+
+        /// <summary>Force progression settings.</summary>
         public JediConfig Jedi { get; set; } = new JediConfig();
+
+        /// <summary>Research progression settings.</summary>
         public ResearchConfig Research { get; set; } = new ResearchConfig();
+
+        /// <summary>Assassination outcome settings.</summary>
         public AssassinationConfig Assassination { get; set; } = new AssassinationConfig();
+
+        /// <summary>Healing and repair settings.</summary>
         public RecoveryConfig Recovery { get; set; } = new RecoveryConfig();
+
+        /// <summary>Captive escape settings.</summary>
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
+
+        /// <summary>Game tick speed settings.</summary>
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
+
+        /// <summary>Shared probability table settings.</summary>
         public ProbabilityTablesConfig ProbabilityTables { get; set; } =
             new ProbabilityTablesConfig();
 
@@ -82,37 +107,79 @@ namespace Rebellion.Game
             public AIInfrastructureConfig Infrastructure { get; set; } =
                 new AIInfrastructureConfig();
 
+            /// <summary>Fleet attack and deployment scoring settings.</summary>
             public AIFleetDeploymentConfig FleetDeployment { get; set; } =
                 new AIFleetDeploymentConfig();
         }
 
+        /// <summary>
+        /// Candidate limits used while generating mission proposals.
+        /// </summary>
         [PersistableObject]
         public class AIMissionPlanningConfig
         {
+            /// <summary>Maximum diplomacy mission planet candidates to consider.</summary>
             public int DiplomacyCandidatePlanetLimit { get; set; } = 8;
+
+            /// <summary>Maximum research mission planet candidates to consider.</summary>
             public int ResearchCandidatePlanetLimit { get; set; } = 4;
+
+            /// <summary>Maximum sabotage mission planet candidates to consider.</summary>
             public int SabotageCandidatePlanetLimit { get; set; } = 5;
+
+            /// <summary>Maximum enemy officer candidates to consider.</summary>
             public int OfficerTargetCandidateLimit { get; set; } = 4;
         }
 
+        /// <summary>
+        /// Fleet attack and deployment scoring settings.
+        /// </summary>
         [PersistableObject]
         public class AIFleetDeploymentConfig
         {
+            /// <summary>Minimum friendly attack strength required before attacking.</summary>
             public int MinimumAttackStrength { get; set; }
+
+            /// <summary>Minimum defensive strength a fleet should keep available.</summary>
             public int MinimumDefenseStrength { get; set; } = 1000;
+
+            /// <summary>Minimum loaded regiments required before attempting planet capture.</summary>
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
+
+            /// <summary>Required attack strength as a percent of planet defense.</summary>
             public int AttackStrengthPercentOfDefense { get; set; }
+
+            /// <summary>Required attack strength as a percent of the strongest hostile fleet.</summary>
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
+
+            /// <summary>Score weight for target strategic value.</summary>
             public int AttackStrategicValueWeight { get; set; } = 55;
+
+            /// <summary>Score weight for fleet readiness.</summary>
             public int AttackReadinessWeight { get; set; } = 35;
+
+            /// <summary>Score weight for capture viability.</summary>
             public int AttackCaptureViabilityWeight { get; set; } = 45;
+
+            /// <summary>Score weight for travel efficiency.</summary>
             public int AttackTravelEfficiencyWeight { get; set; } = 20;
+
+            /// <summary>Score penalty weight for expected losses.</summary>
             public int AttackExpectedLossPenaltyWeight { get; set; } = 50;
+
+            /// <summary>Score penalty weight for committing a fleet to an attack.</summary>
             public int AttackOpportunityCostPenaltyWeight { get; set; } = 30;
+
+            /// <summary>Score bonus for continuing an existing attack order.</summary>
             public int ExistingAttackOrderBonus { get; set; } = 25;
+
+            /// <summary>Score bonus for attacking an enemy headquarters.</summary>
             public int HeadquartersAttackBonus { get; set; } = 45;
         }
 
+        /// <summary>
+        /// AI manufacturing selection weights and limits.
+        /// </summary>
         [PersistableObject]
         public class AISelectionConfig
         {
@@ -155,6 +222,9 @@ namespace Rebellion.Game
             public int MaintenanceShortfallPenalty { get; set; }
         }
 
+        /// <summary>
+        /// AI infrastructure demand settings.
+        /// </summary>
         [PersistableObject]
         public class AIInfrastructureConfig
         {
@@ -190,6 +260,9 @@ namespace Rebellion.Game
             public int FleetReinforcementTravelPenaltyWeight { get; set; } = 1;
         }
 
+        /// <summary>
+        /// AI non-capital production summary thresholds.
+        /// </summary>
         [PersistableObject]
         public class AINonCapitalSummaryConfig
         {
@@ -280,6 +353,7 @@ namespace Rebellion.Game
             /// <summary>Popular support shift applied to the controlling faction each uprising tick.</summary>
             public int ControllerSupportShift { get; set; }
 
+            /// <summary>Divisor applied to weak uprising support penalties.</summary>
             public int WeakSupportPenaltyDivisor { get; set; } = 2;
 
             /// <summary>Minimum ticks between active-uprising support drift pulses.</summary>
@@ -469,12 +543,16 @@ namespace Rebellion.Game
             /// <summary>Probability (out of 100) that a single planetary defense repeat trial succeeds.</summary>
             public int RepeatTrialProbability { get; set; }
 
+            /// <summary>Divisor applied to commander skill during ground combat.</summary>
             public int GroundCombatCommanderDivisor { get; set; }
 
+            /// <summary>Range for the ground combat contest roll.</summary>
             public int GroundCombatContestDiceRange { get; set; }
 
+            /// <summary>Threshold at or below which the defender wins ground combat.</summary>
             public int GroundCombatDefenderWinsThreshold { get; set; }
 
+            /// <summary>Threshold at or above which the attacker wins ground combat.</summary>
             public int GroundCombatAttackerWinsThreshold { get; set; }
 
             /// <summary>Percent variance applied symmetrically to each weapon damage roll.</summary>
@@ -637,11 +715,19 @@ namespace Rebellion.Game
             public int EscapeLoyaltyShift { get; set; }
         }
 
+        /// <summary>
+        /// Game tick interval presets.
+        /// </summary>
         [PersistableObject]
         public class GameSpeedConfig
         {
+            /// <summary>Tick interval for fast speed.</summary>
             public float FastTickIntervalSeconds { get; set; } = 1f;
+
+            /// <summary>Tick interval for medium speed.</summary>
             public float MediumTickIntervalSeconds { get; set; } = 10f;
+
+            /// <summary>Tick interval for slow speed.</summary>
             public float SlowTickIntervalSeconds { get; set; } = 60f;
         }
 
@@ -693,6 +779,7 @@ namespace Rebellion.Game
             /// <summary>Kill-or-capture outcome table.</summary>
             public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
 
+            /// <summary>Fallback kill-or-capture probability when the table has no match.</summary>
             public int DefaultKillOrCaptureProbability { get; set; } = 50;
 
             /// <summary>Incite uprising success probability table.</summary>

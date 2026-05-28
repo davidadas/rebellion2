@@ -3,8 +3,8 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.AI.Scoring
 {

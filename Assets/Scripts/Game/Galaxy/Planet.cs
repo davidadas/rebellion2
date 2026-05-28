@@ -7,7 +7,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.World
+namespace Rebellion.Game.Galaxy
 {
     /// <summary>
     /// Represents a planet in the game. A planet is a scene node that can contain fleets,
@@ -38,7 +38,6 @@ namespace Rebellion.Game.World
 
         // Child Nodes.
         public List<Fleet> Fleets = new List<Fleet>();
-        public List<CapitalShip> CapitalShips = new List<CapitalShip>();
         public List<Officer> Officers = new List<Officer>();
         public List<Regiment> Regiments = new List<Regiment>();
         public List<SpecialForces> SpecialForces = new List<SpecialForces>();
@@ -717,27 +716,6 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Adds a capital ship to the planet.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to add.</param>
-        private void AddCapitalShip(CapitalShip capitalShip)
-        {
-            if (capitalShip.GetOwnerInstanceID() != GetOwnerInstanceID())
-                throw new SceneAccessException(capitalShip, this);
-
-            CapitalShips.Add(capitalShip);
-        }
-
-        /// <summary>
-        /// Removes a capital ship from the planet.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to remove.</param>
-        private void RemoveCapitalShip(CapitalShip capitalShip)
-        {
-            CapitalShips.Remove(capitalShip);
-        }
-
-        /// <summary>
         /// Adds a regiment to the planet.
         /// </summary>
         /// <param name="regiment">The regiment to add.</param>
@@ -878,8 +856,6 @@ namespace Rebellion.Game.World
                 case Fleet _:
                 case Mission _:
                     return true;
-                case CapitalShip capitalShip:
-                    return capitalShip.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Officer officer:
                     return officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID;
                 case Regiment regiment:
@@ -913,9 +889,6 @@ namespace Rebellion.Game.World
                     break;
                 case Building building:
                     AddBuilding(building);
-                    break;
-                case CapitalShip capitalShip:
-                    AddCapitalShip(capitalShip);
                     break;
                 case Mission mission:
                     AddMission(mission);
@@ -954,9 +927,6 @@ namespace Rebellion.Game.World
                 case Building building:
                     RemoveBuilding(building);
                     break;
-                case CapitalShip capitalShip:
-                    RemoveCapitalShip(capitalShip);
-                    break;
                 case Mission mission:
                     RemoveMission(mission);
                     break;
@@ -985,7 +955,6 @@ namespace Rebellion.Game.World
         {
             return Fleets
                 .Cast<ISceneNode>()
-                .Concat(CapitalShips)
                 .Concat(Officers)
                 .Concat(Missions)
                 .Concat(Regiments)

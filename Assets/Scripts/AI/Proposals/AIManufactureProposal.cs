@@ -4,9 +4,9 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Proposals

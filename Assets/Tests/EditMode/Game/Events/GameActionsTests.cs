@@ -4,9 +4,9 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.Tests.Game.Events
 {

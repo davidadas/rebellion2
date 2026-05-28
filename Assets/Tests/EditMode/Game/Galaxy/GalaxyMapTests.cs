@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Tests.Game.World
+namespace Rebellion.Tests.Game.Galaxy
 {
     [TestFixture]
     public class GalaxyMapTests
@@ -192,4 +192,4 @@ namespace Rebellion.Tests.Game.World
             Assert.AreEqual(1, _galaxyMap.PlanetSystems.Count);
         }
     }
-} // namespace Rebellion.Tests.Game.World
+} // namespace Rebellion.Tests.Game.Galaxy

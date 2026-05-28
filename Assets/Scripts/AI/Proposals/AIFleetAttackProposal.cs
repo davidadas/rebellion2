@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.AI.Proposals
 {

@@ -58,6 +58,11 @@ namespace Rebellion.AI.Phases
             return selectedProposals;
         }
 
+        /// <summary>
+        /// Returns the minimum score required for proposal selection.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The minimum selectable score.</returns>
         private static float GetMinimumSelectableScore(AITurnContext context)
         {
             return context.Game?.Config?.AI?.Selection?.MinimumSelectableScore

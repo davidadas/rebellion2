@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -15,6 +16,9 @@ namespace Rebellion.Systems
     /// </summary>
     public class UprisingSystem : IGameSystem
     {
+        private const int _buildingDestroyedSeverity = 1;
+        private const int _regimentDestroyedSeverity = 2;
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlSystem _planetaryControl;
@@ -82,7 +86,7 @@ namespace Rebellion.Systems
         /// <param name="results">Collection to append uprising results to.</param>
         private void CheckForNewUprising(Planet planet, Faction faction, List<GameResult> results)
         {
-            int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+            int troopCount = planet.GetRegimentCount();
             int garrisonRequired = CalculateGarrisonRequirement(
                 planet,
                 faction,
@@ -113,7 +117,7 @@ namespace Rebellion.Systems
         private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
         {
             int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
-            int troopCount = CountFriendlyTroops(planet, faction.InstanceID);
+            int troopCount = planet.GetRegimentCount();
 
             ResolveUprisingTableResults(
                 planet,
@@ -172,10 +176,13 @@ namespace Rebellion.Systems
                 + (threshold - troopMultiplier * controllerTroopCount)
                 + hostilePresence;
 
-            uprisingEffect = LookupTable(config.PrimaryConsequenceTable, combinedScore);
+            uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
 
             if (uprisingEffect > 0)
-                uprisingSeverity = LookupTable(config.SecondaryConsequenceTable, combinedScore);
+                uprisingSeverity = GetThresholdTableValue(
+                    config.SecondaryConsequenceTable,
+                    combinedScore
+                );
         }
 
         /// <summary>
@@ -222,7 +229,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet experiencing the uprising.</param>
         /// <param name="controllerInstanceId">The controlling faction's instance ID.</param>
-        /// <param name="consequence">The consequence code from the uprising table (0–5).</param>
+        /// <param name="consequence">The consequence code from the uprising table.</param>
         /// <param name="results">Result list to append events to.</param>
         private void ApplyUprisingConsequence(
             Planet planet,
@@ -267,18 +274,8 @@ namespace Rebellion.Systems
                 .GetAllBuildings()
                 .Where(b => b.GetOwnerInstanceID() == controllerInstanceId)
                 .ToList();
-            if (facilities.Count == 0)
-                return;
-            _game.DetachNode(facilities[_provider.NextInt(0, facilities.Count)]);
-            results.Add(
-                new PlanetIncidentResult
-                {
-                    Planet = planet,
-                    IncidentType = IncidentType.Uprising,
-                    Severity = 1,
-                    Tick = _game.CurrentTick,
-                }
-            );
+
+            DestroyRandomIncidentTarget(facilities, planet, _buildingDestroyedSeverity, results);
         }
 
         /// <summary>
@@ -297,15 +294,36 @@ namespace Rebellion.Systems
                 .GetAllRegiments()
                 .Where(r => r.GetOwnerInstanceID() == controllerInstanceId)
                 .ToList();
-            if (regiments.Count == 0)
+
+            DestroyRandomIncidentTarget(regiments, planet, _regimentDestroyedSeverity, results);
+        }
+
+        /// <summary>
+        /// Destroys a random incident target and records the incident.
+        /// </summary>
+        /// <typeparam name="T">Type of scene node that can be destroyed.</typeparam>
+        /// <param name="candidates">Possible incident targets.</param>
+        /// <param name="planet">Planet where the incident occurs.</param>
+        /// <param name="severity">Incident severity to report.</param>
+        /// <param name="results">Result list to append events to.</param>
+        private void DestroyRandomIncidentTarget<T>(
+            List<T> candidates,
+            Planet planet,
+            int severity,
+            List<GameResult> results
+        )
+            where T : class, ISceneNode
+        {
+            if (candidates.Count == 0)
                 return;
-            _game.DetachNode(regiments[_provider.NextInt(0, regiments.Count)]);
+
+            _game.DetachNode(candidates[_provider.NextInt(0, candidates.Count)]);
             results.Add(
                 new PlanetIncidentResult
                 {
                     Planet = planet,
                     IncidentType = IncidentType.Uprising,
-                    Severity = 2,
+                    Severity = severity,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -510,7 +528,7 @@ namespace Rebellion.Systems
         /// <param name="table">The threshold-to-value lookup table.</param>
         /// <param name="score">The score to look up against the table thresholds.</param>
         /// <returns>The value associated with the highest matching threshold.</returns>
-        private static int LookupTable(Dictionary<int, int> table, int score)
+        private static int GetThresholdTableValue(Dictionary<int, int> table, int score)
         {
             int result = 0;
             foreach (KeyValuePair<int, int> entry in table.OrderBy(e => e.Key))
@@ -521,17 +539,6 @@ namespace Rebellion.Systems
                     break;
             }
             return result;
-        }
-
-        /// <summary>
-        /// Counts friendly regiment troops at a planet.
-        /// </summary>
-        /// <param name="planet">The planet to count troops on.</param>
-        /// <param name="factionId">The faction whose troops to count.</param>
-        /// <returns>The number of friendly regiments present.</returns>
-        private static int CountFriendlyTroops(Planet planet, string factionId)
-        {
-            return planet.GetAllRegiments().Count(r => r.GetOwnerInstanceID() == factionId);
         }
 
         /// <summary>

@@ -6,9 +6,9 @@ using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Planners

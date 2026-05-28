@@ -3,9 +3,9 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.AI.Planners
 {
@@ -590,6 +590,11 @@ namespace Rebellion.AI.Planners
                     && capitalShip.GetRegimentCapacity() > 0;
         }
 
+        /// <summary>
+        /// Returns current or committed combat value for a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The projected combat value.</returns>
         private static int GetProjectedFleetCombatValue(Fleet fleet)
         {
             if (fleet == null)
@@ -601,6 +606,11 @@ namespace Rebellion.AI.Planners
             return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
         }
 
+        /// <summary>
+        /// Returns whether a capital ship is present or being built.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>True if the capital ship is present or under construction.</returns>
         private static bool IsPresentOrUnderConstruction(CapitalShip capitalShip)
         {
             return capitalShip?.ManufacturingStatus

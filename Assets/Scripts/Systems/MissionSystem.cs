@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -211,7 +211,7 @@ namespace Rebellion.Systems
             Faction faction
         )
         {
-            ISceneNode origin = GetRecordedOriginStillAtMissionPlanet(mission, missionPlanet);
+            ISceneNode origin = GetMissionReturnOrigin(mission, missionPlanet);
 
             if (origin == null)
                 origin = faction.GetNearestFriendlyPlanetTo(mission);
@@ -228,10 +228,7 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
         /// <returns>The recorded origin, or null if it is unavailable or no longer local.</returns>
-        private ISceneNode GetRecordedOriginStillAtMissionPlanet(
-            Mission mission,
-            Planet missionPlanet
-        )
+        private ISceneNode GetMissionReturnOrigin(Mission mission, Planet missionPlanet)
         {
             if (mission.OriginInstanceID == null)
                 return null;
@@ -282,11 +279,11 @@ namespace Rebellion.Systems
             if (mission.RollDecoyCheck(_provider))
                 return results;
 
-            int defenderCombat = GetDefenderCombat(mission);
+            int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
 
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-                ResolveDetectedParticipant(participant, defenderCombat, planet, mission, results);
+                ResolveFoiledParticipant(participant, defenderCombat, planet, mission, results);
 
             return results;
         }
@@ -296,7 +293,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The detected mission.</param>
         /// <returns>The defender's combat skill, or 0 when no defender is present.</returns>
-        private static int GetDefenderCombat(Mission mission)
+        private static int GetFoilDefenderCombatSkill(Mission mission)
         {
             Officer defender = mission.FindDefender();
             return defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
@@ -310,7 +307,7 @@ namespace Rebellion.Systems
         /// <param name="planet">The mission planet.</param>
         /// <param name="mission">The detected mission.</param>
         /// <param name="results">Collection to append generated results to.</param>
-        private void ResolveDetectedParticipant(
+        private void ResolveFoiledParticipant(
             IMissionParticipant participant,
             int defenderCombat,
             Planet planet,
@@ -318,12 +315,12 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            if (participant is Officer spy)
+            if (participant is Officer officer)
             {
-                if (spy.IsCaptured || spy.IsKilled)
+                if (officer.IsCaptured || officer.IsKilled)
                     return;
 
-                results.AddRange(ResolveKillOrCapture(spy, defenderCombat, planet, mission));
+                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet, mission));
                 return;
             }
 
@@ -358,13 +355,13 @@ namespace Rebellion.Systems
         /// Resolves whether a detected spy is killed or captured based on combat comparison.
         /// Positive delta (defender stronger) favours capture; negative favours kill.
         /// </summary>
-        /// <param name="spy">The officer who was detected.</param>
+        /// <param name="officer">The officer who was detected.</param>
         /// <param name="defenderCombat">The defending officer's combat skill.</param>
         /// <param name="planet">The planet where the mission takes place.</param>
         /// <param name="mission">The mission that was foiled.</param>
         /// <returns>One capture or kill result.</returns>
         private List<GameResult> ResolveKillOrCapture(
-            Officer spy,
+            Officer officer,
             int defenderCombat,
             Planet planet,
             Mission mission
@@ -372,7 +369,7 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            int delta = defenderCombat - spy.GetEffectiveCombat();
+            int delta = defenderCombat - officer.GetEffectiveCombat();
             double captureProbability =
                 mission.KillOrCaptureProbabilityTable != null
                     ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
@@ -380,13 +377,13 @@ namespace Rebellion.Systems
 
             if (_provider.NextDouble() * 100 <= captureProbability)
             {
-                spy.IsCaptured = true;
-                spy.CaptorInstanceID = planet?.OwnerInstanceID;
-                spy.CanEscape = true;
+                officer.IsCaptured = true;
+                officer.CaptorInstanceID = planet?.OwnerInstanceID;
+                officer.CanEscape = true;
                 results.Add(
                     new OfficerCaptureStateResult
                     {
-                        TargetOfficer = spy,
+                        TargetOfficer = officer,
                         IsCaptured = true,
                         Context = planet,
                         Tick = _game.CurrentTick,
@@ -395,12 +392,12 @@ namespace Rebellion.Systems
             }
             else
             {
-                spy.IsKilled = true;
-                _game.DetachNode(spy);
+                officer.IsKilled = true;
+                _game.DetachNode(officer);
                 results.Add(
                     new OfficerKilledResult
                     {
-                        TargetOfficer = spy,
+                        TargetOfficer = officer,
                         Context = planet,
                         Tick = _game.CurrentTick,
                     }

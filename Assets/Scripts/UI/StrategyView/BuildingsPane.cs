@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

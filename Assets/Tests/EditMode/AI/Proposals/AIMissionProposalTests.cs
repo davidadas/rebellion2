@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.AI.Proposals;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.Tests.AI.Proposals
 {

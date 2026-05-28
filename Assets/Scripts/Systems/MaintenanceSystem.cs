@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -75,9 +75,9 @@ namespace Rebellion.Systems
                 return;
             }
 
-            AddShortfallResultIfNew(faction, required, capacity, results);
+            RecordMaintenanceShortfall(faction, required, capacity, results);
 
-            if (!IsAutoScrapDue(faction))
+            if (!TryConsumeAutoScrapPulse(faction))
                 return;
 
             GameObjectAutoscrappedResult result = ScrapRandomEligibleUnit(faction);
@@ -113,7 +113,7 @@ namespace Rebellion.Systems
         /// <param name="required">The required maintenance.</param>
         /// <param name="capacity">The available maintenance capacity.</param>
         /// <param name="results">Result list to append to.</param>
-        private void AddShortfallResultIfNew(
+        private void RecordMaintenanceShortfall(
             Faction faction,
             int required,
             int capacity,
@@ -138,7 +138,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="faction">The faction in shortfall.</param>
         /// <returns>True if a unit may be scrapped this tick.</returns>
-        private bool IsAutoScrapDue(Faction faction)
+        private bool TryConsumeAutoScrapPulse(Faction faction)
         {
             int interval = _game.Config.Production.MaintenanceShortfallAutoscrapInterval;
             if (!_nextAutoscrapTickByFaction.TryGetValue(faction.InstanceID, out int nextTick))
@@ -161,7 +161,15 @@ namespace Rebellion.Systems
         /// <returns>The auto-scrap result, or null if no unit can be scrapped.</returns>
         private GameObjectAutoscrappedResult ScrapRandomEligibleUnit(Faction faction)
         {
-            List<IManufacturable> candidates = GetAutoScrapCandidates(faction);
+            List<IManufacturable> candidates = faction
+                .GetAllOwnedManufacturables()
+                .Where(m =>
+                    IsAutoScrapEligibleType(m)
+                    && m.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && m.Movement == null
+                    && m.GetMaintenanceCost() > 0
+                )
+                .ToList();
 
             if (candidates.Count == 0)
                 return null;
@@ -186,26 +194,6 @@ namespace Rebellion.Systems
                 Context = location,
                 Tick = _game.CurrentTick,
             };
-        }
-
-        /// <summary>
-        /// Returns all completed, stationary units eligible for auto-scrap.
-        /// </summary>
-        /// <param name="faction">The faction whose units are inspected.</param>
-        /// <returns>Eligible auto-scrap candidates.</returns>
-        private List<IManufacturable> GetAutoScrapCandidates(Faction faction)
-        {
-            List<IManufacturable> candidates = faction
-                .GetAllOwnedManufacturables()
-                .Where(m =>
-                    IsAutoScrapEligibleType(m)
-                    && m.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && m.Movement == null
-                    && m.GetMaintenanceCost() > 0
-                )
-                .ToList();
-
-            return candidates;
         }
 
         /// <summary>

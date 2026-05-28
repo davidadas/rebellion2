@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Tests.Game.World
+namespace Rebellion.Tests.Game.Galaxy
 {
     [TestFixture]
     public class PlanetTests
@@ -569,7 +569,8 @@ namespace Rebellion.Tests.Game.World
             Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(fleet);
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
-            ship.SetParent(_planet);
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
 
             _planet.AddToManufacturingQueue(ship);
 
@@ -631,7 +632,8 @@ namespace Rebellion.Tests.Game.World
             Fleet fleet = new Fleet { OwnerInstanceID = "FNALL1" };
             _planet.AddChild(fleet);
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "FNALL1" };
-            ship.SetParent(_planet);
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
             _planet.AddToManufacturingQueue(ship);
 
             int idleFacilities = _planet.GetIdleManufacturingFacilities(ManufacturingType.Ship);
@@ -902,4 +904,4 @@ namespace Rebellion.Tests.Game.World
             Assert.AreEqual(1, planet.GetActiveRefinementCapacity());
         }
     }
-} // namespace Rebellion.Tests.Game.World
+} // namespace Rebellion.Tests.Game.Galaxy

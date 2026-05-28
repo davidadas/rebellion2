@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Systems;
 
 namespace Rebellion.AI.Director
@@ -1033,6 +1033,11 @@ namespace Rebellion.AI.Director
             return value * percent / 100;
         }
 
+        /// <summary>
+        /// Returns whether a capital ship is ready for planning.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>True if the capital ship is ready.</returns>
         private static bool IsReadyCapitalShip(CapitalShip capitalShip)
         {
             return capitalShip != null
@@ -1040,6 +1045,11 @@ namespace Rebellion.AI.Director
                 && capitalShip.Movement == null;
         }
 
+        /// <summary>
+        /// Returns whether a regiment is ready for planning.
+        /// </summary>
+        /// <param name="regiment">The regiment to inspect.</param>
+        /// <returns>True if the regiment is ready.</returns>
         private static bool IsReadyRegiment(Regiment regiment)
         {
             return regiment != null

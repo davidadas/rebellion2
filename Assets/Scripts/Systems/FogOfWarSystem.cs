@@ -3,9 +3,9 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
@@ -157,7 +157,6 @@ namespace Rebellion.Systems
             Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
             viewPlanet.Officers = new List<Officer>();
             viewPlanet.Fleets = new List<Fleet>();
-            viewPlanet.CapitalShips = new List<CapitalShip>();
             viewPlanet.Regiments = new List<Regiment>();
             viewPlanet.Buildings = new List<Building>();
             viewPlanet.Starfighters = new List<Starfighter>();
@@ -194,9 +193,6 @@ namespace Rebellion.Systems
                         && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
                     )
                     .Select(f => f.GetShallowCopy(CloneMode.Full))
-            );
-            viewPlanet.CapitalShips.AddRange(
-                masterPlanet.CapitalShips.Select(c => c.GetShallowCopy(CloneMode.Full))
             );
             viewPlanet.Regiments.AddRange(
                 masterPlanet.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
@@ -259,9 +255,6 @@ namespace Rebellion.Systems
             );
             viewPlanet.Fleets.AddRange(
                 planetSnapshot.Fleets.Select(f => f.GetShallowCopy(CloneMode.Full))
-            );
-            viewPlanet.CapitalShips.AddRange(
-                planetSnapshot.CapitalShips.Select(c => c.GetShallowCopy(CloneMode.Full))
             );
             viewPlanet.Regiments.AddRange(
                 planetSnapshot.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))

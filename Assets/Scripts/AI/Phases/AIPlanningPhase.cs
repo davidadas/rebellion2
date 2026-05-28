@@ -12,6 +12,9 @@ namespace Rebellion.AI.Phases
     {
         private readonly List<IAIProposalPlanner> _planners;
 
+        /// <summary>
+        /// Creates a planning phase with the default proposal planners.
+        /// </summary>
         public AIPlanningPhase()
             : this(
                 new IAIProposalPlanner[]
@@ -22,6 +25,10 @@ namespace Rebellion.AI.Phases
                 }
             ) { }
 
+        /// <summary>
+        /// Creates a planning phase with the supplied proposal planners.
+        /// </summary>
+        /// <param name="planners">Proposal planners run by this phase.</param>
         internal AIPlanningPhase(IEnumerable<IAIProposalPlanner> planners)
         {
             if (planners == null)

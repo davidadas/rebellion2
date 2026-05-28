@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;

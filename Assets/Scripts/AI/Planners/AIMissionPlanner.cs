@@ -3,10 +3,10 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Planners

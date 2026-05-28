@@ -3,7 +3,7 @@ using System.Drawing;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.World
+namespace Rebellion.Game.Galaxy
 {
     /// <summary>
     /// The type of planet system (core system or outer rim).

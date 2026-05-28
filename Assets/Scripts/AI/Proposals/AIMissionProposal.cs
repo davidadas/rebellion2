@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 
 namespace Rebellion.AI.Proposals
 {

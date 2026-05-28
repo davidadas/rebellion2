@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems

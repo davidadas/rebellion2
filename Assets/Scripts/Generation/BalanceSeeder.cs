@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Generation
 {

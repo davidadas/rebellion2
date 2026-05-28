@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 
@@ -41,12 +41,6 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
             AddOfficersToSnapshot(faction, planet, planetSnapshot);
             AddFleetsToSnapshot(faction, planet, planetSnapshot);
-            AddEntityCopiesToSnapshot(
-                planet.CapitalShips,
-                planetSnapshot.CapitalShips,
-                faction,
-                planet.InstanceID
-            );
             AddEntityCopiesToSnapshot(
                 planet.Regiments,
                 planetSnapshot.Regiments,
@@ -225,7 +219,6 @@ namespace Rebellion.Game.FogOfWar
 
             oldPlanetSnapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
             oldPlanetSnapshot.Fleets.RemoveAll(f => f.InstanceID == entityId);
-            oldPlanetSnapshot.CapitalShips.RemoveAll(c => c.InstanceID == entityId);
             oldPlanetSnapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
             oldPlanetSnapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             oldPlanetSnapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);

@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Tests.Game.World
+namespace Rebellion.Tests.Game.Galaxy
 {
     [TestFixture]
     public class PlanetSystemTests
@@ -222,4 +222,4 @@ namespace Rebellion.Tests.Game.World
             Assert.AreEqual(0, position.Y);
         }
     }
-} // namespace Rebellion.Tests.Game.World
+} // namespace Rebellion.Tests.Game.Galaxy

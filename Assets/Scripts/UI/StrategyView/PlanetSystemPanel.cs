@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.World;
+using Rebellion.Game.Galaxy;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

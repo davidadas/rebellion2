@@ -1,5 +1,5 @@
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Planners
