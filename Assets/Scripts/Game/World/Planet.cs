@@ -16,21 +16,14 @@ namespace Rebellion.Game.World
     /// </summary>
     public class Planet : ContainerNode
     {
-        // Constants.
-        private const int _distanceDivisor = 5;
-
         // Planet Properties.
         public bool IsColonized { get; set; }
         public int SystemDataId { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
+        public int AllocatedEnergy { get; set; }
         public int PositionX { get; set; }
         public int PositionY { get; set; }
-
-        /// <summary>
-        /// Energy currently committed to in-progress allocations.
-        /// </summary>
-        public int AllocatedEnergy { get; set; }
 
         // Planet Asset Info.
         public string PlanetIconPath { get; set; }
@@ -101,15 +94,6 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Checks if the planet is contested (has any hostile fleets present, regardless of defenders).
-        /// </summary>
-        /// <returns>True if any hostile fleet is present, false otherwise.</returns>
-        public bool IsContested()
-        {
-            return Fleets.Any(fleet => fleet.OwnerInstanceID != this.OwnerInstanceID);
-        }
-
-        /// <summary>
         /// Returns true if planet has any faction presence.
         /// Used by uprising system to filter unpopulated planets.
         /// </summary>
@@ -117,24 +101,6 @@ namespace Rebellion.Game.World
         public bool IsPopulated()
         {
             return PopularSupport.Any(kvp => kvp.Value > 0);
-        }
-
-        /// <summary>
-        /// Loyalty value for uprising calculation.
-        /// Owner's popularity scaled to [-50, +50]. Negative = danger zone.
-        /// Self-sufficient - no Game dependency required.
-        /// </summary>
-        /// <returns>Loyalty in [-50, +50]; negative means uprising risk.</returns>
-        public int CalculateLoyalty()
-        {
-            if (string.IsNullOrEmpty(OwnerInstanceID))
-                return 0;
-
-            float ownerPop = PopularSupport.TryGetValue(OwnerInstanceID, out int pop)
-                ? pop / 100f
-                : 0.5f;
-
-            return (int)(ownerPop * 100f) - 50;
         }
 
         /// <summary>
@@ -260,15 +226,6 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Gets the number of mined resources without refinery capacity.
-        /// </summary>
-        /// <returns>The number of mines without matching refinery capacity.</returns>
-        public int GetUnrefinedMineCount()
-        {
-            return Math.Max(0, GetRawMinedResources() - GetRawRefinementCapacity());
-        }
-
-        /// <summary>
         /// Gets the refinement capacity counting only completed, stationary refineries.
         /// Does not apply any blockade cut — callers that need the blockade penalty
         /// should apply it separately or use <see cref="GetAvailableRefinementCapacity"/>.
@@ -383,17 +340,6 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Calculates the travel time to another planet.
-        /// </summary>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>Travel time in ticks.</returns>
-        public int GetDistanceTo(Planet targetPlanet)
-        {
-            double rawDistance = GetRawDistanceTo(targetPlanet);
-            return (int)(rawDistance / _distanceDivisor);
-        }
-
-        /// <summary>
         /// Returns the path to the planet's icon asset.
         /// This is used by the UI to load and display the correct icon for the planet.
         /// </summary>
@@ -401,32 +347,6 @@ namespace Rebellion.Game.World
         public string GetPlanetIconPath()
         {
             return PlanetIconPath;
-        }
-
-        /// <summary>
-        /// Calculates the total number of days required to produce a specified number of manufacturable items.
-        /// </summary>
-        /// <param name="manufacturable">The item to be manufactured, which implements IManufacturable.</param>
-        /// <param name="quantity">The number of items to manufacture.</param>
-        /// <returns>The total days required to complete the manufacturing.</returns>
-        public int GetBuildTime(IManufacturable manufacturable, int quantity)
-        {
-            // Calculate the total material cost and the combined production rate for the manufacturable.
-            int totalMaterialCost = manufacturable.GetConstructionCost() * quantity;
-
-            // Calculate the combined time required to produce the items.
-            ManufacturingType requiredManufacturingType = manufacturable.GetManufacturingType();
-            double combinedRate = GetCombinedProductionRate(requiredManufacturingType);
-
-            if (combinedRate == 0)
-            {
-                return 0;
-            }
-
-            // Calculate the combined time required to produce the items.
-            double combinedTime = totalMaterialCost / combinedRate;
-
-            return (int)Math.Ceiling(combinedTime);
         }
 
         /// <summary>
@@ -457,47 +377,12 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Checks if units can be manufactured on this planet.
-        /// </summary>
-        /// <returns>True if units can be manufactured, false otherwise.</returns>
-        public bool CanManufactureUnits()
-        {
-            return !IsBlockaded() && !IsDestroyed && !IsInUprising;
-        }
-
-        /// <summary>
         /// Gets the manufacturing queue for the planet.
         /// </summary>
         /// <returns>The manufacturing queue.</returns>
         public Dictionary<ManufacturingType, List<IManufacturable>> GetManufacturingQueue()
         {
             return ManufacturingQueue;
-        }
-
-        /// <summary>
-        /// Returns true when the planet has active manufacturing for the given type.
-        /// </summary>
-        /// <param name="type">The manufacturing type to inspect.</param>
-        /// <returns>True when any queued item of that type is building.</returns>
-        public bool HasActiveManufacturing(ManufacturingType type)
-        {
-            return ManufacturingQueue.TryGetValue(type, out List<IManufacturable> queue)
-                && queue.Any(item => item.GetManufacturingStatus() == ManufacturingStatus.Building);
-        }
-
-        /// <summary>
-        /// Returns true when the planet has an active capital ship under construction.
-        /// </summary>
-        /// <returns>True when a capital ship is building in the ship queue.</returns>
-        public bool HasActiveCapitalShipManufacturing()
-        {
-            return ManufacturingQueue.TryGetValue(
-                    ManufacturingType.Ship,
-                    out List<IManufacturable> queue
-                )
-                && queue
-                    .OfType<CapitalShip>()
-                    .Any(ship => ship.ManufacturingStatus == ManufacturingStatus.Building);
         }
 
         /// <summary>
@@ -673,39 +558,6 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Returns true when a faction owns a completed building of the given type.
-        /// </summary>
-        /// <param name="buildingType">The building type to inspect.</param>
-        /// <param name="factionId">The owning faction instance ID.</param>
-        /// <returns>True when a matching completed building exists.</returns>
-        public bool HasCompletedBuilding(BuildingType buildingType, string factionId)
-        {
-            return Buildings.Any(building =>
-                building.OwnerInstanceID == factionId
-                && building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                && building.GetBuildingType() == buildingType
-            );
-        }
-
-        /// <summary>
-        /// Returns true when a faction has a complete, stationary hyperdrive capital ship here.
-        /// </summary>
-        /// <param name="factionId">The owning faction instance ID.</param>
-        /// <returns>True when a matching capital ship is present.</returns>
-        public bool HasOperationalHyperdriveCapitalShip(string factionId)
-        {
-            return Fleets
-                .Where(fleet => fleet?.OwnerInstanceID == factionId)
-                .SelectMany(fleet => fleet.CapitalShips)
-                .Any(ship =>
-                    ship != null
-                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                    && ship.Hyperdrive > 0
-                );
-        }
-
-        /// <summary>
         /// Calculates the production modifier applied when this planet is under blockade.
         /// Returns a value from 0 to 100, where 100 means no reduction and 0 means fully
         /// suppressed. Each hostile capital ship and starfighter reduces the modifier by the
@@ -743,21 +595,6 @@ namespace Rebellion.Game.World
                         b.DefenseFacilityClass == DefenseFacilityClass.Shield
                         || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
                     ) && IsEntityActive(b)
-                )
-                .Sum(b => b.ShieldStrength);
-        }
-
-        /// <summary>
-        /// Calculates defense strength across all shield buildings, including those under
-        /// construction and in transit.
-        /// </summary>
-        /// <returns>Sum of ShieldStrength across all shield buildings.</returns>
-        public int GetTotalDefenseStrength()
-        {
-            return GetAllBuildings()
-                .Where(b =>
-                    b.DefenseFacilityClass == DefenseFacilityClass.Shield
-                    || b.DefenseFacilityClass == DefenseFacilityClass.DeathStarShield
                 )
                 .Sum(b => b.ShieldStrength);
         }
@@ -850,15 +687,6 @@ namespace Rebellion.Game.World
         private void RemoveOfficer(Officer officer)
         {
             Officers.Remove(officer);
-        }
-
-        /// <summary>
-        /// Gets the missions on the planet.
-        /// </summary>
-        /// <returns>All missions currently active on this planet.</returns>
-        public List<Mission> GetMissions()
-        {
-            return Missions;
         }
 
         /// <summary>
@@ -1000,30 +828,12 @@ namespace Rebellion.Game.World
         }
 
         /// <summary>
-        /// Returns all capital ships stationed on the planet.
-        /// </summary>
-        /// <returns>A list of capital ships currently on this planet.</returns>
-        public List<CapitalShip> GetAllCapitalShips()
-        {
-            return CapitalShips.ToList();
-        }
-
-        /// <summary>
         /// Returns all regiments on the planet.
         /// </summary>
         /// <returns>A list of regiments currently on this planet.</returns>
         public List<Regiment> GetAllRegiments()
         {
             return Regiments.ToList();
-        }
-
-        /// <summary>
-        /// Returns all special forces on the planet.
-        /// </summary>
-        /// <returns>A list of special forces currently on this planet.</returns>
-        public List<SpecialForces> GetAllSpecialForces()
-        {
-            return SpecialForces.ToList();
         }
 
         /// <summary>

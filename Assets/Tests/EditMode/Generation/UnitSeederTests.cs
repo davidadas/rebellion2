@@ -517,7 +517,7 @@ namespace Rebellion.Tests.Generation
 
             new UnitSeeder().Seed(context);
 
-            List<SpecialForces> specialForces = planet.GetAllSpecialForces();
+            List<SpecialForces> specialForces = planet.SpecialForces;
             Assert.AreEqual(4, specialForces.Count);
             Assert.IsTrue(
                 specialForces.All(unit =>

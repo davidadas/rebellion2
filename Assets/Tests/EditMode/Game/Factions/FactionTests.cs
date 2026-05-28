@@ -131,21 +131,6 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void GetAllOwnedNodes_FactionWithMultipleUnits_ReturnsAllUnits()
-        {
-            _faction.AddOwnedUnit(_planet1);
-            _faction.AddOwnedUnit(_fleet);
-            _faction.AddOwnedUnit(_officer);
-
-            List<ISceneNode> allNodes = _faction.GetAllOwnedNodes();
-
-            Assert.AreEqual(3, allNodes.Count, "Should return all owned nodes");
-            Assert.Contains(_planet1, allNodes, "Should contain planet");
-            Assert.Contains(_fleet, allNodes, "Should contain fleet");
-            Assert.Contains(_officer, allNodes, "Should contain officer");
-        }
-
-        [Test]
         public void GetUnlockedTechnologies_FactionBelowOrder_ReturnsOnlyUnlockedTechnologies()
         {
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, 2);
@@ -857,41 +842,6 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void GetTotalRawMaterials_FactionWithMultiplePlanets_CalculatesTotal()
-        {
-            _planet1.NumRawResourceNodes = 10;
-            _planet1.IsColonized = true;
-            _planet1.EnergyCapacity = 50;
-            for (int i = 0; i < 8; i++)
-            {
-                Building mine = new Building
-                {
-                    BuildingType = BuildingType.Mine,
-                    OwnerInstanceID = "FACTION1",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                };
-                _planet1.AddChild(mine);
-            }
-            for (int i = 0; i < 5; i++)
-            {
-                Building refinery = new Building
-                {
-                    BuildingType = BuildingType.Refinery,
-                    OwnerInstanceID = "FACTION1",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                };
-                _planet1.AddChild(refinery);
-            }
-
-            _faction.AddOwnedUnit(_planet1);
-
-            int total = _faction.GetTotalRawMaterialsRaw();
-
-            // Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
-            Assert.AreEqual(5, total, "Should calculate raw materials correctly");
-        }
-
-        [Test]
         public void GetTotalAvailableMaterials_FactionWithMultiplePlanets_CalculatesAvailableTotal()
         {
             _planet1.NumRawResourceNodes = 10;
@@ -1027,78 +977,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.Throws<ArgumentException>(
                 () => _faction.GetNearestFriendlyPlanetTo(floatingFleet),
                 "Should throw exception when node is not on a planet"
-            );
-        }
-
-        [Test]
-        public void GetIdleFacilities_GameWithMixedFacilities_ReturnsOnlyIdlePlanets()
-        {
-            _planet1.IsColonized = true;
-            _planet1.EnergyCapacity = 5;
-            _planet2.IsColonized = true;
-            _planet2.EnergyCapacity = 5;
-
-            // Add a shipyard to planet1 (idle facility)
-            Building shipyard = new Building
-            {
-                ProductionType = ManufacturingType.Ship,
-                OwnerInstanceID = "FACTION1",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                ProcessRate = 1,
-            };
-            _planet1.AddChild(shipyard);
-
-            // planet2 has no buildings, so no idle facilities
-
-            _faction.AddOwnedUnit(_planet1);
-            _faction.AddOwnedUnit(_planet2);
-
-            List<Planet> idleFacilities = _faction.GetIdleFacilities(ManufacturingType.Ship);
-
-            Assert.AreEqual(
-                1,
-                idleFacilities.Count,
-                "Should return only planets with idle facilities"
-            );
-            Assert.Contains(_planet1, idleFacilities, "Should contain planet1");
-            Assert.IsFalse(
-                idleFacilities.Contains(_planet2),
-                "Should not contain planet2 with no idle facilities"
-            );
-        }
-
-        [Test]
-        public void GetIdleFacilities_WithNoIdleFacilities_ReturnsEmptyList()
-        {
-            _planet1.IsColonized = true;
-            _planet1.EnergyCapacity = 5;
-            _planet2.IsColonized = true;
-            _planet2.EnergyCapacity = 5;
-
-            // Add buildings with different production types (Ship, Troop) but not Building type
-            Building shipyard = new Building
-            {
-                ProductionType = ManufacturingType.Ship,
-                OwnerInstanceID = "FACTION1",
-            };
-            _planet1.AddChild(shipyard);
-
-            Building trainingFacility = new Building
-            {
-                ProductionType = ManufacturingType.Troop,
-                OwnerInstanceID = "FACTION1",
-            };
-            _planet2.AddChild(trainingFacility);
-
-            _faction.AddOwnedUnit(_planet1);
-            _faction.AddOwnedUnit(_planet2);
-
-            List<Planet> idleFacilities = _faction.GetIdleFacilities(ManufacturingType.Building);
-
-            Assert.AreEqual(
-                0,
-                idleFacilities.Count,
-                "Should return empty list when no facilities are idle"
             );
         }
 

@@ -237,20 +237,6 @@ namespace Rebellion.Tests.Game.World
         }
 
         [Test]
-        public void GetDistanceTo_ValidTargetPlanet_ReturnsCorrectTime()
-        {
-            Planet targetPlanet = new Planet
-            {
-                PositionX = _planet.GetPosition().X + 10,
-                PositionY = _planet.GetPosition().Y + 10,
-            };
-
-            int travelTime = _planet.GetDistanceTo(targetPlanet);
-
-            Assert.AreEqual(2, travelTime, "Travel time should be calculated correctly.");
-        }
-
-        [Test]
         public void AddToManufacturingQueue_UnitWithoutParent_ThrowsException()
         {
             IManufacturable unit = new Starfighter();
@@ -451,38 +437,6 @@ namespace Rebellion.Tests.Game.World
                 2,
                 mineCount,
                 "All filter should include buildings under construction."
-            );
-        }
-
-        [Test]
-        public void GetTotalDefenseStrength_UnderConstructionShield_IncludesShieldStrength()
-        {
-            Building completedShield = new Building
-            {
-                BuildingType = BuildingType.Defense,
-                DefenseFacilityClass = DefenseFacilityClass.Shield,
-                ShieldStrength = 50,
-                OwnerInstanceID = "FNALL1",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            Building underConstructionShield = new Building
-            {
-                BuildingType = BuildingType.Defense,
-                DefenseFacilityClass = DefenseFacilityClass.Shield,
-                ShieldStrength = 75,
-                OwnerInstanceID = "FNALL1",
-                ManufacturingStatus = ManufacturingStatus.Building,
-            };
-
-            _planet.AddChild(completedShield);
-            _planet.AddChild(underConstructionShield);
-
-            int defenseStrength = _planet.GetTotalDefenseStrength();
-
-            Assert.AreEqual(
-                125,
-                defenseStrength,
-                "Total defense strength should include under-construction shield buildings."
             );
         }
 
@@ -781,58 +735,6 @@ namespace Rebellion.Tests.Game.World
         }
 
         [Test]
-        public void IsContested_MixedFleets_ReturnsTrue()
-        {
-            Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
-            Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-            _planet.AddChild(friendlyFleet);
-            _planet.AddChild(enemyFleet);
-
-            bool isContested = _planet.IsContested();
-
-            Assert.IsTrue(
-                isContested,
-                "Planet should be contested when any enemy fleet is present."
-            );
-        }
-
-        [Test]
-        public void IsContested_OnlyFriendly_ReturnsFalse()
-        {
-            Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
-            _planet.AddChild(friendlyFleet);
-
-            bool isContested = _planet.IsContested();
-
-            Assert.IsFalse(
-                isContested,
-                "Planet should not be contested with only friendly fleets."
-            );
-        }
-
-        [Test]
-        public void IsContested_OnlyEnemy_ReturnsTrue()
-        {
-            Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-            _planet.AddChild(enemyFleet);
-
-            bool isContested = _planet.IsContested();
-
-            Assert.IsTrue(
-                isContested,
-                "Planet should be contested when only enemy fleet is present."
-            );
-        }
-
-        [Test]
-        public void IsContested_NoFleets_ReturnsFalse()
-        {
-            bool isContested = _planet.IsContested();
-
-            Assert.IsFalse(isContested, "Planet should not be contested with no fleets.");
-        }
-
-        [Test]
         public void BeginUprising_NonUprisingPlanet_SetsIsInUprisingFlag()
         {
             Planet planet = new Planet
@@ -855,34 +757,6 @@ namespace Rebellion.Tests.Game.World
             _planet.EndUprising();
 
             Assert.IsFalse(_planet.IsInUprising);
-        }
-
-        [Test]
-        public void CalculateLoyalty_OwnerAt50_Returns0()
-        {
-            Planet planet = new Planet
-            {
-                OwnerInstanceID = "FNEMP1",
-                PopularSupport = new Dictionary<string, int> { { "empire", 50 } },
-            };
-
-            int loyalty = _planet.CalculateLoyalty();
-
-            Assert.AreEqual(0, loyalty);
-        }
-
-        [Test]
-        public void CalculateLoyalty_NoOwner_Returns0()
-        {
-            Planet planet = new Planet
-            {
-                OwnerInstanceID = null,
-                PopularSupport = new Dictionary<string, int>(),
-            };
-
-            int loyalty = _planet.CalculateLoyalty();
-
-            Assert.AreEqual(0, loyalty);
         }
 
         [Test]

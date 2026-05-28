@@ -20,10 +20,7 @@ namespace Rebellion.AI.Scoring
         /// <returns>True if the proposal is a fleet proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal
-                is AIFleetAttackProposal
-                    or AICreateFleetForOrderProposal
-                    or AITransferUnitProposal;
+            return proposal is AIFleetAttackProposal or AITransferUnitProposal;
         }
 
         /// <summary>
@@ -44,10 +41,6 @@ namespace Rebellion.AI.Scoring
                     attackProposal.Fleet,
                     attackProposal.TargetPlanet,
                     HasExistingOrder(attackProposal)
-                ),
-                AICreateFleetForOrderProposal createProposal => ScoreCreateAttackFleet(
-                    context,
-                    createProposal
                 ),
                 AITransferUnitProposal transferProposal => ScoreUnitTransfer(
                     context,
@@ -146,34 +139,6 @@ namespace Rebellion.AI.Scoring
                 ) * config.AttackTravelEfficiencyWeight
                 - ScoreOpportunityCost(context, sourceFleet)
                     * config.AttackOpportunityCostPenaltyWeight;
-
-            return Math.Max(0, score);
-        }
-
-        /// <summary>
-        /// Returns the score for creating a new attack fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The fleet creation proposal to score.</param>
-        /// <returns>The fleet creation score.</returns>
-        private double ScoreCreateAttackFleet(
-            AITurnContext context,
-            AICreateFleetForOrderProposal proposal
-        )
-        {
-            if (!CanScoreCreateAttackFleet(context, proposal))
-                return 0;
-
-            AIAssessment assessment = context.Assessment;
-            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
-            double score =
-                ScoreStrategicTargetValue(assessment, proposal.TargetPlanet)
-                    * config.AttackStrategicValueWeight
-                + ScoreTravelEfficiency(assessment, proposal.StagingPlanet, proposal.TargetPlanet)
-                    * config.AttackTravelEfficiencyWeight;
-
-            if (proposal.TargetPlanet.IsHeadquarters)
-                score += config.HeadquartersAttackBonus;
 
             return Math.Max(0, score);
         }
@@ -447,34 +412,6 @@ namespace Rebellion.AI.Scoring
                 return false;
 
             string targetOwnerId = targetPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(targetOwnerId)
-                && targetOwnerId != context.Faction.InstanceID;
-        }
-
-        /// <summary>
-        /// Returns whether a fleet creation proposal can be scored.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="proposal">The proposal to inspect.</param>
-        /// <returns>True if the proposal can be scored.</returns>
-        private bool CanScoreCreateAttackFleet(
-            AITurnContext context,
-            AICreateFleetForOrderProposal proposal
-        )
-        {
-            if (
-                proposal == null
-                || proposal.OrderType != FleetOrderType.Attack
-                || proposal.StagingPlanet == null
-                || proposal.TargetPlanet == null
-                || proposal.FactionId != context.Faction.InstanceID
-            )
-                return false;
-
-            if (proposal.StagingPlanet.GetOwnerInstanceID() != context.Faction.InstanceID)
-                return false;
-
-            string targetOwnerId = proposal.TargetPlanet.GetOwnerInstanceID();
             return !string.IsNullOrEmpty(targetOwnerId)
                 && targetOwnerId != context.Faction.InstanceID;
         }

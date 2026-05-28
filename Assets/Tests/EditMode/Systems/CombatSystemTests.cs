@@ -80,13 +80,26 @@ namespace Rebellion.Tests.Systems
 
         private bool TryRunCombat(CombatSystem manager, out List<GameResult> results)
         {
-            results = new List<GameResult>();
-            if (manager.TryStartCombat(out CombatDecisionContext decision))
-            {
-                results = manager.Resolve(decision, autoResolve: true);
-                return true;
-            }
-            return false;
+            results = manager.ProcessTick();
+            return results.Count > 0;
+        }
+
+        private bool TryResolveCombat(
+            CombatSystem manager,
+            Fleet attacker,
+            Fleet defender,
+            out List<GameResult> results
+        )
+        {
+            results = manager.Resolve(
+                new CombatDecisionContext
+                {
+                    AttackerFleetInstanceID = attacker.InstanceID,
+                    DefenderFleetInstanceID = defender.InstanceID,
+                },
+                true
+            );
+            return results.Count > 0;
         }
 
         private static bool HasDamageFor(List<GameResult> results, CapitalShip ship)
@@ -173,7 +186,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
 
             bool combatOccurred =
                 HasDamageFor(results, empireShip) || HasDamageFor(results, allianceShip);
@@ -209,7 +222,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TryStartCombat_WithInTransitFleet_IgnoresInTransitFleet()
+        public void ProcessTick_WithInTransitFleet_IgnoresInTransitFleet()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
@@ -226,10 +239,9 @@ namespace Rebellion.Tests.Systems
 
             CombatSystem manager = MakeCombat(game, new QueueRNG());
 
-            bool detected = manager.TryStartCombat(out CombatDecisionContext decision);
+            List<GameResult> results = manager.ProcessTick();
 
-            Assert.IsFalse(detected);
-            Assert.IsNull(decision);
+            Assert.IsEmpty(results);
             Assert.IsFalse(empireFleet.IsInCombat);
             Assert.IsFalse(allianceFleet.IsInCombat);
         }
@@ -282,7 +294,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            TryResolveCombat(manager, empireFleet1, allianceFleet, out List<GameResult> results);
 
             bool firstPairFought =
                 HasDamageFor(results, empireShip1) || HasDamageFor(results, allianceShip);
@@ -754,59 +766,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TryStartCombat_HostileFleets_ReturnsTrueAndSetsContext()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
-
-            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
-            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-
-            CombatSystem manager = MakeCombat(game, new QueueRNG());
-
-            bool detected = manager.TryStartCombat(out CombatDecisionContext decision);
-
-            Assert.IsTrue(detected);
-            Assert.IsNotNull(decision);
-            Assert.IsNotEmpty(decision.AttackerFleetInstanceID);
-            Assert.IsNotEmpty(decision.DefenderFleetInstanceID);
-        }
-
-        [Test]
-        public void TryStartCombat_TwoHostileFleets_SetsIsInCombatOnBothFleets()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
-
-            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
-            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-
-            CombatSystem manager = MakeCombat(game, new QueueRNG());
-            manager.TryStartCombat(out _);
-
-            Assert.IsTrue(
-                empireFleet.IsInCombat || allianceFleet.IsInCombat,
-                "At least one fleet should be flagged IsInCombat"
-            );
-        }
-
-        [Test]
         public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -826,8 +785,7 @@ namespace Rebellion.Tests.Systems
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             CombatSystem manager = MakeCombat(game, rng);
 
-            manager.TryStartCombat(out CombatDecisionContext decision);
-            manager.Resolve(decision, autoResolve: true);
+            manager.ProcessTick();
 
             Fleet survivingEmpireFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
             Fleet survivingAllianceFleet = game.GetSceneNodeByInstanceID<Fleet>("f2");
@@ -842,33 +800,6 @@ namespace Rebellion.Tests.Systems
                     survivingAllianceFleet.IsInCombat,
                     "IsInCombat should be cleared after resolution"
                 );
-        }
-
-        [Test]
-        public void TryStartCombat_FleetsInCombat_NotDetectedAgain()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction empire = new Faction { InstanceID = "empire" };
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(empire);
-            game.Factions.Add(alliance);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
-            Planet planet = new Planet { InstanceID = "p1" };
-            game.AttachNode(system, game.Galaxy);
-            game.AttachNode(planet, system);
-
-            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
-            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
-
-            CombatSystem manager = MakeCombat(game, new QueueRNG());
-
-            manager.TryStartCombat(out _);
-
-            bool detectedAgain = manager.TryStartCombat(out CombatDecisionContext second);
-
-            Assert.IsFalse(detectedAgain, "Fleets already in combat should not be detected again");
-            Assert.IsNull(second);
         }
 
         [Test]
@@ -1098,7 +1029,7 @@ namespace Rebellion.Tests.Systems
             );
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            RunCombat(MakeCombat(game, rng));
+            TryResolveCombat(MakeCombat(game, rng), empireFleet, allianceFleet, out _);
 
             Assert.Contains(
                 officer,
@@ -1153,7 +1084,7 @@ namespace Rebellion.Tests.Systems
             );
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            RunCombat(MakeCombat(game, rng));
+            TryResolveCombat(MakeCombat(game, rng), empireFleet, allianceFleet, out _);
 
             Assert.Contains(
                 officer,

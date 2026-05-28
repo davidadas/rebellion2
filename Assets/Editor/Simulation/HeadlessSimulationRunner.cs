@@ -187,7 +187,8 @@ public static class HeadlessSimulationRunner
                     MaintenanceCapacity = faction.MaintenanceCapacity,
                     MaintenanceHeadroom = faction.MaintenanceHeadroom,
                     Economy = BuildEconomySummary(faction),
-                    Energy = faction.GetTotalAvailableEnergy(),
+                    Energy = game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
+                        .Sum(planet => planet.GetAvailableEnergy()),
                     UnitCost = faction.GetTotalMaintenanceCost(),
                     TotalManufacturedCapitalShips =
                         manufacturedUnitTracker.GetManufacturedCapitalShips(faction.InstanceID),
@@ -1283,7 +1284,7 @@ public static class HeadlessSimulationRunner
     )
     {
         return game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
-            .Where(planet => planet.CanManufactureUnits())
+            .Where(IsProductionEligiblePlanet)
             .Select(planet => new CurrentIdlePlanetSummary
             {
                 PlanetId = planet.InstanceID,
@@ -1313,6 +1314,11 @@ public static class HeadlessSimulationRunner
             )
             .ThenBy(summary => summary.PlanetId, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static bool IsProductionEligiblePlanet(Planet planet)
+    {
+        return planet?.IsBlockaded() == false && !planet.IsDestroyed && !planet.IsInUprising;
     }
 
     private static string[] SummarizeUnits<T>(IEnumerable<T> units)
@@ -1352,7 +1358,7 @@ public static class HeadlessSimulationRunner
                     Planet planet in game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
                 )
                 {
-                    if (!planet.CanManufactureUnits())
+                    if (!IsProductionEligiblePlanet(planet))
                         continue;
 
                     RecordPlanetType(counters, planet, ManufacturingType.Building);

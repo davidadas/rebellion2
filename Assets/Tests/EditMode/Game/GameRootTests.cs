@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Game
             Assert.IsTrue(
                 _game
                     .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Planet>()
                     .Contains(_planet),
                 "Faction should contain planet in owned units"
             );
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(
                 _game
                     .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Planet>()
                     .Contains(_planet),
                 "Faction should not contain planet in owned units"
             );
@@ -371,7 +371,7 @@ namespace Rebellion.Tests.Game
             Assert.IsTrue(
                 _game
                     .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Planet>()
                     .Contains(_planet),
                 "Faction should contain planet in owned units after registration"
             );
@@ -388,7 +388,7 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(
                 _game
                     .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Planet>()
                     .Contains(_planet),
                 "Faction should not contain planet in owned units after deregistration"
             );
@@ -512,14 +512,14 @@ namespace Rebellion.Tests.Game
             Assert.IsTrue(
                 _game
                     .GetFactionByOwnerInstanceID(_planet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Planet>()
                     .Contains(_planet),
                 "Faction should contain planet in owned units"
             );
             Assert.IsTrue(
                 _game
                     .GetFactionByOwnerInstanceID(_fleet.OwnerInstanceID)
-                    .GetAllOwnedNodes()
+                    .GetOwnedUnitsByType<Fleet>()
                     .Contains(_fleet),
                 "Faction should contain fleet in owned units"
             );
@@ -639,11 +639,11 @@ namespace Rebellion.Tests.Game
 
             // Verify planet is owned by _faction1.
             Assert.IsTrue(
-                _faction1.GetAllOwnedNodes().Contains(_planet),
+                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
                 "Faction1 should initially own the planet"
             );
             Assert.IsFalse(
-                _faction2.GetAllOwnedNodes().Contains(_planet),
+                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
                 "Faction2 should not initially own the planet"
             );
 
@@ -652,11 +652,11 @@ namespace Rebellion.Tests.Game
 
             // Verify planet is now owned by _faction2.
             Assert.IsFalse(
-                _faction1.GetAllOwnedNodes().Contains(_planet),
+                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
                 "Faction1 should no longer own the planet"
             );
             Assert.IsTrue(
-                _faction2.GetAllOwnedNodes().Contains(_planet),
+                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
                 "Faction2 should now own the planet"
             );
             Assert.AreEqual(

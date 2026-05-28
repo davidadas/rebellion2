@@ -144,15 +144,6 @@ namespace Rebellion.Game.Factions
         public bool IsAIControlled() => string.IsNullOrEmpty(PlayerID);
 
         /// <summary>
-        /// Returns a list of all units owned by the faction.
-        /// </summary>
-        /// <returns>A list of all owned units.</returns>
-        public List<ISceneNode> GetAllOwnedNodes()
-        {
-            return _ownedEntities.Values.SelectMany(x => x).ToList();
-        }
-
-        /// <summary>
         /// Returns a list of units of a specific type owned by the faction.
         /// </summary>
         /// <typeparam name="T">The type of unit to get.</typeparam>
@@ -166,16 +157,6 @@ namespace Rebellion.Game.Factions
         public List<Planet> GetOwnedColonizedPlanets()
         {
             return GetOwnedUnitsByType<Planet>().Where(planet => planet.IsColonized).ToList();
-        }
-
-        /// <summary>
-        /// Returns the faction's owned fleets filtered by the given role type.
-        /// </summary>
-        /// <param name="roleType">The fleet role (Battle, Patrol, etc.) to match.</param>
-        /// <returns>The matching fleets, or an empty list if none qualify.</returns>
-        public List<Fleet> GetFleetsByType(FleetRoleType roleType)
-        {
-            return GetOwnedUnitsByType<Fleet>().Where(f => f.RoleType == roleType).ToList();
         }
 
         /// <summary>
@@ -338,52 +319,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Tries to resolve the catalog entry for a specific discipline and research order.
-        /// </summary>
-        /// <param name="discipline">The discipline to resolve within.</param>
-        /// <param name="order">The research order to resolve.</param>
-        /// <param name="entry">The resolved catalog entry, if found.</param>
-        /// <returns>True if a matching catalog entry was found.</returns>
-        public bool TryResolveResearchEntry(
-            ResearchDiscipline discipline,
-            int order,
-            out ResearchCatalogEntry entry
-        )
-        {
-            entry = null;
-
-            if (!ResearchCatalog.TryGetValue(discipline, out List<ResearchCatalogEntry> entries))
-                return false;
-
-            entry = entries.FirstOrDefault(candidate => candidate.Order == order);
-            return entry != null;
-        }
-
-        /// <summary>
-        /// Returns a snapshot of the current research state for one discipline.
-        /// </summary>
-        /// <param name="discipline">The discipline to inspect.</param>
-        /// <returns>The current research snapshot for the discipline.</returns>
-        public ResearchProgressSnapshot GetResearchProgressSnapshot(ResearchDiscipline discipline)
-        {
-            ResearchDisciplineState state = ResearchState.Disciplines[discipline];
-            ResearchCatalogEntry nextEntry = GetNextResearchEntry(discipline);
-            int? nextEntryScaledDifficulty =
-                nextEntry == null
-                    ? null
-                    : nextEntry.Difficulty * ResearchState.CostScalePercent / 100;
-
-            return new ResearchProgressSnapshot
-            {
-                CurrentOrder = state.CurrentOrder,
-                CapacityRemaining = state.CapacityRemaining,
-                IsExhausted = nextEntry == null,
-                NextEntry = nextEntry,
-                NextEntryScaledDifficulty = nextEntryScaledDifficulty,
-            };
-        }
-
-        /// <summary>
         /// Calculates the sum of resources across all owned planets.
         /// </summary>
         /// <param name="selector">A function that selects the resource value from a planet.</param>
@@ -393,24 +328,6 @@ namespace Rebellion.Game.Factions
             List<Planet> planets = GetOwnedUnitsByType<Planet>();
             return planets.Sum(selector);
         }
-
-        /// <summary>
-        /// Gets the total energy capacity across all owned planets.
-        /// </summary>
-        /// <returns>The total energy capacity.</returns>
-        public int GetTotalEnergyCapacity() => SumPlanetaryResources(p => p.GetEnergyCapacity());
-
-        /// <summary>
-        /// Gets the total energy used by facilities across all owned planets.
-        /// </summary>
-        /// <returns>The total energy used.</returns>
-        public int GetTotalEnergyUsed() => SumPlanetaryResources(p => p.GetEnergyUsed());
-
-        /// <summary>
-        /// Gets the total available energy across all owned planets.
-        /// </summary>
-        /// <returns>The total available energy.</returns>
-        public int GetTotalAvailableEnergy() => SumPlanetaryResources(p => p.GetAvailableEnergy());
 
         /// <summary>
         /// Gets the total number of raw resource nodes across all owned planets.
@@ -465,33 +382,6 @@ namespace Rebellion.Game.Factions
         /// <returns>The total available refinement capacity.</returns>
         public int GetTotalAvailableRefinementCapacity() =>
             SumPlanetaryResources(p => p.GetAvailableRefinementCapacity());
-
-        /// <summary>
-        /// Gets the total number of unrefined raw mines across all owned planets.
-        /// </summary>
-        /// <returns>The total number of unrefined raw mines.</returns>
-        public int GetTotalUnrefinedRawMines()
-        {
-            int totalMines = GetTotalRawMinedResources();
-            int totalRefineries = GetTotalRawRefinementCapacity();
-
-            return Math.Max(0, totalMines - totalRefineries);
-        }
-
-        /// <summary>
-        /// Calculates the total raw refined capacity count (before multiplier).
-        /// This includes raw resource nodes, mined resources, and refinement capacity without any
-        /// consideration of external conditions such as blockades or construction status.
-        /// </summary>
-        /// <returns>The raw refined capacity count.</returns>
-        public int GetTotalRawMaterialsRaw()
-        {
-            return CalculateRefinedCapacity(
-                GetTotalRawResourceNodes(),
-                GetTotalRawMinedResources(),
-                GetTotalRawRefinementCapacity()
-            );
-        }
 
         /// <summary>
         /// Calculates the total available refined capacity count (before multiplier).
@@ -591,16 +481,6 @@ namespace Rebellion.Game.Factions
             return GetAllOwnedManufacturables()
                 .Where(m => m.GetManufacturingStatus() == ManufacturingStatus.Building)
                 .Sum(m => m.GetConstructionCost());
-        }
-
-        /// <summary>
-        /// Returns the total current unit burden, combining maintenance on completed units
-        /// with construction cost on units still being built.
-        /// </summary>
-        /// <returns>The total unit cost burden.</returns>
-        public int GetTotalUnitCost()
-        {
-            return GetTotalMaintenanceCost() + GetTotalInProgressConstructionCost();
         }
 
         /// <summary>
@@ -721,29 +601,6 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Returns a list of planets with idle manufacturing facilities for a specific manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to check.</param>
-        /// <returns>A list of planets with idle facilities.</returns>
-        public List<Planet> GetIdleFacilities(ManufacturingType manufacturingType)
-        {
-            return GetOwnedUnitsByType<Planet>()
-                .FindAll(p => p.GetIdleManufacturingFacilities(manufacturingType) > 0);
-        }
-
-        /// <summary>
-        /// Returns a list of planets with remaining production-capacity slots for a specific
-        /// manufacturing type.
-        /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to check.</param>
-        /// <returns>A list of planets with available production capacity.</returns>
-        public List<Planet> GetAvailableFacilities(ManufacturingType manufacturingType)
-        {
-            return GetOwnedUnitsByType<Planet>()
-                .FindAll(p => p.GetAvailableManufacturingCapacity(manufacturingType) > 0);
-        }
-
-        /// <summary>
         /// Adds research progress to a discipline and advances the order if the new
         /// capacity covers the next entry's cost.
         /// </summary>
@@ -830,15 +687,6 @@ namespace Rebellion.Game.Factions
                 researchQueue.Sort(
                     (left, right) => left.GetResearchOrder().CompareTo(right.GetResearchOrder())
                 );
-        }
-
-        /// <summary>
-        /// Rebuilds research catalogs from the given templates.
-        /// </summary>
-        /// <param name="templates">The manufacturable templates to build catalogs from.</param>
-        public void RebuildResearchQueues(IManufacturable[] templates)
-        {
-            RebuildResearchCatalog(templates);
         }
 
         private static ManufacturingType GetResearchQueueType(IManufacturable template)

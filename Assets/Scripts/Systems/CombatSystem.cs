@@ -178,15 +178,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Detects the first hostile fleet encounter this tick. The encounter is NOT resolved
-        /// here; call Resolve() after player decision.
-        /// </summary>
-        /// <param name="decision">Output: populated with the encounter context on success.</param>
-        /// <returns>True if a hostile encounter was detected.</returns>
-        public bool TryStartCombat(out CombatDecisionContext decision) =>
-            TryBeginFleetCombat(new HashSet<string>(), out decision);
-
-        /// <summary>
         /// Resolves a pending combat encounter via the space-combat pipeline.
         /// </summary>
         /// <param name="decision">The encounter context to resolve.</param>

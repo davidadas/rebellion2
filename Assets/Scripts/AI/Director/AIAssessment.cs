@@ -66,10 +66,6 @@ namespace Rebellion.AI.Director
             string,
             int
         >(StringComparer.Ordinal);
-        private readonly Dictionary<string, int> _fleetLoadedRegimentAttackStrengths =
-            new Dictionary<string, int>(StringComparer.Ordinal);
-        private readonly Dictionary<ManufacturingType, int> _productionLaneCounts =
-            new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, int> _availableProductionLaneCounts =
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _productionThroughputs =
@@ -78,18 +74,8 @@ namespace Rebellion.AI.Director
             new Dictionary<ManufacturingType, double>();
         private readonly Dictionary<ManufacturingType, int> _queuedProductionWork =
             new Dictionary<ManufacturingType, int>();
-        private readonly Dictionary<ManufacturingType, int> _queuedProductionItemCounts =
-            new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
-        private readonly Dictionary<
-            ManufacturingType,
-            double
-        > _largestPlanetProductionSharePercents = new Dictionary<ManufacturingType, double>();
-        private readonly Dictionary<
-            ManufacturingType,
-            double
-        > _largestSystemProductionSharePercents = new Dictionary<ManufacturingType, double>();
 
         /// <summary>
         /// Creates an AI assessment for a turn context.
@@ -363,18 +349,6 @@ namespace Rebellion.AI.Director
                         .OrderBy(fleet => fleet.InstanceID)
                         .ToList()
             );
-        }
-
-        /// <summary>
-        /// Returns friendly fleet combat value at a planet.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The friendly fleet combat value.</returns>
-        public int GetFriendlyFleetCombatValue(Planet planet)
-        {
-            return GetFriendlyFleets(planet)
-                .Where(fleet => fleet.Movement == null)
-                .Sum(GetFleetCombatValue);
         }
 
         /// <summary>
@@ -718,29 +692,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns attack strength from loaded regiments in a fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The loaded regiment attack strength.</returns>
-        public int GetFleetLoadedRegimentAttackStrength(Fleet fleet)
-        {
-            if (fleet == null)
-                return 0;
-
-            return GetOrAdd(
-                _fleetLoadedRegimentAttackStrengths,
-                fleet.InstanceID,
-                () =>
-                    fleet
-                        .GetRegiments()
-                        .Where(regiment =>
-                            regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
-                        .Sum(regiment => regiment.AttackRating)
-            );
-        }
-
-        /// <summary>
         /// Returns loaded regiment count for a fleet.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
@@ -761,16 +712,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns excess regiment capacity for a fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The excess regiment capacity.</returns>
-        public int GetFleetExcessRegimentCapacity(Fleet fleet)
-        {
-            return fleet?.GetExcessRegimentCapacity() ?? 0;
-        }
-
-        /// <summary>
         /// Returns loaded starfighter count for a fleet.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
@@ -778,43 +719,6 @@ namespace Rebellion.AI.Director
         public int GetFleetLoadedStarfighterCount(Fleet fleet)
         {
             return fleet?.GetCurrentStarfighterCount() ?? 0;
-        }
-
-        /// <summary>
-        /// Returns starfighter capacity for a fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The starfighter capacity.</returns>
-        public int GetFleetStarfighterCapacity(Fleet fleet)
-        {
-            return fleet?.GetStarfighterCapacity() ?? 0;
-        }
-
-        /// <summary>
-        /// Returns excess starfighter capacity for a fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The excess starfighter capacity.</returns>
-        public int GetFleetExcessStarfighterCapacity(Fleet fleet)
-        {
-            return fleet?.GetExcessStarfighterCapacity() ?? 0;
-        }
-
-        /// <summary>
-        /// Returns owned planet count with production lanes for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The production lane count.</returns>
-        public int GetProductionLaneCount(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _productionLaneCounts,
-                type,
-                () => OwnedPlanets.Count(planet => planet.GetProductionFacilityCount(type) > 0)
-            );
         }
 
         /// <summary>
@@ -893,23 +797,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns queued production item count for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The queued production item count.</returns>
-        public int GetQueuedProductionItemCount(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _queuedProductionItemCounts,
-                type,
-                () => OwnedPlanets.Sum(planet => GetQueuedProductionItemCount(planet, type))
-            );
-        }
-
-        /// <summary>
         /// Returns estimated queue clear time for a manufacturing type.
         /// </summary>
         /// <param name="type">Manufacturing type to inspect.</param>
@@ -933,65 +820,6 @@ namespace Rebellion.AI.Director
                         return double.PositiveInfinity;
 
                     return work / throughput;
-                }
-            );
-        }
-
-        /// <summary>
-        /// Returns the largest single-planet production share for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The largest planet production share percent.</returns>
-        public double GetLargestPlanetProductionSharePercent(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _largestPlanetProductionSharePercents,
-                type,
-                () =>
-                {
-                    double throughput = GetProductionThroughput(type);
-                    if (throughput <= 0)
-                        return 0;
-
-                    double largestPlanetThroughput = OwnedPlanets
-                        .Select(planet => planet.GetProductionRate(type))
-                        .DefaultIfEmpty()
-                        .Max();
-
-                    return largestPlanetThroughput * 100 / throughput;
-                }
-            );
-        }
-
-        /// <summary>
-        /// Returns the largest single-system production share for a manufacturing type.
-        /// </summary>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The largest system production share percent.</returns>
-        public double GetLargestSystemProductionSharePercent(ManufacturingType type)
-        {
-            if (type == ManufacturingType.None)
-                return 0;
-
-            return GetOrAdd(
-                _largestSystemProductionSharePercents,
-                type,
-                () =>
-                {
-                    double throughput = GetProductionThroughput(type);
-                    if (throughput <= 0)
-                        return 0;
-
-                    double largestSystemThroughput = OwnedPlanets
-                        .GroupBy(GetProductionConcentrationSystemId, StringComparer.Ordinal)
-                        .Select(group => group.Sum(planet => planet.GetProductionRate(type)))
-                        .DefaultIfEmpty()
-                        .Max();
-
-                    return largestSystemThroughput * 100 / throughput;
                 }
             );
         }
@@ -1174,16 +1002,6 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
-        /// Returns the system id used for production concentration checks.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The concentration system id.</returns>
-        private string GetProductionConcentrationSystemId(Planet planet)
-        {
-            return planet.GetParentOfType<PlanetSystem>()?.InstanceID ?? planet.InstanceID;
-        }
-
-        /// <summary>
         /// Returns queued production work on a planet for a manufacturing type.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1202,25 +1020,6 @@ namespace Rebellion.AI.Director
             return manufacturingQueue.Sum(item =>
                 Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
             );
-        }
-
-        /// <summary>
-        /// Returns queued production item count on a planet for a manufacturing type.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="type">Manufacturing type to inspect.</param>
-        /// <returns>The queued production item count.</returns>
-        private int GetQueuedProductionItemCount(Planet planet, ManufacturingType type)
-        {
-            if (
-                planet == null
-                || !planet
-                    .GetManufacturingQueue()
-                    .TryGetValue(type, out List<IManufacturable> manufacturingQueue)
-            )
-                return 0;
-
-            return manufacturingQueue.Count;
         }
 
         /// <summary>
