@@ -24,8 +24,8 @@ namespace Rebellion.Game
 
     /// <summary>
     /// Represents the root node of the game scene graph. The game root owns global state
-    /// such as factions, events, configuration, metrics, random state, and the node registry
-    /// used by systems to process the simulation.
+    /// such as factions, events, configuration, random state, and the node registry used
+    /// by systems to process the simulation.
     /// </summary>
     [PersistableObject(Name = "Game")]
     public class GameRoot
@@ -68,9 +68,6 @@ namespace Rebellion.Game
         // Game state.
         public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Medium;
-
-        [PersistableIgnore]
-        public GameMetrics Metrics { get; set; } = new GameMetrics();
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();

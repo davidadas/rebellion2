@@ -7,7 +7,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Game.World;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -98,7 +97,8 @@ public class GameManager
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
             _movementManager,
-            _manufacturingManager
+            _manufacturingManager,
+            _fogOfWarManager
         );
         _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(_game, _randomProvider, _movementManager);
@@ -287,11 +287,6 @@ public class GameManager
             // TODO: Set game over flag, trigger victory screen.
         }
 
-        foreach (GameObjectDeployedResult result in results.OfType<GameObjectDeployedResult>())
-        {
-            _game.Metrics.RecordManufacturedUnit(result.GameObject);
-        }
-
         foreach (PendingCombatResult result in results.OfType<PendingCombatResult>())
         {
             _pendingCombatDecision = new CombatDecisionContext
@@ -299,32 +294,6 @@ public class GameManager
                 AttackerFleetInstanceID = result.AttackerFleet?.GetInstanceID(),
                 DefenderFleetInstanceID = result.DefenderFleet?.GetInstanceID(),
             };
-        }
-
-        foreach (
-            PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
-        )
-        {
-            Planet changedPlanet = result.Planet;
-            string previousOwner = result.PreviousOwner?.GetDisplayName() ?? "Unowned";
-            string newOwner = result.NewOwner?.GetDisplayName() ?? "Unowned";
-            string planetName = changedPlanet?.GetDisplayName() ?? "Unknown";
-            string planetId = changedPlanet?.InstanceID ?? "Unknown";
-            GameLogger.Log(
-                $"[PlanetOwnership] {planetName} ({planetId}) {previousOwner} -> {newOwner}"
-            );
-
-            PlanetSystem changedSystem = changedPlanet?.GetParentOfType<PlanetSystem>();
-            if (changedPlanet != null && changedSystem != null)
-            {
-                foreach (Faction faction in _game.Factions)
-                    _fogOfWarManager.CaptureSnapshot(
-                        faction,
-                        changedPlanet,
-                        changedSystem,
-                        _game.CurrentTick
-                    );
-            }
         }
 
         foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())

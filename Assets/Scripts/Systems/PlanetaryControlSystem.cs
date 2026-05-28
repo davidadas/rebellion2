@@ -18,6 +18,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly MovementSystem _movementSystem;
         private readonly ManufacturingSystem _manufacturingSystem;
+        private readonly FogOfWarSystem _fogOfWarSystem;
 
         /// <summary>
         /// Creates a new PlanetaryControlSystem.
@@ -25,15 +26,18 @@ namespace Rebellion.Systems
         /// <param name="game">The game instance.</param>
         /// <param name="movementSystem">Used to evacuate enemy units on ownership change.</param>
         /// <param name="manufacturingSystem">Used to clear queues on ownership change.</param>
+        /// <param name="fogOfWarSystem">Used to refresh faction snapshots on ownership change.</param>
         public PlanetaryControlSystem(
             GameRoot game,
             MovementSystem movementSystem,
-            ManufacturingSystem manufacturingSystem
+            ManufacturingSystem manufacturingSystem,
+            FogOfWarSystem fogOfWarSystem
         )
         {
             _game = game;
             _movementSystem = movementSystem;
             _manufacturingSystem = manufacturingSystem;
+            _fogOfWarSystem = fogOfWarSystem;
         }
 
         /// <summary>
@@ -97,33 +101,13 @@ namespace Rebellion.Systems
                 if (claimant == null)
                     return;
 
-                ClaimPlanet(planet, claimant);
-                results.Add(
-                    new PlanetOwnershipChangedResult
-                    {
-                        Planet = planet,
-                        PreviousOwner = null,
-                        NewOwner = claimant,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                results.Add(ClaimPlanet(planet, claimant));
                 return;
             }
 
             if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
             {
-                Faction previousOwner = _game.GetFactionByOwnerInstanceID(currentOwner);
-
-                ClearPlanetOwnership(planet);
-                results.Add(
-                    new PlanetOwnershipChangedResult
-                    {
-                        Planet = planet,
-                        PreviousOwner = previousOwner,
-                        NewOwner = null,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                results.Add(ClearPlanetOwnership(planet));
             }
         }
 
@@ -132,14 +116,23 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet to transfer.</param>
         /// <param name="newOwner">The faction receiving ownership.</param>
-        public void TransferPlanet(Planet planet, Faction newOwner)
+        /// <returns>The ownership-change result.</returns>
+        public PlanetOwnershipChangedResult TransferPlanet(Planet planet, Faction newOwner)
         {
+            string previousOwnerId = planet.GetOwnerInstanceID();
+            Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+
             CancelCompetingMissions(planet, newOwner.InstanceID);
             TransferBuildings(planet, newOwner);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             EvictEnemyUnits(planet, newOwner.InstanceID);
             planet.EndUprising();
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
+            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
+
+            return CreateOwnershipChangedResult(planet, previousOwner, newOwner);
         }
 
         /// <summary>
@@ -147,7 +140,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet being claimed.</param>
         /// <param name="newOwner">The faction taking control.</param>
-        private void ClaimPlanet(Planet planet, Faction newOwner)
+        /// <returns>The ownership-change result.</returns>
+        private PlanetOwnershipChangedResult ClaimPlanet(Planet planet, Faction newOwner)
         {
             TransferBuildings(planet, newOwner);
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
@@ -160,6 +154,10 @@ namespace Rebellion.Systems
                 else
                     planet.SetPopularSupport(faction.InstanceID, 0);
             }
+
+            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
+
+            return CreateOwnershipChangedResult(planet, null, newOwner);
         }
 
         /// <summary>
@@ -169,8 +167,14 @@ namespace Rebellion.Systems
         /// where they were built and only transfer when a new faction claims the planet.
         /// </summary>
         /// <param name="planet">The planet whose ownership is being cleared.</param>
-        public void ClearPlanetOwnership(Planet planet)
+        /// <returns>The ownership-change result.</returns>
+        public PlanetOwnershipChangedResult ClearPlanetOwnership(Planet planet)
         {
+            string previousOwnerId = planet.GetOwnerInstanceID();
+            Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+
             CancelCompetingMissions(planet, newOwnerID: null);
             EvictEnemyUnits(planet, newOwnerID: null);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
@@ -179,6 +183,10 @@ namespace Rebellion.Systems
 
             foreach (Faction faction in _game.GetFactions())
                 planet.SetPopularSupport(faction.InstanceID, 0);
+
+            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
+
+            return CreateOwnershipChangedResult(planet, previousOwner, null);
         }
 
         /// <summary>
@@ -200,17 +208,7 @@ namespace Rebellion.Systems
                     if (support <= threshold)
                         continue;
 
-                    TransferPlanet(planet, faction);
-
-                    results.Add(
-                        new PlanetOwnershipChangedResult
-                        {
-                            Planet = planet,
-                            PreviousOwner = null,
-                            NewOwner = faction,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
+                    results.Add(TransferPlanet(planet, faction));
 
                     GameLogger.Log(
                         $"Planet {planet.GetDisplayName()} transferred to {faction.DisplayName} (support {support} > {threshold})"
@@ -231,6 +229,21 @@ namespace Rebellion.Systems
             return planet.IsColonized
                 && string.IsNullOrEmpty(planet.GetOwnerInstanceID())
                 && planet.GetAllRegiments().Count == 0;
+        }
+
+        private PlanetOwnershipChangedResult CreateOwnershipChangedResult(
+            Planet planet,
+            Faction previousOwner,
+            Faction newOwner
+        )
+        {
+            return new PlanetOwnershipChangedResult
+            {
+                Planet = planet,
+                PreviousOwner = previousOwner,
+                NewOwner = newOwner,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>

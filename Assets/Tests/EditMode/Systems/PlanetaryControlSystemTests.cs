@@ -77,7 +77,8 @@ namespace Rebellion.Tests.Systems
             _ownershipSystem = new PlanetaryControlSystem(
                 _game,
                 _movementSystem,
-                new ManufacturingSystem(_game)
+                new ManufacturingSystem(_game),
+                new FogOfWarSystem(_game)
             );
         }
 

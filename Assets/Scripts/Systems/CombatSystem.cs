@@ -1614,11 +1614,15 @@ namespace Rebellion.Systems
             if (availableTroops <= 0)
                 return;
 
-            _ownership.TransferPlanet(planet, newOwner);
+            PlanetOwnershipChangedResult ownershipChange = _ownership.TransferPlanet(
+                planet,
+                newOwner
+            );
             LandAssaultGarrison(attackingFleets, planet, requiredGarrison);
 
             result.OwnershipChanged = true;
             result.NewOwner = newOwner;
+            result.OwnershipChange = ownershipChange;
 
             GameLogger.Log($"Planet {planet.GetDisplayName()} captured by {newOwner.DisplayName}");
         }
@@ -2155,7 +2159,7 @@ namespace Rebellion.Systems
             if (attackerFaction == null)
                 return;
 
-            _ownership.TransferPlanet(run.Planet, attackerFaction);
+            run.Result.OwnershipChange = _ownership.TransferPlanet(run.Planet, attackerFaction);
 
             int landed = 0;
             foreach (Fleet fleet in run.AttackingFleets)

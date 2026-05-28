@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.AI.Director;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Game.World;
 
@@ -179,7 +180,13 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            context.Combat.ExecuteOrbitalBombardment(new List<Fleet> { Fleet }, TargetPlanet);
+            BombardmentResult bombardmentResult = context.Combat.ExecuteOrbitalBombardment(
+                new List<Fleet> { Fleet },
+                TargetPlanet
+            );
+            context.AddResult(bombardmentResult);
+            context.AddResult(bombardmentResult.OwnershipChange);
+
             if (TryClearCompletedAttackOrder(context) || !CanExecute(context))
                 return;
 
@@ -193,7 +200,12 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         private void ExecuteAssault(AITurnContext context)
         {
-            context.Combat.ExecutePlanetaryAssault(new List<Fleet> { Fleet }, TargetPlanet);
+            PlanetaryAssaultResult assaultResult = context.Combat.ExecutePlanetaryAssault(
+                new List<Fleet> { Fleet },
+                TargetPlanet
+            );
+            context.AddResult(assaultResult);
+            context.AddResult(assaultResult.OwnershipChange);
             TryClearCompletedAttackOrder(context);
         }
 

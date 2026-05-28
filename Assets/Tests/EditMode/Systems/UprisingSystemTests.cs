@@ -62,7 +62,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game),
+                new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
                 game,
@@ -291,7 +292,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game),
+                new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
                 game,
@@ -339,7 +341,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game),
+                new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
                 game,
@@ -390,7 +393,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game),
+                new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
                 game,
@@ -607,7 +611,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem controlSystem = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game)
+                new ManufacturingSystem(game),
+                new FogOfWarSystem(game)
             );
             return (game, planet, empire, controlSystem);
         }

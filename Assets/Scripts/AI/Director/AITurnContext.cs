@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -62,8 +63,14 @@ namespace Rebellion.AI.Director
         /// </summary>
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
 
+        /// <summary>
+        /// Results produced during proposal execution.
+        /// </summary>
+        public IReadOnlyList<GameResult> Results => _results;
+
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
+        private readonly List<GameResult> _results = new List<GameResult>();
 
         /// <summary>
         /// Creates a turn context.
@@ -134,6 +141,29 @@ namespace Rebellion.AI.Director
                 if (proposal != null)
                     _selectedProposals.Add(proposal);
             }
+        }
+
+        /// <summary>
+        /// Adds one result to the turn.
+        /// </summary>
+        /// <param name="result">The result to add.</param>
+        public void AddResult(GameResult result)
+        {
+            if (result != null)
+                _results.Add(result);
+        }
+
+        /// <summary>
+        /// Adds a batch of results to the turn.
+        /// </summary>
+        /// <param name="results">The results to add.</param>
+        public void AddResults(IEnumerable<GameResult> results)
+        {
+            if (results == null)
+                return;
+
+            foreach (GameResult result in results)
+                AddResult(result);
         }
     }
 }

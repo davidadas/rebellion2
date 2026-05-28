@@ -74,7 +74,7 @@ namespace Rebellion.AI.Director
             foreach (IAITurnPhase phase in _turnPhases)
                 phase.Execute(context);
 
-            return new List<GameResult>();
+            return new List<GameResult>(context.Results);
         }
     }
 }

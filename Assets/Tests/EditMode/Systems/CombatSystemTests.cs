@@ -22,7 +22,8 @@ namespace Rebellion.Tests.Systems
             PlanetaryControlSystem ownership = new PlanetaryControlSystem(
                 game,
                 movement,
-                manufacturing
+                manufacturing,
+                new FogOfWarSystem(game)
             );
             return new CombatSystem(game, rng, movement, ownership);
         }

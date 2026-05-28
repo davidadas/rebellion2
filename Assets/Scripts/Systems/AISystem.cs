@@ -55,7 +55,7 @@ namespace Rebellion.Systems
 
             foreach (Faction faction in _game.Factions.Where(f => f.IsAIControlled()))
             {
-                _director.ProcessFaction(faction);
+                results.AddRange(_director.ProcessFaction(faction));
             }
 
             return results;

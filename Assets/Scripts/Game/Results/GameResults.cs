@@ -712,6 +712,7 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Starfighter> DestroyedStarfighters { get; set; } = new List<Starfighter>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
+        public PlanetOwnershipChangedResult OwnershipChange { get; set; }
 
         /// <summary>
         /// Garrison requirement computed during Stage 5 (defender garrison wiped, attacker still has
@@ -735,6 +736,7 @@ namespace Rebellion.Game.Results
         public int EnergyDamage { get; set; }
         public bool OwnershipChanged { get; set; }
         public Faction NewOwner { get; set; }
+        public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 
     /// <summary>

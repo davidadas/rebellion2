@@ -47,6 +47,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Captures a planet snapshot for every faction.
+        /// </summary>
+        /// <param name="planet">The planet being observed.</param>
+        /// <param name="currentTick">The tick when the snapshot is captured.</param>
+        public void CapturePlanetSnapshotForAllFactions(Planet planet, int currentTick)
+        {
+            if (planet == null)
+                return;
+
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            if (system == null)
+                return;
+
+            foreach (Faction faction in _game.Factions)
+                CaptureSnapshot(faction, planet, system, currentTick);
+        }
+
+        /// <summary>
         /// Determines if a faction currently has real-time visibility of a planet.
         /// </summary>
         /// <param name="planet">The planet to check visibility for.</param>

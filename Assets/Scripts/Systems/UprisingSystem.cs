@@ -131,17 +131,8 @@ namespace Rebellion.Systems
 
             if (!planet.Buildings.Any(b => b.GetOwnerInstanceID() == faction.InstanceID))
             {
-                _planetaryControl.ClearPlanetOwnership(planet);
+                results.Add(_planetaryControl.ClearPlanetOwnership(planet));
                 planet.EndUprising();
-                results.Add(
-                    new PlanetOwnershipChangedResult
-                    {
-                        Planet = planet,
-                        PreviousOwner = faction,
-                        NewOwner = null,
-                        Tick = _game.CurrentTick,
-                    }
-                );
             }
         }
 
