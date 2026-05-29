@@ -50,8 +50,7 @@ namespace Rebellion.Systems
         /// <returns>Movement-related events generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            List<GameResult> results = new List<GameResult>();
-            results.AddRange(_pendingResults);
+            List<GameResult> results = new List<GameResult>(_pendingResults);
             _pendingResults.Clear();
             _game
                 .GetGalaxyMap()
@@ -114,16 +113,8 @@ namespace Rebellion.Systems
                 throw new ArgumentNullException(nameof(origin));
 
             // Determine the destination planet for the unit.
-            Planet destinationPlanet = destination is Planet p
-                ? p
-                : destination.GetParentOfType<Planet>();
-
             // All movement must resolve to a planet location for transit purposes.
-            if (destinationPlanet == null)
-                throw new InvalidOperationException(
-                    $"Destination {destination.GetDisplayName()} is not at a planet location. "
-                        + "All movement must resolve to a planet."
-                );
+            Planet destinationPlanet = RequireDestinationPlanet(destination);
 
             // If the destination planet is hostile and the unit cannot enter hostile orbit, reject the move order.
             if (
@@ -221,7 +212,7 @@ namespace Rebellion.Systems
 
             foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
             {
-                if (HasCapturingOfficerEscort(capturedOfficer, units))
+                if (HasCaptorEscortInGroup(capturedOfficer, units))
                     continue;
 
                 GameLogger.Warning(
@@ -293,27 +284,23 @@ namespace Rebellion.Systems
                 && building.ManufacturingStatus == ManufacturingStatus.Complete;
         }
 
-        private static bool HasCapturingOfficerEscort(Officer capturedOfficer, List<IMovable> units)
+        /// <summary>
+        /// Returns whether a captured officer has a valid escort in the movement group.
+        /// </summary>
+        /// <param name="capturedOfficer">The captured officer to check.</param>
+        /// <param name="units">The units being moved together.</param>
+        /// <returns>True if the group includes an escort from the captor faction.</returns>
+        private static bool HasCaptorEscortInGroup(Officer capturedOfficer, List<IMovable> units)
         {
             string captorId = capturedOfficer.CaptorInstanceID;
-            if (string.IsNullOrEmpty(captorId))
-                return false;
-
-            foreach (IMovable unit in units)
-            {
-                if (ReferenceEquals(unit, capturedOfficer))
-                    continue;
-                if (unit is not Officer escort)
-                    continue;
-                if (escort.IsCaptured)
-                    continue;
-                if (escort.GetOwnerInstanceID() != captorId)
-                    continue;
-
-                return true;
-            }
-
-            return false;
+            return !string.IsNullOrEmpty(captorId)
+                && units
+                    .OfType<Officer>()
+                    .Any(escort =>
+                        !ReferenceEquals(escort, capturedOfficer)
+                        && !escort.IsCaptured
+                        && escort.GetOwnerInstanceID() == captorId
+                    );
         }
 
         /// <summary>
@@ -693,14 +680,7 @@ namespace Rebellion.Systems
 
             destination = resolvedDestination;
 
-            Planet destinationPlanet = destination is Planet planet
-                ? planet
-                : destination.GetParentOfType<Planet>();
-            if (destinationPlanet == null)
-                throw new InvalidOperationException(
-                    $"Destination {destination.GetDisplayName()} is not at a planet location. "
-                        + "All movement must resolve to a planet."
-                );
+            Planet destinationPlanet = RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
             if (originPlanet == null)
@@ -935,9 +915,11 @@ namespace Rebellion.Systems
                     slowestHyperdrive = Math.Max(slowestHyperdrive, 1);
                 }
 
-                IEnumerable<Officer> officers = fleet.GetOfficers();
-                if (officers.Any())
-                    speedBonus = officers.Max(o => Math.Max(o.HyperdriveModifier, 0));
+                speedBonus = fleet
+                    .GetOfficers()
+                    .Select(o => Math.Max(o.HyperdriveModifier, 0))
+                    .DefaultIfEmpty(0)
+                    .Max();
             }
             else if (unit is CapitalShip capitalShip)
             {
@@ -950,6 +932,24 @@ namespace Rebellion.Systems
                 );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
+        }
+
+        /// <summary>
+        /// Returns the planet that contains a movement destination.
+        /// </summary>
+        /// <param name="destination">The destination to resolve.</param>
+        /// <returns>The planet containing the destination.</returns>
+        private static Planet RequireDestinationPlanet(ISceneNode destination)
+        {
+            Planet destinationPlanet =
+                destination as Planet ?? destination.GetParentOfType<Planet>();
+            if (destinationPlanet != null)
+                return destinationPlanet;
+
+            throw new InvalidOperationException(
+                $"Destination {destination.GetDisplayName()} is not at a planet location. "
+                    + "All movement must resolve to a planet."
+            );
         }
     }
 }
