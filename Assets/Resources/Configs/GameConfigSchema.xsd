@@ -45,9 +45,13 @@
           <xs:complexType>
             <xs:all>
               <xs:element name="TickInterval" type="PositiveIntType" />
+              <xs:element name="EnablePlanetaryAssaults" type="xs:boolean" />
+              <xs:element name="DiplomacyMinimumSkill" type="xs:nonNegativeInteger" />
+              <xs:element name="RecruitmentMinimumLeadership" type="xs:nonNegativeInteger" />
               <xs:element name="MissionTables">
                 <xs:complexType>
                   <xs:all>
+                    <xs:element name="Reconnaissance" type="IntTableType" />
                     <xs:element name="Diplomacy" type="IntTableType" />
                     <xs:element name="SubdueUprising" type="IntTableType" />
                     <xs:element name="Espionage" type="IntTableType" />
@@ -60,12 +64,26 @@
                   </xs:all>
                 </xs:complexType>
               </xs:element>
+              <xs:element name="MissionPlanning">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="DiplomacyCandidatePlanetLimit" type="PositiveIntType" />
+                    <xs:element name="ResearchCandidatePlanetLimit" type="PositiveIntType" />
+                    <xs:element name="SabotageCandidatePlanetLimit" type="PositiveIntType" />
+                    <xs:element name="OfficerTargetCandidateLimit" type="PositiveIntType" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
               <xs:element name="Garrison">
                 <xs:complexType>
                   <xs:all>
                     <xs:element name="SupportThreshold" type="xs:nonNegativeInteger" />
                     <xs:element name="GarrisonDivisor" type="PositiveIntType" />
                     <xs:element name="UprisingMultiplier" type="PositiveIntType" />
+                    <xs:element
+                      name="FleetLoadingDeficitThreshold"
+                      type="xs:nonNegativeInteger"
+                    />
                   </xs:all>
                 </xs:complexType>
               </xs:element>
@@ -86,6 +104,315 @@
                   </xs:all>
                 </xs:complexType>
               </xs:element>
+              <xs:element name="Selection">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="MinimumSelectableScore" type="xs:decimal" />
+                    <xs:element name="CandidatePoolSize" type="PositiveIntType" />
+                    <xs:element name="RecentBuildHistoryLimit" type="PositiveIntType" />
+                    <xs:element
+                      name="RepeatBuildPenaltyPerSelection"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="LocalDuplicatePenaltyPerSelection"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="MaxDuplicateCapitalTypePerFleet"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="MaxDuplicateStarfighterTypePerFleet"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="MaxDuplicateRegimentTypePerDestination"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="PremiumCapitalConstructionCostThreshold"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="MaxPremiumCapitalsPerFaction" type="PositiveIntType" />
+                    <xs:element
+                      name="CapitalConstructionCostWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalMaintenanceCostWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="CapitalCombatWeight" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="CapitalExcessCombatPenaltyWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalStarfighterCapacityWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalRegimentCapacityWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalBombardmentWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalGravityWellWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalEmptyFleetCombatBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalMissingStarfighterCapacityBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalMissingRegimentCapacityBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="CapitalMissingGravityWellBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="StarfighterEscortWeight" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="StarfighterInterceptorWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="StarfighterBomberWeight" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="StarfighterMissingInterceptorBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="StarfighterMissingBomberBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="RegimentDefenseWeight" type="xs:nonNegativeInteger" />
+                    <xs:element name="RegimentAttackWeight" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="RegimentBombardmentDefenseWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="RegimentMaintenanceCostWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="RegimentGarrisonDefenseBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="RegimentFleetAttackBoost"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="MinimumMaintenanceHeadroomAfterProduction"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="MaintenanceHeadroomHardFloor"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="MaintenanceHeadroomPenaltyWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="MaintenanceShortfallPenalty"
+                      type="xs:nonNegativeInteger"
+                    />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="NonCapitalSummary">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="MajorThreatWeaponDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="MajorThreatShieldDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="StrategicThreatShieldDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="StrategicThreatWeaponDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="MinimumShieldDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="SupportThreatWeaponDefenseCapacity" type="xs:nonNegativeInteger" />
+                    <xs:element name="SubtypeSelectorRatioThreshold" type="xs:decimal" />
+                    <xs:element name="SupportThreshold" type="xs:nonNegativeInteger" />
+                    <xs:element name="SupportDivisor" type="PositiveIntType" />
+                    <xs:element name="SupportUrgencyCap" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="BaseRequirementDefault"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="BaseRequirementInfrastructure"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="BaseRequirementHeadquarters"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="StarfighterRequirementDefault"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="StarfighterRequirementInfrastructure"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="StarfighterRequirementHeadquarters"
+                      type="xs:nonNegativeInteger"
+                    />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Infrastructure">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element
+                      name="PlanetsPerConstructionFacility"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="MinimumConstructionFacilityLanes"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="ConstructionFacilityTargetClearTicks"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="PlanetsPerShipyard" type="PositiveIntType" />
+                    <xs:element
+                      name="PlanetsPerTrainingFacility"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="ManufacturingFacilityBaseDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="ConstructionFacilityDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="ShipyardDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="TrainingFacilityDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="FleetCapitalShipDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="FleetStarfighterDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="FleetRegimentDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="StarfighterParentFillPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="StarfighterLocalReservePercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="AssaultRegimentLoadPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="GarrisonRegimentReservePercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="MaxDefensePerPlanet" type="PositiveIntType" />
+                    <xs:element name="EconomyDefaultBatchSize" type="PositiveIntType" />
+                    <xs:element name="EconomyDemandPercent" type="PositiveIntType" />
+                    <xs:element
+                      name="EconomySevereDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="EconomySevereDeficitPercent" type="PositiveIntType" />
+                    <xs:element
+                      name="EconomyCompetingNeedSlotReserve"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="EconomyMaintenanceShortfallPressure"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="EconomyMaintenanceReservePressure"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FleetTargetValuePressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FleetReadinessPressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FleetFinalReadinessGatePressure"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FleetFinalReadinessGateUnitCount"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="FleetStarfighterFillPressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FleetReinforcementTravelPenaltyWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="FleetDeployment">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="MinimumAttackStrength" type="PositiveIntType" />
+                    <xs:element name="MinimumDefenseStrength" type="PositiveIntType" />
+                    <xs:element name="MinimumPlanetaryAssaultRegimentCount" type="PositiveIntType" />
+                    <xs:element
+                      name="AttackStrengthPercentOfDefense"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="AttackStrengthPercentOfStrongestHostileFleet"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="AttackStrategicValueWeight" type="PositiveIntType" />
+                    <xs:element name="AttackReadinessWeight" type="PositiveIntType" />
+                    <xs:element name="AttackCaptureViabilityWeight" type="PositiveIntType" />
+                    <xs:element name="AttackTravelEfficiencyWeight" type="PositiveIntType" />
+                    <xs:element
+                      name="AttackExpectedLossPenaltyWeight"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="AttackOpportunityCostPenaltyWeight"
+                      type="PositiveIntType"
+                    />
+                    <xs:element name="ExistingAttackOrderBonus" type="PositiveIntType" />
+                    <xs:element name="HeadquartersAttackBonus" type="PositiveIntType" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -103,7 +430,7 @@
         <xs:element name="Production">
           <xs:complexType>
             <xs:all>
-              <xs:element name="RefinementMultiplier" type="PositiveIntType" />
+              <xs:element name="MaintenanceShortfallAutoscrapInterval" type="PositiveIntType" />
               <xs:element name="CapitalShipProgressTable" type="IntTableType" />
               <xs:element name="CapitalShipProgressRollRange" type="PositiveIntType" />
               <xs:element name="CapitalShipSuccessThreshold" type="PositiveIntType" />
@@ -120,9 +447,6 @@
         <xs:element name="Planet">
           <xs:complexType>
             <xs:all>
-              <xs:element name="DistanceDivisor" type="PositiveIntType" />
-              <xs:element name="DistanceBase" type="xs:nonNegativeInteger" />
-              <xs:element name="MaxPopularSupport" type="PositiveIntType" />
               <xs:element name="MaxEnergy" type="PositiveIntType" />
               <xs:element name="MaxRawMaterials" type="PositiveIntType" />
             </xs:all>
@@ -139,6 +463,10 @@
               <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
               <xs:element name="DefenseFacilityResponseDivisor" type="PositiveIntType" />
               <xs:element name="RepeatTrialProbability" type="xs:nonNegativeInteger" />
+              <xs:element name="GroundCombatCommanderDivisor" type="PositiveIntType" />
+              <xs:element name="GroundCombatContestDiceRange" type="xs:nonNegativeInteger" />
+              <xs:element name="GroundCombatDefenderWinsThreshold" type="xs:integer" />
+              <xs:element name="GroundCombatAttackerWinsThreshold" type="xs:integer" />
               <xs:element name="WeaponDamageVariancePercent" type="xs:nonNegativeInteger" />
               <xs:element name="FighterDogfightLossRatePercent" type="xs:nonNegativeInteger" />
               <xs:element name="FighterDamageBasePercent" type="xs:nonNegativeInteger" />
@@ -155,6 +483,11 @@
               <xs:element name="PrimaryConsequenceTable" type="IntTableType" />
               <xs:element name="SecondaryConsequenceTable" type="IntTableType" />
               <xs:element name="ControllerSupportShift" type="xs:integer" />
+              <xs:element name="WeakSupportPenaltyDivisor" type="PositiveIntType" />
+              <xs:element name="ActiveSupportDriftMinTicks" type="PositiveIntType" />
+              <xs:element name="ActiveSupportDriftMaxTicks" type="PositiveIntType" />
+              <xs:element name="IncidentPulseMinTicks" type="PositiveIntType" />
+              <xs:element name="IncidentPulseMaxTicks" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -266,6 +599,16 @@
           </xs:complexType>
         </xs:element>
 
+        <xs:element name="GameSpeed">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="FastTickIntervalSeconds" type="xs:decimal" />
+              <xs:element name="MediumTickIntervalSeconds" type="xs:decimal" />
+              <xs:element name="SlowTickIntervalSeconds" type="xs:decimal" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
         <xs:element name="ProbabilityTables">
           <xs:complexType>
             <xs:all>
@@ -282,7 +625,12 @@
                     <xs:element name="Espionage" type="IntTableType" />
                     <xs:element name="Foil" type="IntTableType" />
                     <xs:element name="KillOrCapture" type="IntTableType" />
+                    <xs:element
+                      name="DefaultKillOrCaptureProbability"
+                      type="xs:nonNegativeInteger"
+                    />
                     <xs:element name="InciteUprising" type="IntTableType" />
+                    <xs:element name="Reconnaissance" type="IntTableType" />
                     <xs:element name="Recruitment" type="IntTableType" />
                     <xs:element name="Rescue" type="IntTableType" />
                     <xs:element name="Sabotage" type="IntTableType" />
@@ -295,6 +643,7 @@
                           <xs:element name="Diplomacy" type="MissionTickConfigType" />
                           <xs:element name="Espionage" type="MissionTickConfigType" />
                           <xs:element name="InciteUprising" type="MissionTickConfigType" />
+                          <xs:element name="Reconnaissance" type="MissionTickConfigType" />
                           <xs:element name="Recruitment" type="MissionTickConfigType" />
                           <xs:element name="Rescue" type="MissionTickConfigType" />
                           <xs:element name="Sabotage" type="MissionTickConfigType" />

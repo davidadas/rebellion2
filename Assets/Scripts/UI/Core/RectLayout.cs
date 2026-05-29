@@ -1,4 +1,4 @@
-﻿using Rebellion.Util.Attributes;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 /// <summary>

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Generation
@@ -55,8 +57,8 @@ namespace Rebellion.Generation
 
             (
                 List<Planet> corePlanets,
-                List<Planet> rimPlanets,
                 List<(
+                    PlanetSystem system,
                     Planet planet,
                     FactionSetup setup,
                     StartingPlanet config
@@ -65,7 +67,6 @@ namespace Rebellion.Generation
             ) = PartitionPlanets(systems, config, rng);
 
             AssignStartingPlanets(
-                systems,
                 resolvedStartingPlanets,
                 factionMap,
                 result,
@@ -117,12 +118,12 @@ namespace Rebellion.Generation
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="config">Galaxy classification config with faction setups.</param>
         /// <param name="rng">Random number provider for dynamic starting planet selection.</param>
-        /// <returns>Core planets, remaining rim planets, resolved starting planets, and count of
+        /// <returns>Core planets, resolved starting planets, and count of
         /// pre-assigned core starting planets.</returns>
         private (
             List<Planet> corePlanets,
-            List<Planet> rimPlanets,
             List<(
+                PlanetSystem system,
                 Planet planet,
                 FactionSetup setup,
                 StartingPlanet config
@@ -148,9 +149,10 @@ namespace Rebellion.Generation
             }
 
             List<Planet> corePlanets = new List<Planet>();
-            List<Planet> rimPlanets = new List<Planet>();
-            List<(Planet, FactionSetup, StartingPlanet)> resolved =
-                new List<(Planet, FactionSetup, StartingPlanet)>();
+            List<(PlanetSystem system, Planet planet)> rimPlanets =
+                new List<(PlanetSystem system, Planet planet)>();
+            List<(PlanetSystem, Planet, FactionSetup, StartingPlanet)> resolved =
+                new List<(PlanetSystem, Planet, FactionSetup, StartingPlanet)>();
             int preassignedCoreCount = 0;
 
             foreach (PlanetSystem system in systems)
@@ -164,7 +166,7 @@ namespace Rebellion.Generation
                         )
                     )
                     {
-                        resolved.Add((planet, entry.setup, entry.config));
+                        resolved.Add((system, planet, entry.setup, entry.config));
                         if (system.SystemType == PlanetSystemType.CoreSystem)
                             preassignedCoreCount++;
                         continue;
@@ -173,7 +175,7 @@ namespace Rebellion.Generation
                     if (system.SystemType == PlanetSystemType.CoreSystem)
                         corePlanets.Add(planet);
                     else
-                        rimPlanets.Add(planet);
+                        rimPlanets.Add((system, planet));
                 }
             }
 
@@ -187,28 +189,27 @@ namespace Rebellion.Generation
                         continue;
 
                     int hqIndex = rng.NextInt(0, rimPlanets.Count);
-                    Planet planet = rimPlanets[hqIndex];
+                    (PlanetSystem system, Planet planet) = rimPlanets[hqIndex];
                     rimPlanets.RemoveAt(hqIndex);
-                    resolved.Add((planet, setup, sp));
+                    resolved.Add((system, planet, setup, sp));
                 }
             }
 
-            return (corePlanets, rimPlanets, resolved, preassignedCoreCount);
+            return (corePlanets, resolved, preassignedCoreCount);
         }
 
         /// <summary>
         /// Sets ownership, colonization, loyalty, HQ flags, and Strong bucket assignment
         /// for all resolved starting planets.
         /// </summary>
-        /// <param name="systems">All planet systems (used to find parent system type).</param>
         /// <param name="resolvedStartingPlanets">Starting planets with their faction setup and config.</param>
         /// <param name="factionMap">Faction lookup by instance ID.</param>
         /// <param name="result">Classification result to populate.</param>
         /// <param name="strongCountAdjustments">Output: per-faction count of pre-assigned core
         /// starting planets, used to adjust bucket sizes later.</param>
         private void AssignStartingPlanets(
-            PlanetSystem[] systems,
             List<(
+                PlanetSystem system,
                 Planet planet,
                 FactionSetup setup,
                 StartingPlanet config
@@ -222,6 +223,7 @@ namespace Rebellion.Generation
 
             foreach (
                 (
+                    PlanetSystem system,
                     Planet planet,
                     FactionSetup setup,
                     StartingPlanet spConfig
@@ -246,8 +248,7 @@ namespace Rebellion.Generation
                     result.FactionHQs[faction.InstanceID] = planet;
                 }
 
-                PlanetSystem parentSystem = systems.First(s => s.Planets.Contains(planet));
-                if (parentSystem.SystemType == PlanetSystemType.CoreSystem)
+                if (system.SystemType == PlanetSystemType.CoreSystem)
                 {
                     if (!strongCountAdjustments.ContainsKey(setup.FactionID))
                         strongCountAdjustments[setup.FactionID] = 0;

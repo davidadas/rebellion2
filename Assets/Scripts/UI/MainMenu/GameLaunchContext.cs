@@ -1,4 +1,4 @@
-﻿using Rebellion.Game;
+using Rebellion.Game;
 
 /// <summary>
 /// Temporary transport container for launching a game.

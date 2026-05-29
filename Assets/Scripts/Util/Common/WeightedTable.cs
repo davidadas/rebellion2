@@ -1,12 +1,9 @@
 using System.Collections.Generic;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Util.Common
 {
     /// <summary>
     /// Weighted random selection table using cumulative thresholds.
-    /// Matches the original game's table lookup: roll a value, find the first entry
-    /// whose cumulative weight is strictly greater than the roll.
     /// </summary>
     public class WeightedTable<T>
     {
@@ -58,7 +55,7 @@ namespace Rebellion.Util.Common
                     return entry.item;
             }
 
-            // Roll exceeds all entries
+            // Roll exceeds all entries.
             if (_fallbackToLast)
                 return _entries[_entries.Count - 1].item;
 

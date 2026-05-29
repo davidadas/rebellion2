@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Util.Attributes;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Util.Extensions

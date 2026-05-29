@@ -4,7 +4,6 @@ using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
-using Rebellion.Util.Attributes;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization

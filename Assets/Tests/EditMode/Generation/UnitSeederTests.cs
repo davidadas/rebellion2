@@ -1,7 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Generation
@@ -16,7 +20,8 @@ namespace Rebellion.Tests.Generation
             GalaxyClassificationResult classification,
             Regiment[] regimentTemplates = null,
             CapitalShip[] shipTemplates = null,
-            Starfighter[] fighterTemplates = null
+            Starfighter[] fighterTemplates = null,
+            SpecialForces[] specialForcesTemplates = null
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
@@ -31,6 +36,8 @@ namespace Rebellion.Tests.Generation
                 ctx.CapitalShips = shipTemplates;
             if (fighterTemplates != null)
                 ctx.Starfighters = fighterTemplates;
+            if (specialForcesTemplates != null)
+                ctx.SpecialForces = specialForcesTemplates;
             return ctx;
         }
 
@@ -42,7 +49,7 @@ namespace Rebellion.Tests.Generation
                 OwnerInstanceID = owner,
                 IsColonized = true,
             };
-            planet.SetPopularSupport(owner, ownerSupport, 100);
+            planet.SetPopularSupport(owner, ownerSupport);
             return planet;
         }
 
@@ -246,6 +253,53 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_FixedGarrisonWithUnknownUnitId_ThrowsInvalidOperationException()
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>
+                    {
+                        new FixedGarrison
+                        {
+                            PlanetInstanceID = "CORUSCANT",
+                            FactionID = "FNEMP1",
+                            Units = new List<UnitEntry>
+                            {
+                                new UnitEntry { TypeID = "UNKNOWN", Count = 1 },
+                            },
+                        },
+                    },
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>(),
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                new UnitSeeder().Seed(
+                    BuildContext(
+                        new[] { WrapSystem(planet) },
+                        factions,
+                        config,
+                        new GalaxyClassificationResult()
+                    )
+                )
+            );
+
+            Assert.That(exception.Message, Does.Contain("UNKNOWN"));
+        }
+
+        [Test]
         public void Seed_FixedFleet_PlacesConfiguredShipsAsFleetOnPlanet()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
@@ -297,6 +351,193 @@ namespace Rebellion.Tests.Generation
             List<Fleet> fleets = planet.GetFleets();
             Assert.AreEqual(1, fleets.Count, "Expected one fleet on the named planet.");
             Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+        }
+
+        [Test]
+        public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            planet.EnergyCapacity = 8;
+            planet.NumRawResourceNodes = 4;
+            for (int i = 0; i < 4; i++)
+            {
+                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
+                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
+            }
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            empire.Settings.RefinementMultiplier = 1;
+            Faction[] factions = { empire };
+            Regiment[] regimentTemplates =
+            {
+                new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
+            };
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    BudgetDifficultyMappings = new List<BudgetDifficultyMapping>
+                    {
+                        new BudgetDifficultyMapping { Difficulty = 2, BudgetDifficulty = 1 },
+                    },
+                    FactionBudgets = new List<FactionBudget>
+                    {
+                        new FactionBudget
+                        {
+                            FactionID = "FNEMP1",
+                            BudgetLevels = new List<BudgetLevel>
+                            {
+                                new BudgetLevel
+                                {
+                                    GalaxySize = 0,
+                                    Difficulty = 1,
+                                    IsAI = true,
+                                    Percentage = 100,
+                                },
+                                new BudgetLevel
+                                {
+                                    GalaxySize = 0,
+                                    Difficulty = 2,
+                                    IsAI = true,
+                                    Percentage = 0,
+                                },
+                            },
+                            UnitTable = new List<WeightedUnitEntry>
+                            {
+                                new WeightedUnitEntry
+                                {
+                                    CumulativeWeight = 100,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "REEM002", Count = 1 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            GenerationContext context = BuildContext(
+                new[] { WrapSystem(planet) },
+                factions,
+                config,
+                new GalaxyClassificationResult(),
+                regimentTemplates: regimentTemplates
+            );
+            context.Summary.GalaxySize = GameSize.Small;
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(4, planet.GetRegimentCount());
+        }
+
+        [Test]
+        public void Seed_BudgetTableWithSpecialForces_DeploysSpecialForces()
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            planet.EnergyCapacity = 8;
+            planet.NumRawResourceNodes = 4;
+            for (int i = 0; i < 4; i++)
+            {
+                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
+                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
+            }
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            empire.Settings.RefinementMultiplier = 1;
+            Faction[] factions = { empire };
+            SpecialForces[] specialForcesTemplates =
+            {
+                new SpecialForces { TypeID = "SPAL004", MaintenanceCost = 1 },
+            };
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>
+                    {
+                        new FactionBudget
+                        {
+                            FactionID = "FNEMP1",
+                            BudgetLevels = new List<BudgetLevel>
+                            {
+                                new BudgetLevel
+                                {
+                                    GalaxySize = 0,
+                                    Difficulty = 0,
+                                    IsAI = true,
+                                    Percentage = 100,
+                                },
+                            },
+                            UnitTable = new List<WeightedUnitEntry>
+                            {
+                                new WeightedUnitEntry
+                                {
+                                    CumulativeWeight = 100,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "SPAL004", Count = 1 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            GenerationContext context = BuildContext(
+                new[] { WrapSystem(planet) },
+                factions,
+                config,
+                new GalaxyClassificationResult(),
+                specialForcesTemplates: specialForcesTemplates
+            );
+            context.Summary.GalaxySize = GameSize.Small;
+            context.Summary.Difficulty = GameDifficulty.Easy;
+
+            new UnitSeeder().Seed(context);
+
+            List<SpecialForces> specialForces = planet.SpecialForces;
+            Assert.AreEqual(4, specialForces.Count);
+            Assert.IsTrue(
+                specialForces.All(unit =>
+                    unit.TypeID == "SPAL004"
+                    && unit.OwnerInstanceID == "FNEMP1"
+                    && unit.ManufacturingStatus == ManufacturingStatus.Complete
+                    && unit.Movement == null
+                )
+            );
+        }
+
+        private static Building CompleteBuilding(string id, BuildingType buildingType, string owner)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                OwnerInstanceID = owner,
+                BuildingType = buildingType,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
         }
     }
 }

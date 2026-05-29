@@ -1,9 +1,15 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -63,6 +69,28 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
 
             return (game, origin, destination, officer, movement);
+        }
+
+        [Test]
+        public void Constructor_WithNullGame_ThrowsArgumentNullException()
+        {
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementSystem(null, new FogOfWarSystem(new GameRoot(TestConfig.Create())))
+            );
+
+            Assert.AreEqual("game", exception.ParamName);
+        }
+
+        [Test]
+        public void Constructor_WithNullFogOfWar_ThrowsArgumentNullException()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementSystem(game, null)
+            );
+
+            Assert.AreEqual("fogOfWar", exception.ParamName);
         }
 
         [Test]
@@ -148,7 +176,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_WhenUnitAlreadyInTransit_RedirectsFromCurrentPosition()
+        public void RequestMove_WhenUnitAlreadyInTransit_DoesNotRedirect()
         {
             (
                 GameRoot game,
@@ -160,16 +188,14 @@ namespace Rebellion.Tests.Systems
 
             movement.RequestMove(officer, destination);
 
-            Point midPoint = new Point(50, 0);
-            officer.Movement.CurrentPosition = midPoint;
+            MovementState originalMovement = officer.Movement;
+            Point originalOrigin = officer.Movement.OriginPosition;
 
             movement.RequestMove(officer, origin);
 
-            Assert.AreEqual(
-                midPoint,
-                officer.Movement.OriginPosition,
-                "Redirected unit must start its new journey from its current visual position"
-            );
+            Assert.AreSame(originalMovement, officer.Movement);
+            Assert.AreEqual(originalOrigin, officer.Movement.OriginPosition);
+            Assert.AreEqual(destination, officer.GetParent());
         }
 
         [Test]
@@ -379,7 +405,55 @@ namespace Rebellion.Tests.Systems
                 .OfType<RoleEnrouteActiveResult>()
                 .FirstOrDefault(r => !r.IsActive);
             Assert.IsNotNull(arrived);
-            Assert.AreEqual(officer, arrived.Officer);
+            Assert.AreEqual(officer, arrived.Participant);
+        }
+
+        [Test]
+        public void UpdateMovement_SpecialForcesArrivesAtMission_ClearsRoleEnrouteState()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            AbductionMission mission = new AbductionMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                TargetInstanceID = destination.InstanceID,
+                HasInitiated = true,
+            };
+            game.AttachNode(mission, destination);
+            mission.MainParticipants.Add(specialForces);
+
+            movement.RequestMove(specialForces, mission);
+            specialForces.Movement.TicksElapsed = specialForces.Movement.TransitTicks;
+
+            List<GameResult> results = movement.ProcessTick();
+
+            Assert.IsNull(specialForces.Movement);
+            Assert.AreEqual(mission, specialForces.GetParent());
+            Assert.IsTrue(
+                results
+                    .OfType<RoleEnrouteActiveResult>()
+                    .Any(r => r.IsActive && r.Participant == specialForces)
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<RoleEnrouteActiveResult>()
+                    .Any(r => !r.IsActive && r.Participant == specialForces)
+            );
         }
 
         [Test]
@@ -404,7 +478,34 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_NonCapturedUnits_AllMove()
+        public void RequestMove_CompletedBuilding_DoesNotMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupNonCapturedUnits_AllMove()
         {
             (
                 GameRoot game,
@@ -417,7 +518,7 @@ namespace Rebellion.Tests.Systems
             Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
             game.AttachNode(officer2, origin);
 
-            movement.RequestGroupMove(
+            movement.RequestMove(
                 new System.Collections.Generic.List<IMovable> { officer, officer2 },
                 destination
             );
@@ -427,7 +528,108 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficerWithEscortFromCaptor_BothMove()
+        public void RequestMove_GroupUnitsAtDifferentLocations_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, destination);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(destination, officer2.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(officer2.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupUnitAlreadyInTransit_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer movingOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(movingOfficer, origin);
+            movement.RequestMove(movingOfficer, destination);
+            MovementState originalMovement = movingOfficer.Movement;
+
+            movement.RequestMove(new List<IMovable> { officer, movingOfficer }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(destination, movingOfficer.GetParent());
+            Assert.AreSame(originalMovement, movingOfficer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupUnitUnderConstruction_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(starfighter, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, starfighter }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(origin, starfighter.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupCompletedBuilding_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, building }, destination);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithCapturingOfficerEscort_BothMove()
         {
             (
                 GameRoot game,
@@ -447,7 +649,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestGroupMove(
+            movement.RequestMove(
                 new System.Collections.Generic.List<IMovable> { escort, captive },
                 destination
             );
@@ -457,7 +659,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficerWithoutEscort_NotMoved()
+        public void RequestMove_GroupCapturedOfficerWithoutEscort_NotMoved()
         {
             (
                 GameRoot game,
@@ -477,7 +679,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestGroupMove(
+            movement.RequestMove(
                 new System.Collections.Generic.List<IMovable> { captive },
                 destination
             );
@@ -490,7 +692,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestGroupMove_CapturedOfficerEscortFromWrongFaction_NotMoved()
+        public void RequestMove_GroupCapturedOfficerEscortFromWrongFaction_NoneMove()
         {
             (
                 GameRoot game,
@@ -510,16 +712,51 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(captive, origin);
 
-            movement.RequestGroupMove(
+            movement.RequestMove(
                 new System.Collections.Generic.List<IMovable> { escort, captive },
                 destination
             );
 
             Assert.AreEqual(
                 origin,
+                escort.GetParent(),
+                "Group movement must fail atomically when a captive has no valid escort"
+            );
+            Assert.AreEqual(
+                origin,
                 captive.GetParent(),
                 "Captive must not move when the escort is from a different faction than the captor"
             );
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerEscortAtDifferentLocation_NoneMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, destination);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(origin, escort.GetParent());
+            Assert.AreEqual(destination, captive.GetParent());
         }
 
         [Test]
@@ -816,7 +1053,41 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_UnitUnderConstruction_IsNotMoved()
+        public void RequestMove_BuildingUnderConstruction_RetargetsDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreEqual(
+                destination,
+                building.GetParent(),
+                "Building destination should change while it is still under construction."
+            );
+            Assert.IsNull(
+                building.Movement,
+                "Building should have no movement state while its manufacturing destination changes."
+            );
+        }
+
+        [Test]
+        public void RequestMove_StarfighterUnderConstruction_RetargetsDestination()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -866,22 +1137,19 @@ namespace Rebellion.Tests.Systems
 
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
             ManufacturingSystem mfg = new ManufacturingSystem(game);
-            mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
+            mfg.Enqueue(planet, fighter, destFleet);
 
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
-            ISceneNode originalParent = fighter.GetParent();
-
-            // Attempting to move a unit under construction should be rejected.
             movement.RequestMove(fighter, otherPlanet);
 
             Assert.AreEqual(
-                originalParent,
+                otherPlanet,
                 fighter.GetParent(),
-                "Fighter should not move while under construction."
+                "Fighter destination should change while it is still under construction."
             );
             Assert.IsNull(
                 fighter.Movement,
-                "Fighter should have no movement state while under construction."
+                "Fighter should have no movement state while its manufacturing destination changes."
             );
         }
 
@@ -1067,7 +1335,140 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_CapitalShipInFleetDestinationCaptured_MovementCleared()
+        public void UpdateMovement_FleetInTransitToHostilePlanet_FleetArrivesAtHostilePlanet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, system);
+
+            Planet hostilePlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(hostilePlanet, system);
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, originPlanet);
+            game.AttachNode(capitalShip, fleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(fleet, hostilePlanet);
+
+            int transit = fleet.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
+            for (int i = 0; i < transit; i++)
+                allResults.AddRange(movement.ProcessTick());
+
+            Assert.IsNull(fleet.Movement, "Fleet should complete arrival at the hostile planet.");
+            Assert.AreEqual(hostilePlanet, fleet.GetParent());
+            Assert.IsTrue(
+                allResults.OfType<UnitArrivedResult>().Any(result => result.Unit == fleet)
+            );
+        }
+
+        [Test]
+        public void UpdateMovement_RegimentInTransitToFriendlyFleetAtHostilePlanet_ArrivesInFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, system);
+
+            Planet hostilePlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(hostilePlanet, system);
+
+            Fleet hostileOrbitFleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip receivingShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                RegimentCapacity = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileOrbitFleet, hostilePlanet);
+            game.AttachNode(receivingShip, hostileOrbitFleet);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            CapitalShip sourceShip = new CapitalShip
+            {
+                InstanceID = "cs0",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                RegimentCapacity = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(sourceFleet, originPlanet);
+            game.AttachNode(sourceShip, sourceFleet);
+            game.AttachNode(regiment, sourceShip);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(regiment, hostileOrbitFleet);
+
+            int transit = regiment.Movement.TransitTicks;
+            List<GameResult> allResults = new List<GameResult>();
+            for (int i = 0; i < transit; i++)
+                allResults.AddRange(movement.ProcessTick());
+
+            Assert.IsNull(
+                regiment.Movement,
+                "Regiment should complete arrival into the friendly fleet at the hostile planet."
+            );
+            Assert.AreEqual(receivingShip, regiment.GetParent());
+            Assert.IsTrue(
+                allResults.OfType<UnitArrivedResult>().Any(result => result.Unit == regiment)
+            );
+        }
+
+        [Test]
+        public void RequestMove_CapitalShipInFriendlyFleetOverHostilePlanet_StartsTransit()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -1112,9 +1513,9 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
             movement.RequestMove(ship, fleet, productionPlanet);
 
-            Assert.IsNull(
+            Assert.IsNotNull(
                 ship.Movement,
-                "Capital ship in a fleet should have movement cleared when destination planet is captured"
+                "Capital ship should travel to its assigned fleet over a hostile planet."
             );
         }
 
@@ -1169,6 +1570,32 @@ namespace Rebellion.Tests.Systems
                 ship.GetParent(),
                 "Capital ship should remain in its fleet when destination planet is captured"
             );
+        }
+
+        [Test]
+        public void RequestMove_ManufacturedUnitDestinationWithoutPlanet_Throws()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                movement.RequestMove(ship, fleet, origin)
+            );
+            Assert.IsNull(ship.Movement);
         }
 
         [Test]
@@ -1414,5 +1841,296 @@ namespace Rebellion.Tests.Systems
         }
 
         #endregion
+
+        [Test]
+        public void ProcessTick_BuildingArrivesAtUncolonizedPlanet_MarksItColonized()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            destination.IsColonized = false;
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            // Stage the building scene-parented to the destination (the arrival pipeline
+            // expects this) and ready to complete on the next tick.
+            game.AttachNode(building, destination);
+            building.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.IsColonized,
+                "Building arrival at an uncolonized planet should colonize it"
+            );
+            Assert.IsNull(building.Movement, "Building should have completed its transit");
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            // Precondition: destination has not yet been visited by anyone.
+            Assert.IsFalse(destination.WasVisitedBy("empire"));
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Fleet arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtNeutralPlanet_CompletesAndMarksVisitor()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+
+            destination.SetOwnerInstanceID(null);
+            destination.IsColonized = false;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsNull(
+                fleet.Movement,
+                "Fleet should complete arrival at a neutral planet, clearing its movement state"
+            );
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Arrival at a neutral planet must record the visitor for first-contact tracking"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_OfficerArrivesAtPlanet_MarksFactionAsVisitor()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            game.DetachNode(officer);
+            game.AttachNode(officer, destination);
+            officer.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.IsTrue(
+                destination.WasVisitedBy("empire"),
+                "Officer arrival should mark the faction as a visitor of the destination planet"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FleetArrivesAtAlreadyVisitedPlanet_DoesNotDuplicate()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.AddVisitor("empire");
+            int countBefore = destination.VisitingFactionIDs.Count;
+
+            Fleet fleet = new Fleet("empire", "Empire Fleet");
+            game.AttachNode(fleet, destination);
+            fleet.Movement = new MovementState
+            {
+                TransitTicks = 1,
+                TicksElapsed = 1,
+                OriginPosition = origin.GetPosition(),
+                CurrentPosition = origin.GetPosition(),
+            };
+
+            movement.ProcessTick();
+
+            Assert.AreEqual(
+                countBefore,
+                destination.VisitingFactionIDs.Count,
+                "Repeat arrivals must not duplicate visitor entries"
+            );
+        }
+
+        /// <summary>
+        /// Builds a fleet of the given faction parked over the given planet, holding one
+        /// idle regiment ready to drop. The planet has the faction as a visitor.
+        /// </summary>
+        private (Fleet fleet, Regiment regiment) StageFleetWithRegimentAt(
+            GameRoot game,
+            Planet planet,
+            string factionId
+        )
+        {
+            planet.AddVisitor(factionId);
+
+            Fleet fleet = new Fleet(factionId, $"{factionId}-fleet");
+            game.AttachNode(fleet, planet);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{factionId}-ship-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = $"{factionId}-reg-{planet.InstanceID}",
+                OwnerInstanceID = factionId,
+                AllowedOwnerInstanceIDs = new List<string> { factionId },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = null,
+            };
+            game.AttachNode(regiment, ship);
+
+            return (fleet, regiment);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ClaimsImmediately()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+            Assert.AreEqual(100, destination.GetPopularSupport("empire"));
+            Assert.AreEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = true;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.IsNull(destination.GetOwnerInstanceID());
+            Assert.AreNotEqual(destination, regiment.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffUncolonizedOwnedPlanet_DoesNotImmediatelyReleaseToNeutral()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = false;
+
+            // Garrison the planet directly, then stage an empty fleet to receive the regiment.
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_LastRegimentOffColonizedOwnedPlanet_OwnershipPersists()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "empire";
+            destination.IsColonized = true;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, destination);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, destination);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 4,
+            };
+            game.AttachNode(ship, fleet);
+
+            movement.RequestMove(regiment, ship);
+
+            Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
     }
 }

@@ -12,7 +12,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
 
         /// <summary>
-        /// Creates a new BetrayalManager.
+        /// Creates a new BetrayalSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
         public BetrayalSystem(GameRoot game)
@@ -26,7 +26,6 @@ namespace Rebellion.Systems
         /// <returns>Any betrayal results generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            // TODO: Implement betrayal logic
             return new List<GameResult>();
         }
     }

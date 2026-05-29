@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Systems

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using UnityEngine;
 
 namespace Rebellion.Util.Common
 {
@@ -10,7 +9,7 @@ namespace Rebellion.Util.Common
     /// </summary>
     public static class GameLogger
     {
-        private static LogLevel minimumLevel = LogLevel.Debug;
+        private static LogLevel _minimumLevel = LogLevel.Debug;
 
         /// <summary>
         /// Defines the different levels of logging.
@@ -23,17 +22,18 @@ namespace Rebellion.Util.Common
             Debug,
         }
 
-        // Default log file path and configuration settings
-        private static string logFilePath = $"{Application.persistentDataPath}/log.txt";
-        private static bool logToFile;
-        private static bool includeTimestamp = true;
+        // Default log file path and configuration settings.
+        private static string _logFilePath =
+            $"{UnityEngine.Application.persistentDataPath}/log.txt";
+        private static bool _logToFile;
+        private static bool _includeTimestamp = true;
 
         /// <summary>
         /// Overrides the minimum log level. Messages with a level above this threshold are
         /// silently dropped.
         /// </summary>
         /// <param name="level">The new minimum level.</param>
-        public static void SetMinimumLevel(LogLevel level) => minimumLevel = level;
+        public static void SetMinimumLevel(LogLevel level) => _minimumLevel = level;
 
         /// <summary>
         /// Configures the logger settings.
@@ -47,11 +47,11 @@ namespace Rebellion.Util.Common
             bool addTimestamps = true
         )
         {
-            logFilePath = filePath ?? logFilePath;
-            logToFile = enableFileLogging;
-            includeTimestamp = addTimestamps;
+            _logFilePath = filePath ?? _logFilePath;
+            _logToFile = enableFileLogging;
+            _includeTimestamp = addTimestamps;
 
-            if (logToFile)
+            if (_logToFile)
             {
                 InitializeLogFile();
             }
@@ -65,7 +65,7 @@ namespace Rebellion.Util.Common
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
         public static void Log<T>(T message, LogLevel level = LogLevel.Info)
         {
-            if (level > minimumLevel)
+            if (level > _minimumLevel)
             {
                 return;
             }
@@ -73,7 +73,7 @@ namespace Rebellion.Util.Common
             string logMessage = FormatMessage(message, level);
             LogToUnityConsole(logMessage, level);
 
-            if (logToFile)
+            if (_logToFile)
             {
                 WriteToFile(logMessage);
             }
@@ -140,7 +140,7 @@ namespace Rebellion.Util.Common
         /// <param name="level">The log level (e.g., Info, Warning, Error).</param>
         public static void LogObject(object obj, LogLevel level = LogLevel.Info)
         {
-            string message = JsonUtility.ToJson(obj, true);
+            string message = UnityEngine.JsonUtility.ToJson(obj, true);
             Log(message, level);
         }
 
@@ -149,7 +149,7 @@ namespace Rebellion.Util.Common
         /// </summary>
         private static string FormatMessage<T>(T message, LogLevel level)
         {
-            string timestamp = includeTimestamp
+            string timestamp = _includeTimestamp
                 ? $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] "
                 : string.Empty;
             return $"{timestamp}[{level}] {message}";
@@ -186,10 +186,10 @@ namespace Rebellion.Util.Common
         {
             try
             {
-                if (!File.Exists(logFilePath))
+                if (!File.Exists(_logFilePath))
                 {
                     // Create and immediately close the file.
-                    File.Create(logFilePath).Dispose();
+                    File.Create(_logFilePath).Dispose();
                 }
                 WriteToFile($"Log initialized at {DateTime.Now}");
             }
@@ -207,7 +207,7 @@ namespace Rebellion.Util.Common
         {
             try
             {
-                File.AppendAllText(logFilePath, message + Environment.NewLine);
+                File.AppendAllText(_logFilePath, message + Environment.NewLine);
             }
             catch (Exception ex)
             {

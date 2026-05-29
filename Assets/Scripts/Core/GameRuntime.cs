@@ -1,6 +1,5 @@
 using System;
 using Rebellion.Game;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -39,8 +38,6 @@ public sealed class GameRuntime
         }
 
         _activeGameSession = new GameManager(game);
-        // _activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures (queues, caches, etc.)
-
         return _activeGameSession;
     }
 
@@ -105,7 +102,6 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = SaveGameManager.Instance.LoadGameData("quicksave");
         _activeGameSession.ReplaceGame(loadedGame);
-        // _activeGameSession.InitializeSystems(); // TODO: Re-enable after migrating to Systems // Rebuild derived structures after load
     }
 
     /// <summary>

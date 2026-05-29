@@ -12,23 +12,23 @@ namespace Rebellion.Tests.SceneGraph
         // Mock implementation of BaseSceneNode for testing purposes
         private class MockSceneNode : BaseSceneNode
         {
-            private readonly List<ISceneNode> children = new List<ISceneNode>();
+            private readonly List<ISceneNode> _children = new List<ISceneNode>();
 
             public override bool CanAcceptChild(ISceneNode child) => true;
 
             public override void AddChild(ISceneNode child)
             {
-                children.Add(child);
+                _children.Add(child);
             }
 
             public override void RemoveChild(ISceneNode child)
             {
-                children.Remove(child);
+                _children.Remove(child);
             }
 
             public override IEnumerable<T> GetChildren<T>(Func<T, bool> predicate, bool recursive)
             {
-                IEnumerable<T> direct = children.OfType<T>();
+                IEnumerable<T> direct = _children.OfType<T>();
 
                 if (predicate != null)
                 {
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.SceneGraph
 
                 List<T> result = new List<T>(direct);
 
-                foreach (ISceneNode child in children)
+                foreach (ISceneNode child in _children)
                 {
                     result.AddRange(child.GetChildren<T>(predicate, true));
                 }
@@ -52,13 +52,13 @@ namespace Rebellion.Tests.SceneGraph
 
             public override IEnumerable<ISceneNode> GetChildren()
             {
-                return children;
+                return _children;
             }
 
             public override void Traverse(Action<ISceneNode> action)
             {
                 action(this);
-                foreach (ISceneNode child in children)
+                foreach (ISceneNode child in _children)
                 {
                     child.Traverse(action);
                 }

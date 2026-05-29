@@ -8,6 +8,10 @@ namespace Rebellion.Systems
     /// </summary>
     public interface IGameSystem
     {
+        /// <summary>
+        /// Processes one game tick for the system.
+        /// </summary>
+        /// <returns>Results produced during the tick.</returns>
         List<GameResult> ProcessTick();
     }
 }

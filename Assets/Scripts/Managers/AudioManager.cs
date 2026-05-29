@@ -1,41 +1,40 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Linq;
 using Rebellion.Util.Extensions;
-using UnityEngine;
 
 /// <summary>
 /// Centralized audio controller responsible for music, SFX, ambience,
 /// and playlist sequencing across the game. Supports both preloaded
 /// AudioClip playlists and just-in-time loading using resource paths.
 /// </summary>
-public class AudioManager : MonoBehaviour
+public class AudioManager : UnityEngine.MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
 
-    [Header("Sources")]
-    [SerializeField]
-    private AudioSource musicSource;
+    [UnityEngine.Header("Sources")]
+    [UnityEngine.SerializeField]
+    private UnityEngine.AudioSource musicSource;
 
-    [SerializeField]
-    private AudioSource sfxSource;
+    [UnityEngine.SerializeField]
+    private UnityEngine.AudioSource sfxSource;
 
-    [SerializeField]
-    private AudioSource ambienceSource;
+    [UnityEngine.SerializeField]
+    private UnityEngine.AudioSource ambienceSource;
 
-    [Header("Settings")]
-    [Range(0f, 1f)]
+    [UnityEngine.Header("Settings")]
+    [UnityEngine.Range(0f, 1f)]
     public float masterVolume = 1f;
 
-    [Range(0f, 1f)]
+    [UnityEngine.Range(0f, 1f)]
     public float musicVolume = 1f;
 
-    [Range(0f, 1f)]
+    [UnityEngine.Range(0f, 1f)]
     public float sfxVolume = 1f;
 
-    [Range(0f, 1f)]
+    [UnityEngine.Range(0f, 1f)]
     public float ambienceVolume = 1f;
 
-    private AudioClip[] _currentPlaylist;
+    private UnityEngine.AudioClip[] _currentPlaylist;
     private string[] _currentPlaylistPaths;
     private int _playlistIndex;
     private bool _playlistShuffle;
@@ -63,7 +62,7 @@ public class AudioManager : MonoBehaviour
     /// <param name="loop">Whether to loop the track.</param>
     public void PlayTrack(string resourcePath, bool loop = false)
     {
-        AudioClip clip = ResourceManager.GetAudio(resourcePath);
+        UnityEngine.AudioClip clip = ResourceManager.GetAudio(resourcePath);
         PlayTrack(clip, loop);
     }
 
@@ -72,7 +71,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     /// <param name="clip">The AudioClip to play.</param>
     /// <param name="loop">Whether to loop the clip.</param>
-    public void PlayTrack(AudioClip clip, bool loop)
+    public void PlayTrack(UnityEngine.AudioClip clip, bool loop)
     {
         if (clip == null)
             return;
@@ -92,7 +91,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     /// <param name="tracks">Array of AudioClips to play in sequence.</param>
     /// <param name="shuffle">Whether to shuffle the playlist order.</param>
-    public void PlayPlaylist(AudioClip[] tracks, bool shuffle = false)
+    public void PlayPlaylist(UnityEngine.AudioClip[] tracks, bool shuffle = false)
     {
         if (tracks == null || tracks.Length == 0)
         {
@@ -101,7 +100,7 @@ public class AudioManager : MonoBehaviour
 
         StopPlaylist();
 
-        _currentPlaylist = new AudioClip[tracks.Length];
+        _currentPlaylist = new UnityEngine.AudioClip[tracks.Length];
         for (int i = 0; i < tracks.Length; i++)
         {
             _currentPlaylist[i] = tracks[i];
@@ -185,16 +184,16 @@ public class AudioManager : MonoBehaviour
     /// <param name="source">The AudioSource to fade.</param>
     /// <param name="duration">Fade time in seconds.</param>
     /// <returns>Coroutine enumerator.</returns>
-    private IEnumerator FadeOut(AudioSource source, float duration)
+    private IEnumerator FadeOut(UnityEngine.AudioSource source, float duration)
     {
         float startVolume = source.volume;
         float time = 0f;
 
         while (time < duration)
         {
-            time += Time.unscaledDeltaTime;
+            time += UnityEngine.Time.unscaledDeltaTime;
 
-            float newVolume = Mathf.Lerp(startVolume, 0f, time / duration);
+            float newVolume = UnityEngine.Mathf.Lerp(startVolume, 0f, time / duration);
             source.volume = newVolume;
 
             yield return null;
@@ -212,7 +211,7 @@ public class AudioManager : MonoBehaviour
     /// <param name="resourcePath">Resources path to the SFX audio file.</param>
     public void PlaySFX(string resourcePath)
     {
-        AudioClip clip = ResourceManager.GetAudio(resourcePath);
+        UnityEngine.AudioClip clip = ResourceManager.GetAudio(resourcePath);
         // TODO: Pull volume from config.
         PlaySFX(clip, 1f);
     }
@@ -222,7 +221,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     /// <param name="clip">The AudioClip to play.</param>
     /// <param name="volumeScale">Volume multiplier for this effect.</param>
-    public void PlaySFX(AudioClip clip, float volumeScale = 1f)
+    public void PlaySFX(UnityEngine.AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null)
         {
@@ -238,7 +237,7 @@ public class AudioManager : MonoBehaviour
     /// </summary>
     /// <param name="clip">The ambience AudioClip to play.</param>
     /// <param name="loop">Whether to loop the ambience.</param>
-    public void PlayAmbience(AudioClip clip, bool loop)
+    public void PlayAmbience(UnityEngine.AudioClip clip, bool loop)
     {
         if (clip == null)
         {
@@ -288,7 +287,7 @@ public class AudioManager : MonoBehaviour
         }
 
         string path = _currentPlaylistPaths[_playlistIndex];
-        AudioClip clip = ResourceManager.GetAudio(path);
+        UnityEngine.AudioClip clip = ResourceManager.GetAudio(path);
 
         if (clip == null)
         {

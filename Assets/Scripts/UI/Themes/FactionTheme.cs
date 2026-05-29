@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Rebellion.Util.Attributes;
+using System.Collections.Generic;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 [PersistableObject]
@@ -17,7 +17,7 @@ public class TacticalHUDLayout
     public string ImagePath { get; set; }
     public RectLayout TickCounterTextLayout { get; set; }
     public RectLayout RawMaterialsTextLayout { get; set; }
-    public RectLayout RefinedMaterialsTextLayout { get; set; }
+    public RectLayout MaintenanceHeadroomTextLayout { get; set; }
     public RectLayout MaintenanceTextLayout { get; set; }
 }
 

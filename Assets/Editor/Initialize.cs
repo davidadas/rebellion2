@@ -1,11 +1,5 @@
-using UnityEditor;
-using UnityEngine;
-
-[InitializeOnLoad]
-public class Startup
+[UnityEditor.InitializeOnLoad]
+public static class Startup
 {
-    /// <summary>
-    ///
-    /// </summary>
     static Startup() { }
 }

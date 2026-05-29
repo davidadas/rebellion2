@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using Rebellion.Game;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 

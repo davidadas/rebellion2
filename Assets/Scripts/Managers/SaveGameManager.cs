@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Util.Serialization;
-using UnityEngine;
 
 /// <summary>
 /// Represents a discovered save file paired with its deserialized metadata.
@@ -27,18 +26,18 @@ public sealed class SaveGameEntry
 public class SaveGameManager
 {
     // Singleton instance.
-    private static SaveGameManager instance;
+    private static SaveGameManager _instance;
 
     // Initialize singleton.
     public static SaveGameManager Instance
     {
         get
         {
-            if (instance == null)
+            if (_instance == null)
             {
-                instance = new SaveGameManager();
+                _instance = new SaveGameManager();
             }
-            return instance;
+            return _instance;
         }
     }
 
@@ -48,7 +47,7 @@ public class SaveGameManager
     /// <returns>The directory path for saving game data.</returns>
     public string GetSaveDirectoryPath()
     {
-        return Path.Combine(Application.persistentDataPath, "saves");
+        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves");
     }
 
     /// <summary>
@@ -58,7 +57,7 @@ public class SaveGameManager
     /// <returns>The full path to the save file.</returns>
     public string GetSaveFilePath(string fileName)
     {
-        return Path.Combine(Application.persistentDataPath, "saves", $"{fileName}.sav");
+        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves", $"{fileName}.sav");
     }
 
     /// <summary>
@@ -94,15 +93,17 @@ public class SaveGameManager
 
                 GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
                     stream,
-                    MetadataElementName
+                    _metadataElementName
                 );
 
                 saves.Add(new SaveGameEntry(Path.GetFileNameWithoutExtension(file.Name), metadata));
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Failed to read save metadata for {file.Name}: {ex.Message}");
-                // Skip corrupted/bad files
+                UnityEngine.Debug.LogWarning(
+                    $"Failed to read save metadata for {file.Name}: {ex.Message}"
+                );
+                // Skip corrupted/bad files.
             }
         }
 
@@ -129,7 +130,7 @@ public class SaveGameManager
         if (game.Metadata == null)
             game.Metadata = new GameMetadata();
 
-        game.Metadata.SaveVersion = SaveSchema.CurrentVersion;
+        game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
 
         // Serialize the data to a file.
@@ -152,7 +153,7 @@ public class SaveGameManager
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
 
         int saveVersion = PeekSaveVersion(saveFilePath, serializer);
-        SaveSchema.GuardCanLoad(saveVersion);
+        ValidateSaveVersion(saveVersion);
 
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
         return (GameRoot)serializer.Deserialize(fileStream);
@@ -176,10 +177,20 @@ public class SaveGameManager
 
         GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
             stream,
-            MetadataElementName
+            _metadataElementName
         );
         return metadata?.SaveVersion ?? 0;
     }
 
-    private const string MetadataElementName = "Metadata";
+    private void ValidateSaveVersion(int saveVersion)
+    {
+        if (saveVersion > GameMetadata.CurrentSaveVersion)
+        {
+            throw new InvalidOperationException(
+                $"Save version {saveVersion} is newer than supported version {GameMetadata.CurrentSaveVersion}."
+            );
+        }
+    }
+
+    private const string _metadataElementName = "Metadata";
 }

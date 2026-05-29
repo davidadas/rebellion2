@@ -49,7 +49,7 @@ public class UIButton
     {
         button = GetComponent<Button>();
 
-        // Initialize events if null
+        // Initialize events if null.
         if (OnHoverEnter == null)
             OnHoverEnter = new UnityEvent();
         if (OnHoverExit == null)

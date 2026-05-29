@@ -41,7 +41,9 @@ node_modules
 Assets/_Recovery/
 Assets/Resources/Art/
 Assets/Resources/Audio/
+Assets/Resources/UI/
 Assets/Resources/Videos/
+Assets/Videos/
 Assets/TextMesh Pro/
 
 # C# Files
@@ -49,10 +51,12 @@ Assets/TextMesh Pro/
 **/*.slnx
 *.csproj
 !GameAssembly.Lint.csproj
+!EditorAssembly.Lint.csproj
 
 # Misc
 *.md
 !README.md
+/[Dd]ocs/
 *.tmp.driveupload*
 **/*.scratch
 **/dump

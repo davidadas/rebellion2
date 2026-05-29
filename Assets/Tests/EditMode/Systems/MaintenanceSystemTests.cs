@@ -3,8 +3,11 @@ using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -97,7 +100,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Shortfall_ScrapsOneUnit()
+        public void ProcessTick_Shortfall_AfterAutoscrapInterval_ScrapsOneUnit()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -130,16 +133,18 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment1, planet);
             game.AttachNode(regiment2, planet);
 
-            // RNG returns 0, so first candidate is selected
             FixedRNG rng = new FixedRNG();
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
-            List<GameResult> results = maintenanceSystem.ProcessTick();
+            List<GameResult> firstResults = maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            List<GameResult> secondResults = maintenanceSystem.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
-            Assert.IsTrue(results.OfType<GameObjectAutoscrappedResult>().Any());
-            MaintenanceRequiredResult shortfall = results
+            Assert.IsFalse(firstResults.OfType<GameObjectAutoscrappedResult>().Any());
+            Assert.IsTrue(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
+            MaintenanceRequiredResult shortfall = firstResults
                 .OfType<MaintenanceRequiredResult>()
                 .FirstOrDefault();
             Assert.IsNotNull(shortfall);
@@ -148,7 +153,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Shortfall_ScrapsOnlyOnePerTick()
+        public void ProcessTick_Shortfall_BeforeAutoscrapInterval_DoesNotScrapAgain()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -185,10 +190,54 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
             maintenanceSystem.ProcessTick();
+            game.CurrentTick = 1;
+            maintenanceSystem.ProcessTick();
 
             int remaining =
                 (game.GetSceneNodeByInstanceID<Regiment>("r1") != null ? 1 : 0)
                 + (game.GetSceneNodeByInstanceID<Regiment>("r2") != null ? 1 : 0);
+            Assert.AreEqual(2, remaining);
+        }
+
+        [Test]
+        public void ProcessTick_Shortfall_ContinuesScrappingWhileOverCapacity()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+
+            for (int i = 0; i < 3; i++)
+            {
+                Regiment regiment = new Regiment
+                {
+                    InstanceID = $"r{i}",
+                    DisplayName = $"Stormtroopers {i}",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaintenanceCost = 1,
+                    ConstructionCost = 1,
+                };
+                game.AttachNode(regiment, planet);
+            }
+
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+
+            maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval * 2;
+            maintenanceSystem.ProcessTick();
+
+            int remaining = Enumerable
+                .Range(0, 3)
+                .Count(index => game.GetSceneNodeByInstanceID<Regiment>($"r{index}") != null);
+
             Assert.AreEqual(1, remaining);
         }
 
@@ -221,6 +270,38 @@ namespace Rebellion.Tests.Systems
 
             maintenanceSystem.ProcessTick();
 
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+
+        [Test]
+        public void ProcessTick_OnlyBuildingUnitsUnderConstruction_DoesNotEnterShortfall()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Stormtroopers",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                MaintenanceCost = 3,
+                ConstructionCost = 10,
+            };
+            game.AttachNode(regiment, planet);
+
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+
+            List<GameResult> results = maintenanceSystem.ProcessTick();
+
+            Assert.IsFalse(results.OfType<MaintenanceRequiredResult>().Any());
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
@@ -281,9 +362,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateMine("mine2", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
-
-            int capacity = maintenanceSystem.GetMaintenanceCapacity(empire);
+            int capacity = empire.MaintenanceCapacity;
 
             Assert.AreEqual(50, capacity);
         }
@@ -317,8 +396,47 @@ namespace Rebellion.Tests.Systems
             MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
 
             maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            maintenanceSystem.ProcessTick();
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+        }
+
+        [Test]
+        public void ProcessTick_ZeroMaintenanceInfrastructurePresent_ScrapsPositiveMaintenanceUnitFirst()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            planet.NumRawResourceNodes = 0;
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+
+            Building mine = CreateMine("mine1", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                DisplayName = "Stormtroopers",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 1,
+                ConstructionCost = 1,
+            };
+
+            game.AttachNode(mine, planet);
+            game.AttachNode(regiment, planet);
+
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+
+            maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            maintenanceSystem.ProcessTick();
+
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
     }
 }

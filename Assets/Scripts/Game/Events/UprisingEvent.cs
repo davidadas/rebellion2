@@ -1,4 +1,4 @@
-namespace Rebellion.Game
+namespace Rebellion.Game.Events
 {
     /// <summary>
     /// Base class for uprising-related events.

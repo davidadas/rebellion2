@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -22,7 +22,7 @@ public sealed class PlanetSystemIcon
     private GameObject hoverOverlay;
 
     private float lastClickTime;
-    private const float DoubleClickThreshold = 0.25f;
+    private const float _doubleClickThreshold = 0.25f;
 
     public event Action<PlanetSystem> OnClicked;
     public event Action<PlanetSystem> OnDoubleClicked;
@@ -143,7 +143,7 @@ public sealed class PlanetSystemIcon
 
         float now = Time.unscaledTime;
 
-        if (now - lastClickTime <= DoubleClickThreshold)
+        if (now - lastClickTime <= _doubleClickThreshold)
         {
             OnDoubleClicked?.Invoke(system);
         }

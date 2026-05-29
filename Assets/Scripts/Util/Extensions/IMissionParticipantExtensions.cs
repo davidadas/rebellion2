@@ -1,4 +1,5 @@
-using Rebellion.Game;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Util.Extensions
 {
@@ -16,6 +17,16 @@ namespace Rebellion.Util.Extensions
         public static int GetMissionSkillValue(
             this IMissionParticipant participant,
             MissionParticipantSkill skill
-        ) => participant.Skills[skill];
+        ) => participant.Skills.TryGetValue(skill, out int value) ? value : 0;
+
+        /// <summary>
+        /// Returns whether this participant is a main officer.
+        /// </summary>
+        /// <param name="participant">The participant to inspect.</param>
+        /// <returns>True if the participant is a main officer.</returns>
+        public static bool IsMainCharacter(this IMissionParticipant participant)
+        {
+            return participant is Officer officer && officer.IsMain;
+        }
     }
 }

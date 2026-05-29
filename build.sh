@@ -3,34 +3,97 @@ set -eE
 
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
+ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
+GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
+EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
 
-# Roslynator needs DOTNET_ROOT to find the SDK
-if [ -z "$DOTNET_ROOT" ] && command -v dotnet >/dev/null 2>&1; then
+set_dotnet_root() {
+    if [ -n "$DOTNET_ROOT" ] || ! command -v dotnet >/dev/null 2>&1; then
+        return
+    fi
+
     sdk_base="$(dotnet --info 2>/dev/null | sed -n 's/.*Base Path:[[:space:]]*//p' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     if [ -n "$sdk_base" ]; then
         export DOTNET_ROOT="$(dirname "$(dirname "$sdk_base")")"
     fi
-fi
+}
 
-# Detect platform and set defaults
-case "$(uname -s)" in
-    Darwin)
-        UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/MacOS/Unity}"
-        FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
-        ;;
-    Linux)
-        UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.4.0f1/Editor/Unity}"
-        FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
-        ;;
-    MINGW*|MSYS*|CYGWIN*)
-        UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
-        FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
-        ;;
-    *)
-        echo "Unknown platform: $(uname -s). Set UNITY env var manually."
+set_platform_defaults() {
+    case "$(uname -s)" in
+        Darwin)
+            UNITY="${UNITY:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/MacOS/Unity}"
+            FRAMEWORK_PATH="${FRAMEWORK_PATH:-/Applications/Unity/Hub/Editor/6000.4.0f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/4.7.1-api}"
+            ;;
+        Linux)
+            UNITY="${UNITY:-$HOME/Unity/Hub/Editor/6000.4.0f1/Editor/Unity}"
+            FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            UNITY="${UNITY:-C:/Program Files/Unity/Hub/Editor/6000.4.0f1/Editor/Unity.exe}"
+            FRAMEWORK_PATH="${FRAMEWORK_PATH:-}"
+            ;;
+        *)
+            echo "Unknown platform: $(uname -s). Set UNITY env var manually."
+            exit 1
+            ;;
+    esac
+}
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "FAIL: '$1' is required but is not installed."
         exit 1
-        ;;
-esac
+    fi
+}
+
+run_unity_editmode_tests() {
+    "$UNITY" \
+        -runTests \
+        -testPlatform EditMode \
+        -projectPath "$PROJECT_PATH" \
+        -testResults "$TEST_RESULTS" \
+        -batchmode \
+        -nographics \
+        "$@"
+}
+
+parse_coverage_percent() {
+    local tag="$1"
+    local summary_xml="$2"
+
+    sed -n "s:.*<$tag>\\([0-9.]*\\)</$tag>.*:\\1:p" "$summary_xml" | head -n 1
+}
+
+assert_decimal() {
+    local label="$1"
+    local value="$2"
+    local source_path="$3"
+
+    if ! [[ "$value" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo "FAIL: could not parse $label from $source_path (got '$value')"
+        exit 1
+    fi
+}
+
+assert_coverage_threshold() {
+    local label="$1"
+    local actual="$2"
+    local threshold="$3"
+
+    if [ "$(echo "$actual < $threshold" | bc -l)" = "1" ]; then
+        echo "FAIL: $label coverage ${actual}% is below threshold ${threshold}%"
+        return 1
+    fi
+
+    return 0
+}
+
+run_roslynator() {
+    dotnet tool run roslynator -- "$@"
+}
+
+set_dotnet_root
+set_platform_defaults
 
 usage() {
     echo "Usage: ./build.sh [command]"
@@ -46,8 +109,6 @@ usage() {
     echo "  all       Run format + lint + test"
     exit 1
 }
-
-ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
 
 do_format() {
     echo "=== Format ==="
@@ -68,6 +129,8 @@ do_xmlformat() {
 }
 
 do_lint() {
+    dotnet tool restore
+
     local extra_args=()
     if [ -n "$FRAMEWORK_PATH" ]; then
         extra_args+=("-p:FrameworkPathOverride=$FRAMEWORK_PATH")
@@ -84,14 +147,34 @@ do_lint() {
         echo ""
     fi
 
+    echo "=== Format Rules ==="
+    dotnet restore "$EDITOR_LINT_PROJECT"
+    dotnet format "$EDITOR_LINT_PROJECT" style --verify-no-changes --severity error --no-restore
+    echo ""
+
+    echo "=== Naming Rules ==="
+    if rg -n -P "private\\s+const\\s+[^=;]+?\\s+(?!_)[A-Za-z][A-Za-z0-9_]*\\s*=" Assets/Scripts Assets/Tests -g "*.cs"; then
+        echo "Private constants must use _camelCase names."
+        exit 1
+    fi
+    echo ""
+
     # Roslynator uses a committed portable project file so it works in CI without Unity.
     # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
-    roslynator analyze GameAssembly.Lint.csproj \
+    run_roslynator analyze "$GAME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    roslynator analyze GameAssembly.Lint.csproj \
+    run_roslynator analyze "$GAME_LINT_PROJECT" \
+        --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level error
+    run_roslynator analyze "$EDITOR_LINT_PROJECT" \
+        --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
+        --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level warning || true
+    run_roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
@@ -100,30 +183,15 @@ do_lint() {
 }
 
 do_test() {
-    "$UNITY" \
-        -runTests \
-        -testPlatform EditMode \
-        -projectPath "$PROJECT_PATH" \
-        -testResults "$TEST_RESULTS" \
-        -batchmode \
-        -nographics
+    run_unity_editmode_tests
     echo "Test results written to $TEST_RESULTS"
 }
 
 do_coverage() {
-    if ! command -v bc >/dev/null 2>&1; then
-        echo "FAIL: 'bc' is required for coverage threshold checks but is not installed."
-        exit 1
-    fi
+    require_command bc
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
-    "$UNITY" \
-        -runTests \
-        -testPlatform EditMode \
-        -projectPath "$PROJECT_PATH" \
-        -testResults "$TEST_RESULTS" \
-        -batchmode \
-        -nographics \
+    run_unity_editmode_tests \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
         -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
@@ -140,28 +208,20 @@ do_coverage() {
     fi
 
     local line_pct method_pct
-    line_pct=$(sed -n 's:.*<Linecoverage>\([0-9.]*\)</Linecoverage>.*:\1:p' "$summary_xml" | head -n 1)
-    method_pct=$(sed -n 's:.*<Methodcoverage>\([0-9.]*\)</Methodcoverage>.*:\1:p' "$summary_xml" | head -n 1)
+    line_pct=$(parse_coverage_percent Linecoverage "$summary_xml")
+    method_pct=$(parse_coverage_percent Methodcoverage "$summary_xml")
 
-    if ! [[ "$line_pct" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        echo "FAIL: could not parse line coverage from $summary_xml (got '$line_pct')"
-        exit 1
-    fi
-    if ! [[ "$method_pct" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        echo "FAIL: could not parse method coverage from $summary_xml (got '$method_pct')"
-        exit 1
-    fi
+    assert_decimal "line coverage" "$line_pct" "$summary_xml"
+    assert_decimal "method coverage" "$method_pct" "$summary_xml"
 
     printf "Line coverage:   %s%% (threshold %s%%)\n" "$line_pct" "$line_threshold"
     printf "Method coverage: %s%% (threshold %s%%)\n" "$method_pct" "$method_threshold"
 
     local failed=0
-    if [ "$(echo "$line_pct < $line_threshold" | bc -l)" = "1" ]; then
-        echo "FAIL: line coverage ${line_pct}% is below threshold ${line_threshold}%"
+    if ! assert_coverage_threshold line "$line_pct" "$line_threshold"; then
         failed=1
     fi
-    if [ "$(echo "$method_pct < $method_threshold" | bc -l)" = "1" ]; then
-        echo "FAIL: method coverage ${method_pct}% is below threshold ${method_threshold}%"
+    if ! assert_coverage_threshold method "$method_pct" "$method_threshold"; then
         failed=1
     fi
 

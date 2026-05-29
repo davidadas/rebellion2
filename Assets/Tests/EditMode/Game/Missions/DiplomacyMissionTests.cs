@@ -2,9 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -262,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, planet);
             mission.Initiate(new StubRNG());
 
-            game.SetPlanetPopularSupport(planet, "empire", 100);
+            planet.SetFullPopularSupport("empire");
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -281,7 +284,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
-            game.SetPlanetPopularSupport(planet, "empire", 100);
+            planet.SetFullPopularSupport("empire");
 
             Assert.IsFalse(
                 mission.CanContinue(game),

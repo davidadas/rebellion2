@@ -1,5 +1,6 @@
 using System;
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Extensions;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
 {
@@ -17,6 +18,11 @@ namespace Rebellion.SceneGraph
         {
             get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
             set => _instanceId = value;
+        }
+
+        internal string PeekInstanceID()
+        {
+            return _instanceId ?? string.Empty;
         }
 
         public string TypeID { get; set; }

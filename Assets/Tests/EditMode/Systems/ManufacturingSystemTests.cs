@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -61,10 +64,31 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "EMPIRE",
                 BuildingType = BuildingType.ConstructionFacility,
                 ProductionType = ManufacturingType.Building,
-                ProcessRate = 10,
+                ProcessRate = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(_shipyard, _coruscant);
+
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "RESOURCE_MINE",
+                    OwnerInstanceID = "EMPIRE",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _coruscant
+            );
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "RESOURCE_REFINERY",
+                    OwnerInstanceID = "EMPIRE",
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _coruscant
+            );
 
             _movement = new MovementSystem(_game, new FogOfWarSystem(_game));
             _provider = new FixedRNG();
@@ -403,7 +427,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_InsufficientFunds_ReturnsFalse()
+        public void Enqueue_InsufficientRefinedMaterials_StillQueues()
         {
             // With default setup (no mines/refineries), faction has no materials
             Building expensive = new Building
@@ -416,19 +440,15 @@ namespace Rebellion.Tests.Systems
             };
 
             // Verify we have insufficient materials
-            int available = _game.GetRefinedMaterials(_empire);
+            int available = _empire.RefinedMaterials;
             Assert.Less(available, 9999);
 
             bool result = _manager.Enqueue(_coruscant, expensive, _coruscant, ignoreCost: false);
 
-            Assert.IsFalse(result);
-            // Queue should be empty since enqueue was rejected
+            Assert.IsTrue(result);
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
-            Assert.IsFalse(
-                queue.ContainsKey(ManufacturingType.Building)
-                    && queue[ManufacturingType.Building].Count > 0
-            );
+            Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
         }
 
         [Test]
@@ -445,7 +465,7 @@ namespace Rebellion.Tests.Systems
             };
 
             // Verify we have insufficient materials
-            int available = _game.GetRefinedMaterials(_empire);
+            int available = _empire.RefinedMaterials;
             Assert.Less(available, 9999);
 
             bool result = _manager.Enqueue(_coruscant, expensive, _coruscant, ignoreCost: true);
@@ -457,7 +477,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Enqueue_WithSufficientStockpile_DeductsConstructionCost()
+        public void Enqueue_WithSufficientStockpile_DoesNotDeductConstructionCost()
         {
             _empire.RefinedMaterialStockpile = 500;
             Building mine = new Building
@@ -472,7 +492,7 @@ namespace Rebellion.Tests.Systems
             bool result = _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: false);
 
             Assert.IsTrue(result);
-            Assert.AreEqual(300, _empire.RefinedMaterialStockpile);
+            Assert.AreEqual(500, _empire.RefinedMaterialStockpile);
         }
 
         [Test]
@@ -541,44 +561,24 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_OverflowProgress_CarriesToNextItem()
         {
-            // Add multiple _shipyards for higher production rate
+            _shipyard.ProcessRate = 1;
+
             Building _shipyard2 = new Building
             {
                 InstanceID = "SHIPYARD2",
                 OwnerInstanceID = "EMPIRE",
                 BuildingType = BuildingType.ConstructionFacility,
                 ProductionType = ManufacturingType.Building,
-                ProcessRate = 5, // Faster production
+                ProcessRate = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(_shipyard2, _coruscant);
-
-            // Production rate = ceiling(1/10 + 1/5) = ceiling(0.3) = 1
-            // That's still not enough. Let me use ProcessRate = 2 on second _shipyard
-            _shipyard2.ProcessRate = 2;
-            // Production rate = ceiling(1/10 + 1/2) = ceiling(0.6) = 1
-            // Still not enough! Let me change the original _shipyard
-            _shipyard.ProcessRate = 2;
-            // Production rate = ceiling(1/2 + 1/2) = ceiling(1.0) = 1
-            // Need even more. Let me add a third _shipyard
-            Building _shipyard3 = new Building
-            {
-                InstanceID = "SHIPYARD3",
-                OwnerInstanceID = "EMPIRE",
-                BuildingType = BuildingType.ConstructionFacility,
-                ProductionType = ManufacturingType.Building,
-                ProcessRate = 2,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            _game.AttachNode(_shipyard3, _coruscant);
-
-            // Production rate = ceiling(1/2 + 1/2 + 1/2) = ceiling(1.5) = 2 per tick
 
             Building mine1 = new Building
             {
                 InstanceID = "MINE1",
                 OwnerInstanceID = "EMPIRE",
-                ConstructionCost = 1, // Needs 1, gets 2, overflow = 1
+                ConstructionCost = 1,
                 BaseBuildSpeed = 10,
                 ManufacturingProgress = 0,
                 ManufacturingStatus = ManufacturingStatus.Building,
@@ -599,13 +599,10 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
 
-            // One tick: production = 2
-            // mine1 needs 1, gets 1, completes, overflow = 1
-            // mine2 gets overflow of 1
             _manager.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, mine1.ManufacturingStatus);
-            Assert.AreEqual(1, mine2.ManufacturingProgress); // Got the overflow!
+            Assert.AreEqual(1, mine2.ManufacturingProgress);
             Assert.AreEqual(ManufacturingStatus.Building, mine2.ManufacturingStatus);
         }
 
@@ -682,8 +679,6 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine1, _coruscant, ignoreCost: true);
             _manager.Enqueue(_coruscant, mine2, _coruscant, ignoreCost: true);
 
-            // ProcessTick gives 1 progress (ceiling(1.0/10) = 1)
-            // First item completes (1 >= 1), second should start
             _manager.ProcessTick();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -696,8 +691,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleCompletions_SameTick()
         {
-            // With _shipyard ProcessRate=10, production rate = ceiling(1.0/10) = 1
-            // If we have 3 items with cost=1, all should complete in 3 ticks
             Building mine1 = new Building
             {
                 InstanceID = "MINE1",
@@ -851,6 +844,9 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleProductionSources_StackCorrectly()
         {
+            AddResourceSupply(1);
+            _shipyard.ProcessRate = 4;
+
             // Add second construction facility
             Building _shipyard2 = new Building
             {
@@ -858,10 +854,13 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "EMPIRE",
                 BuildingType = BuildingType.ConstructionFacility,
                 ProductionType = ManufacturingType.Building,
-                ProcessRate = 20, // Faster than first _shipyard
+                ProcessRate = 4,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(_shipyard2, _coruscant);
+
+            Assert.AreEqual(2, _coruscant.GetProductionFacilityCount(ManufacturingType.Building));
+            Assert.GreaterOrEqual(_empire.RefinedMaterialSupply, 2);
 
             Building mine = new Building
             {
@@ -876,16 +875,140 @@ namespace Rebellion.Tests.Systems
 
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
 
-            // Two production sources: shipyard (rate 10, contributes 0.1) and shipyard2
-            // (rate 20, contributes 0.05). Combined rate rounds up to 1 per tick.
             _manager.ProcessTick();
+            Assert.AreEqual(0, mine.ManufacturingProgress);
 
-            // Progress should be exactly 1 (production rate from two sources)
+            _manager.ProcessTick();
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+
+            _manager.ProcessTick();
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+
+            _manager.ProcessTick();
+            Assert.IsFalse(_shipyard.ProductionPointReady);
+            Assert.IsFalse(_shipyard2.ProductionPointReady);
+            Assert.AreEqual(2, mine.ManufacturingProgress);
+
+            double productionRate = _coruscant.GetProductionRate(ManufacturingType.Building);
+            Assert.AreEqual(0.5, productionRate);
+        }
+
+        [Test]
+        public void ProcessTick_FasterProductionSource_CompletesCycleFirst()
+        {
+            AddResourceSupply(1);
+            _shipyard.ProcessRate = 4;
+
+            Building fasterFacility = new Building
+            {
+                InstanceID = "SHIPYARD2",
+                OwnerInstanceID = "EMPIRE",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fasterFacility, _coruscant);
+
+            Assert.AreEqual(2, _coruscant.GetProductionFacilityCount(ManufacturingType.Building));
+            Assert.GreaterOrEqual(_empire.RefinedMaterialSupply, 2);
+
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+
+            _manager.ProcessTick();
             Assert.AreEqual(1, mine.ManufacturingProgress);
 
-            // Verify rate calculation directly
-            int productionRate = _coruscant.GetProductionRate(ManufacturingType.Building);
-            Assert.AreEqual(1, productionRate); // ceiling(1/10 + 1/20) = 1
+            _manager.ProcessTick();
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+
+            _manager.ProcessTick();
+            Assert.IsFalse(_shipyard.ProductionPointReady);
+            Assert.IsFalse(fasterFacility.ProductionPointReady);
+            Assert.AreEqual(3, mine.ManufacturingProgress);
+        }
+
+        private void AddResourceSupply(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                _game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"EXTRA_RESOURCE_MINE_{i}",
+                        OwnerInstanceID = "EMPIRE",
+                        BuildingType = BuildingType.Mine,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    _coruscant
+                );
+                _game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"EXTRA_RESOURCE_REFINERY_{i}",
+                        OwnerInstanceID = "EMPIRE",
+                        BuildingType = BuildingType.Refinery,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    _coruscant
+                );
+            }
+        }
+
+        [Test]
+        public void ProcessTick_WithNoRefinedSupply_KeepsFacilityPointReady()
+        {
+            foreach (
+                Building refinery in _coruscant
+                    .GetAllBuildings()
+                    .Where(building => building.BuildingType == BuildingType.Refinery)
+            )
+            {
+                refinery.ManufacturingStatus = ManufacturingStatus.Building;
+            }
+
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.IsTrue(_shipyard.ProductionPointReady);
+
+            foreach (
+                Building refinery in _coruscant
+                    .GetAllBuildings()
+                    .Where(building => building.BuildingType == BuildingType.Refinery)
+            )
+            {
+                refinery.ManufacturingStatus = ManufacturingStatus.Complete;
+            }
+
+            _manager.ProcessTick();
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+            Assert.IsFalse(_shipyard.ProductionPointReady);
         }
 
         [Test]
@@ -1392,7 +1515,52 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(trainingFacility, planet);
 
+            AddResourceSupply(_game, planet, factionId, 1);
+
             return planet;
+        }
+
+        private void AddResourceSupply(GameRoot game, Planet planet, string factionId, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"{planet.InstanceID}_resource_mine_{i}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Mine,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"{planet.InstanceID}_resource_refinery_{i}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.Refinery,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+        }
+
+        private void AddResourceSupplyPlanet(GameRoot game, string planetId, string factionId)
+        {
+            PlanetSystem system = new PlanetSystem { InstanceID = $"{planetId}_sys" };
+            game.AttachNode(system, game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = planetId,
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                EnergyCapacity = 50,
+                NumRawResourceNodes = 50,
+            };
+            game.AttachNode(planet, system);
+            AddResourceSupply(game, planet, factionId, 20);
         }
 
         [Test]
@@ -1721,7 +1889,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_CapitalShipCompleteDestinationChangedSides_ShipStaysAtFleet()
+        public void ProcessTick_CapitalShipCompleteFleetOverHostilePlanet_ShipTravelsToFleet()
         {
             // Ship queued into fleet at destPlanet. destPlanet captured mid-production.
             // Planet doesn't accept CapitalShips directly, so HandleArrivalRejection finds
@@ -1765,9 +1933,9 @@ namespace Rebellion.Tests.Systems
             mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
-            Assert.IsNull(
+            Assert.IsNotNull(
                 ship.Movement,
-                "No transit — no valid friendly planet accepts a capital ship directly."
+                "Ship should travel to its assigned fleet even when the fleet is over a hostile planet."
             );
             Assert.AreEqual(
                 fleet,
@@ -2207,6 +2375,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
+            AddResourceSupplyPlanet(_game, "resource_supply_changed_sides", "empire");
 
             Planet planetA = new Planet
             {
@@ -2285,6 +2454,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
+            AddResourceSupplyPlanet(_game, "resource_supply_no_capacity", "empire");
 
             Planet planetA = new Planet
             {
@@ -2856,7 +3026,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_StarfighterCompleteDestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_StarfighterCompleteFleetOverHostilePlanet_TravelsToCarrier()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2887,25 +3057,24 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(productionPlanet, fighter, destFleet, ignoreCost: true);
 
-            // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
             mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
             Assert.AreEqual(
-                productionPlanet,
+                carrier,
                 fighter.GetParent(),
-                "Fighter should be redirected to production planet when destination changed sides."
+                "Fighter should stay assigned to its carrier when the fleet is over a hostile planet."
             );
             Assert.IsNotNull(
                 fighter.Movement,
-                "Fighter should be in visual transit toward production planet."
+                "Fighter should be in visual transit toward its carrier."
             );
         }
 
         [Test]
-        public void ProcessTick_RegimentCompleteDestinationChangedSides_RedirectsToProductionPlanet()
+        public void ProcessTick_RegimentCompleteFleetOverHostilePlanet_TravelsToTransport()
         {
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
@@ -2936,20 +3105,19 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(_game, _provider, localMovement);
             mfg.Enqueue(productionPlanet, regiment, destFleet, ignoreCost: true);
 
-            // Destination captured mid-production.
             destPlanet.OwnerInstanceID = "rebels";
 
             mfg.ProcessTick();
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
             Assert.AreEqual(
-                productionPlanet,
+                carrier,
                 regiment.GetParent(),
-                "Regiment should be redirected to production planet when destination changed sides."
+                "Regiment should stay assigned to its transport when the fleet is over a hostile planet."
             );
             Assert.IsNotNull(
                 regiment.Movement,
-                "Regiment should be in visual transit toward production planet."
+                "Regiment should be in visual transit toward its transport."
             );
         }
 
@@ -2966,6 +3134,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
+            AddResourceSupplyPlanet(_game, "resource_supply_batch_capacity", "empire");
 
             // Production planet A: EnergyCapacity 10, with 3 construction yards using 3 slots,
             // leaving 7 available for the 3 mines being built.
@@ -2981,7 +3150,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetA, sys);
 
-            // 3 construction yards at ProcessRate=1, giving 3 progress per tick (enough to complete all 3 mines).
             for (int i = 1; i <= 3; i++)
             {
                 Building constructionYard = new Building
@@ -3083,6 +3251,7 @@ namespace Rebellion.Tests.Systems
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
+            AddResourceSupplyPlanet(_game, "resource_supply_batch_no_capacity", "empire");
 
             // Production planet A: EnergyCapacity 5, fully occupied by 3 yards + 2 dummies (0 available).
             Planet planetA = new Planet
@@ -3097,7 +3266,6 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(planetA, sys);
 
-            // 3 construction yards at ProcessRate=1, giving 3 progress per tick (enough to complete all 3 mines).
             for (int i = 1; i <= 3; i++)
             {
                 Building constructionYard = new Building

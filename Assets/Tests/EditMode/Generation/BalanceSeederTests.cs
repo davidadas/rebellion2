@@ -1,5 +1,7 @@
 using NUnit.Framework;
-using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Generation
@@ -7,8 +9,6 @@ namespace Rebellion.Tests.Generation
     [TestFixture]
     public class BalanceSeederTests
     {
-        private const int MaxSupport = 100;
-
         private static GenerationContext BuildContext(PlanetSystem system, Faction[] factions)
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_HeadquartersPlanet_OwnerSupportPinnedToMax()
         {
             Planet planet = MakePlanet("CORUSCANT", "FNEMP1", isHq: true);
-            planet.SetPopularSupport("FNEMP1", 40, MaxSupport);
+            planet.SetPopularSupport("FNEMP1", 40);
             PlanetSystem system = MakeSystem(planet);
             Faction[] factions =
             {
@@ -49,14 +49,14 @@ namespace Rebellion.Tests.Generation
 
             new BalanceSeeder().Seed(BuildContext(system, factions));
 
-            Assert.AreEqual(MaxSupport, planet.GetPopularSupport("FNEMP1"));
+            Assert.AreEqual(100, planet.GetPopularSupport("FNEMP1"));
         }
 
         [Test]
         public void Seed_OwnedPlanetWithMilitaryPresence_BoostsOwnerSupport()
         {
             Planet planet = MakePlanet("p1", "FNALL1");
-            planet.SetPopularSupport("FNALL1", 50, MaxSupport);
+            planet.SetPopularSupport("FNALL1", 50);
             planet.AddChild(new Regiment { InstanceID = "r1", OwnerInstanceID = "FNALL1" });
             planet.AddChild(new Regiment { InstanceID = "r2", OwnerInstanceID = "FNALL1" });
             PlanetSystem system = MakeSystem(planet);
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_HighMilitaryPresence_BoostCappedAtMaxBoost()
         {
             Planet planet = MakePlanet("p1", "FNALL1");
-            planet.SetPopularSupport("FNALL1", 50, MaxSupport);
+            planet.SetPopularSupport("FNALL1", 50);
             for (int i = 0; i < 20; i++)
             {
                 planet.AddChild(new Regiment { InstanceID = $"r{i}", OwnerInstanceID = "FNALL1" });
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_UnownedPlanet_NoSupportChange()
         {
             Planet planet = MakePlanet("p1", null);
-            planet.SetPopularSupport("FNALL1", 25, MaxSupport);
+            planet.SetPopularSupport("FNALL1", 25);
             PlanetSystem system = MakeSystem(planet);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
 

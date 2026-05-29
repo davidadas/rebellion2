@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml;
-using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Util.Serialization
@@ -537,7 +536,7 @@ namespace Rebellion.Util.Serialization
                 }
             }
 
-            // Consume the dictionary's closing tag so ReadPersistable can continue reading sibling elements
+            // Consume the dictionary's closing tag so ReadPersistable can continue reading sibling elements.
             if (reader.NodeType == XmlNodeType.EndElement)
             {
                 reader.ReadEndElement();
@@ -582,11 +581,11 @@ namespace Rebellion.Util.Serialization
                 // Fall back to ICollection<T> for HashSet, SortedSet, etc.
                 else
                 {
-                    // Use a temporary list, then copy to the collection
+                    // Use a temporary list, then copy to the collection.
                     List<object> tempList = new List<object>();
                     ReadCollectionElements(reader, elementType, tempList);
 
-                    // Use reflection to call Add method
+                    // Use reflection to call Add method.
                     MethodInfo addMethod = type.GetMethod("Add");
                     foreach (object item in tempList)
                     {
@@ -639,7 +638,7 @@ namespace Rebellion.Util.Serialization
                 }
             }
 
-            // Consume the collection's closing tag so ReadPersistable can continue reading sibling elements
+            // Consume the collection's closing tag so ReadPersistable can continue reading sibling elements.
             if (reader.NodeType == XmlNodeType.EndElement)
             {
                 reader.ReadEndElement();
@@ -724,7 +723,7 @@ namespace Rebellion.Util.Serialization
         /// <summary>
         /// Resolves the actual type for abstract or interface types.
         /// </summary>
-        /// <param name="objType">The original object type.</param>
+        /// <param name="objType">The declared object type.</param>
         /// <param name="actualTypeName">The name of the actual type from XML.</param>
         /// <param name="objAttributes">The persistable attributes.</param>
         /// <returns>The resolved actual type.</returns>
@@ -842,7 +841,7 @@ namespace Rebellion.Util.Serialization
         {
             Type type = ReflectionHelper.GetMemberType(info);
 
-            // Validate primitive types
+            // Validate primitive types.
             if (TypeHelper.IsPrimitive(type) && reader.HasAttributes)
             {
                 throw new InvalidOperationException(
@@ -850,7 +849,7 @@ namespace Rebellion.Util.Serialization
                 );
             }
 
-            // Validate persistable objects
+            // Validate persistable objects.
             if (
                 TypeHelper.HasAttribute<PersistableObjectAttribute>(type)
                 && reader.NodeType != XmlNodeType.Element
@@ -886,7 +885,7 @@ namespace Rebellion.Util.Serialization
     /// </summary>
     static class ReflectionHelper
     {
-        private const BindingFlags CommonBindingFlags =
+        private const BindingFlags _commonBindingFlags =
             BindingFlags.Public
             | BindingFlags.NonPublic
             | BindingFlags.Instance
@@ -911,9 +910,15 @@ namespace Rebellion.Util.Serialization
         {
             bool IsPersistable(MemberInfo member)
             {
-                bool isPublicField = member is FieldInfo field && field.IsPublic;
+                bool isInstanceField = member is FieldInfo field && !field.IsStatic;
+                bool isInstanceProperty =
+                    member is PropertyInfo property
+                    && property.GetMethod?.IsStatic != true
+                    && property.SetMethod?.IsStatic != true;
+                bool isPublicField = member is FieldInfo publicField && publicField.IsPublic;
                 bool isPublicProperty =
-                    member is PropertyInfo property && property.GetMethod?.IsPublic == true;
+                    member is PropertyInfo publicProperty
+                    && publicProperty.GetMethod?.IsPublic == true;
                 bool hasPersistableAttribute = member
                     .GetCustomAttributes(typeof(PersistableMemberAttribute), true)
                     .Any();
@@ -926,22 +931,24 @@ namespace Rebellion.Util.Serialization
 
                 if (operationType == OperationType.Write)
                 {
-                    return (isPublicField || isPublicProperty || hasPersistableAttribute)
+                    return (isInstanceField || isInstanceProperty)
+                        && (isPublicField || isPublicProperty || hasPersistableAttribute)
                         && !hasIgnoreAttribute
                         && !hasAlternativePersistableAttribute;
                 }
 
-                return (isPublicField || isPublicProperty || hasPersistableAttribute)
+                return (isInstanceField || isInstanceProperty)
+                    && (isPublicField || isPublicProperty || hasPersistableAttribute)
                     && !hasAlternativePersistableAttribute;
             }
 
             IEnumerable<MemberInfo> fields = classType
-                .GetFields(CommonBindingFlags)
+                .GetFields(_commonBindingFlags)
                 .Where(IsPersistable)
                 .Cast<MemberInfo>();
 
             IEnumerable<MemberInfo> properties = classType
-                .GetProperties(CommonBindingFlags)
+                .GetProperties(_commonBindingFlags)
                 .Where(property => property.CanRead && property.CanWrite)
                 .Where(IsPersistable)
                 .Cast<MemberInfo>();
@@ -962,6 +969,11 @@ namespace Rebellion.Util.Serialization
         {
             bool IsPersistableAttribute(MemberInfo member)
             {
+                bool isInstanceField = member is FieldInfo field && !field.IsStatic;
+                bool isInstanceProperty =
+                    member is PropertyInfo property
+                    && property.GetMethod?.IsStatic != true
+                    && property.SetMethod?.IsStatic != true;
                 bool hasPersistableAttribute = member
                     .GetCustomAttributes(typeof(PersistableAttributeAttribute), true)
                     .Any();
@@ -971,19 +983,21 @@ namespace Rebellion.Util.Serialization
 
                 if (operationType == OperationType.Write)
                 {
-                    return hasPersistableAttribute && !hasIgnoreAttribute;
+                    return (isInstanceField || isInstanceProperty)
+                        && hasPersistableAttribute
+                        && !hasIgnoreAttribute;
                 }
 
-                return hasPersistableAttribute;
+                return (isInstanceField || isInstanceProperty) && hasPersistableAttribute;
             }
 
             IEnumerable<MemberInfo> fields = classType
-                .GetFields(CommonBindingFlags)
+                .GetFields(_commonBindingFlags)
                 .Where(IsPersistableAttribute)
                 .Cast<MemberInfo>();
 
             IEnumerable<MemberInfo> properties = classType
-                .GetProperties(CommonBindingFlags)
+                .GetProperties(_commonBindingFlags)
                 .Where(property => property.CanRead && property.CanWrite)
                 .Where(IsPersistableAttribute)
                 .Cast<MemberInfo>();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Extensions;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
 {
@@ -9,7 +10,7 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
-        // Parent Info
+        // Parent Info.
         [CloneIgnore]
         public string ParentInstanceID { get; set; }
 
@@ -24,7 +25,7 @@ namespace Rebellion.SceneGraph
         [PersistableIgnore]
         public ISceneNode LastParentNode { get; set; }
 
-        // Owner Info
+        // Owner Info.
         private string _ownerInstanceId;
 
         [CloneIgnore]
@@ -192,7 +193,7 @@ namespace Rebellion.SceneGraph
                 return false;
 
             // If null or empty, assumes universally that it is allowed.
-            // This is done so that when modding you do not need to add new faction IDs
+            // This is done so that when modding you do not need to add new faction IDs.
             // to every single planet that exists inside of the game.
             if (AllowedOwnerInstanceIDs == null || AllowedOwnerInstanceIDs.Count == 0)
                 return true;

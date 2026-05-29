@@ -1,9 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Util.Serialization;
-using UnityEngine;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Managers
 {
@@ -781,7 +785,7 @@ namespace Rebellion.Tests.Managers
             SaveGameManager.Instance.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(SaveSchema.CurrentVersion, loadedGame.Metadata.SaveVersion);
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
 
         [Test]
@@ -807,11 +811,11 @@ namespace Rebellion.Tests.Managers
             SaveGameManager.Instance.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(SaveSchema.CurrentVersion, loadedGame.Metadata.SaveVersion);
+            Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
 
         [Test]
-        public void LoadGameData_SaveVersionNewerThanClient_ThrowsSaveVersionTooNewException()
+        public void LoadGameData_SaveVersionNewerThanClient_ThrowsInvalidOperationException()
         {
             GameSummary summary = new GameSummary
             {
@@ -832,19 +836,19 @@ namespace Rebellion.Tests.Managers
 
             string saveFilePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
             string xml = File.ReadAllText(saveFilePath);
-            int futureVersion = SaveSchema.CurrentVersion + 99;
+            int futureVersion = GameMetadata.CurrentSaveVersion + 99;
             string bumped = xml.Replace(
-                $"<SaveVersion>{SaveSchema.CurrentVersion}</SaveVersion>",
+                $"<SaveVersion>{GameMetadata.CurrentSaveVersion}</SaveVersion>",
                 $"<SaveVersion>{futureVersion}</SaveVersion>"
             );
             File.WriteAllText(saveFilePath, bumped);
 
-            SaveVersionTooNewException thrown = Assert.Throws<SaveVersionTooNewException>(() =>
+            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
                 SaveGameManager.Instance.LoadGameData(_saveFileName)
             );
 
-            Assert.AreEqual(futureVersion, thrown.SaveVersion);
-            Assert.AreEqual(SaveSchema.CurrentVersion, thrown.ClientVersion);
+            Assert.That(thrown.Message, Does.Contain(futureVersion.ToString()));
+            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
         }
 
         [Test]

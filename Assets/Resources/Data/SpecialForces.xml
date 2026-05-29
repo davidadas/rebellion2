@@ -72,7 +72,7 @@
       <Leadership>0</Leadership>
     </Skills>
     <AllowedMissionTypes>
-      <MissionType>Espionage</MissionType>
+      <MissionType>Reconnaissance</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=4, resid=9539, mission_id=8 -->
@@ -121,7 +121,7 @@
       <Leadership>0</Leadership>
     </Skills>
     <AllowedMissionTypes>
-      <MissionType>Espionage</MissionType>
+      <MissionType>Reconnaissance</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
   <!-- specfc.json id=6, resid=9601, mission_id=512 -->

@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -114,29 +117,55 @@ namespace Rebellion.Systems
         /// <returns>The escape delta for table lookup.</returns>
         private int ComputeEscapeDelta(Officer officer, Planet planet)
         {
-            // Officer's own skills push toward escape.
-            int officerSkills =
-                officer.GetSkillValue(MissionParticipantSkill.Espionage)
-                + officer.GetEffectiveCombat();
+            int officerSkills = GetEscapeSkillScore(officer);
+            int guardCombat = GetAverageGuardCombat(planet);
+            int guardRegiments = CountGuardRegiments(planet);
 
-            // Average combat of the planet owner's free officers resists escape.
+            return officerSkills - guardCombat - guardRegiments;
+        }
+
+        /// <summary>
+        /// Gets the officer skill value used for escape attempts.
+        /// </summary>
+        /// <param name="officer">The officer attempting escape.</param>
+        /// <returns>The officer escape score.</returns>
+        private static int GetEscapeSkillScore(Officer officer)
+        {
+            return officer.GetSkillValue(MissionParticipantSkill.Espionage)
+                + officer.GetEffectiveCombat();
+        }
+
+        /// <summary>
+        /// Gets the average combat value of free owner-aligned guards on the planet.
+        /// </summary>
+        /// <param name="planet">The planet where the officer is held.</param>
+        /// <returns>The average guard combat value, or 0 if no guards are present.</returns>
+        private static int GetAverageGuardCombat(Planet planet)
+        {
             string planetOwner = planet.OwnerInstanceID;
             List<Officer> guards = planet
                 .GetAllOfficers()
                 .Where(o => o.GetOwnerInstanceID() == planetOwner && !o.IsCaptured && !o.IsKilled)
                 .ToList();
-            int avgGuardCombat = 0;
-            if (guards.Count > 0)
-                avgGuardCombat =
-                    guards.Sum(g => g.GetSkillValue(MissionParticipantSkill.Combat)) / guards.Count;
 
-            // Number of stationed enemy regiments also resists escape.
-            int troopCount = planet
+            if (guards.Count == 0)
+                return 0;
+
+            return guards.Sum(g => g.GetSkillValue(MissionParticipantSkill.Combat)) / guards.Count;
+        }
+
+        /// <summary>
+        /// Counts owner-aligned guard regiments on the planet.
+        /// </summary>
+        /// <param name="planet">The planet where the officer is held.</param>
+        /// <returns>The number of guard regiments.</returns>
+        private static int CountGuardRegiments(Planet planet)
+        {
+            string planetOwner = planet.OwnerInstanceID;
+            return planet
                 .GetChildren()
                 .OfType<Regiment>()
                 .Count(r => r.OwnerInstanceID == planetOwner);
-
-            return officerSkills - avgGuardCombat - troopCount;
         }
     }
 }

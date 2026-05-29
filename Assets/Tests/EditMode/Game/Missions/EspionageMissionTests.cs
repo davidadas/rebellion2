@@ -2,9 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -16,8 +19,7 @@ namespace Rebellion.Tests.Game.Missions
             string owner,
             Planet target,
             List<IMissionParticipant> main,
-            List<IMissionParticipant> decoy,
-            FogOfWarSystem fogOfWar
+            List<IMissionParticipant> decoy
         )
         {
             MissionContext ctx = new MissionContext
@@ -27,7 +29,6 @@ namespace Rebellion.Tests.Game.Missions
                 Target = target,
                 MainParticipants = main,
                 DecoyParticipants = decoy,
-                FogOfWar = fogOfWar,
             };
             return EspionageMission.TryCreate(ctx);
         }
@@ -50,8 +51,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                fog
+                new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_NullFogOfWar_DoesNotThrow()
+        public void Execute_WithoutFogSystem_DoesNotThrow()
         {
             (
                 GameRoot game,
@@ -83,8 +83,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                fogOfWar: null
+                new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -110,8 +109,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                fog
+                new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
@@ -148,8 +146,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                fog
+                new List<IMissionParticipant>()
             );
 
             Assert.IsNull(mission, "TryCreate should return null when planet has not been visited");
@@ -173,8 +170,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                fog
+                new List<IMissionParticipant>()
             );
 
             Assert.IsNotNull(

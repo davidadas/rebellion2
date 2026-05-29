@@ -1,60 +1,47 @@
 using System.Collections.Generic;
 using Rebellion.Game;
-using Rebellion.Util.Attributes;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Generation
 {
     /// <summary>
     /// Defines the rules used to generate a new game.
-    /// This is the strongly-typed replacement for the old JSON config.
     /// </summary>
     [PersistableObject]
     public class GameGenerationConfig
     {
         /// <summary>
-        /// Sentinel value for PlanetInstanceID fields (HQFacilityLoadout, FixedGarrison)
-        /// that should resolve to the faction's dynamically-assigned HQ at runtime.
+        /// Planet instance ID used by config entries that resolve to a faction headquarters.
         /// </summary>
         public const string FactionHqSentinel = "FACTION_HQ";
 
-        /// <summary>
-        /// Rules related to officer generation, including initial officer counts.
-        /// </summary>
+        /// <summary>Officer generation settings.</summary>
         public OfficerSection Officers;
 
-        /// <summary>
-        /// Galaxy classification rules: faction bucket percentages per difficulty.
-        /// </summary>
+        /// <summary>Galaxy ownership and faction placement settings.</summary>
         public GalaxyClassificationSection GalaxyClassification;
 
-        /// <summary>
-        /// Planet resource dice formulas (energy, raw materials) per system type.
-        /// </summary>
+        /// <summary>Planet energy and raw material settings.</summary>
         public SystemResourcesSection SystemResources;
 
-        /// <summary>
-        /// Popular support formulas per faction bucket.
-        /// </summary>
+        /// <summary>Popular support generation settings.</summary>
         public SystemSupportSection SystemSupport;
 
-        /// <summary>
-        /// Facility seeding: weighted tables and mine probability multipliers.
-        /// </summary>
+        /// <summary>Starting facility placement settings.</summary>
         public FacilityGenerationSection FacilityGeneration;
 
-        /// <summary>
-        /// Unit deployment: fixed garrisons, fleets, and budget-based deployment.
-        /// </summary>
+        /// <summary>Starting unit placement settings.</summary>
         public UnitDeploymentSection UnitDeployment;
 
-        /// <summary>
-        /// Post-seeding balance pass: HQ loyalty pinning and military-presence boosts.
-        /// </summary>
+        /// <summary>Post-generation balance settings.</summary>
         public BalanceSection Balance;
     }
 
     #region OFFICERS
 
+    /// <summary>
+    /// Defines officer counts placed during game generation.
+    /// </summary>
     [PersistableObject]
     public class OfficerSection
     {
@@ -65,6 +52,9 @@ namespace Rebellion.Generation
 
     #region GALAXY CLASSIFICATION
 
+    /// <summary>
+    /// Defines faction setup and difficulty-specific ownership profiles.
+    /// </summary>
     [PersistableObject]
     public class GalaxyClassificationSection
     {
@@ -72,6 +62,9 @@ namespace Rebellion.Generation
         public List<DifficultyProfile> Profiles;
     }
 
+    /// <summary>
+    /// Defines starting placement rules for one faction.
+    /// </summary>
     [PersistableObject]
     public class FactionSetup
     {
@@ -80,16 +73,22 @@ namespace Rebellion.Generation
         public List<StartingPlanet> StartingPlanets;
     }
 
+    /// <summary>
+    /// Defines a fixed or selectable starting planet for a faction.
+    /// </summary>
     [PersistableObject]
     public class StartingPlanet
     {
         public string PlanetInstanceID;
         public bool IsHeadquarters;
-        public int Loyalty = 100;
+        public int Loyalty;
         public bool PickFromRim;
         public List<string> VisibleToFactionIDs;
     }
 
+    /// <summary>
+    /// Defines ownership distribution for a difficulty profile.
+    /// </summary>
     [PersistableObject]
     public class DifficultyProfile
     {
@@ -108,6 +107,9 @@ namespace Rebellion.Generation
         public List<FactionBucketConfig> FactionBuckets;
     }
 
+    /// <summary>
+    /// Defines how strongly one faction is represented in generated core systems.
+    /// </summary>
     [PersistableObject]
     public class FactionBucketConfig
     {
@@ -120,12 +122,18 @@ namespace Rebellion.Generation
 
     #region SYSTEM RESOURCES
 
+    /// <summary>
+    /// Defines resource profiles used by planet system generation.
+    /// </summary>
     [PersistableObject]
     public class SystemResourcesSection
     {
         public List<SystemResourceProfile> Profiles;
     }
 
+    /// <summary>
+    /// Defines energy, raw material, and colonization settings for one resource profile.
+    /// </summary>
     [PersistableObject]
     public class SystemResourceProfile
     {
@@ -141,6 +149,9 @@ namespace Rebellion.Generation
         public int RimColonizationPct;
     }
 
+    /// <summary>
+    /// Defines a generated integer value with a base and two random terms.
+    /// </summary>
     [PersistableObject]
     public class DiceFormula
     {
@@ -153,6 +164,9 @@ namespace Rebellion.Generation
 
     #region SYSTEM SUPPORT
 
+    /// <summary>
+    /// Defines popular support generation settings for system ownership buckets.
+    /// </summary>
     [PersistableObject]
     public class SystemSupportSection
     {
@@ -162,6 +176,9 @@ namespace Rebellion.Generation
         public int RimSupportRandom;
     }
 
+    /// <summary>
+    /// Defines generated popular support with a base and random term.
+    /// </summary>
     [PersistableObject]
     public class SupportFormula
     {
@@ -173,6 +190,9 @@ namespace Rebellion.Generation
 
     #region FACILITY GENERATION
 
+    /// <summary>
+    /// Defines starting building placement settings.
+    /// </summary>
     [PersistableObject]
     public class FacilityGenerationSection
     {
@@ -184,6 +204,9 @@ namespace Rebellion.Generation
         public List<HQFacilityLoadout> HQLoadouts;
     }
 
+    /// <summary>
+    /// Defines one weighted building entry.
+    /// </summary>
     [PersistableObject]
     public class WeightedFacilityEntry
     {
@@ -191,6 +214,9 @@ namespace Rebellion.Generation
         public string TypeID;
     }
 
+    /// <summary>
+    /// Defines fixed starting buildings for a headquarters planet.
+    /// </summary>
     [PersistableObject]
     public class HQFacilityLoadout
     {
@@ -203,6 +229,9 @@ namespace Rebellion.Generation
 
     #region UNIT DEPLOYMENT
 
+    /// <summary>
+    /// Defines starting unit placement settings.
+    /// </summary>
     [PersistableObject]
     public class UnitDeploymentSection
     {
@@ -213,11 +242,25 @@ namespace Rebellion.Generation
         /// uprising-prevention garrisons.
         /// </summary>
         public int SupportDeficitPerGarrisonTroop = 10;
+        public List<BudgetDifficultyMapping> BudgetDifficultyMappings;
         public List<FixedGarrison> FixedGarrisons;
         public List<FixedFleet> FixedFleets;
         public List<FactionBudget> FactionBudgets;
     }
 
+    /// <summary>
+    /// Maps a game difficulty to a unit deployment budget difficulty.
+    /// </summary>
+    [PersistableObject]
+    public class BudgetDifficultyMapping
+    {
+        public int Difficulty;
+        public int BudgetDifficulty;
+    }
+
+    /// <summary>
+    /// Defines fixed starting ground units for one planet.
+    /// </summary>
     [PersistableObject]
     public class FixedGarrison
     {
@@ -226,6 +269,9 @@ namespace Rebellion.Generation
         public List<UnitEntry> Units;
     }
 
+    /// <summary>
+    /// Defines a fixed starting fleet for one planet.
+    /// </summary>
     [PersistableObject]
     public class FixedFleet
     {
@@ -236,6 +282,9 @@ namespace Rebellion.Generation
         public List<UnitEntry> Cargo;
     }
 
+    /// <summary>
+    /// Defines a unit type and count.
+    /// </summary>
     [PersistableObject]
     public class UnitEntry
     {
@@ -243,6 +292,9 @@ namespace Rebellion.Generation
         public int Count;
     }
 
+    /// <summary>
+    /// Defines maintenance-budget unit placement for one faction.
+    /// </summary>
     [PersistableObject]
     public class FactionBudget
     {
@@ -251,6 +303,9 @@ namespace Rebellion.Generation
         public List<WeightedUnitEntry> UnitTable;
     }
 
+    /// <summary>
+    /// Defines the budget percentage used for one galaxy size, difficulty, and controller type.
+    /// </summary>
     [PersistableObject]
     public class BudgetLevel
     {
@@ -269,6 +324,9 @@ namespace Rebellion.Generation
         public int Percentage;
     }
 
+    /// <summary>
+    /// Defines one weighted unit bundle.
+    /// </summary>
     [PersistableObject]
     public class WeightedUnitEntry
     {
@@ -280,6 +338,9 @@ namespace Rebellion.Generation
 
     #region BALANCE
 
+    /// <summary>
+    /// Defines post-generation support adjustment settings.
+    /// </summary>
     [PersistableObject]
     public class BalanceSection
     {
@@ -300,6 +361,9 @@ namespace Rebellion.Generation
 
     #region SHARED
 
+    /// <summary>
+    /// Defines values by galaxy size.
+    /// </summary>
     [PersistableObject]
     public class PlanetSizeProfile
     {
@@ -308,6 +372,9 @@ namespace Rebellion.Generation
         public int Large;
     }
 
+    /// <summary>
+    /// Defines an inclusive integer range.
+    /// </summary>
     [PersistableObject]
     public class IntRange
     {

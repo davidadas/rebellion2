@@ -1,4 +1,9 @@
 using System.Collections.Generic;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
@@ -80,9 +85,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A numeric attribute of a planet changed for a faction (energy, loyalty, raw materials, etc.).
-    /// Covers SystemEnergyEventRecord, SystemLoyaltyEventRecord, SystemRawMaterialEventRecord,
-    /// SystemProductionModifierEventRecord, SystemSmugglingPercentEventRecord,
-    /// and SystemTroopRegiment* variants.
     /// </summary>
     public class PlanetStatChangedResult : GameResult
     {
@@ -95,7 +97,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Combat at a system started or ended (battle, bombardment, or assault).
-    /// Covers SystemBattleEventRecord, SystemBombardEventRecord, SystemAssaultEventRecord.
     /// </summary>
     public class SystemCombatStateResult : GameResult
     {
@@ -107,7 +108,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A blockade at a system started or ended.
-    /// Covers SystemBlockadeEventRecord.
     /// </summary>
     public class BlockadeChangedResult : GameResult
     {
@@ -118,7 +118,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A system was explored (or exploration ended) by a fleet.
-    /// Covers SystemExploredEventRecord.
     /// </summary>
     public class SystemExploredResult : GameResult
     {
@@ -140,7 +139,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A system's population changed or was depopulated.
-    /// Covers SystemPopulatedEventRecord.
     /// </summary>
     public class SystemPopulationChangedResult : GameResult
     {
@@ -151,7 +149,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A system was controlled for the first time ever.
-    /// Covers SystemNeverBeenControlledEventRecord.
     /// </summary>
     public class SystemFirstControlResult : GameResult
     {
@@ -162,7 +159,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// An uprising began on a planet.
-    /// Covers SystemUprisingEventRecord (IsActive = true).
     /// </summary>
     public class PlanetUprisingStartedResult : GameResult
     {
@@ -172,7 +168,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// An uprising ended on a planet.
-    /// Covers SystemUprisingEventRecord (IsActive = false).
     /// </summary>
     public class PlanetUprisingEndedResult : GameResult
     {
@@ -192,8 +187,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A scripted incident occurred at a planet.
-    /// Covers SystemUprisingIncidentEventRecord, SystemInformationIncidentEventRecord,
-    /// SystemDisasterIncidentEventRecord, SystemResourceIncidentEventRecord.
     /// </summary>
     public class PlanetIncidentResult : GameResult
     {
@@ -208,7 +201,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A faction requires maintenance at a system.
-    /// Covers SideMaintenanceRequiredEventRecord.
     /// </summary>
     public class MaintenanceRequiredResult : GameResult
     {
@@ -219,8 +211,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A side research order advanced for one discipline.
-    /// Covers SideShipyardResearchOrderEventRecord, SideTrainingFacilityResearchOrderEventRecord,
-    /// and SideConstructionYardResearchOrderEventRecord.
     /// </summary>
     public class ResearchOrderedResult : GameResult
     {
@@ -233,8 +223,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A side research discipline became exhausted and has no further advances available.
-    /// Covers SideShipyardResearchDoneEventRecord, SideTrainingFacilityResearchDoneEventRecord,
-    /// and SideConstructionYardResearchDoneEventRecord.
     /// </summary>
     public class ResearchExhaustedResult : GameResult
     {
@@ -246,7 +234,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A faction's victory condition state changed.
-    /// Covers SideVictoryConditionsEventRecord.
     /// </summary>
     public class VictoryConditionChangedResult : GameResult
     {
@@ -257,7 +244,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A recruitment mission completed (successfully or not).
-    /// Covers SideRecruitmentDoneEventRecord.
     /// </summary>
     public class OfficerRecruitedResult : GameResult
     {
@@ -283,7 +269,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A mission completed with a recorded outcome.
-    /// Covers MissionReportEventRecord and FailedMissionReportEventRecord.
     /// </summary>
     public class MissionCompletedResult : GameResult
     {
@@ -296,18 +281,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A character's en-route-to-mission active state changed.
-    /// Covers RoleEnrouteActiveEventRecord.
+    /// A mission participant's en-route-to-mission active state changed.
     /// </summary>
     public class RoleEnrouteActiveResult : GameResult
     {
-        public Officer Officer { get; set; }
+        public IMissionParticipant Participant { get; set; }
         public bool IsActive { get; set; }
     }
 
     /// <summary>
     /// A mission key was assigned to a role.
-    /// Covers RoleMissionKeyEventRecord.
     /// </summary>
     public class RoleMissionKeyResult : GameResult
     {
@@ -321,8 +304,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character's capture state changed (captured or released).
-    /// Covers CharacterCaptureStateEventRecord — the one event type with extra fields
-    /// beyond the standard dual-value layout.
     /// </summary>
     public class OfficerCaptureStateResult : GameResult
     {
@@ -336,7 +317,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character was killed.
-    /// Covers GameObjectDestroyedAssassinationEventRecord.
     /// </summary>
     public class OfficerKilledResult : GameResult
     {
@@ -357,7 +337,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character was injured.
-    /// Covers CharacterInjuryEventRecord.
     /// </summary>
     public class OfficerInjuredResult : GameResult
     {
@@ -368,7 +347,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character's command type changed.
-    /// Covers CharacterCommandKindEventRecord.
     /// </summary>
     public class CommandKindChangedResult : GameResult
     {
@@ -379,7 +357,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character is now commanding a target.
-    /// Covers CharacterCommandingEventRecord.
     /// </summary>
     public class OfficerCommandingResult : GameResult
     {
@@ -390,7 +367,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Two factions' characters encountered each other.
-    /// Covers CharacterEncounterEventRecord.
     /// </summary>
     public class OfficerEncounterResult : GameResult
     {
@@ -401,7 +377,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A traitor was discovered.
-    /// Covers CharacterTraitorDiscoveredEventRecord.
     /// </summary>
     public class TraitorDiscoveredResult : GameResult
     {
@@ -412,7 +387,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character's Force level changed.
-    /// Covers CharacterForceEventRecord.
     /// </summary>
     public class ForceChangedResult : GameResult
     {
@@ -423,7 +397,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character's Force training progress changed.
-    /// Covers CharacterForceTrainingEventRecord.
     /// </summary>
     public class ForceTrainingResult : GameResult
     {
@@ -434,7 +407,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character gained Force experience.
-    /// Covers CharacterForceExperienceEventRecord.
     /// </summary>
     public class ForceExperienceResult : GameResult
     {
@@ -445,7 +417,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Luke completed Dagobah training.
-    /// Covers LukeDagobahCompletedEventRecord.
     /// </summary>
     public class DagobahCompletedResult : GameResult
     {
@@ -454,7 +425,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Luke learned about his heritage.
-    /// Covers LukeKnowsHeritageEventRecord.
     /// </summary>
     public class HeritageRevealedResult : GameResult
     {
@@ -463,7 +433,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Han Solo was attacked by a bounty hunter.
-    /// Covers HanBountyAttackEventRecord.
     /// </summary>
     public class BountyAttackResult : GameResult
     {
@@ -472,7 +441,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character's seat-of-power status changed.
-    /// Covers CharacterMgrSeatOfPowerEventRecord.
     /// </summary>
     public class SeatOfPowerChangedResult : GameResult
     {
@@ -482,7 +450,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A character pickup/retrieval operation changed state.
-    /// Covers CharacterMgrPickupInProgressEventRecord.
     /// </summary>
     public class OfficerPickupResult : GameResult
     {
@@ -496,7 +463,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was created.
-    /// Covers GameObjectCreatedEventRecord.
     /// </summary>
     public class GameObjectCreatedResult : GameResult
     {
@@ -505,7 +471,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A manufactured item finished production.
-    /// Covers GameObjectCompletedEventRecord.
     /// </summary>
     public class ManufacturingCompletedResult : GameResult
     {
@@ -518,7 +483,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was deployed.
-    /// Covers GameObjectDeployedEventRecord.
     /// </summary>
     public class GameObjectDeployedResult : GameResult
     {
@@ -527,7 +491,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object's usable state changed.
-    /// Covers GameObjectUsableEventRecord.
     /// </summary>
     public class GameObjectUsableResult : GameResult
     {
@@ -537,7 +500,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object began moving toward a destination.
-    /// Covers GameObjectEnrouteEventRecord.
     /// </summary>
     public class GameObjectEnrouteResult : GameResult
     {
@@ -546,7 +508,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object's en-route active state changed.
-    /// Covers GameObjectEnrouteActiveEventRecord.
     /// </summary>
     public class GameObjectEnrouteActiveResult : GameResult
     {
@@ -565,7 +526,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was damaged.
-    /// Covers GameObjectDamagedEventRecord.
     /// </summary>
     public class GameObjectDamagedResult : GameResult
     {
@@ -575,8 +535,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The controlling faction of a game object changed.
-    /// Covers GameObjectControlKindEventRecord (0x100) and subtypes: battle victory,
-    /// withdrawal, uprising (SystemControlKindUprisingEventRecord, 0x151), loyalty-shift.
     /// </summary>
     public class GameObjectControlChangedResult : GameResult
     {
@@ -588,7 +546,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was destroyed.
-    /// Covers GameObjectDestroyedEventRecord.
     /// </summary>
     public class GameObjectDestroyedResult : GameResult
     {
@@ -599,7 +556,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was destroyed on arrival at its destination.
-    /// Covers GameObjectDestroyedOnArrivalEventRecord.
     /// </summary>
     public class GameObjectDestroyedOnArrivalResult : GameResult
     {
@@ -610,7 +566,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was automatically scrapped.
-    /// Covers GameObjectDestroyedAutoscrapEventRecord.
     /// </summary>
     public class GameObjectAutoscrappedResult : GameResult
     {
@@ -621,7 +576,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object was sabotaged and destroyed.
-    /// Covers GameObjectDestroyedSabotageEventRecord.
     /// </summary>
     public class GameObjectSabotagedResult : GameResult
     {
@@ -632,7 +586,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A game object's name changed.
-    /// Covers GameObjectNameEventRecord (TextPair).
     /// </summary>
     public class GameObjectNameChangedResult : GameResult
     {
@@ -647,8 +600,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A fleet's operational state changed (entering or leaving battle, blockade, bombardment, or assault).
-    /// Covers FleetBattleEventRecord, FleetBlockadeEventRecord, FleetBombardEventRecord,
-    /// FleetAssaultEventRecord.
     /// </summary>
     public class FleetStateChangedResult : GameResult
     {
@@ -660,7 +611,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A fighter squadron took casualties during combat.
-    /// Covers FighterSquadSizeDamageEventRecord.
     /// </summary>
     public class FighterDamageResult : GameResult
     {
@@ -672,7 +622,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A capital ship's hull took damage.
-    /// Covers CapitalShipHullValueDamageEventRecord.
     /// </summary>
     public class ShipHullDamageResult : GameResult
     {
@@ -684,9 +633,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A capital ship's non-hull attribute changed (shields, weapons, speed, etc.).
-    /// Covers CapitalShipShieldRechargeRateEventRecord, CapitalShipWeaponRechargeRateEventRecord,
-    /// CapitalShipTractorBeamPowerEventRecord, CapitalShipSpeedEventRecord,
-    /// CapitalShipPrimaryHyperdriveModifierEventRecord, CapitalShipBackupHyperdriveModifierEventRecord.
     /// </summary>
     public class ShipStatChangedResult : GameResult
     {
@@ -766,6 +712,13 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Starfighter> DestroyedStarfighters { get; set; } = new List<Starfighter>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
+        public PlanetOwnershipChangedResult OwnershipChange { get; set; }
+
+        /// <summary>
+        /// Garrison requirement computed during Stage 5 (defender garrison wiped, attacker still has
+        /// troops aboard). Zero when Stage 5 is skipped.
+        /// </summary>
+        public int GarrisonRequirement { get; set; }
     }
 
     /// <summary>
@@ -783,6 +736,7 @@ namespace Rebellion.Game.Results
         public int EnergyDamage { get; set; }
         public bool OwnershipChanged { get; set; }
         public Faction NewOwner { get; set; }
+        public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 
     /// <summary>
@@ -796,7 +750,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// Units were lost during an evacuation.
-    /// Covers EvacuationLossesEventRecord.
     /// </summary>
     public class EvacuationLossesResult : GameResult
     {
@@ -813,7 +766,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The remaining item count for a manufacturing queue changed.
-    /// Covers ManufacturingMgrRemainingGameObjCountEventRecord.
     /// </summary>
     public class ManufacturingRemainingResult : GameResult
     {
@@ -824,7 +776,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The required production point count for a manufacturing queue changed.
-    /// Covers ManufacturingMgrRequiredPointCountEventRecord.
     /// </summary>
     public class ManufacturingPointsRequiredResult : GameResult
     {
@@ -835,7 +786,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The completed production point count for a manufacturing queue changed.
-    /// Covers ManufacturingMgrCompletedPointCountEventRecord.
     /// </summary>
     public class ManufacturingPointsCompletedResult : GameResult
     {
@@ -846,7 +796,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A manufacturing slot was reserved or released.
-    /// Covers ManufacturingMgrReservedEventRecord.
     /// </summary>
     public class ManufacturingReservedResult : GameResult
     {
@@ -856,7 +805,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A manufactured item was deployed to its destination.
-    /// Covers ManufacturingMgrDeploymentKeyEventRecord.
     /// </summary>
     public class ManufacturingDeployedResult : GameResult
     {
@@ -867,7 +815,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// The name of a product being manufactured was set or changed.
-    /// Covers ManufacturingMgrProductNameEventRecord (TextPair).
     /// </summary>
     public class ManufacturingProductNameResult : GameResult
     {
@@ -882,7 +829,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A major (heavy) scripted outcome was dispatched.
-    /// Covers HeavyOutcomeEventRecord — has dispatchOutcome() path in the original.
     /// </summary>
     public class HeavyOutcomeResult : GameResult
     {
@@ -892,7 +838,6 @@ namespace Rebellion.Game.Results
 
     /// <summary>
     /// A minor (light) scripted outcome was dispatched.
-    /// Covers LightOutcomeEventRecord — has dispatchOutcome() path in the original.
     /// </summary>
     public class LightOutcomeResult : GameResult
     {

@@ -2,42 +2,45 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Results;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Systems
 {
     [TestFixture]
     public class ResearchSystemTests
     {
-        private GameRoot game;
-        private Faction faction;
-        private Planet planet;
-        private ResearchSystem system;
+        private GameRoot _game;
+        private Faction _faction;
+        private Planet _planet;
+        private ResearchSystem _system;
 
         [SetUp]
         public void SetUp()
         {
             GameConfig config = TestConfig.Create();
-            game = new GameRoot(config);
+            _game = new GameRoot(config);
 
-            faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
-            game.Factions.Add(faction);
+            _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            _game.Factions.Add(_faction);
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            game.AttachNode(sys, game.Galaxy);
+            _game.AttachNode(sys, _game.Galaxy);
 
-            planet = new Planet
+            _planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "FNALL1",
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            game.AttachNode(planet, sys);
+            _game.AttachNode(_planet, sys);
 
-            system = new ResearchSystem(game, new StubRNG());
+            _system = new ResearchSystem(_game, new StubRNG());
         }
 
         private Building CreateShipyard(string id)
@@ -70,33 +73,34 @@ namespace Rebellion.Tests.Systems
                         }
                 )
                 .ToArray();
-            faction.RebuildResearchCatalog(templates);
+            _faction.RebuildResearchCatalog(templates);
         }
-
-        // --- Capacity refresh from core-system facilities ---
 
         [Test]
         public void ProcessTick_PulseNotReached_DoesNotAddCapacity()
         {
             Building shipyard = CreateShipyard("SY1");
-            game.AttachNode(shipyard, planet);
+            _game.AttachNode(shipyard, _planet);
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
 
         [Test]
         public void ProcessTick_OneCoreSystemShipyard_AddsOneCapacity()
         {
             Building shipyard = CreateShipyard("SY1");
-            game.AttachNode(shipyard, planet);
+            _game.AttachNode(shipyard, _planet);
 
-            game.CurrentTick = 30;
+            _game.CurrentTick = 30;
 
-            int before = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
-            system.ProcessTick();
-            int after = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
+            int before = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
+            _system.ProcessTick();
+            int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.AreEqual(1, after - before, "One core-system shipyard should add 1 capacity");
         }
@@ -104,21 +108,24 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleCoreSystemFacilities_AddsAll()
         {
-            game.AttachNode(CreateShipyard("SY1"), planet);
-            game.AttachNode(CreateShipyard("SY2"), planet);
-            game.AttachNode(CreateShipyard("SY3"), planet);
-            game.CurrentTick = 30;
+            _game.AttachNode(CreateShipyard("SY1"), _planet);
+            _game.AttachNode(CreateShipyard("SY2"), _planet);
+            _game.AttachNode(CreateShipyard("SY3"), _planet);
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
-            Assert.AreEqual(3, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                3,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
 
         [Test]
         public void ProcessTick_BusyFacility_StillAddsCapacity()
         {
             Building shipyard = CreateShipyard("SY1");
-            game.AttachNode(shipyard, planet);
+            _game.AttachNode(shipyard, _planet);
 
             // Put something in the manufacturing queue to make the facility busy
             CapitalShip ship = new CapitalShip
@@ -127,14 +134,14 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "FNALL1",
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
-            planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
-            game.CurrentTick = 30;
+            _planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable> { ship };
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
             Assert.AreEqual(
                 1,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
                 "Completed facilities should contribute even when production is queued"
             );
         }
@@ -144,14 +151,14 @@ namespace Rebellion.Tests.Systems
         {
             Building shipyard = CreateShipyard("SY1");
             shipyard.ManufacturingStatus = ManufacturingStatus.Building;
-            game.AttachNode(shipyard, planet);
-            game.CurrentTick = 30;
+            _game.AttachNode(shipyard, _planet);
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
             Assert.AreEqual(
                 0,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
                 "Facility under construction should not contribute to research capacity"
             );
         }
@@ -161,14 +168,14 @@ namespace Rebellion.Tests.Systems
         {
             Building shipyard = CreateShipyard("SY1");
             shipyard.Movement = new MovementState();
-            game.AttachNode(shipyard, planet);
-            game.CurrentTick = 30;
+            _game.AttachNode(shipyard, _planet);
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
             Assert.AreEqual(
                 0,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign),
                 "Facility in transit should not contribute to research capacity"
             );
         }
@@ -176,17 +183,20 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NoFacilities_NoCapacity()
         {
-            game.CurrentTick = 30;
-            system.ProcessTick();
+            _game.CurrentTick = 30;
+            _system.ProcessTick();
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
             Assert.AreEqual(
                 0,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.FacilityDesign)
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
             );
             Assert.AreEqual(
                 0,
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining)
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.FacilityDesign)
+            );
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining)
             );
         }
 
@@ -198,7 +208,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "sys-outer",
                 SystemType = PlanetSystemType.OuterRim,
             };
-            game.AttachNode(outerRimSystem, game.Galaxy);
+            _game.AttachNode(outerRimSystem, _game.Galaxy);
 
             Planet outerRimPlanet = new Planet
             {
@@ -207,46 +217,45 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            game.AttachNode(outerRimPlanet, outerRimSystem);
-            game.AttachNode(CreateShipyard("SY-OUTER"), outerRimPlanet);
-            game.CurrentTick = 30;
+            _game.AttachNode(outerRimPlanet, outerRimSystem);
+            _game.AttachNode(CreateShipyard("SY-OUTER"), outerRimPlanet);
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
-
-        // --- Accumulation through real facility flow ---
 
         [Test]
         public void ProcessTick_CoreSystemFacilityAcrossMultiplePulses_AccumulatesCapacity()
         {
             SetupShipResearchCatalog(("Dreadnaught", 0, 0), ("Frigate", 1, 12));
-            game.AttachNode(CreateShipyard("SY1"), planet);
+            _game.AttachNode(CreateShipyard("SY1"), _planet);
 
             for (int i = 1; i <= 360; i++)
             {
-                game.CurrentTick = i;
-                system.ProcessTick();
+                _game.CurrentTick = i;
+                _system.ProcessTick();
             }
 
             Assert.AreEqual(
                 1,
-                faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
+                _faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
                 "Repeated pulses of +1 capacity should reach Frigate's difficulty of 12"
             );
         }
-
-        // --- Multi-faction isolation ---
 
         [Test]
         public void ProcessTick_MultipleFactions_IndependentCapacity()
         {
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
-            game.Factions.Add(empire);
+            _game.Factions.Add(empire);
 
             PlanetSystem sys2 = new PlanetSystem { InstanceID = "sys2" };
-            game.AttachNode(sys2, game.Galaxy);
+            _game.AttachNode(sys2, _game.Galaxy);
             Planet empirePlanet = new Planet
             {
                 InstanceID = "p2",
@@ -254,10 +263,10 @@ namespace Rebellion.Tests.Systems
                 IsColonized = true,
                 EnergyCapacity = 20,
             };
-            game.AttachNode(empirePlanet, sys2);
+            _game.AttachNode(empirePlanet, sys2);
 
             // Alliance gets 1 shipyard, Empire gets 3
-            game.AttachNode(CreateShipyard("SY1"), planet);
+            _game.AttachNode(CreateShipyard("SY1"), _planet);
 
             Building empSy1 = CreateShipyard("ESY1");
             empSy1.OwnerInstanceID = "FNEMP1";
@@ -265,14 +274,17 @@ namespace Rebellion.Tests.Systems
             empSy2.OwnerInstanceID = "FNEMP1";
             Building empSy3 = CreateShipyard("ESY3");
             empSy3.OwnerInstanceID = "FNEMP1";
-            game.AttachNode(empSy1, empirePlanet);
-            game.AttachNode(empSy2, empirePlanet);
-            game.AttachNode(empSy3, empirePlanet);
-            game.CurrentTick = 30;
+            _game.AttachNode(empSy1, empirePlanet);
+            _game.AttachNode(empSy2, empirePlanet);
+            _game.AttachNode(empSy3, empirePlanet);
+            _game.CurrentTick = 30;
 
-            system.ProcessTick();
+            _system.ProcessTick();
 
-            Assert.AreEqual(1, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                1,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
             Assert.AreEqual(3, empire.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
         }
     }

@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game
 {
@@ -18,23 +22,26 @@ namespace Rebellion.Game
         Paused,
     }
 
+    /// <summary>
+    /// Represents the root node of the game scene graph. The game root owns global state
+    /// such as factions, events, configuration, random state, and the node registry used
+    /// by systems to process the simulation.
+    /// </summary>
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
-        // Scene Graph.
+        // Scene graph.
         private GalaxyMap _galaxy;
 
-        // Game Details
+        // Game details.
         public GameSummary Summary { get; set; } = new GameSummary();
         public GameMetadata Metadata { get; set; } = new GameMetadata();
 
-        /// <summary>
-        /// Runtime simulation configuration.
-        /// </summary>
+        // Configuration.
         [PersistableIgnore]
         public GameConfig Config { get; private set; }
 
-        // Random
+        // Random generators.
         [PersistableIgnore]
         private IRandomNumberProvider _random;
 
@@ -58,24 +65,24 @@ namespace Rebellion.Game
             }
         }
 
-        // Game State
+        // Game state.
         public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Medium;
 
-        // Game Events
+        // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
         public HashSet<string> CompletedEventIDs = new HashSet<string>();
 
-        // Scene Nodes
+        // Scene nodes.
         [PersistableIgnore]
         public Dictionary<string, ISceneNode> NodesByInstanceID =
             new Dictionary<string, ISceneNode>();
 
-        // Game Objects
+        // Game objects.
         public List<Faction> Factions = new List<Faction>();
         public List<Officer> UnrecruitedOfficers = new List<Officer>();
 
-        // Root Scene Node
+        // Root scene node.
         public GalaxyMap Galaxy
         {
             get { return _galaxy; }
@@ -90,8 +97,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Default constructor.
-        /// Used by deserialization - caller MUST call SetConfig() after construction.
+        /// Default constructor used for deserialization.
         /// </summary>
         public GameRoot()
         {
@@ -124,7 +130,6 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Injects runtime configuration.
-        /// Called by GameManager during initialization.
         /// </summary>
         /// <param name="config">The configuration to inject.</param>
         public void SetConfig(GameConfig config)
@@ -237,75 +242,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Gets the refined materials for a faction. Reads the accumulated stockpile;
-        /// income is added and costs are deducted each tick by the resource systems.
-        /// </summary>
-        /// <param name="faction">The faction to read for.</param>
-        /// <returns>The faction's current refined material stockpile.</returns>
-        public int GetRefinedMaterials(Faction faction)
-        {
-            if (faction == null)
-            {
-                throw new InvalidOperationException("Faction is null.");
-            }
-
-            return faction.RefinedMaterialStockpile;
-        }
-
-        /// <summary>
-        /// Gets the raw materials for a faction. Reads the accumulated stockpile.
-        /// </summary>
-        /// <param name="faction">The faction to read for.</param>
-        /// <returns>The faction's current raw material stockpile.</returns>
-        public int GetRawMaterials(Faction faction)
-        {
-            if (faction == null)
-            {
-                throw new InvalidOperationException("Faction is null.");
-            }
-
-            return faction.RawMaterialStockpile;
-        }
-
-        /// <summary>
-        /// Sets popular support for a faction on a planet (applies config rules).
-        /// </summary>
-        /// <param name="planet">The planet to modify.</param>
-        /// <param name="factionInstanceId">The faction instance ID.</param>
-        /// <param name="support">The support value to set.</param>
-        public void SetPlanetPopularSupport(Planet planet, string factionInstanceId, int support)
-        {
-            if (planet == null)
-            {
-                throw new InvalidOperationException("Planet is null.");
-            }
-
-            int maxSupport = GetConfig().Planet.MaxPopularSupport;
-            planet.SetPopularSupport(factionInstanceId, support, maxSupport);
-        }
-
-        /// <summary>
-        /// Gets the travel distance between two planets (applies config scaling).
-        /// </summary>
-        /// <param name="from">The origin planet.</param>
-        /// <param name="to">The destination planet.</param>
-        /// <returns>The scaled travel distance in ticks.</returns>
-        public int GetPlanetDistance(Planet from, Planet to)
-        {
-            if (from == null)
-            {
-                throw new InvalidOperationException("Origin planet is null.");
-            }
-            if (to == null)
-            {
-                throw new InvalidOperationException("Destination planet is null.");
-            }
-
-            GameConfig.PlanetConfig config = GetConfig().Planet;
-            return from.GetDistanceTo(to, config.DistanceDivisor, config.DistanceBase);
-        }
-
-        /// <summary>
         /// Returns the galaxy map, the root node of the game.
         /// </summary>
         /// <returns>The galaxy map.</returns>
@@ -314,9 +250,6 @@ namespace Rebellion.Game
             return Galaxy;
         }
 
-        /// <summary>
-        /// Initializes the galaxy map by registering all nodes and setting parents.
-        /// </summary>
         /// <summary>
         /// Attaches a node to a parent node.
         /// </summary>
@@ -372,10 +305,10 @@ namespace Rebellion.Game
         /// <summary>
         /// Moves a node from its current parent to a new parent.
         /// </summary>
-        /// <param name="node"></param>
-        /// <param name="newParent"></param>
-        /// <exception cref="ArgumentNullException"></exception>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <param name="node">The node to move.</param>
+        /// <param name="newParent">The destination parent.</param>
+        /// <exception cref="ArgumentNullException">Thrown when either argument is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the destination rejects the node.</exception>
         public void MoveNode(ISceneNode node, ISceneNode newParent)
         {
             if (node == null)

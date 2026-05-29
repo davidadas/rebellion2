@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Extensions;
@@ -34,8 +39,8 @@ namespace Rebellion.Systems
             BlockadeSystem blockade = null
         )
         {
-            _game = game;
-            _fogOfWar = fogOfWar;
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            _fogOfWar = fogOfWar ?? throw new ArgumentNullException(nameof(fogOfWar));
             _blockade = blockade;
         }
 
@@ -45,15 +50,14 @@ namespace Rebellion.Systems
         /// <returns>Movement-related events generated this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            List<GameResult> results = new List<GameResult>();
-            results.AddRange(_pendingResults);
+            List<GameResult> results = new List<GameResult>(_pendingResults);
             _pendingResults.Clear();
             _game
                 .GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IMovable movable)
-                        results.AddRange(UpdateMovement(movable));
+                        UpdateMovement(movable, results);
                 });
             return results;
         }
@@ -72,6 +76,15 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
+                return;
+
+            if (IsUnderConstruction(unit))
+            {
+                RetargetManufacturingDestination(unit, destination);
+                return;
+            }
+
             if (unit is Officer capturedOfficer && capturedOfficer.IsCaptured)
             {
                 GameLogger.Warning(
@@ -80,22 +93,12 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (unit is IManufacturable m && m.ManufacturingStatus == ManufacturingStatus.Building)
-            {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
-                );
-                return;
-            }
-
             ExecuteMove(unit, destination);
         }
 
         /// <summary>
-        /// Sets up visual transit for a unit that is already at its destination in the scene
-        /// graph. Used after manufacturing completes: the unit was pre-placed at its destination
-        /// during enqueue, and this sets it travelling visually from the production planet.
-        /// If the destination has changed sides since enqueue, routes via HandleArrivalRejection.
+        /// Sets up visual transit for a manufactured unit that is already parented to its
+        /// destination in the scene graph.
         /// </summary>
         /// <param name="unit">The unit to set in transit.</param>
         /// <param name="destination">The pre-assigned destination scene node.</param>
@@ -109,33 +112,28 @@ namespace Rebellion.Systems
             if (origin == null)
                 throw new ArgumentNullException(nameof(origin));
 
-            Planet destinationPlanet = destination is Planet p
-                ? p
-                : destination.GetParentOfType<Planet>();
+            // Determine the destination planet for the unit.
+            // All movement must resolve to a planet location for transit purposes.
+            Planet destinationPlanet = RequireDestinationPlanet(destination);
 
-            // Destination no longer exists in the scene graph (e.g. fleet was destroyed).
-            if (destinationPlanet == null)
-                return;
-
-            // Destination changed sides since enqueue — same handling as mid-transit rejection.
-            if (destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID())
+            // If the destination planet is hostile and the unit cannot enter hostile orbit, reject the move order.
+            if (
+                destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
+                && !CanEnterHostileOrbit(unit, destination)
+            )
             {
-                // Unit is already inside a fleet — the fleet handles its own routing.
-                if (((ISceneNode)unit).GetParent() is Fleet)
-                {
-                    unit.Movement = null;
-                    return;
-                }
-                HandleArrivalRejection(unit, destinationPlanet);
+                ExecuteMove(unit, origin);
                 return;
             }
 
+            // If the unit is already at the destination, do nothing.
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
                 return;
             }
 
+            // Calculate transit time and set the unit in motion.
             int transitTicks = CalculateTransitTicks(unit, origin.GetPosition(), destinationPlanet);
             unit.Movement = new MovementState
             {
@@ -151,56 +149,175 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves a group of units to the same destination. Captured officers are excluded
-        /// unless their captor faction has an escort in the group.
+        /// Moves a group of units to the same destination after validating the whole group.
         /// </summary>
         /// <param name="units">The units to move as a group.</param>
         /// <param name="destination">The shared target scene node.</param>
-        public void RequestGroupMove(List<IMovable> units, ISceneNode destination)
+        public void RequestMove(List<IMovable> units, ISceneNode destination)
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            if (!CanMoveGroup(units, destination))
+                return;
+
+            foreach (IMovable unit in units)
+                ExecuteMove(unit, destination);
+        }
+
+        /// <summary>
+        /// Returns whether every unit in a group can receive the move order.
+        /// </summary>
+        /// <param name="units">The units being moved together.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <returns>True if the whole group can move.</returns>
+        private bool CanMoveGroup(List<IMovable> units, ISceneNode destination)
+        {
+            ISceneNode groupOrigin = null;
             foreach (IMovable unit in units)
             {
-                if (unit is Officer o && o.IsCaptured)
+                if (unit == null)
                 {
-                    bool hasEscort = units.Any(u =>
-                        !ReferenceEquals(u, unit)
-                        && !(u is Officer uo && uo.IsCaptured)
-                        && u.GetOwnerInstanceID() == o.CaptorInstanceID
-                    );
-
-                    if (!hasEscort)
-                    {
-                        GameLogger.Warning(
-                            $"RequestGroupMove: {unit.GetDisplayName()} has no escort from capturing faction — excluded."
-                        );
-                        continue;
-                    }
+                    GameLogger.Warning("RequestMove rejected: group contains a null unit.");
+                    return false;
                 }
 
-                ExecuteMove(unit, destination);
+                if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
+                    return false;
+
+                ISceneNode unitOrigin = ((ISceneNode)unit).GetParent();
+                if (unitOrigin == null)
+                {
+                    GameLogger.Warning(
+                        $"RequestMove rejected: {unit.GetDisplayName()} is not at a movable location."
+                    );
+                    return false;
+                }
+
+                if (groupOrigin == null)
+                    groupOrigin = unitOrigin;
+                else if (!ReferenceEquals(groupOrigin, unitOrigin))
+                {
+                    GameLogger.Warning(
+                        "RequestMove rejected: group units are not at the same location."
+                    );
+                    return false;
+                }
+
+                if (!TryResolveAcceptedDestination(unit, destination, out _))
+                    return false;
             }
+
+            foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
+            {
+                if (HasCaptorEscortInGroup(capturedOfficer, units))
+                    continue;
+
+                GameLogger.Warning(
+                    $"RequestMove rejected: {capturedOfficer.GetDisplayName()} has no capturing officer escort."
+                );
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether a unit can receive a movement order.
+        /// </summary>
+        /// <param name="unit">The unit to check.</param>
+        /// <param name="allowManufacturingRetarget">Whether an unfinished manufactured unit may change destination.</param>
+        /// <returns>True if the unit can receive the order.</returns>
+        private static bool CanReceiveMoveOrder(IMovable unit, bool allowManufacturingRetarget)
+        {
+            if (unit.Movement != null)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is already in transit."
+                );
+                return false;
+            }
+
+            if (IsUnderConstruction(unit))
+            {
+                if (allowManufacturingRetarget)
+                    return true;
+
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
+                );
+                return false;
+            }
+
+            if (IsCompletedBuilding(unit))
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is a completed building."
+                );
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether a movable unit is still being manufactured.
+        /// </summary>
+        /// <param name="unit">The unit to inspect.</param>
+        /// <returns>True if the unit is still under construction.</returns>
+        private static bool IsUnderConstruction(IMovable unit)
+        {
+            return unit is IManufacturable manufacturable
+                && manufacturable.ManufacturingStatus == ManufacturingStatus.Building;
+        }
+
+        /// <summary>
+        /// Returns whether a movable unit is a completed building.
+        /// </summary>
+        /// <param name="unit">The unit to inspect.</param>
+        /// <returns>True if the unit is a completed building.</returns>
+        private static bool IsCompletedBuilding(IMovable unit)
+        {
+            return unit is Building building
+                && building.ManufacturingStatus == ManufacturingStatus.Complete;
+        }
+
+        /// <summary>
+        /// Returns whether a captured officer has a valid escort in the movement group.
+        /// </summary>
+        /// <param name="capturedOfficer">The captured officer to check.</param>
+        /// <param name="units">The units being moved together.</param>
+        /// <returns>True if the group includes an escort from the captor faction.</returns>
+        private static bool HasCaptorEscortInGroup(Officer capturedOfficer, List<IMovable> units)
+        {
+            string captorId = capturedOfficer.CaptorInstanceID;
+            return !string.IsNullOrEmpty(captorId)
+                && units
+                    .OfType<Officer>()
+                    .Any(escort =>
+                        !ReferenceEquals(escort, capturedOfficer)
+                        && !escort.IsCaptured
+                        && escort.GetOwnerInstanceID() == captorId
+                    );
         }
 
         /// <summary>
         /// Advances the movement of a single unit by one tick and handles arrival.
         /// </summary>
         /// <param name="movable">The movable unit to update.</param>
-        /// <returns>Events generated on arrival or during transit.</returns>
-        private List<GameResult> UpdateMovement(IMovable movable)
+        /// <param name="results">The results generated this tick.</param>
+        private void UpdateMovement(IMovable movable, List<GameResult> results)
         {
             if (movable.Movement == null)
-                return new List<GameResult>();
+                return;
 
             if (
                 movable is IManufacturable m
                 && m.GetManufacturingStatus() == ManufacturingStatus.Building
             )
-                return new List<GameResult>();
+                return;
 
             Planet destinationPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
             if (destinationPlanet == null)
@@ -218,16 +335,14 @@ namespace Rebellion.Systems
             );
 
             if (movable.Movement.IsComplete())
-                return CheckArrival(movable, destination, destinationPlanet);
-
-            return new List<GameResult>();
+                CheckArrival(movable, destination, destinationPlanet, results);
         }
 
         /// <summary>
         /// Returns the interpolated screen position of a unit between its origin and its destination planet.
         /// </summary>
-        /// <param name="movable"></param>
-        /// <param name="destinationPlanet"></param>
+        /// <param name="movable">The moving unit.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
         /// <returns>The interpolated position.</returns>
         private Point CalculateInterpolatedPosition(IMovable movable, Planet destinationPlanet)
         {
@@ -242,122 +357,38 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Handles unit arrival at its destination. Destroys buildings if destination changed
-        /// sides; reroutes other units. Falls back to HandleArrivalRejection on scene rejection.
+        /// Handles unit arrival at its destination.
         /// </summary>
-        private List<GameResult> CheckArrival(
+        /// <param name="movable">The moving unit.</param>
+        /// <param name="destination">The destination node.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The results generated this tick.</param>
+        private void CheckArrival(
             IMovable movable,
             ISceneNode destination,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            List<GameResult> results
         )
         {
-            // If the destination fleet is still in transit, chase it.
-            Fleet movingFleet = destination is Fleet f
-                ? f
-                : (destination is CapitalShip cs ? cs.GetParent() as Fleet : null);
-            if (movingFleet?.Movement != null)
-            {
-                Planet newDest = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
-                if (newDest != null)
-                {
-                    Point currentPos = movable.Movement.CurrentPosition;
-                    movable.Movement = new MovementState
-                    {
-                        TransitTicks = CalculateTransitTicks(movable, currentPos, newDest),
-                        TicksElapsed = 0,
-                        OriginPosition = currentPos,
-                        CurrentPosition = currentPos,
-                    };
-                }
-                return new List<GameResult>();
-            }
+            if (TryFollowMovingFleetDestination(movable, destination))
+                return;
 
-            // Mission participants are managed by MissionSystem, not by arrival logic.
             if (destination is Mission)
             {
-                movable.Movement = null;
-                if (movable is Officer missionOfficer)
-                {
-                    return new List<GameResult>
-                    {
-                        new RoleEnrouteActiveResult
-                        {
-                            Officer = missionOfficer,
-                            IsActive = false,
-                            Tick = _game.CurrentTick,
-                        },
-                    };
-                }
-                return new List<GameResult>();
+                CompleteMissionParticipantArrival(movable, results);
+                return;
             }
 
-            // Destination changed sides since dispatch.
-            if (destinationPlanet.GetOwnerInstanceID() != movable.GetOwnerInstanceID())
+            if (HasArrivalOwnerConflict(movable, destination, destinationPlanet))
             {
-                if (movable is Building building)
-                {
-                    _game.DetachNode((ISceneNode)movable);
-                    GameLogger.Log(
-                        $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
-                    );
-                    return new List<GameResult>
-                    {
-                        new GameObjectDestroyedOnArrivalResult
-                        {
-                            DestroyedObject = building,
-                            Context = destinationPlanet,
-                            Tick = _game.CurrentTick,
-                        },
-                    };
-                }
-                else
-                {
-                    HandleArrivalRejection(movable, destinationPlanet);
-                }
-                return new List<GameResult>();
+                RejectArrivalAtChangedOwner(movable, destinationPlanet, results);
+                return;
             }
 
             try
             {
-                _game.MoveNode(movable, destination);
-                movable.Movement = null;
-                GameLogger.Log(
-                    $"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}"
-                );
-
-                if (movable is Fleet fleet && _fogOfWar != null)
-                {
-                    Faction faction = _game.Factions.FirstOrDefault(f =>
-                        f.InstanceID == fleet.OwnerInstanceID
-                    );
-                    if (faction != null && _fogOfWar.IsPlanetVisible(destinationPlanet, faction))
-                    {
-                        PlanetSystem system = destinationPlanet.GetParentOfType<PlanetSystem>();
-                        if (system != null)
-                            _fogOfWar.CaptureSnapshot(
-                                faction,
-                                destinationPlanet,
-                                system,
-                                _game.CurrentTick
-                            );
-                    }
-                }
-
-                return new List<GameResult>
-                {
-                    new GameObjectEnrouteActiveResult
-                    {
-                        GameObject = movable as IGameEntity,
-                        IsActive = false,
-                        Tick = _game.CurrentTick,
-                    },
-                    new UnitArrivedResult
-                    {
-                        Unit = movable as IGameEntity,
-                        Destination = destinationPlanet,
-                        Tick = _game.CurrentTick,
-                    },
-                };
+                CompleteArrival(movable, destination, destinationPlanet);
+                AddArrivalResults(movable, destinationPlanet, results);
             }
             catch (SceneAccessException ex)
             {
@@ -366,14 +397,206 @@ namespace Rebellion.Systems
                         + "Attempting fallback to nearest friendly planet."
                 );
                 HandleArrivalRejection(movable, destinationPlanet);
-                return new List<GameResult>();
             }
         }
 
         /// <summary>
+        /// Redirects a unit when its fleet destination is still moving.
+        /// </summary>
+        /// <param name="movable">The moving unit.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <returns>True if the unit was redirected to continue chasing the fleet.</returns>
+        private bool TryFollowMovingFleetDestination(IMovable movable, ISceneNode destination)
+        {
+            Fleet movingFleet = destination is Fleet fleet
+                ? fleet
+                : (destination is CapitalShip ship ? ship.GetParent() as Fleet : null);
+            if (movingFleet?.Movement == null)
+                return false;
+
+            Planet newDestination = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
+            if (newDestination == null)
+                return true;
+
+            Point currentPosition = movable.Movement.CurrentPosition;
+            movable.Movement = new MovementState
+            {
+                TransitTicks = CalculateTransitTicks(movable, currentPosition, newDestination),
+                TicksElapsed = 0,
+                OriginPosition = currentPosition,
+                CurrentPosition = currentPosition,
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Completes arrival into a mission node.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="results">The results generated this tick.</param>
+        private void CompleteMissionParticipantArrival(IMovable movable, List<GameResult> results)
+        {
+            movable.Movement = null;
+            if (movable is not IMissionParticipant missionParticipant)
+                return;
+
+            results.Add(
+                new RoleEnrouteActiveResult
+                {
+                    Participant = missionParticipant,
+                    IsActive = false,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Returns true when a destination's ownership now rejects the arriving unit.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="destination">The destination node.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <returns>True if the unit cannot complete arrival.</returns>
+        private static bool HasArrivalOwnerConflict(
+            IMovable movable,
+            ISceneNode destination,
+            Planet destinationPlanet
+        )
+        {
+            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(destinationOwner)
+                && destinationOwner != movable.GetOwnerInstanceID()
+                && !CanEnterHostileOrbit(movable, destination);
+        }
+
+        /// <summary>
+        /// Handles arrival rejection after a destination changes owner.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="destinationPlanet">The rejecting planet.</param>
+        /// <param name="results">The results generated this tick.</param>
+        private void RejectArrivalAtChangedOwner(
+            IMovable movable,
+            Planet destinationPlanet,
+            List<GameResult> results
+        )
+        {
+            if (movable is not Building building)
+            {
+                HandleArrivalRejection(movable, destinationPlanet);
+                return;
+            }
+
+            _game.DetachNode((ISceneNode)movable);
+            GameLogger.Log(
+                $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
+            );
+            results.Add(
+                new GameObjectDestroyedOnArrivalResult
+                {
+                    DestroyedObject = building,
+                    Context = destinationPlanet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Applies the scene-graph and visibility effects of a successful arrival.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="destination">The destination node.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        private void CompleteArrival(
+            IMovable movable,
+            ISceneNode destination,
+            Planet destinationPlanet
+        )
+        {
+            _game.MoveNode(movable, destination);
+            movable.Movement = null;
+            GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
+
+            if (movable is Building && destination is Planet arrivalPlanet)
+                arrivalPlanet.IsColonized = true;
+
+            string arrivingOwner = movable.GetOwnerInstanceID();
+            if (!string.IsNullOrEmpty(arrivingOwner))
+                destinationPlanet.AddVisitor(arrivingOwner);
+
+            if (movable is Fleet fleet)
+                CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
+        }
+
+        /// <summary>
+        /// Captures fog-of-war state for an arriving fleet if visible.
+        /// </summary>
+        /// <param name="fleet">The arriving fleet.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        private void CaptureFleetArrivalSnapshot(Fleet fleet, Planet destinationPlanet)
+        {
+            Faction faction = _game.Factions.FirstOrDefault(f =>
+                f.InstanceID == fleet.OwnerInstanceID
+            );
+            if (faction == null || !_fogOfWar.IsPlanetVisible(destinationPlanet, faction))
+                return;
+
+            PlanetSystem system = destinationPlanet.GetParentOfType<PlanetSystem>();
+            if (system != null)
+                _fogOfWar.CaptureSnapshot(faction, destinationPlanet, system, _game.CurrentTick);
+        }
+
+        /// <summary>
+        /// Adds the standard arrival results for a unit.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The results generated this tick.</param>
+        private void AddArrivalResults(
+            IMovable movable,
+            Planet destinationPlanet,
+            List<GameResult> results
+        )
+        {
+            results.Add(
+                new GameObjectEnrouteActiveResult
+                {
+                    GameObject = movable as IGameEntity,
+                    IsActive = false,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            results.Add(
+                new UnitArrivedResult
+                {
+                    Unit = movable as IGameEntity,
+                    Destination = destinationPlanet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Returns true when the unit type is allowed to finish movement at a hostile planet.
+        /// </summary>
+        /// <param name="movable">The unit completing movement.</param>
+        /// <param name="destination">The destination node receiving the unit.</param>
+        /// <returns>True if hostile arrival is a valid end state for this unit.</returns>
+        private static bool CanEnterHostileOrbit(IMovable movable, ISceneNode destination)
+        {
+            if (movable is Fleet)
+                return true;
+
+            string movableOwner = movable.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(movableOwner))
+                return false;
+
+            return (destination as Fleet)?.GetOwnerInstanceID() == movableOwner
+                || (destination as CapitalShip)?.GetOwnerInstanceID() == movableOwner;
+        }
+
+        /// <summary>
         /// Moves a unit to the nearest planet owned by its faction.
-        /// Used when a unit's parent is being destroyed and it has no other refuge.
-        /// Clears movement state if no friendly planet exists.
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
         public void EvacuateToNearestFriendlyPlanet(IMovable unit)
@@ -386,11 +609,12 @@ namespace Rebellion.Systems
                 return;
             }
 
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = ((ISceneNode)unit).GetParentOfType<Planet>();
-            Planet fallback = FindNearestFactionPlanet(ownerID, unit.GetPosition(), currentPlanet);
+            Planet fallback = owner?.GetNearestOwnedPlanetTo(unit.GetPosition(), currentPlanet);
             if (fallback != null)
             {
-                RequestMove(unit, fallback);
+                ExecuteMove(unit, fallback);
             }
             else
             {
@@ -402,8 +626,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Redirects a unit to the nearest friendly planet when its destination is unavailable.
-        /// Clears movement state if no valid fallback exists.
+        /// Redirects a unit when its destination is unavailable.
         /// </summary>
         /// <param name="movable">The unit whose arrival was rejected.</param>
         /// <param name="rejectedDestination">The planet that refused the unit.</param>
@@ -419,11 +642,13 @@ namespace Rebellion.Systems
                 return;
             }
 
-            Planet fallback = FindNearestFactionPlanet(ownerID, movable.GetPosition());
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
+            Planet fallback = owner?.GetNearestOwnedPlanetTo(movable.GetPosition());
 
             if (fallback != null && fallback != rejectedDestination)
             {
-                RequestMove(movable, fallback);
+                movable.Movement = null;
+                ExecuteMove(movable, fallback);
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
                 );
@@ -438,57 +663,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the nearest planet owned by the specified faction to the given position.
-        /// </summary>
-        private Planet FindNearestFactionPlanet(
-            string factionOwnerID,
-            Point fromPosition,
-            Planet exclude = null
-        )
-        {
-            return _game
-                .GetSceneNodesByType<Planet>()
-                .Where(p => p.GetOwnerInstanceID() == factionOwnerID && p != exclude)
-                .OrderBy(p =>
-                {
-                    Point pos = p.GetPosition();
-                    double dx = pos.X - fromPosition.X;
-                    double dy = pos.Y - fromPosition.Y;
-                    return dx * dx + dy * dy;
-                })
-                .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Reparents the unit to the destination, sets up its visual transit state, and logs
-        /// the departure. Returns without moving if the destination cannot accept the unit.
+        /// Reparents the unit to the destination and starts visual transit.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target scene node to reparent into.</param>
         private void ExecuteMove(IMovable unit, ISceneNode destination)
         {
-            // Fleet only accepts CapitalShips directly. Resolve other unit types
-            // to an appropriate CapitalShip within the destination fleet.
-            if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
-            {
-                destination = ResolveFleetTarget(unit, targetFleet);
-                if (destination == null)
-                {
-                    GameLogger.Warning(
-                        $"RequestMove rejected: no capacity in {targetFleet.GetDisplayName()} for {unit.GetDisplayName()}"
-                    );
-                    return;
-                }
-            }
+            if (
+                !TryResolveAcceptedDestination(
+                    unit,
+                    destination,
+                    out ISceneNode resolvedDestination
+                )
+            )
+                return;
 
-            Planet destinationPlanet = destination is Planet planet
-                ? planet
-                : destination.GetParentOfType<Planet>();
-            if (destinationPlanet == null)
-                throw new InvalidOperationException(
-                    $"Destination {destination.GetDisplayName()} is not at a planet location. "
-                        + "All movement must resolve to a planet."
-                );
+            destination = resolvedDestination;
+
+            Planet destinationPlanet = RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
             if (originPlanet == null)
@@ -512,7 +704,6 @@ namespace Rebellion.Systems
                 }
             }
 
-            // If the unit is mid-flight, start the new journey from its current visual position.
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
             int transitTicks = CalculateTransitTicks(unit, originPosition, destinationPlanet);
 
@@ -522,15 +713,8 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (!destination.CanAcceptChild((ISceneNode)unit))
-            {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {destination.GetDisplayName()} cannot accept {unit.GetDisplayName()}"
-                );
-                return;
-            }
-
             _game.MoveNode((ISceneNode)unit, destination);
+            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
 
             unit.Movement = new MovementState
             {
@@ -556,12 +740,12 @@ namespace Rebellion.Systems
                 }
             );
 
-            if (unit is Officer officerEnroute && destination is Mission)
+            if (unit is IMissionParticipant missionParticipant && destination is Mission)
             {
                 _pendingResults.Add(
                     new RoleEnrouteActiveResult
                     {
-                        Officer = officerEnroute,
+                        Participant = missionParticipant,
                         IsActive = true,
                         Tick = _game.CurrentTick,
                     }
@@ -570,6 +754,121 @@ namespace Rebellion.Systems
 
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
+            );
+        }
+
+        /// <summary>
+        /// Resolves a requested destination into the node that should receive the unit.
+        /// </summary>
+        /// <param name="unit">The unit being moved.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <returns>The node that should receive the unit, or null if none is available.</returns>
+        private ISceneNode ResolveMoveDestination(IMovable unit, ISceneNode destination)
+        {
+            if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
+                return ResolveFleetTarget(unit, targetFleet);
+
+            return destination;
+        }
+
+        /// <summary>
+        /// Changes the destination of an item that is still under construction.
+        /// </summary>
+        /// <param name="unit">The item being manufactured.</param>
+        /// <param name="destination">The requested destination.</param>
+        private void RetargetManufacturingDestination(IMovable unit, ISceneNode destination)
+        {
+            if (
+                !TryResolveAcceptedDestination(
+                    unit,
+                    destination,
+                    out ISceneNode resolvedDestination
+                )
+            )
+                return;
+
+            _game.MoveNode((ISceneNode)unit, resolvedDestination);
+        }
+
+        /// <summary>
+        /// Resolves a destination and verifies that it can receive the unit.
+        /// </summary>
+        /// <param name="unit">The unit being moved.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="resolvedDestination">The resolved destination when accepted.</param>
+        /// <returns>True if the destination can receive the unit.</returns>
+        private bool TryResolveAcceptedDestination(
+            IMovable unit,
+            ISceneNode destination,
+            out ISceneNode resolvedDestination
+        )
+        {
+            resolvedDestination = ResolveMoveDestination(unit, destination);
+            if (resolvedDestination == null)
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: no capacity in {destination.GetDisplayName()} for {unit.GetDisplayName()}"
+                );
+                return false;
+            }
+
+            if (resolvedDestination.CanAcceptChild((ISceneNode)unit))
+                return true;
+
+            GameLogger.Warning(
+                $"RequestMove rejected: {resolvedDestination.GetDisplayName()} cannot accept {unit.GetDisplayName()}"
+            );
+            return false;
+        }
+
+        /// <summary>
+        /// Claims an uncolonized destination when a regiment becomes its only owner presence.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        private void ClaimUncolonizedDestinationFromRegiment(
+            IMovable unit,
+            Planet destinationPlanet
+        )
+        {
+            if (unit is not Regiment regiment)
+                return;
+
+            if (destinationPlanet.IsColonized)
+                return;
+
+            if (!string.IsNullOrEmpty(destinationPlanet.GetOwnerInstanceID()))
+                return;
+
+            string ownerInstanceId = regiment.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return;
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (faction == null)
+                return;
+
+            _game.ChangeUnitOwnership(destinationPlanet, ownerInstanceId);
+            destinationPlanet.PopularSupport.Clear();
+
+            foreach (Faction supportFaction in _game.GetFactions())
+            {
+                if (supportFaction.InstanceID == ownerInstanceId)
+                    destinationPlanet.SetFullPopularSupport(supportFaction.InstanceID);
+                else
+                    destinationPlanet.SetPopularSupport(supportFaction.InstanceID, 0);
+            }
+
+            _fogOfWar.CapturePlanetSnapshotForAllFactions(destinationPlanet, _game.CurrentTick);
+
+            _pendingResults.Add(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = destinationPlanet,
+                    PreviousOwner = null,
+                    NewOwner = faction,
+                    Tick = _game.CurrentTick,
+                }
             );
         }
 
@@ -591,8 +890,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates transit time in ticks based on distance and hyperdrive rating.
-        /// Result is clamped to MinTransitTicks.
+        /// Calculates transit time in ticks.
         /// </summary>
         /// <param name="unit">The unit whose hyperdrive rating determines speed.</param>
         /// <param name="originPos">The starting position.</param>
@@ -600,10 +898,7 @@ namespace Rebellion.Systems
         /// <returns>Number of ticks the transit will take.</returns>
         private int CalculateTransitTicks(IMovable unit, Point originPos, Planet destination)
         {
-            Point destPos = destination.GetPosition();
-            double dx = destPos.X - originPos.X;
-            double dy = destPos.Y - originPos.Y;
-            double distance = Math.Sqrt(dx * dx + dy * dy);
+            double distance = destination.GetRawDistanceTo(originPos);
 
             int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
             int speedBonus = 0;
@@ -620,9 +915,11 @@ namespace Rebellion.Systems
                     slowestHyperdrive = Math.Max(slowestHyperdrive, 1);
                 }
 
-                IEnumerable<Officer> officers = fleet.GetOfficers();
-                if (officers.Any())
-                    speedBonus = officers.Max(o => Math.Max(o.HyperdriveModifier, 0));
+                speedBonus = fleet
+                    .GetOfficers()
+                    .Select(o => Math.Max(o.HyperdriveModifier, 0))
+                    .DefaultIfEmpty(0)
+                    .Max();
             }
             else if (unit is CapitalShip capitalShip)
             {
@@ -635,6 +932,24 @@ namespace Rebellion.Systems
                 );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
+        }
+
+        /// <summary>
+        /// Returns the planet that contains a movement destination.
+        /// </summary>
+        /// <param name="destination">The destination to resolve.</param>
+        /// <returns>The planet containing the destination.</returns>
+        private static Planet RequireDestinationPlanet(ISceneNode destination)
+        {
+            Planet destinationPlanet =
+                destination as Planet ?? destination.GetParentOfType<Planet>();
+            if (destinationPlanet != null)
+                return destinationPlanet;
+
+            throw new InvalidOperationException(
+                $"Destination {destination.GetDisplayName()} is not at a planet location. "
+                    + "All movement must resolve to a planet."
+            );
         }
     }
 }

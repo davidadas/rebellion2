@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Generation
@@ -26,7 +27,7 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="systems">All generated planet systems to configure.</param>
         /// <param name="classification">Bucket and HQ assignments produced by <see cref="GalaxySeeder"/>.</param>
-        /// <param name="rules">Generation rules supplying resource dice and support formulas.</param>
+        /// <param name="rules">Generation rules for resources and support.</param>
         /// <param name="summary">Game summary; resource availability selects the resource profile, faction IDs drive support distribution.</param>
         /// <param name="rng">Random number provider for dice rolls and colonization chances.</param>
         private void Configure(
@@ -91,7 +92,7 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="planet">The planet to update.</param>
         /// <param name="isCore">True when the planet sits in a core system.</param>
-        /// <param name="res">Resource dice formulas and clamps.</param>
+        /// <param name="res">Resource roll settings and clamps.</param>
         /// <param name="rng">Random number provider.</param>
         private void RollPlanetResources(
             Planet planet,
@@ -116,7 +117,7 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="planet">The planet to update.</param>
         /// <param name="isCore">True when the planet sits in a core system.</param>
-        /// <param name="rimColonizationPct">Percent chance (0-100) a rim planet is colonized.</param>
+        /// <param name="rimColonizationPct">Chance a rim planet is colonized.</param>
         /// <param name="rng">Random number provider.</param>
         private void ResolveColonization(
             Planet planet,
@@ -171,7 +172,7 @@ namespace Rebellion.Generation
         /// <param name="planet">The planet whose support is being set.</param>
         /// <param name="isCore">True when the planet sits in a core system.</param>
         /// <param name="classification">Bucket and HQ assignments from <see cref="GalaxySeeder"/>.</param>
-        /// <param name="sup">Support formulas keyed by bucket strength.</param>
+        /// <param name="sup">Support settings keyed by bucket strength.</param>
         /// <param name="factionIds">IDs of every faction in the game.</param>
         /// <param name="rng">Random number provider for support rolls.</param>
         private void SetPopularSupport(
@@ -268,11 +269,10 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Rolls the popular-support percentage for a bucket-assigned core planet
-        /// using the strength-specific support formula.
+        /// Rolls popular support for a bucket-assigned core planet.
         /// </summary>
         /// <param name="bucket">The planet's bucket assignment.</param>
-        /// <param name="sup">Support formulas keyed by bucket strength.</param>
+        /// <param name="sup">Support settings keyed by bucket strength.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>A clamped support value in the [0, 100] range.</returns>
         private int RollBucketSupport(
@@ -330,18 +330,18 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Rolls a dice formula: base value plus up to two optional random terms.
+        /// Rolls a configured dice value.
         /// </summary>
-        /// <param name="formula">The formula to roll.</param>
+        /// <param name="diceConfig">The dice configuration to roll.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>The rolled value.</returns>
-        private int RollDice(DiceFormula formula, IRandomNumberProvider rng)
+        private int RollDice(DiceFormula diceConfig, IRandomNumberProvider rng)
         {
-            int value = formula.Base;
-            if (formula.Random1 > 0)
-                value += rng.NextInt(0, formula.Random1 + 1);
-            if (formula.Random2 > 0)
-                value += rng.NextInt(0, formula.Random2 + 1);
+            int value = diceConfig.Base;
+            if (diceConfig.Random1 > 0)
+                value += rng.NextInt(0, diceConfig.Random1 + 1);
+            if (diceConfig.Random2 > 0)
+                value += rng.NextInt(0, diceConfig.Random2 + 1);
             return value;
         }
     }

@@ -4,11 +4,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Rebellion.Util.Attributes;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Util.Extensions
 {
+    /// <summary>
+    /// Marks a member that should be ignored by object-copy helpers.
+    /// </summary>
+    [AttributeUsage(
+        AttributeTargets.Field | AttributeTargets.Property,
+        Inherited = false,
+        AllowMultiple = false
+    )]
+    public class CloneIgnoreAttribute : Attribute { }
+
     public enum CloneMode
     {
         Normal,

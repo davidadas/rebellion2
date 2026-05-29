@@ -7,6 +7,9 @@
     <TypeID>CSEM001</TypeID>
     <DisplayName>Imperial Dreadnaught</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -81,6 +84,9 @@
     <TypeID>CSEM002</TypeID>
     <DisplayName>Galleon</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -155,6 +161,10 @@
     <TypeID>CSEM003</TypeID>
     <DisplayName>Imperial Escort Carrier</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -229,6 +239,9 @@
     <TypeID>CSEM004</TypeID>
     <DisplayName>Carrack Light Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -303,6 +316,9 @@
     <TypeID>CSEM005</TypeID>
     <DisplayName>Victory Destroyer I</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -377,6 +393,9 @@
     <TypeID>CSEM006</TypeID>
     <DisplayName>Imperial Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -451,6 +470,9 @@
     <TypeID>CSEM007</TypeID>
     <DisplayName>Lancer Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_lancer_frigate_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -525,6 +547,9 @@
     <TypeID>CSEM008</TypeID>
     <DisplayName>Assault Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -599,6 +624,9 @@
     <TypeID>CSEM009</TypeID>
     <DisplayName>Assault Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -673,6 +701,9 @@
     <TypeID>CSEM010</TypeID>
     <DisplayName>Interdictor Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_interdictor_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Interdictor</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -747,6 +778,9 @@
     <TypeID>CSEM011</TypeID>
     <DisplayName>Victory II Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -821,6 +855,9 @@
     <TypeID>CSEM012</TypeID>
     <DisplayName>Strike Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_strike_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -895,6 +932,9 @@
     <TypeID>CSEM013</TypeID>
     <DisplayName>Imperial Star Destroyer II</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -969,6 +1009,9 @@
     <TypeID>CSEM014</TypeID>
     <DisplayName>Super Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_super_star_destroyer_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Flagship</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -1043,6 +1086,9 @@
     <TypeID>CSEM015</TypeID>
     <DisplayName>Death Star</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_death_star_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Flagship</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -1120,6 +1166,9 @@
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1194,6 +1243,9 @@
     <TypeID>CSAL002</TypeID>
     <DisplayName>Bulk Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1268,6 +1320,9 @@
     <TypeID>ALCS003</TypeID>
     <DisplayName>Medium Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_medium_transport_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1342,6 +1397,9 @@
     <TypeID>ALCS004</TypeID>
     <DisplayName>Bulk Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_transport_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1416,6 +1474,10 @@
     <TypeID>ALCS005</TypeID>
     <DisplayName>Alliance Escourt Carrier</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1490,6 +1552,9 @@
     <TypeID>ALCS006</TypeID>
     <DisplayName>Corellian Corvette</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_corellian_corvette_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1563,6 +1628,9 @@
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <TypeID>ALCS007</TypeID>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -1638,6 +1706,9 @@
     <TypeID>ALCS008</TypeID>
     <DisplayName>Mon Calamari Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1712,6 +1783,9 @@
     <TypeID>CSAL009</TypeID>
     <DisplayName>CC-7700 Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc7700_frigate_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1786,6 +1860,9 @@
     <TypeID>CSAL010</TypeID>
     <DisplayName>CC-7700 Interdictor</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc7700_interdictor_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Interdictor</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1860,6 +1937,10 @@
     <TypeID>CSAL011</TypeID>
     <DisplayName>Assault Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_assault_frigate_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -1934,6 +2015,9 @@
     <TypeID>CSAL012</TypeID>
     <DisplayName>Dauntless Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -2008,6 +2092,9 @@
     <TypeID>CSAL013</TypeID>
     <DisplayName>Assault Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_assault_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -2082,6 +2169,10 @@
     <TypeID>CSAL014</TypeID>
     <DisplayName>Liberator Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_liberator_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -2156,6 +2247,10 @@
     <TypeID>CSAL015</TypeID>
     <DisplayName>Mon Calamari Star Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_mon_calamari_star_cruiser_primary</DisplayImagePath>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+    </Roles>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>

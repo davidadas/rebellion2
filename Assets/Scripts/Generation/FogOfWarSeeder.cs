@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Systems;
 
 namespace Rebellion.Generation

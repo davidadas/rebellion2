@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -30,7 +33,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantCaptured_ReturnsTrue()
+        public void ShouldAbort_MainParticipantRemoved_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -49,16 +52,16 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
-            officer.IsCaptured = true;
+            mission.RemoveChild(officer);
 
             Assert.IsTrue(
                 mission.ShouldAbort(game),
-                "Mission should be canceled when main participant is captured"
+                "Mission should be canceled when main participant is removed"
             );
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantKilled_ReturnsTrue()
+        public void ShouldAbort_MainParticipantUnchanged_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -77,11 +80,9 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
-            officer.IsKilled = true;
-
-            Assert.IsTrue(
+            Assert.IsFalse(
                 mission.ShouldAbort(game),
-                "Mission should be canceled when main participant is killed"
+                "Mission should continue when participant membership is unchanged"
             );
         }
 
@@ -234,7 +235,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_DecoyParticipantCaptured_ReturnsFalse()
+        public void ShouldAbort_DecoyParticipantRemoved_ReturnsTrue()
         {
             (
                 GameRoot game,
@@ -256,11 +257,11 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
-            decoy.IsCaptured = true;
+            mission.RemoveChild(decoy);
 
-            Assert.IsFalse(
+            Assert.IsTrue(
                 mission.ShouldAbort(game),
-                "Mission should not be canceled when only decoy participant is captured"
+                "Mission should be canceled when any participant is removed"
             );
         }
 

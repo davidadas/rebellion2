@@ -51,7 +51,7 @@ public sealed class IconButton : MonoBehaviour
             return;
         }
 
-        // Subscribe to UIButton events
+        // Subscribe to UIButton events.
         uiButton.OnHoverEnter.AddListener(HandleStateChange);
         uiButton.OnHoverExit.AddListener(HandleStateChange);
         uiButton.OnPressDown.AddListener(HandleStateChange);
@@ -89,7 +89,7 @@ public sealed class IconButton : MonoBehaviour
             {
                 image.preserveAspect = true;
 
-                // Cache the original sprite as fallback
+                // Cache the starting sprite as fallback.
                 if (defaultSprite == null)
                     defaultSprite = image.sprite;
             }
@@ -154,7 +154,7 @@ public sealed class IconButton : MonoBehaviour
     {
         EnsureComponents();
 
-        // Always have a safe fallback
+        // Always have a safe fallback.
         Sprite fallback = normal != null ? normal : defaultSprite;
 
         if (!button.interactable)
@@ -178,7 +178,7 @@ public sealed class IconButton : MonoBehaviour
             desiredSprite = fallback;
         }
 
-        // Never assign null
+        // Never assign null.
         if (image != null && desiredSprite != null)
         {
             image.sprite = desiredSprite;

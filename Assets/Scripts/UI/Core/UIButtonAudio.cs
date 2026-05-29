@@ -59,7 +59,7 @@ public sealed class UIButtonAudio : MonoBehaviour
             return;
         }
 
-        // Map each event directly to its sound
+        // Map each event directly to its sound.
         if (hoverSound != null)
             uiButton.OnHoverEnter.AddListener(PlayHoverSound);
 

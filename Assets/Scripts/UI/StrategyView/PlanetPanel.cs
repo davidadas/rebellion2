@@ -1,5 +1,5 @@
 using System;
-using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;

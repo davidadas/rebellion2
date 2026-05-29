@@ -1,0 +1,168 @@
+using Rebellion.AI.Director;
+using Rebellion.AI.Proposals;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
+
+namespace Rebellion.AI.Scoring
+{
+    /// <summary>
+    /// Scores mission proposals.
+    /// </summary>
+    public sealed class AIMissionProposalScorer : IAIProposalScorer
+    {
+        /// <summary>
+        /// Returns whether this scorer can score the proposal.
+        /// </summary>
+        /// <param name="proposal">The proposal to check.</param>
+        /// <returns>True if the proposal is a mission proposal.</returns>
+        public bool CanScore(AIProposal proposal)
+        {
+            return proposal is AIMissionProposal;
+        }
+
+        /// <summary>
+        /// Returns the mission proposal score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The proposal to score.</param>
+        /// <returns>The mission proposal score.</returns>
+        public double Score(AITurnContext context, AIProposal proposal)
+        {
+            if (context?.Faction == null || proposal is not AIMissionProposal missionProposal)
+                return 0;
+
+            return missionProposal.MissionType switch
+            {
+                MissionType.Recruitment => ScoreRecruitment(context, missionProposal),
+                MissionType.Diplomacy => ScoreDiplomacy(context, missionProposal),
+                MissionType.Research => ScoreResearch(missionProposal),
+                MissionType.Sabotage => ScorePrimarySkill(missionProposal),
+                MissionType.Abduction => ScoreTargetedOfficerMission(missionProposal),
+                MissionType.Assassination => ScoreTargetedOfficerMission(missionProposal),
+                MissionType.Espionage => ScorePrimarySkill(missionProposal),
+                MissionType.Reconnaissance => ScorePrimarySkill(missionProposal),
+                MissionType.InciteUprising => ScorePrimarySkill(missionProposal),
+                MissionType.SubdueUprising => ScorePrimarySkill(missionProposal),
+                MissionType.Rescue => ScoreTargetedOfficerMission(missionProposal),
+                MissionType.JediTraining => ScorePrimarySkill(missionProposal),
+                _ => 0,
+            };
+        }
+
+        /// <summary>
+        /// Returns the proposal score from the mission's primary participant skill.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <returns>The primary skill score.</returns>
+        private double ScorePrimarySkill(AIMissionProposal proposal)
+        {
+            return GetParticipantSkill(proposal.Participant, GetPrimaryMissionSkill(proposal));
+        }
+
+        /// <summary>
+        /// Returns the recruitment proposal score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <returns>The recruitment proposal score.</returns>
+        private double ScoreRecruitment(AITurnContext context, AIMissionProposal proposal)
+        {
+            int leadership = GetParticipantSkill(
+                proposal.Participant,
+                MissionParticipantSkill.Leadership
+            );
+            int support = context.Assessment.GetFactionPopularSupport(proposal.TargetPlanet);
+            ProbabilityTable table = new ProbabilityTable(
+                context.Game.Config.ProbabilityTables.Mission.Recruitment
+            );
+            return table.Lookup(leadership - support);
+        }
+
+        /// <summary>
+        /// Returns the diplomacy proposal score.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <returns>The diplomacy proposal score.</returns>
+        private double ScoreDiplomacy(AITurnContext context, AIMissionProposal proposal)
+        {
+            return ScorePrimarySkill(proposal)
+                - context.Assessment.GetFactionPopularSupport(proposal.TargetPlanet)
+                + context.Assessment.GetPlanetMissionSupportPressure(proposal.TargetPlanet);
+        }
+
+        /// <summary>
+        /// Returns the research proposal score.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <returns>The research proposal score.</returns>
+        private double ScoreResearch(AIMissionProposal proposal)
+        {
+            if (proposal.Discipline.HasValue && proposal.Participant is Officer officer)
+                return officer.GetResearchSkill(proposal.Discipline.Value);
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Returns the targeted-officer proposal score.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <returns>The targeted-officer proposal score.</returns>
+        private double ScoreTargetedOfficerMission(AIMissionProposal proposal)
+        {
+            return ScorePrimarySkill(proposal) - GetTargetCombatSkill(proposal.TargetOfficer);
+        }
+
+        /// <summary>
+        /// Returns the mission skill used by the mission's success roll.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to inspect.</param>
+        /// <returns>The primary mission participant skill.</returns>
+        private MissionParticipantSkill GetPrimaryMissionSkill(AIMissionProposal proposal)
+        {
+            return proposal.MissionType switch
+            {
+                MissionType.Reconnaissance => MissionParticipantSkill.Espionage,
+                MissionType.Diplomacy => MissionParticipantSkill.Diplomacy,
+                MissionType.Recruitment => MissionParticipantSkill.Leadership,
+                MissionType.SubdueUprising => MissionParticipantSkill.Leadership,
+                MissionType.Abduction => MissionParticipantSkill.Combat,
+                MissionType.Assassination => MissionParticipantSkill.Combat,
+                MissionType.Espionage => MissionParticipantSkill.Espionage,
+                MissionType.Sabotage => MissionParticipantSkill.Combat,
+                MissionType.InciteUprising => MissionParticipantSkill.Leadership,
+                MissionType.Rescue => MissionParticipantSkill.Combat,
+                MissionType.Research => MissionParticipantSkill.Leadership,
+                MissionType.JediTraining => MissionParticipantSkill.Diplomacy,
+                _ => MissionParticipantSkill.Espionage,
+            };
+        }
+
+        /// <summary>
+        /// Returns a participant mission skill value.
+        /// </summary>
+        /// <param name="participant">The participant to inspect.</param>
+        /// <param name="skill">The mission skill to read.</param>
+        /// <returns>The participant's skill value, or zero if no participant exists.</returns>
+        private int GetParticipantSkill(
+            IMissionParticipant participant,
+            MissionParticipantSkill skill
+        )
+        {
+            return participant?.GetMissionSkillValue(skill) ?? 0;
+        }
+
+        /// <summary>
+        /// Returns the target officer's combat skill.
+        /// </summary>
+        /// <param name="targetOfficer">The target officer to inspect.</param>
+        /// <returns>The target officer combat skill, or zero if no target exists.</returns>
+        private int GetTargetCombatSkill(Officer targetOfficer)
+        {
+            return targetOfficer?.GetMissionSkillValue(MissionParticipantSkill.Combat) ?? 0;
+        }
+    }
+}

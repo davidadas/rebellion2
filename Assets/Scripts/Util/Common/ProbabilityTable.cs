@@ -5,8 +5,6 @@ namespace Rebellion.Util.Common
 {
     /// <summary>
     /// Probability lookup table with linear interpolation.
-    /// Maps input value to probability percentage (0-100).
-    /// Used for uprising chances, mission success rates, etc.
     /// </summary>
     public class ProbabilityTable
     {
@@ -24,7 +22,7 @@ namespace Rebellion.Util.Common
         /// If value is at or above highest threshold, returns that threshold's value.
         /// </summary>
         /// <param name="value">Input value (e.g., loyalty)</param>
-        /// <returns>Probability percentage (0-100)</returns>
+        /// <returns>The probability percentage.</returns>
         public int Lookup(int value)
         {
             if (_table.Count == 0)
@@ -32,15 +30,15 @@ namespace Rebellion.Util.Common
 
             List<int> sortedKeys = _table.Keys.OrderBy(k => k).ToList();
 
-            // Value below all thresholds
+            // Value below all thresholds.
             if (value < sortedKeys[0])
                 return 0;
 
-            // Value at or above highest threshold
+            // Value at or above highest threshold.
             if (value >= sortedKeys[sortedKeys.Count - 1])
                 return _table[sortedKeys[sortedKeys.Count - 1]];
 
-            // Find the two thresholds we're between
+            // Find the two thresholds we're between.
             for (int i = 0; i < sortedKeys.Count - 1; i++)
             {
                 int lowerThreshold = sortedKeys[i];
@@ -51,7 +49,7 @@ namespace Rebellion.Util.Common
                     int lowerValue = _table[lowerThreshold];
                     int upperValue = _table[upperThreshold];
 
-                    // Linear interpolation
+                    // Linear interpolation.
                     double ratio =
                         (double)(value - lowerThreshold) / (upperThreshold - lowerThreshold);
                     int interpolated = lowerValue + (int)(ratio * (upperValue - lowerValue));

@@ -12,24 +12,24 @@ namespace Rebellion.Tests.SceneGraph
         // Mock implementation of ContainerNode for testing purposes
         private class MockContainerNode : ContainerNode
         {
-            private readonly List<ISceneNode> children = new List<ISceneNode>();
+            private readonly List<ISceneNode> _children = new List<ISceneNode>();
 
             public override bool CanAcceptChild(ISceneNode child) => true;
 
             public override void AddChild(ISceneNode child)
             {
-                children.Add(child);
+                _children.Add(child);
                 child.SetParent(this);
             }
 
             public override void RemoveChild(ISceneNode child)
             {
-                children.Remove(child);
+                _children.Remove(child);
             }
 
             public override IEnumerable<ISceneNode> GetChildren()
             {
-                return children;
+                return _children;
             }
 
             public override IEnumerable<T> GetChildren<T>(
@@ -74,12 +74,12 @@ namespace Rebellion.Tests.SceneGraph
             // Helper method to allow modifying children during traversal tests
             public void ClearChildren()
             {
-                children.Clear();
+                _children.Clear();
             }
 
             public void AddChildWithoutSettingParent(ISceneNode child)
             {
-                children.Add(child);
+                _children.Add(child);
             }
         }
 

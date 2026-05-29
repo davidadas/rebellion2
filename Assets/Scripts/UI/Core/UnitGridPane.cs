@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;

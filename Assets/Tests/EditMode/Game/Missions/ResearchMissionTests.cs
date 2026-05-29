@@ -1,25 +1,29 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Results;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
     public class ResearchMissionTests
     {
-        private GameRoot game;
-        private Faction faction;
-        private Planet planet;
+        private GameRoot _game;
+        private Faction _faction;
+        private Planet _planet;
 
         [SetUp]
         public void SetUp()
         {
             GameConfig config = TestConfig.Create();
-            game = new GameRoot(config);
+            _game = new GameRoot(config);
 
-            faction = new Faction { InstanceID = "empire", DisplayName = "Empire" };
-            game.Factions.Add(faction);
+            _faction = new Faction { InstanceID = "empire", DisplayName = "Empire" };
+            _game.Factions.Add(_faction);
 
             PlanetSystem sys = new PlanetSystem
             {
@@ -27,9 +31,9 @@ namespace Rebellion.Tests.Game.Missions
                 PositionX = 0,
                 PositionY = 0,
             };
-            game.AttachNode(sys, game.Galaxy);
+            _game.AttachNode(sys, _game.Galaxy);
 
-            planet = new Planet
+            _planet = new Planet
             {
                 InstanceID = "p1",
                 OwnerInstanceID = "empire",
@@ -39,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
                 PositionY = 0,
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
-            game.AttachNode(planet, sys);
+            _game.AttachNode(_planet, sys);
         }
 
         private ResearchMission CreateMission(
@@ -49,14 +53,14 @@ namespace Rebellion.Tests.Game.Missions
         {
             MissionContext ctx = new MissionContext
             {
-                Game = game,
+                Game = _game,
                 OwnerInstanceId = "empire",
-                Target = planet,
+                Target = _planet,
                 MainParticipants = new List<IMissionParticipant> { officer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
             ResearchMission mission = ResearchMission.TryCreate(ctx, discipline);
-            game.AttachNode(mission, planet);
+            _game.AttachNode(mission, _planet);
             return mission;
         }
 
@@ -70,7 +74,7 @@ namespace Rebellion.Tests.Game.Missions
                 TroopResearch = troopSkill,
                 FacilityResearch = facilitySkill,
             };
-            game.AttachNode(officer, planet);
+            _game.AttachNode(officer, _planet);
             return officer;
         }
 
@@ -79,13 +83,13 @@ namespace Rebellion.Tests.Game.Missions
         {
             Officer officer = CreateOfficer();
 
-            planet.OwnerInstanceID = "rebels";
+            _planet.OwnerInstanceID = "rebels";
 
             MissionContext ctx = new MissionContext
             {
-                Game = game,
+                Game = _game,
                 OwnerInstanceId = "empire",
-                Target = planet,
+                Target = _planet,
                 MainParticipants = new List<IMissionParticipant> { officer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
@@ -100,9 +104,9 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 75);
             ResearchMission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
-            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -111,9 +115,9 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            int before = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
-            mission.Execute(game, new FixedRNG(0.0));
-            int after = faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
+            int before = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
+            mission.Execute(_game, new FixedRNG(0.0));
+            int after = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
 
             Assert.Greater(after, before, "Successful research mission should award capacity");
         }
@@ -124,7 +128,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 50);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 51,
@@ -139,9 +143,12 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.99));
+            mission.Execute(_game, new FixedRNG(0.99));
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
 
         [Test]
@@ -150,9 +157,12 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 0);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
 
         [Test]
@@ -161,9 +171,12 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 50);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.5));
+            mission.Execute(_game, new FixedRNG(0.5));
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
             Assert.AreEqual(50, officer.ShipResearch);
         }
 
@@ -173,7 +186,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.99));
+            mission.Execute(_game, new FixedRNG(0.99));
 
             Assert.AreEqual(10, officer.ShipResearch, "Skill should not change on failure");
         }
@@ -188,22 +201,25 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "empire",
                 ShipResearch = 100,
             };
-            game.AttachNode(secondOfficer, planet);
+            _game.AttachNode(secondOfficer, _planet);
 
             MissionContext ctx = new MissionContext
             {
-                Game = game,
+                Game = _game,
                 OwnerInstanceId = "empire",
-                Target = planet,
+                Target = _planet,
                 MainParticipants = new List<IMissionParticipant> { firstOfficer, secondOfficer },
                 DecoyParticipants = new List<IMissionParticipant>(),
             };
             ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
-            game.AttachNode(mission, planet);
+            _game.AttachNode(mission, _planet);
 
-            mission.Execute(game, new FixedRNG(0.5));
+            mission.Execute(_game, new FixedRNG(0.5));
 
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
             Assert.AreEqual(10, firstOfficer.ShipResearch);
             Assert.AreEqual(100, secondOfficer.ShipResearch);
         }
@@ -214,13 +230,16 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(troopSkill: 100);
             ResearchMission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.Greater(
-                faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining),
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.TroopTraining),
                 0
             );
-            Assert.AreEqual(0, faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign));
+            Assert.AreEqual(
+                0,
+                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            );
         }
 
         [Test]
@@ -229,9 +248,9 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.99));
+            mission.Execute(_game, new FixedRNG(0.99));
 
-            Assert.Greater(faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
+            Assert.Greater(_faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign), 0);
         }
 
         [Test]
@@ -240,7 +259,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer();
             ResearchMission mission = CreateMission(officer);
 
-            Assert.IsTrue(mission.CanContinue(game));
+            Assert.IsTrue(mission.CanContinue(_game));
         }
 
         [Test]
@@ -249,9 +268,9 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer();
             ResearchMission mission = CreateMission(officer);
 
-            planet.OwnerInstanceID = "rebels";
+            _planet.OwnerInstanceID = "rebels";
 
-            Assert.IsFalse(mission.CanContinue(game));
+            Assert.IsFalse(mission.CanContinue(_game));
         }
 
         [Test]
@@ -261,7 +280,7 @@ namespace Rebellion.Tests.Game.Missions
             int leadershipBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 leadershipBefore,
@@ -276,10 +295,10 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.0));
+            mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.IsTrue(
-                mission.CanContinue(game),
+                mission.CanContinue(_game),
                 "Mission should continue after successful research"
             );
         }
@@ -290,10 +309,10 @@ namespace Rebellion.Tests.Game.Missions
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
 
-            mission.Execute(game, new FixedRNG(0.99));
+            mission.Execute(_game, new FixedRNG(0.99));
 
             Assert.IsTrue(
-                mission.CanContinue(game),
+                mission.CanContinue(_game),
                 "Mission should continue after failed research"
             );
         }
