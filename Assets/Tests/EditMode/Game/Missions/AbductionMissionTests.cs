@@ -69,6 +69,52 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void UpdateMission_SuccessfulAbduction_MovesTargetToAbductorOrigin()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AbductionMission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(0.0), movement);
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
+            Assert.AreEqual(
+                "empire",
+                target.CaptorInstanceID,
+                "CaptorInstanceID should be the abducting faction"
+            );
+            Assert.AreEqual(
+                empPlanet,
+                target.GetParent(),
+                "Abducted officer should return to the abductor's origin"
+            );
+        }
+
+        [Test]
         public void Execute_TargetOnEnemyPlanet_ReturnsCharacterCapturedResult()
         {
             (

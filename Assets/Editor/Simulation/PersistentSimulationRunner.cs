@@ -13,11 +13,17 @@ public static class PersistentSimulationRunner
     private static bool _isRunningJob;
     private static double _nextPollAt;
 
+    /// <summary>
+    /// Registers the editor update poller.
+    /// </summary>
     static PersistentSimulationRunner()
     {
         UnityEditor.EditorApplication.update += OnEditorUpdate;
     }
 
+    /// <summary>
+    /// Polls for queued simulation jobs while the editor is idle.
+    /// </summary>
     private static void OnEditorUpdate()
     {
         if (_isRunningJob || UnityEditor.EditorApplication.isCompiling)
@@ -37,6 +43,10 @@ public static class PersistentSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Runs the next queued simulation job if one is available.
+    /// </summary>
+    /// <returns>True if a job was found and started.</returns>
     private static bool TryRunNextJob()
     {
         if (UnityEditor.EditorApplication.isCompiling)
@@ -50,6 +60,9 @@ public static class PersistentSimulationRunner
         return true;
     }
 
+    /// <summary>
+    /// Runs the next queued simulation job from the editor menu.
+    /// </summary>
     [UnityEditor.MenuItem("Tools/Simulation/Run Next Queued Simulation")]
     private static void RunNextQueuedJob()
     {
@@ -64,6 +77,10 @@ public static class PersistentSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Returns the path of the next queued job file.
+    /// </summary>
+    /// <returns>The next job path, or null if no job is queued.</returns>
     private static string GetNextJobPath()
     {
         if (!Directory.Exists(_jobDirectory))
@@ -75,6 +92,10 @@ public static class PersistentSimulationRunner
             .FirstOrDefault();
     }
 
+    /// <summary>
+    /// Runs a queued simulation job file.
+    /// </summary>
+    /// <param name="jobPath">The path to the queued job file.</param>
     private static void RunJob(string jobPath)
     {
         string runningPath = Path.ChangeExtension(jobPath, ".running");
@@ -155,6 +176,11 @@ public static class PersistentSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Returns the log path for a simulation output file.
+    /// </summary>
+    /// <param name="outputPath">The simulation output path.</param>
+    /// <returns>The log file path.</returns>
     private static string GetLogPath(string outputPath)
     {
         string resolvedOutputPath = Path.GetFullPath(outputPath);
@@ -165,6 +191,11 @@ public static class PersistentSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Appends a message to the simulation log file.
+    /// </summary>
+    /// <param name="logPath">The log file path.</param>
+    /// <param name="message">The message to append.</param>
     private static void LogToFile(string logPath, string message)
     {
         File.AppendAllText(logPath, message + Environment.NewLine);

@@ -327,15 +327,25 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Calculates the raw Euclidean distance to a position.
+        /// </summary>
+        /// <param name="targetPosition">The target position.</param>
+        /// <returns>Raw Euclidean distance.</returns>
+        public double GetRawDistanceTo(Point targetPosition)
+        {
+            int dx = PositionX - targetPosition.X;
+            int dy = PositionY - targetPosition.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// <summary>
         /// Calculates the raw Euclidean distance to another planet.
         /// </summary>
         /// <param name="targetPlanet">The target planet.</param>
         /// <returns>Raw Euclidean distance.</returns>
         public double GetRawDistanceTo(Planet targetPlanet)
         {
-            int dx = this.PositionX - targetPlanet.PositionX;
-            int dy = this.PositionY - targetPlanet.PositionY;
-            return Math.Sqrt(dx * dx + dy * dy);
+            return GetRawDistanceTo(targetPlanet.GetPosition());
         }
 
         /// <summary>

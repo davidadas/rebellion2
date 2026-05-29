@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -154,9 +155,27 @@ namespace Rebellion.Game.Factions
             return _ownedEntities[typeof(T)].Cast<T>().ToList();
         }
 
+        /// <summary>
+        /// Returns colonized planets owned by the faction.
+        /// </summary>
+        /// <returns>Owned colonized planets.</returns>
         public List<Planet> GetOwnedColonizedPlanets()
         {
             return GetOwnedUnitsByType<Planet>().Where(planet => planet.IsColonized).ToList();
+        }
+
+        /// <summary>
+        /// Returns the closest currently owned planet to a position.
+        /// </summary>
+        /// <param name="position">The position to measure from.</param>
+        /// <param name="exclude">A planet to exclude from the search.</param>
+        /// <returns>The closest owned planet, or null.</returns>
+        public Planet GetNearestOwnedPlanetTo(Point position, Planet exclude = null)
+        {
+            return GetOwnedUnitsByType<Planet>()
+                .Where(planet => planet != exclude && planet.GetOwnerInstanceID() == InstanceID)
+                .OrderBy(planet => planet.GetRawDistanceTo(position))
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -595,9 +614,7 @@ namespace Rebellion.Game.Factions
                 );
             }
 
-            return GetOwnedUnitsByType<Planet>()
-                .OrderBy(p => sourcePlanet.GetRawDistanceTo(p))
-                .FirstOrDefault();
+            return GetNearestOwnedPlanetTo(sourcePlanet.GetPosition());
         }
 
         /// <summary>

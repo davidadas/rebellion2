@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -902,6 +903,29 @@ namespace Rebellion.Tests.Game.Galaxy
             planet.AddChild(buildingRefinery);
 
             Assert.AreEqual(1, planet.GetActiveRefinementCapacity());
+        }
+
+        [Test]
+        public void GetRawDistanceTo_Position_ReturnsEuclideanDistance()
+        {
+            _planet.PositionX = 3;
+            _planet.PositionY = 4;
+
+            double distance = _planet.GetRawDistanceTo(new Point(0, 0));
+
+            Assert.AreEqual(5, distance);
+        }
+
+        [Test]
+        public void GetRawDistanceTo_Planet_ReturnsEuclideanDistance()
+        {
+            _planet.PositionX = 3;
+            _planet.PositionY = 4;
+            Planet targetPlanet = new Planet { PositionX = 0, PositionY = 0 };
+
+            double distance = _planet.GetRawDistanceTo(targetPlanet);
+
+            Assert.AreEqual(5, distance);
         }
     }
 } // namespace Rebellion.Tests.Game.Galaxy

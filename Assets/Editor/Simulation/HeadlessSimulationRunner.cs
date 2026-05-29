@@ -18,6 +18,9 @@ public static class HeadlessSimulationRunner
     private const string _seedFlag = "-simSeed";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
 
+    /// <summary>
+    /// Runs the command-line simulation entry point.
+    /// </summary>
     public static void RunDefaultSimulation()
     {
         try
@@ -33,6 +36,13 @@ public static class HeadlessSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Runs a simulation from an already-open editor session.
+    /// </summary>
+    /// <param name="tickCount">The number of ticks to simulate.</param>
+    /// <param name="outputPath">The summary output path.</param>
+    /// <param name="seed">The optional generation seed.</param>
+    /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
         string outputPath,
@@ -49,6 +59,11 @@ public static class HeadlessSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Runs a simulation with the specified options.
+    /// </summary>
+    /// <param name="options">The simulation options.</param>
+    /// <returns>The completed simulation result.</returns>
     private static SimulationRunResult RunSimulation(SimulationOptions options)
     {
         string logPath = GetLogPath(options.OutputPath);
@@ -107,6 +122,12 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Creates a game builder for the requested scenario.
+    /// </summary>
+    /// <param name="summary">The game summary used for generation.</param>
+    /// <param name="seed">The optional generation seed.</param>
+    /// <returns>The configured game builder.</returns>
     private static GameBuilder CreateGameBuilder(GameSummary summary, int? seed)
     {
         return seed.HasValue
@@ -114,6 +135,11 @@ public static class HeadlessSimulationRunner
             : new GameBuilder(summary);
     }
 
+    /// <summary>
+    /// Returns the log path for a simulation output file.
+    /// </summary>
+    /// <param name="outputPath">The simulation output path.</param>
+    /// <returns>The log file path.</returns>
     private static string GetLogPath(string outputPath)
     {
         string resolvedOutputPath = Path.GetFullPath(outputPath);
@@ -124,11 +150,26 @@ public static class HeadlessSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Appends a message to the simulation log file.
+    /// </summary>
+    /// <param name="logPath">The log file path.</param>
+    /// <param name="message">The message to append.</param>
     private static void LogToFile(string logPath, string message)
     {
         File.AppendAllText(logPath, message + Environment.NewLine);
     }
 
+    /// <summary>
+    /// Builds the JSON summary for a completed simulation.
+    /// </summary>
+    /// <param name="game">The completed game state.</param>
+    /// <param name="summary">The game generation summary.</param>
+    /// <param name="options">The simulation options.</param>
+    /// <param name="idleTracker">The manufacturing idle tracker.</param>
+    /// <param name="manufacturedUnitTracker">The manufactured unit tracker.</param>
+    /// <param name="fleetHistoryTracker">The fleet history tracker.</param>
+    /// <returns>The simulation summary.</returns>
     private static SimulationSummary BuildSimulationSummary(
         GameRoot game,
         GameSummary summary,
@@ -250,6 +291,11 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Builds the capital ship production summary for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The capital ship production summary.</returns>
     private static CapitalShipProductionSimulationSummary BuildCapitalShipProductionSummary(
         Faction faction
     )
@@ -280,6 +326,11 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Builds the economy summary for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The economy summary.</returns>
     private static EconomySimulationSummary BuildEconomySummary(Faction faction)
     {
         if (faction == null)
@@ -329,6 +380,13 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Counts queued buildings of a type on a planet.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="factionId">The faction owner ID.</param>
+    /// <param name="type">The building type to count.</param>
+    /// <returns>The queued building count.</returns>
     private static int CountQueuedBuildings(Planet planet, string factionId, BuildingType type)
     {
         return planet
@@ -340,6 +398,13 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Counts existing and queued buildings of a type on a planet.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="factionId">The faction owner ID.</param>
+    /// <param name="type">The building type to count.</param>
+    /// <returns>The projected building count.</returns>
     private static int CountProjectedBuildings(Planet planet, string factionId, BuildingType type)
     {
         return planet
@@ -349,6 +414,12 @@ public static class HeadlessSimulationRunner
             );
     }
 
+    /// <summary>
+    /// Writes a simulation summary file.
+    /// </summary>
+    /// <param name="outputPath">The requested output path.</param>
+    /// <param name="report">The simulation report to write.</param>
+    /// <returns>The resolved output path.</returns>
     private static string WriteSimulationSummary(string outputPath, SimulationSummary report)
     {
         string resolvedPath = Path.GetFullPath(outputPath);
@@ -360,6 +431,11 @@ public static class HeadlessSimulationRunner
         return resolvedPath;
     }
 
+    /// <summary>
+    /// Builds the troop production summary for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The troop production summary.</returns>
     private static TroopProductionSimulationSummary BuildTroopProductionSummary(Faction faction)
     {
         if (faction == null)
@@ -377,6 +453,12 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Counts owned planets with completed production facilities of a type.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <param name="type">The manufacturing type to count.</param>
+    /// <returns>The number of owned facility planets.</returns>
     private static int CountOwnedFacilityPlanets(Faction faction, ManufacturingType type)
     {
         return faction
@@ -393,6 +475,12 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts owned planets with available manufacturing capacity.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <param name="type">The manufacturing type to count.</param>
+    /// <returns>The number of available manufacturing planets.</returns>
     private static int CountAvailableManufacturingPlanets(Faction faction, ManufacturingType type)
     {
         return faction
@@ -401,6 +489,12 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts available manufacturing slots for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <param name="type">The manufacturing type to count.</param>
+    /// <returns>The number of available manufacturing slots.</returns>
     private static int CountAvailableManufacturingSlots(Faction faction, ManufacturingType type)
     {
         return faction
@@ -409,6 +503,12 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts queued manufacturing items for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <param name="type">The manufacturing type to count.</param>
+    /// <returns>The number of queued manufacturing items.</returns>
     private static int CountManufacturingQueueItems(Faction faction, ManufacturingType type)
     {
         return faction
@@ -417,6 +517,11 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts completed planet-based starfighters that are not moving.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <returns>The idle starfighter count.</returns>
     private static int CountOwnedIdlePlanetStarfighters(Faction faction)
     {
         return faction
@@ -431,6 +536,11 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts open starfighter capacity across owned fleets.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <returns>The total free starfighter capacity.</returns>
     private static int CountOwnedFleetFreeStarfighterCapacity(Faction faction)
     {
         return faction
@@ -440,6 +550,11 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts unlocked capital ship technologies.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <returns>The unlocked capital ship technology count.</returns>
     private static int CountUnlockedCapitalTechnologies(Faction faction)
     {
         return faction
@@ -448,6 +563,11 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts unlocked capital ship technologies that can support fleet infrastructure.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <returns>The unlocked infrastructure capital ship technology count.</returns>
     private static int CountUnlockedInfrastructureCapitalTechnologies(Faction faction)
     {
         return faction
@@ -466,6 +586,12 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Counts queued manufacturing items on a planet.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="type">The manufacturing type to count.</param>
+    /// <returns>The queued item count.</returns>
     private static int GetManufacturingQueueCount(Planet planet, ManufacturingType type)
     {
         if (planet == null)
@@ -476,6 +602,11 @@ public static class HeadlessSimulationRunner
             : 0;
     }
 
+    /// <summary>
+    /// Counts capital ships currently under construction.
+    /// </summary>
+    /// <param name="faction">The faction to inspect.</param>
+    /// <returns>The active capital ship manufacturing count.</returns>
     private static int CountActiveCapitalShipManufacturing(Faction faction)
     {
         return faction
@@ -492,6 +623,11 @@ public static class HeadlessSimulationRunner
             ?? 0;
     }
 
+    /// <summary>
+    /// Builds the construction facility expansion summary for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The construction facility expansion summary.</returns>
     private static ConstructionFacilityExpansionSimulationSummary BuildConstructionFacilityExpansionSummary(
         Faction faction
     )
@@ -548,6 +684,11 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Returns the largest number of construction facilities in one system.
+    /// </summary>
+    /// <param name="planets">The planets to inspect.</param>
+    /// <returns>The largest system construction facility count.</returns>
     private static int GetLargestSystemConstructionFacilityCount(List<Planet> planets)
     {
         return planets
@@ -563,6 +704,12 @@ public static class HeadlessSimulationRunner
             .Max();
     }
 
+    /// <summary>
+    /// Returns a value as a share of a total.
+    /// </summary>
+    /// <param name="value">The numerator.</param>
+    /// <param name="total">The denominator.</param>
+    /// <returns>The share, or 0 if the total is not positive.</returns>
     private static double GetShare(int value, int total)
     {
         if (total <= 0)
@@ -571,6 +718,11 @@ public static class HeadlessSimulationRunner
         return (double)value / total;
     }
 
+    /// <summary>
+    /// Builds the troop reinforcement package summary for a faction.
+    /// </summary>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The troop reinforcement package summary.</returns>
     private static TroopReinforcementPackageSimulationSummary BuildTroopReinforcementPackageSummary(
         Faction faction
     )
@@ -728,6 +880,10 @@ public static class HeadlessSimulationRunner
         private readonly Dictionary<string, ManufacturedUnitCounts> _manufacturedByFaction =
             new Dictionary<string, ManufacturedUnitCounts>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Records units present before simulation ticks are processed.
+        /// </summary>
+        /// <param name="game">The game state to inspect.</param>
         public void RecordInitialState(GameRoot game)
         {
             RecordSeenOnly(game.GetSceneNodesByType<CapitalShip>(), _seenCapitalShips);
@@ -737,6 +893,10 @@ public static class HeadlessSimulationRunner
             RecordSeenOnly(game.GetSceneNodesByType<Building>(), _seenBuildings);
         }
 
+        /// <summary>
+        /// Records units created during the current simulation tick.
+        /// </summary>
+        /// <param name="game">The game state to inspect.</param>
         public void RecordTick(GameRoot game)
         {
             RecordNewUnits(
@@ -762,27 +922,64 @@ public static class HeadlessSimulationRunner
             RecordNewBuildings(game.GetSceneNodesByType<Building>());
         }
 
+        /// <summary>
+        /// Gets manufactured capital ships for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured capital ship count.</returns>
         public int GetManufacturedCapitalShips(string factionId) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts) ? counts.CapitalShips : 0;
 
+        /// <summary>
+        /// Gets manufactured starfighters for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured starfighter count.</returns>
         public int GetManufacturedStarfighters(string factionId) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts) ? counts.Starfighters : 0;
 
+        /// <summary>
+        /// Gets manufactured regiments for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured regiment count.</returns>
         public int GetManufacturedRegiments(string factionId) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts) ? counts.Regiments : 0;
 
+        /// <summary>
+        /// Gets manufactured special forces for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured special forces count.</returns>
         public int GetManufacturedSpecialForces(string factionId) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts) ? counts.SpecialForces : 0;
 
+        /// <summary>
+        /// Gets manufactured buildings for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured building count.</returns>
         public int GetManufacturedBuildings(string factionId) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts) ? counts.Buildings : 0;
 
+        /// <summary>
+        /// Gets manufactured buildings of a type for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <param name="buildingType">The building type to count.</param>
+        /// <returns>The manufactured building count.</returns>
         public int GetManufacturedBuildings(string factionId, BuildingType buildingType) =>
             TryGetCounts(factionId, out ManufacturedUnitCounts counts)
             && counts.BuildingsByType.TryGetValue(buildingType, out int count)
                 ? count
                 : 0;
 
+        /// <summary>
+        /// Records existing units without counting them as manufactured.
+        /// </summary>
+        /// <typeparam name="T">The scene node type to record.</typeparam>
+        /// <param name="units">The units to record.</param>
+        /// <param name="seen">The set that receives unit IDs.</param>
         private static void RecordSeenOnly<T>(IEnumerable<T> units, HashSet<string> seen)
             where T : ISceneNode
         {
@@ -794,6 +991,13 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Records newly discovered units and increments faction counts.
+        /// </summary>
+        /// <typeparam name="T">The scene node type to record.</typeparam>
+        /// <param name="units">The units to inspect.</param>
+        /// <param name="seen">The set used to detect new unit IDs.</param>
+        /// <param name="increment">The count update to apply.</param>
         private void RecordNewUnits<T>(
             IEnumerable<T> units,
             HashSet<string> seen,
@@ -815,6 +1019,10 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Records newly discovered buildings and increments faction counts.
+        /// </summary>
+        /// <param name="buildings">The buildings to inspect.</param>
         private void RecordNewBuildings(IEnumerable<Building> buildings)
         {
             foreach (Building building in buildings)
@@ -834,6 +1042,11 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Gets or creates manufactured unit counts for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The manufactured unit counts.</returns>
         private ManufacturedUnitCounts GetCounts(string factionId)
         {
             if (!_manufacturedByFaction.TryGetValue(factionId, out ManufacturedUnitCounts counts))
@@ -845,6 +1058,12 @@ public static class HeadlessSimulationRunner
             return counts;
         }
 
+        /// <summary>
+        /// Gets manufactured unit counts for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <param name="counts">The manufactured unit counts.</param>
+        /// <returns>True if counts exist for the faction.</returns>
         private bool TryGetCounts(string factionId, out ManufacturedUnitCounts counts) =>
             _manufacturedByFaction.TryGetValue(factionId, out counts);
     }
@@ -973,6 +1192,10 @@ public static class HeadlessSimulationRunner
         );
         private readonly List<FleetHistorySnapshot> _snapshots = new();
 
+        /// <summary>
+        /// Records changed fleet state for the current simulation tick.
+        /// </summary>
+        /// <param name="game">The game state to inspect.</param>
         public void RecordTick(GameRoot game)
         {
             HashSet<string> liveFleetIds = new HashSet<string>(StringComparer.Ordinal);
@@ -1018,11 +1241,23 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Returns the recorded fleet history snapshots.
+        /// </summary>
+        /// <returns>The recorded fleet history snapshots.</returns>
         public FleetHistorySnapshot[] ToArray()
         {
             return _snapshots.ToArray();
         }
 
+        /// <summary>
+        /// Builds a fleet history snapshot.
+        /// </summary>
+        /// <param name="game">The game state to inspect.</param>
+        /// <param name="faction">The fleet owner faction.</param>
+        /// <param name="fleet">The fleet to summarize.</param>
+        /// <param name="destroyed">Whether the fleet has been destroyed.</param>
+        /// <returns>The fleet history snapshot.</returns>
         private static FleetHistorySnapshot BuildSnapshot(
             GameRoot game,
             Faction faction,
@@ -1064,6 +1299,12 @@ public static class HeadlessSimulationRunner
             };
         }
 
+        /// <summary>
+        /// Builds a fleet history snapshot for a destroyed fleet.
+        /// </summary>
+        /// <param name="tick">The current simulation tick.</param>
+        /// <param name="previousSnapshot">The previous fleet snapshot.</param>
+        /// <returns>The destroyed fleet history snapshot.</returns>
         private static FleetHistorySnapshot BuildDestroyedSnapshot(
             int tick,
             FleetHistorySnapshot previousSnapshot
@@ -1091,6 +1332,11 @@ public static class HeadlessSimulationRunner
             };
         }
 
+        /// <summary>
+        /// Builds the stable comparison key for a fleet snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to key.</param>
+        /// <returns>The stable snapshot key.</returns>
         private static string BuildSnapshotKey(FleetHistorySnapshot snapshot)
         {
             return string.Join(
@@ -1120,6 +1366,11 @@ public static class HeadlessSimulationRunner
         public string OutputPath { get; set; }
         public int? Seed { get; set; }
 
+        /// <summary>
+        /// Parses simulation options from command-line arguments.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <returns>The parsed simulation options.</returns>
         public static SimulationOptions Parse(string[] args)
         {
             return new SimulationOptions
@@ -1134,18 +1385,38 @@ public static class HeadlessSimulationRunner
             };
         }
 
+        /// <summary>
+        /// Parses an integer command-line option.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <param name="flag">The option flag to read.</param>
+        /// <param name="defaultValue">The value to use when the flag is absent.</param>
+        /// <returns>The parsed integer value.</returns>
         private static int ParseInt(string[] args, string flag, int defaultValue)
         {
             string value = ParseString(args, flag, null);
             return int.TryParse(value, out int parsed) ? parsed : defaultValue;
         }
 
+        /// <summary>
+        /// Parses an optional integer command-line option.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <param name="flag">The option flag to read.</param>
+        /// <returns>The parsed integer value, or null if the flag is absent.</returns>
         private static int? ParseNullableInt(string[] args, string flag)
         {
             string value = ParseString(args, flag, null);
             return int.TryParse(value, out int parsed) ? parsed : null;
         }
 
+        /// <summary>
+        /// Parses a string command-line option.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <param name="flag">The option flag to read.</param>
+        /// <param name="defaultValue">The value to use when the flag is absent.</param>
+        /// <returns>The parsed string value.</returns>
         private static string ParseString(string[] args, string flag, string defaultValue)
         {
             for (int i = 0; i < args.Length - 1; i++)
@@ -1158,6 +1429,13 @@ public static class HeadlessSimulationRunner
         }
     }
 
+    /// <summary>
+    /// Builds the current summary for a fleet.
+    /// </summary>
+    /// <param name="game">The game state to inspect.</param>
+    /// <param name="faction">The fleet owner faction.</param>
+    /// <param name="fleet">The fleet to summarize.</param>
+    /// <returns>The fleet simulation summary.</returns>
     private static FleetSimulationSummary BuildFleetSummary(
         GameRoot game,
         Faction faction,
@@ -1220,6 +1498,12 @@ public static class HeadlessSimulationRunner
         };
     }
 
+    /// <summary>
+    /// Gets the strongest hostile fleet strength at a target planet.
+    /// </summary>
+    /// <param name="faction">The faction evaluating the target.</param>
+    /// <param name="targetPlanet">The target planet.</param>
+    /// <returns>The strongest hostile fleet strength.</returns>
     private static int GetStrongestHostileFleetStrength(Faction faction, Planet targetPlanet)
     {
         if (faction == null || targetPlanet == null)
@@ -1237,6 +1521,13 @@ public static class HeadlessSimulationRunner
             .Max();
     }
 
+    /// <summary>
+    /// Gets the combat strength required to attack a target.
+    /// </summary>
+    /// <param name="game">The game state to inspect.</param>
+    /// <param name="targetDefenseStrength">The target defense strength.</param>
+    /// <param name="targetStrongestHostileFleetStrength">The strongest hostile fleet strength.</param>
+    /// <returns>The required attack combat strength.</returns>
     private static int GetRequiredAttackCombatStrength(
         GameRoot game,
         int targetDefenseStrength,
@@ -1257,6 +1548,14 @@ public static class HeadlessSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Gets the regiment count required to attack a target.
+    /// </summary>
+    /// <param name="game">The game state to inspect.</param>
+    /// <param name="faction">The faction evaluating the target.</param>
+    /// <param name="targetPlanet">The target planet.</param>
+    /// <param name="targetRegimentCount">The target regiment count.</param>
+    /// <returns>The required attack regiment count.</returns>
     private static int GetRequiredAttackRegimentCount(
         GameRoot game,
         Faction faction,
@@ -1278,6 +1577,12 @@ public static class HeadlessSimulationRunner
         );
     }
 
+    /// <summary>
+    /// Builds summaries for current planets with idle manufacturing capacity.
+    /// </summary>
+    /// <param name="game">The game state to inspect.</param>
+    /// <param name="faction">The faction to summarize.</param>
+    /// <returns>The current idle planet summaries.</returns>
     private static CurrentIdlePlanetSummary[] BuildCurrentIdlePlanetSummaries(
         GameRoot game,
         Faction faction
@@ -1316,11 +1621,22 @@ public static class HeadlessSimulationRunner
             .ToArray();
     }
 
+    /// <summary>
+    /// Determines whether a planet can use production capacity.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <returns>True if the planet can use production capacity.</returns>
     private static bool IsProductionEligiblePlanet(Planet planet)
     {
         return planet?.IsBlockaded() == false && !planet.IsDestroyed && !planet.IsInUprising;
     }
 
+    /// <summary>
+    /// Summarizes units by display label.
+    /// </summary>
+    /// <typeparam name="T">The unit type to summarize.</typeparam>
+    /// <param name="units">The units to summarize.</param>
+    /// <returns>The grouped unit labels.</returns>
     private static string[] SummarizeUnits<T>(IEnumerable<T> units)
         where T : class
     {
@@ -1331,6 +1647,12 @@ public static class HeadlessSimulationRunner
             .ToArray();
     }
 
+    /// <summary>
+    /// Gets a display label for a summarized unit.
+    /// </summary>
+    /// <typeparam name="T">The unit type to label.</typeparam>
+    /// <param name="unit">The unit to label.</param>
+    /// <returns>The unit label.</returns>
     private static string GetUnitLabel<T>(T unit)
         where T : class
     {
@@ -1349,6 +1671,10 @@ public static class HeadlessSimulationRunner
     {
         private readonly Dictionary<string, FactionIdleCounters> _factions = new();
 
+        /// <summary>
+        /// Records idle manufacturing capacity for the current simulation tick.
+        /// </summary>
+        /// <param name="game">The game state to inspect.</param>
         public void RecordTick(GameRoot game)
         {
             foreach (Faction faction in game.Factions)
@@ -1368,6 +1694,11 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Builds the idle manufacturing summary for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The idle manufacturing summary.</returns>
         public ManufacturingIdleSummary BuildSummary(string factionId)
         {
             if (!_factions.TryGetValue(factionId, out FactionIdleCounters counters))
@@ -1405,6 +1736,12 @@ public static class HeadlessSimulationRunner
             };
         }
 
+        /// <summary>
+        /// Records idle capacity for one planet and manufacturing type.
+        /// </summary>
+        /// <param name="counters">The faction counters to update.</param>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="type">The manufacturing type to inspect.</param>
         private static void RecordPlanetType(
             FactionIdleCounters counters,
             Planet planet,
@@ -1448,6 +1785,11 @@ public static class HeadlessSimulationRunner
             }
         }
 
+        /// <summary>
+        /// Gets or creates idle manufacturing counters for a faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The faction idle counters.</returns>
         private FactionIdleCounters GetOrCreateFactionCounters(string factionId)
         {
             if (!_factions.TryGetValue(factionId, out FactionIdleCounters counters))
@@ -1469,6 +1811,11 @@ public static class HeadlessSimulationRunner
             public int TroopIdleCapacityTicks;
             public Dictionary<string, PlanetIdleCounters> Planets { get; } = new();
 
+            /// <summary>
+            /// Gets or creates idle manufacturing counters for a planet.
+            /// </summary>
+            /// <param name="planet">The planet to inspect.</param>
+            /// <returns>The planet idle counters.</returns>
             public PlanetIdleCounters GetOrCreatePlanet(Planet planet)
             {
                 if (!Planets.TryGetValue(planet.InstanceID, out PlanetIdleCounters counters))

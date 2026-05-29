@@ -281,11 +281,11 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A character's en-route-to-mission active state changed.
+    /// A mission participant's en-route-to-mission active state changed.
     /// </summary>
     public class RoleEnrouteActiveResult : GameResult
     {
-        public Officer Officer { get; set; }
+        public IMissionParticipant Participant { get; set; }
         public bool IsActive { get; set; }
     }
 

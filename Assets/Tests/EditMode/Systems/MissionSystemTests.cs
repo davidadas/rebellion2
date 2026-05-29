@@ -811,6 +811,39 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToCaptorPlanet()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.AreEqual(
+                planet,
+                spy.GetParent(),
+                "Captured mission participant should be held on the captor-owned planet"
+            );
+            Assert.AreEqual(
+                0,
+                game.GetSceneNodesByType<StubMission>().Count,
+                "Mission should be removed after a participant is captured"
+            );
+        }
+
+        [Test]
         public void UpdateMission_DetectionSucceedsLowCapture_KillsParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -835,6 +868,29 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(
                 results.Any(r => r is OfficerKilledResult),
                 "Should produce OfficerKilledResult"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_ParticipantInjuredAfterInitiation_DoesNotAbortMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.Initiate(new StubRNG());
+            mission.SetExecutionTick(5);
+
+            officer.InjuryPoints = 1;
+
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            system.UpdateMission(mission);
+
+            Assert.AreEqual(
+                1,
+                game.GetSceneNodesByType<StubMission>().Count,
+                "Mission should continue when participant membership is unchanged"
             );
         }
 

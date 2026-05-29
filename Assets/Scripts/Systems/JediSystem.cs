@@ -36,6 +36,7 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
+            // Update discovery state for all officers.
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 if (!officer.IsJedi || !officer.IsForceEligible)
@@ -43,7 +44,7 @@ namespace Rebellion.Systems
 
                 UpdateForceDiscoveryState(officer, results);
             }
-
+            // Scan for hidden force users at each active scanner's location.
             ScanForHiddenForceUsers(results);
 
             return results;
@@ -62,6 +63,7 @@ namespace Rebellion.Systems
             if (growth <= 0)
                 return results;
 
+            // Only main participants gain Force from missions.
             foreach (IMissionParticipant participant in participants)
             {
                 if (
@@ -70,6 +72,7 @@ namespace Rebellion.Systems
                     && officer.IsForceEligible
                 )
                 {
+                    // ForceValue can exceed the normal max from discovery, but ForceRank cannot.
                     officer.ForceValue += growth;
                     results.Add(
                         new ForceExperienceResult

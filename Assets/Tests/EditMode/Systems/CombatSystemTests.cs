@@ -17,13 +17,14 @@ namespace Rebellion.Tests.Systems
     {
         protected CombatSystem MakeCombat(GameRoot game, IRandomNumberProvider rng)
         {
-            MovementSystem movement = new MovementSystem(game, null);
+            FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
+            MovementSystem movement = new MovementSystem(game, fogOfWar);
             ManufacturingSystem manufacturing = new ManufacturingSystem(game);
             PlanetaryControlSystem ownership = new PlanetaryControlSystem(
                 game,
                 movement,
                 manufacturing,
-                new FogOfWarSystem(game)
+                fogOfWar
             );
             return new CombatSystem(game, rng, movement, ownership);
         }

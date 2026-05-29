@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Factions;
@@ -945,10 +946,20 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void GetNearestFriendlyPlanetTo_MultipleFriendlyPlanets_ReturnsClosestPlanet()
         {
-            Planet planet3 = new Planet { InstanceID = "PLANET3", OwnerInstanceID = "FACTION1" };
+            Planet planet3 = new Planet
+            {
+                InstanceID = "PLANET3",
+                OwnerInstanceID = "FACTION1",
+                PositionX = 50,
+                PositionY = 50,
+            };
 
             _planet1.IsColonized = true;
             _planet1.EnergyCapacity = 10;
+            _planet1.PositionX = 5;
+            _planet1.PositionY = 0;
+            _planet2.PositionX = 20;
+            _planet2.PositionY = 0;
 
             Building testBuilding = new Building
             {
@@ -965,6 +976,55 @@ namespace Rebellion.Tests.Game.Factions
             Planet nearest = _faction.GetNearestFriendlyPlanetTo(testBuilding);
 
             Assert.AreEqual("PLANET1", nearest.InstanceID, "Should return the nearest planet");
+        }
+
+        [Test]
+        public void GetNearestOwnedPlanetTo_MultipleOwnedPlanets_ReturnsClosestPlanet()
+        {
+            _planet1.PositionX = 20;
+            _planet1.PositionY = 0;
+            _planet2.PositionX = 5;
+            _planet2.PositionY = 0;
+
+            _faction.AddOwnedUnit(_planet1);
+            _faction.AddOwnedUnit(_planet2);
+
+            Planet nearest = _faction.GetNearestOwnedPlanetTo(new Point(0, 0));
+
+            Assert.AreEqual("PLANET2", nearest.InstanceID, "Should return the nearest planet");
+        }
+
+        [Test]
+        public void GetNearestOwnedPlanetTo_WithExcludedClosestPlanet_ReturnsNextClosestPlanet()
+        {
+            _planet1.PositionX = 5;
+            _planet1.PositionY = 0;
+            _planet2.PositionX = 20;
+            _planet2.PositionY = 0;
+
+            _faction.AddOwnedUnit(_planet1);
+            _faction.AddOwnedUnit(_planet2);
+
+            Planet nearest = _faction.GetNearestOwnedPlanetTo(new Point(0, 0), _planet1);
+
+            Assert.AreEqual("PLANET2", nearest.InstanceID, "Should skip the excluded planet");
+        }
+
+        [Test]
+        public void GetNearestOwnedPlanetTo_WithStaleOwnershipIndex_ReturnsCurrentOwnerPlanet()
+        {
+            _planet1.PositionX = 5;
+            _planet1.PositionY = 0;
+            _planet2.PositionX = 20;
+            _planet2.PositionY = 0;
+
+            _faction.AddOwnedUnit(_planet1);
+            _faction.AddOwnedUnit(_planet2);
+            _planet1.OwnerInstanceID = "FACTION2";
+
+            Planet nearest = _faction.GetNearestOwnedPlanetTo(new Point(0, 0));
+
+            Assert.AreEqual("PLANET2", nearest.InstanceID, "Should ignore stale owned entities");
         }
 
         [Test]

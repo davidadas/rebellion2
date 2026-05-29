@@ -28,6 +28,14 @@ namespace Rebellion.Game.Missions
         [PersistableIgnore]
         public List<IMissionParticipant> DecoyParticipants { get; set; }
 
+        [PersistableIgnore]
+        private HashSet<string> _participantInstanceIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+
+        [PersistableIgnore]
+        private bool _hasCapturedParticipantIds;
+
         // Mission configuration.
         public MissionParticipantSkill ParticipantSkill { get; set; }
         public bool HasInitiated;
@@ -59,20 +67,6 @@ namespace Rebellion.Game.Missions
 
         [PersistableIgnore]
         public MissionParticipantSkill DecoyParticipantSkill { get; set; }
-
-        /// <summary>
-        /// Returns whether this mission is canceled when target ownership changes.
-        /// </summary>
-        public virtual bool CanceledOnOwnershipChange => true;
-
-        /// <summary>
-        /// Returns whether this mission should be canceled before its next tick.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public virtual bool ShouldAbort(GameRoot game) =>
-            MainParticipants.Count == 0
-            || MainParticipants.OfType<Officer>().Any(o => o.IsCaptured || o.IsKilled);
 
         /// <summary>
         /// Parameterless constructor for deserialization.
@@ -153,6 +147,46 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
+        /// Call at the top of each mission constructor before mission-specific validation.
+        /// </summary>
+        /// <param name="target">The scene node to validate as a Planet.</param>
+        /// <param name="missionName">Human-readable mission name used in the error message.</param>
+        /// <exception cref="ArgumentNullException">target is null.</exception>
+        /// <exception cref="InvalidOperationException">target is not a Planet.</exception>
+        /// <returns>The validated Planet instance.</returns>
+        protected static Planet RequirePlanetTarget(ISceneNode target, string missionName)
+        {
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (!(target is Planet planet))
+                throw new InvalidOperationException(
+                    $"{missionName} target must be a planet. Got: {target.GetType().Name}"
+                );
+            return planet;
+        }
+
+        /// <summary>
+        /// Returns whether this mission is canceled when target ownership changes.
+        /// </summary>
+        public virtual bool CanceledOnOwnershipChange => true;
+
+        /// <summary>
+        /// Returns whether this mission should be canceled before its next tick.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True if the mission should be aborted.</returns>
+        public virtual bool ShouldAbort(GameRoot game) =>
+            MainParticipants.Count == 0 || HaveParticipantsChanged();
+
+        /// <summary>
+        /// Returns whether the mission should continue after completion.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True if the mission should continue; false to tear down and send participants home.</returns>
+        public abstract bool CanContinue(GameRoot game);
+
+        /// <summary>
         /// Starts the mission and chooses its duration.
         /// </summary>
         /// <param name="provider">RNG provider for rolling the duration spread.</param>
@@ -160,8 +194,26 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = BaseTicks + provider.NextInt(0, SpreadTicks + 1);
+            CaptureParticipantIds();
             HasInitiated = true;
         }
+
+        /// <summary>
+        /// Increments progress by 1 unless all participants are in transit.
+        /// </summary>
+        public void IncrementProgress()
+        {
+            List<IMissionParticipant> all = GetAllParticipants();
+            bool unitsAreAllInTransit = all.Count > 0 && all.All(u => u.Movement != null);
+            if (CurrentProgress < MaxProgress && !unitsAreAllInTransit)
+                CurrentProgress++;
+        }
+
+        /// <summary>
+        /// Returns true when CurrentProgress has reached or exceeded MaxProgress.
+        /// </summary>
+        /// <returns>True if the mission has completed.</returns>
+        public bool IsComplete() => CurrentProgress >= MaxProgress;
 
         /// <summary>
         /// Returns the configured mission duration values.
@@ -176,12 +228,6 @@ namespace Rebellion.Game.Missions
         public void SetExecutionTick(int tick) => MaxProgress = tick;
 
         /// <summary>
-        /// Returns true when CurrentProgress has reached or exceeded MaxProgress.
-        /// </summary>
-        /// <returns>True if the mission has completed.</returns>
-        public bool IsComplete() => CurrentProgress >= MaxProgress;
-
-        /// <summary>
         /// Returns all main and decoy participants as a single list.
         /// </summary>
         /// <returns>Combined list of main and decoy participants.</returns>
@@ -189,15 +235,42 @@ namespace Rebellion.Game.Missions
             MainParticipants.Concat(DecoyParticipants).ToList();
 
         /// <summary>
-        /// Increments progress by 1 unless all participants are in transit.
+        /// Captures the current mission participant IDs.
         /// </summary>
-        public void IncrementProgress()
+        private void CaptureParticipantIds()
         {
-            List<IMissionParticipant> all = GetAllParticipants();
-            bool unitsAreAllInTransit = all.Count > 0 && all.All(u => u.Movement != null);
-            if (CurrentProgress < MaxProgress && !unitsAreAllInTransit)
-                CurrentProgress++;
+            _participantInstanceIds = GetParticipantIds();
+            _hasCapturedParticipantIds = true;
         }
+
+        /// <summary>
+        /// Returns whether the mission participant list differs from mission start.
+        /// </summary>
+        /// <returns>True if a participant was added or removed.</returns>
+        private bool HaveParticipantsChanged()
+        {
+            if (!_hasCapturedParticipantIds)
+            {
+                CaptureParticipantIds();
+                return false;
+            }
+
+            HashSet<string> currentParticipantIds = GetParticipantIds();
+            if (currentParticipantIds.Count != _participantInstanceIds.Count)
+                return true;
+
+            return currentParticipantIds.Any(id => !_participantInstanceIds.Contains(id));
+        }
+
+        /// <summary>
+        /// Returns all current participant IDs.
+        /// </summary>
+        /// <returns>The current participant ID set.</returns>
+        private HashSet<string> GetParticipantIds() =>
+            GetAllParticipants()
+                .Where(participant => !string.IsNullOrEmpty(participant.InstanceID))
+                .Select(participant => participant.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
 
         /// <summary>
         /// Returns the participant's mission success probability.
@@ -368,23 +441,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves eligible participant mission skills.
-        /// </summary>
-        protected virtual void ImproveMissionParticipantsSkill()
-        {
-            foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-            {
-                if (participant.CanImproveMissionSkill)
-                {
-                    participant.SetMissionSkillValue(
-                        ParticipantSkill,
-                        participant.GetMissionSkillValue(ParticipantSkill) + 1
-                    );
-                }
-            }
-        }
-
-        /// <summary>
         /// Executes the mission and returns all generated results.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -440,23 +496,20 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
-        /// Call at the top of each mission constructor before mission-specific validation.
+        /// Improves eligible participant mission skills.
         /// </summary>
-        /// <param name="target">The scene node to validate as a Planet.</param>
-        /// <param name="missionName">Human-readable mission name used in the error message.</param>
-        /// <exception cref="ArgumentNullException">target is null.</exception>
-        /// <exception cref="InvalidOperationException">target is not a Planet.</exception>
-        /// <returns>The validated Planet instance.</returns>
-        protected static Planet RequirePlanetTarget(ISceneNode target, string missionName)
+        protected virtual void ImproveMissionParticipantsSkill()
         {
-            if (target == null)
-                throw new ArgumentNullException(nameof(target));
-            if (!(target is Planet planet))
-                throw new InvalidOperationException(
-                    $"{missionName} target must be a planet. Got: {target.GetType().Name}"
-                );
-            return planet;
+            foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
+            {
+                if (participant.CanImproveMissionSkill)
+                {
+                    participant.SetMissionSkillValue(
+                        ParticipantSkill,
+                        participant.GetMissionSkillValue(ParticipantSkill) + 1
+                    );
+                }
+            }
         }
 
         /// <summary>
@@ -527,12 +580,5 @@ namespace Rebellion.Game.Missions
                 DecoyParticipants.Remove(participant);
             }
         }
-
-        /// <summary>
-        /// Returns whether the mission should continue after completion.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should continue; false to tear down and send participants home.</returns>
-        public abstract bool CanContinue(GameRoot game);
     }
 }

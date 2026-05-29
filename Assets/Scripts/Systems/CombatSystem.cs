@@ -304,6 +304,139 @@ namespace Rebellion.Systems
                 && secondFleet.Movement == null
                 && firstFleet.GetOwnerInstanceID() != secondFleet.GetOwnerInstanceID();
         }
+
+        /// <summary>
+        /// Removes a destroyed capital ship after resolving its carried units.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="movement">Movement system used for surviving passenger evacuation.</param>
+        /// <param name="ship">The destroyed capital ship.</param>
+        internal static void DestroyCapitalShip(
+            GameRoot game,
+            MovementSystem movement,
+            CapitalShip ship
+        )
+        {
+            Fleet fleet = ship.GetParentOfType<Fleet>();
+
+            EvacuateOfficersFromDestroyedShip(game, movement, ship, fleet);
+            EvacuateStarfightersFromDestroyedShip(game, movement, ship, fleet);
+            DestroyRegimentsAboard(game, ship);
+
+            game.DetachNode(ship);
+            GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
+        }
+
+        /// <summary>
+        /// Moves officers off a destroyed capital ship.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="movement">Movement system used for planet evacuation.</param>
+        /// <param name="ship">The destroyed capital ship.</param>
+        /// <param name="fleet">The fleet that contained the destroyed ship.</param>
+        private static void EvacuateOfficersFromDestroyedShip(
+            GameRoot game,
+            MovementSystem movement,
+            CapitalShip ship,
+            Fleet fleet
+        )
+        {
+            List<Officer> officers = ship.Officers.ToList();
+            if (officers.Count == 0)
+                return;
+
+            CapitalShip survivingShip = FindSurvivingShip(fleet, ship);
+
+            foreach (Officer officer in officers)
+            {
+                if (survivingShip != null)
+                {
+                    game.MoveNode(officer, survivingShip);
+                    GameLogger.Log(
+                        $"{officer.GetDisplayName()} evacuated to {survivingShip.GetDisplayName()} after {ship.GetDisplayName()} destroyed."
+                    );
+                }
+                else
+                {
+                    movement.EvacuateToNearestFriendlyPlanet(officer);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves surviving starfighters off a destroyed capital ship.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="movement">Movement system used for planet evacuation.</param>
+        /// <param name="ship">The destroyed capital ship.</param>
+        /// <param name="fleet">The fleet that contained the destroyed ship.</param>
+        private static void EvacuateStarfightersFromDestroyedShip(
+            GameRoot game,
+            MovementSystem movement,
+            CapitalShip ship,
+            Fleet fleet
+        )
+        {
+            List<Starfighter> starfighters = ship
+                .Starfighters.Where(starfighter =>
+                    starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                )
+                .ToList();
+
+            foreach (Starfighter starfighter in starfighters)
+            {
+                CapitalShip survivingCarrier = FindSurvivingCarrier(fleet, ship);
+                if (survivingCarrier != null)
+                    game.MoveNode(starfighter, survivingCarrier);
+                else
+                    movement.EvacuateToNearestFriendlyPlanet(starfighter);
+            }
+        }
+
+        /// <summary>
+        /// Removes complete regiments aboard a destroyed capital ship.
+        /// </summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="ship">The destroyed capital ship.</param>
+        private static void DestroyRegimentsAboard(GameRoot game, CapitalShip ship)
+        {
+            List<Regiment> regiments = ship
+                .Regiments.Where(regiment =>
+                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                )
+                .ToList();
+
+            foreach (Regiment regiment in regiments)
+                game.DetachNode(regiment);
+        }
+
+        /// <summary>
+        /// Finds another surviving capital ship in the same fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="destroyedShip">The destroyed ship to exclude.</param>
+        /// <returns>A surviving capital ship, or null if none exists.</returns>
+        private static CapitalShip FindSurvivingShip(Fleet fleet, CapitalShip destroyedShip)
+        {
+            return fleet?.CapitalShips.FirstOrDefault(ship =>
+                !ReferenceEquals(ship, destroyedShip) && ship.CurrentHullStrength > 0
+            );
+        }
+
+        /// <summary>
+        /// Finds another surviving capital ship with starfighter capacity.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <param name="destroyedShip">The destroyed ship to exclude.</param>
+        /// <returns>A surviving carrier, or null if none exists.</returns>
+        private static CapitalShip FindSurvivingCarrier(Fleet fleet, CapitalShip destroyedShip)
+        {
+            return fleet?.CapitalShips.FirstOrDefault(ship =>
+                !ReferenceEquals(ship, destroyedShip)
+                && ship.CurrentHullStrength > 0
+                && ship.GetExcessStarfighterCapacity() > 0
+            );
+        }
     }
 
     internal class SpaceCombatResolver
@@ -1105,10 +1238,7 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    Fleet fleet = ship.GetParentOfType<Fleet>();
-                    CombatHelpers.EvacuateOfficers(_game, _movement, ship, fleet);
-                    _game.DetachNode(ship);
-                    GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
+                    CombatSystem.DestroyCapitalShip(_game, _movement, ship);
                 }
             }
 
@@ -2386,10 +2516,7 @@ namespace Rebellion.Systems
                         strike.Lane = BombardmentLaneType.CapitalShip;
                         strike.Target = target;
                         strike.TargetName = target.GetDisplayName();
-                        Fleet parentFleet = target.GetParentOfType<Fleet>();
-                        if (parentFleet != null)
-                            CombatHelpers.EvacuateOfficers(_game, _movement, target, parentFleet);
-                        _game.DetachNode(target);
+                        CombatSystem.DestroyCapitalShip(_game, _movement, target);
                     }
                     else if (idx < ships.Count + fighters.Count)
                     {
@@ -2447,49 +2574,6 @@ namespace Rebellion.Systems
         {
             public Lane Lane;
             public int ShipGroupIndex;
-        }
-    }
-
-    internal static class CombatHelpers
-    {
-        /// <summary>
-        /// Moves officers off a destroyed ship. Prefers another surviving ship in the same
-        /// fleet; falls back to the nearest friendly planet via MovementSystem.
-        /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <param name="movement">Movement system used for planet evacuation.</param>
-        /// <param name="ship">The destroyed ship.</param>
-        /// <param name="fleet">The fleet that contained the destroyed ship.</param>
-        public static void EvacuateOfficers(
-            GameRoot game,
-            MovementSystem movement,
-            CapitalShip ship,
-            Fleet fleet
-        )
-        {
-            List<Officer> officers = ship.Officers.ToList();
-            if (officers.Count == 0)
-                return;
-
-            CapitalShip survivingShip = fleet?.CapitalShips.FirstOrDefault(s =>
-                !ReferenceEquals(s, ship) && s.CurrentHullStrength > 0
-            );
-
-            foreach (Officer officer in officers)
-            {
-                if (survivingShip != null)
-                {
-                    game.DetachNode(officer);
-                    game.AttachNode(officer, survivingShip);
-                    GameLogger.Log(
-                        $"{officer.GetDisplayName()} evacuated to {survivingShip.GetDisplayName()} after {ship.GetDisplayName()} destroyed."
-                    );
-                }
-                else
-                {
-                    movement.EvacuateToNearestFriendlyPlanet(officer);
-                }
-            }
         }
     }
 }
