@@ -190,7 +190,7 @@ namespace Rebellion.Systems
 
             return new GameObjectAutoscrappedResult
             {
-                DestroyedObject = victim as IGameEntity,
+                DestroyedObject = victim,
                 Context = location,
                 Tick = _game.CurrentTick,
             };

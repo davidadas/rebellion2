@@ -35,6 +35,9 @@ dotnet_style_parentheses_in_other_binary_operators      = never_if_unnecessary
 dotnet_style_parentheses_in_other_operators             = never_if_unnecessary
 dotnet_diagnostic.IDE0047.severity = error
 
+# Remove unnecessary casts
+dotnet_diagnostic.IDE0004.severity = error
+
 # Roslynator diagnostics
 dotnet_diagnostic.RCS1046.severity = error    # async method name must end with Async
 dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not end with Async
