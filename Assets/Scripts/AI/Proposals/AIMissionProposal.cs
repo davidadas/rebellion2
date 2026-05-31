@@ -246,7 +246,7 @@ namespace Rebellion.AI.Proposals
             if (RequiresTargetOfficer() && TargetOfficer == null)
                 return false;
 
-            return TargetOfficer == null || (!TargetOfficer.IsCaptured && !TargetOfficer.IsKilled);
+            return TargetOfficer == null || !TargetOfficer.IsCaptured && !TargetOfficer.IsKilled;
         }
 
         /// <summary>

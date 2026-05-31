@@ -28,6 +28,13 @@ dotnet_diagnostic.IDE0007.severity    = error    # use var — disabled
 dotnet_diagnostic.IDE0008.severity    = error    # use explicit type
 dotnet_diagnostic.IDE0005.severity    = error    # remove unnecessary usings
 
+# Remove unnecessary parentheses
+dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary
+dotnet_style_parentheses_in_relational_binary_operators = never_if_unnecessary
+dotnet_style_parentheses_in_other_binary_operators      = never_if_unnecessary
+dotnet_style_parentheses_in_other_operators             = never_if_unnecessary
+dotnet_diagnostic.IDE0047.severity = error
+
 # Roslynator diagnostics
 dotnet_diagnostic.RCS1046.severity = error    # async method name must end with Async
 dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not end with Async

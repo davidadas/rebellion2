@@ -250,8 +250,7 @@ namespace Rebellion.Game.Units
                 int weaponStrength = f.LaserCannon + f.IonCannon + f.Torpedoes;
                 if (f.MaxSquadronSize > 0)
                 {
-                    starfighterCombat +=
-                        (weaponStrength * f.CurrentSquadronSize) / f.MaxSquadronSize;
+                    starfighterCombat += weaponStrength * f.CurrentSquadronSize / f.MaxSquadronSize;
                 }
                 else
                 {

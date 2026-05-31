@@ -928,7 +928,7 @@ namespace Rebellion.Systems
 
             int baseTicks = (int)
                 Math.Ceiling(
-                    (distance * _game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
+                    distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
                 );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
