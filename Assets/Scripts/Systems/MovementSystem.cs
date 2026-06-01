@@ -187,7 +187,7 @@ namespace Rebellion.Systems
                 if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
                     return false;
 
-                ISceneNode unitOrigin = ((ISceneNode)unit).GetParent();
+                ISceneNode unitOrigin = unit.GetParent();
                 if (unitOrigin == null)
                 {
                     GameLogger.Warning(
@@ -319,13 +319,13 @@ namespace Rebellion.Systems
             )
                 return;
 
-            Planet destinationPlanet = ((ISceneNode)movable).GetParentOfType<Planet>();
+            Planet destinationPlanet = movable.GetParentOfType<Planet>();
             if (destinationPlanet == null)
                 throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
                 );
 
-            ISceneNode destination = (ISceneNode)movable.GetParent();
+            ISceneNode destination = movable.GetParent();
 
             movable.Movement.TicksElapsed++;
             movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
@@ -487,7 +487,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            _game.DetachNode((ISceneNode)movable);
+            _game.DetachNode(movable);
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
             );
@@ -561,7 +561,7 @@ namespace Rebellion.Systems
             results.Add(
                 new GameObjectEnrouteActiveResult
                 {
-                    GameObject = movable as IGameEntity,
+                    GameObject = movable,
                     IsActive = false,
                     Tick = _game.CurrentTick,
                 }
@@ -569,7 +569,7 @@ namespace Rebellion.Systems
             results.Add(
                 new UnitArrivedResult
                 {
-                    Unit = movable as IGameEntity,
+                    Unit = movable,
                     Destination = destinationPlanet,
                     Tick = _game.CurrentTick,
                 }
@@ -610,7 +610,7 @@ namespace Rebellion.Systems
             }
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
-            Planet currentPlanet = ((ISceneNode)unit).GetParentOfType<Planet>();
+            Planet currentPlanet = unit.GetParentOfType<Planet>();
             Planet fallback = owner?.GetNearestOwnedPlanetTo(unit.GetPosition(), currentPlanet);
             if (fallback != null)
             {
@@ -707,13 +707,13 @@ namespace Rebellion.Systems
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
             int transitTicks = CalculateTransitTicks(unit, originPosition, destinationPlanet);
 
-            if (((ISceneNode)unit).GetParent() == destination)
+            if (unit.GetParent() == destination)
             {
                 unit.Movement = null;
                 return;
             }
 
-            _game.MoveNode((ISceneNode)unit, destination);
+            _game.MoveNode(unit, destination);
             ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
 
             unit.Movement = new MovementState
@@ -725,16 +725,12 @@ namespace Rebellion.Systems
             };
 
             _pendingResults.Add(
-                new GameObjectEnrouteResult
-                {
-                    GameObject = unit as IGameEntity,
-                    Tick = _game.CurrentTick,
-                }
+                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
             );
             _pendingResults.Add(
                 new GameObjectEnrouteActiveResult
                 {
-                    GameObject = unit as IGameEntity,
+                    GameObject = unit,
                     IsActive = true,
                     Tick = _game.CurrentTick,
                 }
@@ -787,7 +783,7 @@ namespace Rebellion.Systems
             )
                 return;
 
-            _game.MoveNode((ISceneNode)unit, resolvedDestination);
+            _game.MoveNode(unit, resolvedDestination);
         }
 
         /// <summary>
@@ -812,7 +808,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (resolvedDestination.CanAcceptChild((ISceneNode)unit))
+            if (resolvedDestination.CanAcceptChild(unit))
                 return true;
 
             GameLogger.Warning(
@@ -928,7 +924,7 @@ namespace Rebellion.Systems
 
             int baseTicks = (int)
                 Math.Ceiling(
-                    (distance * _game.GetConfig().Movement.DistanceScale) / slowestHyperdrive
+                    distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
                 );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);

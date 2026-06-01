@@ -73,9 +73,9 @@ namespace Rebellion.Tests.Util.Extensions
         public void Shuffle_OnNullCollection_ThrowsArgumentNullException()
         {
             IEnumerable<int> nullCollection = null;
-            Assert.Throws<ArgumentException>(
+            Assert.Throws<ArgumentNullException>(
                 () => nullCollection.Shuffle(),
-                "Shuffling a null collection should throw an ArgumentException."
+                "Shuffling a null collection should throw an ArgumentNullException."
             );
         }
 

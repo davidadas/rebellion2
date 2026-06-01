@@ -919,15 +919,18 @@ namespace Rebellion.Util.Serialization
                 bool isPublicProperty =
                     member is PropertyInfo publicProperty
                     && publicProperty.GetMethod?.IsPublic == true;
-                bool hasPersistableAttribute = member
-                    .GetCustomAttributes(typeof(PersistableMemberAttribute), true)
-                    .Any();
-                bool hasIgnoreAttribute = member
-                    .GetCustomAttributes(typeof(PersistableIgnoreAttribute), true)
-                    .Any();
-                bool hasAlternativePersistableAttribute = member
-                    .GetCustomAttributes(typeof(PersistableAttributeAttribute), true)
-                    .Any();
+                bool hasPersistableAttribute = member.IsDefined(
+                    typeof(PersistableMemberAttribute),
+                    true
+                );
+                bool hasIgnoreAttribute = member.IsDefined(
+                    typeof(PersistableIgnoreAttribute),
+                    true
+                );
+                bool hasAlternativePersistableAttribute = member.IsDefined(
+                    typeof(PersistableAttributeAttribute),
+                    true
+                );
 
                 if (operationType == OperationType.Write)
                 {
@@ -974,12 +977,14 @@ namespace Rebellion.Util.Serialization
                     member is PropertyInfo property
                     && property.GetMethod?.IsStatic != true
                     && property.SetMethod?.IsStatic != true;
-                bool hasPersistableAttribute = member
-                    .GetCustomAttributes(typeof(PersistableAttributeAttribute), true)
-                    .Any();
-                bool hasIgnoreAttribute = member
-                    .GetCustomAttributes(typeof(PersistableIgnoreAttribute), true)
-                    .Any();
+                bool hasPersistableAttribute = member.IsDefined(
+                    typeof(PersistableAttributeAttribute),
+                    true
+                );
+                bool hasIgnoreAttribute = member.IsDefined(
+                    typeof(PersistableIgnoreAttribute),
+                    true
+                );
 
                 if (operationType == OperationType.Write)
                 {

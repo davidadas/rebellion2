@@ -354,7 +354,10 @@ namespace Rebellion.Util.Extensions
 
             // Backing fields follow the pattern: <PropertyName>k__BackingField
             string fieldName = field.Name;
-            if (!fieldName.StartsWith("<") || !fieldName.EndsWith(">k__BackingField"))
+            if (
+                !fieldName.StartsWith("<", StringComparison.Ordinal)
+                || !fieldName.EndsWith(">k__BackingField", StringComparison.Ordinal)
+            )
                 return false;
 
             string propertyName = fieldName.Substring(1, fieldName.IndexOf('>') - 1);
