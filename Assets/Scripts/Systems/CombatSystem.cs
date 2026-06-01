@@ -2422,7 +2422,7 @@ namespace Rebellion.Systems
             int defenderCommanderRating
         )
         {
-            var config = _game.Config.Combat;
+            GameConfig.CombatConfig config = _game.Config.Combat;
             int divisor = config.GroundCombatCommanderDivisor;
             int attackerBonus = divisor > 0 ? attackerCommanderRating / divisor : 0;
             int defenderBonus = divisor > 0 ? defenderCommanderRating / divisor : 0;

@@ -5,7 +5,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
