@@ -286,6 +286,9 @@
     <MineTypeID>BDFA04</MineTypeID>
     <CoreFacilityTable>
       <WeightedFacilityEntry>
+        <CumulativeWeight>0</CumulativeWeight>
+      </WeightedFacilityEntry>
+      <WeightedFacilityEntry>
         <CumulativeWeight>36</CumulativeWeight>
         <!-- Refinery. -->
         <TypeID>BDFA05</TypeID>
@@ -316,13 +319,16 @@
         <TypeID>BDDF01</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
-        <CumulativeWeight>100</CumulativeWeight>
+        <CumulativeWeight>99</CumulativeWeight>
         <!-- KDY-150. -->
         <TypeID>BDDF03</TypeID>
       </WeightedFacilityEntry>
     </CoreFacilityTable>
     <!-- Rim facility table. -->
     <RimFacilityTable>
+      <WeightedFacilityEntry>
+        <CumulativeWeight>0</CumulativeWeight>
+      </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>91</CumulativeWeight>
         <!-- Refinery. -->
@@ -483,23 +489,30 @@
       </FixedFleet>
       <!-- Yavin starting fleet. -->
       <FixedFleet>
-        <PlanetInstanceID>YAVIN</PlanetInstanceID>
+        <TargetPlanets>
+          <PlanetInstanceID>YAVIN</PlanetInstanceID>
+          <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        </TargetPlanets>
         <FactionID>FNALL1</FactionID>
-        <SpawnChancePct>50</SpawnChancePct>
-        <Ships>
-          <UnitEntry>
+        <ShipEntries>
+          <FixedFleetShip>
+            <!-- Corellian Corvette. -->
+            <TypeID>ALCS006</TypeID>
+            <Count>1</Count>
+          </FixedFleetShip>
+          <FixedFleetShip>
             <!-- Medium Transport. -->
             <TypeID>ALCS003</TypeID>
             <Count>1</Count>
-          </UnitEntry>
-        </Ships>
-        <Cargo>
-          <UnitEntry>
-            <!-- Alliance Fleet Regiment. -->
-            <TypeID>REAL001</TypeID>
-            <Count>2</Count>
-          </UnitEntry>
-        </Cargo>
+            <Cargo>
+              <UnitEntry>
+                <!-- Alliance Fleet Regiment. -->
+                <TypeID>REAL001</TypeID>
+                <Count>2</Count>
+              </UnitEntry>
+            </Cargo>
+          </FixedFleetShip>
+        </ShipEntries>
       </FixedFleet>
     </FixedFleets>
     <FactionBudgets>

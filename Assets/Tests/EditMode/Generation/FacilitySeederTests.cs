@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Generation
 
         /// <summary>
         /// Records the (min, max) of every NextInt call and returns min, so the test
-        /// can assert the facility seeder never rolls past the original table's range.
+        /// can assert the facility seeder stays inside the facility table range.
         /// </summary>
         private class RecordingRNG : IRandomNumberProvider
         {
@@ -78,6 +78,7 @@ namespace Rebellion.Tests.Generation
                     MineTypeID = "BDFA04",
                     CoreFacilityTable = new List<WeightedFacilityEntry>
                     {
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
                         new WeightedFacilityEntry { CumulativeWeight = 36, TypeID = "BDFA05" },
                         new WeightedFacilityEntry { CumulativeWeight = 79, TypeID = "BDFA03" },
                         new WeightedFacilityEntry { CumulativeWeight = 82, TypeID = "BDFA02" },
@@ -88,7 +89,13 @@ namespace Rebellion.Tests.Generation
                     },
                     RimFacilityTable = new List<WeightedFacilityEntry>
                     {
-                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
+                        new WeightedFacilityEntry { CumulativeWeight = 91, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDFA03" },
+                        new WeightedFacilityEntry { CumulativeWeight = 97, TypeID = "BDFA02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 98, TypeID = "BDFA01" },
+                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDDF01" },
                     },
                     HQLoadouts = new List<HQFacilityLoadout>(),
                 },
@@ -145,7 +152,7 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 36, 36, 36 })
             );
 
             Assert.IsNotEmpty(
@@ -164,7 +171,7 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 91, 91, 91 })
             );
 
             Assert.IsNotEmpty(deployed, "Colonized rim planet should receive facilities.");
@@ -221,7 +228,28 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_CorePlanet_RollsStayWithinHundredValueRange()
+        public void Seed_EmptyFacilityRoll_LeavesSlotEmptyAndContinues()
+        {
+            PlanetSystem system = CreateCoreSystem(energy: 2, rawNodes: 0);
+
+            List<Building> deployed = SeedFacilities(
+                new[] { system },
+                CreateTemplates(),
+                CreateRules(),
+                new GalaxyClassificationResult(),
+                new SequenceRNG(new[] { 0, 36 })
+            );
+
+            Assert.AreEqual(1, deployed.Count, "Only the non-empty facility roll should place.");
+            Assert.AreEqual(
+                "BDFA05",
+                deployed[0].TypeID,
+                "The second facility roll should still execute after an empty result."
+            );
+        }
+
+        [Test]
+        public void Seed_CorePlanet_RollsStayWithinFacilityTableRange()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
             RecordingRNG rng = new RecordingRNG();
@@ -235,12 +263,12 @@ namespace Rebellion.Tests.Generation
             );
 
             List<(int min, int max)> outOfRange = rng
-                .IntCalls.Where(call => call.max > 100)
+                .IntCalls.Where(call => call.max > 101)
                 .ToList();
 
             Assert.IsEmpty(
                 outOfRange,
-                $"Facility seeder rolls must stay within a 100-value space (max<=100); found: {string.Join(", ", outOfRange)}"
+                $"Facility seeder rolls must stay within a 101-value space (max<=101); found: {string.Join(", ", outOfRange)}"
             );
         }
 

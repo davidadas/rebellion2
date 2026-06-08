@@ -276,9 +276,19 @@ namespace Rebellion.Generation
     public class FixedFleet
     {
         public string PlanetInstanceID;
+        public List<string> TargetPlanets;
         public string FactionID;
         public int SpawnChancePct;
         public List<UnitEntry> Ships;
+        public List<UnitEntry> Cargo;
+        public List<FixedFleetShip> ShipEntries;
+    }
+
+    [PersistableObject]
+    public class FixedFleetShip
+    {
+        public string TypeID;
+        public int Count;
         public List<UnitEntry> Cargo;
     }
 

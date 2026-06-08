@@ -12,6 +12,9 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class FacilitySeeder : IGameSeeder
     {
+        private const int _facilityTableRollMin = 0;
+        private const int _facilityTableRollMaxExclusive = 101;
+
         /// <summary>
         /// Seeds initial facilities into every eligible planet in the generation context.
         /// </summary>
@@ -52,9 +55,6 @@ namespace Rebellion.Generation
                 .GroupBy(b => b.TypeID)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            WeightedTable<string> coreTable = BuildTable(config.CoreFacilityTable);
-            WeightedTable<string> rimTable = BuildTable(config.RimFacilityTable);
-
             Dictionary<string, List<string>> loadoutsByPlanetId = ResolveHQLoadouts(
                 config.HQLoadouts,
                 classification
@@ -79,7 +79,7 @@ namespace Rebellion.Generation
                         isCore,
                         config,
                         templateMap,
-                        isCore ? coreTable : rimTable,
+                        isCore ? config.CoreFacilityTable : config.RimFacilityTable,
                         rng,
                         deployedBuildings
                     );
@@ -96,7 +96,7 @@ namespace Rebellion.Generation
         /// <param name="isCore">Whether the planet is in a core system.</param>
         /// <param name="config">Facility generation config (mine multipliers, mine type).</param>
         /// <param name="templateMap">Building templates keyed by TypeID.</param>
-        /// <param name="facilityTable">Weighted table for non-mine facility rolls.</param>
+        /// <param name="facilityTable">Facility entries for non-mine facility rolls.</param>
         /// <param name="rng">Random number provider.</param>
         /// <param name="deployedBuildings">Accumulator for all placed buildings.</param>
         private void SeedPlanet(
@@ -104,12 +104,12 @@ namespace Rebellion.Generation
             bool isCore,
             FacilityGenerationSection config,
             Dictionary<string, Building> templateMap,
-            WeightedTable<string> facilityTable,
+            List<WeightedFacilityEntry> facilityTable,
             IRandomNumberProvider rng,
             List<Building> deployedBuildings
         )
         {
-            int mineCount = 0;
+            int mineCount = planet.Buildings.Count(b => b.BuildingType == BuildingType.Mine);
             int mineMultiplier = isCore ? config.CoreMineMultiplier : config.RimMineMultiplier;
 
             for (int slot = 0; slot < planet.EnergyCapacity; slot++)
@@ -117,16 +117,23 @@ namespace Rebellion.Generation
                 if (planet.GetAvailableEnergy() <= 0)
                     break;
 
-                string typeID = RollFacilityType(
+                bool rolled = TryRollFacilityType(
                     planet,
                     config,
                     facilityTable,
                     rng,
                     mineMultiplier,
-                    ref mineCount
+                    ref mineCount,
+                    out string typeID
                 );
 
-                if (typeID == null || !templateMap.TryGetValue(typeID, out Building template))
+                if (!rolled)
+                    break;
+
+                if (typeID == null)
+                    continue;
+
+                if (!templateMap.TryGetValue(typeID, out Building template))
                     break;
 
                 if (planet.GetAvailableEnergy() <= 0)
@@ -148,41 +155,67 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="planet">The planet being seeded (used for raw resource count).</param>
         /// <param name="config">Facility generation config containing the mine TypeID.</param>
-        /// <param name="facilityTable">Weighted table for non-mine facility rolls.</param>
+        /// <param name="facilityTable">Facility entries for non-mine facility rolls.</param>
         /// <param name="rng">Random number provider.</param>
         /// <param name="mineMultiplier">Core or rim mine probability multiplier.</param>
         /// <param name="mineCount">Running count of mines placed on this planet.</param>
-        /// <returns>The TypeID of the facility to place, or null if the table roll failed.</returns>
-        private string RollFacilityType(
+        /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
+        /// <returns>Whether a source table entry was resolved.</returns>
+        private bool TryRollFacilityType(
             Planet planet,
             FacilityGenerationSection config,
-            WeightedTable<string> facilityTable,
+            List<WeightedFacilityEntry> facilityTable,
             IRandomNumberProvider rng,
             int mineMultiplier,
-            ref int mineCount
+            ref int mineCount,
+            out string typeID
         )
         {
             int mineProbability = (planet.NumRawResourceNodes - mineCount) * mineMultiplier;
             if (mineProbability > 0 && rng.NextInt(0, 100) < mineProbability)
             {
                 mineCount++;
-                return config.MineTypeID;
+                typeID = config.MineTypeID;
+                return true;
             }
 
-            return facilityTable.Roll(rng);
+            return TryRollFacilityTable(facilityTable, rng, out typeID);
         }
 
         /// <summary>
-        /// Converts weighted facility entries into a WeightedTable for random selection.
+        /// Rolls the facility entry table and returns the selected TypeID.
         /// </summary>
         /// <param name="entries">Cumulative-weight facility entries from config.</param>
-        /// <returns>A WeightedTable that maps rolls to facility TypeIDs.</returns>
-        private WeightedTable<string> BuildTable(List<WeightedFacilityEntry> entries)
+        /// <param name="rng">Random number provider.</param>
+        /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
+        /// <returns>Whether a table entry was resolved.</returns>
+        private bool TryRollFacilityTable(
+            List<WeightedFacilityEntry> entries,
+            IRandomNumberProvider rng,
+            out string typeID
+        )
         {
-            List<(int, string)> tableEntries = entries.ConvertAll(e =>
-                (e.CumulativeWeight, e.TypeID)
-            );
-            return new WeightedTable<string>(tableEntries, rollMin: 0, rollMax: 100);
+            typeID = null;
+
+            if (entries == null || entries.Count == 0)
+                return false;
+
+            int roll = rng.NextInt(_facilityTableRollMin, _facilityTableRollMaxExclusive);
+            WeightedFacilityEntry selected = entries[0];
+
+            foreach (WeightedFacilityEntry entry in entries)
+            {
+                if (roll < entry.CumulativeWeight)
+                {
+                    typeID = selected.TypeID;
+                    return true;
+                }
+
+                selected = entry;
+            }
+
+            typeID = selected.TypeID;
+            return true;
         }
 
         /// <summary>
