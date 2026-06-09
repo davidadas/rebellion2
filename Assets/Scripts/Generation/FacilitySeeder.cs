@@ -194,6 +194,7 @@ namespace Rebellion.Generation
         /// <summary>
         /// Rolls the facility entry table and returns the selected TypeID.
         /// </summary>
+        /// <param name="config">Facility generation settings controlling table rolls.</param>
         /// <param name="entries">Cumulative-weight facility entries from config.</param>
         /// <param name="rng">Random number provider.</param>
         /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
