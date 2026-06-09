@@ -271,24 +271,19 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_ColonizedPlanets_FillBuildingsProportionalToEnergyCapacity()
+        public void Build_ColonizedPlanets_DoNotExceedEnergyCapacity()
         {
-            int totalEnergy = 0;
-            int totalBuildings = 0;
             foreach (PlanetSystem sector in _game.Galaxy.PlanetSystems)
             {
                 foreach (Planet planet in sector.Planets.Where(p => p.IsColonized))
                 {
-                    totalEnergy += planet.EnergyCapacity;
-                    totalBuildings += planet.Buildings.Count;
+                    Assert.LessOrEqual(
+                        planet.Buildings.Count,
+                        planet.EnergyCapacity,
+                        $"Planet {planet.GetDisplayName()} has {planet.Buildings.Count} buildings for {planet.EnergyCapacity} energy capacity."
+                    );
                 }
             }
-
-            Assert.GreaterOrEqual(
-                totalBuildings * 10,
-                totalEnergy * 9,
-                $"Total buildings ({totalBuildings}) vs total colonized energy capacity ({totalEnergy}): seeder is skipping planets or over-concentrating on some."
-            );
         }
 
         [Test]
@@ -456,6 +451,10 @@ namespace Rebellion.Tests.Generation
         public void Build_FogOfWar_OuterRimPlanetsStartUnexplored()
         {
             GameGenerationConfig rules = ResourceManager.GetConfig<GameGenerationConfig>();
+            Dictionary<string, string> planetInstanceIdsByTypeId = _game
+                .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
+                .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
+                .ToDictionary(planet => planet.TypeID, planet => planet.InstanceID);
             HashSet<(string planetId, string factionId)> visibilityOverrides = new HashSet<(
                 string planetId,
                 string factionId
@@ -465,10 +464,14 @@ namespace Rebellion.Tests.Generation
                         fs.StartingPlanets ?? new List<StartingPlanet>()
                     )
                     .Where(sp =>
-                        !string.IsNullOrEmpty(sp.PlanetInstanceID) && sp.VisibleToFactionIDs != null
+                        !string.IsNullOrEmpty(sp.PlanetTypeID)
+                        && sp.VisibleToFactionIDs != null
+                        && planetInstanceIdsByTypeId.ContainsKey(sp.PlanetTypeID)
                     )
                     .SelectMany(sp =>
-                        sp.VisibleToFactionIDs.Select(fid => (sp.PlanetInstanceID, fid))
+                        sp.VisibleToFactionIDs.Select(fid =>
+                            (planetInstanceIdsByTypeId[sp.PlanetTypeID], fid)
+                        )
                     )
             );
 

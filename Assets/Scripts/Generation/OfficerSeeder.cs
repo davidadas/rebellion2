@@ -141,13 +141,28 @@ namespace Rebellion.Generation
             int recruitableLimit
         )
         {
-            List<Officer> picked = officers
-                .Where(o => o.IsMain || o.IsRecruitable)
-                .TakeWhile((o, index) => o.IsMain || index < recruitableLimit)
+            List<Officer> fixedStartOfficers = officers.Where(HasFixedStart).ToList();
+            List<Officer> picked = fixedStartOfficers
+                .Concat(
+                    officers
+                        .Except(fixedStartOfficers)
+                        .Where(o => o.IsMain || o.IsRecruitable)
+                        .TakeWhile((o, index) => o.IsMain || index < recruitableLimit)
+                )
                 .ToList();
             foreach (Officer officer in picked)
                 officer.OwnerInstanceID = factionId;
             return picked;
+        }
+
+        /// <summary>
+        /// Returns whether an officer has a configured starting destination.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True if the officer has a fixed starting destination.</returns>
+        private bool HasFixedStart(Officer officer)
+        {
+            return officer.InitialParentTypeID != null || officer.InitialParentInstanceID != null;
         }
 
         /// <summary>
@@ -245,7 +260,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Places each selected officer on a destination owned by their faction —
-        /// either an explicit InitialParentInstanceID target or a random owned planet
+        /// either an explicit initial-parent target or a random owned planet
         /// or fleet.
         /// </summary>
         /// <param name="officers">The officers selected for deployment.</param>
@@ -275,16 +290,39 @@ namespace Rebellion.Generation
             {
                 List<ISceneNode> factionDests = destinations[officer.OwnerInstanceID];
 
-                ISceneNode destination =
-                    officer.InitialParentInstanceID != null
-                        ? factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID)
-                        : factionDests[rng.NextInt(0, factionDests.Count)];
+                ISceneNode destination = ResolveOfficerDestination(officer, factionDests, rng);
 
                 if (destination is Planet planet)
                     planet.AddChild(officer);
                 else if (destination is Fleet fleet && fleet.CapitalShips.Count > 0)
                     fleet.CapitalShips[0].AddChild(officer);
             }
+        }
+
+        /// <summary>
+        /// Resolves the starting destination for an officer.
+        /// </summary>
+        /// <param name="officer">The officer being deployed.</param>
+        /// <param name="factionDests">Available destinations owned by the officer's faction.</param>
+        /// <param name="rng">Random number provider for fallback destination selection.</param>
+        /// <returns>The destination that should receive the officer.</returns>
+        private ISceneNode ResolveOfficerDestination(
+            Officer officer,
+            List<ISceneNode> factionDests,
+            IRandomNumberProvider rng
+        )
+        {
+            if (officer.InitialParentTypeID != null)
+            {
+                return factionDests.First(n =>
+                    n is Planet planet && planet.TypeID == officer.InitialParentTypeID
+                );
+            }
+
+            if (officer.InitialParentInstanceID != null)
+                return factionDests.First(n => n.InstanceID == officer.InitialParentInstanceID);
+
+            return factionDests[rng.NextInt(0, factionDests.Count)];
         }
 
         /// <summary>

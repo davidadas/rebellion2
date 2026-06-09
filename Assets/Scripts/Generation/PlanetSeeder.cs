@@ -200,6 +200,8 @@ namespace Rebellion.Generation
 
             if (!isCore)
             {
+                if (!planet.IsColonized)
+                    return;
                 DistributeRimSupport(planet, factionIds);
                 return;
             }

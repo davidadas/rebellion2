@@ -113,6 +113,7 @@ namespace Rebellion.Tests.Generation
                 new Planet
                 {
                     InstanceID = "p1",
+                    TypeID = "p1",
                     OwnerInstanceID = "FNALL1",
                     IsColonized = true,
                     EnergyCapacity = energy,
@@ -273,15 +274,15 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesFirst()
+        public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesAfterRandomFacilities()
         {
-            PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
+            PlanetSystem system = CreateCoreSystem(energy: 1, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },
             };
@@ -291,14 +292,18 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 36 })
             );
 
-            Assert.IsNotEmpty(deployed, "Facility seeding should produce deployed buildings.");
+            Assert.AreEqual(
+                "BDFA05",
+                deployed[0].TypeID,
+                "Random facility seeding should run before HQ loadout placement."
+            );
             Assert.AreEqual(
                 "BDFA01",
-                deployed[0].TypeID,
-                "HQ loadout Construction Yard should be placed before any randomly seeded facilities."
+                deployed[1].TypeID,
+                "HQ loadout Construction Yard should be placed after random facility seeding."
             );
         }
 
@@ -316,7 +321,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = GameGenerationConfig.FactionHqSentinel,
+                    PlanetTypeID = GameGenerationConfig.FactionHqSentinel,
                     FactionID = "FNALL1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },
@@ -345,7 +350,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA01", "BDFA02", "BDFA03", "BDFA05" },
                 },
             };
@@ -380,7 +385,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA04", "BDFA04" },
                 },
             };

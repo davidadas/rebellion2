@@ -45,11 +45,17 @@ namespace Rebellion.Tests.Generation
             return ctx;
         }
 
-        private static Planet OwnedPlanet(string id, string owner, int ownerSupport)
+        private static Planet OwnedPlanet(
+            string id,
+            string owner,
+            int ownerSupport,
+            string typeId = null
+        )
         {
             Planet planet = new Planet
             {
                 InstanceID = id,
+                TypeID = typeId ?? id,
                 OwnerInstanceID = owner,
                 IsColonized = true,
             };
@@ -154,9 +160,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedGarrison_PlacesConfiguredTroopsOnNamedPlanet()
+        public void Seed_FixedGarrison_PlacesConfiguredTroopsOnConfiguredPlanetType()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             Regiment[] regimentTemplates =
             {
@@ -177,7 +188,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -230,7 +241,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = GameGenerationConfig.FactionHqSentinel,
+                            PlanetTypeID = GameGenerationConfig.FactionHqSentinel,
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -259,7 +270,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_FixedGarrisonWithUnknownUnitId_ThrowsInvalidOperationException()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
 
             GameGenerationConfig config = new GameGenerationConfig
@@ -276,7 +292,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -304,9 +320,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedFleet_PlacesConfiguredShipsAsFleetOnPlanet()
+        public void Seed_FixedFleet_PlacesConfiguredShipsOnConfiguredPlanetType()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             CapitalShip[] shipTemplates =
             {
@@ -328,7 +349,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedFleet
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             SpawnChancePct = 100,
                             Ships = new List<UnitEntry>
@@ -353,20 +374,25 @@ namespace Rebellion.Tests.Generation
             );
 
             List<Fleet> fleets = planet.GetFleets();
-            Assert.AreEqual(1, fleets.Count, "Expected one fleet on the named planet.");
+            Assert.AreEqual(1, fleets.Count, "Expected one fleet on the configured planet type.");
             Assert.AreEqual(2, fleets[0].CapitalShips.Count);
         }
 
         [Test]
-        public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByInstanceId()
+        public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeId()
         {
-            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100);
+            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100, typeId: "PLSUM06");
             Planet hq = OwnedPlanet("ALLIANCE_HQ", "FNALL1", ownerSupport: 100);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
             CapitalShip[] shipTemplates =
             {
                 new CapitalShip { TypeID = "ALCS006", MaintenanceCost = 1 },
-                new CapitalShip { TypeID = "ALCS003", MaintenanceCost = 1 },
+                new CapitalShip
+                {
+                    TypeID = "ALCS003",
+                    MaintenanceCost = 1,
+                    RegimentCapacity = 2,
+                },
             };
             Regiment[] regimentTemplates =
             {
@@ -398,13 +424,18 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_FixedFleetWithShipEntries_LoadsCargoOntoConfiguredShip()
         {
-            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100);
+            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100, typeId: "PLSUM06");
             Planet hq = OwnedPlanet("ALLIANCE_HQ", "FNALL1", ownerSupport: 100);
             Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
             CapitalShip[] shipTemplates =
             {
                 new CapitalShip { TypeID = "ALCS006", MaintenanceCost = 1 },
-                new CapitalShip { TypeID = "ALCS003", MaintenanceCost = 1 },
+                new CapitalShip
+                {
+                    TypeID = "ALCS003",
+                    MaintenanceCost = 1,
+                    RegimentCapacity = 2,
+                },
             };
             Regiment[] regimentTemplates =
             {
@@ -440,7 +471,7 @@ namespace Rebellion.Tests.Generation
         public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
-            planet.EnergyCapacity = 1;
+            planet.EnergyCapacity = 2;
             planet.NumRawResourceNodes = 1;
             planet.AddChild(CompleteBuilding("mine0", BuildingType.Mine, "FNEMP1"));
             planet.AddChild(CompleteBuilding("refinery0", BuildingType.Refinery, "FNEMP1"));
@@ -717,7 +748,7 @@ namespace Rebellion.Tests.Generation
                         {
                             TargetPlanets = new List<string>
                             {
-                                "YAVIN",
+                                "PLSUM06",
                                 GameGenerationConfig.FactionHqSentinel,
                             },
                             FactionID = "FNALL1",

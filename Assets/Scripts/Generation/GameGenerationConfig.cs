@@ -11,7 +11,7 @@ namespace Rebellion.Generation
     public class GameGenerationConfig
     {
         /// <summary>
-        /// Planet instance ID used by config entries that resolve to a faction headquarters.
+        /// Planet type ID used by config entries that resolve to a faction headquarters.
         /// </summary>
         public const string FactionHqSentinel = "FACTION_HQ";
 
@@ -79,7 +79,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class StartingPlanet
     {
-        public string PlanetInstanceID;
+        public string PlanetTypeID;
         public bool IsHeadquarters;
         public int Loyalty;
         public bool PickFromRim;
@@ -220,7 +220,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class HQFacilityLoadout
     {
-        public string PlanetInstanceID;
+        public string PlanetTypeID;
         public string FactionID;
         public List<string> FacilityTypeIDs;
     }
@@ -264,7 +264,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class FixedGarrison
     {
-        public string PlanetInstanceID;
+        public string PlanetTypeID;
         public string FactionID;
         public List<UnitEntry> Units;
     }
@@ -275,7 +275,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class FixedFleet
     {
-        public string PlanetInstanceID;
+        public string PlanetTypeID;
         public List<string> TargetPlanets;
         public string FactionID;
         public int SpawnChancePct;

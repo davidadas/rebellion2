@@ -32,7 +32,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Seeds all eligible planets with facilities using weighted probability tables.
-        /// HQ loadouts are placed before the random roll on their target planet.
+        /// HQ loadouts are placed after random seeding on their target planet.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="templates">Building templates to clone from.</param>
@@ -57,8 +57,30 @@ namespace Rebellion.Generation
 
             Dictionary<string, List<string>> loadoutsByPlanetId = ResolveHQLoadouts(
                 config.HQLoadouts,
-                classification
+                classification,
+                systems
             );
+
+            foreach (PlanetSystem system in systems)
+            {
+                bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
+
+                foreach (Planet planet in system.Planets)
+                {
+                    if (!isCore && !planet.IsColonized)
+                        continue;
+
+                    SeedPlanet(
+                        planet,
+                        isCore,
+                        config,
+                        templateMap,
+                        isCore ? config.CoreFacilityTable : config.RimFacilityTable,
+                        rng,
+                        deployedBuildings
+                    );
+                }
+            }
 
             foreach (PlanetSystem system in systems)
             {
@@ -73,16 +95,6 @@ namespace Rebellion.Generation
                     {
                         PlaceLoadoutFacilities(planet, loadout, templateMap, deployedBuildings);
                     }
-
-                    SeedPlanet(
-                        planet,
-                        isCore,
-                        config,
-                        templateMap,
-                        isCore ? config.CoreFacilityTable : config.RimFacilityTable,
-                        rng,
-                        deployedBuildings
-                    );
                 }
             }
 
@@ -224,20 +236,27 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="loadouts">HQ loadout entries from config, may be null.</param>
         /// <param name="classification">Classification result with faction HQ assignments.</param>
+        /// <param name="systems">All planet systems containing the target planets.</param>
         /// <returns>Facility TypeIDs keyed by resolved planet InstanceID.</returns>
         private Dictionary<string, List<string>> ResolveHQLoadouts(
             List<HQFacilityLoadout> loadouts,
-            GalaxyClassificationResult classification
+            GalaxyClassificationResult classification,
+            PlanetSystem[] systems
         )
         {
             Dictionary<string, List<string>> resolved = new Dictionary<string, List<string>>();
             if (loadouts == null)
                 return resolved;
 
+            Dictionary<string, Planet> planetsByTypeId = systems
+                .SelectMany(system => system.Planets)
+                .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
+                .ToDictionary(planet => planet.TypeID);
+
             foreach (HQFacilityLoadout loadout in loadouts)
             {
-                string planetId = loadout.PlanetInstanceID;
-                if (planetId == GameGenerationConfig.FactionHqSentinel)
+                string planetId = null;
+                if (loadout.PlanetTypeID == GameGenerationConfig.FactionHqSentinel)
                 {
                     if (string.IsNullOrEmpty(loadout.FactionID))
                         continue;
@@ -250,6 +269,16 @@ namespace Rebellion.Generation
                         continue;
                     planetId = hqPlanet.InstanceID;
                 }
+                else
+                {
+                    if (
+                        string.IsNullOrEmpty(loadout.PlanetTypeID)
+                        || !planetsByTypeId.TryGetValue(loadout.PlanetTypeID, out Planet planet)
+                    )
+                        continue;
+
+                    planetId = planet.InstanceID;
+                }
 
                 resolved[planetId] = loadout.FacilityTypeIDs ?? new List<string>();
             }
@@ -259,7 +288,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Places configured loadout facilities on a planet. Energy capacity and
-        /// raw-resource count are raised first so the forced facilities fit without
+        /// raw-resource count are raised so the forced facilities fit without
         /// tripping the planet's capacity validator.
         /// </summary>
         /// <param name="planet">The target planet.</param>

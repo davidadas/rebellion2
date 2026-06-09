@@ -16,7 +16,7 @@
         <GarrisonTroopTypeID>REAL002</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
-            <PlanetInstanceID>YAVIN</PlanetInstanceID>
+            <PlanetTypeID>PLSUM06</PlanetTypeID>
             <IsHeadquarters>false</IsHeadquarters>
             <Loyalty>100</Loyalty>
             <PickFromRim>false</PickFromRim>
@@ -38,7 +38,7 @@
         <GarrisonTroopTypeID>REEM002</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
-            <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+            <PlanetTypeID>PLSEW05</PlanetTypeID>
             <IsHeadquarters>true</IsHeadquarters>
             <Loyalty>100</Loyalty>
             <PickFromRim>false</PickFromRim>
@@ -364,7 +364,7 @@
     <HQLoadouts>
       <!-- Coruscant fixed facilities. -->
       <HQFacilityLoadout>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FacilityTypeIDs>
           <!-- Construction Yard. -->
           <string>BDFA01</string>
@@ -372,7 +372,7 @@
       </HQFacilityLoadout>
       <!-- Alliance headquarters fixed facilities. -->
       <HQFacilityLoadout>
-        <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        <PlanetTypeID>FACTION_HQ</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <FacilityTypeIDs>
           <!-- Mine. -->
@@ -399,7 +399,7 @@
     </BudgetDifficultyMappings>
     <FixedGarrisons>
       <FixedGarrison>
-        <PlanetInstanceID>YAVIN</PlanetInstanceID>
+        <PlanetTypeID>PLSUM06</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
@@ -420,7 +420,7 @@
         </Units>
       </FixedGarrison>
       <FixedGarrison>
-        <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        <PlanetTypeID>FACTION_HQ</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
@@ -446,7 +446,7 @@
         </Units>
       </FixedGarrison>
       <FixedGarrison>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FactionID>FNEMP1</FactionID>
         <Units>
           <UnitEntry>
@@ -464,7 +464,7 @@
     </FixedGarrisons>
     <FixedFleets>
       <FixedFleet>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FactionID>FNEMP1</FactionID>
         <SpawnChancePct>100</SpawnChancePct>
         <Ships>
@@ -490,8 +490,8 @@
       <!-- Yavin starting fleet. -->
       <FixedFleet>
         <TargetPlanets>
-          <PlanetInstanceID>YAVIN</PlanetInstanceID>
-          <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+          <PlanetTypeID>PLSUM06</PlanetTypeID>
+          <PlanetTypeID>FACTION_HQ</PlanetTypeID>
         </TargetPlanets>
         <FactionID>FNALL1</FactionID>
         <ShipEntries>
