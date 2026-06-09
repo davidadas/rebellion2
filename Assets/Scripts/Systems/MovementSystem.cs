@@ -669,6 +669,8 @@ namespace Rebellion.Systems
         /// <param name="destination">The target scene node to reparent into.</param>
         private void ExecuteMove(IMovable unit, ISceneNode destination)
         {
+            destination = ResolveLiveNode(destination);
+
             if (
                 !TryResolveAcceptedDestination(
                     unit,
@@ -932,6 +934,19 @@ namespace Rebellion.Systems
                 );
 
             return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
+        }
+
+        /// <summary>
+        /// Resolves a possibly copied scene node to the live scene node when available.
+        /// </summary>
+        /// <param name="node">The scene node to resolve.</param>
+        /// <returns>The live scene node with the same instance ID, or the supplied node.</returns>
+        private ISceneNode ResolveLiveNode(ISceneNode node)
+        {
+            if (node == null)
+                return null;
+
+            return _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID) ?? node;
         }
 
         /// <summary>

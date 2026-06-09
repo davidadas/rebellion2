@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Generation
 
         /// <summary>
         /// Records the (min, max) of every NextInt call and returns min, so the test
-        /// can assert the facility seeder never rolls past the original table's range.
+        /// can assert the facility seeder stays inside the facility table range.
         /// </summary>
         private class RecordingRNG : IRandomNumberProvider
         {
@@ -76,8 +76,11 @@ namespace Rebellion.Tests.Generation
                     CoreMineMultiplier = 4,
                     RimMineMultiplier = 2,
                     MineTypeID = "BDFA04",
+                    FacilityTableRollMin = 0,
+                    FacilityTableRollMaxExclusive = 101,
                     CoreFacilityTable = new List<WeightedFacilityEntry>
                     {
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
                         new WeightedFacilityEntry { CumulativeWeight = 36, TypeID = "BDFA05" },
                         new WeightedFacilityEntry { CumulativeWeight = 79, TypeID = "BDFA03" },
                         new WeightedFacilityEntry { CumulativeWeight = 82, TypeID = "BDFA02" },
@@ -88,7 +91,13 @@ namespace Rebellion.Tests.Generation
                     },
                     RimFacilityTable = new List<WeightedFacilityEntry>
                     {
-                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 0 },
+                        new WeightedFacilityEntry { CumulativeWeight = 91, TypeID = "BDFA05" },
+                        new WeightedFacilityEntry { CumulativeWeight = 96, TypeID = "BDFA03" },
+                        new WeightedFacilityEntry { CumulativeWeight = 97, TypeID = "BDFA02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 98, TypeID = "BDFA01" },
+                        new WeightedFacilityEntry { CumulativeWeight = 99, TypeID = "BDDF02" },
+                        new WeightedFacilityEntry { CumulativeWeight = 100, TypeID = "BDDF01" },
                     },
                     HQLoadouts = new List<HQFacilityLoadout>(),
                 },
@@ -106,6 +115,7 @@ namespace Rebellion.Tests.Generation
                 new Planet
                 {
                     InstanceID = "p1",
+                    TypeID = "p1",
                     OwnerInstanceID = "FNALL1",
                     IsColonized = true,
                     EnergyCapacity = energy,
@@ -145,7 +155,7 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 36, 36, 36 })
             );
 
             Assert.IsNotEmpty(
@@ -164,7 +174,7 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 CreateRules(),
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 91, 91, 91 })
             );
 
             Assert.IsNotEmpty(deployed, "Colonized rim planet should receive facilities.");
@@ -221,39 +231,63 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_CorePlanet_RollsStayWithinHundredValueRange()
+        public void Seed_EmptyFacilityRoll_LeavesSlotEmptyAndContinues()
+        {
+            PlanetSystem system = CreateCoreSystem(energy: 2, rawNodes: 0);
+
+            List<Building> deployed = SeedFacilities(
+                new[] { system },
+                CreateTemplates(),
+                CreateRules(),
+                new GalaxyClassificationResult(),
+                new SequenceRNG(new[] { 0, 36 })
+            );
+
+            Assert.AreEqual(1, deployed.Count, "Only the non-empty facility roll should place.");
+            Assert.AreEqual(
+                "BDFA05",
+                deployed[0].TypeID,
+                "The second facility roll should still execute after an empty result."
+            );
+        }
+
+        [Test]
+        public void Seed_CorePlanet_UsesConfiguredFacilityTableRollRange()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
+            GameGenerationConfig rules = CreateRules();
+            rules.FacilityGeneration.FacilityTableRollMin = 3;
+            rules.FacilityGeneration.FacilityTableRollMaxExclusive = 17;
             RecordingRNG rng = new RecordingRNG();
 
             SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
-                CreateRules(),
+                rules,
                 new GalaxyClassificationResult(),
                 rng
             );
 
-            List<(int min, int max)> outOfRange = rng
-                .IntCalls.Where(call => call.max > 100)
+            List<(int min, int max)> unexpectedRanges = rng
+                .IntCalls.Where(call => call.min != 3 || call.max != 17)
                 .ToList();
 
             Assert.IsEmpty(
-                outOfRange,
-                $"Facility seeder rolls must stay within a 100-value space (max<=100); found: {string.Join(", ", outOfRange)}"
+                unexpectedRanges,
+                $"Facility seeder rolls must use the configured table range; found: {string.Join(", ", unexpectedRanges)}"
             );
         }
 
         [Test]
-        public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesFirst()
+        public void Seed_PlanetWithHQLoadout_PlacesConfiguredFacilitiesAfterRandomFacilities()
         {
-            PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
+            PlanetSystem system = CreateCoreSystem(energy: 1, rawNodes: 0);
             GameGenerationConfig rules = CreateRules();
             rules.FacilityGeneration.HQLoadouts = new List<HQFacilityLoadout>
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },
             };
@@ -263,14 +297,18 @@ namespace Rebellion.Tests.Generation
                 CreateTemplates(),
                 rules,
                 new GalaxyClassificationResult(),
-                new StubRNG()
+                new SequenceRNG(new[] { 36 })
             );
 
-            Assert.IsNotEmpty(deployed, "Facility seeding should produce deployed buildings.");
+            Assert.AreEqual(
+                "BDFA05",
+                deployed[0].TypeID,
+                "Random facility seeding should run before HQ loadout placement."
+            );
             Assert.AreEqual(
                 "BDFA01",
-                deployed[0].TypeID,
-                "HQ loadout Construction Yard should be placed before any randomly seeded facilities."
+                deployed[1].TypeID,
+                "HQ loadout Construction Yard should be placed after random facility seeding."
             );
         }
 
@@ -288,7 +326,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = GameGenerationConfig.FactionHqSentinel,
+                    PlanetTypeID = GameGenerationConfig.FactionHqSentinel,
                     FactionID = "FNALL1",
                     FacilityTypeIDs = new List<string> { "BDFA01" },
                 },
@@ -317,7 +355,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA01", "BDFA02", "BDFA03", "BDFA05" },
                 },
             };
@@ -352,7 +390,7 @@ namespace Rebellion.Tests.Generation
             {
                 new HQFacilityLoadout
                 {
-                    PlanetInstanceID = "p1",
+                    PlanetTypeID = "p1",
                     FacilityTypeIDs = new List<string> { "BDFA04", "BDFA04" },
                 },
             };

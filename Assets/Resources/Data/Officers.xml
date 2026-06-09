@@ -11,7 +11,7 @@
     <OwnerInstanceID>FNEMP1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
-    <InitialParentInstanceID>CORUSCANT</InitialParentInstanceID>
+    <InitialParentTypeID>PLSEW05</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>
@@ -1424,6 +1424,7 @@
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
+    <InitialParentTypeID>PLSUM06</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>
@@ -1469,6 +1470,7 @@
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
+    <InitialParentTypeID>PLSUM06</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>
@@ -1515,6 +1517,7 @@
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
+    <InitialParentTypeID>PLSUM06</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>
@@ -1563,6 +1566,7 @@
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
+    <InitialParentTypeID>PLSUM06</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>
@@ -1751,6 +1755,7 @@
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
+    <InitialParentTypeID>PLSUM06</InitialParentTypeID>
     <Skills>
       <Entry>
         <Key>Diplomacy</Key>

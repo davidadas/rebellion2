@@ -262,5 +262,40 @@ namespace Rebellion.Tests.Generation
             Assert.Contains(officer, target.Officers);
             Assert.IsEmpty(other.Officers);
         }
+
+        [Test]
+        public void Seed_WithInitialParentTypeId_DeploysPinnedOfficerOutsideRecruitableLimit()
+        {
+            _rules.Officers.NumInitialOfficers.Small = 0;
+
+            Planet yavin = new Planet
+            {
+                InstanceID = "YAVIN",
+                TypeID = "PLSUM06",
+                OwnerInstanceID = "FNALL1",
+            };
+            Planet other = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            sys.Planets.Add(other);
+            sys.Planets.Add(yavin);
+
+            Officer pinned = MakeOfficer("CHEWBACCA", null);
+            pinned.AllowedOwnerInstanceIDs = new List<string> { "FNALL1" };
+            pinned.InitialParentTypeID = "PLSUM06";
+            Officer recruitable = MakeOfficer("O1", "FNALL1");
+
+            var results = Deploy(
+                new[] { recruitable, pinned },
+                new[] { sys },
+                _rules,
+                _summary,
+                new StubRNG()
+            );
+
+            Assert.Contains(pinned, results.Deployed);
+            Assert.Contains(recruitable, results.Unrecruited);
+            Assert.Contains(pinned, yavin.Officers);
+            Assert.IsEmpty(other.Officers);
+        }
     }
 }

@@ -95,18 +95,18 @@ namespace Rebellion.Generation
         /// <param name="config">Galaxy classification config to validate.</param>
         private void ValidateStartingPlanets(GalaxyClassificationSection config)
         {
-            HashSet<string> claimedPlanetIds = new HashSet<string>();
+            HashSet<string> claimedPlanetTypeIds = new HashSet<string>();
             foreach (FactionSetup setup in config.FactionSetups)
             {
                 if (setup.StartingPlanets == null)
                     continue;
                 foreach (StartingPlanet sp in setup.StartingPlanets)
                 {
-                    if (string.IsNullOrEmpty(sp.PlanetInstanceID))
+                    if (string.IsNullOrEmpty(sp.PlanetTypeID))
                         continue;
-                    if (!claimedPlanetIds.Add(sp.PlanetInstanceID))
+                    if (!claimedPlanetTypeIds.Add(sp.PlanetTypeID))
                         throw new InvalidOperationException(
-                            $"Planet '{sp.PlanetInstanceID}' is claimed by multiple factions in FactionSetups."
+                            $"Planet '{sp.PlanetTypeID}' is claimed by multiple factions in FactionSetups."
                         );
                 }
             }
@@ -143,8 +143,8 @@ namespace Rebellion.Generation
                     continue;
                 foreach (StartingPlanet sp in setup.StartingPlanets)
                 {
-                    if (!string.IsNullOrEmpty(sp.PlanetInstanceID) && !sp.PickFromRim)
-                        staticStartingPlanets[sp.PlanetInstanceID] = (setup, sp);
+                    if (!string.IsNullOrEmpty(sp.PlanetTypeID) && !sp.PickFromRim)
+                        staticStartingPlanets[sp.PlanetTypeID] = (setup, sp);
                 }
             }
 
@@ -160,8 +160,9 @@ namespace Rebellion.Generation
                 foreach (Planet planet in system.Planets)
                 {
                     if (
-                        staticStartingPlanets.TryGetValue(
-                            planet.InstanceID,
+                        !string.IsNullOrEmpty(planet.TypeID)
+                        && staticStartingPlanets.TryGetValue(
+                            planet.TypeID,
                             out (FactionSetup setup, StartingPlanet config) entry
                         )
                     )

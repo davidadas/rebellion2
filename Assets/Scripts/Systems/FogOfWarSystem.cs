@@ -6,6 +6,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
@@ -69,13 +70,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet to check visibility for.</param>
         /// <param name="faction">The faction whose visibility to evaluate.</param>
-        /// <returns>True if the faction owns the planet or has a fleet present.</returns>
+        /// <returns>True if the faction owns the planet or has an arrived fleet present.</returns>
         public bool IsPlanetVisible(Planet planet, Faction faction)
         {
             if (planet.OwnerInstanceID == faction.InstanceID)
                 return true;
 
-            if (planet.Fleets.Any(f => f.OwnerInstanceID == faction.InstanceID))
+            if (
+                planet.Fleets.Any(f =>
+                    f.OwnerInstanceID == faction.InstanceID && f.Movement == null
+                )
+            )
                 return true;
 
             return false;
@@ -83,7 +88,8 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Builds a faction-specific galaxy view.
-        /// Creates new structure (systems/planets) with shallow-copied entities.
+        /// Creates new systems and planets. Owned visible entities remain live references;
+        /// hidden and snapshotted entities are copied for display.
         /// </summary>
         /// <param name="faction">The faction to build a view for.</param>
         /// <returns>A galaxy map filtered by the faction's fog of war state.</returns>
@@ -103,17 +109,21 @@ namespace Rebellion.Systems
 
                 foreach (Planet masterPlanet in masterSystem.Planets)
                 {
-                    Planet viewPlanet = BlankPlanetView(masterPlanet);
-
                     PlanetSnapshot planetSnapshot = null;
                     systemSnapshot?.Planets.TryGetValue(
                         masterPlanet.InstanceID,
                         out planetSnapshot
                     );
 
+                    Planet viewPlanet;
                     if (IsPlanetVisible(masterPlanet, faction))
+                    {
+                        viewPlanet = BlankPlanetView(masterPlanet);
                         ApplyRealTimeView(viewPlanet, masterPlanet, faction, planetSnapshot);
+                    }
                     else if (planetSnapshot != null)
+                    {
+                        viewPlanet = BlankPlanetView(masterPlanet);
                         ApplySnapshotView(
                             viewPlanet,
                             masterPlanet,
@@ -121,8 +131,13 @@ namespace Rebellion.Systems
                             faction,
                             planetSnapshot
                         );
+                    }
                     else
-                        ApplyUnexploredView(viewPlanet, masterPlanet, faction);
+                    {
+                        viewPlanet = UnexploredPlanetView(masterPlanet, faction);
+                    }
+
+                    MergeOwnLiveUnits(viewPlanet, masterPlanet, faction);
 
                     viewPlanet.Missions.AddRange(
                         masterPlanet
@@ -139,11 +154,85 @@ namespace Rebellion.Systems
             return factionView;
         }
 
+        /// <summary>
+        /// Copies an officer for use in a faction view or snapshot.
+        /// </summary>
+        /// <param name="officer">The officer to copy.</param>
+        /// <returns>The copied officer.</returns>
         private static Officer CopyOfficerForSnapshot(Officer officer)
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
             copy.Skills = new Dictionary<MissionParticipantSkill, int>(officer.Skills);
             return copy;
+        }
+
+        /// <summary>
+        /// Returns whether a scene node is owned by a faction.
+        /// </summary>
+        /// <param name="unit">The scene node to inspect.</param>
+        /// <param name="faction">The faction to compare against.</param>
+        /// <returns>True if the scene node owner matches the faction.</returns>
+        private static bool IsOwnedBy(ISceneNode unit, Faction faction)
+        {
+            return unit.GetOwnerInstanceID() == faction.InstanceID;
+        }
+
+        /// <summary>
+        /// Adds live friendly units to a planet view without duplicating existing entries.
+        /// </summary>
+        /// <param name="viewPlanet">The planet view being populated.</param>
+        /// <param name="masterPlanet">The authoritative planet data source.</param>
+        /// <param name="faction">The faction whose view is being built.</param>
+        private static void MergeOwnLiveUnits(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            Faction faction
+        )
+        {
+            string factionId = faction.InstanceID;
+
+            foreach (Fleet fleet in masterPlanet.Fleets)
+                if (
+                    fleet.OwnerInstanceID == factionId
+                    && fleet.CapitalShips.Count > 0
+                    && viewPlanet.Fleets.All(f => f.InstanceID != fleet.InstanceID)
+                )
+                    viewPlanet.Fleets.Add(fleet);
+
+            foreach (Regiment regiment in masterPlanet.Regiments)
+                if (
+                    regiment.OwnerInstanceID == factionId
+                    && viewPlanet.Regiments.All(r => r.InstanceID != regiment.InstanceID)
+                )
+                    viewPlanet.Regiments.Add(regiment);
+
+            foreach (Starfighter starfighter in masterPlanet.Starfighters)
+                if (
+                    starfighter.OwnerInstanceID == factionId
+                    && viewPlanet.Starfighters.All(s => s.InstanceID != starfighter.InstanceID)
+                )
+                    viewPlanet.Starfighters.Add(starfighter);
+
+            foreach (Officer officer in masterPlanet.Officers)
+                if (
+                    officer.OwnerInstanceID == factionId
+                    && !officer.IsCaptured
+                    && viewPlanet.Officers.All(o => o.InstanceID != officer.InstanceID)
+                )
+                    viewPlanet.Officers.Add(officer);
+        }
+
+        /// <summary>
+        /// Selects the visible representation for a unit in a faction view.
+        /// </summary>
+        /// <typeparam name="T">The scene node type being viewed.</typeparam>
+        /// <param name="unit">The source unit.</param>
+        /// <param name="faction">The faction whose view is being built.</param>
+        /// <returns>The live unit for owned nodes, otherwise a copied view.</returns>
+        private static T ViewUnit<T>(T unit, Faction faction)
+            where T : class, ISceneNode
+        {
+            return IsOwnedBy(unit, faction) ? unit : unit.GetShallowCopy(CloneMode.Full);
         }
 
         /// <summary>
@@ -185,25 +274,27 @@ namespace Rebellion.Systems
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
 
-            viewPlanet.Officers.AddRange(masterPlanet.Officers.Select(CopyOfficerForSnapshot));
+            viewPlanet.Officers.AddRange(
+                masterPlanet.Officers.Select(officer =>
+                    IsOwnedBy(officer, faction) && !officer.IsCaptured
+                        ? officer
+                        : CopyOfficerForSnapshot(officer)
+                )
+            );
             viewPlanet.Fleets.AddRange(
                 masterPlanet
                     .Fleets.Where(f =>
                         f.CapitalShips.Count > 0
                         && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
                     )
-                    .Select(f => f.GetShallowCopy(CloneMode.Full))
+                    .Select(f => ViewUnit(f, faction))
             );
-            viewPlanet.Regiments.AddRange(
-                masterPlanet.Regiments.Select(r => r.GetShallowCopy(CloneMode.Full))
-            );
+            viewPlanet.Regiments.AddRange(masterPlanet.Regiments.Select(r => ViewUnit(r, faction)));
             viewPlanet.Starfighters.AddRange(
-                masterPlanet.Starfighters.Select(s => s.GetShallowCopy(CloneMode.Full))
+                masterPlanet.Starfighters.Select(s => ViewUnit(s, faction))
             );
 
-            viewPlanet.Buildings.AddRange(
-                masterPlanet.Buildings.Select(b => b.GetShallowCopy(CloneMode.Full))
-            );
+            viewPlanet.Buildings.AddRange(masterPlanet.Buildings.Select(b => ViewUnit(b, faction)));
 
             if (planetSnapshot != null)
             {
@@ -268,19 +359,32 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Populates a view planet for a completely unexplored location. No ownership or
-        /// entity data is surfaced. Captured friendly officers are always live data regardless.
+        /// Creates a view planet for a completely unexplored location. No ownership or
+        /// entity data is surfaced. Captured friendly officers remain visible.
         /// </summary>
-        /// <param name="viewPlanet">The view planet to populate.</param>
         /// <param name="masterPlanet">The authoritative planet data source.</param>
         /// <param name="faction">The faction whose view is being built.</param>
-        private void ApplyUnexploredView(Planet viewPlanet, Planet masterPlanet, Faction faction)
+        /// <returns>A planet view containing only the data visible for an unexplored planet.</returns>
+        private Planet UnexploredPlanetView(Planet masterPlanet, Faction faction)
         {
+            Planet viewPlanet = new Planet
+            {
+                InstanceID = masterPlanet.InstanceID,
+                DisplayName = masterPlanet.DisplayName,
+                SystemDataId = masterPlanet.SystemDataId,
+                PositionX = masterPlanet.PositionX,
+                PositionY = masterPlanet.PositionY,
+                PlanetIconPath = masterPlanet.PlanetIconPath,
+                IsUnexploredView = true,
+            };
+
             viewPlanet.Officers.AddRange(
                 masterPlanet
                     .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
                     .Select(CopyOfficerForSnapshot)
             );
+
+            return viewPlanet;
         }
     }
 }

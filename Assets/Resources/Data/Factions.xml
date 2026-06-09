@@ -19,7 +19,7 @@
   <Faction>
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
-    <HQInstanceID>CORUSCANT</HQInstanceID>
+    <HQInstanceID />
     <DisallowedMissionTypes />
     <Settings>
       <RefinementMultiplier>50</RefinementMultiplier>

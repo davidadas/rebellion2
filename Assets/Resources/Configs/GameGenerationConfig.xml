@@ -16,7 +16,7 @@
         <GarrisonTroopTypeID>REAL002</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
-            <PlanetInstanceID>YAVIN</PlanetInstanceID>
+            <PlanetTypeID>PLSUM06</PlanetTypeID>
             <IsHeadquarters>false</IsHeadquarters>
             <Loyalty>100</Loyalty>
             <PickFromRim>false</PickFromRim>
@@ -38,7 +38,7 @@
         <GarrisonTroopTypeID>REEM002</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
-            <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+            <PlanetTypeID>PLSEW05</PlanetTypeID>
             <IsHeadquarters>true</IsHeadquarters>
             <Loyalty>100</Loyalty>
             <PickFromRim>false</PickFromRim>
@@ -284,7 +284,12 @@
     <CoreMineMultiplier>4</CoreMineMultiplier>
     <RimMineMultiplier>2</RimMineMultiplier>
     <MineTypeID>BDFA04</MineTypeID>
+    <FacilityTableRollMin>0</FacilityTableRollMin>
+    <FacilityTableRollMaxExclusive>101</FacilityTableRollMaxExclusive>
     <CoreFacilityTable>
+      <WeightedFacilityEntry>
+        <CumulativeWeight>0</CumulativeWeight>
+      </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>36</CumulativeWeight>
         <!-- Refinery. -->
@@ -316,13 +321,16 @@
         <TypeID>BDDF01</TypeID>
       </WeightedFacilityEntry>
       <WeightedFacilityEntry>
-        <CumulativeWeight>100</CumulativeWeight>
+        <CumulativeWeight>99</CumulativeWeight>
         <!-- KDY-150. -->
         <TypeID>BDDF03</TypeID>
       </WeightedFacilityEntry>
     </CoreFacilityTable>
     <!-- Rim facility table. -->
     <RimFacilityTable>
+      <WeightedFacilityEntry>
+        <CumulativeWeight>0</CumulativeWeight>
+      </WeightedFacilityEntry>
       <WeightedFacilityEntry>
         <CumulativeWeight>91</CumulativeWeight>
         <!-- Refinery. -->
@@ -358,7 +366,7 @@
     <HQLoadouts>
       <!-- Coruscant fixed facilities. -->
       <HQFacilityLoadout>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FacilityTypeIDs>
           <!-- Construction Yard. -->
           <string>BDFA01</string>
@@ -366,7 +374,7 @@
       </HQFacilityLoadout>
       <!-- Alliance headquarters fixed facilities. -->
       <HQFacilityLoadout>
-        <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        <PlanetTypeID>FACTION_HQ</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <FacilityTypeIDs>
           <!-- Mine. -->
@@ -393,7 +401,7 @@
     </BudgetDifficultyMappings>
     <FixedGarrisons>
       <FixedGarrison>
-        <PlanetInstanceID>YAVIN</PlanetInstanceID>
+        <PlanetTypeID>PLSUM06</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
@@ -414,7 +422,7 @@
         </Units>
       </FixedGarrison>
       <FixedGarrison>
-        <PlanetInstanceID>FACTION_HQ</PlanetInstanceID>
+        <PlanetTypeID>FACTION_HQ</PlanetTypeID>
         <FactionID>FNALL1</FactionID>
         <Units>
           <UnitEntry>
@@ -440,7 +448,7 @@
         </Units>
       </FixedGarrison>
       <FixedGarrison>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FactionID>FNEMP1</FactionID>
         <Units>
           <UnitEntry>
@@ -458,7 +466,7 @@
     </FixedGarrisons>
     <FixedFleets>
       <FixedFleet>
-        <PlanetInstanceID>CORUSCANT</PlanetInstanceID>
+        <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FactionID>FNEMP1</FactionID>
         <SpawnChancePct>100</SpawnChancePct>
         <Ships>
@@ -483,23 +491,30 @@
       </FixedFleet>
       <!-- Yavin starting fleet. -->
       <FixedFleet>
-        <PlanetInstanceID>YAVIN</PlanetInstanceID>
+        <TargetPlanets>
+          <PlanetTypeID>PLSUM06</PlanetTypeID>
+          <PlanetTypeID>FACTION_HQ</PlanetTypeID>
+        </TargetPlanets>
         <FactionID>FNALL1</FactionID>
-        <SpawnChancePct>50</SpawnChancePct>
-        <Ships>
-          <UnitEntry>
+        <ShipEntries>
+          <FixedFleetShip>
+            <!-- Corellian Corvette. -->
+            <TypeID>ALCS006</TypeID>
+            <Count>1</Count>
+          </FixedFleetShip>
+          <FixedFleetShip>
             <!-- Medium Transport. -->
             <TypeID>ALCS003</TypeID>
             <Count>1</Count>
-          </UnitEntry>
-        </Ships>
-        <Cargo>
-          <UnitEntry>
-            <!-- Alliance Fleet Regiment. -->
-            <TypeID>REAL001</TypeID>
-            <Count>2</Count>
-          </UnitEntry>
-        </Cargo>
+            <Cargo>
+              <UnitEntry>
+                <!-- Alliance Fleet Regiment. -->
+                <TypeID>REAL001</TypeID>
+                <Count>2</Count>
+              </UnitEntry>
+            </Cargo>
+          </FixedFleetShip>
+        </ShipEntries>
       </FixedFleet>
     </FixedFleets>
     <FactionBudgets>

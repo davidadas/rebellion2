@@ -84,6 +84,7 @@ namespace Rebellion.Game.Units
         public OfficerRank CurrentRank { get; set; }
 
         // Owner Info.
+        public string InitialParentTypeID { get; set; }
         public string InitialParentInstanceID { get; set; }
 
         // Variance Info.

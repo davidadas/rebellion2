@@ -31,25 +31,37 @@ namespace Rebellion.Generation
                 ctx.SpecialForces
             );
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
-            Dictionary<string, Planet> planetMap = BuildPlanetMap(ctx.Systems);
+            Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Systems);
 
             SeedLowSupportGarrisons(ctx.Systems, config, ctx.Config.GalaxyClassification, factory);
-            DeployFixedGarrisons(config.FixedGarrisons, planetMap, ctx.Classification, factory);
-            DeployFixedFleets(config.FixedFleets, planetMap, factory, ctx.Factions, ctx.Rng);
+            DeployFixedGarrisons(
+                config.FixedGarrisons,
+                planetsByTypeId,
+                ctx.Classification,
+                factory
+            );
+            DeployFixedFleets(
+                config.FixedFleets,
+                planetsByTypeId,
+                ctx.Classification,
+                factory,
+                ctx.Factions,
+                ctx.Rng
+            );
             DeployBudgetUnits(ctx, factory, config);
         }
 
         /// <summary>
-        /// Builds a planet lookup keyed by instance ID.
+        /// Builds a planet lookup keyed by type ID.
         /// </summary>
         /// <param name="systems">All planet systems to scan.</param>
-        /// <returns>Planets keyed by instance ID.</returns>
-        private Dictionary<string, Planet> BuildPlanetMap(PlanetSystem[] systems)
+        /// <returns>Planets keyed by type ID.</returns>
+        private Dictionary<string, Planet> BuildPlanetMapByTypeID(PlanetSystem[] systems)
         {
             return systems
                 .SelectMany(s => s.Planets)
-                .Where(p => p.InstanceID != null)
-                .ToDictionary(p => p.InstanceID);
+                .Where(p => p.TypeID != null)
+                .ToDictionary(p => p.TypeID);
         }
 
         /// <summary>
@@ -124,33 +136,27 @@ namespace Rebellion.Generation
         /// placeholder which resolves to the faction's dynamically assigned headquarters.
         /// </summary>
         /// <param name="garrisons">Fixed garrison definitions from config.</param>
-        /// <param name="planetMap">Planet lookup by instance ID.</param>
+        /// <param name="planetsByTypeId">Planet lookup by type ID.</param>
         /// <param name="classification">Classification result containing faction HQ mappings.</param>
         /// <param name="factory">Unit factory for creating unit instances.</param>
         private void DeployFixedGarrisons(
             List<FixedGarrison> garrisons,
-            Dictionary<string, Planet> planetMap,
+            Dictionary<string, Planet> planetsByTypeId,
             GalaxyClassificationResult classification,
             UnitFactory factory
         )
         {
             foreach (FixedGarrison garrison in garrisons)
             {
-                string planetId = garrison.PlanetInstanceID;
-                if (planetId == GameGenerationConfig.FactionHqSentinel)
-                {
-                    if (
-                        classification.FactionHQs.TryGetValue(
-                            garrison.FactionID,
-                            out Planet hqPlanet
-                        )
+                if (
+                    !TryResolveTargetPlanet(
+                        garrison.PlanetTypeID,
+                        garrison.FactionID,
+                        classification,
+                        planetsByTypeId,
+                        out Planet planet
                     )
-                        planetId = hqPlanet.InstanceID;
-                    else
-                        continue;
-                }
-
-                if (!planetMap.TryGetValue(planetId, out Planet planet))
+                )
                     continue;
 
                 foreach (UnitEntry entry in garrison.Units)
@@ -166,18 +172,20 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Places configured fleets on specific planets. Each fleet config specifies
-        /// capital ships and cargo (fighters/troops loaded into the first ship).
-        /// Fleets with a SpawnChancePct below 100 are rolled for inclusion.
+        /// Places configured fleets on specific planets. A TargetPlanets list selects
+        /// one destination by type ID or FACTION_HQ; otherwise PlanetTypeID and
+        /// SpawnChancePct are used.
         /// </summary>
         /// <param name="fleets">Fixed fleet definitions from config.</param>
-        /// <param name="planetMap">Planet lookup by instance ID.</param>
+        /// <param name="planetsByTypeId">Planet lookup by type ID.</param>
+        /// <param name="classification">Classification result containing faction HQ mappings.</param>
         /// <param name="factory">Unit factory for creating unit instances.</param>
         /// <param name="factions">All factions (needed to call CreateFleet).</param>
-        /// <param name="rng">Random number provider for spawn chance rolls.</param>
+        /// <param name="rng">Random number provider for destination and spawn rolls.</param>
         private void DeployFixedFleets(
             List<FixedFleet> fleets,
-            Dictionary<string, Planet> planetMap,
+            Dictionary<string, Planet> planetsByTypeId,
+            GalaxyClassificationResult classification,
             UnitFactory factory,
             Faction[] factions,
             IRandomNumberProvider rng
@@ -185,23 +193,31 @@ namespace Rebellion.Generation
         {
             foreach (FixedFleet fleetConfig in fleets)
             {
-                if (!planetMap.TryGetValue(fleetConfig.PlanetInstanceID, out Planet planet))
-                    continue;
-
                 if (
-                    fleetConfig.SpawnChancePct < 100
-                    && rng.NextInt(0, 100) >= fleetConfig.SpawnChancePct
+                    !TrySelectFixedFleetTarget(
+                        fleetConfig,
+                        classification,
+                        planetsByTypeId,
+                        rng,
+                        out Planet planet
+                    )
                 )
                     continue;
 
                 List<CapitalShip> capitalShips = new List<CapitalShip>();
-                foreach (UnitEntry entry in fleetConfig.Ships)
+                if (fleetConfig.ShipEntries?.Count > 0)
                 {
-                    for (int i = 0; i < entry.Count; i++)
-                    {
-                        if (factory.Create(entry.TypeID, fleetConfig.FactionID) is CapitalShip ship)
-                            capitalShips.Add(ship);
-                    }
+                    CreateFixedFleetShips(fleetConfig, factory, capitalShips);
+                }
+                else
+                {
+                    CreateLegacyFixedFleetShips(fleetConfig, factory, capitalShips);
+                    AttachCargoToShip(
+                        capitalShips.FirstOrDefault(),
+                        fleetConfig.Cargo,
+                        fleetConfig,
+                        factory
+                    );
                 }
 
                 if (capitalShips.Count == 0)
@@ -210,16 +226,167 @@ namespace Rebellion.Generation
                 Faction faction = factions.First(f => f.InstanceID == fleetConfig.FactionID);
                 Fleet fleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
                 planet.AddChild(fleet);
+            }
+        }
 
-                CapitalShip cargoShip = capitalShips[0];
-                foreach (UnitEntry entry in fleetConfig.Cargo)
+        /// <summary>
+        /// Resolves the destination planet for a configured fixed fleet.
+        /// </summary>
+        /// <param name="fleetConfig">The fixed fleet configuration.</param>
+        /// <param name="classification">Classification result containing faction HQ mappings.</param>
+        /// <param name="planetsByTypeId">Planet lookup by type ID.</param>
+        /// <param name="rng">Random number provider for target and spawn rolls.</param>
+        /// <param name="planet">The resolved destination planet when selection succeeds.</param>
+        /// <returns>True if the fleet should be deployed to a resolved planet.</returns>
+        private bool TrySelectFixedFleetTarget(
+            FixedFleet fleetConfig,
+            GalaxyClassificationResult classification,
+            Dictionary<string, Planet> planetsByTypeId,
+            IRandomNumberProvider rng,
+            out Planet planet
+        )
+        {
+            planet = null;
+            List<string> targetPlanets = fleetConfig.TargetPlanets;
+            if (targetPlanets?.Count > 0)
+            {
+                string selectedTarget = targetPlanets[rng.NextInt(0, targetPlanets.Count)];
+                if (
+                    !TryResolveTargetPlanet(
+                        selectedTarget,
+                        fleetConfig.FactionID,
+                        classification,
+                        planetsByTypeId,
+                        out planet
+                    )
+                )
+                    return false;
+
+                return true;
+            }
+
+            if (
+                fleetConfig.SpawnChancePct < 100
+                && rng.NextInt(0, 100) >= fleetConfig.SpawnChancePct
+            )
+                return false;
+
+            if (
+                !TryResolveTargetPlanet(
+                    fleetConfig.PlanetTypeID,
+                    fleetConfig.FactionID,
+                    classification,
+                    planetsByTypeId,
+                    out planet
+                )
+            )
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves a configured planet target to a live planet.
+        /// </summary>
+        /// <param name="targetPlanetTypeId">The target planet type ID or HQ sentinel.</param>
+        /// <param name="factionId">The faction used when resolving an HQ target.</param>
+        /// <param name="classification">Classification result containing faction HQ mappings.</param>
+        /// <param name="planetsByTypeId">Planet lookup by type ID.</param>
+        /// <param name="planet">The resolved planet when lookup succeeds.</param>
+        /// <returns>True if the target resolved to a planet.</returns>
+        private bool TryResolveTargetPlanet(
+            string targetPlanetTypeId,
+            string factionId,
+            GalaxyClassificationResult classification,
+            Dictionary<string, Planet> planetsByTypeId,
+            out Planet planet
+        )
+        {
+            planet = null;
+            if (string.IsNullOrEmpty(targetPlanetTypeId))
+                return false;
+
+            if (targetPlanetTypeId != GameGenerationConfig.FactionHqSentinel)
+                return planetsByTypeId.TryGetValue(targetPlanetTypeId, out planet);
+
+            if (!classification.FactionHQs.TryGetValue(factionId, out Planet hqPlanet))
+                return false;
+
+            planet = hqPlanet;
+            return planet != null;
+        }
+
+        /// <summary>
+        /// Creates ships from structured fixed-fleet entries.
+        /// </summary>
+        /// <param name="fleetConfig">The fixed fleet configuration.</param>
+        /// <param name="factory">Unit factory for creating unit instances.</param>
+        /// <param name="capitalShips">Accumulator for created capital ships.</param>
+        private void CreateFixedFleetShips(
+            FixedFleet fleetConfig,
+            UnitFactory factory,
+            List<CapitalShip> capitalShips
+        )
+        {
+            foreach (FixedFleetShip entry in fleetConfig.ShipEntries)
+            {
+                for (int i = 0; i < entry.Count; i++)
                 {
-                    for (int i = 0; i < entry.Count; i++)
-                    {
-                        ISceneNode unit = factory.Create(entry.TypeID, fleetConfig.FactionID);
-                        if (unit != null)
-                            cargoShip.AddChild(unit);
-                    }
+                    if (factory.Create(entry.TypeID, fleetConfig.FactionID) is not CapitalShip ship)
+                        continue;
+
+                    AttachCargoToShip(ship, entry.Cargo, fleetConfig, factory);
+                    capitalShips.Add(ship);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates ships from legacy fixed-fleet ship entries.
+        /// </summary>
+        /// <param name="fleetConfig">The fixed fleet configuration.</param>
+        /// <param name="factory">Unit factory for creating unit instances.</param>
+        /// <param name="capitalShips">Accumulator for created capital ships.</param>
+        private void CreateLegacyFixedFleetShips(
+            FixedFleet fleetConfig,
+            UnitFactory factory,
+            List<CapitalShip> capitalShips
+        )
+        {
+            foreach (UnitEntry entry in fleetConfig.Ships ?? new List<UnitEntry>())
+            {
+                for (int i = 0; i < entry.Count; i++)
+                {
+                    if (factory.Create(entry.TypeID, fleetConfig.FactionID) is CapitalShip ship)
+                        capitalShips.Add(ship);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Attaches configured cargo units to a capital ship.
+        /// </summary>
+        /// <param name="ship">The ship receiving cargo.</param>
+        /// <param name="cargo">The cargo unit entries.</param>
+        /// <param name="fleetConfig">The owning fixed fleet configuration.</param>
+        /// <param name="factory">Unit factory for creating unit instances.</param>
+        private void AttachCargoToShip(
+            CapitalShip ship,
+            List<UnitEntry> cargo,
+            FixedFleet fleetConfig,
+            UnitFactory factory
+        )
+        {
+            if (ship == null || cargo == null)
+                return;
+
+            foreach (UnitEntry entry in cargo)
+            {
+                for (int i = 0; i < entry.Count; i++)
+                {
+                    ISceneNode unit = factory.Create(entry.TypeID, fleetConfig.FactionID);
+                    if (unit != null)
+                        ship.AddChild(unit);
                 }
             }
         }
@@ -256,13 +423,11 @@ namespace Rebellion.Generation
                 if (ownedCorePlanets.Count == 0)
                     continue;
 
-                WeightedTable<List<UnitEntry>> unitTable = BuildBudgetUnitTable(budget);
-
                 while (deployBudget > 0)
                 {
                     bool deployed = TryDeployBudgetRoll(
                         ctx,
-                        unitTable,
+                        budget.UnitTable,
                         ownedCorePlanets,
                         faction,
                         factory,
@@ -286,14 +451,14 @@ namespace Rebellion.Generation
         /// <returns>True when a roll was deployed and the loop may continue.</returns>
         private bool TryDeployBudgetRoll(
             GenerationContext ctx,
-            WeightedTable<List<UnitEntry>> unitTable,
+            List<WeightedUnitEntry> unitTable,
             List<Planet> targetPlanets,
             Faction faction,
             UnitFactory factory,
             ref int deployBudget
         )
         {
-            List<UnitEntry> rolledUnits = unitTable.Roll(ctx.Rng);
+            List<UnitEntry> rolledUnits = RollBudgetUnits(unitTable, ctx.Rng);
             if (rolledUnits == null || rolledUnits.Count == 0)
                 return false;
 
@@ -309,6 +474,33 @@ namespace Rebellion.Generation
                 factory
             );
             return true;
+        }
+
+        /// <summary>
+        /// Rolls a unit bundle from a faction budget table.
+        /// </summary>
+        /// <param name="unitTable">Weighted unit table to roll against.</param>
+        /// <param name="rng">Random number provider.</param>
+        /// <returns>The selected unit entries, or null when no table is available.</returns>
+        private List<UnitEntry> RollBudgetUnits(
+            List<WeightedUnitEntry> unitTable,
+            IRandomNumberProvider rng
+        )
+        {
+            if (unitTable == null || unitTable.Count == 0)
+                return null;
+
+            int roll = rng.NextInt(1, 101);
+            WeightedUnitEntry selected = unitTable[0];
+            foreach (WeightedUnitEntry entry in unitTable)
+            {
+                if (roll < entry.CumulativeWeight)
+                    return selected.Units;
+
+                selected = entry;
+            }
+
+            return selected.Units;
         }
 
         /// <summary>
@@ -349,21 +541,6 @@ namespace Rebellion.Generation
                 .SelectMany(s => s.Planets)
                 .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Builds the weighted unit deployment table for a faction budget.
-        /// </summary>
-        /// <param name="budget">The faction budget configuration.</param>
-        /// <returns>The weighted unit table.</returns>
-        private WeightedTable<List<UnitEntry>> BuildBudgetUnitTable(FactionBudget budget)
-        {
-            return new WeightedTable<List<UnitEntry>>(
-                budget.UnitTable.ConvertAll(e => (e.CumulativeWeight, e.Units)),
-                rollMin: 1,
-                rollMax: 101,
-                fallbackToLast: true
-            );
         }
 
         /// <summary>
@@ -693,6 +870,13 @@ namespace Rebellion.Generation
             private readonly Dictionary<string, CapitalShip> _shipMap;
             private readonly Dictionary<string, SpecialForces> _specialForcesMap;
 
+            /// <summary>
+            /// Creates a unit factory from generation templates.
+            /// </summary>
+            /// <param name="regiments">Regiment templates keyed during construction.</param>
+            /// <param name="fighters">Starfighter templates keyed during construction.</param>
+            /// <param name="ships">Capital ship templates keyed during construction.</param>
+            /// <param name="specialForces">Special-forces templates keyed during construction.</param>
             public UnitFactory(
                 Regiment[] regiments,
                 Starfighter[] fighters,
