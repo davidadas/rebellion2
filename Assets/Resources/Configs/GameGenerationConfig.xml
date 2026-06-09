@@ -284,6 +284,8 @@
     <CoreMineMultiplier>4</CoreMineMultiplier>
     <RimMineMultiplier>2</RimMineMultiplier>
     <MineTypeID>BDFA04</MineTypeID>
+    <FacilityTableRollMin>0</FacilityTableRollMin>
+    <FacilityTableRollMaxExclusive>101</FacilityTableRollMaxExclusive>
     <CoreFacilityTable>
       <WeightedFacilityEntry>
         <CumulativeWeight>0</CumulativeWeight>

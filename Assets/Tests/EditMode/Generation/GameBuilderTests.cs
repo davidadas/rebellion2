@@ -289,23 +289,19 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_EachFaction_OwnsAtLeastOneConstructionFacility()
         {
-            AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType.ConstructionFacility);
-        }
-
-        private void AssertEachFactionOwnsAtLeastOneBuildingOfType(BuildingType buildingType)
-        {
             foreach (Faction faction in _game.Factions)
             {
                 bool ownsOne = _game
                     .Galaxy.PlanetSystems.SelectMany(s => s.Planets)
                     .SelectMany(p => p.Buildings)
                     .Any(b =>
-                        b.OwnerInstanceID == faction.InstanceID && b.BuildingType == buildingType
+                        b.OwnerInstanceID == faction.InstanceID
+                        && b.BuildingType == BuildingType.ConstructionFacility
                     );
 
                 Assert.IsTrue(
                     ownsOne,
-                    $"Faction '{faction.GetDisplayName()}' should own at least one {buildingType}."
+                    $"Faction '{faction.GetDisplayName()}' should own at least one construction facility."
                 );
             }
         }

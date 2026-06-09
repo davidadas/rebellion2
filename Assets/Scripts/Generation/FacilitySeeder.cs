@@ -12,9 +12,6 @@ namespace Rebellion.Generation
     /// </summary>
     public sealed class FacilitySeeder : IGameSeeder
     {
-        private const int _facilityTableRollMin = 0;
-        private const int _facilityTableRollMaxExclusive = 101;
-
         /// <summary>
         /// Seeds initial facilities into every eligible planet in the generation context.
         /// </summary>
@@ -191,7 +188,7 @@ namespace Rebellion.Generation
                 return true;
             }
 
-            return TryRollFacilityTable(facilityTable, rng, out typeID);
+            return TryRollFacilityTable(config, facilityTable, rng, out typeID);
         }
 
         /// <summary>
@@ -202,6 +199,7 @@ namespace Rebellion.Generation
         /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
         /// <returns>Whether a table entry was resolved.</returns>
         private bool TryRollFacilityTable(
+            FacilityGenerationSection config,
             List<WeightedFacilityEntry> entries,
             IRandomNumberProvider rng,
             out string typeID
@@ -212,7 +210,10 @@ namespace Rebellion.Generation
             if (entries == null || entries.Count == 0)
                 return false;
 
-            int roll = rng.NextInt(_facilityTableRollMin, _facilityTableRollMaxExclusive);
+            int roll = rng.NextInt(
+                config.FacilityTableRollMin,
+                config.FacilityTableRollMaxExclusive
+            );
             WeightedFacilityEntry selected = entries[0];
 
             foreach (WeightedFacilityEntry entry in entries)

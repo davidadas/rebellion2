@@ -76,6 +76,8 @@ namespace Rebellion.Tests.Generation
                     CoreMineMultiplier = 4,
                     RimMineMultiplier = 2,
                     MineTypeID = "BDFA04",
+                    FacilityTableRollMin = 0,
+                    FacilityTableRollMaxExclusive = 101,
                     CoreFacilityTable = new List<WeightedFacilityEntry>
                     {
                         new WeightedFacilityEntry { CumulativeWeight = 0 },
@@ -250,26 +252,29 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_CorePlanet_RollsStayWithinFacilityTableRange()
+        public void Seed_CorePlanet_UsesConfiguredFacilityTableRollRange()
         {
             PlanetSystem system = CreateCoreSystem(energy: 5, rawNodes: 0);
+            GameGenerationConfig rules = CreateRules();
+            rules.FacilityGeneration.FacilityTableRollMin = 3;
+            rules.FacilityGeneration.FacilityTableRollMaxExclusive = 17;
             RecordingRNG rng = new RecordingRNG();
 
             SeedFacilities(
                 new[] { system },
                 CreateTemplates(),
-                CreateRules(),
+                rules,
                 new GalaxyClassificationResult(),
                 rng
             );
 
-            List<(int min, int max)> outOfRange = rng
-                .IntCalls.Where(call => call.max > 101)
+            List<(int min, int max)> unexpectedRanges = rng
+                .IntCalls.Where(call => call.min != 3 || call.max != 17)
                 .ToList();
 
             Assert.IsEmpty(
-                outOfRange,
-                $"Facility seeder rolls must stay within a 101-value space (max<=101); found: {string.Join(", ", outOfRange)}"
+                unexpectedRanges,
+                $"Facility seeder rolls must use the configured table range; found: {string.Join(", ", unexpectedRanges)}"
             );
         }
 

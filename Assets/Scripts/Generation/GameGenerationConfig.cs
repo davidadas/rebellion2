@@ -199,6 +199,8 @@ namespace Rebellion.Generation
         public int CoreMineMultiplier;
         public int RimMineMultiplier;
         public string MineTypeID;
+        public int FacilityTableRollMin;
+        public int FacilityTableRollMaxExclusive;
         public List<WeightedFacilityEntry> CoreFacilityTable;
         public List<WeightedFacilityEntry> RimFacilityTable;
         public List<HQFacilityLoadout> HQLoadouts;

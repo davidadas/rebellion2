@@ -88,7 +88,8 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Builds a faction-specific galaxy view.
-        /// Creates new structure (systems/planets) with shallow-copied entities.
+        /// Creates new systems and planets. Owned visible entities remain live references;
+        /// hidden and snapshotted entities are copied for display.
         /// </summary>
         /// <param name="faction">The faction to build a view for.</param>
         /// <returns>A galaxy map filtered by the faction's fog of war state.</returns>
