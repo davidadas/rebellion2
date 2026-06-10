@@ -199,13 +199,13 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Increments progress by 1 unless all participants are in transit.
+        /// Increments progress by 1 unless any participant is in transit.
         /// </summary>
         public void IncrementProgress()
         {
             List<IMissionParticipant> all = GetAllParticipants();
-            bool unitsAreAllInTransit = all.Count > 0 && all.All(u => u.Movement != null);
-            if (CurrentProgress < MaxProgress && !unitsAreAllInTransit)
+            bool anyParticipantInTransit = all.Any(participant => participant.Movement != null);
+            if (CurrentProgress < MaxProgress && !anyParticipantInTransit)
                 CurrentProgress++;
         }
 

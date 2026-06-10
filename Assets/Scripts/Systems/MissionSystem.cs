@@ -144,6 +144,9 @@ namespace Rebellion.Systems
                 return results;
             }
 
+            if (HasParticipantInTransit(mission))
+                return results;
+
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool participantStateChanged = ResolveDetection(mission, results);
 
@@ -182,6 +185,11 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        private static bool HasParticipantInTransit(Mission mission)
+        {
+            return mission.GetAllParticipants().Any(participant => participant.Movement != null);
         }
 
         /// <summary>

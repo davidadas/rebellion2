@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -739,6 +740,75 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(
                 completedResult.Participants.Any(p => p.InstanceID == "o2"),
                 "Decoy must appear in Participants"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_AnyParticipantInTransit_DoesNotProgressOrExecute()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer traveler = new Officer
+            {
+                InstanceID = "o2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(officer);
+            mission.MainParticipants.Add(traveler);
+            officer.SetParent(mission);
+            traveler.SetParent(mission);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreEqual(0, mission.CurrentProgress);
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, game.GetSceneNodesByType<StubMission>().Count);
+        }
+
+        [Test]
+        public void UpdateMission_AnyParticipantInTransit_NoDetectionOrCapture()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+            Officer traveler = new Officer
+            {
+                InstanceID = "o2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.MainParticipants.Add(traveler);
+            spy.SetParent(mission);
+            traveler.SetParent(mission);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsFalse(traveler.IsCaptured);
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled)
             );
         }
 
