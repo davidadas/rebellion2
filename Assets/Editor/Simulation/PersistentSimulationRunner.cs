@@ -140,7 +140,7 @@ public static class PersistentSimulationRunner
                 HeadlessSimulationRunner.RunPersistentSimulation(
                     job.TickCount > 0 ? job.TickCount : 300,
                     job.OutputPath,
-                    job.Seed >= 0 ? job.Seed : (int?)null
+                    job.Seed >= 0 ? job.Seed : null
                 );
 
             File.WriteAllText(

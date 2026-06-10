@@ -634,7 +634,7 @@ namespace Rebellion.Game.Galaxy
         private static bool IsEntityActive(IManufacturable entity)
         {
             return entity.ManufacturingStatus == ManufacturingStatus.Complete
-                && ((IMovable)entity).Movement == null;
+                && entity.Movement == null;
         }
 
         /// <summary>

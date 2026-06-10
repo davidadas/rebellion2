@@ -5,7 +5,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -190,7 +189,7 @@ namespace Rebellion.Systems
 
             return new GameObjectAutoscrappedResult
             {
-                DestroyedObject = victim as IGameEntity,
+                DestroyedObject = victim,
                 Context = location,
                 Tick = _game.CurrentTick,
             };
