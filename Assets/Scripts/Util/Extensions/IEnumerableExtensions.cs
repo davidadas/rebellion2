@@ -15,14 +15,17 @@ namespace Rebellion.Util.Extensions
         /// <param name="source">The source collection to shuffle.</param>
         /// <param name="provider">Random number provider for shuffle operation.</param>
         /// <returns>A new IEnumerable containing the shuffled elements.</returns>
-        /// <exception cref="ArgumentException">Thrown when the collection is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when the collection is null.</exception>
         public static IEnumerable<T> Shuffle<T>(
             this IEnumerable<T> source,
             IRandomNumberProvider provider
         )
         {
             if (source == null)
-                throw new ArgumentException(nameof(source), "Source collection cannot be null.");
+                throw new ArgumentNullException(
+                    nameof(source),
+                    "Source collection cannot be null."
+                );
 
             List<T> buffer = source.ToList();
 
@@ -65,7 +68,7 @@ namespace Rebellion.Util.Extensions
         /// <typeparam name="T">The type of elements in the collection.</typeparam>
         /// <param name="source">The source collection to shuffle.</param>
         /// <returns>A new IEnumerable containing the shuffled elements.</returns>
-        /// <exception cref="ArgumentException">Thrown when the collection is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when the collection is null.</exception>
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
         {
             Random localRandom = new Random();

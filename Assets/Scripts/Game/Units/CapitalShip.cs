@@ -197,7 +197,7 @@ namespace Rebellion.Game.Units
             if (MaxHullStrength <= 0)
                 return attackStrength;
 
-            return (attackStrength * CurrentHullStrength) / MaxHullStrength;
+            return attackStrength * CurrentHullStrength / MaxHullStrength;
         }
 
         /// <summary>

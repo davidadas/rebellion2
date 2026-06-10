@@ -74,7 +74,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the mission should be aborted.</returns>
         public override bool ShouldAbort(GameRoot game)
         {
-            return base.ShouldAbort(game) || (GetParent() is Planet p && p.IsInUprising);
+            return base.ShouldAbort(game) || GetParent() is Planet p && p.IsInUprising;
         }
 
         /// <summary>

@@ -80,20 +80,20 @@ namespace Rebellion.Systems
             if (item is CapitalShip)
                 return false;
 
-            if (!destination.CanAcceptChild((ISceneNode)item))
+            if (!destination.CanAcceptChild(item))
                 return false;
 
             if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
                 return false;
 
-            _game.AttachNode((ISceneNode)item, destination);
+            _game.AttachNode(item, destination);
 
             _pendingResults.Add(
                 new ManufacturingDeployedResult
                 {
                     Faction = faction,
-                    DeployedObject = item as IGameEntity,
-                    Location = destination as IGameEntity,
+                    DeployedObject = item,
+                    Location = destination,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -140,20 +140,20 @@ namespace Rebellion.Systems
                 parent = target;
             }
 
-            if (!parent.CanAcceptChild((ISceneNode)item))
+            if (!parent.CanAcceptChild(item))
                 return false;
 
             if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
                 return false;
 
-            _game.AttachNode((ISceneNode)item, parent);
+            _game.AttachNode(item, parent);
 
             _pendingResults.Add(
                 new ManufacturingDeployedResult
                 {
                     Faction = faction,
-                    DeployedObject = item as IGameEntity,
-                    Location = destination as IGameEntity,
+                    DeployedObject = item,
+                    Location = destination,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -219,11 +219,7 @@ namespace Rebellion.Systems
             planet.AddToManufacturingQueue(item);
 
             _pendingResults.Add(
-                new GameObjectCreatedResult
-                {
-                    GameObject = item as IGameEntity,
-                    Tick = _game.CurrentTick,
-                }
+                new GameObjectCreatedResult { GameObject = item, Tick = _game.CurrentTick }
             );
 
             GameLogger.Log(
@@ -641,7 +637,7 @@ namespace Rebellion.Systems
         {
             return new ManufacturingCompletedResult
             {
-                GameObject = lastCompleted as IGameEntity,
+                GameObject = lastCompleted,
                 ProductionPlanet = planet,
                 Faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID()),
                 ProductType = type,
@@ -722,11 +718,7 @@ namespace Rebellion.Systems
 
             return new List<GameResult>
             {
-                new GameObjectDeployedResult
-                {
-                    GameObject = item as IGameEntity,
-                    Tick = _game.CurrentTick,
-                },
+                new GameObjectDeployedResult { GameObject = item, Tick = _game.CurrentTick },
                 new ManufacturingRemainingResult
                 {
                     Faction = faction,
@@ -753,9 +745,9 @@ namespace Rebellion.Systems
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
 
-            ISceneNode destination = ((ISceneNode)item).GetParent();
+            ISceneNode destination = item.GetParent();
             if (destination != null)
-                _movementSystem.RequestMove((IMovable)item, destination, productionPlanet);
+                _movementSystem.RequestMove(item, destination, productionPlanet);
         }
 
         /// <summary>
@@ -827,7 +819,7 @@ namespace Rebellion.Systems
 
                 foreach (IManufacturable item in items.ToList())
                 {
-                    ISceneNode sceneNode = (ISceneNode)item;
+                    ISceneNode sceneNode = item;
 
                     if (sceneNode.GetParent() != null)
                     {

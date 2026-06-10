@@ -642,7 +642,7 @@ namespace Rebellion.Systems
             SpaceCombatResult combatResult
         )
         {
-            return (!HasOperationalSpaceWeapons(attacker) && !HasOperationalSpaceWeapons(defender))
+            return !HasOperationalSpaceWeapons(attacker) && !HasOperationalSpaceWeapons(defender)
                 || !DidCombatChangeState(combatResult);
         }
 
@@ -899,7 +899,7 @@ namespace Rebellion.Systems
                 CapitalShip ship = fleet.CapitalShips[i];
                 int raw = ship.GetPrimaryWeaponStrength();
 
-                totalFire += (raw * ships[i].WeaponNibble) / 15;
+                totalFire += raw * ships[i].WeaponNibble / 15;
             }
             return totalFire;
         }
@@ -1061,7 +1061,7 @@ namespace Rebellion.Systems
                 if (squadrons[i] == 0)
                     continue;
 
-                int loss = Math.Min((squadrons[i] * totalLosses) / total, remaining);
+                int loss = Math.Min(squadrons[i] * totalLosses / total, remaining);
                 squadrons[i] = Math.Max(squadrons[i] - loss, 0);
                 remaining -= loss;
             }
@@ -2422,13 +2422,13 @@ namespace Rebellion.Systems
             int defenderCommanderRating
         )
         {
-            var config = _game.Config.Combat;
+            GameConfig.CombatConfig config = _game.Config.Combat;
             int divisor = config.GroundCombatCommanderDivisor;
             int attackerBonus = divisor > 0 ? attackerCommanderRating / divisor : 0;
             int defenderBonus = divisor > 0 ? defenderCommanderRating / divisor : 0;
             int roll = _provider.NextInt(0, config.GroundCombatContestDiceRange + 1);
             int score =
-                roll + (attackerBonus + attackerStrength) - (defenderBonus + defenderStrength);
+                roll + attackerBonus + attackerStrength - (defenderBonus + defenderStrength);
             bool defenderWins = score <= config.GroundCombatDefenderWinsThreshold;
             bool attackerWins = score >= config.GroundCombatAttackerWinsThreshold;
             return (defenderWins, attackerWins);

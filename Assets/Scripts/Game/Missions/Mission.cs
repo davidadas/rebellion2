@@ -279,7 +279,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's success probability.</returns>
         protected virtual double GetAgentProbability(IMissionParticipant agent)
         {
-            int score = (int)agent.GetMissionSkillValue(ParticipantSkill);
+            int score = agent.GetMissionSkillValue(ParticipantSkill);
             return SuccessProbabilityTable.Lookup(score);
         }
 

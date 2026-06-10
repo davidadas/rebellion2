@@ -98,7 +98,7 @@ namespace Rebellion.Game.Missions
             {
                 if (!participant.CanPerformMission(missionType))
                     throw new InvalidOperationException(
-                        $"Participant '{((ISceneNode)participant).GetDisplayName()}' cannot perform {missionType} missions."
+                        $"Participant '{participant.GetDisplayName()}' cannot perform {missionType} missions."
                     );
             }
 
