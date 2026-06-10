@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Generation
 {
@@ -21,7 +22,8 @@ namespace Rebellion.Tests.Generation
             Regiment[] regimentTemplates = null,
             CapitalShip[] shipTemplates = null,
             Starfighter[] fighterTemplates = null,
-            SpecialForces[] specialForcesTemplates = null
+            SpecialForces[] specialForcesTemplates = null,
+            IRandomNumberProvider rng = null
         )
         {
             GenerationContext ctx = GenerationContextFactory.CreateDefault();
@@ -38,14 +40,22 @@ namespace Rebellion.Tests.Generation
                 ctx.Starfighters = fighterTemplates;
             if (specialForcesTemplates != null)
                 ctx.SpecialForces = specialForcesTemplates;
+            if (rng != null)
+                ctx.Rng = rng;
             return ctx;
         }
 
-        private static Planet OwnedPlanet(string id, string owner, int ownerSupport)
+        private static Planet OwnedPlanet(
+            string id,
+            string owner,
+            int ownerSupport,
+            string typeId = null
+        )
         {
             Planet planet = new Planet
             {
                 InstanceID = id,
+                TypeID = typeId ?? id,
                 OwnerInstanceID = owner,
                 IsColonized = true,
             };
@@ -150,9 +160,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedGarrison_PlacesConfiguredTroopsOnNamedPlanet()
+        public void Seed_FixedGarrison_PlacesConfiguredTroopsOnConfiguredPlanetType()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             Regiment[] regimentTemplates =
             {
@@ -173,7 +188,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -226,7 +241,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = GameGenerationConfig.FactionHqSentinel,
+                            PlanetTypeID = GameGenerationConfig.FactionHqSentinel,
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -255,7 +270,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_FixedGarrisonWithUnknownUnitId_ThrowsInvalidOperationException()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
 
             GameGenerationConfig config = new GameGenerationConfig
@@ -272,7 +292,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedGarrison
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             Units = new List<UnitEntry>
                             {
@@ -300,9 +320,14 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedFleet_PlacesConfiguredShipsAsFleetOnPlanet()
+        public void Seed_FixedFleet_PlacesConfiguredShipsOnConfiguredPlanetType()
         {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            Planet planet = OwnedPlanet(
+                "CORUSCANT",
+                "FNEMP1",
+                ownerSupport: 100,
+                typeId: "PLSEW05"
+            );
             Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
             CapitalShip[] shipTemplates =
             {
@@ -324,7 +349,7 @@ namespace Rebellion.Tests.Generation
                     {
                         new FixedFleet
                         {
-                            PlanetInstanceID = "CORUSCANT",
+                            PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             SpawnChancePct = 100,
                             Ships = new List<UnitEntry>
@@ -349,8 +374,183 @@ namespace Rebellion.Tests.Generation
             );
 
             List<Fleet> fleets = planet.GetFleets();
-            Assert.AreEqual(1, fleets.Count, "Expected one fleet on the named planet.");
+            Assert.AreEqual(1, fleets.Count, "Expected one fleet on the configured planet type.");
             Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+        }
+
+        [Test]
+        public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeId()
+        {
+            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100, typeId: "PLSUM06");
+            Planet hq = OwnedPlanet("ALLIANCE_HQ", "FNALL1", ownerSupport: 100);
+            Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
+            CapitalShip[] shipTemplates =
+            {
+                new CapitalShip { TypeID = "ALCS006", MaintenanceCost = 1 },
+                new CapitalShip
+                {
+                    TypeID = "ALCS003",
+                    MaintenanceCost = 1,
+                    RegimentCapacity = 2,
+                },
+            };
+            Regiment[] regimentTemplates =
+            {
+                new Regiment { TypeID = "REAL001", MaintenanceCost = 1 },
+            };
+
+            GalaxyClassificationResult classification = new GalaxyClassificationResult();
+            classification.FactionHQs["FNALL1"] = hq;
+
+            GameGenerationConfig config = CreateFixedFleetTargetConfig();
+
+            new UnitSeeder().Seed(
+                BuildContext(
+                    new[] { WrapSystem(yavin), WrapSystem(hq) },
+                    factions,
+                    config,
+                    classification,
+                    regimentTemplates: regimentTemplates,
+                    shipTemplates: shipTemplates,
+                    rng: new SequenceRNG(intValues: new[] { 1 })
+                )
+            );
+
+            Assert.AreEqual(0, yavin.GetFleets().Count);
+            Assert.AreEqual(1, hq.GetFleets().Count);
+            Assert.AreEqual(2, hq.GetFleets()[0].CapitalShips.Count);
+        }
+
+        [Test]
+        public void Seed_FixedFleetWithShipEntries_LoadsCargoOntoConfiguredShip()
+        {
+            Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100, typeId: "PLSUM06");
+            Planet hq = OwnedPlanet("ALLIANCE_HQ", "FNALL1", ownerSupport: 100);
+            Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
+            CapitalShip[] shipTemplates =
+            {
+                new CapitalShip { TypeID = "ALCS006", MaintenanceCost = 1 },
+                new CapitalShip
+                {
+                    TypeID = "ALCS003",
+                    MaintenanceCost = 1,
+                    RegimentCapacity = 2,
+                },
+            };
+            Regiment[] regimentTemplates =
+            {
+                new Regiment { TypeID = "REAL001", MaintenanceCost = 1 },
+            };
+
+            GalaxyClassificationResult classification = new GalaxyClassificationResult();
+            classification.FactionHQs["FNALL1"] = hq;
+
+            GameGenerationConfig config = CreateFixedFleetTargetConfig();
+
+            new UnitSeeder().Seed(
+                BuildContext(
+                    new[] { WrapSystem(yavin), WrapSystem(hq) },
+                    factions,
+                    config,
+                    classification,
+                    regimentTemplates: regimentTemplates,
+                    shipTemplates: shipTemplates,
+                    rng: new SequenceRNG(intValues: new[] { 0 })
+                )
+            );
+
+            Fleet fleet = yavin.GetFleets()[0];
+            CapitalShip corvette = fleet.CapitalShips.First(s => s.TypeID == "ALCS006");
+            CapitalShip transport = fleet.CapitalShips.First(s => s.TypeID == "ALCS003");
+            Assert.AreEqual(0, corvette.Regiments.Count);
+            Assert.AreEqual(2, transport.Regiments.Count);
+            Assert.IsTrue(transport.Regiments.All(r => r.TypeID == "REAL001"));
+        }
+
+        [Test]
+        public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            planet.EnergyCapacity = 2;
+            planet.NumRawResourceNodes = 1;
+            planet.AddChild(CompleteBuilding("mine0", BuildingType.Mine, "FNEMP1"));
+            planet.AddChild(CompleteBuilding("refinery0", BuildingType.Refinery, "FNEMP1"));
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            empire.Settings.RefinementMultiplier = 1;
+            Faction[] factions = { empire };
+            Regiment[] regimentTemplates =
+            {
+                new Regiment { TypeID = "FIRST", MaintenanceCost = 1 },
+                new Regiment { TypeID = "SECOND", MaintenanceCost = 1 },
+            };
+
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>
+                    {
+                        new FactionBudget
+                        {
+                            FactionID = "FNEMP1",
+                            BudgetLevels = new List<BudgetLevel>
+                            {
+                                new BudgetLevel
+                                {
+                                    GalaxySize = 0,
+                                    Difficulty = 0,
+                                    IsAI = true,
+                                    Percentage = 100,
+                                },
+                            },
+                            UnitTable = new List<WeightedUnitEntry>
+                            {
+                                new WeightedUnitEntry
+                                {
+                                    CumulativeWeight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "FIRST", Count = 1 },
+                                    },
+                                },
+                                new WeightedUnitEntry
+                                {
+                                    CumulativeWeight = 9,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "SECOND", Count = 1 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            GenerationContext context = BuildContext(
+                new[] { WrapSystem(planet) },
+                factions,
+                config,
+                new GalaxyClassificationResult(),
+                regimentTemplates: regimentTemplates,
+                rng: new SequenceRNG(intValues: new[] { 1 })
+            );
+            context.Summary.GalaxySize = GameSize.Small;
+            context.Summary.Difficulty = GameDifficulty.Easy;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(1, planet.Regiments.Count(r => r.TypeID == "FIRST"));
+            Assert.AreEqual(0, planet.Regiments.Count(r => r.TypeID == "SECOND"));
         }
 
         [Test]
@@ -527,6 +727,49 @@ namespace Rebellion.Tests.Generation
                     && unit.Movement == null
                 )
             );
+        }
+
+        private static GameGenerationConfig CreateFixedFleetTargetConfig()
+        {
+            return new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>
+                    {
+                        new FixedFleet
+                        {
+                            TargetPlanets = new List<string>
+                            {
+                                "PLSUM06",
+                                GameGenerationConfig.FactionHqSentinel,
+                            },
+                            FactionID = "FNALL1",
+                            ShipEntries = new List<FixedFleetShip>
+                            {
+                                new FixedFleetShip { TypeID = "ALCS006", Count = 1 },
+                                new FixedFleetShip
+                                {
+                                    TypeID = "ALCS003",
+                                    Count = 1,
+                                    Cargo = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "REAL001", Count = 2 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    FactionBudgets = new List<FactionBudget>(),
+                },
+            };
         }
 
         private static Building CompleteBuilding(string id, BuildingType buildingType, string owner)

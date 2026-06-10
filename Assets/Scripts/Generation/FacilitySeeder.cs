@@ -29,7 +29,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Seeds all eligible planets with facilities using weighted probability tables.
-        /// HQ loadouts are placed before the random roll on their target planet.
+        /// HQ loadouts are placed after random seeding on their target planet.
         /// </summary>
         /// <param name="systems">All planet systems in the galaxy.</param>
         /// <param name="templates">Building templates to clone from.</param>
@@ -52,13 +52,32 @@ namespace Rebellion.Generation
                 .GroupBy(b => b.TypeID)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            WeightedTable<string> coreTable = BuildTable(config.CoreFacilityTable);
-            WeightedTable<string> rimTable = BuildTable(config.RimFacilityTable);
-
             Dictionary<string, List<string>> loadoutsByPlanetId = ResolveHQLoadouts(
                 config.HQLoadouts,
-                classification
+                classification,
+                systems
             );
+
+            foreach (PlanetSystem system in systems)
+            {
+                bool isCore = system.SystemType == PlanetSystemType.CoreSystem;
+
+                foreach (Planet planet in system.Planets)
+                {
+                    if (!isCore && !planet.IsColonized)
+                        continue;
+
+                    SeedPlanet(
+                        planet,
+                        isCore,
+                        config,
+                        templateMap,
+                        isCore ? config.CoreFacilityTable : config.RimFacilityTable,
+                        rng,
+                        deployedBuildings
+                    );
+                }
+            }
 
             foreach (PlanetSystem system in systems)
             {
@@ -73,16 +92,6 @@ namespace Rebellion.Generation
                     {
                         PlaceLoadoutFacilities(planet, loadout, templateMap, deployedBuildings);
                     }
-
-                    SeedPlanet(
-                        planet,
-                        isCore,
-                        config,
-                        templateMap,
-                        isCore ? coreTable : rimTable,
-                        rng,
-                        deployedBuildings
-                    );
                 }
             }
 
@@ -96,7 +105,7 @@ namespace Rebellion.Generation
         /// <param name="isCore">Whether the planet is in a core system.</param>
         /// <param name="config">Facility generation config (mine multipliers, mine type).</param>
         /// <param name="templateMap">Building templates keyed by TypeID.</param>
-        /// <param name="facilityTable">Weighted table for non-mine facility rolls.</param>
+        /// <param name="facilityTable">Facility entries for non-mine facility rolls.</param>
         /// <param name="rng">Random number provider.</param>
         /// <param name="deployedBuildings">Accumulator for all placed buildings.</param>
         private void SeedPlanet(
@@ -104,12 +113,12 @@ namespace Rebellion.Generation
             bool isCore,
             FacilityGenerationSection config,
             Dictionary<string, Building> templateMap,
-            WeightedTable<string> facilityTable,
+            List<WeightedFacilityEntry> facilityTable,
             IRandomNumberProvider rng,
             List<Building> deployedBuildings
         )
         {
-            int mineCount = 0;
+            int mineCount = planet.Buildings.Count(b => b.BuildingType == BuildingType.Mine);
             int mineMultiplier = isCore ? config.CoreMineMultiplier : config.RimMineMultiplier;
 
             for (int slot = 0; slot < planet.EnergyCapacity; slot++)
@@ -117,16 +126,23 @@ namespace Rebellion.Generation
                 if (planet.GetAvailableEnergy() <= 0)
                     break;
 
-                string typeID = RollFacilityType(
+                bool rolled = TryRollFacilityType(
                     planet,
                     config,
                     facilityTable,
                     rng,
                     mineMultiplier,
-                    ref mineCount
+                    ref mineCount,
+                    out string typeID
                 );
 
-                if (typeID == null || !templateMap.TryGetValue(typeID, out Building template))
+                if (!rolled)
+                    break;
+
+                if (typeID == null)
+                    continue;
+
+                if (!templateMap.TryGetValue(typeID, out Building template))
                     break;
 
                 if (planet.GetAvailableEnergy() <= 0)
@@ -148,41 +164,72 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="planet">The planet being seeded (used for raw resource count).</param>
         /// <param name="config">Facility generation config containing the mine TypeID.</param>
-        /// <param name="facilityTable">Weighted table for non-mine facility rolls.</param>
+        /// <param name="facilityTable">Facility entries for non-mine facility rolls.</param>
         /// <param name="rng">Random number provider.</param>
         /// <param name="mineMultiplier">Core or rim mine probability multiplier.</param>
         /// <param name="mineCount">Running count of mines placed on this planet.</param>
-        /// <returns>The TypeID of the facility to place, or null if the table roll failed.</returns>
-        private string RollFacilityType(
+        /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
+        /// <returns>Whether a source table entry was resolved.</returns>
+        private bool TryRollFacilityType(
             Planet planet,
             FacilityGenerationSection config,
-            WeightedTable<string> facilityTable,
+            List<WeightedFacilityEntry> facilityTable,
             IRandomNumberProvider rng,
             int mineMultiplier,
-            ref int mineCount
+            ref int mineCount,
+            out string typeID
         )
         {
             int mineProbability = (planet.NumRawResourceNodes - mineCount) * mineMultiplier;
             if (mineProbability > 0 && rng.NextInt(0, 100) < mineProbability)
             {
                 mineCount++;
-                return config.MineTypeID;
+                typeID = config.MineTypeID;
+                return true;
             }
 
-            return facilityTable.Roll(rng);
+            return TryRollFacilityTable(config, facilityTable, rng, out typeID);
         }
 
         /// <summary>
-        /// Converts weighted facility entries into a WeightedTable for random selection.
+        /// Rolls the facility entry table and returns the selected TypeID.
         /// </summary>
+        /// <param name="config">Facility generation settings controlling table rolls.</param>
         /// <param name="entries">Cumulative-weight facility entries from config.</param>
-        /// <returns>A WeightedTable that maps rolls to facility TypeIDs.</returns>
-        private WeightedTable<string> BuildTable(List<WeightedFacilityEntry> entries)
+        /// <param name="rng">Random number provider.</param>
+        /// <param name="typeID">The selected TypeID, or null for an empty table result.</param>
+        /// <returns>Whether a table entry was resolved.</returns>
+        private bool TryRollFacilityTable(
+            FacilityGenerationSection config,
+            List<WeightedFacilityEntry> entries,
+            IRandomNumberProvider rng,
+            out string typeID
+        )
         {
-            List<(int, string)> tableEntries = entries.ConvertAll(e =>
-                (e.CumulativeWeight, e.TypeID)
+            typeID = null;
+
+            if (entries == null || entries.Count == 0)
+                return false;
+
+            int roll = rng.NextInt(
+                config.FacilityTableRollMin,
+                config.FacilityTableRollMaxExclusive
             );
-            return new WeightedTable<string>(tableEntries, rollMin: 0, rollMax: 100);
+            WeightedFacilityEntry selected = entries[0];
+
+            foreach (WeightedFacilityEntry entry in entries)
+            {
+                if (roll < entry.CumulativeWeight)
+                {
+                    typeID = selected.TypeID;
+                    return true;
+                }
+
+                selected = entry;
+            }
+
+            typeID = selected.TypeID;
+            return true;
         }
 
         /// <summary>
@@ -191,20 +238,27 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="loadouts">HQ loadout entries from config, may be null.</param>
         /// <param name="classification">Classification result with faction HQ assignments.</param>
+        /// <param name="systems">All planet systems containing the target planets.</param>
         /// <returns>Facility TypeIDs keyed by resolved planet InstanceID.</returns>
         private Dictionary<string, List<string>> ResolveHQLoadouts(
             List<HQFacilityLoadout> loadouts,
-            GalaxyClassificationResult classification
+            GalaxyClassificationResult classification,
+            PlanetSystem[] systems
         )
         {
             Dictionary<string, List<string>> resolved = new Dictionary<string, List<string>>();
             if (loadouts == null)
                 return resolved;
 
+            Dictionary<string, Planet> planetsByTypeId = systems
+                .SelectMany(system => system.Planets)
+                .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
+                .ToDictionary(planet => planet.TypeID);
+
             foreach (HQFacilityLoadout loadout in loadouts)
             {
-                string planetId = loadout.PlanetInstanceID;
-                if (planetId == GameGenerationConfig.FactionHqSentinel)
+                string planetId = null;
+                if (loadout.PlanetTypeID == GameGenerationConfig.FactionHqSentinel)
                 {
                     if (string.IsNullOrEmpty(loadout.FactionID))
                         continue;
@@ -217,6 +271,16 @@ namespace Rebellion.Generation
                         continue;
                     planetId = hqPlanet.InstanceID;
                 }
+                else
+                {
+                    if (
+                        string.IsNullOrEmpty(loadout.PlanetTypeID)
+                        || !planetsByTypeId.TryGetValue(loadout.PlanetTypeID, out Planet planet)
+                    )
+                        continue;
+
+                    planetId = planet.InstanceID;
+                }
 
                 resolved[planetId] = loadout.FacilityTypeIDs ?? new List<string>();
             }
@@ -226,7 +290,7 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Places configured loadout facilities on a planet. Energy capacity and
-        /// raw-resource count are raised first so the forced facilities fit without
+        /// raw-resource count are raised so the forced facilities fit without
         /// tripping the planet's capacity validator.
         /// </summary>
         /// <param name="planet">The target planet.</param>

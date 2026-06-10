@@ -47,7 +47,7 @@ namespace Rebellion.Tests.Generation
                         GarrisonTroopTypeID = "REAL002",
                         StartingPlanets = new List<StartingPlanet>
                         {
-                            new StartingPlanet { PlanetInstanceID = "YAVIN", Loyalty = 100 },
+                            new StartingPlanet { PlanetTypeID = "PLSUM06", Loyalty = 100 },
                             new StartingPlanet
                             {
                                 IsHeadquarters = true,
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Generation
                         {
                             new StartingPlanet
                             {
-                                PlanetInstanceID = "CORUSCANT",
+                                PlanetTypeID = "PLSEW05",
                                 IsHeadquarters = true,
                                 Loyalty = 100,
                             },
@@ -148,6 +148,7 @@ namespace Rebellion.Tests.Generation
             Planet planet = new Planet
             {
                 InstanceID = "CORUSCANT",
+                TypeID = "PLSEW05",
                 IsColonized = true,
                 OwnerInstanceID = "FNEMP1",
             };
@@ -178,6 +179,7 @@ namespace Rebellion.Tests.Generation
             Planet planet = new Planet
             {
                 InstanceID = "YAVIN",
+                TypeID = "PLSUM06",
                 IsColonized = true,
                 OwnerInstanceID = "FNALL1",
             };
@@ -445,6 +447,27 @@ namespace Rebellion.Tests.Generation
             Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
 
             Assert.IsFalse(planet.IsColonized);
+        }
+
+        [Test]
+        public void Seed_UncolonizedRimPlanet_HasNoPopularSupport()
+        {
+            SequenceRNG rng = new SequenceRNG(intValues: new[] { 0, 0, 0, 50 });
+
+            Planet planet = new Planet { InstanceID = "RIM1", IsColonized = false };
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                SystemType = PlanetSystemType.OuterRim,
+            };
+            system.Planets.Add(planet);
+
+            GalaxyClassificationResult classification = new GalaxyClassificationResult();
+
+            Configure(new[] { system }, classification, CreateRules(), _factionIds, rng);
+
+            Assert.IsEmpty(planet.PopularSupport);
+            Assert.IsFalse(planet.IsPopulated());
         }
 
         [Test]

@@ -11,7 +11,7 @@
     <Planets>
       <Planet>
         <TypeID>PLSEW01</TypeID>
-        <InstanceID>YAGA_MINOR</InstanceID>
+        <InstanceID>PLSEW01</InstanceID>
         <DisplayName>Yaga Minor</DisplayName>
         <PositionX>479</PositionX>
         <PositionY>726</PositionY>
@@ -19,7 +19,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW02</TypeID>
-        <InstanceID>CHANDRILA</InstanceID>
+        <InstanceID>PLSEW02</InstanceID>
         <DisplayName>Chandrila</DisplayName>
         <PositionX>503</PositionX>
         <PositionY>689</PositionY>
@@ -27,7 +27,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW03</TypeID>
-        <InstanceID>GHORMAN</InstanceID>
+        <InstanceID>PLSEW03</InstanceID>
         <DisplayName>Ghorman</DisplayName>
         <PositionX>515</PositionX>
         <PositionY>651</PositionY>
@@ -35,7 +35,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW04</TypeID>
-        <InstanceID>AVARAM</InstanceID>
+        <InstanceID>PLSEW04</InstanceID>
         <DisplayName>Averam</DisplayName>
         <PositionX>503</PositionX>
         <PositionY>712</PositionY>
@@ -43,7 +43,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW05</TypeID>
-        <InstanceID>CORUSCANT</InstanceID>
+        <InstanceID>PLSEW05</InstanceID>
         <DisplayName>Coruscant</DisplayName>
         <PositionX>525</PositionX>
         <PositionY>689</PositionY>
@@ -51,7 +51,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW06</TypeID>
-        <InstanceID>BALMORRA</InstanceID>
+        <InstanceID>PLSEW06</InstanceID>
         <DisplayName>Balmorra</DisplayName>
         <PositionX>476</PositionX>
         <PositionY>698</PositionY>
@@ -59,7 +59,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW07</TypeID>
-        <InstanceID>CORSIN</InstanceID>
+        <InstanceID>PLSEW07</InstanceID>
         <DisplayName>Corsin</DisplayName>
         <PositionX>489</PositionX>
         <PositionY>656</PositionY>
@@ -67,7 +67,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW08</TypeID>
-        <InstanceID>UVENA</InstanceID>
+        <InstanceID>PLSEW08</InstanceID>
         <DisplayName>Uvena</DisplayName>
         <PositionX>528</PositionX>
         <PositionY>717</PositionY>
@@ -75,7 +75,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW09</TypeID>
-        <InstanceID>SVIVREN</InstanceID>
+        <InstanceID>PLSEW09</InstanceID>
         <DisplayName>Svivren</DisplayName>
         <PositionX>513</PositionX>
         <PositionY>670</PositionY>
@@ -83,7 +83,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSEW10</TypeID>
-        <InstanceID>YAGA_MAJOR</InstanceID>
+        <InstanceID>PLSEW10</InstanceID>
         <DisplayName>Bortras</DisplayName>
         <PositionX>477</PositionX>
         <PositionY>677</PositionY>
@@ -102,7 +102,7 @@
     <Planets>
       <Planet>
         <TypeID>PLCOR01</TypeID>
-        <InstanceID>XYQUINE</InstanceID>
+        <InstanceID>PLCOR01</InstanceID>
         <DisplayName>Xyquine</DisplayName>
         <PositionX>305</PositionX>
         <PositionY>159</PositionY>
@@ -110,7 +110,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR02</TypeID>
-        <InstanceID>DRALL</InstanceID>
+        <InstanceID>PLCOR02</InstanceID>
         <DisplayName>Drall</DisplayName>
         <PositionX>331</PositionX>
         <PositionY>110</PositionY>
@@ -118,7 +118,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR03</TypeID>
-        <InstanceID>TALUS</InstanceID>
+        <InstanceID>PLCOR03</InstanceID>
         <DisplayName>Talus</DisplayName>
         <PositionX>331</PositionX>
         <PositionY>143</PositionY>
@@ -126,7 +126,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR04</TypeID>
-        <InstanceID>CORFAI</InstanceID>
+        <InstanceID>PLCOR04</InstanceID>
         <DisplayName>Corfai</DisplayName>
         <PositionX>285</PositionX>
         <PositionY>134</PositionY>
@@ -134,7 +134,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR05</TypeID>
-        <InstanceID>COMMENOR</InstanceID>
+        <InstanceID>PLCOR05</InstanceID>
         <DisplayName>Commenor</DisplayName>
         <PositionX>288</PositionX>
         <PositionY>178</PositionY>
@@ -142,7 +142,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR06</TypeID>
-        <InstanceID>SELONIA</InstanceID>
+        <InstanceID>PLCOR06</InstanceID>
         <DisplayName>Selonia</DisplayName>
         <PositionX>315</PositionX>
         <PositionY>127</PositionY>
@@ -150,7 +150,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR07</TypeID>
-        <InstanceID>VAGRAN</InstanceID>
+        <InstanceID>PLCOR07</InstanceID>
         <DisplayName>Vagran</DisplayName>
         <PositionX>302</PositionX>
         <PositionY>110</PositionY>
@@ -158,7 +158,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR08</TypeID>
-        <InstanceID>CORELLIA</InstanceID>
+        <InstanceID>PLCOR08</InstanceID>
         <DisplayName>Corellia</DisplayName>
         <PositionX>277</PositionX>
         <PositionY>155</PositionY>
@@ -166,7 +166,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR09</TypeID>
-        <InstanceID>DUROS</InstanceID>
+        <InstanceID>PLCOR09</InstanceID>
         <DisplayName>Duros</DisplayName>
         <PositionX>312</PositionX>
         <PositionY>180</PositionY>
@@ -174,7 +174,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCOR10</TypeID>
-        <InstanceID>TRALUS</InstanceID>
+        <InstanceID>PLCOR10</InstanceID>
         <DisplayName>Tralus</DisplayName>
         <PositionX>282</PositionX>
         <PositionY>103</PositionY>
@@ -193,7 +193,7 @@
     <Planets>
       <Planet>
         <TypeID>PLFAK01</TypeID>
-        <InstanceID>DELAYA</InstanceID>
+        <InstanceID>PLFAK01</InstanceID>
         <DisplayName>Delaya</DisplayName>
         <PositionX>385</PositionX>
         <PositionY>138</PositionY>
@@ -201,7 +201,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK02</TypeID>
-        <InstanceID>MRISST</InstanceID>
+        <InstanceID>PLFAK02</InstanceID>
         <DisplayName>Mrisst</DisplayName>
         <PositionX>432</PositionX>
         <PositionY>209</PositionY>
@@ -209,7 +209,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK03</TypeID>
-        <InstanceID>BIMMISAARI</InstanceID>
+        <InstanceID>PLFAK03</InstanceID>
         <DisplayName>Bimmisaari</DisplayName>
         <PositionX>432</PositionX>
         <PositionY>138</PositionY>
@@ -217,7 +217,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK04</TypeID>
-        <InstanceID>OBROA_SKAI</InstanceID>
+        <InstanceID>PLFAK04</InstanceID>
         <DisplayName>Obroa-skai</DisplayName>
         <PositionX>407</PositionX>
         <PositionY>162</PositionY>
@@ -225,7 +225,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK05</TypeID>
-        <InstanceID>CARIDA</InstanceID>
+        <InstanceID>PLFAK05</InstanceID>
         <DisplayName>Carida</DisplayName>
         <PositionX>437</PositionX>
         <PositionY>180</PositionY>
@@ -233,7 +233,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK06</TypeID>
-        <InstanceID>PALANHI</InstanceID>
+        <InstanceID>PLFAK06</InstanceID>
         <DisplayName>Palanhi</DisplayName>
         <PositionX>386</PositionX>
         <PositionY>169</PositionY>
@@ -241,7 +241,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK07</TypeID>
-        <InstanceID>ANDO</InstanceID>
+        <InstanceID>PLFAK07</InstanceID>
         <DisplayName>Ando</DisplayName>
         <PositionX>427</PositionX>
         <PositionY>159</PositionY>
@@ -249,7 +249,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK08</TypeID>
-        <InstanceID>BERCHEST</InstanceID>
+        <InstanceID>PLFAK08</InstanceID>
         <DisplayName>Berchest</DisplayName>
         <PositionX>388</PositionX>
         <PositionY>213</PositionY>
@@ -257,7 +257,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK09</TypeID>
-        <InstanceID>HALOWAN</InstanceID>
+        <InstanceID>PLFAK09</InstanceID>
         <DisplayName>Halowan</DisplayName>
         <PositionX>388</PositionX>
         <PositionY>192</PositionY>
@@ -265,7 +265,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAK10</TypeID>
-        <InstanceID>RALLTIIR</InstanceID>
+        <InstanceID>PLFAK10</InstanceID>
         <DisplayName>Ralltiir</DisplayName>
         <PositionX>408</PositionX>
         <PositionY>206</PositionY>
@@ -284,7 +284,7 @@
     <Planets>
       <Planet>
         <TypeID>PLSLU01</TypeID>
-        <InstanceID>PHORLISS</InstanceID>
+        <InstanceID>PLSLU01</InstanceID>
         <DisplayName>Phorliss</DisplayName>
         <PositionX>137</PositionX>
         <PositionY>476</PositionY>
@@ -292,7 +292,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU02</TypeID>
-        <InstanceID>KAMPARAS</InstanceID>
+        <InstanceID>PLSLU02</InstanceID>
         <DisplayName>Kamparas</DisplayName>
         <PositionX>186</PositionX>
         <PositionY>436</PositionY>
@@ -300,7 +300,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU03</TypeID>
-        <InstanceID>KETARIS</InstanceID>
+        <InstanceID>PLSLU03</InstanceID>
         <DisplayName>Ketaris</DisplayName>
         <PositionX>179</PositionX>
         <PositionY>466</PositionY>
@@ -308,7 +308,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU04</TypeID>
-        <InstanceID>BALFRON</InstanceID>
+        <InstanceID>PLSLU04</InstanceID>
         <DisplayName>Balfron</DisplayName>
         <PositionX>167</PositionX>
         <PositionY>445</PositionY>
@@ -316,7 +316,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU05</TypeID>
-        <InstanceID>PANTOLOMIN</InstanceID>
+        <InstanceID>PLSLU05</InstanceID>
         <DisplayName>Pantolomin</DisplayName>
         <PositionX>142</PositionX>
         <PositionY>452</PositionY>
@@ -324,7 +324,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU06</TypeID>
-        <InstanceID>TANGRENE</InstanceID>
+        <InstanceID>PLSLU06</InstanceID>
         <DisplayName>Tangrene</DisplayName>
         <PositionX>160</PositionX>
         <PositionY>476</PositionY>
@@ -332,7 +332,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU07</TypeID>
-        <InstanceID>OMWAT</InstanceID>
+        <InstanceID>PLSLU07</InstanceID>
         <DisplayName>Omwat</DisplayName>
         <PositionX>137</PositionX>
         <PositionY>424</PositionY>
@@ -340,7 +340,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU08</TypeID>
-        <InstanceID>WOR_TANDELL</InstanceID>
+        <InstanceID>PLSLU08</InstanceID>
         <DisplayName>Wor Tandell</DisplayName>
         <PositionX>182</PositionX>
         <PositionY>487</PositionY>
@@ -348,7 +348,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU09</TypeID>
-        <InstanceID>SARKA</InstanceID>
+        <InstanceID>PLSLU09</InstanceID>
         <DisplayName>Sarka</DisplayName>
         <PositionX>145</PositionX>
         <PositionY>497</PositionY>
@@ -356,7 +356,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSLU10</TypeID>
-        <InstanceID>CAPRIONRIL</InstanceID>
+        <InstanceID>PLSLU10</InstanceID>
         <DisplayName>Caprionril</DisplayName>
         <PositionX>157</PositionX>
         <PositionY>426</PositionY>
@@ -375,7 +375,7 @@
     <Planets>
       <Planet>
         <TypeID>PLFAR01</TypeID>
-        <InstanceID>WISTRIL</InstanceID>
+        <InstanceID>PLFAR01</InstanceID>
         <DisplayName>Wistril</DisplayName>
         <PositionX>292</PositionX>
         <PositionY>410</PositionY>
@@ -383,7 +383,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR02</TypeID>
-        <InstanceID>BILBRINGI</InstanceID>
+        <InstanceID>PLFAR02</InstanceID>
         <DisplayName>Bilbringi</DisplayName>
         <PositionX>314</PositionX>
         <PositionY>419</PositionY>
@@ -391,7 +391,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR03</TypeID>
-        <InstanceID>BYSS</InstanceID>
+        <InstanceID>PLFAR03</InstanceID>
         <DisplayName>Byss</DisplayName>
         <PositionX>270</PositionX>
         <PositionY>466</PositionY>
@@ -399,7 +399,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR04</TypeID>
-        <InstanceID>KHOMM</InstanceID>
+        <InstanceID>PLFAR04</InstanceID>
         <DisplayName>Khomm</DisplayName>
         <PositionX>304</PositionX>
         <PositionY>450</PositionY>
@@ -407,7 +407,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR05</TypeID>
-        <InstanceID>PHRAETISS</InstanceID>
+        <InstanceID>PLFAR05</InstanceID>
         <DisplayName>Phraetiss</DisplayName>
         <PositionX>268</PositionX>
         <PositionY>422</PositionY>
@@ -415,7 +415,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR06</TypeID>
-        <InstanceID>KINYEN</InstanceID>
+        <InstanceID>PLFAR06</InstanceID>
         <DisplayName>Kinyen</DisplayName>
         <PositionX>288</PositionX>
         <PositionY>436</PositionY>
@@ -423,7 +423,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR07</TypeID>
-        <InstanceID>RISHI</InstanceID>
+        <InstanceID>PLFAR07</InstanceID>
         <DisplayName>Rishi</DisplayName>
         <PositionX>265</PositionX>
         <PositionY>445</PositionY>
@@ -431,7 +431,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR08</TypeID>
-        <InstanceID>FIRRO</InstanceID>
+        <InstanceID>PLFAR08</InstanceID>
         <DisplayName>Firro</DisplayName>
         <PositionX>307</PositionX>
         <PositionY>471</PositionY>
@@ -439,7 +439,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR09</TypeID>
-        <InstanceID>TAANAB</InstanceID>
+        <InstanceID>PLFAR09</InstanceID>
         <DisplayName>Taanab</DisplayName>
         <PositionX>287</PositionX>
         <PositionY>478</PositionY>
@@ -447,7 +447,7 @@
       </Planet>
       <Planet>
         <TypeID>PLFAR10</TypeID>
-        <InstanceID>CHARMATH</InstanceID>
+        <InstanceID>PLFAR10</InstanceID>
         <DisplayName>Charmath</DisplayName>
         <PositionX>272</PositionX>
         <PositionY>401</PositionY>
@@ -466,7 +466,7 @@
     <Planets>
       <Planet>
         <TypeID>PLDOL01</TypeID>
-        <InstanceID>SULLUST</InstanceID>
+        <InstanceID>PLDOL01</InstanceID>
         <DisplayName>Sullust</DisplayName>
         <PositionX>482</PositionX>
         <PositionY>326</PositionY>
@@ -474,7 +474,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL02</TypeID>
-        <InstanceID>ORTO</InstanceID>
+        <InstanceID>PLDOL02</InstanceID>
         <DisplayName>Orto</DisplayName>
         <PositionX>526</PositionX>
         <PositionY>337</PositionY>
@@ -482,7 +482,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL03</TypeID>
-        <InstanceID>BPFASSH</InstanceID>
+        <InstanceID>PLDOL03</InstanceID>
         <DisplayName>Bpfassh</DisplayName>
         <PositionX>484</PositionX>
         <PositionY>281</PositionY>
@@ -490,7 +490,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL04</TypeID>
-        <InstanceID>BOTHAWUI</InstanceID>
+        <InstanceID>PLDOL04</InstanceID>
         <DisplayName>Bothawui</DisplayName>
         <PositionX>477</PositionX>
         <PositionY>305</PositionY>
@@ -498,7 +498,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL05</TypeID>
-        <InstanceID>KOTHLIS</InstanceID>
+        <InstanceID>PLDOL05</InstanceID>
         <DisplayName>Kothlis</DisplayName>
         <PositionX>506</PositionX>
         <PositionY>326</PositionY>
@@ -506,7 +506,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL06</TypeID>
-        <InstanceID>MON_CALAMARI</InstanceID>
+        <InstanceID>PLDOL06</InstanceID>
         <DisplayName>Mon Calamari</DisplayName>
         <PositionX>506</PositionX>
         <PositionY>260</PositionY>
@@ -514,7 +514,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL07</TypeID>
-        <InstanceID>PRAESITLYN</InstanceID>
+        <InstanceID>PLDOL07</InstanceID>
         <DisplayName>Praesitlyn</DisplayName>
         <PositionX>479</PositionX>
         <PositionY>262</PositionY>
@@ -522,7 +522,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL08</TypeID>
-        <InstanceID>SLUIS_VAN</InstanceID>
+        <InstanceID>PLDOL08</InstanceID>
         <DisplayName>Sluis Van</DisplayName>
         <PositionX>528</PositionX>
         <PositionY>293</PositionY>
@@ -530,7 +530,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL09</TypeID>
-        <InstanceID>UMGUL</InstanceID>
+        <InstanceID>PLDOL09</InstanceID>
         <DisplayName>Umgul</DisplayName>
         <PositionX>509</PositionX>
         <PositionY>288</PositionY>
@@ -538,7 +538,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDOL10</TypeID>
-        <InstanceID>DENAB</InstanceID>
+        <InstanceID>PLDOL10</InstanceID>
         <DisplayName>Denab</DisplayName>
         <PositionX>526</PositionX>
         <PositionY>269</PositionY>
@@ -557,7 +557,7 @@
     <Planets>
       <Planet>
         <TypeID>PLATR01</TypeID>
-        <InstanceID>ZEFFLIFFL</InstanceID>
+        <InstanceID>PLATR01</InstanceID>
         <DisplayName>Zeffliffl</DisplayName>
         <PositionX>381</PositionX>
         <PositionY>701</PositionY>
@@ -565,7 +565,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR02</TypeID>
-        <InstanceID>MOLTOK</InstanceID>
+        <InstanceID>PLATR02</InstanceID>
         <DisplayName>Moltok</DisplayName>
         <PositionX>408</PositionX>
         <PositionY>673</PositionY>
@@ -573,7 +573,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR03</TypeID>
-        <InstanceID>TOGORIA</InstanceID>
+        <InstanceID>PLATR03</InstanceID>
         <DisplayName>Togoria</DisplayName>
         <PositionX>417</PositionX>
         <PositionY>712</PositionY>
@@ -581,7 +581,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR04</TypeID>
-        <InstanceID>NAMTA</InstanceID>
+        <InstanceID>PLATR04</InstanceID>
         <DisplayName>Nam'ta</DisplayName>
         <PositionX>371</PositionX>
         <PositionY>740</PositionY>
@@ -589,7 +589,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR05</TypeID>
-        <InstanceID>TIBRIN</InstanceID>
+        <InstanceID>PLATR05</InstanceID>
         <DisplayName>Tibrin</DisplayName>
         <PositionX>393</PositionX>
         <PositionY>743</PositionY>
@@ -597,7 +597,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR06</TypeID>
-        <InstanceID>DESPAYRE</InstanceID>
+        <InstanceID>PLATR06</InstanceID>
         <DisplayName>Despayre</DisplayName>
         <PositionX>418</PositionX>
         <PositionY>747</PositionY>
@@ -605,7 +605,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR07</TypeID>
-        <InstanceID>SPEFIK</InstanceID>
+        <InstanceID>PLATR07</InstanceID>
         <DisplayName>Spefik</DisplayName>
         <PositionX>385</PositionX>
         <PositionY>682</PositionY>
@@ -613,7 +613,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR08</TypeID>
-        <InstanceID>TRAMMIS</InstanceID>
+        <InstanceID>PLATR08</InstanceID>
         <DisplayName>Trammis</DisplayName>
         <PositionX>396</PositionX>
         <PositionY>719</PositionY>
@@ -621,7 +621,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR09</TypeID>
-        <InstanceID>FEDJE</InstanceID>
+        <InstanceID>PLATR09</InstanceID>
         <DisplayName>Fedje</DisplayName>
         <PositionX>366</PositionX>
         <PositionY>719</PositionY>
@@ -629,7 +629,7 @@
       </Planet>
       <Planet>
         <TypeID>PLATR10</TypeID>
-        <InstanceID>GENERIS</InstanceID>
+        <InstanceID>PLATR10</InstanceID>
         <DisplayName>Generis</DisplayName>
         <PositionX>364</PositionX>
         <PositionY>670</PositionY>
@@ -648,7 +648,7 @@
     <Planets>
       <Planet>
         <TypeID>PLMOD01</TypeID>
-        <InstanceID>ADEGA</InstanceID>
+        <InstanceID>PLMOD01</InstanceID>
         <DisplayName>Adega</DisplayName>
         <PositionX>439</PositionX>
         <PositionY>532</PositionY>
@@ -656,7 +656,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD02</TypeID>
-        <InstanceID>BASILISK</InstanceID>
+        <InstanceID>PLMOD02</InstanceID>
         <DisplayName>Basilisk</DisplayName>
         <PositionX>430</PositionX>
         <PositionY>555</PositionY>
@@ -664,7 +664,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD03</TypeID>
-        <InstanceID>ANNAJ</InstanceID>
+        <InstanceID>PLMOD03</InstanceID>
         <DisplayName>Annaj</DisplayName>
         <PositionX>398</PositionX>
         <PositionY>605</PositionY>
@@ -672,7 +672,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD04</TypeID>
-        <InstanceID>KHUIUMIN</InstanceID>
+        <InstanceID>PLMOD04</InstanceID>
         <DisplayName>Khuiumin</DisplayName>
         <PositionX>412</PositionX>
         <PositionY>581</PositionY>
@@ -680,7 +680,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD05</TypeID>
-        <InstanceID>PZOB</InstanceID>
+        <InstanceID>PLMOD05</InstanceID>
         <DisplayName>Pzob</DisplayName>
         <PositionX>390</PositionX>
         <PositionY>539</PositionY>
@@ -688,7 +688,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD06</TypeID>
-        <InstanceID>GANDOLO_IV</InstanceID>
+        <InstanceID>PLMOD06</InstanceID>
         <DisplayName>Gandolo IV</DisplayName>
         <PositionX>432</PositionX>
         <PositionY>586</PositionY>
@@ -696,7 +696,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD07</TypeID>
-        <InstanceID>AGRILAT</InstanceID>
+        <InstanceID>PLMOD07</InstanceID>
         <DisplayName>Agrilat</DisplayName>
         <PositionX>393</PositionX>
         <PositionY>586</PositionY>
@@ -704,7 +704,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD08</TypeID>
-        <InstanceID>VJUN</InstanceID>
+        <InstanceID>PLMOD08</InstanceID>
         <DisplayName>Vjun</DisplayName>
         <PositionX>408</PositionX>
         <PositionY>553</PositionY>
@@ -712,7 +712,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD09</TypeID>
-        <InstanceID>ENDOR</InstanceID>
+        <InstanceID>PLMOD09</InstanceID>
         <DisplayName>Endor</DisplayName>
         <PositionX>420</PositionX>
         <PositionY>534</PositionY>
@@ -720,7 +720,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMOD10</TypeID>
-        <InstanceID>HOZREL_XI</InstanceID>
+        <InstanceID>PLMOD10</InstanceID>
         <DisplayName>Hozrel XI</DisplayName>
         <PositionX>427</PositionX>
         <PositionY>607</PositionY>
@@ -739,7 +739,7 @@
     <Planets>
       <Planet>
         <TypeID>PLQUE01</TypeID>
-        <InstanceID>RAFA</InstanceID>
+        <InstanceID>PLQUE01</InstanceID>
         <DisplayName>Rafa</DisplayName>
         <PositionX>594</PositionX>
         <PositionY>408</PositionY>
@@ -747,7 +747,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE02</TypeID>
-        <InstanceID>PIL_DILLER</InstanceID>
+        <InstanceID>PLQUE02</InstanceID>
         <DisplayName>Pil Diller</DisplayName>
         <PositionX>602</PositionX>
         <PositionY>426</PositionY>
@@ -755,7 +755,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE03</TypeID>
-        <InstanceID>KIRREK</InstanceID>
+        <InstanceID>PLQUE03</InstanceID>
         <DisplayName>Kirrek</DisplayName>
         <PositionX>641</PositionX>
         <PositionY>450</PositionY>
@@ -763,7 +763,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE04</TypeID>
-        <InstanceID>VARN</InstanceID>
+        <InstanceID>PLQUE04</InstanceID>
         <DisplayName>Varn</DisplayName>
         <PositionX>639</PositionX>
         <PositionY>377</PositionY>
@@ -771,7 +771,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE05</TypeID>
-        <InstanceID>DATHOMIR</InstanceID>
+        <InstanceID>PLQUE05</InstanceID>
         <DisplayName>Dathomir</DisplayName>
         <PositionX>614</PositionX>
         <PositionY>382</PositionY>
@@ -779,7 +779,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE06</TypeID>
-        <InstanceID>THRAKIA</InstanceID>
+        <InstanceID>PLQUE06</InstanceID>
         <DisplayName>Thrakia</DisplayName>
         <PositionX>628</PositionX>
         <PositionY>431</PositionY>
@@ -787,7 +787,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE07</TypeID>
-        <InstanceID>VINSOTH</InstanceID>
+        <InstanceID>PLQUE07</InstanceID>
         <DisplayName>Vinsoth</DisplayName>
         <PositionX>622</PositionX>
         <PositionY>412</PositionY>
@@ -795,7 +795,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE08</TypeID>
-        <InstanceID>AMORRIS</InstanceID>
+        <InstanceID>PLQUE08</InstanceID>
         <DisplayName>Amorris</DisplayName>
         <PositionX>616</PositionX>
         <PositionY>450</PositionY>
@@ -803,7 +803,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE09</TypeID>
-        <InstanceID>CORSTRIS</InstanceID>
+        <InstanceID>PLQUE09</InstanceID>
         <DisplayName>Corstris</DisplayName>
         <PositionX>641</PositionX>
         <PositionY>401</PositionY>
@@ -811,7 +811,7 @@
       </Planet>
       <Planet>
         <TypeID>PLQUE10</TypeID>
-        <InstanceID>SELAGGIS</InstanceID>
+        <InstanceID>PLQUE10</InstanceID>
         <DisplayName>Selaggis</DisplayName>
         <PositionX>594</PositionX>
         <PositionY>384</PositionY>
@@ -830,7 +830,7 @@
     <Planets>
       <Planet>
         <TypeID>PLCHU01</TypeID>
-        <InstanceID>LELMRA</InstanceID>
+        <InstanceID>PLCHU01</InstanceID>
         <DisplayName>Lelmra</DisplayName>
         <PositionX>643</PositionX>
         <PositionY>272</PositionY>
@@ -838,7 +838,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU02</TypeID>
-        <InstanceID>GENTES</InstanceID>
+        <InstanceID>PLCHU02</InstanceID>
         <DisplayName>Gentes</DisplayName>
         <PositionX>651</PositionX>
         <PositionY>295</PositionY>
@@ -846,7 +846,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU03</TypeID>
-        <InstanceID>ALLYUEN</InstanceID>
+        <InstanceID>PLCHU03</InstanceID>
         <DisplayName>Allyuen</DisplayName>
         <PositionX>609</PositionX>
         <PositionY>286</PositionY>
@@ -854,7 +854,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU04</TypeID>
-        <InstanceID>STORTHUS</InstanceID>
+        <InstanceID>PLCHU04</InstanceID>
         <DisplayName>Storthus</DisplayName>
         <PositionX>655</PositionX>
         <PositionY>323</PositionY>
@@ -862,7 +862,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU05</TypeID>
-        <InstanceID>TOKMIA</InstanceID>
+        <InstanceID>PLCHU05</InstanceID>
         <DisplayName>Tokmia</DisplayName>
         <PositionX>626</PositionX>
         <PositionY>326</PositionY>
@@ -870,7 +870,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU06</TypeID>
-        <InstanceID>DEYER</InstanceID>
+        <InstanceID>PLCHU06</InstanceID>
         <DisplayName>Deyer</DisplayName>
         <PositionX>601</PositionX>
         <PositionY>262</PositionY>
@@ -878,7 +878,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU07</TypeID>
-        <InstanceID>HOTH</InstanceID>
+        <InstanceID>PLCHU07</InstanceID>
         <DisplayName>Hoth</DisplayName>
         <PositionX>602</PositionX>
         <PositionY>335</PositionY>
@@ -886,7 +886,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU08</TypeID>
-        <InstanceID>ANOAT</InstanceID>
+        <InstanceID>PLCHU08</InstanceID>
         <DisplayName>Anoat</DisplayName>
         <PositionX>634</PositionX>
         <PositionY>307</PositionY>
@@ -894,7 +894,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU09</TypeID>
-        <InstanceID>BESPIN</InstanceID>
+        <InstanceID>PLCHU09</InstanceID>
         <DisplayName>Bespin</DisplayName>
         <PositionX>622</PositionX>
         <PositionY>267</PositionY>
@@ -903,7 +903,7 @@
       </Planet>
       <Planet>
         <TypeID>PLCHU10</TypeID>
-        <InstanceID>NEW_COV</InstanceID>
+        <InstanceID>PLCHU10</InstanceID>
         <DisplayName>New Cov</DisplayName>
         <PositionX>601</PositionX>
         <PositionY>309</PositionY>
@@ -922,7 +922,7 @@
     <Planets>
       <Planet>
         <TypeID>PLKAN01</TypeID>
-        <InstanceID>XA_FEL</InstanceID>
+        <InstanceID>PLKAN01</InstanceID>
         <DisplayName>Xa Fel</DisplayName>
         <PositionX>791</PositionX>
         <PositionY>623</PositionY>
@@ -930,7 +930,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN02</TypeID>
-        <InstanceID>VODRAN</InstanceID>
+        <InstanceID>PLKAN02</InstanceID>
         <DisplayName>Vodran</DisplayName>
         <PositionX>768</PositionX>
         <PositionY>560</PositionY>
@@ -938,7 +938,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN03</TypeID>
-        <InstanceID>MUNTO_CODRU</InstanceID>
+        <InstanceID>PLKAN03</InstanceID>
         <DisplayName>Munto Codru</DisplayName>
         <PositionX>742</PositionX>
         <PositionY>555</PositionY>
@@ -946,7 +946,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN04</TypeID>
-        <InstanceID>DAVNAR</InstanceID>
+        <InstanceID>PLKAN04</InstanceID>
         <DisplayName>Davnar</DisplayName>
         <PositionX>761</PositionX>
         <PositionY>579</PositionY>
@@ -954,7 +954,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN05</TypeID>
-        <InstanceID>DERRA_IV</InstanceID>
+        <InstanceID>PLKAN05</InstanceID>
         <DisplayName>Derra IV</DisplayName>
         <PositionX>769</PositionX>
         <PositionY>630</PositionY>
@@ -962,7 +962,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN06</TypeID>
-        <InstanceID>MINDAR</InstanceID>
+        <InstanceID>PLKAN06</InstanceID>
         <DisplayName>Mindar</DisplayName>
         <PositionX>746</PositionX>
         <PositionY>621</PositionY>
@@ -970,7 +970,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN07</TypeID>
-        <InstanceID>CULROON_III</InstanceID>
+        <InstanceID>PLKAN07</InstanceID>
         <DisplayName>Culroon III</DisplayName>
         <PositionX>771</PositionX>
         <PositionY>609</PositionY>
@@ -978,7 +978,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN08</TypeID>
-        <InstanceID>SPUMA</InstanceID>
+        <InstanceID>PLKAN08</InstanceID>
         <DisplayName>Spuma</DisplayName>
         <PositionX>790</PositionX>
         <PositionY>558</PositionY>
@@ -986,7 +986,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN09</TypeID>
-        <InstanceID>SMARTEEL</InstanceID>
+        <InstanceID>PLKAN09</InstanceID>
         <DisplayName>Smarteel</DisplayName>
         <PositionX>791</PositionX>
         <PositionY>583</PositionY>
@@ -994,7 +994,7 @@
       </Planet>
       <Planet>
         <TypeID>PLKAN10</TypeID>
-        <InstanceID>NAL_HUTTA</InstanceID>
+        <InstanceID>PLKAN10</InstanceID>
         <DisplayName>Nal Hutta</DisplayName>
         <PositionX>751</PositionX>
         <PositionY>600</PositionY>
@@ -1013,7 +1013,7 @@
     <Planets>
       <Planet>
         <TypeID>PLDUF01</TypeID>
-        <InstanceID>ZEBITROPE_IV</InstanceID>
+        <InstanceID>PLDUF01</InstanceID>
         <DisplayName>Zebitrope IV</DisplayName>
         <PositionX>280</PositionX>
         <PositionY>583</PositionY>
@@ -1021,7 +1021,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF02</TypeID>
-        <InstanceID>WOMRIK</InstanceID>
+        <InstanceID>PLDUF02</InstanceID>
         <DisplayName>Womrik</DisplayName>
         <PositionX>226</PositionX>
         <PositionY>642</PositionY>
@@ -1029,7 +1029,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF03</TypeID>
-        <InstanceID>KLATOOINE</InstanceID>
+        <InstanceID>PLDUF03</InstanceID>
         <DisplayName>Klatooine</DisplayName>
         <PositionX>258</PositionX>
         <PositionY>595</PositionY>
@@ -1037,7 +1037,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF04</TypeID>
-        <InstanceID>ORD_TRASI</InstanceID>
+        <InstanceID>PLDUF04</InstanceID>
         <DisplayName>Ord Trasi</DisplayName>
         <PositionX>245</PositionX>
         <PositionY>633</PositionY>
@@ -1045,7 +1045,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF05</TypeID>
-        <InstanceID>ALGARIAN</InstanceID>
+        <InstanceID>PLDUF05</InstanceID>
         <DisplayName>Algarian</DisplayName>
         <PositionX>240</PositionX>
         <PositionY>612</PositionY>
@@ -1053,7 +1053,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF06</TypeID>
-        <InstanceID>FILVE</InstanceID>
+        <InstanceID>PLDUF06</InstanceID>
         <DisplayName>Filve</DisplayName>
         <PositionX>253</PositionX>
         <PositionY>654</PositionY>
@@ -1061,7 +1061,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF07</TypeID>
-        <InstanceID>TOPRAWA</InstanceID>
+        <InstanceID>PLDUF07</InstanceID>
         <DisplayName>Toprawa</DisplayName>
         <PositionX>272</PositionX>
         <PositionY>644</PositionY>
@@ -1069,7 +1069,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF08</TypeID>
-        <InstanceID>ORD_MANTELL</InstanceID>
+        <InstanceID>PLDUF08</InstanceID>
         <DisplayName>Ord Mantell</DisplayName>
         <PositionX>277</PositionX>
         <PositionY>605</PositionY>
@@ -1077,7 +1077,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF09</TypeID>
-        <InstanceID>GAMORR</InstanceID>
+        <InstanceID>PLDUF09</InstanceID>
         <DisplayName>Gamorr</DisplayName>
         <PositionX>234</PositionX>
         <PositionY>593</PositionY>
@@ -1085,7 +1085,7 @@
       </Planet>
       <Planet>
         <TypeID>PLDUF10</TypeID>
-        <InstanceID>ORD_PARDON</InstanceID>
+        <InstanceID>PLDUF10</InstanceID>
         <DisplayName>Ord Pardon</DisplayName>
         <PositionX>226</PositionX>
         <PositionY>572</PositionY>
@@ -1104,7 +1104,7 @@
     <Planets>
       <Planet>
         <TypeID>PLABR01</TypeID>
-        <InstanceID>HISHYIM</InstanceID>
+        <InstanceID>PLABR01</InstanceID>
         <DisplayName>Hishyim</DisplayName>
         <PositionX>550</PositionX>
         <PositionY>213</PositionY>
@@ -1112,7 +1112,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR02</TypeID>
-        <InstanceID>UKIO</InstanceID>
+        <InstanceID>PLABR02</InstanceID>
         <DisplayName>Ukio</DisplayName>
         <PositionX>543</PositionX>
         <PositionY>166</PositionY>
@@ -1120,7 +1120,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR03</TypeID>
-        <InstanceID>HEFI</InstanceID>
+        <InstanceID>PLABR03</InstanceID>
         <DisplayName>Hefi</DisplayName>
         <PositionX>498</PositionX>
         <PositionY>190</PositionY>
@@ -1128,7 +1128,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR04</TypeID>
-        <InstanceID>ABREGADO</InstanceID>
+        <InstanceID>PLABR04</InstanceID>
         <DisplayName>Abregado</DisplayName>
         <PositionX>513</PositionX>
         <PositionY>171</PositionY>
@@ -1136,7 +1136,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR05</TypeID>
-        <InstanceID>DA_SOOCHA</InstanceID>
+        <InstanceID>PLABR05</InstanceID>
         <DisplayName>Da Soocha</DisplayName>
         <PositionX>533</PositionX>
         <PositionY>190</PositionY>
@@ -1144,7 +1144,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR06</TypeID>
-        <InstanceID>TIEOS</InstanceID>
+        <InstanceID>PLABR06</InstanceID>
         <DisplayName>Tieos</DisplayName>
         <PositionX>518</PositionX>
         <PositionY>148</PositionY>
@@ -1152,7 +1152,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR07</TypeID>
-        <InstanceID>CATHAR</InstanceID>
+        <InstanceID>PLABR07</InstanceID>
         <DisplayName>Cathar</DisplayName>
         <PositionX>496</PositionX>
         <PositionY>136</PositionY>
@@ -1160,7 +1160,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR08</TypeID>
-        <InstanceID>GALPOS_II</InstanceID>
+        <InstanceID>PLABR08</InstanceID>
         <DisplayName>Galpos II</DisplayName>
         <PositionX>540</PositionX>
         <PositionY>138</PositionY>
@@ -1168,7 +1168,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR09</TypeID>
-        <InstanceID>GARBAN</InstanceID>
+        <InstanceID>PLABR09</InstanceID>
         <DisplayName>Garban</DisplayName>
         <PositionX>494</PositionX>
         <PositionY>164</PositionY>
@@ -1176,7 +1176,7 @@
       </Planet>
       <Planet>
         <TypeID>PLABR10</TypeID>
-        <InstanceID>INTUCI</InstanceID>
+        <InstanceID>PLABR10</InstanceID>
         <DisplayName>Intuci</DisplayName>
         <PositionX>515</PositionX>
         <PositionY>209</PositionY>
@@ -1195,7 +1195,7 @@
     <Planets>
       <Planet>
         <TypeID>PLXAP01</TypeID>
-        <InstanceID>THANTA_ZILBRA</InstanceID>
+        <InstanceID>PLXAP01</InstanceID>
         <DisplayName>Thanta Zilbra</DisplayName>
         <PositionX>216</PositionX>
         <PositionY>162</PositionY>
@@ -1203,7 +1203,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP02</TypeID>
-        <InstanceID>NORULAC</InstanceID>
+        <InstanceID>PLXAP02</InstanceID>
         <DisplayName>Norulac</DisplayName>
         <PositionX>238</PositionX>
         <PositionY>157</PositionY>
@@ -1211,7 +1211,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP03</TypeID>
-        <InstanceID>THILA</InstanceID>
+        <InstanceID>PLXAP03</InstanceID>
         <DisplayName>Thila</DisplayName>
         <PositionX>196</PositionX>
         <PositionY>199</PositionY>
@@ -1219,7 +1219,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP04</TypeID>
-        <InstanceID>AMBRIA</InstanceID>
+        <InstanceID>PLXAP04</InstanceID>
         <DisplayName>Ambria</DisplayName>
         <PositionX>199</PositionX>
         <PositionY>176</PositionY>
@@ -1227,7 +1227,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP05</TypeID>
-        <InstanceID>STIC</InstanceID>
+        <InstanceID>PLXAP05</InstanceID>
         <DisplayName>Stic</DisplayName>
         <PositionX>238</PositionX>
         <PositionY>194</PositionY>
@@ -1235,7 +1235,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP06</TypeID>
-        <InstanceID>KIRDO_III</InstanceID>
+        <InstanceID>PLXAP06</InstanceID>
         <DisplayName>Kirdo III</DisplayName>
         <PositionX>206</PositionX>
         <PositionY>230</PositionY>
@@ -1243,7 +1243,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP07</TypeID>
-        <InstanceID>GRHO</InstanceID>
+        <InstanceID>PLXAP07</InstanceID>
         <DisplayName>G'rho</DisplayName>
         <PositionX>234</PositionX>
         <PositionY>223</PositionY>
@@ -1251,7 +1251,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP08</TypeID>
-        <InstanceID>RUURIA</InstanceID>
+        <InstanceID>PLXAP08</InstanceID>
         <DisplayName>Ruuria</DisplayName>
         <PositionX>219</PositionX>
         <PositionY>192</PositionY>
@@ -1259,7 +1259,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP09</TypeID>
-        <InstanceID>TUND</InstanceID>
+        <InstanceID>PLXAP09</InstanceID>
         <DisplayName>Tund</DisplayName>
         <PositionX>214</PositionX>
         <PositionY>211</PositionY>
@@ -1267,7 +1267,7 @@
       </Planet>
       <Planet>
         <TypeID>PLXAP10</TypeID>
-        <InstanceID>NEELGAIMON</InstanceID>
+        <InstanceID>PLXAP10</InstanceID>
         <DisplayName>Neelgaimon</DisplayName>
         <PositionX>248</PositionX>
         <PositionY>176</PositionY>
@@ -1286,7 +1286,7 @@
     <Planets>
       <Planet>
         <TypeID>PLORU01</TypeID>
-        <InstanceID>LAFRA</InstanceID>
+        <InstanceID>PLORU01</InstanceID>
         <DisplayName>Lafra</DisplayName>
         <PositionX>722</PositionX>
         <PositionY>755</PositionY>
@@ -1294,7 +1294,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU02</TypeID>
-        <InstanceID>TATOOINE</InstanceID>
+        <InstanceID>PLORU02</InstanceID>
         <DisplayName>Tatooine</DisplayName>
         <PositionX>712</PositionX>
         <PositionY>736</PositionY>
@@ -1302,7 +1302,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU03</TypeID>
-        <InstanceID>KIMANAN</InstanceID>
+        <InstanceID>PLORU03</InstanceID>
         <DisplayName>Kimanan</DisplayName>
         <PositionX>754</PositionX>
         <PositionY>726</PositionY>
@@ -1310,7 +1310,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU04</TypeID>
-        <InstanceID>CHAZWA</InstanceID>
+        <InstanceID>PLORU04</InstanceID>
         <DisplayName>Chazwa</DisplayName>
         <PositionX>742</PositionX>
         <PositionY>689</PositionY>
@@ -1318,7 +1318,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU05</TypeID>
-        <InstanceID>MANTESSA</InstanceID>
+        <InstanceID>PLORU05</InstanceID>
         <DisplayName>Mantessa</DisplayName>
         <PositionX>709</PositionX>
         <PositionY>696</PositionY>
@@ -1326,7 +1326,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU06</TypeID>
-        <InstanceID>BAKURA</InstanceID>
+        <InstanceID>PLORU06</InstanceID>
         <DisplayName>Bakura</DisplayName>
         <PositionX>702</PositionX>
         <PositionY>762</PositionY>
@@ -1334,7 +1334,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU07</TypeID>
-        <InstanceID>JOIOL</InstanceID>
+        <InstanceID>PLORU07</InstanceID>
         <DisplayName>Joiol</DisplayName>
         <PositionX>727</PositionX>
         <PositionY>715</PositionY>
@@ -1342,7 +1342,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU08</TypeID>
-        <InstanceID>DALTAR</InstanceID>
+        <InstanceID>PLORU08</InstanceID>
         <DisplayName>Daltar</DisplayName>
         <PositionX>741</PositionX>
         <PositionY>769</PositionY>
@@ -1350,7 +1350,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU09</TypeID>
-        <InstanceID>RYLOTH</InstanceID>
+        <InstanceID>PLORU09</InstanceID>
         <DisplayName>Ryloth</DisplayName>
         <PositionX>747</PositionX>
         <PositionY>747</PositionY>
@@ -1358,7 +1358,7 @@
       </Planet>
       <Planet>
         <TypeID>PLORU10</TypeID>
-        <InstanceID>PODERIS</InstanceID>
+        <InstanceID>PLORU10</InstanceID>
         <DisplayName>Poderis</DisplayName>
         <PositionX>700</PositionX>
         <PositionY>717</PositionY>
@@ -1377,7 +1377,7 @@
     <Planets>
       <Planet>
         <TypeID>PLJOS01</TypeID>
-        <InstanceID>CHRONDRE</InstanceID>
+        <InstanceID>PLJOS01</InstanceID>
         <DisplayName>Chrondre</DisplayName>
         <PositionX>165</PositionX>
         <PositionY>305</PositionY>
@@ -1385,7 +1385,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS02</TypeID>
-        <InstanceID>WASKIRO</InstanceID>
+        <InstanceID>PLJOS02</InstanceID>
         <DisplayName>Waskiro</DisplayName>
         <PositionX>162</PositionX>
         <PositionY>333</PositionY>
@@ -1393,7 +1393,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS03</TypeID>
-        <InstanceID>ENGIRA</InstanceID>
+        <InstanceID>PLJOS03</InstanceID>
         <DisplayName>Engira</DisplayName>
         <PositionX>127</PositionX>
         <PositionY>359</PositionY>
@@ -1401,7 +1401,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS04</TypeID>
-        <InstanceID>CARDOOINE</InstanceID>
+        <InstanceID>PLJOS04</InstanceID>
         <DisplayName>Cardooine</DisplayName>
         <PositionX>140</PositionX>
         <PositionY>288</PositionY>
@@ -1409,7 +1409,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS05</TypeID>
-        <InstanceID>DAROR</InstanceID>
+        <InstanceID>PLJOS05</InstanceID>
         <DisplayName>Dar'Or</DisplayName>
         <PositionX>118</PositionX>
         <PositionY>340</PositionY>
@@ -1417,7 +1417,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS06</TypeID>
-        <InstanceID>JOMARK</InstanceID>
+        <InstanceID>PLJOS06</InstanceID>
         <DisplayName>Jomark</DisplayName>
         <PositionX>121</PositionX>
         <PositionY>302</PositionY>
@@ -1425,7 +1425,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS07</TypeID>
-        <InstanceID>DOUGLAS_III</InstanceID>
+        <InstanceID>PLJOS07</InstanceID>
         <DisplayName>Douglas III</DisplayName>
         <PositionX>175</PositionX>
         <PositionY>359</PositionY>
@@ -1433,7 +1433,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS08</TypeID>
-        <InstanceID>KIFFEX</InstanceID>
+        <InstanceID>PLJOS08</InstanceID>
         <DisplayName>Kiffex</DisplayName>
         <PositionX>142</PositionX>
         <PositionY>340</PositionY>
@@ -1441,7 +1441,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS09</TypeID>
-        <InstanceID>TROGAN</InstanceID>
+        <InstanceID>PLJOS09</InstanceID>
         <DisplayName>Trogan</DisplayName>
         <PositionX>133</PositionX>
         <PositionY>321</PositionY>
@@ -1449,7 +1449,7 @@
       </Planet>
       <Planet>
         <TypeID>PLJOS10</TypeID>
-        <InstanceID>AZBIAN</InstanceID>
+        <InstanceID>PLJOS10</InstanceID>
         <DisplayName>Azbian</DisplayName>
         <PositionX>147</PositionX>
         <PositionY>361</PositionY>
@@ -1468,7 +1468,7 @@
     <Planets>
       <Planet>
         <TypeID>PLSUM01</TypeID>
-        <InstanceID>TIERFON</InstanceID>
+        <InstanceID>PLSUM01</InstanceID>
         <DisplayName>Tierfon</DisplayName>
         <PositionX>326</PositionX>
         <PositionY>284</PositionY>
@@ -1476,7 +1476,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM02</TypeID>
-        <InstanceID>FLAX</InstanceID>
+        <InstanceID>PLSUM02</InstanceID>
         <DisplayName>Flax</DisplayName>
         <PositionX>339</PositionX>
         <PositionY>316</PositionY>
@@ -1484,7 +1484,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM03</TypeID>
-        <InstanceID>ALKLELLISH_III</InstanceID>
+        <InstanceID>PLSUM03</InstanceID>
         <DisplayName>Alk'lellish III</DisplayName>
         <PositionX>358</PositionX>
         <PositionY>333</PositionY>
@@ -1492,7 +1492,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM04</TypeID>
-        <InstanceID>KASHYYYK</InstanceID>
+        <InstanceID>PLSUM04</InstanceID>
         <DisplayName>Kashyyyk</DisplayName>
         <PositionX>322</PositionX>
         <PositionY>260</PositionY>
@@ -1500,7 +1500,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM05</TypeID>
-        <InstanceID>GEEDON_V</InstanceID>
+        <InstanceID>PLSUM05</InstanceID>
         <DisplayName>Geedon V</DisplayName>
         <PositionX>378</PositionX>
         <PositionY>305</PositionY>
@@ -1508,7 +1508,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM06</TypeID>
-        <InstanceID>YAVIN</InstanceID>
+        <InstanceID>PLSUM06</InstanceID>
         <DisplayName>Yavin</DisplayName>
         <IsColonized>true</IsColonized>
         <PositionX>346</PositionX>
@@ -1517,7 +1517,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM07</TypeID>
-        <InstanceID>BOORDII</InstanceID>
+        <InstanceID>PLSUM07</InstanceID>
         <DisplayName>Boordii</DisplayName>
         <PositionX>373</PositionX>
         <PositionY>272</PositionY>
@@ -1525,7 +1525,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM08</TypeID>
-        <InstanceID>LINURI</InstanceID>
+        <InstanceID>PLSUM08</InstanceID>
         <DisplayName>Linuri</DisplayName>
         <PositionX>322</PositionX>
         <PositionY>333</PositionY>
@@ -1533,7 +1533,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM09</TypeID>
-        <InstanceID>QAT_CHRYSTAC</InstanceID>
+        <InstanceID>PLSUM09</InstanceID>
         <DisplayName>Qat Chrystac</DisplayName>
         <PositionX>359</PositionX>
         <PositionY>314</PositionY>
@@ -1541,7 +1541,7 @@
       </Planet>
       <Planet>
         <TypeID>PLSUM10</TypeID>
-        <InstanceID>WOOSTRI</InstanceID>
+        <InstanceID>PLSUM10</InstanceID>
         <DisplayName>Woostri</DisplayName>
         <PositionX>348</PositionX>
         <PositionY>255</PositionY>
@@ -1560,7 +1560,7 @@
     <Planets>
       <Planet>
         <TypeID>PLGLY01</TypeID>
-        <InstanceID>NENTAN</InstanceID>
+        <InstanceID>PLGLY01</InstanceID>
         <DisplayName>Nentan</DisplayName>
         <PositionX>560</PositionX>
         <PositionY>548</PositionY>
@@ -1568,7 +1568,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY02</TypeID>
-        <InstanceID>ELROOD</InstanceID>
+        <InstanceID>PLGLY02</InstanceID>
         <DisplayName>Elrood</DisplayName>
         <PositionX>535</PositionX>
         <PositionY>590</PositionY>
@@ -1576,7 +1576,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY03</TypeID>
-        <InstanceID>YAGDHUL</InstanceID>
+        <InstanceID>PLGLY03</InstanceID>
         <DisplayName>Yag'Dhul</DisplayName>
         <PositionX>555</PositionX>
         <PositionY>590</PositionY>
@@ -1584,7 +1584,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY04</TypeID>
-        <InstanceID>SEDRI</InstanceID>
+        <InstanceID>PLGLY04</InstanceID>
         <DisplayName>Sedri</DisplayName>
         <PositionX>574</PositionX>
         <PositionY>609</PositionY>
@@ -1592,7 +1592,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY05</TypeID>
-        <InstanceID>VORTEX</InstanceID>
+        <InstanceID>PLGLY05</InstanceID>
         <DisplayName>Vortex</DisplayName>
         <PositionX>565</PositionX>
         <PositionY>569</PositionY>
@@ -1600,7 +1600,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY06</TypeID>
-        <InstanceID>VALRAR</InstanceID>
+        <InstanceID>PLGLY06</InstanceID>
         <DisplayName>Valrar</DisplayName>
         <PositionX>540</PositionX>
         <PositionY>560</PositionY>
@@ -1608,7 +1608,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY07</TypeID>
-        <InstanceID>FORNAX</InstanceID>
+        <InstanceID>PLGLY07</InstanceID>
         <DisplayName>Fornax</DisplayName>
         <PositionX>547</PositionX>
         <PositionY>616</PositionY>
@@ -1616,7 +1616,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY08</TypeID>
-        <InstanceID>ALTARRN</InstanceID>
+        <InstanceID>PLGLY08</InstanceID>
         <DisplayName>Altarrn</DisplayName>
         <PositionX>584</PositionX>
         <PositionY>544</PositionY>
@@ -1624,7 +1624,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY09</TypeID>
-        <InstanceID>ARKANIA</InstanceID>
+        <InstanceID>PLGLY09</InstanceID>
         <DisplayName>Arkania</DisplayName>
         <PositionX>531</PositionX>
         <PositionY>539</PositionY>
@@ -1632,7 +1632,7 @@
       </Planet>
       <Planet>
         <TypeID>PLGLY10</TypeID>
-        <InstanceID>FEF</InstanceID>
+        <InstanceID>PLGLY10</InstanceID>
         <DisplayName>Fef</DisplayName>
         <PositionX>584</PositionX>
         <PositionY>579</PositionY>
@@ -1651,7 +1651,7 @@
     <Planets>
       <Planet>
         <TypeID>PLMAY01</TypeID>
-        <InstanceID>KABAL</InstanceID>
+        <InstanceID>PLMAY01</InstanceID>
         <DisplayName>Kabal</DisplayName>
         <PositionX>727</PositionX>
         <PositionY>523</PositionY>
@@ -1659,7 +1659,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY02</TypeID>
-        <InstanceID>TRITON</InstanceID>
+        <InstanceID>PLMAY02</InstanceID>
         <DisplayName>Triton</DisplayName>
         <PositionX>744</PositionX>
         <PositionY>511</PositionY>
@@ -1667,7 +1667,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY03</TypeID>
-        <InstanceID>CLAKDOR_VII</InstanceID>
+        <InstanceID>PLMAY03</InstanceID>
         <DisplayName>Clak'dor VII</DisplayName>
         <PositionX>724</PositionX>
         <PositionY>490</PositionY>
@@ -1675,7 +1675,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY04</TypeID>
-        <InstanceID>HNEMTHE</InstanceID>
+        <InstanceID>PLMAY04</InstanceID>
         <DisplayName>H'nemthe</DisplayName>
         <PositionX>739</PositionX>
         <PositionY>469</PositionY>
@@ -1683,7 +1683,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY05</TypeID>
-        <InstanceID>CONA</InstanceID>
+        <InstanceID>PLMAY05</InstanceID>
         <DisplayName>Cona</DisplayName>
         <PositionX>744</PositionX>
         <PositionY>448</PositionY>
@@ -1691,7 +1691,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY06</TypeID>
-        <InstanceID>URDUR</InstanceID>
+        <InstanceID>PLMAY06</InstanceID>
         <DisplayName>Urdur</DisplayName>
         <PositionX>774</PositionX>
         <PositionY>457</PositionY>
@@ -1699,7 +1699,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY07</TypeID>
-        <InstanceID>OETRAGO</InstanceID>
+        <InstanceID>PLMAY07</InstanceID>
         <DisplayName>Oetrago</DisplayName>
         <PositionX>773</PositionX>
         <PositionY>490</PositionY>
@@ -1707,7 +1707,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY08</TypeID>
-        <InstanceID>CHALCEDON</InstanceID>
+        <InstanceID>PLMAY08</InstanceID>
         <DisplayName>Chalcedon</DisplayName>
         <PositionX>724</PositionX>
         <PositionY>445</PositionY>
@@ -1715,7 +1715,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY09</TypeID>
-        <InstanceID>DANTOOINE</InstanceID>
+        <InstanceID>PLMAY09</InstanceID>
         <DisplayName>Dantooine</DisplayName>
         <PositionX>764</PositionX>
         <PositionY>513</PositionY>
@@ -1723,7 +1723,7 @@
       </Planet>
       <Planet>
         <TypeID>PLMAY10</TypeID>
-        <InstanceID>ANCHORON</InstanceID>
+        <InstanceID>PLMAY10</InstanceID>
         <DisplayName>Anchoron</DisplayName>
         <PositionX>747</PositionX>
         <PositionY>490</PositionY>
@@ -1741,7 +1741,7 @@
     <PositionY>755</PositionY>
     <Planets>
       <Planet>
-        <InstanceID>AKRIT_TAR</InstanceID>
+        <InstanceID>PLCAL01</InstanceID>
         <DisplayName>Akrit'tar</DisplayName>
         <TypeID>PLCAL01</TypeID>
         <PositionX>601</PositionX>
@@ -1749,7 +1749,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>KESSEL</InstanceID>
+        <InstanceID>PLCAL02</InstanceID>
         <DisplayName>Kessel</DisplayName>
         <TypeID>PLCAL02</TypeID>
         <PositionX>619</PositionX>
@@ -1757,7 +1757,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>NORVAL_II</InstanceID>
+        <InstanceID>PLCAL03</InstanceID>
         <DisplayName>Norval II</DisplayName>
         <TypeID>PLCAL03</TypeID>
         <PositionX>601</PositionX>
@@ -1765,7 +1765,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>MORVOGODINE</InstanceID>
+        <InstanceID>PLCAL04</InstanceID>
         <DisplayName>Morvogodine</DisplayName>
         <TypeID>PLCAL04</TypeID>
         <PositionX>626</PositionX>
@@ -1773,7 +1773,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>ITHOR</InstanceID>
+        <InstanceID>PLCAL05</InstanceID>
         <DisplayName>Ithor</DisplayName>
         <TypeID>PLCAL05</TypeID>
         <PositionX>585</PositionX>
@@ -1781,7 +1781,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>SKOR_II</InstanceID>
+        <InstanceID>PLCAL06</InstanceID>
         <DisplayName>Skor II</DisplayName>
         <TypeID>PLCAL06</TypeID>
         <PositionX>634</PositionX>
@@ -1789,7 +1789,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>FWILLSVING</InstanceID>
+        <InstanceID>PLCAL07</InstanceID>
         <DisplayName>Fwillsving</DisplayName>
         <TypeID>PLCAL07</TypeID>
         <PositionX>609</PositionX>
@@ -1797,7 +1797,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>KUBINDI</InstanceID>
+        <InstanceID>PLCAL08</InstanceID>
         <DisplayName>Kubindi</DisplayName>
         <TypeID>PLCAL08</TypeID>
         <PositionX>584</PositionX>
@@ -1805,7 +1805,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>JERIJADOR</InstanceID>
+        <InstanceID>PLCAL09</InstanceID>
         <DisplayName>Jerijador</DisplayName>
         <TypeID>PLCAL09</TypeID>
         <PositionX>582</PositionX>
@@ -1813,7 +1813,7 @@
         <PlanetIconPath>Art/UI/StrategyView/ui_strategyview_green_blue_planet_icon</PlanetIconPath>
       </Planet>
       <Planet>
-        <InstanceID>F_TRAL</InstanceID>
+        <InstanceID>PLCAL10</InstanceID>
         <DisplayName>F'tral</DisplayName>
         <TypeID>PLCAL10</TypeID>
         <PositionX>631</PositionX>

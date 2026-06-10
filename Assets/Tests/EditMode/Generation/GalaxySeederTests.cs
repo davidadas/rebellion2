@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Generation
             };
             for (int i = 0; i < planetCount; i++)
             {
-                system.Planets.Add(new Planet { InstanceID = $"p{i}" });
+                system.Planets.Add(new Planet { InstanceID = $"p{i}", TypeID = $"p{i}" });
             }
             return new[] { system };
         }
@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "sys1",
                 SystemType = PlanetSystemType.CoreSystem,
             };
-            Planet startingPlanet = new Planet { InstanceID = "CORUSCANT" };
+            Planet startingPlanet = new Planet { InstanceID = "CORUSCANT", TypeID = "PLSEW05" };
             system.Planets.Add(startingPlanet);
             for (int i = 0; i < 9; i++)
             {
@@ -289,7 +289,7 @@ namespace Rebellion.Tests.Generation
                 .StartingPlanets.Add(
                     new StartingPlanet
                     {
-                        PlanetInstanceID = "CORUSCANT",
+                        PlanetTypeID = "PLSEW05",
                         IsHeadquarters = true,
                         Loyalty = 100,
                     }

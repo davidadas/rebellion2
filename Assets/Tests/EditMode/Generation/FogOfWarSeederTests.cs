@@ -34,6 +34,7 @@ namespace Rebellion.Tests.Generation
             Planet empirePlanet = new Planet
             {
                 InstanceID = "CORUSCANT",
+                TypeID = "PLSEW05",
                 OwnerInstanceID = "FNEMP1",
                 IsColonized = true,
             };
@@ -130,6 +131,7 @@ namespace Rebellion.Tests.Generation
                 new Planet
                 {
                     InstanceID = "YAVIN",
+                    TypeID = "PLSUM06",
                     OwnerInstanceID = "FNALL1",
                     IsColonized = true,
                 }
@@ -149,7 +151,7 @@ namespace Rebellion.Tests.Generation
                             {
                                 new StartingPlanet
                                 {
-                                    PlanetInstanceID = "YAVIN",
+                                    PlanetTypeID = "PLSUM06",
                                     VisibleToFactionIDs = new List<string> { "FNEMP1" },
                                 },
                             },

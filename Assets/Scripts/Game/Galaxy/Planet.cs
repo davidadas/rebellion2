@@ -29,6 +29,8 @@ namespace Rebellion.Game.Galaxy
         public string PlanetIconPath { get; set; }
 
         // Planet Status.
+        [PersistableIgnore]
+        public bool IsUnexploredView { get; set; }
         public bool IsInUprising { get; set; }
         public bool IsDestroyed { get; set; }
         public bool IsHeadquarters { get; set; }

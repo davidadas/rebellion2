@@ -109,6 +109,78 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BuildFactionView_UnexploredOwnedPlanet_HidesStatus()
+        {
+            _coruscant.EnergyCapacity = 7;
+            _coruscant.NumRawResourceNodes = 5;
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsNull(
+                viewCoruscant.OwnerInstanceID,
+                "Unexplored planet must not reveal its owner"
+            );
+            Assert.AreEqual(
+                0,
+                viewCoruscant.EnergyCapacity,
+                "Unexplored planet must not reveal capacity"
+            );
+            Assert.AreEqual(
+                0,
+                viewCoruscant.NumRawResourceNodes,
+                "Unexplored planet must not reveal resources"
+            );
+            Assert.IsFalse(
+                viewCoruscant.IsColonized,
+                "Unexplored planet must not reveal colonization"
+            );
+            Assert.AreEqual(
+                "Coruscant",
+                viewCoruscant.GetDisplayName(),
+                "Planet identity stays known"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_OwnFleetInTransitToUnexploredPlanet_ShowsFleetWithoutLivePlanetData()
+        {
+            _coruscant.EnergyCapacity = 7;
+
+            Fleet ownFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(ownFleet, _coruscant);
+            _game.AttachNode(
+                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
+                ownFleet
+            );
+            ownFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 };
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                "Own in-transit fleet must be visible heading to the planet"
+            );
+            Assert.IsNull(
+                viewCoruscant.OwnerInstanceID,
+                "An in-transit fleet must not reveal the unvisited destination's owner"
+            );
+            Assert.AreEqual(
+                0,
+                viewCoruscant.EnergyCapacity,
+                "An in-transit fleet must not reveal the unvisited destination's capacity"
+            );
+        }
+
+        [Test]
         public void BuildFactionView_UnexploredOuterRimAndCore_BothHiddenWithoutSnapshot()
         {
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
@@ -474,24 +546,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_FleetArrives_PlanetBecomesLive()
-        {
-            Officer vader = CreateOfficer("VADER", _empire);
-            _game.AttachNode(vader, _coruscant);
-
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
-
-            Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
-            _game.AttachNode(allianceFleet, _coruscant);
-
-            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
-
-            Planet viewCoruscant = view
-                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
-                .Planets.First(p => p.InstanceID == "CORUSCANT");
-        }
-
-        [Test]
         public void BuildFactionView_FleetLeaves_UsesSnapshot()
         {
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
@@ -511,6 +565,112 @@ namespace Rebellion.Tests.Systems
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(1, viewCoruscant.Officers.Count);
+        }
+
+        [Test]
+        public void BuildFactionView_FleetMoves_FleetNotDuplicated()
+        {
+            Fleet fleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(fleet, _hoth);
+            _game.AttachNode(
+                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
+                fleet
+            );
+
+            _game.MoveNode(fleet, _coruscant);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewHoth = view
+                .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
+                .Planets.First(p => p.InstanceID == "HOTH");
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                0,
+                viewHoth.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                "Fleet must not remain at the origin planet"
+            );
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                "Fleet must appear at its destination"
+            );
+
+            int totalOccurrences = view
+                .PlanetSystems.SelectMany(s => s.Planets)
+                .Sum(p => p.Fleets.Count(f => f.InstanceID == "FLEET1"));
+            Assert.AreEqual(
+                1,
+                totalOccurrences,
+                "Fleet must appear exactly once across the entire faction view"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_OwnFleetInTransit_DestinationUsesSnapshot()
+        {
+            _coruscant.NumRawResourceNodes = 5;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            Fleet ownFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(ownFleet, _coruscant);
+            _game.AttachNode(
+                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
+                ownFleet
+            );
+            ownFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 };
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                "Own in-transit fleet must be visible at its destination"
+            );
+            Assert.AreEqual(
+                0,
+                viewCoruscant.NumRawResourceNodes,
+                "In transit must not grant live vision -- destination stays on the snapshot"
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_OwnFleetArrived_DestinationUsesLive()
+        {
+            _coruscant.NumRawResourceNodes = 5;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            Fleet ownFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(ownFleet, _coruscant);
+            _game.AttachNode(
+                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
+                ownFleet
+            );
+            ownFleet.Movement = null;
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.AreEqual(
+                1,
+                viewCoruscant.Fleets.Count(f => f.InstanceID == "FLEET1"),
+                "Own arrived fleet must be visible"
+            );
+            Assert.AreEqual(
+                5,
+                viewCoruscant.NumRawResourceNodes,
+                "An arrived fleet grants live vision of the destination"
+            );
         }
 
         [Test]
@@ -1284,19 +1444,17 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void IsPlanetVisible_OwnFleetInTransit_GrantsVisibility()
+        public void IsPlanetVisible_OwnFleetInTransit_DoesNotGrantVisibility()
         {
-            // Alliance fleet is en route to Coruscant. Even though it hasn't arrived,
-            // you dispatched it and know it's heading there — it grants live visibility.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
             allianceFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 3 };
 
             bool visible = _fogSystem.IsPlanetVisible(_coruscant, _alliance);
 
-            Assert.IsTrue(
+            Assert.IsFalse(
                 visible,
-                "An in-transit own fleet should still grant visibility of the destination"
+                "An in-transit own fleet must not grant visibility of the destination"
             );
         }
 

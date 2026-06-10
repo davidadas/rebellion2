@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -33,7 +34,7 @@ namespace Rebellion.Generation
         {
             FogOfWarSystem fog = new FogOfWarSystem(game);
             HashSet<(string PlanetID, string ViewerFactionID)> visibilityOverrides =
-                CollectStartingVisibilityOverrides(config);
+                CollectStartingVisibilityOverrides(game, config);
 
             foreach (PlanetSystem system in game.Galaxy.PlanetSystems)
             {
@@ -73,14 +74,20 @@ namespace Rebellion.Generation
         /// Walks the configured faction setups and collects every (planet, viewer-faction)
         /// pair that should grant starting visibility regardless of system type.
         /// </summary>
+        /// <param name="game">The game containing the live planet instances.</param>
         /// <param name="config">The generation config.</param>
         /// <returns>The set of (planet, viewer) overrides used to seed fog of war.</returns>
         private HashSet<(
             string PlanetID,
             string ViewerFactionID
-        )> CollectStartingVisibilityOverrides(GameGenerationConfig config)
+        )> CollectStartingVisibilityOverrides(GameRoot game, GameGenerationConfig config)
         {
             HashSet<(string, string)> overrides = new HashSet<(string, string)>();
+            Dictionary<string, Planet> planetsByTypeId = game
+                .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
+                .Where(planet => !string.IsNullOrEmpty(planet.TypeID))
+                .ToDictionary(planet => planet.TypeID);
+
             foreach (FactionSetup factionSetup in config.GalaxyClassification.FactionSetups)
             {
                 if (factionSetup.StartingPlanets == null)
@@ -91,8 +98,18 @@ namespace Rebellion.Generation
                 foreach (StartingPlanet startingPlanet in factionSetup.StartingPlanets)
                 {
                     if (
-                        string.IsNullOrEmpty(startingPlanet.PlanetInstanceID)
+                        string.IsNullOrEmpty(startingPlanet.PlanetTypeID)
                         || startingPlanet.VisibleToFactionIDs == null
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (
+                        !planetsByTypeId.TryGetValue(
+                            startingPlanet.PlanetTypeID,
+                            out Planet visiblePlanet
+                        )
                     )
                     {
                         continue;
@@ -100,7 +117,7 @@ namespace Rebellion.Generation
 
                     foreach (string viewerFactionId in startingPlanet.VisibleToFactionIDs)
                     {
-                        overrides.Add((startingPlanet.PlanetInstanceID, viewerFactionId));
+                        overrides.Add((visiblePlanet.InstanceID, viewerFactionId));
                     }
                 }
             }

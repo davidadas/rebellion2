@@ -105,8 +105,11 @@ namespace Rebellion.Game.FogOfWar
         {
             foreach (Officer officer in planet.Officers)
             {
-                if (officer.IsCaptured && officer.OwnerInstanceID == faction.InstanceID)
+                if (officer.OwnerInstanceID == faction.InstanceID)
+                {
+                    RemoveEntityFromSnapshotState(faction, officer.InstanceID);
                     continue;
+                }
 
                 snapshot.Officers.Add(CopyOfficerForSnapshot(officer));
                 InvalidateEntityFromOtherSnapshots(faction, officer.InstanceID, planet.InstanceID);
@@ -125,6 +128,11 @@ namespace Rebellion.Game.FogOfWar
             {
                 if (fleet.CapitalShips.Count == 0)
                     continue;
+                if (fleet.OwnerInstanceID == faction.InstanceID)
+                {
+                    RemoveEntityFromSnapshotState(faction, fleet.InstanceID);
+                    continue;
+                }
                 if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
                     continue;
 
@@ -147,10 +155,16 @@ namespace Rebellion.Game.FogOfWar
             Faction faction,
             string planetId
         )
-            where T : class, IGameEntity
+            where T : class, ISceneNode
         {
             foreach (T entity in source)
             {
+                if (entity.GetOwnerInstanceID() == faction.InstanceID)
+                {
+                    RemoveEntityFromSnapshotState(faction, entity.InstanceID);
+                    continue;
+                }
+
                 destination.Add(entity.GetShallowCopy(CloneMode.Full));
                 InvalidateEntityFromOtherSnapshots(faction, entity.InstanceID, planetId);
             }
@@ -190,6 +204,22 @@ namespace Rebellion.Game.FogOfWar
                 RemoveEntityFromOldSnapshot(faction, entityId, oldPlanetId);
 
             faction.Fog.EntityLastSeenAt[entityId] = currentPlanetId;
+        }
+
+        /// <summary>
+        /// Removes a faction-owned entity from tracked snapshot state.
+        /// </summary>
+        /// <param name="faction">The faction that owns the fog state.</param>
+        /// <param name="entityId">The entity instance ID to remove.</param>
+        private void RemoveEntityFromSnapshotState(Faction faction, string entityId)
+        {
+            if (string.IsNullOrEmpty(entityId))
+                return;
+
+            if (faction.Fog.EntityLastSeenAt.TryGetValue(entityId, out string oldPlanetId))
+                RemoveEntityFromOldSnapshot(faction, entityId, oldPlanetId);
+
+            faction.Fog.EntityLastSeenAt.Remove(entityId);
         }
 
         /// <summary>
