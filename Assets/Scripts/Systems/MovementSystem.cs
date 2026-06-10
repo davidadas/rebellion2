@@ -414,7 +414,7 @@ namespace Rebellion.Systems
             if (movingFleet?.Movement == null)
                 return false;
 
-            Planet newDestination = ((ISceneNode)movingFleet).GetParentOfType<Planet>();
+            Planet newDestination = movingFleet.GetParentOfType<Planet>();
             if (newDestination == null)
                 return true;
 
