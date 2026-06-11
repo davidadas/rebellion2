@@ -20,6 +20,7 @@ namespace Rebellion.Game.Units
         public int DefenseRating { get; set; }
         public int DetectionRating { get; set; }
         public int BombardmentDefense { get; set; }
+        public int UprisingDefense { get; set; }
 
         // Status Info.
         public string ProducerOwnerID { get; set; }

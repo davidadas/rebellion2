@@ -2149,7 +2149,7 @@ namespace Rebellion.Systems
                     .FirstOrDefault(o => o.CurrentRank == OfficerRank.Admiral);
                 if (admiral == null)
                     continue;
-                int rating = admiral.GetSkillValue(MissionParticipantSkill.Leadership);
+                int rating = admiral.GetEffectiveRating(OfficerRating.Leadership);
                 if (rating > best)
                     best = rating;
             }
@@ -2169,7 +2169,7 @@ namespace Rebellion.Systems
             {
                 if (officer.CurrentRank != OfficerRank.Admiral)
                     continue;
-                int rating = officer.GetSkillValue(MissionParticipantSkill.Leadership);
+                int rating = officer.GetEffectiveRating(OfficerRating.Leadership);
                 if (rating > best)
                     best = rating;
             }
@@ -2367,7 +2367,7 @@ namespace Rebellion.Systems
                 Officer commander = fleet
                     .GetOfficers()
                     .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-                int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+                int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
                 foreach (CapitalShip ship in fleet.CapitalShips)
                     strength += (personnel / divisor + 1) * ship.Bombardment;
             }

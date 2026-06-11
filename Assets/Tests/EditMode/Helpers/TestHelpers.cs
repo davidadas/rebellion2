@@ -91,7 +91,7 @@ public class StubMission : Mission
             targetInstanceId,
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
-            MissionParticipantSkill.Diplomacy,
+            OfficerRating.Diplomacy,
             new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } })
         )
     {
@@ -273,12 +273,12 @@ public static class EntityFactory
             InstanceID = id,
             DisplayName = id,
             OwnerInstanceID = factionId,
-            Skills = new Dictionary<MissionParticipantSkill, int>
+            Ratings = new Dictionary<OfficerRating, int>
             {
-                { MissionParticipantSkill.Diplomacy, 50 },
-                { MissionParticipantSkill.Espionage, 50 },
-                { MissionParticipantSkill.Combat, 50 },
-                { MissionParticipantSkill.Leadership, 50 },
+                { OfficerRating.Diplomacy, 50 },
+                { OfficerRating.Espionage, 50 },
+                { OfficerRating.Combat, 50 },
+                { OfficerRating.Leadership, 50 },
             },
         };
     }

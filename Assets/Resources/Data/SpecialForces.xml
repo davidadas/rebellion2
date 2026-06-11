@@ -3,11 +3,11 @@
   <!--   **************************************************  -->
   <!--   ******************** ALLIANCE ********************  -->
   <!--   **************************************************  -->
-  <!-- specfc.json id=1, resid=9536, mission_id=1 -->
   <SpecialForce>
     <TypeID>SPAL001</TypeID>
     <DisplayName>Guerrillas</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_guerrillas_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -16,22 +16,22 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
       <Combat>20</Combat>
       <Leadership>50</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>InciteUprising</MissionType>
       <MissionType>SubdueUprising</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=2, resid=9537, mission_id=2 -->
   <SpecialForce>
     <TypeID>SPAL002</TypeID>
     <DisplayName>Infiltrators</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_infiltrators_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -40,23 +40,23 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
       <Combat>55</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Rescue</MissionType>
       <MissionType>Sabotage</MissionType>
       <MissionType>Abduction</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=3, resid=9538, mission_id=4 -->
   <SpecialForce>
     <TypeID>SPAL003</TypeID>
     <DisplayName>Longprobe Y-wing Recon Team</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_longprobe_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -65,21 +65,21 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>40</Espionage>
       <Combat>30</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Reconnaissance</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=4, resid=9539, mission_id=8 -->
   <SpecialForce>
     <TypeID>SPAL004</TypeID>
     <DisplayName>Bothan Spies</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_bothan_spies_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -88,12 +88,12 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>70</Espionage>
       <Combat>0</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Espionage</MissionType>
     </AllowedMissionTypes>
@@ -101,11 +101,11 @@
   <!--   **************************************************  -->
   <!--   ********************* EMPIRE *********************  -->
   <!--   **************************************************  -->
-  <!-- specfc.json id=5, resid=9600, mission_id=256 -->
   <SpecialForce>
     <TypeID>SPEM001</TypeID>
     <DisplayName>Imperial Probe Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_probe_droid_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Probe droids are designed as reconnaissance and information-gathering units by the Empire.  Each probe droid is contained in a small hyperspace-capable pod allowing them to travel the galaxy without the need for deployment from capital ships.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -114,21 +114,21 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>30</Espionage>
       <Combat>10</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Reconnaissance</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=6, resid=9601, mission_id=512 -->
   <SpecialForce>
     <TypeID>SPEM002</TypeID>
     <DisplayName>Imperial Espionage Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_espionage_droid_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Imperial espionage droids are designed to look like any other protocol droid, except they have special transmitters built into them. These transmitters allow for communication of information back to the Empire.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -137,21 +137,21 @@
     <BaseBuildSpeed>1</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>60</Espionage>
       <Combat>5</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Espionage</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=7, resid=9602, mission_id=1024 -->
   <SpecialForce>
     <TypeID>SPEM003</TypeID>
     <DisplayName>Imperial Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_commandos_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Imperial commandos are elite special forces whose missions usually entail the infiltration and sabotage of enemy troops and equipment.  Commandos can also be utilized to instill unrest on enemy systems, or to suppress insurrection on Imperial-controlled worlds.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -160,23 +160,23 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
       <Combat>55</Combat>
       <Leadership>50</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Sabotage</MissionType>
       <MissionType>InciteUprising</MissionType>
       <MissionType>SubdueUprising</MissionType>
     </AllowedMissionTypes>
   </SpecialForce>
-  <!-- specfc.json id=8, resid=9603, mission_id=2048 -->
   <SpecialForce>
     <TypeID>SPEM004</TypeID>
     <DisplayName>Noghri Death Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_noghri_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Noghri death commandos are experts in infiltration and assassination.  All Noghri have an extreme loyalty to Lord Vader and will do whatever he commands, including the abduction of enemy personnel or rescue of captured Imperial personnel.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -185,12 +185,12 @@
     <BaseBuildSpeed>2</BaseBuildSpeed>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
-    <Skills>
+    <Ratings>
       <Diplomacy>0</Diplomacy>
       <Espionage>55</Espionage>
       <Combat>70</Combat>
       <Leadership>0</Leadership>
-    </Skills>
+    </Ratings>
     <AllowedMissionTypes>
       <MissionType>Rescue</MissionType>
       <MissionType>Abduction</MissionType>

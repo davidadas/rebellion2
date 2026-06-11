@@ -22,7 +22,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Recruitment";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Leadership;
+            ParticipantRating = OfficerRating.Leadership;
         }
 
         private RecruitmentMission(
@@ -38,7 +38,7 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Leadership,
+                OfficerRating.Leadership,
                 null
             )
         {
@@ -53,7 +53,7 @@ namespace Rebellion.Game.Missions
         public static RecruitmentMission TryCreate(MissionContext ctx)
         {
             List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
-            bool areMainCharacters = ctx.MainParticipants.Any(o => o.IsMainCharacter());
+            bool areMainCharacters = ctx.MainParticipants.Any(o => o is Officer { IsMain: true });
             if (ctx.MainParticipants.Count > 0 && !areMainCharacters)
                 return null;
 
@@ -97,7 +97,7 @@ namespace Rebellion.Game.Missions
                 return base.GetAgentProbability(agent);
 
             int score =
-                agent.GetMissionSkillValue(MissionParticipantSkill.Leadership)
+                agent.GetEffectiveRating(OfficerRating.Leadership)
                 - planet.GetPopularSupport(OwnerInstanceID);
             return SuccessProbabilityTable.Lookup(score);
         }

@@ -7,6 +7,7 @@
     <TypeID>CSEM001</TypeID>
     <DisplayName>Imperial Dreadnaught</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;44&#xA;Maintenance Cost:&#x9;&#x9;33&#xA;Fighter Capacity:&#x9;&#x9;1&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;40&#x9;&#x9;20&#x9;&#x9;70&#x9;&#x9;70&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. Standard Imperial Dreadnaughts are basically the same as the original Old Republic Dreadnaughts except they now carry a hangar deck for a squadron of TIE fighters. Because of its relatively slow speed, the Imperial Dreadnaught primarily serves as a convoy escort or patrol ship.</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
     </Roles>
@@ -84,6 +85,7 @@
     <TypeID>CSEM002</TypeID>
     <DisplayName>Galleon</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;10&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;100&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;This older model starship dates from the time of the Old Republic.  Specifically designed as a transport ship, the Galleon is completely unarmed.  Later adopted by the Empire, the Galleon now serves mainly as a troop transport. </Description>
     <Roles>
       <CapitalShipRole>Transport</CapitalShipRole>
     </Roles>
@@ -161,6 +163,7 @@
     <TypeID>CSEM003</TypeID>
     <DisplayName>Imperial Escort Carrier</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;34&#xA;Maintenance Cost:&#x9;&#x9;30&#xA;Fighter Capacity:&#x9;&#x9;6&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;30&#x9;&#x9;30&#x9;&#x9;60&#x9;&#x9;60&#xA;&#xA;Imperial escort carriers were designed to complement a fleet's starfighter capacity and provide a hyperspace capable platform for TIE class fighters to use during hyperspace transport.  Escort carriers are very lightly armed and shielded, but are capable of carrying entire wings of fighters and shuttles.</Description>
     <Roles>
       <CapitalShipRole>Carrier</CapitalShipRole>
       <CapitalShipRole>Escort</CapitalShipRole>
@@ -239,6 +242,7 @@
     <TypeID>CSEM004</TypeID>
     <DisplayName>Carrack Light Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;26&#xA;Maintenance Cost:&#x9;&#x9;24&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;5&#x9;&#x9;5&#x9;&#x9;15&#x9;&#x9;15&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;60&#x9;&#x9;60&#x9;&#x9;90&#x9;&#x9;90&#xA;&#xA;The Carrack light cruiser is by far the fastest Imperial escort ship.  Approximately 350 meters in length, it carries a crew of just over one thousand and an ample amount of firepower. It is well suited for a variety of escort and combat missions.</Description>
     <Roles>
       <CapitalShipRole>Escort</CapitalShipRole>
     </Roles>
@@ -316,6 +320,7 @@
     <TypeID>CSEM005</TypeID>
     <DisplayName>Victory Destroyer I</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;68&#xA;Maintenance Cost:&#x9;&#x9;44&#xA;Fighter Capacity:&#x9;&#x9;2&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;120&#x9;&#x9;0&#x9;&#x9;100&#x9;&#x9;100&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Victory Destroyer is an older star cruiser that proved to be an important part of the Imperial space fleet. This vessel was designed with planetary bombardment in mind. While a capable combat vessel, the Victory Star Destroyer can deliver accurate and devastating bombardments from orbit.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -393,6 +398,7 @@
     <TypeID>CSEM006</TypeID>
     <DisplayName>Imperial Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;112&#xA;Maintenance Cost:&#x9;&#x9;71&#xA;Fighter Capacity:&#x9;&#x9;6&#xA;Troop Capacity:&#x9;&#x9;&#x9;3&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;100&#x9;&#x9;40&#x9;&#x9;60&#x9;&#x9;60&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;100&#x9;&#x9;40&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core of the Imperial Navy.  True marvels of starship engineering,  Imperial Star Destroyers are 1,600 meters long and have over one hundred weapon emplacements for deep-space combat.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -470,6 +476,7 @@
     <TypeID>CSEM007</TypeID>
     <DisplayName>Lancer Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_lancer_frigate_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;14&#xA;Maintenance Cost:&#x9;&#x9;30&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;150&#x9;&#x9;150&#x9;&#x9;150&#x9;&#x9;150&#xA;&#xA;The Lancer frigate is a 250-meter long, capital combat starship that the Empire designed specifically to combat Rebel starfighters.  These vessels were designed by the Empire shortly after a small number of Rebel X-wing and Y-wing fighters destroyed the Death Star battle station.</Description>
     <Roles>
       <CapitalShipRole>Escort</CapitalShipRole>
     </Roles>
@@ -547,6 +554,7 @@
     <TypeID>CSEM008</TypeID>
     <DisplayName>Assault Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;15&#xA;Maintenance Cost:&#x9;&#x9;20&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;3&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;30&#x9;&#x9;30&#x9;&#x9;30&#xA;&#xA;The 300-meter long Imperial Star Galleon is designed to combine the cargo space of a bulk freighter with the armament of a combat ship.  This vessel can carry cargo and defend itself, thus eliminating the need to have separate freighters and escort craft.</Description>
     <Roles>
       <CapitalShipRole>Transport</CapitalShipRole>
     </Roles>
@@ -624,6 +632,7 @@
     <TypeID>CSEM009</TypeID>
     <DisplayName>Assault Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;12&#xA;Maintenance Cost:&#x9;&#x9;29&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;1&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;150&#x9;&#x9;0&#x9;&#x9;60&#x9;&#x9;60&#xA;&#xA;Assault transports are designed to delivery Imperial assault troops anywhere in the galaxy quickly with little or no escort. While only capable of carrying one regiment, the Assault transport has the firepower, speed, and maneuverability to attack lightly defended systems without escort. Additionally, Assault transports are equipped with the fastest available hyperdrive systems.</Description>
     <Roles>
       <CapitalShipRole>Transport</CapitalShipRole>
     </Roles>
@@ -701,6 +710,7 @@
     <TypeID>CSEM010</TypeID>
     <DisplayName>Interdictor Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_interdictor_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;40&#xA;Maintenance Cost:&#x9;&#x9;34&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;10&#x9;&#x9;0&#x9;&#x9;20&#x9;&#x9;20&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;10&#x9;&#x9;10&#xA;&#x9;Laser Cannon:&#x9;&#x9;90&#x9;&#x9;0&#x9;&#x9;60&#x9;&#x9;60&#xA;&#xA;The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but it carries an artificial gravity-well generator and four gravity-well projectors which, when activated, prevent nearby starships from escaping into hyperspace.</Description>
     <Roles>
       <CapitalShipRole>Interdictor</CapitalShipRole>
     </Roles>
@@ -778,6 +788,7 @@
     <TypeID>CSEM011</TypeID>
     <DisplayName>Victory II Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;72&#xA;Maintenance Cost:&#x9;&#x9;63&#xA;Fighter Capacity:&#x9;&#x9;2&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;120&#x9;&#x9;80&#x9;&#x9;80&#x9;&#x9;80&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;40&#x9;&#x9;40&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Victory II is an upgrade of the older Victory model starship.  The Victory II was designed with space combat in mind, outfitted with larger weapons and hangar bays than the original Victory.  The Victory II works well as a patrol or blockade starship and maintains its predecessor's bombardment capabilities.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -855,6 +866,7 @@
     <TypeID>CSEM012</TypeID>
     <DisplayName>Strike Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_strike_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;70&#xA;Maintenance Cost:&#x9;&#x9;60&#xA;Fighter Capacity:&#x9;&#x9;1&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;120&#x9;&#x9;80&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;60&#x9;&#x9;0&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;This 450-meter long Imperial star cruiser was designed to be massed-produced in a short amount of time.  Thanks to their modular design, the cruisers' interiors can be configured to accommodate specific mission profiles.</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
     </Roles>
@@ -932,6 +944,7 @@
     <TypeID>CSEM013</TypeID>
     <DisplayName>Imperial Star Destroyer II</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;158&#xA;Maintenance Cost:&#x9;&#x9;99&#xA;Fighter Capacity:&#x9;&#x9;6&#xA;Troop Capacity:&#x9;&#x9;&#x9;3&#xA;Shield Strength:&#x9;&#x9;&#x9;800&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;200&#x9;&#x9;60&#x9;&#x9;120&#x9;&#x9;120&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;200&#x9;&#x9;20&#x9;&#x9;80&#x9;&#x9;80&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;An upgraded version of the Imperial Star Destroyer which boasts a heavily reinforced hull and more powerful heavy turbolaser batteries and cannons.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -1009,6 +1022,7 @@
     <TypeID>CSEM014</TypeID>
     <DisplayName>Super Star Destroyer</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_super_star_destroyer_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;282&#xA;Maintenance Cost:&#x9;&#x9;170&#xA;Fighter Capacity:&#x9;&#x9;12&#xA;Troop Capacity:&#x9;&#x9;&#x9;9&#xA;Shield Strength:&#x9;&#x9;&#x9;1200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;500&#x9;&#x9;150&#x9;&#x9;300&#x9;&#x9;300&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;200&#x9;&#x9;100&#x9;&#x9;200&#x9;&#x9;200&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Super-class Star Destroyer, the newest model in the fleet, is eight kilometers long, dwarfing even the massive Imperial Star Destroyers. The Super Star Destroyer is approximately five times as powerful as its smaller predecessor. Frequently used as a command vessel, the Super Star Destroyer is the most powerful conventional warship in the Imperial inventory.</Description>
     <Roles>
       <CapitalShipRole>Flagship</CapitalShipRole>
     </Roles>
@@ -1086,6 +1100,7 @@
     <TypeID>CSEM015</TypeID>
     <DisplayName>Death Star</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_death_star_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;584&#xA;Maintenance Cost:&#x9;&#x9;600&#xA;Fighter Capacity:&#x9;&#x9;24&#xA;Troop Capacity:&#x9;&#x9;&#x9;18&#xA;&#xA;An immense battle station 120-kilometers in diameter, the Death Star was the pinnacle of Imperial engineering.  Designed by Chief Engineer Bevel Lemelisk and constructed above the penal colony of Despyre, the Death Star was Grand Moff Tarkin's ultimate symbol of rule by fear of force.  It carried a crew of over 750,000 and enough firepower to destroy an entire system.  Tarkin demonstrated the power of his masterpiece by destroying the world of Alderaan in an attempt to persuade Princess Leia Organa to reveal the location of the Alliance base.  The Death Star relies on its world destroying superlaser and vast numbers of turbolasers on its surface to defend against large scale attacks, but appears to be vulnerable to small starfighters.  The Death Star was later destroyed in the Battle of Yavin.  Grand Moff Tarkin died with his creation at Yavin, but it is unknown how many more Death Stars he was constructing.</Description>
     <Roles>
       <CapitalShipRole>Flagship</CapitalShipRole>
     </Roles>
@@ -1166,6 +1181,7 @@
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;44&#xA;Maintenance Cost:&#x9;&#x9;33&#xA;Fighter Capacity:&#x9;&#x9;1&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;40&#x9;&#x9;20&#x9;&#x9;70&#x9;&#x9;70&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. The Alliance has refit many of these ancient vessels with automated controls and faster sublight engines.  Many of these became what are known as Rebel Assault Frigates.</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
     </Roles>
@@ -1243,6 +1259,7 @@
     <TypeID>CSAL002</TypeID>
     <DisplayName>Bulk Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;30&#xA;Maintenance Cost:&#x9;&#x9;30&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;15&#x9;&#x9;0&#x9;&#x9;30&#x9;&#x9;30&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The aging bulk cruiser class of capital ships has existed since the time of the Old Republic.  Extremely reliable and rugged, the cruiser has become one of the mainstay ships of the Alliance fleet.  Sporting a reasonable amount of firepower and shielding, the cruiser is suited for most any type of operation.</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
     </Roles>
@@ -1320,6 +1337,7 @@
     <TypeID>ALCS003</TypeID>
     <DisplayName>Medium Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_medium_transport_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;12&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;100&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;30&#x9;&#x9;30&#xA;&#xA;These vessels can haul an immense amount of equipment considering that they are only 90 meters long.  The medium transport's outer hull is little more than a thick shell; the interior is mainly open space.  These transports are useful in transporting medicine, food, fuel, spare parts, weapons, raw materials, and troops.</Description>
     <Roles>
       <CapitalShipRole>Transport</CapitalShipRole>
     </Roles>
@@ -1397,6 +1415,7 @@
     <TypeID>ALCS004</TypeID>
     <DisplayName>Bulk Transport</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_transport_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;24&#xA;Maintenance Cost:&#x9;&#x9;22&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;6&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;  0&#xA;&#xA;The bulk transport is the life blood of intergalactic trade and commerce.  The extensive cargo capacity of the transport makes it ideal for moving everything from loads of juri juice to regiments of troops.</Description>
     <Roles>
       <CapitalShipRole>Transport</CapitalShipRole>
     </Roles>
@@ -1474,6 +1493,7 @@
     <TypeID>ALCS005</TypeID>
     <DisplayName>Alliance Escourt Carrier</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;32&#xA;Maintenance Cost:&#x9;&#x9;29&#xA;Fighter Capacity:&#x9;&#x9;6&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;30&#x9;&#x9;0&#x9;&#x9;60&#x9;&#x9;60&#xA;&#xA;Alliance escort carriers serve a similar purpose to their Imperial counterparts.  Escort carriers are capable of carrying and refueling wings of starfighters and dramatically increase the starfighter capacity of the fleet to which they are attached.  Alliance carriers have better shielding than the Imperial models, but have relatively weak firepower.</Description>
     <Roles>
       <CapitalShipRole>Carrier</CapitalShipRole>
       <CapitalShipRole>Escort</CapitalShipRole>
@@ -1552,6 +1572,7 @@
     <TypeID>ALCS006</TypeID>
     <DisplayName>Corellian Corvette</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_corellian_corvette_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;14&#xA;Maintenance Cost:&#x9;&#x9;23&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;120&#x9;&#x9;9 0&#x9;&#x9;120&#x9;&#x9;120&#xA;&#xA;A mid-sized capital ship constructed in the Corellian shipyards, the Corvette has had a long history of service. At 150 meters long and carrying a reasonable complement of shielding and armament, it can function as a cargo transport, or front line warship. Since this vessel sees a lot of action with the Corellian pirates and the Alliance, it has been nicknamed the Blockade Runner.</Description>
     <Roles>
       <CapitalShipRole>Escort</CapitalShipRole>
     </Roles>
@@ -1628,6 +1649,7 @@
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;34&#xA;Maintenance Cost:&#x9;&#x9;35&#xA;Fighter Capacity:&#x9;&#x9;2&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;80&#x9;&#x9;0&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;60&#x9;&#x9;60&#x9;&#x9;30&#x9;&#x9;30&#xA;&#xA;The Nebulon-B frigate is 300 meters long and was originally designed for use against starfighters. This vessel has more weaponry than most ships of its class, and its capacity to carry two squadrons of fighters makes it a superior vessel.</Description>
     <Roles>
       <CapitalShipRole>Escort</CapitalShipRole>
     </Roles>
@@ -1706,6 +1728,7 @@
     <TypeID>ALCS008</TypeID>
     <DisplayName>Mon Calamari Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;92&#xA;Maintenance Cost:&#x9;&#x9;70&#xA;Fighter Capacity:&#x9;&#x9;3&#xA;Troop Capacity:&#x9;&#x9;&#x9;1&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;60&#x9;&#x9;60&#x9;&#x9;120&#x9;&#x9;120&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;40&#x9;&#x9;40&#x9;&#x9;60&#x9;&#x9;60&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Mon Calamari cruisers were originally spaceliners which were converted into military use.  This 1,200-meter long cylindrical ship looks more organic than technological, but they are considered to be among the finest vessels traveling space.  Built with many redundant systems, the Mon Cal cruiser is difficult to repair and service but extremely reliable in combat situations.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -1783,6 +1806,7 @@
     <TypeID>CSAL009</TypeID>
     <DisplayName>CC-7700 Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc7700_frigate_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;23&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;200&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;90&#x9;&#x9;90&#x9;&#x9;150&#x9;&#x9;150&#xA;&#xA;The Corellian Gunship was designed to be two things, fast and deadly.  Engines fill more than half of its interior structure while the external hull mounts a large number of turbolaser batteries, and quad laser cannons making it an ideal anti-starfighter platform.</Description>
     <Roles>
       <CapitalShipRole>Escort</CapitalShipRole>
     </Roles>
@@ -1860,6 +1884,7 @@
     <TypeID>CSAL010</TypeID>
     <DisplayName>CC-7700 Interdictor</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc7700_interdictor_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;42&#xA;Maintenance Cost:&#x9;&#x9;37&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;300&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;10&#x9;&#x9;0&#x9;&#x9;20&#x9;&#x9;20&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#x9;Laser Cannon:&#x9;&#x9;60&#x9;&#x9;90&#x9;&#x9;90&#x9;&#x9;90&#xA;&#xA;The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, the CC-7700 is designed primarily as a platform for a gravity well projector. The function of this vessel is to prevent the withdrawal of enemy vessels from a battle zone. </Description>
     <Roles>
       <CapitalShipRole>Interdictor</CapitalShipRole>
     </Roles>
@@ -1937,6 +1962,7 @@
     <TypeID>CSAL011</TypeID>
     <DisplayName>Assault Frigate</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_assault_frigate_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;60&#xA;Maintenance Cost:&#x9;&#x9;60&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;0&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;70&#x9;&#x9;0&#x9;&#x9;120&#x9;&#x9;120&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;50&#x9;&#x9;0&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The assault frigate is one of the Rebel Alliance's main front line warships. Built using the framework of Old Republic Dreadnaughts, Alliance engineers created a ship with greater speed and maneuverability while still retaining the Dreadnaught's weapon complement.</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
       <CapitalShipRole>Escort</CapitalShipRole>
@@ -2015,6 +2041,7 @@
     <TypeID>CSAL012</TypeID>
     <DisplayName>Dauntless Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;66&#xA;Maintenance Cost:&#x9;&#x9;55&#xA;Fighter Capacity:&#x9;&#x9;6&#xA;Troop Capacity:&#x9;&#x9;&#x9;3&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;40&#x9;&#x9;40&#x9;&#x9;80&#x9;&#x9;80&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;40&#x9;&#x9;0&#x9;&#x9;80&#x9;&#x9;80&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The SoroSuub Liberator's slender hull disguises the fact that it can carry three troop regiments and six fighter squadrons.  For a capital ship, the Liberator is diminutive of size, but still finds room to host a formidable weapons complement consisting of ion cannons and heavy turbolaser batteries. Utilizing state-of-the-art hull armor, new shielding and drive unit technology, the Liberator is one of the most advanced warships in the galaxy.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
     </Roles>
@@ -2092,6 +2119,7 @@
     <TypeID>CSAL013</TypeID>
     <DisplayName>Assault Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_assault_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;58&#xA;Maintenance Cost:&#x9;&#x9;53&#xA;Fighter Capacity:&#x9;&#x9;0&#xA;Troop Capacity:&#x9;&#x9;&#x9;1&#xA;Shield Strength:&#x9;&#x9;&#x9;600&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;60&#x9;&#x9;40&#x9;&#x9;120&#x9;&#x9;120&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;40&#x9;&#x9;0&#x9;&#x9;40&#x9;&#x9;40&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The CC-9600 is the latest iteration of the CC series of capital ships.  It is more compact and requires fewer crew members than the previous CC-7700.  While the CC-7700 was primarily a platform for gravity well projectors, the CC-9600 is a pure combat vessel. The firepower and shielding of the CC-9600 are considerable, while allowing enough cargo space to accommodate two regiments of ground troops. &#xA;</Description>
     <Roles>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
     </Roles>
@@ -2169,6 +2197,7 @@
     <TypeID>CSAL014</TypeID>
     <DisplayName>Liberator Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_liberator_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;136&#xA;Maintenance Cost:&#x9;&#x9;90&#xA;Fighter Capacity:&#x9;&#x9;4&#xA;Troop Capacity:&#x9;&#x9;&#x9;2&#xA;Shield Strength:&#x9;&#x9;&#x9;800&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;120&#x9;&#x9;60&#x9;&#x9;200&#x9;&#x9;200&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;60&#x9;&#x9;60&#x9;&#x9;200&#x9;&#x9;200&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The Dauntless is the second largest cruiser in the Alliance fleet.  Built from the hull of a luxury liner, it carries an excellent sensor package and countermeasure equipment.  Extra shielding and armaments were added to make the Dauntless an effective front line ship.</Description>
     <Roles>
       <CapitalShipRole>Carrier</CapitalShipRole>
       <CapitalShipRole>SecondaryLine</CapitalShipRole>
@@ -2247,6 +2276,7 @@
     <TypeID>CSAL015</TypeID>
     <DisplayName>Mon Calamari Star Cruiser</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_mon_calamari_star_cruiser_primary</DisplayImagePath>
+    <Description>Refined Material Cost:&#x9;248&#xA;Maintenance Cost:&#x9;&#x9;175&#xA;Fighter Capacity:&#x9;&#x9;10&#xA;Troop Capacity:&#x9;&#x9;&#x9;4&#xA;Shield Strength:&#x9;&#x9;&#x9;1100&#xA;&#xA;Attack Strength:&#x9;&#x9;Fore&#x9;Aft&#x9;&#x9;Port&#x9;Starboard&#xA;&#xA;&#x9;Turbolaser:&#x9;&#x9;&#x9;600&#x9;&#x9;120&#x9;&#x9;300&#x9;&#x9;300&#xA;&#x9;Ion Cannon:&#x9;&#x9;&#x9;200&#x9;&#x9;80&#x9;&#x9;150&#x9;&#x9;150&#xA;&#x9;Laser Cannon:&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#x9;&#x9;0&#xA;&#xA;The TransGalMeg Industries Bulwark class capital ship is a mobile fortress.  It is one of the most battle-proof ships employed by the Rebel Alliance.  Though plagued by rumors of unreliable electronics and sensors, the Bulwark's extensive arsenal, shielding and carrying capacity make it ideal for large scale operations.</Description>
     <Roles>
       <CapitalShipRole>PrimaryLine</CapitalShipRole>
       <CapitalShipRole>Carrier</CapitalShipRole>

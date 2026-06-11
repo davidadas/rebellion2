@@ -233,22 +233,19 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 50);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 99);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
             _coruscant.Officers.Remove(vader);
 
             SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
-            Assert.AreEqual(
-                50,
-                snapshot.Officers[0].GetSkillValue(MissionParticipantSkill.Diplomacy)
-            );
+            Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
         }
 
         [Test]
@@ -885,7 +882,7 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 50);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
@@ -897,7 +894,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
 
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 99);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
 
             Assert.AreEqual(
                 originalTickCaptured,
@@ -906,7 +903,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.AreEqual(
                 50,
-                snapshot.Officers[0].GetSkillValue(MissionParticipantSkill.Diplomacy),
+                snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy),
                 "Snapshot should preserve old skill value"
             );
             Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");

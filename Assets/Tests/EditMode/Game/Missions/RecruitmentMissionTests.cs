@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Recruitment",
                 DisplayName = "Recruitment",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Diplomacy,
+                ParticipantRating = OfficerRating.Diplomacy,
                 TargetOfficerInstanceID = "OFFICER4",
             };
 
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);
             Assert.AreEqual("OFFICER4", deserialized.TargetOfficerInstanceID);
-            Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
+            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
         }
     }
 }

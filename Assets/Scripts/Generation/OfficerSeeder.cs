@@ -166,7 +166,7 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Rolls variance for each officer's skills and attributes and resolves their
+        /// Rolls variance for each officer's ratings and attributes and resolves their
         /// force-sensitivity state (known Jedi, dormant potential, or non-Jedi).
         /// </summary>
         /// <param name="officers">The officers to decorate.</param>
@@ -175,27 +175,12 @@ namespace Rebellion.Generation
         {
             foreach (Officer officer in officers)
             {
-                AddSkillVariance(
+                AddRatingVariance(officer, OfficerRating.Diplomacy, officer.DiplomacyVariance, rng);
+                AddRatingVariance(officer, OfficerRating.Espionage, officer.EspionageVariance, rng);
+                AddRatingVariance(officer, OfficerRating.Combat, officer.CombatVariance, rng);
+                AddRatingVariance(
                     officer,
-                    MissionParticipantSkill.Diplomacy,
-                    officer.DiplomacyVariance,
-                    rng
-                );
-                AddSkillVariance(
-                    officer,
-                    MissionParticipantSkill.Espionage,
-                    officer.EspionageVariance,
-                    rng
-                );
-                AddSkillVariance(
-                    officer,
-                    MissionParticipantSkill.Combat,
-                    officer.CombatVariance,
-                    rng
-                );
-                AddSkillVariance(
-                    officer,
-                    MissionParticipantSkill.Leadership,
+                    OfficerRating.Leadership,
                     officer.LeadershipVariance,
                     rng
                 );
@@ -226,22 +211,22 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Adds a random value in [0, variance) to the officer's existing skill score.
+        /// Adds a random value in [0, variance) to the officer's existing rating.
         /// </summary>
-        /// <param name="officer">The officer whose skill is rolled.</param>
-        /// <param name="skill">The skill to add variance to.</param>
+        /// <param name="officer">The officer whose rating is rolled.</param>
+        /// <param name="rating">The rating to add variance to.</param>
         /// <param name="variance">The exclusive upper bound for the random variance.</param>
         /// <param name="rng">Random number provider.</param>
-        private void AddSkillVariance(
+        private void AddRatingVariance(
             Officer officer,
-            MissionParticipantSkill skill,
+            OfficerRating rating,
             int variance,
             IRandomNumberProvider rng
         )
         {
-            officer.SetSkillValue(
-                skill,
-                officer.GetSkillValue(skill) + RollVariance(variance, rng)
+            officer.SetBaseRating(
+                rating,
+                officer.GetBaseRating(rating) + RollVariance(variance, rng)
             );
         }
 

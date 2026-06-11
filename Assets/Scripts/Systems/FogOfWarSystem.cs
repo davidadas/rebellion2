@@ -162,7 +162,7 @@ namespace Rebellion.Systems
         private static Officer CopyOfficerForSnapshot(Officer officer)
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
-            copy.Skills = new Dictionary<MissionParticipantSkill, int>(officer.Skills);
+            copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
             return copy;
         }
 

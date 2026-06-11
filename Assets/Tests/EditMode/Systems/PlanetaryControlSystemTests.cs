@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -192,6 +193,30 @@ namespace Rebellion.Tests.Systems
                 rebelMission.GetParent(),
                 "Winning faction's mission should not be canceled"
             );
+        }
+
+        [Test]
+        public void TransferPlanet_PlanetWithNewOwnerDiplomacyMission_DoesNotCancelIt()
+        {
+            _targetPlanet.PopularSupport = new Dictionary<string, int> { { "rebels", 70 } };
+            _targetPlanet.VisitingFactionIDs = new List<string> { "rebels" };
+            Officer officer = EntityFactory.CreateOfficer("o1", "rebels");
+
+            DiplomacyMission diplomacyMission = DiplomacyMission.TryCreate(
+                new MissionContext
+                {
+                    OwnerInstanceId = "rebels",
+                    Target = _targetPlanet,
+                    MainParticipants = new List<IMissionParticipant> { officer },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
+            );
+            _game.AttachNode(diplomacyMission, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.AreEqual(_targetPlanet, diplomacyMission.GetParent());
+            Assert.IsTrue(diplomacyMission.CanContinue(_game));
         }
 
         [Test]

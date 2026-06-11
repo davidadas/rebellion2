@@ -275,7 +275,7 @@ namespace Rebellion.Game.Units
         {
             Officer commander = GetOfficers()
                 .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-            int personnel = commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+            int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
             return (personnel / assaultPersonnelDivisor + 1) * GetCombatValue();
         }
 

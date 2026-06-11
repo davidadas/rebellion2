@@ -131,8 +131,8 @@ namespace Rebellion.Systems
         /// <returns>The officer escape score.</returns>
         private static int GetEscapeSkillScore(Officer officer)
         {
-            return officer.GetSkillValue(MissionParticipantSkill.Espionage)
-                + officer.GetEffectiveCombat();
+            return officer.GetEffectiveRating(OfficerRating.Espionage)
+                + officer.GetEffectiveRating(OfficerRating.Combat);
         }
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace Rebellion.Systems
             if (guards.Count == 0)
                 return 0;
 
-            return guards.Sum(g => g.GetSkillValue(MissionParticipantSkill.Combat)) / guards.Count;
+            return guards.Sum(g => g.GetEffectiveRating(OfficerRating.Combat)) / guards.Count;
         }
 
         /// <summary>

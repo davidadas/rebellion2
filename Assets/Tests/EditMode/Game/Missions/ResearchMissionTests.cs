@@ -277,14 +277,14 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_Success_DoesNotIncrementLeadership()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            int leadershipBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
+            int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
             ResearchMission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 leadershipBefore,
-                officer.GetSkillValue(MissionParticipantSkill.Leadership),
+                officer.GetBaseRating(OfficerRating.Leadership),
                 "Research missions should not increment Leadership"
             );
         }
@@ -327,7 +327,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Research",
                 DisplayName = "Ship Design",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Leadership,
+                ParticipantRating = OfficerRating.ShipResearch,
                 Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
                 MaxProgress = 15,
@@ -342,7 +342,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
-            Assert.AreEqual(MissionParticipantSkill.Leadership, deserialized.ParticipantSkill);
+            Assert.AreEqual(OfficerRating.ShipResearch, deserialized.ParticipantRating);
             Assert.AreEqual(ResearchDiscipline.ShipDesign, deserialized.Discipline);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(15, deserialized.MaxProgress);

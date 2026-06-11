@@ -20,8 +20,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Espionage";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Espionage;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         private EspionageMission(
@@ -36,11 +36,11 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Espionage").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Espionage,
+                OfficerRating.Espionage,
                 null
             )
         {
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Espionage does not award mission skill improvements.
         /// </summary>
-        protected override void ImproveMissionParticipantsSkill() { }
+        protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
         /// Captures a fog-of-war snapshot of the target planet for the owning faction.

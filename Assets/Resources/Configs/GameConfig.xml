@@ -776,6 +776,11 @@
     <OwnershipTransferThreshold>60</OwnershipTransferThreshold>
     <BlockadeMatchShift>1</BlockadeMatchShift>
     <BlockadeOpposeShift>-1</BlockadeOpposeShift>
+    <DiplomacyCompletionSupportBonus>1</DiplomacyCompletionSupportBonus>
+    <DiplomacyOwnedPlanetSupportBase>1</DiplomacyOwnedPlanetSupportBase>
+    <DiplomacyOwnedPlanetSupportRange>19</DiplomacyOwnedPlanetSupportRange>
+    <DiplomacyNeutralPlanetSupportBase>1</DiplomacyNeutralPlanetSupportBase>
+    <DiplomacyNeutralPlanetSupportRange>9</DiplomacyNeutralPlanetSupportRange>
   </SupportShift>
   <!-- Blockade-time penalties such as evacuation losses. -->
   <Blockade>

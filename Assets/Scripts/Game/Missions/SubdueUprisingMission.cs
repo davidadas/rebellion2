@@ -16,7 +16,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "SubdueUprising";
             DisplayName = "Subdue Uprising";
-            ParticipantSkill = MissionParticipantSkill.Leadership;
+            ParticipantRating = OfficerRating.Leadership;
         }
 
         private SubdueUprisingMission(
@@ -31,7 +31,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Leadership,
+                OfficerRating.Leadership,
                 null,
                 displayName: "Subdue Uprising"
             ) { }

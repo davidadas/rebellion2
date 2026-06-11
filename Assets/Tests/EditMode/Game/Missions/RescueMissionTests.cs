@@ -504,7 +504,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Rescue",
                 DisplayName = "Rescue",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Espionage,
+                ParticipantRating = OfficerRating.Espionage,
                 TargetOfficerInstanceID = "OFFICER3",
                 HasInitiated = true,
                 MaxProgress = 8,

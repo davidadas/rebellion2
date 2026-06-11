@@ -19,8 +19,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Sabotage";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Combat;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Combat;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         private SabotageMission(
@@ -35,11 +35,11 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Sabotage").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Combat,
+                OfficerRating.Combat,
                 null
             )
         {
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Sabotage does not award mission skill improvements.
         /// </summary>
-        protected override void ImproveMissionParticipantsSkill() { }
+        protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
         /// Destroys the first building on the target planet.

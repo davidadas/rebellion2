@@ -507,6 +507,11 @@
               <xs:element name="OwnershipTransferThreshold" type="xs:nonNegativeInteger" />
               <xs:element name="BlockadeMatchShift" type="xs:integer" />
               <xs:element name="BlockadeOpposeShift" type="xs:integer" />
+              <xs:element name="DiplomacyCompletionSupportBonus" type="xs:integer" />
+              <xs:element name="DiplomacyOwnedPlanetSupportBase" type="xs:integer" />
+              <xs:element name="DiplomacyOwnedPlanetSupportRange" type="xs:nonNegativeInteger" />
+              <xs:element name="DiplomacyNeutralPlanetSupportBase" type="xs:integer" />
+              <xs:element name="DiplomacyNeutralPlanetSupportRange" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
         </xs:element>

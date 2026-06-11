@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -69,19 +70,26 @@ namespace Rebellion.Tests.Game.Missions
             return mission;
         }
 
+        private static List<GameResult> InvokeOnSuccess(
+            DiplomacyMission mission,
+            GameRoot game,
+            IRandomNumberProvider rng
+        )
+        {
+            System.Reflection.MethodInfo onSuccess = typeof(DiplomacyMission).GetMethod(
+                "OnSuccess",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
+            return (List<GameResult>)onSuccess.Invoke(mission, new object[] { game, rng });
+        }
+
         [Test]
         public void Execute_SupportBelowThreshold_NoOwnershipChange()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
-            System.Reflection.MethodInfo onSuccess = typeof(DiplomacyMission).GetMethod(
-                "OnSuccess",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            List<GameResult> results =
-                (List<GameResult>)
-                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -93,25 +101,17 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Execute_SupportCrossesThreshold_NoOwnershipChangeEmitted()
         {
-            // Support at 60 — one increment pushes it to 61, crossing the threshold.
-            // DiplomacyMission only bumps support; PlanetaryControlSystem handles transfers.
             GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
-            System.Reflection.MethodInfo onSuccess = typeof(DiplomacyMission).GetMethod(
-                "OnSuccess",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            List<GameResult> results =
-                (List<GameResult>)
-                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
                 "DiplomacyMission should not emit ownership change; PlanetaryControlSystem handles transfers"
             );
             Assert.AreEqual(
-                61,
+                62,
                 planet.GetPopularSupport("empire"),
                 "Support should still increment"
             );
@@ -120,17 +120,10 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Execute_PlanetAlreadyOwned_NoOwnershipChangeEmitted()
         {
-            // Support already above threshold, planet already owned by empire
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
-            System.Reflection.MethodInfo onSuccess = typeof(DiplomacyMission).GetMethod(
-                "OnSuccess",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            List<GameResult> results =
-                (List<GameResult>)
-                    onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -139,24 +132,123 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_PlanetAlreadyOwned_NoRedundantChangeUnitOwnershipCall()
+        public void OnSuccess_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
         {
-            // Verify support still increments even when no ownership event fires
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
-            System.Reflection.MethodInfo onSuccess = typeof(DiplomacyMission).GetMethod(
-                "OnSuccess",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            );
-            onSuccess.Invoke(mission, new object[] { game, new FixedRNG(0.0) });
+            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
 
             Assert.AreEqual(
-                62,
+                63,
                 planet.GetPopularSupport("empire"),
                 "Support should still increment"
             );
             Assert.AreEqual("empire", planet.OwnerInstanceID, "Owner should remain empire");
+        }
+
+        [Test]
+        public void OnSuccess_SuccessProbabilityTable_DoesNotAffectSupportGain()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+            game.AttachNode(officer, planet);
+            DiplomacyMission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 70 } }
+            );
+            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
+
+            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(52, planet.GetPopularSupport("empire"));
+        }
+
+        [Test]
+        public void OnSuccess_OwnedPlanet_UsesDiplomacySupportConfig()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 3;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 5;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 10;
+
+            InvokeOnSuccess(mission, game, new SequenceRNG(new[] { 7 }));
+
+            Assert.AreEqual(65, planet.GetPopularSupport("empire"));
+        }
+
+        [Test]
+        public void OnSuccess_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 3;
+            game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 2;
+            game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 4;
+
+            InvokeOnSuccess(mission, game, new SequenceRNG(new[] { 4 }));
+
+            Assert.AreEqual(59, planet.GetPopularSupport("empire"));
+        }
+
+        [Test]
+        public void OnSuccess_InvertSupportShift_SubtractsCompletionBonus()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            game.GetFactionByOwnerInstanceID("empire").Settings.InvertSupportShift = true;
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+            game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
+            game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
+
+            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(50, planet.GetPopularSupport("empire"));
+        }
+
+        [Test]
+        public void Execute_SuccessProbability_UsesRegimentDefenseMinusSupportPlusDiplomacyRating()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 40);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 20,
+            };
+            game.AttachNode(officer, planet);
+            game.AttachNode(regiment, planet);
+            DiplomacyMission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 10, 100 }, { 11, 0 } }
+            );
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
         [Test]
@@ -183,6 +275,41 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(
                 mission.ShouldAbort(game),
                 "Diplomacy mission should be canceled when target planet is taken by another faction"
+            );
+        }
+
+        [Test]
+        public void ShouldAbort_WhenPlanetTakenByMissionFaction_ReturnsFalse()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            DiplomacyMission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+
+            planet.OwnerInstanceID = "empire";
+
+            Assert.IsFalse(
+                mission.ShouldAbort(game),
+                "Diplomacy mission should continue when target planet joins the mission faction"
+            );
+        }
+
+        [Test]
+        public void CanContinue_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
+            DiplomacyMission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = "empire";
+
+            Assert.IsTrue(
+                mission.CanContinue(game),
+                "Diplomacy mission should continue below 100 support after target joins the mission faction"
             );
         }
 
@@ -314,7 +441,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Diplomacy",
                 DisplayName = "Diplomacy",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Diplomacy,
+                ParticipantRating = OfficerRating.Diplomacy,
                 HasInitiated = true,
                 MaxProgress = 12,
                 CurrentProgress = 3,
@@ -327,7 +454,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
             Assert.AreEqual("Diplomacy", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
-            Assert.AreEqual(MissionParticipantSkill.Diplomacy, deserialized.ParticipantSkill);
+            Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(12, deserialized.MaxProgress);
             Assert.AreEqual(3, deserialized.CurrentProgress);

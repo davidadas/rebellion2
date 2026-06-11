@@ -6,7 +6,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Missions
@@ -37,7 +36,7 @@ namespace Rebellion.Game.Missions
         private bool _hasCapturedParticipantIds;
 
         // Mission configuration.
-        public MissionParticipantSkill ParticipantSkill { get; set; }
+        public OfficerRating ParticipantRating { get; set; }
         public bool HasInitiated;
 
         [PersistableIgnore]
@@ -66,7 +65,7 @@ namespace Rebellion.Game.Missions
         public int CurrentProgress { get; set; }
 
         [PersistableIgnore]
-        public MissionParticipantSkill DecoyParticipantSkill { get; set; }
+        public OfficerRating DecoyParticipantRating { get; set; }
 
         /// <summary>
         /// Parameterless constructor for deserialization.
@@ -85,7 +84,7 @@ namespace Rebellion.Game.Missions
         /// <param name="targetInstanceId">Mission target instance ID.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
-        /// <param name="participantSkill">Skill used by primary participants.</param>
+        /// <param name="participantRating">Rating used by primary participants.</param>
         /// <param name="successProbabilityTable">Mission success probability table.</param>
         /// <param name="displayName">Display name to show for this mission.</param>
         protected Mission(
@@ -94,7 +93,7 @@ namespace Rebellion.Game.Missions
             string targetInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            MissionParticipantSkill participantSkill,
+            OfficerRating participantRating,
             ProbabilityTable successProbabilityTable,
             string displayName = null
         )
@@ -108,7 +107,7 @@ namespace Rebellion.Game.Missions
 
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
-            ParticipantSkill = participantSkill;
+            ParticipantRating = participantRating;
 
             SuccessProbabilityTable =
                 successProbabilityTable
@@ -275,11 +274,11 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns the participant's mission success probability.
         /// </summary>
-        /// <param name="agent">The participant whose skill is evaluated.</param>
+        /// <param name="agent">The participant whose rating is evaluated.</param>
         /// <returns>The participant's success probability.</returns>
         protected virtual double GetAgentProbability(IMissionParticipant agent)
         {
-            int score = agent.GetMissionSkillValue(ParticipantSkill);
+            int score = agent.GetEffectiveRating(ParticipantRating);
             return SuccessProbabilityTable.Lookup(score);
         }
 
@@ -297,19 +296,19 @@ namespace Rebellion.Game.Missions
                 {
                     if (officer.OwnerInstanceID != OwnerInstanceID && !officer.IsCaptured)
                     {
-                        int esp = officer.GetMissionSkillValue(MissionParticipantSkill.Espionage);
+                        int esp = officer.GetEffectiveRating(OfficerRating.Espionage);
                         if (esp > bestDefenderEspionage)
                             bestDefenderEspionage = esp;
                     }
                 }
             }
 
-            if (DecoyParticipantSkill == MissionParticipantSkill.None)
+            if (DecoyParticipantRating == OfficerRating.None)
                 throw new InvalidOperationException(
-                    $"{GetType().Name} cannot resolve a decoy check without a decoy participant skill."
+                    $"{GetType().Name} cannot resolve a decoy check without a decoy participant rating."
                 );
 
-            int decoyEspionage = decoy.GetMissionSkillValue(DecoyParticipantSkill);
+            int decoyEspionage = decoy.GetEffectiveRating(DecoyParticipantRating);
             int targetDefense = (int)GetDefenseScore();
             int scaledDefender = bestDefenderEspionage * DecoyDefenderScalingPercent / 100;
             int score = decoyEspionage - targetDefense - scaledDefender;
@@ -462,7 +461,7 @@ namespace Rebellion.Game.Missions
                 {
                     outcome = MissionOutcome.Success;
                     results.AddRange(OnSuccess(game, provider));
-                    ImproveMissionParticipantsSkill();
+                    ImproveMissionParticipantRatings();
                 }
             }
             else
@@ -496,19 +495,14 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Improves eligible participant mission skills.
+        /// Improves eligible mission participants' base ratings.
         /// </summary>
-        protected virtual void ImproveMissionParticipantsSkill()
+        protected virtual void ImproveMissionParticipantRatings()
         {
             foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
             {
-                if (participant.CanImproveMissionSkill)
-                {
-                    participant.SetMissionSkillValue(
-                        ParticipantSkill,
-                        participant.GetMissionSkillValue(ParticipantSkill) + 1
-                    );
-                }
+                if (participant is Officer officer && participant.CanImproveMissionRating)
+                    officer.IncrementBaseRating(ParticipantRating);
             }
         }
 

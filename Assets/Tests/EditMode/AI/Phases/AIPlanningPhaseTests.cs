@@ -26,9 +26,7 @@ namespace Rebellion.Tests.AI.Phases
             planet.AddVisitor(empire.InstanceID);
             planet.SetPopularSupport(empire.InstanceID, 50);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Skills[MissionParticipantSkill.Diplomacy] = game.Config
-                .AI
-                .DiplomacyMinimumSkill;
+            officer.Ratings[OfficerRating.Diplomacy] = game.Config.AI.DiplomacyMinimumSkill;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 

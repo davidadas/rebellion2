@@ -8,11 +8,12 @@
     <InstanceID>EMPEROR_PALPATINE</InstanceID>
     <DisplayName>Emperor Palpatine</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_emperor_palpatine</DisplayImagePath>
+    <Description>Although aged and decrepit looking, Emperor Palpatine is the ultimate power in the Empire.  Palpatine formed the Empire and declared himself Emperor when the Old Republic Senate fell.  Since that time, the Empire under Palpatine's direction has virtually conquered the known galaxy.  A true master in the dark side of the Force, Palpatine was responsible for Darth Vader's instruction in the dark side.  The true extent of his powers is as yet unknown.</Description>
     <OwnerInstanceID>FNEMP1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
     <InitialParentTypeID>PLSEW05</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>30</Value>
@@ -29,7 +30,7 @@
         <Key>Leadership</Key>
         <Value>100</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -55,10 +56,11 @@
     <InstanceID>DARTH_VADER</InstanceID>
     <DisplayName>Darth Vader</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_darth_vader</DisplayImagePath>
+    <Description>Encased in imposing black armor and death's head mask, Darth Vader, Dark Lord of the Sith, is the most visible symbol of the Empire and its New Order.  Vader is a powerful dark Jedi and primarily responsible for the almost complete extermination of the Order of the Jedi Knights. Once a student of Obi-Wan Kenobi, Vader was corrupted by the dark side of the Force and joined the Empire.  He is a brilliant military tactician and excellent starfighter pilot.  Known for his ruthlessness, few who fail Lord Vader ever live to regret their mistake.  The Alliance hoped that Vader was lost during the destruction of the Death Star, but he has recently returned in command of one of the new Super Star Destroyers.</Description>
     <OwnerInstanceID>FNEMP1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>19</Value>
@@ -75,7 +77,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -102,12 +104,13 @@
     <InstanceID>JERJERROD</InstanceID>
     <DisplayName>Jerjerrod</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_jerjerrod</DisplayImagePath>
+    <Description>Moff Jerjerrod is the commander in charge of the construction of Imperial super weapons like the Death Star.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -124,7 +127,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -149,12 +152,13 @@
     <InstanceID>PIETT</InstanceID>
     <DisplayName>Piett</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_piett</DisplayImagePath>
+    <Description>Captain Piett is first officer aboard Lord Vader's Super Star Destroyer.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -171,7 +175,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -196,12 +200,13 @@
     <InstanceID>VEERS</InstanceID>
     <DisplayName>Veers</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_veers</DisplayImagePath>
+    <Description>General Veers commands an elite group of Imperial ground assault forces currently attached to Lord Vader's command. Renowned for his brilliant strategic planning and technique, Veers is positioned to take command of all Imperial ground forces, providing he survives his time with Lord Vader.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -218,7 +223,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -243,12 +248,13 @@
     <InstanceID>BRANDEI</InstanceID>
     <DisplayName>Brandei</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_brandei</DisplayImagePath>
+    <Description>Captain Brandei is the commander of an Imperial Star Destroyer assigned to Admiral Thrawn's personal armada.  Brandei's philosophy is that it is more important to live and fight another day than to die spectacularly.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -265,7 +271,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -290,12 +296,13 @@
     <InstanceID>DORJA</InstanceID>
     <DisplayName>Dorja</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_dorja</DisplayImagePath>
+    <Description>Captain Dorja is in command of an Imperial Star Destroyer.  He is extremely cautious and is usually unwilling to engage the enemy in direct combat.  Because of his cautious tactics, his ship has not received any casualties during the war while it has been under his command.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -312,7 +319,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -337,12 +344,13 @@
     <InstanceID>BIN_ESSADA</InstanceID>
     <DisplayName>Bin Essada</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_bin_essada</DisplayImagePath>
+    <Description>Bin Essada is the Imperial military governor presiding over the Circarpous Major system.  It is suspected that while he looks human, his origins may not be so.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -359,7 +367,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -384,12 +392,13 @@
     <InstanceID>NILES_FERRIER</InstanceID>
     <DisplayName>Niles Ferrier</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_niles_ferrier</DisplayImagePath>
+    <Description>A tactless mercenary in the service of the Empire, Niles Ferrier is a smuggler, spy and inveterate war profiteer.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -406,7 +415,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -431,12 +440,13 @@
     <InstanceID>GRAMMEL</InstanceID>
     <DisplayName>Grammel</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_grammel</DisplayImagePath>
+    <Description>Captain-Supervisor Grammel is the commander of the Imperial garrison on Circarpous V.  He is well known for being ruthless and torturing prisoners whether he needed information or not.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -453,7 +463,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -478,12 +488,13 @@
     <InstanceID>GRIFF</InstanceID>
     <DisplayName>Griff</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_griff</DisplayImagePath>
+    <Description>Admiral Griff is the fleet commander who supervised the construction of the new Super Star Destroyers.  He was also charged with the blockade of the Yavin system after the destruction of the Death Star.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -500,7 +511,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -525,12 +536,13 @@
     <InstanceID>KLEV</InstanceID>
     <DisplayName>Klev</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_klev</DisplayImagePath>
+    <Description>Commander Klev is an able-bodied commander who has extensive experience in both fleet and ground assault command.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -547,7 +559,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -572,12 +584,13 @@
     <InstanceID>NEEDA</InstanceID>
     <DisplayName>Needa</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_needa</DisplayImagePath>
+    <Description>An able fleet commander in the service of Darth Vader, Captain Needa commands an Imperial Star Destroyer.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -594,7 +607,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -619,12 +632,13 @@
     <InstanceID>BANE_NOTHOS</InstanceID>
     <DisplayName>Bane Nothos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_bane_nothos</DisplayImagePath>
+    <Description>Bane Nothos is the commander in charge of the Imperial Outer Rim Territories patrol fleet.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -641,7 +655,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -666,12 +680,13 @@
     <InstanceID>ORLOK</InstanceID>
     <DisplayName>Orlok</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_orlok</DisplayImagePath>
+    <Description>The Imperial commander at Daluuj, Commander Orlok is the Empire's facility specialist.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -688,7 +703,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -713,12 +728,13 @@
     <InstanceID>PALLAEON</InstanceID>
     <DisplayName>Pallaeon</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_pellaeon</DisplayImagePath>
+    <Description>Captain Gilad Pellaeon is a competent, if somewhat cautious, battle commander.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -735,7 +751,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -760,12 +776,13 @@
     <InstanceID>SCREED</InstanceID>
     <DisplayName>Screed</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_screed</DisplayImagePath>
+    <Description>Formerly the Emperor's right hand man and a distinguished military commander, Screed can be trusted with nearly any space battle.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -782,7 +799,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -807,12 +824,13 @@
     <InstanceID>THRAWN</InstanceID>
     <DisplayName>Thrawn</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_thrawn</DisplayImagePath>
+    <Description>The only non-human Admiral in the service of the Empire, Thrawn is a master tactician and a cool-headed warrior. His familiarity with spacecraft and cunning make him a deadly foe.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -829,7 +847,7 @@
         <Key>Leadership</Key>
         <Value>70</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -854,12 +872,13 @@
     <InstanceID>ZUGGS</InstanceID>
     <DisplayName>Zuggs</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_zuggs</DisplayImagePath>
+    <Description>Pilot of an Imperial strike cruiser, Commodore Zuggs furthers the military aims of the Emperor.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -876,7 +895,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -901,12 +920,13 @@
     <InstanceID>DAALA</InstanceID>
     <DisplayName>Daala</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_daala</DisplayImagePath>
+    <Description>Daala is the only known female Admiral in the Imperial Navy and one of the most brilliant military strategists in the Empire.  Daala is currently in command of the late Grand Moff Tarkin's special weapons development task force.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -923,7 +943,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -948,12 +968,13 @@
     <InstanceID>THANAS</InstanceID>
     <DisplayName>Pter Thanas</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_pter_thanas</DisplayImagePath>
+    <Description>A loyal and dependable servant of the Empire, Commander Pter Thanas is nevertheless among the kindest of those who follow the will of Emperor Palpatine.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -970,7 +991,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>59</EspionageVariance>
@@ -996,12 +1017,13 @@
     <InstanceID>OZZEL</InstanceID>
     <DisplayName>Ozzel</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_ozzel</DisplayImagePath>
+    <Description>Admiral Ozzel is the commanding officer of Lord Vader's personal Super Star Destroyer.  Since Lord Vader seems to have a mild dislike for the Admiral, it remains to be seen how long he will retain command and his life.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1018,7 +1040,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -1043,12 +1065,13 @@
     <InstanceID>COVELL</InstanceID>
     <DisplayName>Covell</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_covell</DisplayImagePath>
+    <Description>Major Covell is second in command of General Veer's elite Imperial ground forces.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1065,7 +1088,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -1090,12 +1113,13 @@
     <InstanceID>BEVEL_LEMELISK</InstanceID>
     <DisplayName>Bevel Lemelisk</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_bevel_lemelisk</DisplayImagePath>
+    <Description>Chief Engineer Bevel Lemelisk is the chief Imperial space station designer and was the creator of the Death Star.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1112,7 +1136,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -1137,12 +1161,13 @@
     <InstanceID>SHENIR_RIX</InstanceID>
     <DisplayName>Shenir Rix</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_shenir_rix</DisplayImagePath>
+    <Description>Shenir Rix is a Calamari female reputed to be one of the best information dealers in the galaxy.  She only deals in solid, reliable information less than 24 hours old.  If the information comes from Rix, you can be guaranteed it will be accurate.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1159,7 +1184,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -1184,12 +1209,13 @@
     <InstanceID>NOVAL_GARAINT</InstanceID>
     <DisplayName>Noval Garaint</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_noval_garaint</DisplayImagePath>
+    <Description>Noval Garaint is a bounty hunter who is never seen outside of his battle armor.  He is rumored to be the real power behind Horch, the crime lord of Kheedar.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1206,7 +1232,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -1231,12 +1257,13 @@
     <InstanceID>GARINDAN</InstanceID>
     <DisplayName>Garindan</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_garindan</DisplayImagePath>
+    <Description>Garindan is one of the most famous Kubaz informants in the galaxy.  Usually found lurking around the major space ports like Mos Eisley, Garindan has been responsible for exposing several Alliance covert operations to the Empire.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1253,7 +1280,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -1278,12 +1305,13 @@
     <InstanceID>MENNDO</InstanceID>
     <DisplayName>Menndo</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_menndo</DisplayImagePath>
+    <Description>Like most Rodians, Menndo began his career as a bounty hunter, but later learned that assassination and espionage were more profitable and less hassling than bounties.  An expert assassin, Menndo has been linked to the deaths of several high ranking political officials.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1300,7 +1328,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -1325,12 +1353,13 @@
     <InstanceID>LABANSAT</InstanceID>
     <DisplayName>Labansat</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_labansat</DisplayImagePath>
+    <Description>Labansat is one of the most famous Weequay mercenaries.  Known for his fierce brutality and deadly fighting skill, he often plies the Lesser Plooriod Cluster and Karstaxon Regions working for whomever will meet his price.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1347,7 +1376,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -1372,12 +1401,13 @@
     <InstanceID>VILLAR</InstanceID>
     <DisplayName>Villar</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_empire_villar</DisplayImagePath>
+    <Description>Villar is a typical Devaronian male, filled with wanderlust and a desire to explore the galaxy. Exploration costs money, so Villar sells the information he gathers on his travels to the highest bidder, which is usually the Empire.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1394,7 +1424,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -1421,11 +1451,12 @@
     <InstanceID>MON_MOTHMA</InstanceID>
     <DisplayName>Mon Mothma</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_mon_mothma</DisplayImagePath>
+    <Description>A former Senator in the Old Republic, Mon Mothma is the leader of the Rebel Alliance and an old foe of Emperor Palpatine. An accomplished diplomat and skilled negotiator, she is the beacon around which much of the support for the Rebellion gathers.</Description>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
     <InitialParentTypeID>PLSUM06</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>100</Value>
@@ -1442,7 +1473,7 @@
         <Key>Leadership</Key>
         <Value>100</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -1467,11 +1498,12 @@
     <InstanceID>LEIA_ORGANA</InstanceID>
     <DisplayName>Leia Organa</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_leia_organa</DisplayImagePath>
+    <Description>Adopted daughter of the Old Republic Senator Bail Organa of Alderaan and a senator herself until the disbanding of the Imperial Senate, Princess Leia Organa is a fiery visionary and an unequaled diplomat. She is one of  the most passionate voices of dissent against the Emperor's New Order.  It was her bravery that provided the Alliance with the technical data they used to destroy the first Death Star.</Description>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
     <InitialParentTypeID>PLSUM06</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>120</Value>
@@ -1488,7 +1520,7 @@
         <Key>Leadership</Key>
         <Value>70</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -1514,11 +1546,12 @@
     <InstanceID>LUKE_SKYWALKER</InstanceID>
     <DisplayName>Luke Skywalker</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_luke_skywalker</DisplayImagePath>
+    <Description>A farm boy raised on Tatooine, Luke is a student of the Force and a Jedi in training.  A skilled and daring pilot, Skywalker was responsible for the destruction of the first Death Star. His developing abilities with the Force make him an invaluable asset to the Rebellion.</Description>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
     <InitialParentTypeID>PLSUM06</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>50</Value>
@@ -1535,7 +1568,7 @@
         <Key>Leadership</Key>
         <Value>70</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -1563,11 +1596,12 @@
     <InstanceID>HAN_SOLO</InstanceID>
     <DisplayName>Han Solo</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_han_solo</DisplayImagePath>
+    <Description>A former smuggler for the infamous Jabba the Hutt, this scruffy-looking mercenary only recently joined the Alliance. An ace pilot, accomplished spy and leader, Solo has the ability to get into and out of dangerous situations virtually unscratched. Together with his first mate Chewbacca, Solo captains the freighter Millennium Falcon.</Description>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
     <IsRecruitable>false</IsRecruitable>
     <InitialParentTypeID>PLSUM06</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>19</Value>
@@ -1584,7 +1618,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>0</DiplomacyVariance>
     <EspionageVariance>0</EspionageVariance>
@@ -1609,12 +1643,13 @@
     <InstanceID>ACKBAR</InstanceID>
     <DisplayName>Ackbar</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_ackbar</DisplayImagePath>
+    <Description>Admiral Ackbar is one of the senior military advisors in the Rebel Alliance.  While serving as a slave to Grand Moff Tarkin, Ackbar studied Imperial tactics and defenses.  Now freed, Ackbar utilizes that knowledge for the Alliance.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1631,7 +1666,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -1656,12 +1691,13 @@
     <InstanceID>WEDGE_ANTILLES</InstanceID>
     <DisplayName>Wedge Antilles</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_wedge_antilles</DisplayImagePath>
+    <Description>A veteran pilot and expert ship mechanic, Wedge Antilles is one of the few pilots who survived the attack that destroyed the first Death Star.  After the destruction of the Death Star, Wedge was given command of his own squadron of fighters.  He also invests a great deal of time in creating or enhancing new ship designs.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1678,7 +1714,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -1703,12 +1739,13 @@
     <InstanceID>LANDO_CALRISSIAN</InstanceID>
     <DisplayName>Lando Calrissian</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_lando_calrissian</DisplayImagePath>
+    <Description>This former smuggler and pirate turned legitimate businessman has currently set up shop as Baron Administrator of Cloud City in the Bespin system. His background makes him an important and valuable ally for the Alliance. In addition to his piloting and espionage skills from his past, Lando now possesses knowledge relating to planetary upkeep and facility improvement.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -1725,7 +1762,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -1750,13 +1787,14 @@
     <InstanceID>CHEWBACCA</InstanceID>
     <DisplayName>Chewbacca</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_chewbacca</DisplayImagePath>
+    <Description>Chewbacca is a two-meter-tall Wookiee from the world of Kashyyyk. Once the Empire conquered Kashyyyk, it declared Wookiees to be a slave species and Chewbacca was sold into slavery.  He was eventually freed by a young Imperial officer named Han Solo, who sacrificed his career to save the Wookiee. Chewbacca felt a life debt was owed to Solo and has been his constant companion ever since.  Together, they embarked on a life of smuggling and questionable activities for various crime lords including Jabba the Hutt.  Chewbacca is also first mate on the freighter Millennium Falcon and keeps it in working order.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
     <InitialParentTypeID>PLSUM06</InitialParentTypeID>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1773,7 +1811,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -1798,12 +1836,13 @@
     <InstanceID>JAN_DODONNA</InstanceID>
     <DisplayName>Jan Dodonna</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_jan_dodonna</DisplayImagePath>
+    <Description>General Jan Dodonna was the Alliance officer who planned the assault on the first Death Star at the Battle of Yavin.  When the Alliance evacuated the base on Yavin 4, Dodonna remained behind to destroy the base and cover the retreat.  Initially presumed killed at Yavin 4, Dodonna has now returned to the Alliance.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -1820,7 +1859,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -1845,12 +1884,13 @@
     <InstanceID>CRIX_MADINE</InstanceID>
     <DisplayName>Crix Madine</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_crix_madine</DisplayImagePath>
+    <Description>Crix Madine was an Imperial officer in command of an elite commando force before defecting to the Alliance after the Battle of Yavin. He is currently in command of all Alliance ground forces and strategy.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1867,7 +1907,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -1892,12 +1932,13 @@
     <InstanceID>CARLIST_RIEEKAN</InstanceID>
     <DisplayName>Carlist Rieekan</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_carlist_rieekan</DisplayImagePath>
+    <Description>General Carlist Rieekan is the commander of all Alliance ground and fleet forces in the Hoth star system.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1914,7 +1955,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -1939,12 +1980,13 @@
     <InstanceID>AFYON</InstanceID>
     <DisplayName>Afyon</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_afyon</DisplayImagePath>
+    <Description>Captain Afyon is the commander of an Alliance escort frigate, which has lately been relegated to cargo transport duties.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -1961,7 +2003,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -1986,12 +2028,13 @@
     <InstanceID>DRAYSON</InstanceID>
     <DisplayName>Drayson</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_drayson</DisplayImagePath>
+    <Description>Admiral Drayson is a high ranking officer in the Alliance military, but unlike many others, he did not begin his career in the Old Republic or Imperial Navy.  He was Admiral of the Chandrila Defense Fleet prior to conquest by the Empire.  Mon Mothma, also of Chandrila, asked Drayson to join the Alliance and serve as the commander of the Alliance Headquarters ship.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -2008,7 +2051,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -2033,12 +2076,13 @@
     <InstanceID>BORSK_FEYLA</InstanceID>
     <DisplayName>Borsk Fey'la</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_borsk_fey'lya</DisplayImagePath>
+    <Description>Borsk Fey'lya is the leader of a large portion of the Bothan population.  He is a master diplomat and was responsible for the Bothans joining the Alliance after the Battle of Yavin.  Like most Bothans, Fey'lya believes the game of politics and power is more important than individual issues, and is steadily working his way up through the Alliance's command structure.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>80</Value>
@@ -2055,7 +2099,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>20</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2080,12 +2124,13 @@
     <InstanceID>TURA_RAFTICAN</InstanceID>
     <DisplayName>Tura Raftican</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_tura_raftican</DisplayImagePath>
+    <Description>Lieutenant Tura Raftican was once an investigative reporter for the HoloNews Network.  Since joining the Alliance, she has used her contacts to provide information to the Rebels.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2102,7 +2147,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -2127,12 +2172,13 @@
     <InstanceID>BREN_DERLIN</InstanceID>
     <DisplayName>Bren Derlin</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_bren_derlin</DisplayImagePath>
+    <Description>One of the executive members of the Rebel Alliance's command staff, Major Derlin was assigned to locating sites for the Alliance's base after the Battle of Yavin.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2149,7 +2195,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2174,12 +2220,13 @@
     <InstanceID>GARM_BEL_IBLIS</InstanceID>
     <DisplayName>Garm Bel Iblis</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_garm_bel_iblis</DisplayImagePath>
+    <Description>Garm Bel Iblis was a senator from the Corellian system and was one of the founding members of the Alliance. Due to conflicts with Mon Mothma and death warrants from the Empire, Bel Iblis has gone into hiding.  He surfaces from time to time with small groups of resistance fighters before disappearing again.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2196,7 +2243,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -2221,12 +2268,13 @@
     <InstanceID>TALON_KARRDE</InstanceID>
     <DisplayName>Talon Karrde</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_talon_karrde</DisplayImagePath>
+    <Description>A multi-talented mercenary with a sense of humor, Karrde is an inscrutable negotiator and a good man in a fight. His payroll currently flows from the Alliance, though he has been known to perform services for the Empire in the past.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>80</Value>
@@ -2243,7 +2291,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>20</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -2268,12 +2316,13 @@
     <InstanceID>NARRA</InstanceID>
     <DisplayName>Narra</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_narra</DisplayImagePath>
+    <Description>Commander Narra is an old hand at disrupting Imperial business. He participated in the attack on the first Death Star.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2290,7 +2339,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2315,12 +2364,13 @@
     <InstanceID>HUOBA_NEVA</InstanceID>
     <DisplayName>Huoba Neva</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_huoba_neva</DisplayImagePath>
+    <Description>Captain Neva is an excellent special forces operative.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2337,7 +2387,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -2362,12 +2412,13 @@
     <InstanceID>PAGE</InstanceID>
     <DisplayName>Page</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_page</DisplayImagePath>
+    <Description>An invaluable special forces man, Lieutenant Page assists the Alliance with covert operations.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2384,7 +2435,7 @@
         <Key>Leadership</Key>
         <Value>9</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -2409,12 +2460,13 @@
     <InstanceID>SYUB_SNUNB</InstanceID>
     <DisplayName>Syub Snunb</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_syub_snunb</DisplayImagePath>
+    <Description>Sullustan Captain Syub Snunb commands an Alliance frigate.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2431,7 +2483,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2456,12 +2508,13 @@
     <InstanceID>ADAR_TALLON</InstanceID>
     <DisplayName>Adar Tallon</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_adar_tallon</DisplayImagePath>
+    <Description>During the time of the Old Republic, Adar Tallon was a brilliant military strategist.  Many of the space combat techniques developed by Tallon are still being utilized by both the Empire and the Alliance.  After many years of hiding from the Empire on Tatooine, Tallon has recently joined the Alliance.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2478,7 +2531,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -2503,12 +2556,13 @@
     <InstanceID>SARIN_VIRGILIO</InstanceID>
     <DisplayName>Sarin Virgilio</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_sarin_virgilio</DisplayImagePath>
+    <Description>Captain Virgilio commands one of the Alliance Home Guard's escort vessels.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2525,7 +2579,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2550,12 +2604,13 @@
     <InstanceID>VANDEN_WILLARD</InstanceID>
     <DisplayName>Vanden Willard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_vanden_willard</DisplayImagePath>
+    <Description>Commander Vanden Willard serves the Alliance under General Dodonna. He is currently assigned to planetary defense at Yavin.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>70</Value>
@@ -2572,7 +2627,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>50</EspionageVariance>
@@ -2597,12 +2652,13 @@
     <InstanceID>ROGET_JIRISS</InstanceID>
     <DisplayName>Roget Jiriss</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_roget_jiriss</DisplayImagePath>
+    <Description>Roget Jiriss is a smuggler with a sense of honor. When Jiriss agrees to deliver a shipment, it will always arrive on time.  Having contacts deep within several large crime syndicates, Jiriss is also an excellent source of information for the Alliance.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2619,7 +2675,7 @@
         <Key>Leadership</Key>
         <Value>80</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -2644,12 +2700,13 @@
     <InstanceID>KAIYA_ANDRIMETRUM</InstanceID>
     <DisplayName>Kaiya Andrimetrum</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_kaiya_andrimetrum</DisplayImagePath>
+    <Description>Commander Andrimetrum joined the Alliance after her husband was killed by Imperial forces during the occupation of her homeworld.  She is an exceptional combat leader and her troops are almost fanatically loyal.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2666,7 +2723,7 @@
         <Key>Leadership</Key>
         <Value>90</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>30</EspionageVariance>
@@ -2691,12 +2748,13 @@
     <InstanceID>MAZER_RACKUS</InstanceID>
     <DisplayName>Mazer Rackus</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_mazer_rackus</DisplayImagePath>
+    <Description>Mazer Rackus is a Twi'lek pilot for the Alliance.  He has been flying for the Alliance since crashing on an Alliance held world when he was young.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2713,7 +2771,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>20</EspionageVariance>
@@ -2738,12 +2796,13 @@
     <InstanceID>ORRIMAARKO</InstanceID>
     <DisplayName>Orrimaarko</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_orrimaarko</DisplayImagePath>
+    <Description>Orrimaarko is the leader of the Alliance resistance cell on Dressel. He is an expert in espionage and covert warfare and the first Dresselian to be given command of an Alliance SpecForce team.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2760,7 +2819,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>
@@ -2785,12 +2844,13 @@
     <InstanceID>MAWSHIYE</InstanceID>
     <DisplayName>Ma'w'shiye</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_officer_rebel_ma'w'shiye</DisplayImagePath>
+    <Description>Lieutenant Ma'w'shiye is a marksman on the Alliance's elite SpecForce Eclipse Team.  Ma'w'shiye has undergone intense survival training and can survive on almost any kind of world.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
     <IsMain>false</IsMain>
     <IsRecruitable>true</IsRecruitable>
-    <Skills>
+    <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
         <Value>0</Value>
@@ -2807,7 +2867,7 @@
         <Key>Leadership</Key>
         <Value>0</Value>
       </Entry>
-    </Skills>
+    </Ratings>
     <Loyalty>100</Loyalty>
     <DiplomacyVariance>30</DiplomacyVariance>
     <EspionageVariance>10</EspionageVariance>

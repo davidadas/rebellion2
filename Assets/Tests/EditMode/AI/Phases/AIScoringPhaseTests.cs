@@ -23,7 +23,7 @@ namespace Rebellion.Tests.AI.Phases
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Skills[MissionParticipantSkill.Diplomacy] = 90;
+            officer.Ratings[OfficerRating.Diplomacy] = 90;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.AddProposal(new AIMissionProposal(officer, MissionType.Diplomacy, planet));

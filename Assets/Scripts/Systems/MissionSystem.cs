@@ -348,7 +348,7 @@ namespace Rebellion.Systems
         private static int GetFoilDefenderCombatSkill(Mission mission)
         {
             Officer defender = mission.FindDefender();
-            return defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
+            return defender != null ? defender.GetEffectiveRating(OfficerRating.Combat) : 0;
         }
 
         /// <summary>
@@ -426,7 +426,7 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            int delta = defenderCombat - officer.GetEffectiveCombat();
+            int delta = defenderCombat - officer.GetEffectiveRating(OfficerRating.Combat);
             double captureProbability =
                 mission.KillOrCaptureProbabilityTable != null
                     ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
