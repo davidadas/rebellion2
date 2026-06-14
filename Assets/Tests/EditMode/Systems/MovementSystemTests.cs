@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -2049,6 +2050,29 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_RegimentToNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Faction observer = AddFaction(game, "observer");
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+            destination.EnergyCapacity = 1;
+
+            CapturePlanetSnapshot(game, observer, destination, 5);
+            AddBuilding(game, destination, "hidden-regiment-claim-building", "rebels");
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            game.CurrentTick = 20;
+            movement.RequestMove(regiment, destination);
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, destination);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.IsNull(snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
         public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
@@ -2131,6 +2155,54 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(regiment, ship);
 
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        private static Faction AddFaction(GameRoot game, string instanceId)
+        {
+            Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
+            game.Factions.Add(faction);
+            return faction;
+        }
+
+        private static Building AddBuilding(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            string ownerInstanceId
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = planet.GetOwnerInstanceID(),
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            game.AttachNode(building, planet);
+
+            if (building.GetOwnerInstanceID() != ownerInstanceId)
+                game.ChangeUnitOwnership(building, ownerInstanceId);
+
+            return building;
+        }
+
+        private static void CapturePlanetSnapshot(
+            GameRoot game,
+            Faction faction,
+            Planet planet,
+            int tick
+        )
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            new FogOfWarSystem(game).CaptureSnapshot(faction, planet, system, tick);
+        }
+
+        private static PlanetSnapshot GetPlanetSnapshot(Faction faction, Planet planet)
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            return faction.Fog.Snapshots[system.InstanceID].Planets[planet.InstanceID];
         }
     }
 }

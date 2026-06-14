@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -108,6 +109,38 @@ namespace Rebellion.Tests.Systems
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
             Assert.AreEqual("rebels", building.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
+        {
+            Faction observer = AddFaction("observer");
+            _game.ChangeUnitOwnership(_targetPlanet, "empire");
+            _targetPlanet.EnergyCapacity = 1;
+
+            CapturePlanetSnapshot(observer, _targetPlanet, 5);
+            AddBuilding(_targetPlanet, "hidden-transfer-building", "empire");
+
+            _game.CurrentTick = 20;
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.AreEqual("empire", snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
+        public void TransferPlanet_PreviousOwnerSnapshot_Refreshed()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, "empire");
+
+            _game.CurrentTick = 20;
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(_empire, _targetPlanet);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.AreEqual("rebels", snapshot.OwnerInstanceID);
         }
 
         [Test]
@@ -533,6 +566,29 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_NeutralClaim_HiddenObserverSnapshot_NotRefreshed()
+        {
+            Faction observer = AddFaction("observer");
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
+                "wild-hidden-claim",
+                "empire"
+            );
+            planet.EnergyCapacity = 1;
+
+            CapturePlanetSnapshot(observer, planet, 5);
+            AddBuilding(planet, "hidden-claim-building", "rebels");
+
+            _game.MoveNode(regiment, planet);
+            _game.CurrentTick = 20;
+            _ownershipSystem.ProcessTick();
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.IsNull(snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
         public void ProcessTick_NeutralPlanetWithPreviousOwnerBuildingsClaimedByRegiment_TransfersBuildings()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
@@ -582,6 +638,50 @@ namespace Rebellion.Tests.Systems
                         r.Planet == planet && r.NewOwner == null && r.PreviousOwner == _empire
                     )
             );
+        }
+
+        [Test]
+        public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_NotRefreshed()
+        {
+            Faction observer = AddFaction("observer");
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
+                "wild-hidden-release",
+                "empire"
+            );
+            _game.MoveNode(regiment, planet);
+            _ownershipSystem.ProcessTick();
+            planet.EnergyCapacity = 1;
+
+            CapturePlanetSnapshot(observer, planet, 5);
+            AddBuilding(planet, "hidden-release-building", "empire");
+
+            _game.DetachNode(regiment);
+            _game.CurrentTick = 20;
+            _ownershipSystem.ProcessTick();
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.AreEqual("empire", snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
+        public void ProcessTick_ReleaseToNeutral_PreviousOwnerSnapshot_Refreshed()
+        {
+            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
+                "wild-release-owner",
+                "empire"
+            );
+            _game.MoveNode(regiment, planet);
+            _ownershipSystem.ProcessTick();
+
+            _game.DetachNode(regiment);
+            _game.CurrentTick = 20;
+            _ownershipSystem.ProcessTick();
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(_empire, planet);
+            Assert.AreEqual(20, snapshot.TickCaptured);
+            Assert.IsNull(snapshot.OwnerInstanceID);
         }
 
         [Test]
@@ -668,6 +768,44 @@ namespace Rebellion.Tests.Systems
                         r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
                     )
             );
+        }
+
+        private Faction AddFaction(string instanceId)
+        {
+            Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
+            _game.Factions.Add(faction);
+            return faction;
+        }
+
+        private Building AddBuilding(Planet planet, string instanceId, string ownerInstanceId)
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = planet.GetOwnerInstanceID(),
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            _game.AttachNode(building, planet);
+
+            if (building.GetOwnerInstanceID() != ownerInstanceId)
+                _game.ChangeUnitOwnership(building, ownerInstanceId);
+
+            return building;
+        }
+
+        private void CapturePlanetSnapshot(Faction faction, Planet planet, int tick)
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            new FogOfWarSystem(_game).CaptureSnapshot(faction, planet, system, tick);
+        }
+
+        private static PlanetSnapshot GetPlanetSnapshot(Faction faction, Planet planet)
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            return faction.Fog.Snapshots[system.InstanceID].Planets[planet.InstanceID];
         }
     }
 }

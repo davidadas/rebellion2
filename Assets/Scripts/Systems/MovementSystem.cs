@@ -857,8 +857,6 @@ namespace Rebellion.Systems
                     destinationPlanet.SetPopularSupport(supportFaction.InstanceID, 0);
             }
 
-            _fogOfWar.CapturePlanetSnapshotForAllFactions(destinationPlanet, _game.CurrentTick);
-
             _pendingResults.Add(
                 new PlanetOwnershipChangedResult
                 {
