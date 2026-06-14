@@ -18,4 +18,12 @@ public sealed class MissionsPane : MonoBehaviour
         this.planet = planet;
         this.uiContext = uiContext;
     }
+
+    public void SetPlanet(Planet planet)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        this.planet = planet;
+    }
 }

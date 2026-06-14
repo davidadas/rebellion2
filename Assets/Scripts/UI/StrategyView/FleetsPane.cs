@@ -91,6 +91,14 @@ public sealed class FleetsPane : MonoBehaviour
         Render();
     }
 
+    public void SetPlanet(Planet planet)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        this.planet = planet;
+    }
+
     private void SelectTab(FleetTabType tab)
     {
         activeTab = tab;

@@ -52,7 +52,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The planet to check visibility for.</param>
         /// <param name="faction">The faction whose visibility to evaluate.</param>
-        /// <returns>True if the faction owns the planet or has an arrived fleet present.</returns>
+        /// <returns>True if the faction owns the planet or has an arrived fleet with ships present.</returns>
         public bool IsPlanetVisible(Planet planet, Faction faction)
         {
             if (planet.OwnerInstanceID == faction.InstanceID)
@@ -60,7 +60,9 @@ namespace Rebellion.Systems
 
             if (
                 planet.Fleets.Any(f =>
-                    f.OwnerInstanceID == faction.InstanceID && f.Movement == null
+                    f.OwnerInstanceID == faction.InstanceID
+                    && f.Movement == null
+                    && f.CapitalShips.Count > 0
                 )
             )
                 return true;

@@ -129,8 +129,10 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
 
     public bool IsShowing(Planet planet, PlanetViewIconType view)
     {
-        return this.planet == planet && this.currentView == view;
+        return this.planet?.InstanceID == planet?.InstanceID && this.currentView == view;
     }
+
+    public string CurrentPlanetInstanceID => planet?.InstanceID;
 
     public void Refresh()
     {
@@ -141,6 +143,27 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
         garrisonPane.Refresh();
         fleetsPane.Refresh();
         buildingsPane.Refresh();
+    }
+
+    public void Refresh(Planet updatedPlanet)
+    {
+        if (!isInitialized)
+            return;
+
+        SetPlanet(updatedPlanet);
+        Refresh();
+    }
+
+    private void SetPlanet(Planet updatedPlanet)
+    {
+        if (updatedPlanet == null)
+            throw new ArgumentNullException(nameof(updatedPlanet));
+
+        planet = updatedPlanet;
+        fleetsPane.SetPlanet(updatedPlanet);
+        missionsPane.SetPlanet(updatedPlanet);
+        garrisonPane.SetPlanet(updatedPlanet);
+        buildingsPane.SetPlanet(updatedPlanet);
     }
 
     private void OnCloseClicked()

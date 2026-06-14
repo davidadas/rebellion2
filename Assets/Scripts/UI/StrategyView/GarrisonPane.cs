@@ -84,6 +84,15 @@ public sealed class GarrisonPane : MonoBehaviour
         SelectTab(GarrisonTabType.Officers);
     }
 
+    public void SetPlanet(Planet planet)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        this.planet = planet;
+        ApplyThemeTabSprites();
+    }
+
     private void ApplyThemeTabSprites()
     {
         string ownerId = planet.GetOwnerInstanceID();

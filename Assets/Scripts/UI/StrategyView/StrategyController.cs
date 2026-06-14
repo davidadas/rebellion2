@@ -129,6 +129,7 @@ public sealed class StrategyController : MonoBehaviour
 
         galaxyView.Initialize(updatedGalaxy, uiContext, mapViewport, mapper);
         RefreshActivePanels(updatedGalaxy);
+        RefreshActivePlanetPanels(updatedGalaxy);
     }
 
     private void RefreshActivePanels(GalaxyMap updatedGalaxy)
@@ -147,6 +148,35 @@ public sealed class StrategyController : MonoBehaviour
         }
     }
 
+    private void RefreshActivePlanetPanels(GalaxyMap updatedGalaxy)
+    {
+        foreach (PlanetPanel panel in activePlanetPanels)
+        {
+            string planetId = panel.CurrentPlanetInstanceID;
+            if (string.IsNullOrEmpty(planetId))
+                continue;
+
+            Planet updatedPlanet = FindPlanet(updatedGalaxy, planetId);
+            if (updatedPlanet != null)
+                panel.Refresh(updatedPlanet);
+        }
+    }
+
+    private static Planet FindPlanet(GalaxyMap galaxy, string planetId)
+    {
+        if (galaxy == null || string.IsNullOrEmpty(planetId))
+            return null;
+
+        foreach (PlanetSystem system in galaxy.PlanetSystems)
+        {
+            Planet planet = system.Planets.Find(p => p.InstanceID == planetId);
+            if (planet != null)
+                return planet;
+        }
+
+        return null;
+    }
+
     private void Update()
     {
         if (gameManager == null)
@@ -160,11 +190,6 @@ public sealed class StrategyController : MonoBehaviour
         if (currentTick != previousTick)
         {
             RefreshGalaxyView();
-
-            foreach (PlanetPanel panel in activePlanetPanels)
-            {
-                panel.Refresh();
-            }
         }
 
         UpdateHUDValues();
