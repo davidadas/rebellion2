@@ -245,6 +245,11 @@ namespace Rebellion.Systems
             };
         }
 
+        /// <summary>
+        /// Captures the current planet state for one faction when that faction loses direct ownership.
+        /// </summary>
+        /// <param name="planet">The planet being snapshotted.</param>
+        /// <param name="faction">The faction receiving the snapshot.</param>
         private void CaptureSnapshotForFaction(Planet planet, Faction faction)
         {
             if (_fogOfWarSystem == null || faction == null)

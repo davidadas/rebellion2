@@ -132,6 +132,9 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
         return this.planet?.InstanceID == planet?.InstanceID && this.currentView == view;
     }
 
+    /// <summary>
+    /// Gets the currently rendered planet instance ID.
+    /// </summary>
     public string CurrentPlanetInstanceID => planet?.InstanceID;
 
     public void Refresh()
@@ -145,6 +148,10 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
         buildingsPane.Refresh();
     }
 
+    /// <summary>
+    /// Refreshes the panel using a replacement planet view.
+    /// </summary>
+    /// <param name="updatedPlanet">The replacement planet view.</param>
     public void Refresh(Planet updatedPlanet)
     {
         if (!isInitialized)
@@ -154,6 +161,10 @@ public sealed class PlanetPanel : MonoBehaviour, IPointerDownHandler
         Refresh();
     }
 
+    /// <summary>
+    /// Rebinds all child panes to a replacement planet view.
+    /// </summary>
+    /// <param name="updatedPlanet">The replacement planet view.</param>
     private void SetPlanet(Planet updatedPlanet)
     {
         if (updatedPlanet == null)

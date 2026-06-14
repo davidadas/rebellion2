@@ -70,6 +70,10 @@ public sealed class BuildingsPane : MonoBehaviour
         UpdateTabStates();
     }
 
+    /// <summary>
+    /// Updates the planet rendered by this pane while preserving initialized UI state.
+    /// </summary>
+    /// <param name="planet">The replacement planet view.</param>
     public void SetPlanet(Planet planet)
     {
         if (planet == null)

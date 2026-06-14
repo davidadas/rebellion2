@@ -148,6 +148,10 @@ public sealed class StrategyController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Rebinds open planet panels to their latest fog-filtered planet views.
+    /// </summary>
+    /// <param name="updatedGalaxy">The latest faction-specific galaxy view.</param>
     private void RefreshActivePlanetPanels(GalaxyMap updatedGalaxy)
     {
         foreach (PlanetPanel panel in activePlanetPanels)
@@ -162,6 +166,12 @@ public sealed class StrategyController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Finds a planet in a galaxy view by instance ID.
+    /// </summary>
+    /// <param name="galaxy">The galaxy view to search.</param>
+    /// <param name="planetId">The planet instance ID to find.</param>
+    /// <returns>The matching planet, or null when no match exists.</returns>
     private static Planet FindPlanet(GalaxyMap galaxy, string planetId)
     {
         if (galaxy == null || string.IsNullOrEmpty(planetId))

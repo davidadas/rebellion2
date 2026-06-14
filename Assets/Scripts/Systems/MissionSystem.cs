@@ -187,6 +187,11 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Returns whether any mission participant is still travelling.
+        /// </summary>
+        /// <param name="mission">The mission to inspect.</param>
+        /// <returns>True if any participant has active movement.</returns>
         private static bool HasParticipantInTransit(Mission mission)
         {
             return mission.GetAllParticipants().Any(participant => participant.Movement != null);
