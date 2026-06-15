@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using UnityEditor.Build.Reporting;
 using UnityEngine;
 
 /// <summary>
@@ -42,8 +41,10 @@ public static class StandalonePlayerBuild
             options = UnityEditor.BuildOptions.None,
         };
 
-        BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(options);
-        if (report.summary.result != BuildResult.Succeeded)
+        UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
+            options
+        );
+        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             throw new InvalidOperationException(
                 $"Player build failed with result {report.summary.result}."
