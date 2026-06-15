@@ -63,6 +63,11 @@ public static class StandalonePlayerBuild
     private static UnityEditor.BuildTarget GetBuildTarget()
     {
         string value = GetRequiredArgument(_buildTargetArgument);
+        if (string.Equals(value, "Win64", StringComparison.OrdinalIgnoreCase))
+        {
+            value = nameof(UnityEditor.BuildTarget.StandaloneWindows64);
+        }
+
         if (Enum.TryParse(value, true, out UnityEditor.BuildTarget target))
         {
             return target;

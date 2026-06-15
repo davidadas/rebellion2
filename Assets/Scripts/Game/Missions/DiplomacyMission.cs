@@ -98,7 +98,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns the participant's diplomacy success probability for the current target.
         /// </summary>
-        /// <param name="agent">The participant whose diplomacy skill is evaluated.</param>
+        /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
         /// <returns>The participant's diplomacy success probability.</returns>
         protected override double GetAgentProbability(IMissionParticipant agent)
         {

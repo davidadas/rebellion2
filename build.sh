@@ -271,6 +271,16 @@ default_build_player_path() {
 do_build() {
     local build_target="${BUILD_TARGET:-$(default_build_target)}"
     local build_player_path="${BUILD_PLAYER_PATH:-$(default_build_player_path)}"
+    local resolved_player_path
+
+    case "$build_player_path" in
+        /*|[A-Za-z]:/*)
+            resolved_player_path="$build_player_path"
+            ;;
+        *)
+            resolved_player_path="$PROJECT_PATH/$build_player_path"
+            ;;
+    esac
 
     "$UNITY" \
         -batchmode \
@@ -281,12 +291,12 @@ do_build() {
         -buildPlayerPath "$build_player_path" \
         -quit
 
-    if [ ! -e "$build_player_path" ]; then
-        echo "FAIL: player build output not found at $build_player_path"
+    if [ ! -e "$resolved_player_path" ]; then
+        echo "FAIL: player build output not found at $resolved_player_path"
         exit 1
     fi
 
-    echo "Build complete: $build_player_path"
+    echo "Build complete: $resolved_player_path"
 }
 
 do_clean() {
