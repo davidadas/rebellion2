@@ -70,6 +70,19 @@ public sealed class BuildingsPane : MonoBehaviour
         UpdateTabStates();
     }
 
+    /// <summary>
+    /// Updates the planet rendered by this pane while preserving initialized UI state.
+    /// </summary>
+    /// <param name="planet">The replacement planet view.</param>
+    public void SetPlanet(Planet planet)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        this.planet = planet;
+        ApplyTheme();
+    }
+
     private void ApplyTheme()
     {
         FactionTheme theme = uiContext.GetTheme(planet.GetOwnerInstanceID());

@@ -21,8 +21,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Rescue";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Combat;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Combat;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         private RescueMission(
@@ -38,12 +38,12 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Rescue").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Combat,
+                OfficerRating.Combat,
                 null
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>

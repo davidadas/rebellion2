@@ -76,14 +76,14 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.IsMainCharacter())
+            if (participant is not Officer { IsMain: true })
                 return;
 
             if (context.Game.GetUnrecruitedOfficers(context.Faction.InstanceID).Count == 0)
                 return;
 
             if (
-                participant.GetMissionSkillValue(MissionParticipantSkill.Leadership)
+                participant.GetEffectiveRating(OfficerRating.Leadership)
                 < context.Game.Config.AI.RecruitmentMinimumLeadership
             )
             {
@@ -111,7 +111,7 @@ namespace Rebellion.AI.Planners
         )
         {
             if (
-                participant.GetMissionSkillValue(MissionParticipantSkill.Diplomacy)
+                participant.GetEffectiveRating(OfficerRating.Diplomacy)
                 < context.Game.Config.AI.DiplomacyMinimumSkill
             )
             {
@@ -267,7 +267,7 @@ namespace Rebellion.AI.Planners
                     GetAvailableResearchDisciplineCount(context.Faction, officer, planet)
                 )
                 .ThenByDescending(planet =>
-                    GetStrongestResearchSkill(context.Faction, officer, planet)
+                    GetStrongestResearchRating(context.Faction, officer, planet)
                 )
                 .Take(context.Game.Config.AI.MissionPlanning.ResearchCandidatePlanetLimit);
         }
@@ -341,7 +341,7 @@ namespace Rebellion.AI.Planners
                 if (planet.GetIdleManufacturingFacilities(discipline.ToManufacturingType()) <= 0)
                     continue;
 
-                if (officer.GetResearchSkill(discipline) <= 0)
+                if (officer.GetBaseRating(discipline) <= 0)
                     continue;
 
                 yield return discipline;
@@ -383,10 +383,10 @@ namespace Rebellion.AI.Planners
         /// <param name="officer">The officer to assign.</param>
         /// <param name="planet">The owned planet to evaluate.</param>
         /// <returns>The strongest available research skill.</returns>
-        private int GetStrongestResearchSkill(Faction faction, Officer officer, Planet planet)
+        private int GetStrongestResearchRating(Faction faction, Officer officer, Planet planet)
         {
             return GetAvailableResearchDisciplines(faction, officer, planet)
-                .Select(officer.GetResearchSkill)
+                .Select(officer.GetBaseRating)
                 .DefaultIfEmpty()
                 .Max();
         }
@@ -398,7 +398,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True if the participant has combat mission capability.</returns>
         private bool CanConsiderCombatMissions(IMissionParticipant participant)
         {
-            return participant.GetMissionSkillValue(MissionParticipantSkill.Combat) > 0;
+            return participant.GetEffectiveRating(OfficerRating.Combat) > 0;
         }
 
         /// <summary>
@@ -427,13 +427,13 @@ namespace Rebellion.AI.Planners
         /// <returns>The coarse enemy officer target priority.</returns>
         private int GetOfficerTargetCandidatePriority(Officer officer)
         {
-            return officer.GetMissionSkillValue(MissionParticipantSkill.Combat)
-                + officer.GetMissionSkillValue(MissionParticipantSkill.Espionage)
-                + officer.GetMissionSkillValue(MissionParticipantSkill.Diplomacy)
-                + officer.GetMissionSkillValue(MissionParticipantSkill.Leadership)
-                + officer.GetResearchSkill(ResearchDiscipline.ShipDesign)
-                + officer.GetResearchSkill(ResearchDiscipline.FacilityDesign)
-                + officer.GetResearchSkill(ResearchDiscipline.TroopTraining);
+            return officer.GetEffectiveRating(OfficerRating.Combat)
+                + officer.GetEffectiveRating(OfficerRating.Espionage)
+                + officer.GetEffectiveRating(OfficerRating.Diplomacy)
+                + officer.GetEffectiveRating(OfficerRating.Leadership)
+                + officer.GetBaseRating(ResearchDiscipline.ShipDesign)
+                + officer.GetBaseRating(ResearchDiscipline.FacilityDesign)
+                + officer.GetBaseRating(ResearchDiscipline.TroopTraining);
         }
     }
 }

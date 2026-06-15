@@ -37,6 +37,8 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class Officer : LeafNode, IMissionParticipant, IMovable
     {
+        private const int _ratingPercentScale = 100;
+
         // Research Info.
         public int ShipResearch { get; set; }
         public int TroopResearch { get; set; }
@@ -115,16 +117,16 @@ namespace Rebellion.Game.Units
         // Movement Info.
         public MovementState Movement { get; set; }
 
-        // Mission Skill Info.
-        public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
-            new Dictionary<MissionParticipantSkill, int>
+        // Mission rating info.
+        public Dictionary<OfficerRating, int> Ratings { get; set; } =
+            new Dictionary<OfficerRating, int>
             {
-                { MissionParticipantSkill.Diplomacy, 0 },
-                { MissionParticipantSkill.Espionage, 0 },
-                { MissionParticipantSkill.Combat, 0 },
-                { MissionParticipantSkill.Leadership, 0 },
+                { OfficerRating.Diplomacy, 0 },
+                { OfficerRating.Espionage, 0 },
+                { OfficerRating.Combat, 0 },
+                { OfficerRating.Leadership, 0 },
             };
-        public bool CanImproveMissionSkill => true;
+        public bool CanImproveMissionRating => true;
 
         /// <summary>
         /// Returns whether this officer can perform a mission type.
@@ -134,94 +136,122 @@ namespace Rebellion.Game.Units
         public bool CanPerformMission(MissionType missionType) => true;
 
         /// <summary>
-        /// Sets this officer's value for a mission skill.
-        /// </summary>
-        /// <param name="skill">The mission skill to update.</param>
-        /// <param name="value">The new skill value.</param>
-        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
-            Skills[skill] = value;
-
-        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public Officer() { }
 
         /// <summary>
-        /// Returns the officer's current value for the specified mission skill.
+        /// Returns the officer's stored value for the specified rating.
         /// </summary>
-        /// <param name="skill">The mission skill to query.</param>
-        /// <returns>The skill value.</returns>
-        public int GetSkillValue(MissionParticipantSkill skill)
+        /// <param name="rating">The rating to query.</param>
+        /// <returns>The stored rating value.</returns>
+        public int GetBaseRating(OfficerRating rating)
         {
-            return Skills[skill];
-        }
-
-        /// <summary>
-        /// Sets the officer's value for the specified mission skill.
-        /// </summary>
-        /// <param name="skill">The mission skill to update.</param>
-        /// <param name="value">The new skill value.</param>
-        /// <returns>The new skill value.</returns>
-        public int SetSkillValue(MissionParticipantSkill skill, int value)
-        {
-            return Skills[skill] = value;
-        }
-
-        /// <summary>
-        /// Returns the research skill value for the given discipline.
-        /// </summary>
-        /// <param name="discipline">The research discipline to query.</param>
-        /// <returns>The officer's research skill value for that discipline.</returns>
-        public int GetResearchSkill(ResearchDiscipline discipline)
-        {
-            return discipline switch
+            return rating switch
             {
-                ResearchDiscipline.ShipDesign => ShipResearch,
-                ResearchDiscipline.FacilityDesign => FacilityResearch,
-                ResearchDiscipline.TroopTraining => TroopResearch,
-                _ => 0,
+                OfficerRating.ShipResearch => ShipResearch,
+                OfficerRating.TroopResearch => TroopResearch,
+                OfficerRating.FacilityResearch => FacilityResearch,
+                OfficerRating.None => 0,
+                _ => Ratings.TryGetValue(rating, out int value) ? value : 0,
             };
         }
 
         /// <summary>
-        /// Returns the research skill value for the given manufacturing type.
+        /// Sets the officer's stored value for the specified rating.
         /// </summary>
-        /// <param name="manufacturingType">The manufacturing type to query.</param>
-        /// <returns>The officer's research skill value for that manufacturing type.</returns>
-        public int GetResearchSkill(ManufacturingType manufacturingType)
+        /// <param name="rating">The rating to update.</param>
+        /// <param name="value">The new rating value.</param>
+        /// <returns>The stored rating value.</returns>
+        public int SetBaseRating(OfficerRating rating, int value)
         {
-            return GetResearchSkill(manufacturingType.ToResearchDiscipline());
-        }
-
-        /// <summary>
-        /// Increments the research skill for the given discipline by the specified amount.
-        /// </summary>
-        /// <param name="discipline">The research discipline whose skill to increment.</param>
-        /// <param name="amount">Amount to add to the skill.</param>
-        public void IncrementResearchSkill(ResearchDiscipline discipline, int amount = 1)
-        {
-            switch (discipline)
+            switch (rating)
             {
-                case ResearchDiscipline.ShipDesign:
-                    ShipResearch += amount;
-                    break;
-                case ResearchDiscipline.FacilityDesign:
-                    FacilityResearch += amount;
-                    break;
-                case ResearchDiscipline.TroopTraining:
-                    TroopResearch += amount;
-                    break;
+                case OfficerRating.ShipResearch:
+                    ShipResearch = value;
+                    return value;
+                case OfficerRating.TroopResearch:
+                    TroopResearch = value;
+                    return value;
+                case OfficerRating.FacilityResearch:
+                    FacilityResearch = value;
+                    return value;
+                case OfficerRating.None:
+                    return 0;
+                default:
+                    Ratings[rating] = value;
+                    return value;
             }
         }
 
         /// <summary>
-        /// Increments the research skill for the given manufacturing type by the specified amount.
+        /// Returns the officer's current value for the specified rating.
         /// </summary>
-        /// <param name="manufacturingType">The manufacturing type whose skill to increment.</param>
-        /// <param name="amount">Amount to add to the skill.</param>
-        public void IncrementResearchSkill(ManufacturingType manufacturingType, int amount = 1)
+        /// <param name="rating">The rating to query.</param>
+        /// <returns>The rating value after officer-specific modifiers.</returns>
+        public int GetEffectiveRating(OfficerRating rating)
         {
-            IncrementResearchSkill(manufacturingType.ToResearchDiscipline(), amount);
+            int baseRating = GetBaseRating(rating);
+            return rating switch
+            {
+                OfficerRating.Diplomacy => ApplyForceRatingBonus(baseRating),
+                OfficerRating.Espionage => ApplyForceRatingBonus(baseRating),
+                OfficerRating.Combat => Math.Max(
+                    0,
+                    ApplyForceRatingBonus(baseRating) - InjuryPoints
+                ),
+                _ => baseRating,
+            };
+        }
+
+        /// <summary>
+        /// Increments the officer's stored value for the specified rating.
+        /// </summary>
+        /// <param name="rating">The rating to increment.</param>
+        /// <param name="amount">The amount to add.</param>
+        public void IncrementBaseRating(OfficerRating rating, int amount = 1)
+        {
+            SetBaseRating(rating, GetBaseRating(rating) + amount);
+        }
+
+        /// <summary>
+        /// Returns the base research value for the given discipline.
+        /// </summary>
+        /// <param name="discipline">The research discipline to query.</param>
+        /// <returns>The officer's base research value for that discipline.</returns>
+        public int GetBaseRating(ResearchDiscipline discipline)
+        {
+            return GetBaseRating(GetRatingForResearchDiscipline(discipline));
+        }
+
+        /// <summary>
+        /// Returns the base research value for the given manufacturing type.
+        /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to query.</param>
+        /// <returns>The officer's base research value for that manufacturing type.</returns>
+        public int GetBaseRating(ManufacturingType manufacturingType)
+        {
+            return GetBaseRating(manufacturingType.ToResearchDiscipline());
+        }
+
+        /// <summary>
+        /// Adds the specified amount to the base research value for the given discipline.
+        /// </summary>
+        /// <param name="discipline">The research discipline to update.</param>
+        /// <param name="amount">The amount to add.</param>
+        public void IncrementBaseRating(ResearchDiscipline discipline, int amount = 1)
+        {
+            IncrementBaseRating(GetRatingForResearchDiscipline(discipline), amount);
+        }
+
+        /// <summary>
+        /// Adds the specified amount to the base research value for the given manufacturing type.
+        /// </summary>
+        /// <param name="manufacturingType">The manufacturing type to update.</param>
+        /// <param name="amount">The amount to add.</param>
+        public void IncrementBaseRating(ManufacturingType manufacturingType, int amount = 1)
+        {
+            IncrementBaseRating(manufacturingType.ToResearchDiscipline(), amount);
         }
 
         /// <summary>
@@ -262,12 +292,29 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the officer's combat skill reduced by current injury, floored at zero.
+        /// Maps a research discipline to the officer rating that stores its base value.
         /// </summary>
-        /// <returns>The effective combat value after injury penalty.</returns>
-        public int GetEffectiveCombat()
+        /// <param name="discipline">The research discipline to map.</param>
+        /// <returns>The corresponding officer rating, or <see cref="OfficerRating.None"/>.</returns>
+        public static OfficerRating GetRatingForResearchDiscipline(ResearchDiscipline discipline)
         {
-            return Math.Max(0, Skills[MissionParticipantSkill.Combat] - InjuryPoints);
+            return discipline switch
+            {
+                ResearchDiscipline.ShipDesign => OfficerRating.ShipResearch,
+                ResearchDiscipline.FacilityDesign => OfficerRating.FacilityResearch,
+                ResearchDiscipline.TroopTraining => OfficerRating.TroopResearch,
+                _ => OfficerRating.None,
+            };
+        }
+
+        /// <summary>
+        /// Returns a rating value after applying this officer's Force bonus.
+        /// </summary>
+        /// <param name="baseRating">The stored rating value.</param>
+        /// <returns>The Force-adjusted rating value.</returns>
+        private int ApplyForceRatingBonus(int baseRating)
+        {
+            return baseRating + (baseRating * ForceRank) / _ratingPercentScale;
         }
 
         /// <summary>

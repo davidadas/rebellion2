@@ -124,14 +124,14 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Execute_Success_DoesNotAwardSkillImprovements()
         {
-            int diplomacyBefore = _student.Skills[MissionParticipantSkill.Diplomacy];
+            int diplomacyBefore = _student.Ratings[OfficerRating.Diplomacy];
             JediTrainingMission mission = CreateMission();
             mission.Initiate(new FixedRNG());
             mission.SetExecutionTick(0);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
-            Assert.AreEqual(diplomacyBefore, _student.Skills[MissionParticipantSkill.Diplomacy]);
+            Assert.AreEqual(diplomacyBefore, _student.Ratings[OfficerRating.Diplomacy]);
         }
 
         [Test]

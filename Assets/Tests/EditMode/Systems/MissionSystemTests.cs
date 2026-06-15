@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -743,6 +744,75 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_AnyParticipantInTransit_DoesNotProgressOrExecute()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer traveler = new Officer
+            {
+                InstanceID = "o2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(officer);
+            mission.MainParticipants.Add(traveler);
+            officer.SetParent(mission);
+            traveler.SetParent(mission);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreEqual(0, mission.CurrentProgress);
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, game.GetSceneNodesByType<StubMission>().Count);
+        }
+
+        [Test]
+        public void UpdateMission_AnyParticipantInTransit_NoDetectionOrCapture()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+            Officer traveler = new Officer
+            {
+                InstanceID = "o2",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 },
+            };
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            mission.MainParticipants.Add(traveler);
+            spy.SetParent(mission);
+            traveler.SetParent(mission);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsFalse(traveler.IsCaptured);
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
         public void UpdateMission_DetectionRollFails_MissionContinues()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -979,13 +1049,13 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            decoy.SetSkillValue(MissionParticipantSkill.Espionage, 200);
+            decoy.SetBaseRating(OfficerRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
-            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            mission.DecoyParticipantRating = OfficerRating.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
@@ -1009,18 +1079,18 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
 
-            // Decoy has Espionage=0 but Combat=200. DecoyParticipantSkill is set to Combat.
+            // Decoy has Espionage=0 but Combat=200. DecoyParticipantRating is set to Combat.
             // If the system incorrectly uses Espionage, the decoy fails and the spy is captured.
             Officer decoy = new Officer
             {
                 InstanceID = "decoy",
                 OwnerInstanceID = "empire",
-                Skills = new Dictionary<MissionParticipantSkill, int>
+                Ratings = new Dictionary<OfficerRating, int>
                 {
-                    { MissionParticipantSkill.Espionage, 0 },
-                    { MissionParticipantSkill.Combat, 200 },
-                    { MissionParticipantSkill.Diplomacy, 0 },
-                    { MissionParticipantSkill.Leadership, 0 },
+                    { OfficerRating.Espionage, 0 },
+                    { OfficerRating.Combat, 200 },
+                    { OfficerRating.Diplomacy, 0 },
+                    { OfficerRating.Leadership, 0 },
                 },
             };
 
@@ -1028,7 +1098,7 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
-            mission.DecoyParticipantSkill = MissionParticipantSkill.Combat;
+            mission.DecoyParticipantRating = OfficerRating.Combat;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );
@@ -1045,7 +1115,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(
                 spy.IsCaptured,
-                "Decoy should use DecoyParticipantSkill (Combat=80) not always Espionage"
+                "Decoy should use DecoyParticipantRating (Combat=80) not always Espionage"
             );
         }
 
@@ -1073,7 +1143,7 @@ namespace Rebellion.Tests.Systems
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
-            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            mission.DecoyParticipantRating = OfficerRating.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 0 }, { 200, 100 } }
             );
@@ -1105,16 +1175,16 @@ namespace Rebellion.Tests.Systems
             // FixedRNG NextInt returns min (0), so first decoy is always picked.
             // If all decoys were checked, the second would save the spy.
             Officer weakDecoy = EntityFactory.CreateOfficer("decoy_weak", "empire");
-            weakDecoy.SetSkillValue(MissionParticipantSkill.Espionage, 0);
+            weakDecoy.SetBaseRating(OfficerRating.Espionage, 0);
 
             Officer strongDecoy = EntityFactory.CreateOfficer("decoy_strong", "empire");
-            strongDecoy.SetSkillValue(MissionParticipantSkill.Espionage, 200);
+            strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.FoilProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { 0, 100 } }
             );
-            mission.DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            mission.DecoyParticipantRating = OfficerRating.Espionage;
             mission.DecoyProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
             );

@@ -233,22 +233,19 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 50);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 99);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
             _coruscant.Officers.Remove(vader);
 
             SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
-            Assert.AreEqual(
-                50,
-                snapshot.Officers[0].GetSkillValue(MissionParticipantSkill.Diplomacy)
-            );
+            Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
         }
 
         [Test]
@@ -298,6 +295,7 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = CreateFleet("FLEET1", _empire);
             _game.AttachNode(vader, _coruscant);
             _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "CS1");
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
@@ -370,10 +368,22 @@ namespace Rebellion.Tests.Systems
         {
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             bool visible = _fogSystem.IsPlanetVisible(_coruscant, _alliance);
 
             Assert.IsTrue(visible);
+        }
+
+        [Test]
+        public void IsPlanetVisible_OwnFleetWithoutShips_ReturnsFalse()
+        {
+            Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(allianceFleet, _coruscant);
+
+            bool visible = _fogSystem.IsPlanetVisible(_coruscant, _alliance);
+
+            Assert.IsFalse(visible);
         }
 
         [Test]
@@ -389,6 +399,7 @@ namespace Rebellion.Tests.Systems
         {
             Fleet empireFleet = CreateFleet("FLEET1", _empire);
             _game.AttachNode(empireFleet, _tatooine);
+            AddCapitalShip(empireFleet, _empire, "CS1");
 
             bool allianceVisible = _fogSystem.IsPlanetVisible(_tatooine, _alliance);
             bool empireVisible = _fogSystem.IsPlanetVisible(_tatooine, _empire);
@@ -550,6 +561,7 @@ namespace Rebellion.Tests.Systems
         {
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
@@ -885,7 +897,7 @@ namespace Rebellion.Tests.Systems
         public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
             Officer vader = CreateOfficer("VADER", _empire);
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 50);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
@@ -896,8 +908,9 @@ namespace Rebellion.Tests.Systems
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
-            vader.SetSkillValue(MissionParticipantSkill.Diplomacy, 99);
+            vader.SetBaseRating(OfficerRating.Diplomacy, 99);
 
             Assert.AreEqual(
                 originalTickCaptured,
@@ -906,7 +919,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.AreEqual(
                 50,
-                snapshot.Officers[0].GetSkillValue(MissionParticipantSkill.Diplomacy),
+                snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy),
                 "Snapshot should preserve old skill value"
             );
             Assert.AreEqual(1, snapshot.Officers.Count, "Snapshot should not include new entities");
@@ -1013,6 +1026,7 @@ namespace Rebellion.Tests.Systems
             // Captured friendly officers are always live data — must appear regardless.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             Officer leia = CreateOfficer("LEIA", _alliance);
             leia.IsCaptured = true;
@@ -1102,6 +1116,14 @@ namespace Rebellion.Tests.Systems
         private Fleet CreateFleet(string id, Faction faction) =>
             EntityFactory.CreateFleet(id, faction.InstanceID);
 
+        private void AddCapitalShip(Fleet fleet, Faction faction, string id)
+        {
+            _game.AttachNode(
+                new CapitalShip { InstanceID = id, OwnerInstanceID = faction.InstanceID },
+                fleet
+            );
+        }
+
         private Regiment CreateRegiment(string id, Faction faction) =>
             EntityFactory.CreateRegiment(id, faction.InstanceID);
 
@@ -1173,6 +1195,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -1199,6 +1222,7 @@ namespace Rebellion.Tests.Systems
             // Alliance should see units (live) but NOT empire missions running there.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
@@ -1224,6 +1248,7 @@ namespace Rebellion.Tests.Systems
             // Alliance live view should include the enemy officer.
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             Officer tarkin = CreateOfficer("PALPATINE", _empire);
             _game.AttachNode(tarkin, _coruscant);
@@ -1266,6 +1291,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BuildFactionView_SnapshotPlanet_BuildingQueuedAfterSnapshot_NotVisible()
+        {
+            _coruscant.EnergyCapacity = 1;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            Building queuedBuilding = CreateBuilding("BLDG_AFTER", _empire);
+            queuedBuilding.ConstructionCost = 100;
+            queuedBuilding.BaseBuildSpeed = 1;
+            queuedBuilding.BuildingType = BuildingType.Mine;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(_game);
+            bool enqueued = manufacturing.Enqueue(
+                _coruscant,
+                queuedBuilding,
+                _coruscant,
+                ignoreCost: true
+            );
+
+            Assert.IsTrue(enqueued);
+            Assert.AreEqual(1, _coruscant.Buildings.Count);
+            Assert.AreEqual(ManufacturingStatus.Building, queuedBuilding.ManufacturingStatus);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view
+                .PlanetSystems.First(s => s.InstanceID == "CORESYS")
+                .Planets.First(p => p.InstanceID == "CORUSCANT");
+
+            Assert.IsFalse(viewCoruscant.Buildings.Any(b => b.InstanceID == "BLDG_AFTER"));
+        }
+
+        [Test]
         public void BuildFactionView_LivePlanet_StaleOwnSnapshotUnits_NotVisible()
         {
             // Snapshot hoth while alliance has a fleet there.
@@ -1273,6 +1330,7 @@ namespace Rebellion.Tests.Systems
             // Live view should show only what is actually on hoth, not the stale snapshot fleet.
             Fleet staleFleet = CreateFleet("FLEET_STALE", _alliance);
             _game.AttachNode(staleFleet, _hoth);
+            AddCapitalShip(staleFleet, _alliance, "CS1");
             _fogSystem.CaptureSnapshot(_alliance, _hoth, _outerRimSystem, 10);
             _game.MoveNode(staleFleet, _coruscant);
 
@@ -1428,6 +1486,7 @@ namespace Rebellion.Tests.Systems
             // but it has not yet arrived. Alliance should NOT see it.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             _game.AttachNode(empireFleet, _hoth);
+            AddCapitalShip(empireFleet, _empire, "CS1");
             empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
@@ -1448,6 +1507,7 @@ namespace Rebellion.Tests.Systems
         {
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
             allianceFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 3 };
 
             bool visible = _fogSystem.IsPlanetVisible(_coruscant, _alliance);
@@ -1520,6 +1580,7 @@ namespace Rebellion.Tests.Systems
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "CS1");
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 

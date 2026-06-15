@@ -200,7 +200,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Sabotage",
                 DisplayName = "Sabotage",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Combat,
+                ParticipantRating = OfficerRating.Combat,
                 HasInitiated = true,
                 MaxProgress = 6,
                 CurrentProgress = 4,
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Sabotage", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
-            Assert.AreEqual(MissionParticipantSkill.Combat, deserialized.ParticipantSkill);
+            Assert.AreEqual(OfficerRating.Combat, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(6, deserialized.MaxProgress);
             Assert.AreEqual(4, deserialized.CurrentProgress);

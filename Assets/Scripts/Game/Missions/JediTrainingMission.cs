@@ -38,7 +38,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Diplomacy,
+                OfficerRating.Diplomacy,
                 null,
                 displayName: "Jedi Training"
             )
@@ -129,7 +129,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Jedi training does not award mission skill improvements.
         /// </summary>
-        protected override void ImproveMissionParticipantsSkill() { }
+        protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
         /// Applies training progress to eligible students.

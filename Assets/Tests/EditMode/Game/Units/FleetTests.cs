@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.General,
             };
-            general.SetSkillValue(MissionParticipantSkill.Leadership, 50);
+            general.SetBaseRating(OfficerRating.Leadership, 50);
             ship.AddChild(general);
 
             // (50 / 10 + 1) * 100 = 6 * 100 = 600
@@ -399,7 +399,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.Admiral,
             };
-            admiral.SetSkillValue(MissionParticipantSkill.Leadership, 50);
+            admiral.SetBaseRating(OfficerRating.Leadership, 50);
             ship.AddChild(admiral);
 
             // Admiral's Leadership does not count — only Generals contribute assault personnel.

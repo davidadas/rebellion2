@@ -59,6 +59,11 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
             Assert.AreEqual(50, config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability);
+            Assert.AreEqual(1, config.SupportShift.DiplomacyCompletionSupportBonus);
+            Assert.AreEqual(1, config.SupportShift.DiplomacyOwnedPlanetSupportBase);
+            Assert.AreEqual(19, config.SupportShift.DiplomacyOwnedPlanetSupportRange);
+            Assert.AreEqual(1, config.SupportShift.DiplomacyNeutralPlanetSupportBase);
+            Assert.AreEqual(9, config.SupportShift.DiplomacyNeutralPlanetSupportRange);
         }
 
         [Test]

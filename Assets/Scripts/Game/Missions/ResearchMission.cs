@@ -25,7 +25,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Research";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Leadership;
+            ParticipantRating = OfficerRating.None;
         }
 
         private ResearchMission(
@@ -41,7 +41,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Research").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Leadership,
+                Officer.GetRatingForResearchDiscipline(discipline),
                 null,
                 displayName: GetMissionName(discipline)
             )
@@ -151,7 +151,7 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 earnedPoints += RollReward(config, provider);
-                officer.IncrementResearchSkill(Discipline);
+                officer.IncrementBaseRating(Discipline);
             }
             return earnedPoints;
         }
@@ -164,7 +164,7 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the participant succeeded this attempt.</returns>
         private bool RollSuccess(Officer officer, IRandomNumberProvider provider)
         {
-            int chance = officer.GetResearchSkill(Discipline);
+            int chance = officer.GetBaseRating(Discipline);
             return provider.NextDouble() * 100 < chance;
         }
 

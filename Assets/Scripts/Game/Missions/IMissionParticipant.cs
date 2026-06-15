@@ -4,32 +4,48 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Missions
 {
-    public enum MissionParticipantSkill
+    public enum OfficerRating
     {
         None,
         Diplomacy,
         Espionage,
         Combat,
         Leadership,
+        ShipResearch,
+        TroopResearch,
+        FacilityResearch,
     }
 
     /// <summary>
-    /// Class used to store and manage the stats of a mission participant.
-    /// Doing so allows for the calculation of mission success probabilities as
-    /// well as to improve skills after a mission is completed.
+    /// Represents a scene node that exposes officer-style ratings to mission systems.
     /// </summary>
     public interface IMissionParticipant : ISceneNode, IMovable
     {
-        // Mission Stats.
-        public Dictionary<MissionParticipantSkill, int> Skills { get; set; }
-        public bool CanImproveMissionSkill { get; }
+        // Mission ratings.
+        public Dictionary<OfficerRating, int> Ratings { get; set; }
+        public bool CanImproveMissionRating { get; }
 
         /// <summary>
-        /// Assigns a skill value for the given skill, overwriting any prior value.
+        /// Returns the stored rating value before temporary modifiers are applied.
         /// </summary>
-        /// <param name="skill">The skill to assign.</param>
+        /// <param name="rating">The rating to read.</param>
+        /// <returns>The stored rating value.</returns>
+        public int GetBaseRating(OfficerRating rating);
+
+        /// <summary>
+        /// Returns the rating value after applicable runtime modifiers.
+        /// </summary>
+        /// <param name="rating">The rating to read.</param>
+        /// <returns>The effective rating value.</returns>
+        public int GetEffectiveRating(OfficerRating rating);
+
+        /// <summary>
+        /// Assigns a stored rating value, overwriting any prior value.
+        /// </summary>
+        /// <param name="rating">The rating to assign.</param>
         /// <param name="value">The new value.</param>
-        public void SetMissionSkillValue(MissionParticipantSkill skill, int value);
+        /// <returns>The stored value.</returns>
+        public int SetBaseRating(OfficerRating rating, int value);
 
         /// <summary>
         /// Returns whether this participant is qualified to perform the given mission type.

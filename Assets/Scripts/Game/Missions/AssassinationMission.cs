@@ -21,8 +21,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Assassination";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Combat;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Combat;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         private AssassinationMission(
@@ -38,12 +38,12 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Assassination").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Combat,
+                OfficerRating.Combat,
                 null
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>

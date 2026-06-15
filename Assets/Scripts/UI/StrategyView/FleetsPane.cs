@@ -91,6 +91,18 @@ public sealed class FleetsPane : MonoBehaviour
         Render();
     }
 
+    /// <summary>
+    /// Updates the planet rendered by this pane while preserving initialized UI state.
+    /// </summary>
+    /// <param name="planet">The replacement planet view.</param>
+    public void SetPlanet(Planet planet)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        this.planet = planet;
+    }
+
     private void SelectTab(FleetTabType tab)
     {
         activeTab = tab;

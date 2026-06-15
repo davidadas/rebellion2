@@ -2052,10 +2052,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cmd1",
                 OwnerInstanceID = "empire",
                 CurrentRank = OfficerRank.General,
-                Skills = new Dictionary<MissionParticipantSkill, int>
-                {
-                    { MissionParticipantSkill.Leadership, 80 },
-                },
+                Ratings = new Dictionary<OfficerRating, int> { { OfficerRating.Leadership, 80 } },
             };
             game.AttachNode(commander, fleet.CapitalShips[0]);
 

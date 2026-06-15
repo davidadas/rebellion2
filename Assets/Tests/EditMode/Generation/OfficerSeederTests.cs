@@ -210,26 +210,26 @@ namespace Rebellion.Tests.Generation
         public void Seed_WithZeroVariance_SkillsMatchBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Skills[MissionParticipantSkill.Diplomacy] = 10;
+            officer.Ratings[OfficerRating.Diplomacy] = 10;
             officer.DiplomacyVariance = 0;
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.AreEqual(10, officer.Skills[MissionParticipantSkill.Diplomacy]);
+            Assert.AreEqual(10, officer.Ratings[OfficerRating.Diplomacy]);
         }
 
         [Test]
         public void Seed_WithVariance_SkillsAtLeastBase()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            officer.Skills[MissionParticipantSkill.Espionage] = 5;
+            officer.Ratings[OfficerRating.Espionage] = 5;
             officer.EspionageVariance = 10;
             PlanetSystem sys = MakeSystem(("p1", "FNALL1"));
 
             Deploy(new[] { officer }, new[] { sys }, _rules, _summary, new StubRNG());
 
-            Assert.GreaterOrEqual(officer.Skills[MissionParticipantSkill.Espionage], 5);
+            Assert.GreaterOrEqual(officer.Ratings[OfficerRating.Espionage], 5);
         }
 
         [Test]

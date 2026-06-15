@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -17,7 +18,7 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Diplomacy";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Diplomacy;
+            ParticipantRating = OfficerRating.Diplomacy;
         }
 
         private DiplomacyMission(
@@ -32,7 +33,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Diplomacy,
+                OfficerRating.Diplomacy,
                 null
             ) { }
 
@@ -95,39 +96,127 @@ namespace Rebellion.Game.Missions
         protected override double GetFoilProbability(double defenseScore) => 0;
 
         /// <summary>
-        /// Increments popular support on the target planet.
-        /// Ownership transfer is handled by PlanetaryControlSystem when support crosses the threshold.
+        /// Returns the participant's diplomacy success probability for the current target.
+        /// </summary>
+        /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
+        /// <returns>The participant's diplomacy success probability.</returns>
+        protected override double GetAgentProbability(IMissionParticipant agent)
+        {
+            if (!(GetParent() is Planet planet))
+                return base.GetAgentProbability(agent);
+
+            int score =
+                GetTargetTroopState(planet)
+                - planet.GetPopularSupport(OwnerInstanceID)
+                + agent.GetEffectiveRating(OfficerRating.Diplomacy);
+            return SuccessProbabilityTable.Lookup(score);
+        }
+
+        /// <summary>
+        /// Applies diplomacy popular support movement to the target planet.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for diplomacy).</param>
-        /// <returns>Always empty; diplomacy only adjusts support.</returns>
+        /// <param name="provider">RNG provider for configured support rolls.</param>
+        /// <returns>Always empty; ownership transfers are handled by the planetary control system.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
             Planet planet = GetParent() as Planet;
             if (planet == null)
                 return new List<GameResult>();
 
+            GameConfig.SupportShiftConfig config = game.Config.SupportShift;
             int currentSupport = planet.GetPopularSupport(OwnerInstanceID);
-            int increment = 1;
-
-            if (SuccessProbabilityTable != null && MainParticipants.Count > 0)
-            {
-                Officer officer = MainParticipants[0] as Officer;
-                if (officer != null)
-                {
-                    int score =
-                        (int)officer.CurrentRank
-                        - currentSupport
-                        + officer.Skills[MissionParticipantSkill.Diplomacy];
-                    int tableValue = SuccessProbabilityTable.Lookup(score);
-                    if (tableValue > 0)
-                        increment = tableValue;
-                }
-            }
-
-            planet.SetPopularSupport(OwnerInstanceID, currentSupport + increment);
+            int supportAfterExecuteBonus =
+                currentSupport
+                + GetFactionSuccessSupportBonus(game, config.DiplomacyCompletionSupportBonus);
+            int supportShift = GetFactionSupportShift(planet, config, provider);
+            planet.SetPopularSupport(OwnerInstanceID, supportAfterExecuteBonus + supportShift);
 
             return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Returns the fixed support bonus applied after a successful diplomacy roll.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="bonus">The configured support bonus.</param>
+        /// <returns>The support bonus signed for the mission faction.</returns>
+        private int GetFactionSuccessSupportBonus(GameRoot game, int bonus)
+        {
+            foreach (Faction faction in game.GetFactions())
+            {
+                if (faction.InstanceID == OwnerInstanceID)
+                    return faction.Settings.InvertSupportShift ? -bonus : bonus;
+            }
+
+            return bonus;
+        }
+
+        /// <summary>
+        /// Returns the rolled support shift for an owned or neutral diplomacy target.
+        /// </summary>
+        /// <param name="planet">The mission target planet.</param>
+        /// <param name="config">Support shift configuration values.</param>
+        /// <param name="provider">RNG provider for configured support rolls.</param>
+        /// <returns>The support shift to apply to the mission faction.</returns>
+        private int GetFactionSupportShift(
+            Planet planet,
+            GameConfig.SupportShiftConfig config,
+            IRandomNumberProvider provider
+        )
+        {
+            string planetOwner = planet.GetOwnerInstanceID();
+            if (planetOwner == OwnerInstanceID)
+            {
+                return RollSupportShift(
+                    config.DiplomacyOwnedPlanetSupportBase,
+                    config.DiplomacyOwnedPlanetSupportRange,
+                    provider
+                );
+            }
+
+            if (string.IsNullOrEmpty(planetOwner))
+            {
+                return RollSupportShift(
+                    config.DiplomacyNeutralPlanetSupportBase,
+                    config.DiplomacyNeutralPlanetSupportRange,
+                    provider
+                );
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Rolls a support shift from the configured base value and random range.
+        /// </summary>
+        /// <param name="baseShift">The configured base support shift.</param>
+        /// <param name="range">The configured random support range.</param>
+        /// <param name="provider">RNG provider for the support roll.</param>
+        /// <returns>The rolled support shift.</returns>
+        private static int RollSupportShift(
+            int baseShift,
+            int range,
+            IRandomNumberProvider provider
+        )
+        {
+            return baseShift + (range > 0 ? provider.NextInt(0, range + 1) : 0);
+        }
+
+        /// <summary>
+        /// Returns the target troop-state value used for diplomacy scoring.
+        /// </summary>
+        /// <param name="planet">The mission target planet.</param>
+        /// <returns>The target troop-state value, or 0 when no completed regiment is present.</returns>
+        private static int GetTargetTroopState(Planet planet)
+        {
+            foreach (Regiment regiment in planet.GetAllRegiments())
+            {
+                if (regiment.ManufacturingStatus == ManufacturingStatus.Complete)
+                    return regiment.UprisingDefense;
+            }
+
+            return 0;
         }
 
         /// <summary>

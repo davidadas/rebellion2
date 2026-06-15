@@ -329,7 +329,7 @@ namespace Rebellion.Tests.Generation
             {
                 if (node is Officer officer)
                 {
-                    bool hasNonZeroSkill = officer.Skills.Values.Any(skillValue => skillValue > 0);
+                    bool hasNonZeroSkill = officer.Ratings.Values.Any(skillValue => skillValue > 0);
                     Assert.IsTrue(
                         hasNonZeroSkill,
                         $"Officer {officer.GetDisplayName()} should have at least one non-zero skill."

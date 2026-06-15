@@ -19,8 +19,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "Reconnaissance";
             DisplayName = ConfigKey;
-            ParticipantSkill = MissionParticipantSkill.Espionage;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -67,11 +67,11 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Espionage,
+                OfficerRating.Espionage,
                 null
             )
         {
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace Rebellion.Game.Missions
             return GetParent() is Planet;
         }
 
-        protected override void ImproveMissionParticipantsSkill() { }
+        protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
         /// Marks the target as visited for the mission owner.

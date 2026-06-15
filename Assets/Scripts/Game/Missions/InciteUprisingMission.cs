@@ -5,7 +5,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
-using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
 {
@@ -21,8 +20,8 @@ namespace Rebellion.Game.Missions
         {
             ConfigKey = "InciteUprising";
             DisplayName = "Incite Uprising";
-            ParticipantSkill = MissionParticipantSkill.Leadership;
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            ParticipantRating = OfficerRating.Leadership;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         private InciteUprisingMission(
@@ -37,12 +36,12 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                MissionParticipantSkill.Leadership,
+                OfficerRating.Leadership,
                 null,
                 displayName: "Incite Uprising"
             )
         {
-            DecoyParticipantSkill = MissionParticipantSkill.Espionage;
+            DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
@@ -89,7 +88,7 @@ namespace Rebellion.Game.Missions
                     "InciteUprisingMission must be attached to a Planet."
                 );
 
-            int leadershipSkill = agent.GetMissionSkillValue(MissionParticipantSkill.Leadership);
+            int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
             int enemySupport = planet.GetPopularSupport(planet.OwnerInstanceID);
 
             int regimentStrength = 0;

@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
 
             Officer guard = EntityFactory.CreateOfficer("guard", "rebels");
-            guard.SetSkillValue(MissionParticipantSkill.Combat, 100);
+            guard.SetBaseRating(OfficerRating.Combat, 100);
             game.AttachNode(guard, planet);
 
             for (int i = 0; i < 10; i++)
@@ -198,8 +198,8 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_NoGarrison_HigherEscapeChance()
         {
             (GameRoot game, Planet planet, Officer captive, MovementSystem movement) = BuildScene();
-            captive.SetSkillValue(MissionParticipantSkill.Espionage, 80);
-            captive.SetSkillValue(MissionParticipantSkill.Combat, 80);
+            captive.SetBaseRating(OfficerRating.Espionage, 80);
+            captive.SetBaseRating(OfficerRating.Combat, 80);
 
             CaptiveSystem system = new CaptiveSystem(game, new FixedRNG(0.2), movement);
 

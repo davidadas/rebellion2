@@ -130,7 +130,8 @@ namespace Rebellion.Systems
             EvictEnemyUnits(planet, newOwner.InstanceID);
             planet.EndUprising();
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
-            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
+            if (previousOwner?.InstanceID != newOwner.InstanceID)
+                CaptureSnapshotForFaction(planet, previousOwner);
 
             return CreateOwnershipChangedResult(planet, previousOwner, newOwner);
         }
@@ -154,8 +155,6 @@ namespace Rebellion.Systems
                 else
                     planet.SetPopularSupport(faction.InstanceID, 0);
             }
-
-            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
 
             return CreateOwnershipChangedResult(planet, null, newOwner);
         }
@@ -184,7 +183,7 @@ namespace Rebellion.Systems
             foreach (Faction faction in _game.GetFactions())
                 planet.SetPopularSupport(faction.InstanceID, 0);
 
-            _fogOfWarSystem?.CapturePlanetSnapshotForAllFactions(planet, _game.CurrentTick);
+            CaptureSnapshotForFaction(planet, previousOwner);
 
             return CreateOwnershipChangedResult(planet, previousOwner, null);
         }
@@ -244,6 +243,23 @@ namespace Rebellion.Systems
                 NewOwner = newOwner,
                 Tick = _game.CurrentTick,
             };
+        }
+
+        /// <summary>
+        /// Captures the current planet state for one faction when that faction loses direct ownership.
+        /// </summary>
+        /// <param name="planet">The planet being snapshotted.</param>
+        /// <param name="faction">The faction receiving the snapshot.</param>
+        private void CaptureSnapshotForFaction(Planet planet, Faction faction)
+        {
+            if (_fogOfWarSystem == null || faction == null)
+                return;
+
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            if (system == null)
+                return;
+
+            _fogOfWarSystem.CaptureSnapshot(faction, planet, system, _game.CurrentTick);
         }
 
         /// <summary>

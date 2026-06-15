@@ -410,6 +410,21 @@ namespace Rebellion.Game
 
             /// <summary>Support shift when a blockading fleet opposes the popular support side.</summary>
             public int BlockadeOpposeShift { get; set; }
+
+            /// <summary>Support shift applied after a successful diplomacy mission completes.</summary>
+            public int DiplomacyCompletionSupportBonus { get; set; }
+
+            /// <summary>Base support shift for successful diplomacy on an owned planet.</summary>
+            public int DiplomacyOwnedPlanetSupportBase { get; set; }
+
+            /// <summary>Random support shift range for successful diplomacy on an owned planet.</summary>
+            public int DiplomacyOwnedPlanetSupportRange { get; set; }
+
+            /// <summary>Base support shift for successful diplomacy on a neutral planet.</summary>
+            public int DiplomacyNeutralPlanetSupportBase { get; set; }
+
+            /// <summary>Random support shift range for successful diplomacy on a neutral planet.</summary>
+            public int DiplomacyNeutralPlanetSupportRange { get; set; }
         }
 
         /// <summary>

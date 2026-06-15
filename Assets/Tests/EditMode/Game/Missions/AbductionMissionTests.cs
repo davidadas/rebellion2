@@ -476,7 +476,7 @@ namespace Rebellion.Tests.Game.Missions
                 ConfigKey = "Abduction",
                 DisplayName = "Abduction",
                 TargetInstanceID = "PLANET1",
-                ParticipantSkill = MissionParticipantSkill.Espionage,
+                ParticipantRating = OfficerRating.Espionage,
                 TargetOfficerInstanceID = "OFFICER2",
                 HasInitiated = false,
                 MaxProgress = 5,
@@ -489,7 +489,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Abduction", deserialized.ConfigKey);
             Assert.AreEqual("OFFICER2", deserialized.TargetOfficerInstanceID);
-            Assert.AreEqual(MissionParticipantSkill.Espionage, deserialized.ParticipantSkill);
+            Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(5, deserialized.MaxProgress);
         }

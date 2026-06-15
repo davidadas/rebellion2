@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessfulMission_ImprovesMissionSkill()
+        public void Execute_SuccessfulMission_ImprovesMissionRating()
         {
             (
                 GameRoot game,
@@ -157,7 +157,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            int skillBefore = officer.GetSkillValue(MissionParticipantSkill.Leadership);
+            int ratingBefore = officer.GetBaseRating(OfficerRating.Leadership);
 
             MissionContext ctx = new MissionContext
             {
@@ -175,9 +175,9 @@ namespace Rebellion.Tests.Game.Missions
             mission.Execute(game, new FixedRNG(0.0));
 
             Assert.AreEqual(
-                skillBefore + 1,
-                officer.GetSkillValue(MissionParticipantSkill.Leadership),
-                "Officer leadership skill should improve by 1 on mission success"
+                ratingBefore + 1,
+                officer.GetBaseRating(OfficerRating.Leadership),
+                "Officer leadership rating should improve by 1 on mission success"
             );
         }
 

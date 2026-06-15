@@ -29,16 +29,16 @@ namespace Rebellion.Game.Units
         // Mission Qualification.
         public List<MissionType> AllowedMissionTypes { get; set; } = new List<MissionType>();
 
-        // Mission Skill Info.
-        public Dictionary<MissionParticipantSkill, int> Skills { get; set; } =
-            new Dictionary<MissionParticipantSkill, int>
+        // Mission rating info.
+        public Dictionary<OfficerRating, int> Ratings { get; set; } =
+            new Dictionary<OfficerRating, int>
             {
-                { MissionParticipantSkill.Diplomacy, 0 },
-                { MissionParticipantSkill.Espionage, 0 },
-                { MissionParticipantSkill.Combat, 0 },
-                { MissionParticipantSkill.Leadership, 0 },
+                { OfficerRating.Diplomacy, 0 },
+                { OfficerRating.Espionage, 0 },
+                { OfficerRating.Combat, 0 },
+                { OfficerRating.Leadership, 0 },
             };
-        public bool CanImproveMissionSkill => false;
+        public bool CanImproveMissionRating => false;
 
         /// <summary>
         /// Returns whether this unit can perform a mission type.
@@ -63,12 +63,36 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Sets this unit's value for a mission skill.
+        /// Returns this unit's stored value for the specified rating.
         /// </summary>
-        /// <param name="skill">The mission skill to update.</param>
-        /// <param name="value">The new skill value.</param>
-        public void SetMissionSkillValue(MissionParticipantSkill skill, int value) =>
-            Skills[skill] = value;
+        /// <param name="rating">The rating to read.</param>
+        /// <returns>The stored rating value.</returns>
+        public int GetBaseRating(OfficerRating rating)
+        {
+            return Ratings.TryGetValue(rating, out int value) ? value : 0;
+        }
+
+        /// <summary>
+        /// Returns this unit's current value for the specified rating.
+        /// </summary>
+        /// <param name="rating">The rating to read.</param>
+        /// <returns>The effective rating value.</returns>
+        public int GetEffectiveRating(OfficerRating rating)
+        {
+            return GetBaseRating(rating);
+        }
+
+        /// <summary>
+        /// Sets this unit's stored value for the specified rating.
+        /// </summary>
+        /// <param name="rating">The rating to update.</param>
+        /// <param name="value">The new rating value.</param>
+        /// <returns>The stored rating value.</returns>
+        public int SetBaseRating(OfficerRating rating, int value)
+        {
+            Ratings[rating] = value;
+            return value;
+        }
 
         /// <summary>
         /// Returns whether the special forces unit can be ordered to move.

@@ -34,7 +34,7 @@ namespace Rebellion.Tests.AI.Scoring
             lowSupport.SetPopularSupport(empire.InstanceID, 10);
             highSupport.SetPopularSupport(empire.InstanceID, 90);
             Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
-            officer.Skills[MissionParticipantSkill.Diplomacy] = 100;
+            officer.Ratings[OfficerRating.Diplomacy] = 100;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
@@ -62,11 +62,11 @@ namespace Rebellion.Tests.AI.Scoring
                 rebels.InstanceID
             );
             Officer actor = EntityFactory.CreateOfficer("actor", empire.InstanceID);
-            actor.Skills[MissionParticipantSkill.Combat] = 100;
+            actor.Ratings[OfficerRating.Combat] = 100;
             Officer weakTarget = EntityFactory.CreateOfficer("weak", rebels.InstanceID);
-            weakTarget.Skills[MissionParticipantSkill.Combat] = 10;
+            weakTarget.Ratings[OfficerRating.Combat] = 10;
             Officer strongTarget = EntityFactory.CreateOfficer("strong", rebels.InstanceID);
-            strongTarget.Skills[MissionParticipantSkill.Combat] = 90;
+            strongTarget.Ratings[OfficerRating.Combat] = 90;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 

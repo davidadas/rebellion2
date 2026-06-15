@@ -64,10 +64,10 @@ namespace Rebellion.Tests.AI.Planners
         {
             Officer officer = EntityFactory.CreateOfficer(instanceId, ownerInstanceId);
             officer.IsMain = isMain;
-            officer.Skills[MissionParticipantSkill.Leadership] = 100;
-            officer.Skills[MissionParticipantSkill.Diplomacy] = 0;
-            officer.Skills[MissionParticipantSkill.Combat] = 0;
-            officer.Skills[MissionParticipantSkill.Espionage] = 0;
+            officer.Ratings[OfficerRating.Leadership] = 100;
+            officer.Ratings[OfficerRating.Diplomacy] = 0;
+            officer.Ratings[OfficerRating.Combat] = 0;
+            officer.Ratings[OfficerRating.Espionage] = 0;
             return officer;
         }
 

@@ -677,8 +677,7 @@ namespace Rebellion.AI.Director
                     Officer commander = fleet
                         .GetOfficers()
                         .FirstOrDefault(officer => officer.CurrentRank == OfficerRank.General);
-                    int personnel =
-                        commander?.GetSkillValue(MissionParticipantSkill.Leadership) ?? 0;
+                    int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
                     int personnelMultiplier = personnel / divisor + 1;
 
                     return fleet

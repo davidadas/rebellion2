@@ -48,29 +48,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Captures a planet snapshot for every faction.
-        /// </summary>
-        /// <param name="planet">The planet being observed.</param>
-        /// <param name="currentTick">The tick when the snapshot is captured.</param>
-        public void CapturePlanetSnapshotForAllFactions(Planet planet, int currentTick)
-        {
-            if (planet == null)
-                return;
-
-            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
-            if (system == null)
-                return;
-
-            foreach (Faction faction in _game.Factions)
-                CaptureSnapshot(faction, planet, system, currentTick);
-        }
-
-        /// <summary>
         /// Determines if a faction currently has real-time visibility of a planet.
         /// </summary>
         /// <param name="planet">The planet to check visibility for.</param>
         /// <param name="faction">The faction whose visibility to evaluate.</param>
-        /// <returns>True if the faction owns the planet or has an arrived fleet present.</returns>
+        /// <returns>True if the faction owns the planet or has an arrived fleet with ships present.</returns>
         public bool IsPlanetVisible(Planet planet, Faction faction)
         {
             if (planet.OwnerInstanceID == faction.InstanceID)
@@ -78,7 +60,9 @@ namespace Rebellion.Systems
 
             if (
                 planet.Fleets.Any(f =>
-                    f.OwnerInstanceID == faction.InstanceID && f.Movement == null
+                    f.OwnerInstanceID == faction.InstanceID
+                    && f.Movement == null
+                    && f.CapitalShips.Count > 0
                 )
             )
                 return true;
@@ -162,7 +146,7 @@ namespace Rebellion.Systems
         private static Officer CopyOfficerForSnapshot(Officer officer)
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
-            copy.Skills = new Dictionary<MissionParticipantSkill, int>(officer.Skills);
+            copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
             return copy;
         }
 

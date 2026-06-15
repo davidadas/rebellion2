@@ -144,6 +144,9 @@ namespace Rebellion.Systems
                 return results;
             }
 
+            if (HasParticipantInTransit(mission))
+                return results;
+
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool participantStateChanged = ResolveDetection(mission, results);
 
@@ -182,6 +185,16 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Returns whether any mission participant is still travelling.
+        /// </summary>
+        /// <param name="mission">The mission to inspect.</param>
+        /// <returns>True if any participant has active movement.</returns>
+        private static bool HasParticipantInTransit(Mission mission)
+        {
+            return mission.GetAllParticipants().Any(participant => participant.Movement != null);
         }
 
         /// <summary>
@@ -340,7 +353,7 @@ namespace Rebellion.Systems
         private static int GetFoilDefenderCombatSkill(Mission mission)
         {
             Officer defender = mission.FindDefender();
-            return defender != null ? defender.GetSkillValue(MissionParticipantSkill.Combat) : 0;
+            return defender != null ? defender.GetEffectiveRating(OfficerRating.Combat) : 0;
         }
 
         /// <summary>
@@ -418,7 +431,7 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            int delta = defenderCombat - officer.GetEffectiveCombat();
+            int delta = defenderCombat - officer.GetEffectiveRating(OfficerRating.Combat);
             double captureProbability =
                 mission.KillOrCaptureProbabilityTable != null
                     ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
