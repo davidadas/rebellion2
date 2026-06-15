@@ -17,7 +17,7 @@ public static class StandalonePlayerBuild
     /// </summary>
     public static void Build()
     {
-        BuildTarget target = GetBuildTarget();
+        UnityEditor.BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(GetRequiredArgument(_buildPlayerPathArgument));
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
@@ -25,8 +25,8 @@ public static class StandalonePlayerBuild
             Directory.CreateDirectory(outputDirectory);
         }
 
-        string[] scenes = EditorBuildSettings
-            .scenes.Where(scene => scene.enabled)
+        string[] scenes = UnityEditor
+            .EditorBuildSettings.scenes.Where(scene => scene.enabled)
             .Select(scene => scene.path)
             .ToArray();
         if (scenes.Length == 0)
@@ -34,15 +34,15 @@ public static class StandalonePlayerBuild
             throw new InvalidOperationException("No enabled scenes configured for player build.");
         }
 
-        BuildPlayerOptions options = new BuildPlayerOptions
+        UnityEditor.BuildPlayerOptions options = new UnityEditor.BuildPlayerOptions
         {
             scenes = scenes,
             locationPathName = outputPath,
             target = target,
-            options = BuildOptions.None,
+            options = UnityEditor.BuildOptions.None,
         };
 
-        BuildReport report = BuildPipeline.BuildPlayer(options);
+        BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(options);
         if (report.summary.result != BuildResult.Succeeded)
         {
             throw new InvalidOperationException(
@@ -60,10 +60,10 @@ public static class StandalonePlayerBuild
     /// Reads the requested Unity build target from the command line.
     /// </summary>
     /// <returns>The parsed build target.</returns>
-    private static BuildTarget GetBuildTarget()
+    private static UnityEditor.BuildTarget GetBuildTarget()
     {
         string value = GetRequiredArgument(_buildTargetArgument);
-        if (Enum.TryParse(value, true, out BuildTarget target))
+        if (Enum.TryParse(value, true, out UnityEditor.BuildTarget target))
         {
             return target;
         }
