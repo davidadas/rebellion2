@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using UnityEngine;
 
 /// <summary>
 /// Builds standalone player artifacts from Unity batch-mode invocations.
@@ -107,7 +106,7 @@ public static class StandalonePlayerBuild
             return path;
         }
 
-        DirectoryInfo assetsDirectory = Directory.GetParent(Application.dataPath);
+        DirectoryInfo assetsDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
         if (assetsDirectory == null)
         {
             throw new InvalidOperationException("Could not resolve project directory.");
