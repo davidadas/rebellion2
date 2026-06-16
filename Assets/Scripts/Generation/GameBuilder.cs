@@ -150,11 +150,6 @@ namespace Rebellion.Generation
         {
             foreach (Faction faction in ctx.Factions)
             {
-                if (!string.IsNullOrEmpty(faction.PlayerID))
-                {
-                    continue;
-                }
-
                 faction.PlayerID =
                     faction.InstanceID == ctx.Summary.PlayerFactionID ? _defaultPlayerId : null;
             }

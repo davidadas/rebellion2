@@ -4,7 +4,6 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID />
-    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes>
       <MissionType>Assassination</MissionType>
     </DisallowedMissionTypes>
@@ -21,7 +20,6 @@
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID />
-    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes />
     <Settings>
       <RefinementMultiplier>1</RefinementMultiplier>
