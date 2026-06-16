@@ -625,11 +625,13 @@ namespace Rebellion.Generation
         /// <returns>The starting maintenance capacity.</returns>
         private int CalculateMaintenanceCapacity(PlanetSystem[] systems, Faction faction)
         {
-            int refinementMultiplier = faction.Settings.RefinementMultiplier;
+            int resourceProcessingPointsPerFacility = faction
+                .Settings
+                .ResourceProcessingPointsPerFacility;
             return systems
                     .SelectMany(s => s.Planets)
                     .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
-                    .Sum(GetPlanetMaintenanceCapacity) * refinementMultiplier;
+                    .Sum(GetPlanetMaintenanceCapacity) * resourceProcessingPointsPerFacility;
         }
 
         /// <summary>

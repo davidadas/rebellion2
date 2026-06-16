@@ -478,6 +478,7 @@ namespace Rebellion.Tests.Generation
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             empire.Settings.RefinementMultiplier = 1;
+            empire.Settings.ResourceProcessingPointsPerFacility = 1;
             Faction[] factions = { empire };
             Regiment[] regimentTemplates =
             {
@@ -567,6 +568,7 @@ namespace Rebellion.Tests.Generation
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             empire.Settings.RefinementMultiplier = 1;
+            empire.Settings.ResourceProcessingPointsPerFacility = 1;
             Faction[] factions = { empire };
             Regiment[] regimentTemplates =
             {
@@ -656,6 +658,7 @@ namespace Rebellion.Tests.Generation
 
             Faction empire = new Faction { InstanceID = "FNEMP1" };
             empire.Settings.RefinementMultiplier = 1;
+            empire.Settings.ResourceProcessingPointsPerFacility = 1;
             Faction[] factions = { empire };
             SpecialForces[] specialForcesTemplates =
             {

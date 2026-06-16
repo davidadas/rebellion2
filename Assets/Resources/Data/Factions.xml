@@ -4,11 +4,12 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID />
+    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes>
       <MissionType>Assassination</MissionType>
     </DisallowedMissionTypes>
     <Settings>
-      <RefinementMultiplier>50</RefinementMultiplier>
+      <RefinementMultiplier>1</RefinementMultiplier>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>
       <UprisingResistance>1</UprisingResistance>
@@ -20,9 +21,10 @@
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID />
+    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes />
     <Settings>
-      <RefinementMultiplier>50</RefinementMultiplier>
+      <RefinementMultiplier>1</RefinementMultiplier>
       <GarrisonEfficiency>2</GarrisonEfficiency>
       <TroopEffectiveness>2</TroopEffectiveness>
       <UprisingResistance>2</UprisingResistance>
