@@ -414,7 +414,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void AddMessage_EachMessageType_AddsToCorrectList()
+        public void AddMessage_WithAnyMessageType_AddsToMatchingBucket()
         {
             foreach (
                 MessageType messageType in Enum.GetValues(typeof(MessageType)).Cast<MessageType>()

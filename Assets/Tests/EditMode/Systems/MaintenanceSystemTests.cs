@@ -368,7 +368,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetMaintenanceCapacity_WithLowRefinementMultiplier_UsesResourceProcessingPoints()
+        public void GetMaintenanceCapacity_WithRefinementMultiplierOne_UsesResourceProcessingPoints()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
