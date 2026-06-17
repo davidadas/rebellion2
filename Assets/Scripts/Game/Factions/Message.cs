@@ -18,7 +18,9 @@ namespace Rebellion.Game.Factions
     public class Message : BaseGameEntity
     {
         public MessageType Type;
+        public string Title;
         public string Text;
+        public string Body;
         public bool Read;
 
         /// <summary>
@@ -35,6 +37,15 @@ namespace Rebellion.Game.Factions
         {
             Type = type;
             Text = text;
+            Body = text;
+        }
+
+        public Message(MessageType type, string title, string body)
+        {
+            Type = type;
+            Title = title;
+            Text = body;
+            Body = body;
         }
 
         /// <summary>
