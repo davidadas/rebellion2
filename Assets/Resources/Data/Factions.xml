@@ -8,7 +8,8 @@
       <MissionType>Assassination</MissionType>
     </DisallowedMissionTypes>
     <Settings>
-      <RefinementMultiplier>50</RefinementMultiplier>
+      <RefinementMultiplier>1</RefinementMultiplier>
+      <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
       <GarrisonEfficiency>1</GarrisonEfficiency>
       <TroopEffectiveness>1</TroopEffectiveness>
       <UprisingResistance>1</UprisingResistance>
@@ -22,7 +23,8 @@
     <HQInstanceID />
     <DisallowedMissionTypes />
     <Settings>
-      <RefinementMultiplier>50</RefinementMultiplier>
+      <RefinementMultiplier>1</RefinementMultiplier>
+      <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
       <GarrisonEfficiency>2</GarrisonEfficiency>
       <TroopEffectiveness>2</TroopEffectiveness>
       <UprisingResistance>2</UprisingResistance>

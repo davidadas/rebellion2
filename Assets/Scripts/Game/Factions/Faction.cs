@@ -79,7 +79,8 @@ namespace Rebellion.Game.Factions
         public int RefinedMaterialSupply =>
             GetTotalAvailableMaterialsRaw() * Settings.RefinementMultiplier;
 
-        public int MaintenanceCapacity => RefinedMaterialSupply;
+        public int MaintenanceCapacity =>
+            GetTotalAvailableMaterialsRaw() * Settings.ResourceProcessingPointsPerFacility;
 
         public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
 
@@ -121,10 +122,15 @@ namespace Rebellion.Game.Factions
             List<Message>
         >()
         {
-            { MessageType.Conflict, new List<Message>() },
-            { MessageType.Mission, new List<Message>() },
             { MessageType.PopularSupport, new List<Message>() },
+            { MessageType.Fleet, new List<Message>() },
+            { MessageType.Mission, new List<Message>() },
             { MessageType.Resource, new List<Message>() },
+            { MessageType.Manufacturing, new List<Message>() },
+            { MessageType.Defense, new List<Message>() },
+            { MessageType.Conflict, new List<Message>() },
+            { MessageType.Chat, new List<Message>() },
+            { MessageType.Advice, new List<Message>() },
         };
 
         /// <summary>

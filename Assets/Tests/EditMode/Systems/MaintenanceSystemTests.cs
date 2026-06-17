@@ -368,6 +368,25 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void GetMaintenanceCapacity_WithRefinementMultiplierOne_UsesResourceProcessingPoints()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.RefinementMultiplier = 1;
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            Assert.AreEqual(1, empire.RefinedMaterialSupply);
+            Assert.AreEqual(50, empire.MaintenanceCapacity);
+        }
+
+        [Test]
         public void ProcessTick_ExcessBuildingsOverCapacity_ScrapsBuildings()
         {
             GameRoot game = CreateGame();

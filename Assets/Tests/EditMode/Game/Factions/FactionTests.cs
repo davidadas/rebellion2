@@ -414,17 +414,22 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
-        public void AddMessage_ValidMessage_AddsToCorrectList()
+        public void AddMessage_WithAnyMessageType_AddsToMatchingBucket()
         {
-            Message message = new Message(MessageType.Conflict, "Battle occurred");
+            foreach (
+                MessageType messageType in Enum.GetValues(typeof(MessageType)).Cast<MessageType>()
+            )
+            {
+                Message message = new Message(messageType, "Message text");
 
-            _faction.AddMessage(message);
+                _faction.AddMessage(message);
 
-            Assert.Contains(
-                message,
-                _faction.Messages[MessageType.Conflict],
-                "Should add message to correct type list"
-            );
+                Assert.Contains(
+                    message,
+                    _faction.Messages[messageType],
+                    "Should add message to correct type list"
+                );
+            }
         }
 
         [Test]

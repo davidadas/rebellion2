@@ -142,8 +142,8 @@ namespace Rebellion.Tests.Game
             _game.AttachNode(CreateBuilding("MINE3", BuildingType.Mine, 0), _planet);
             _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
 
-            Assert.AreEqual(150, _faction1.RawMaterialSupply);
-            Assert.AreEqual(50, _faction1.RefinedMaterialSupply);
+            Assert.AreEqual(3, _faction1.RawMaterialSupply);
+            Assert.AreEqual(1, _faction1.RefinedMaterialSupply);
             Assert.AreEqual(50, _faction1.MaintenanceCapacity);
         }
 

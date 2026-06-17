@@ -4,10 +4,15 @@ namespace Rebellion.Game.Factions
 {
     public enum MessageType
     {
-        Conflict,
-        Mission,
         PopularSupport,
+        Fleet,
+        Mission,
         Resource,
+        Manufacturing,
+        Defense,
+        Conflict,
+        Chat,
+        Advice,
     }
 
     public class Message : BaseGameEntity

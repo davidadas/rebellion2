@@ -561,6 +561,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_OverflowProgress_CarriesToNextItem()
         {
+            AddResourceSupply(1);
             _shipyard.ProcessRate = 1;
 
             Building _shipyard2 = new Building
@@ -2656,6 +2657,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
+            empire.Settings.RefinementMultiplier = 4;
             _game.Factions.Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
 

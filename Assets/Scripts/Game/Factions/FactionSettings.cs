@@ -11,7 +11,8 @@ namespace Rebellion.Game.Factions
     [PersistableObject]
     public class FactionSettings
     {
-        private int _refinementMultiplier = 50;
+        private int _refinementMultiplier = 1;
+        private int _resourceProcessingPointsPerFacility = 50;
         private int _garrisonEfficiency = 1;
         private int _troopEffectiveness = 1;
         private int _uprisingResistance = 1;
@@ -24,6 +25,12 @@ namespace Rebellion.Game.Factions
         {
             get => _refinementMultiplier;
             set => _refinementMultiplier = Math.Max(1, value);
+        }
+
+        public int ResourceProcessingPointsPerFacility
+        {
+            get => _resourceProcessingPointsPerFacility;
+            set => _resourceProcessingPointsPerFacility = Math.Max(1, value);
         }
 
         /// <summary>
