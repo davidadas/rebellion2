@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_FLEET_ARRIVED",
+                    MessageResultType.FleetArrived,
                     MessageType.Fleet,
                     "arrived:{fleet}:{system}",
                     "body:{fleet}:{system}",
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_SHIPS_ARRIVED",
+                    MessageResultType.ShipsArrived,
                     MessageType.Fleet,
                     "ships:{system}",
                     "body:{ships}",
@@ -66,37 +66,16 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateEmperorSeatOfPower_NoInputs_UsesStaticDefinition()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    "MESSAGE_EMPEROR_SEAT_OF_POWER",
-                    MessageType.PopularSupport,
-                    "seat",
-                    "body",
-                    DefaultImage("seat-image")
-                )
-            );
-
-            Message message = factory.CreateEmperorSeatOfPower(Empire());
-
-            Assert.AreEqual(MessageType.PopularSupport, message.Type);
-            Assert.AreEqual("seat", message.Title);
-            Assert.AreEqual("body", message.Body);
-            Assert.AreEqual("seat-image", message.DisplayImagePath);
-        }
-
-        [Test]
         public void CreateFacilityDeployed_Mine_UsesMatchingBuildingDefinition()
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_MINE_DEPLOYED",
+                    MessageResultType.FacilityDeployed,
                     MessageType.Resource,
                     "mine:{item}:{system}",
                     "body:{item}:{system}",
                     DefaultImage("mine-image"),
-                    BuildingType.Mine
+                    buildingType: BuildingType.Mine
                 )
             );
             Building mine = new Building { DisplayName = "Mine", BuildingType = BuildingType.Mine };
@@ -115,12 +94,12 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_MINE_DEPLOYED",
+                    MessageResultType.FacilityDeployed,
                     MessageType.Resource,
                     "mine:{item}:{system}",
                     "body:{item}:{system}",
                     DefaultImage("mine-image"),
-                    BuildingType.Mine
+                    buildingType: BuildingType.Mine
                 )
             );
             Building shipyard = new Building
@@ -143,11 +122,12 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_CONSTRUCTION_YARD_IDLE",
+                    MessageResultType.ManufacturingIdle,
                     MessageType.Manufacturing,
                     "construction:{system}",
                     "body:{system}",
-                    DefaultImage("construction-image")
+                    DefaultImage("construction-image"),
+                    manufacturingType: ManufacturingType.Building
                 )
             );
 
@@ -168,18 +148,20 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_MISSION_REPORT_SUCCESS",
+                    MessageResultType.MissionReport,
                     MessageType.Mission,
                     "success:{mission}:{system}",
                     "body:{mission}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Success
                 ),
                 Definition(
-                    "MESSAGE_MISSION_REPORT_FAILED",
+                    MessageResultType.MissionReport,
                     MessageType.Mission,
                     "failed:{mission}:{system}",
                     "body:{mission}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Failed
                 )
             );
             MissionCompletedResult result = new MissionCompletedResult
@@ -201,28 +183,22 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMissionReport_Failure_UsesFailedDefinition()
+        public void CreateMissionReport_Foiled_UsesFailedDefinitionForActor()
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_MISSION_REPORT_SUCCESS",
-                    MessageType.Mission,
-                    "success:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages()
-                ),
-                Definition(
-                    "MESSAGE_MISSION_REPORT_FAILED",
+                    MessageResultType.MissionReport,
                     MessageType.Mission,
                     "failed:{mission}:{system}",
                     "body:{mission}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Failed
                 )
             );
             MissionCompletedResult result = new MissionCompletedResult
             {
                 MissionName = "Sabotage",
-                Outcome = MissionOutcome.Failed,
+                Outcome = MissionOutcome.Foiled,
             };
 
             Message message = factory.CreateMissionReport(Alliance(), result, null);
@@ -238,11 +214,12 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_ENEMY_MISSION_FOILED",
+                    MessageResultType.EnemyMissionFoiled,
                     MessageType.Mission,
                     "foiled:{mission}:{system}",
                     "body:{mission}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Foiled
                 )
             );
             MissionCompletedResult result = new MissionCompletedResult
@@ -265,11 +242,12 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_ENEMY_MISSION_FOILED",
+                    MessageResultType.EnemyMissionFoiled,
                     MessageType.Mission,
                     "foiled:{mission}:{system}",
                     "body:{mission}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Foiled
                 )
             );
             MissionCompletedResult result = new MissionCompletedResult
@@ -288,7 +266,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_SABOTAGE_STRIKE",
+                    MessageResultType.SabotageStrike,
                     MessageType.Mission,
                     "sabotage:{item}:{system}",
                     "body:{item}:{system}",
@@ -317,10 +295,11 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_RESEARCH_COMPLETE_SHIP",
+                    MessageResultType.ResearchComplete,
                     MessageType.Manufacturing,
                     "ship:{item}",
-                    "body:{item}"
+                    "body:{item}",
+                    researchDiscipline: ResearchDiscipline.ShipDesign
                 )
             );
             ResearchOrderedResult result = new ResearchOrderedResult
@@ -338,40 +317,16 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateResearchComplete_TroopTraining_UsesTroopDefinition()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    "MESSAGE_RESEARCH_COMPLETE_TROOP",
-                    MessageType.Manufacturing,
-                    "troop:{item}",
-                    "body:{item}"
-                )
-            );
-            ResearchOrderedResult result = new ResearchOrderedResult
-            {
-                Discipline = ResearchDiscipline.TroopTraining,
-                Technology = new Technology(new Regiment { DisplayName = "SpecForce Regiment" }),
-            };
-
-            Message message = factory.CreateResearchComplete(Alliance(), result);
-
-            Assert.AreEqual(MessageType.Manufacturing, message.Type);
-            Assert.AreEqual("troop:SpecForce Regiment", message.Title);
-            Assert.AreEqual("body:SpecForce Regiment", message.Body);
-            Assert.IsNull(message.DisplayImagePath);
-        }
-
-        [Test]
         public void CreateResearchExhausted_TroopTraining_UsesTroopDefinition()
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_RESEARCH_EXHAUSTED_TROOP",
+                    MessageResultType.ResearchExhausted,
                     MessageType.Manufacturing,
                     "troop-exhausted",
                     "body",
-                    DefaultImage("research-image")
+                    DefaultImage("research-image"),
+                    researchDiscipline: ResearchDiscipline.TroopTraining
                 )
             );
             ResearchExhaustedResult result = new ResearchExhaustedResult
@@ -388,36 +343,11 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateUprisingStarted_Controller_InterpolatesControllerAndSystem()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    "MESSAGE_UPRISING_STARTED",
-                    MessageType.PopularSupport,
-                    "started:{faction}:{system}",
-                    "body:{faction}:{system}",
-                    DefaultImage("uprising-image")
-                )
-            );
-            PlanetUprisingStartedResult result = new PlanetUprisingStartedResult
-            {
-                Planet = new Planet { DisplayName = "Yavin" },
-            };
-
-            Message message = factory.CreateUprisingStarted(Alliance(), result, Empire());
-
-            Assert.AreEqual(MessageType.PopularSupport, message.Type);
-            Assert.AreEqual("started:Empire:Yavin", message.Title);
-            Assert.AreEqual("body:Empire:Yavin", message.Body);
-            Assert.AreEqual("uprising-image", message.DisplayImagePath);
-        }
-
-        [Test]
         public void CreateUprisingEnded_ControllerDiffersFromRecipient_UsesControllerImage()
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_UPRISING_ENDED",
+                    MessageResultType.UprisingEnded,
                     MessageType.PopularSupport,
                     "ended:{faction}:{system}",
                     "body:{faction}:{system}",
@@ -442,7 +372,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_BLOCKADE_INITIATED",
+                    MessageResultType.BlockadeInitiated,
                     MessageType.Fleet,
                     "initiated:{faction}:{target}:{fleet}:{system}",
                     "body:{faction}:{target}:{fleet}:{system}",
@@ -465,38 +395,11 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateBlockadeDetected_BlockadingFaction_UsesRecipientImage()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    "MESSAGE_BLOCKADE_DETECTED",
-                    MessageType.Fleet,
-                    "detected:{faction}:{fleet}:{system}",
-                    "body:{faction}:{fleet}:{system}",
-                    FactionImages()
-                )
-            );
-            BlockadeChangedResult result = new BlockadeChangedResult
-            {
-                Planet = new Planet { DisplayName = "Coruscant" },
-                BlockadingFleet = new Fleet { DisplayName = "Fleet 1" },
-                Blockaded = true,
-            };
-
-            Message message = factory.CreateBlockadeDetected(Empire(), result, Alliance());
-
-            Assert.AreEqual(MessageType.Fleet, message.Type);
-            Assert.AreEqual("detected:Alliance:Fleet 1:Coruscant", message.Title);
-            Assert.AreEqual("body:Alliance:Fleet 1:Coruscant", message.Body);
-            Assert.AreEqual("empire-image", message.DisplayImagePath);
-        }
-
-        [Test]
         public void CreateEvacuationLosses_MultipleUnitTypes_JoinsUnitNames()
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_EVACUATION_LOSSES",
+                    MessageResultType.EvacuationLosses,
                     MessageType.Fleet,
                     "losses:{system}",
                     "body:{units}",
@@ -527,7 +430,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             MessageFactory factory = CreateFactory(
                 Definition(
-                    "MESSAGE_MAINTENANCE_AUTOSCRAP",
+                    MessageResultType.MaintenanceAutoscrap,
                     MessageType.Resource,
                     "maintenance:{item}:{system}",
                     "body:{item}:{system}",
@@ -615,36 +518,6 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateBombardment_OwnedSystemWithAttackerLosses_UsesOwnedAttackerLossesDefinition()
-        {
-            MessageFactory factory = CreateFactory(BombardmentDefinitions());
-            BombardmentResult result = new BombardmentResult
-            {
-                AttackingFaction = Alliance(),
-                Planet = new Planet
-                {
-                    DisplayName = "Coruscant",
-                    OwnerInstanceID = Empire().InstanceID,
-                },
-                DestroyedRegiments =
-                {
-                    new Regiment
-                    {
-                        DisplayName = "Alliance Regiment",
-                        OwnerInstanceID = Alliance().InstanceID,
-                    },
-                },
-            };
-
-            Message message = factory.CreateBombardment(Alliance(), result, Empire());
-
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("owned-attacker:Alliance:Empire:Coruscant", message.Title);
-            Assert.AreEqual("body:Alliance:Empire:Coruscant", message.Body);
-            Assert.AreEqual("attacker-losses-image", message.DisplayImagePath);
-        }
-
-        [Test]
         public void CreateBombardment_NeutralSystemWithoutLosses_UsesNeutralNoLossesDefinition()
         {
             MessageFactory factory = CreateFactory(BombardmentDefinitions());
@@ -663,7 +536,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreatePlanetaryAssault_OwnedSystemDefended_UsesDefendedDefinitionAndAttackerImage()
+        public void CreatePlanetaryAssault_OwnedSystemDefended_UsesOwnedFailedDefinitionAndAttackerImage()
         {
             MessageFactory factory = CreateFactory(AssaultDefinitions());
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
@@ -680,7 +553,7 @@ namespace Rebellion.Tests.Game.Messages
             Message message = factory.CreatePlanetaryAssault(Empire(), result, Empire());
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("owned-defended:Alliance:Empire:Coruscant", message.Title);
+            Assert.AreEqual("owned-failed:Alliance:Empire:Coruscant", message.Title);
             Assert.AreEqual("body:Alliance:Empire:Coruscant", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
@@ -710,23 +583,35 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         private static MessageDefinition Definition(
-            string instanceID,
+            MessageResultType resultType,
             MessageType messageType,
             string titleTemplate,
             string bodyTemplate,
             MessageImageMap imageMap = null,
-            BuildingType buildingType = BuildingType.None
+            MessageResultOutcome outcome = MessageResultOutcome.None,
+            MessagePlanetOwnership planetOwnership = MessagePlanetOwnership.None,
+            BuildingType buildingType = BuildingType.None,
+            ManufacturingType manufacturingType = ManufacturingType.None,
+            ResearchDiscipline? researchDiscipline = null
         )
         {
-            return new MessageDefinition
+            MessageDefinition definition = new MessageDefinition
             {
-                InstanceID = instanceID,
+                ResultType = resultType,
                 MessageType = messageType,
+                Outcome = outcome,
+                PlanetOwnership = planetOwnership,
                 BuildingType = buildingType,
+                ManufacturingType = manufacturingType,
                 TitleTemplate = titleTemplate,
                 BodyTemplate = bodyTemplate,
                 ImageMap = imageMap,
             };
+
+            if (researchDiscipline.HasValue)
+                definition.ResearchDiscipline = researchDiscipline.Value;
+
+            return definition;
         }
 
         private static MessageDefinition[] SpaceBattleDefinitions()
@@ -734,25 +619,28 @@ namespace Rebellion.Tests.Game.Messages
             return new[]
             {
                 Definition(
-                    "MESSAGE_SPACE_BATTLE_VICTORY",
+                    MessageResultType.SpaceBattle,
                     MessageType.Conflict,
                     "victory:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Victory
                 ),
                 Definition(
-                    "MESSAGE_SPACE_BATTLE_DEFEAT",
+                    MessageResultType.SpaceBattle,
                     MessageType.Conflict,
                     "defeat:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Defeat
                 ),
                 Definition(
-                    "MESSAGE_SPACE_BATTLE_STALEMATE",
+                    MessageResultType.SpaceBattle,
                     MessageType.Conflict,
                     "draw:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Stalemate
                 ),
             };
         }
@@ -762,46 +650,58 @@ namespace Rebellion.Tests.Game.Messages
             return new[]
             {
                 Definition(
-                    "MESSAGE_BOMBARDMENT_OWNED_NO_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "owned-none:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("no-losses-image")
+                    DefaultImage("no-losses-image"),
+                    outcome: MessageResultOutcome.NoLosses,
+                    planetOwnership: MessagePlanetOwnership.Owned
                 ),
                 Definition(
-                    "MESSAGE_BOMBARDMENT_OWNED_TARGET_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "owned-target:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("target-losses-image")
+                    DefaultImage("target-losses-image"),
+                    outcome: MessageResultOutcome.TargetLosses,
+                    planetOwnership: MessagePlanetOwnership.Owned
                 ),
                 Definition(
-                    "MESSAGE_BOMBARDMENT_OWNED_ATTACKER_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "owned-attacker:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("attacker-losses-image")
+                    DefaultImage("attacker-losses-image"),
+                    outcome: MessageResultOutcome.AttackerLosses,
+                    planetOwnership: MessagePlanetOwnership.Owned
                 ),
                 Definition(
-                    "MESSAGE_BOMBARDMENT_NEUTRAL_NO_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "neutral-none:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("no-losses-image")
+                    DefaultImage("no-losses-image"),
+                    outcome: MessageResultOutcome.NoLosses,
+                    planetOwnership: MessagePlanetOwnership.Neutral
                 ),
                 Definition(
-                    "MESSAGE_BOMBARDMENT_NEUTRAL_TARGET_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "neutral-target:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("target-losses-image")
+                    DefaultImage("target-losses-image"),
+                    outcome: MessageResultOutcome.TargetLosses,
+                    planetOwnership: MessagePlanetOwnership.Neutral
                 ),
                 Definition(
-                    "MESSAGE_BOMBARDMENT_NEUTRAL_ATTACKER_LOSSES",
+                    MessageResultType.Bombardment,
                     MessageType.Conflict,
                     "neutral-attacker:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    DefaultImage("attacker-losses-image")
+                    DefaultImage("attacker-losses-image"),
+                    outcome: MessageResultOutcome.AttackerLosses,
+                    planetOwnership: MessagePlanetOwnership.Neutral
                 ),
             };
         }
@@ -811,32 +711,40 @@ namespace Rebellion.Tests.Game.Messages
             return new[]
             {
                 Definition(
-                    "MESSAGE_ASSAULT_CAPTURED_OWNED_SYSTEM",
+                    MessageResultType.PlanetaryAssault,
                     MessageType.Conflict,
-                    "owned-captured:{faction}:{target}:{system}",
+                    "owned-success:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Success,
+                    planetOwnership: MessagePlanetOwnership.Owned
                 ),
                 Definition(
-                    "MESSAGE_ASSAULT_DEFENDED_OWNED_SYSTEM",
+                    MessageResultType.PlanetaryAssault,
                     MessageType.Conflict,
-                    "owned-defended:{faction}:{target}:{system}",
+                    "owned-failed:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Failed,
+                    planetOwnership: MessagePlanetOwnership.Owned
                 ),
                 Definition(
-                    "MESSAGE_ASSAULT_NEUTRAL_SUCCESS",
+                    MessageResultType.PlanetaryAssault,
                     MessageType.Conflict,
                     "neutral-success:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Success,
+                    planetOwnership: MessagePlanetOwnership.Neutral
                 ),
                 Definition(
-                    "MESSAGE_ASSAULT_NEUTRAL_FAILED",
+                    MessageResultType.PlanetaryAssault,
                     MessageType.Conflict,
                     "neutral-failed:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages()
+                    FactionImages(),
+                    outcome: MessageResultOutcome.Failed,
+                    planetOwnership: MessagePlanetOwnership.Neutral
                 ),
             };
         }

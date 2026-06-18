@@ -1,25 +1,24 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
-namespace Rebellion.Tests.Managers
+namespace Rebellion.Tests.Game.Messages
 {
     [TestFixture]
-    public class GameManagerMessageTests
+    public class MessageFactoryDeliveryTests
     {
         [Test]
-        public void ProcessResults_FleetArrived_AddsFleetMessageToOwner()
+        public void CreateMessages_FleetArrived_ReturnsFleetDeliveryForOwner()
         {
-            (GameRoot game, Faction alliance, _, Planet destination, GameManager manager) =
-                BuildMessageScene();
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Fleet fleet = new Fleet
             {
                 InstanceID = "FLEET1",
@@ -28,19 +27,18 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(fleet, destination);
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new UnitArrivedResult { Unit = fleet, Destination = destination }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Fleet, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);
         }
 
         [Test]
-        public void ProcessResults_BuildingDeployed_AddsResourceMessageToOwner()
+        public void CreateMessages_BuildingDeployed_ReturnsResourceDeliveryForOwner()
         {
-            (GameRoot game, Faction alliance, Planet origin, _, GameManager manager) =
-                BuildMessageScene();
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Building mine = new Building
             {
                 InstanceID = "MINE1",
@@ -50,18 +48,21 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(mine, origin);
 
-            ProcessResults(manager, new GameObjectDeployedResult { GameObject = mine });
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new GameObjectDeployedResult { GameObject = mine }
+            );
 
-            AssertOnlyMessages(alliance, MessageType.Resource, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Resource, 1);
         }
 
         [Test]
-        public void ProcessResults_ManufacturingCompleted_AddsManufacturingMessageToFaction()
+        public void CreateMessages_ManufacturingCompleted_ReturnsManufacturingDelivery()
         {
-            (_, Faction alliance, Planet origin, _, GameManager manager) = BuildMessageScene();
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new ManufacturingCompletedResult
                 {
                     Faction = alliance,
@@ -70,20 +71,14 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Manufacturing, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Manufacturing, 1);
         }
 
         [Test]
-        public void ProcessResults_SabotageSucceeded_AddsMissionMessagesToActorAndTarget()
+        public void CreateMessages_SabotageSucceeded_ReturnsMissionDeliveriesForActorAndTarget()
         {
-            (
-                GameRoot game,
-                Faction alliance,
-                Faction empire,
-                _,
-                Planet target,
-                GameManager manager
-            ) = BuildTwoFactionMessageScene();
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
             SabotageMission mission = new SabotageMission
             {
                 OwnerInstanceID = alliance.InstanceID,
@@ -97,8 +92,8 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(mission, target);
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new GameObjectSabotagedResult { SabotagedObject = building, Context = target },
                 new MissionCompletedResult
                 {
@@ -109,21 +104,15 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Mission, 1);
-            AssertOnlyMessages(empire, MessageType.Mission, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Mission, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Mission, 1);
         }
 
         [Test]
-        public void ProcessResults_MissionFoiled_AddsMissionMessagesToActorAndTarget()
+        public void CreateMessages_MissionFoiled_ReturnsMissionDeliveriesForActorAndTarget()
         {
-            (
-                GameRoot game,
-                Faction alliance,
-                Faction empire,
-                _,
-                Planet target,
-                GameManager manager
-            ) = BuildTwoFactionMessageScene();
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
             SabotageMission mission = new SabotageMission
             {
                 OwnerInstanceID = alliance.InstanceID,
@@ -131,8 +120,8 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(mission, target);
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new MissionCompletedResult
                 {
                     Mission = mission,
@@ -142,17 +131,17 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Mission, 1);
-            AssertOnlyMessages(empire, MessageType.Mission, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Mission, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Mission, 1);
         }
 
         [Test]
-        public void ProcessResults_ResearchCompletedAndExhausted_AddsManufacturingMessagesToFaction()
+        public void CreateMessages_ResearchCompletedAndExhausted_ReturnsManufacturingDeliveries()
         {
-            (_, Faction alliance, _, _, GameManager manager) = BuildMessageScene();
+            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new ResearchOrderedResult
                 {
                     Faction = alliance,
@@ -167,28 +156,28 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Manufacturing, 2);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Manufacturing, 2);
         }
 
         [Test]
-        public void ProcessResults_UprisingStarted_AddsPopularSupportMessagesToOwnerAndInstigator()
+        public void CreateMessages_UprisingStarted_ReturnsPopularSupportDeliveriesForOwnerAndInstigator()
         {
-            (_, Faction alliance, Faction empire, _, Planet target, GameManager manager) =
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new PlanetUprisingStartedResult { Planet = target, InstigatorFaction = alliance }
             );
 
-            AssertOnlyMessages(empire, MessageType.PopularSupport, 1);
-            AssertOnlyMessages(alliance, MessageType.PopularSupport, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
         }
 
         [Test]
-        public void ProcessResults_BlockadeStarted_AddsFleetMessagesToBlockaderAndOwner()
+        public void CreateMessages_BlockadeStarted_ReturnsFleetDeliveriesForBlockaderAndOwner()
         {
-            (_, Faction alliance, Faction empire, _, Planet target, GameManager manager) =
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
             Fleet fleet = new Fleet
             {
@@ -196,8 +185,8 @@ namespace Rebellion.Tests.Managers
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new BlockadeChangedResult
                 {
                     Planet = target,
@@ -206,17 +195,17 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Fleet, 1);
-            AssertOnlyMessages(empire, MessageType.Fleet, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Fleet, 1);
         }
 
         [Test]
-        public void ProcessResults_EvacuationLosses_AddsFleetMessageToFaction()
+        public void CreateMessages_EvacuationLosses_ReturnsFleetDeliveryForFaction()
         {
-            (_, Faction alliance, Planet origin, _, GameManager manager) = BuildMessageScene();
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new EvacuationLossesResult
                 {
                     Faction = alliance,
@@ -225,14 +214,13 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Fleet, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);
         }
 
         [Test]
-        public void ProcessResults_MaintenanceAutoscrap_AddsResourceMessageToFaction()
+        public void CreateMessages_MaintenanceAutoscrap_ReturnsResourceDeliveryForOwner()
         {
-            (GameRoot game, Faction alliance, Planet origin, _, GameManager manager) =
-                BuildMessageScene();
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Building shipyard = new Building
             {
                 InstanceID = "SHIPYARD1",
@@ -241,23 +229,23 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(shipyard, origin);
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new MaintenanceRequiredResult { Faction = alliance, Amount = 12 },
                 new GameObjectAutoscrappedResult { DestroyedObject = shipyard, Context = origin }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Resource, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Resource, 1);
         }
 
         [Test]
-        public void ProcessResults_SpaceCombat_AddsConflictMessagesToBothFactions()
+        public void CreateMessages_SpaceCombat_ReturnsConflictDeliveriesForBothFactions()
         {
-            (_, Faction alliance, Faction empire, _, Planet target, GameManager manager) =
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new SpaceCombatResult
                 {
                     AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
@@ -267,33 +255,33 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Conflict, 1);
-            AssertOnlyMessages(empire, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Conflict, 1);
         }
 
         [Test]
-        public void ProcessResults_Bombardment_AddsConflictMessagesToAttackerAndDefender()
+        public void CreateMessages_Bombardment_ReturnsConflictDeliveriesForAttackerAndDefender()
         {
-            (_, Faction alliance, Faction empire, _, Planet target, GameManager manager) =
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new BombardmentResult { AttackingFaction = alliance, Planet = target }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Conflict, 1);
-            AssertOnlyMessages(empire, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Conflict, 1);
         }
 
         [Test]
-        public void ProcessResults_PlanetaryAssault_AddsConflictMessagesToAttackerAndDefender()
+        public void CreateMessages_PlanetaryAssault_ReturnsConflictDeliveriesForAttackerAndDefender()
         {
-            (_, Faction alliance, Faction empire, _, Planet target, GameManager manager) =
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            ProcessResults(
-                manager,
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
                 new PlanetaryAssaultResult
                 {
                     AttackingFaction = alliance,
@@ -302,16 +290,15 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            AssertOnlyMessages(alliance, MessageType.Conflict, 1);
-            AssertOnlyMessages(empire, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Conflict, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.Conflict, 1);
         }
 
         private static (
             GameRoot game,
             Faction alliance,
             Planet origin,
-            Planet destination,
-            GameManager manager
+            Planet destination
         ) BuildMessageScene()
         {
             GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
@@ -338,7 +325,7 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(origin, system);
             game.AttachNode(destination, system);
 
-            return (game, alliance, origin, destination, new GameManager(game));
+            return (game, alliance, origin, destination);
         }
 
         private static (
@@ -346,8 +333,7 @@ namespace Rebellion.Tests.Managers
             Faction alliance,
             Faction empire,
             Planet origin,
-            Planet target,
-            GameManager manager
+            Planet target
         ) BuildTwoFactionMessageScene()
         {
             GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
@@ -376,30 +362,34 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(origin, system);
             game.AttachNode(target, system);
 
-            return (game, alliance, empire, origin, target, new GameManager(game));
+            return (game, alliance, empire, origin, target);
         }
 
-        private static void AssertOnlyMessages(
+        private static List<MessageDelivery> CreateMessages(
+            GameRoot game,
+            params GameResult[] results
+        )
+        {
+            MessageFactory factory = new MessageFactory(
+                ResourceManager.GetGameData<MessageDefinition>()
+            );
+            return factory.CreateMessages(results, game).ToList();
+        }
+
+        private static void AssertOnlyDeliveries(
+            List<MessageDelivery> deliveries,
             Faction faction,
             MessageType messageType,
             int expectedCount
         )
         {
-            foreach (KeyValuePair<MessageType, List<Message>> entry in faction.Messages)
-            {
-                int expected = entry.Key == messageType ? expectedCount : 0;
-                Assert.AreEqual(expected, entry.Value.Count, entry.Key.ToString());
-            }
+            List<MessageDelivery> factionDeliveries = deliveries
+                .Where(delivery => delivery.Faction == faction)
+                .ToList();
+            Assert.AreEqual(expectedCount, factionDeliveries.Count);
 
-            foreach (Message message in faction.Messages[messageType])
-                Assert.AreEqual(messageType, message.Type);
-        }
-
-        private static void ProcessResults(GameManager manager, params GameResult[] results)
-        {
-            typeof(GameManager)
-                .GetMethod("ProcessResults", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(manager, new object[] { results.ToList() });
+            foreach (MessageDelivery delivery in factionDeliveries)
+                Assert.AreEqual(messageType, delivery.Message.Type);
         }
     }
 }
