@@ -1047,7 +1047,6 @@ namespace Rebellion.Game.Messages
 
             return new Message(definition.MessageType, title, body)
             {
-                InstanceID = Guid.NewGuid().ToString("N"),
                 DisplayName = title,
                 DisplayImagePath = definition.ImageMap?.GetForFaction(imageFaction ?? faction),
             };

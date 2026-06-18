@@ -36,6 +36,7 @@ namespace Rebellion.Game.Factions
         public Message(MessageType type, string text)
         {
             Type = type;
+            Title = text;
             Text = text;
             Body = text;
         }
