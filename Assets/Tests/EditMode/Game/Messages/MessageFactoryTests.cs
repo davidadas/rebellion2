@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -6,7 +9,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
 
 namespace Rebellion.Tests.Game.Messages
 {
@@ -14,166 +16,245 @@ namespace Rebellion.Tests.Game.Messages
     public class MessageFactoryTests
     {
         [Test]
-        public void CreateFleetArrived_FleetAndDestination_InterpolatesTemplate()
+        public void CreateMessages_FleetArrival_InterpolatesFleetAndDestination()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.FleetArrived,
-                    MessageType.Fleet,
-                    "arrived:{fleet}:{system}",
-                    "body:{fleet}:{system}",
-                    FactionImages()
-                )
-            );
-            Faction alliance = Alliance();
-            Fleet fleet = new Fleet { DisplayName = "Fleet 1" };
-            Planet destination = new Planet { DisplayName = "Coruscant" };
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Fleet fleet = new Fleet
+            {
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
 
-            Message message = factory.CreateFleetArrived(alliance, fleet, destination);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FleetArrived,
+                            MessageType.Fleet,
+                            "arrived:{fleet}:{system}",
+                            "body:{fleet}:{system}",
+                            FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = fleet, Destination = destination }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Fleet, message.Type);
-            Assert.AreEqual("arrived:Fleet 1:Coruscant", message.Title);
-            Assert.AreEqual("body:Fleet 1:Coruscant", message.Body);
+            Assert.AreEqual("arrived:Fleet 1:Yavin", message.Title);
+            Assert.AreEqual("body:Fleet 1:Yavin", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateShipsArrived_MultipleShips_JoinsShipNames()
+        public void CreateMessages_ShipArrivals_GroupsShipsByOwnerAndDestination()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.ShipsArrived,
-                    MessageType.Fleet,
-                    "ships:{system}",
-                    "body:{ships}",
-                    FactionImages()
-                )
-            );
-            Faction empire = Empire();
-            Planet destination = new Planet { DisplayName = "Kuat" };
-            CapitalShip[] ships =
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            CapitalShip firstShip = new CapitalShip
             {
-                new CapitalShip { DisplayName = "Imperial I" },
-                new CapitalShip { DisplayName = "Imperial II" },
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                DisplayName = "Corellian Corvette",
+                OwnerInstanceID = alliance.InstanceID,
             };
 
-            Message message = factory.CreateShipsArrived(empire, ships, destination);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ShipsArrived,
+                            MessageType.Fleet,
+                            "ships:{system}",
+                            "body:{ships}",
+                            FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = firstShip, Destination = destination },
+                    new UnitArrivedResult { Unit = secondShip, Destination = destination }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Fleet, message.Type);
-            Assert.AreEqual("ships:Kuat", message.Title);
-            Assert.AreEqual("body:Imperial I\nImperial II", message.Body);
-            Assert.AreEqual("empire-image", message.DisplayImagePath);
+            Assert.AreEqual("ships:Yavin", message.Title);
+            Assert.AreEqual("body:Nebulon-B Frigate\nCorellian Corvette", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateFacilityDeployed_Mine_UsesMatchingBuildingDefinition()
+        public void CreateMessages_SeatOfPowerChanged_ReturnsSeatOfPowerReport()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.FacilityDeployed,
-                    MessageType.Resource,
-                    "mine:{item}:{system}",
-                    "body:{item}:{system}",
-                    DefaultImage("mine-image"),
-                    buildingType: BuildingType.Mine
-                )
-            );
-            Building mine = new Building { DisplayName = "Mine", BuildingType = BuildingType.Mine };
-            Planet destination = new Planet { DisplayName = "Yavin" };
+            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
 
-            Message message = factory.CreateFacilityDeployed(Alliance(), mine, destination);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.EmperorSeatOfPower,
+                            MessageType.Mission,
+                            "seat",
+                            "body",
+                            DefaultImage("seat-image")
+                        ),
+                    },
+                    new SeatOfPowerChangedResult { Officer = officer, IsAtSeat = true }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Mission, message.Type);
+            Assert.AreEqual("seat", message.Title);
+            Assert.AreEqual("body", message.Body);
+            Assert.AreEqual("seat-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_DeployedFacility_UsesBuildingSpecificDefinition()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Building mine = new Building
+            {
+                DisplayName = "Mine",
+                OwnerInstanceID = alliance.InstanceID,
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(mine, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FacilityDeployed,
+                            MessageType.Resource,
+                            "mine:{item}:{system}",
+                            "body:{item}:{system}",
+                            DefaultImage("mine-image"),
+                            buildingType: BuildingType.Mine
+                        ),
+                    },
+                    new GameObjectDeployedResult { GameObject = mine }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Resource, message.Type);
-            Assert.AreEqual("mine:Mine:Yavin", message.Title);
-            Assert.AreEqual("body:Mine:Yavin", message.Body);
+            Assert.AreEqual("mine:Mine:Coruscant", message.Title);
+            Assert.AreEqual("body:Mine:Coruscant", message.Body);
             Assert.AreEqual("mine-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateFacilityDeployed_NoDefinitionForBuildingType_ReturnsNull()
+        public void CreateMessages_DeployedFacilityWithoutMatchingDefinition_ReturnsNoDelivery()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.FacilityDeployed,
-                    MessageType.Resource,
-                    "mine:{item}:{system}",
-                    "body:{item}:{system}",
-                    DefaultImage("mine-image"),
-                    buildingType: BuildingType.Mine
-                )
-            );
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Building shipyard = new Building
             {
                 DisplayName = "Shipyard",
+                OwnerInstanceID = alliance.InstanceID,
                 BuildingType = BuildingType.Shipyard,
             };
+            game.AttachNode(shipyard, origin);
 
-            Message message = factory.CreateFacilityDeployed(
-                Alliance(),
-                shipyard,
-                new Planet { DisplayName = "Yavin" }
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.FacilityDeployed,
+                        MessageType.Resource,
+                        "mine:{item}:{system}",
+                        "body:{item}:{system}",
+                        DefaultImage("mine-image"),
+                        buildingType: BuildingType.Mine
+                    ),
+                },
+                new GameObjectDeployedResult { GameObject = shipyard }
             );
 
-            Assert.IsNull(message);
+            Assert.IsEmpty(deliveries);
         }
 
         [Test]
-        public void CreateManufacturingIdle_BuildingQueue_UsesConstructionYardDefinition()
+        public void CreateMessages_ManufacturingCompleted_UsesQueueTypeDefinition()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.ManufacturingIdle,
-                    MessageType.Manufacturing,
-                    "construction:{system}",
-                    "body:{system}",
-                    DefaultImage("construction-image"),
-                    manufacturingType: ManufacturingType.Building
-                )
-            );
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            Message message = factory.CreateManufacturingIdle(
-                Alliance(),
-                ManufacturingType.Building,
-                new Planet { DisplayName = "Yavin" }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ManufacturingIdle,
+                            MessageType.Manufacturing,
+                            "construction:{system}",
+                            "body:{system}",
+                            DefaultImage("construction-image"),
+                            manufacturingType: ManufacturingType.Building
+                        ),
+                    },
+                    new ManufacturingCompletedResult
+                    {
+                        Faction = alliance,
+                        ProductType = ManufacturingType.Building,
+                        ProductionPlanet = origin,
+                    }
+                ),
+                alliance
             );
 
             Assert.AreEqual(MessageType.Manufacturing, message.Type);
-            Assert.AreEqual("construction:Yavin", message.Title);
-            Assert.AreEqual("body:Yavin", message.Body);
+            Assert.AreEqual("construction:Coruscant", message.Title);
+            Assert.AreEqual("body:Coruscant", message.Body);
             Assert.AreEqual("construction-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateMissionReport_Success_UsesSuccessDefinition()
+        public void CreateMessages_MissionSuccess_UsesSuccessReportForActor()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.MissionReport,
-                    MessageType.Mission,
-                    "success:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages(),
-                    outcome: MessageResultOutcome.Success
-                ),
-                Definition(
-                    MessageResultType.MissionReport,
-                    MessageType.Mission,
-                    "failed:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages(),
-                    outcome: MessageResultOutcome.Failed
-                )
-            );
-            MissionCompletedResult result = new MissionCompletedResult
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            SabotageMission mission = new SabotageMission
             {
-                MissionName = "Sabotage",
-                Outcome = MissionOutcome.Success,
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
             };
+            game.AttachNode(mission, target);
 
-            Message message = factory.CreateMissionReport(
-                Alliance(),
-                result,
-                new Planet { DisplayName = "Yavin" }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "success:{mission}:{system}",
+                            "body:{mission}:{system}",
+                            FactionImages(),
+                            outcome: MessageResultOutcome.Success
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Sabotage",
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
             );
 
             Assert.AreEqual(MessageType.Mission, message.Type);
@@ -183,132 +264,117 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMissionReport_Foiled_UsesFailedDefinitionForActor()
+        public void CreateMessages_FoiledMission_ReturnsFailedActorReportAndFoiledTargetReport()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.MissionReport,
-                    MessageType.Mission,
-                    "failed:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages(),
-                    outcome: MessageResultOutcome.Failed
-                )
-            );
-            MissionCompletedResult result = new MissionCompletedResult
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            SabotageMission mission = new SabotageMission
             {
-                MissionName = "Sabotage",
-                Outcome = MissionOutcome.Foiled,
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
             };
+            game.AttachNode(mission, target);
 
-            Message message = factory.CreateMissionReport(Alliance(), result, null);
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.MissionReport,
+                        MessageType.Mission,
+                        "failed:{mission}:{system}",
+                        "body:{mission}:{system}",
+                        FactionImages(),
+                        outcome: MessageResultOutcome.Failed
+                    ),
+                    Definition(
+                        MessageResultType.EnemyMissionFoiled,
+                        MessageType.Mission,
+                        "foiled:{mission}:{system}",
+                        "body:{mission}:{system}",
+                        FactionImages(),
+                        outcome: MessageResultOutcome.Foiled
+                    ),
+                },
+                new MissionCompletedResult
+                {
+                    Mission = mission,
+                    MissionName = "Sabotage",
+                    Outcome = MissionOutcome.Foiled,
+                }
+            );
 
-            Assert.AreEqual(MessageType.Mission, message.Type);
-            Assert.AreEqual("failed:Sabotage:", message.Title);
-            Assert.AreEqual("body:Sabotage:", message.Body);
-            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            Assert.AreEqual("failed:Sabotage:Yavin", FirstMessageFor(deliveries, alliance).Title);
+            Assert.AreEqual("foiled:Sabotage:Yavin", FirstMessageFor(deliveries, empire).Title);
         }
 
         [Test]
-        public void CreateEnemyMissionFoiled_FoiledMission_UsesFoiledDefinition()
+        public void CreateMessages_SabotageResult_ReportsDestroyedObjectToOwner()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.EnemyMissionFoiled,
-                    MessageType.Mission,
-                    "foiled:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages(),
-                    outcome: MessageResultOutcome.Foiled
-                )
-            );
-            MissionCompletedResult result = new MissionCompletedResult
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+            Building shieldGenerator = new Building
             {
-                MissionName = "Sabotage",
-                TargetName = "Coruscant",
-                Outcome = MissionOutcome.Foiled,
+                DisplayName = "Shield Generator",
+                OwnerInstanceID = empire.InstanceID,
             };
 
-            Message message = factory.CreateEnemyMissionFoiled(Empire(), result, null);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.SabotageStrike,
+                            MessageType.Mission,
+                            "sabotage:{item}:{system}",
+                            "body:{item}:{system}",
+                            FactionImages()
+                        ),
+                    },
+                    new GameObjectSabotagedResult
+                    {
+                        SabotagedObject = shieldGenerator,
+                        Context = target,
+                    }
+                ),
+                empire
+            );
 
             Assert.AreEqual(MessageType.Mission, message.Type);
-            Assert.AreEqual("foiled:Sabotage:Coruscant", message.Title);
-            Assert.AreEqual("body:Sabotage:Coruscant", message.Body);
+            Assert.AreEqual("sabotage:Shield Generator:Yavin", message.Title);
+            Assert.AreEqual("body:Shield Generator:Yavin", message.Body);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateEnemyMissionFoiled_SuccessfulMission_ReturnsNull()
+        public void CreateMessages_ResearchCompleted_UsesDisciplineDefinition()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.EnemyMissionFoiled,
-                    MessageType.Mission,
-                    "foiled:{mission}:{system}",
-                    "body:{mission}:{system}",
-                    FactionImages(),
-                    outcome: MessageResultOutcome.Foiled
-                )
+            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ResearchComplete,
+                            MessageType.Manufacturing,
+                            "ship:{item}",
+                            "body:{item}",
+                            researchDiscipline: ResearchDiscipline.ShipDesign
+                        ),
+                    },
+                    new ResearchOrderedResult
+                    {
+                        Faction = alliance,
+                        Discipline = ResearchDiscipline.ShipDesign,
+                        Technology = new Technology(
+                            new CapitalShip { DisplayName = "Nebulon-B Frigate" }
+                        ),
+                    }
+                ),
+                alliance
             );
-            MissionCompletedResult result = new MissionCompletedResult
-            {
-                MissionName = "Sabotage",
-                Outcome = MissionOutcome.Success,
-            };
-
-            Message message = factory.CreateEnemyMissionFoiled(Empire(), result, null);
-
-            Assert.IsNull(message);
-        }
-
-        [Test]
-        public void CreateSabotageStrike_SabotagedObject_InterpolatesItemAndSystem()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.SabotageStrike,
-                    MessageType.Mission,
-                    "sabotage:{item}:{system}",
-                    "body:{item}:{system}",
-                    FactionImages()
-                )
-            );
-            GameObjectSabotagedResult result = new GameObjectSabotagedResult
-            {
-                SabotagedObject = new Building { DisplayName = "Shield Generator" },
-            };
-
-            Message message = factory.CreateSabotageStrike(
-                Empire(),
-                result,
-                new Planet { DisplayName = "Coruscant" }
-            );
-
-            Assert.AreEqual(MessageType.Mission, message.Type);
-            Assert.AreEqual("sabotage:Shield Generator:Coruscant", message.Title);
-            Assert.AreEqual("body:Shield Generator:Coruscant", message.Body);
-            Assert.AreEqual("empire-image", message.DisplayImagePath);
-        }
-
-        [Test]
-        public void CreateResearchComplete_ShipDesign_UsesShipDefinitionAndNoImage()
-        {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.ResearchComplete,
-                    MessageType.Manufacturing,
-                    "ship:{item}",
-                    "body:{item}",
-                    researchDiscipline: ResearchDiscipline.ShipDesign
-                )
-            );
-            ResearchOrderedResult result = new ResearchOrderedResult
-            {
-                Discipline = ResearchDiscipline.ShipDesign,
-                Technology = new Technology(new CapitalShip { DisplayName = "Nebulon-B Frigate" }),
-            };
-
-            Message message = factory.CreateResearchComplete(Alliance(), result);
 
             Assert.AreEqual(MessageType.Manufacturing, message.Type);
             Assert.AreEqual("ship:Nebulon-B Frigate", message.Title);
@@ -317,104 +383,168 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateResearchExhausted_TroopTraining_UsesTroopDefinition()
+        public void CreateMessages_ResearchExhausted_UsesDisciplineDefinition()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.ResearchExhausted,
-                    MessageType.Manufacturing,
-                    "troop-exhausted",
-                    "body",
-                    DefaultImage("research-image"),
-                    researchDiscipline: ResearchDiscipline.TroopTraining
-                )
-            );
-            ResearchExhaustedResult result = new ResearchExhaustedResult
-            {
-                Discipline = ResearchDiscipline.TroopTraining,
-            };
+            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
 
-            Message message = factory.CreateResearchExhausted(Alliance(), result);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ResearchExhausted,
+                            MessageType.Manufacturing,
+                            "exhausted",
+                            "body",
+                            DefaultImage("research-image"),
+                            researchDiscipline: ResearchDiscipline.FacilityDesign
+                        ),
+                    },
+                    new ResearchExhaustedResult
+                    {
+                        Faction = alliance,
+                        Discipline = ResearchDiscipline.FacilityDesign,
+                    }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Manufacturing, message.Type);
-            Assert.AreEqual("troop-exhausted", message.Title);
+            Assert.AreEqual("exhausted", message.Title);
             Assert.AreEqual("body", message.Body);
             Assert.AreEqual("research-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateUprisingEnded_ControllerDiffersFromRecipient_UsesControllerImage()
+        public void CreateMessages_UprisingStarted_ReturnsControllerAndInstigatorReports()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.UprisingEnded,
-                    MessageType.PopularSupport,
-                    "ended:{faction}:{system}",
-                    "body:{faction}:{system}",
-                    FactionImages()
-                )
-            );
-            PlanetUprisingEndedResult result = new PlanetUprisingEndedResult
-            {
-                Planet = new Planet { DisplayName = "Coruscant" },
-            };
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
 
-            Message message = factory.CreateUprisingEnded(Alliance(), result, Empire());
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingStarted,
+                        MessageType.PopularSupport,
+                        "started:{faction}:{system}",
+                        "body:{faction}:{system}",
+                        FactionImages()
+                    ),
+                },
+                new PlanetUprisingStartedResult { Planet = target, InstigatorFaction = alliance }
+            );
+
+            Assert.AreEqual("started:Empire:Yavin", FirstMessageFor(deliveries, empire).Title);
+            Assert.AreEqual("started:Empire:Yavin", FirstMessageFor(deliveries, alliance).Title);
+        }
+
+        [Test]
+        public void CreateMessages_UprisingEnded_UsesControllerImage()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.UprisingEnded,
+                            MessageType.PopularSupport,
+                            "ended:{faction}:{system}",
+                            "body:{faction}:{system}",
+                            FactionImages()
+                        ),
+                    },
+                    new PlanetUprisingEndedResult { Planet = target }
+                ),
+                empire
+            );
 
             Assert.AreEqual(MessageType.PopularSupport, message.Type);
-            Assert.AreEqual("ended:Empire:Coruscant", message.Title);
-            Assert.AreEqual("body:Empire:Coruscant", message.Body);
+            Assert.AreEqual("ended:Empire:Yavin", message.Title);
+            Assert.AreEqual("body:Empire:Yavin", message.Body);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateBlockadeInitiated_TargetFactionDiffersFromActor_UsesTargetImage()
+        public void CreateMessages_BlockadeStarted_UsesTargetImageForBlockaderReport()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.BlockadeInitiated,
-                    MessageType.Fleet,
-                    "initiated:{faction}:{target}:{fleet}:{system}",
-                    "body:{faction}:{target}:{fleet}:{system}",
-                    FactionImages()
-                )
-            );
-            BlockadeChangedResult result = new BlockadeChangedResult
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Fleet fleet = new Fleet
             {
-                Planet = new Planet { DisplayName = "Coruscant" },
-                BlockadingFleet = new Fleet { DisplayName = "Fleet 1" },
-                Blockaded = true,
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = alliance.InstanceID,
             };
 
-            Message message = factory.CreateBlockadeInitiated(Alliance(), result, Empire());
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.BlockadeInitiated,
+                            MessageType.Fleet,
+                            "initiated:{faction}:{target}:{fleet}:{system}",
+                            "body:{faction}:{target}:{fleet}:{system}",
+                            FactionImages()
+                        ),
+                        Definition(
+                            MessageResultType.BlockadeDetected,
+                            MessageType.Fleet,
+                            "detected:{faction}:{fleet}:{system}",
+                            "body:{faction}:{fleet}:{system}",
+                            FactionImages()
+                        ),
+                    },
+                    new BlockadeChangedResult
+                    {
+                        Planet = target,
+                        BlockadingFleet = fleet,
+                        Blockaded = true,
+                    }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Fleet, message.Type);
-            Assert.AreEqual("initiated:Alliance:Empire:Fleet 1:Coruscant", message.Title);
-            Assert.AreEqual("body:Alliance:Empire:Fleet 1:Coruscant", message.Body);
+            Assert.AreEqual("initiated:Alliance:Empire:Fleet 1:Yavin", message.Title);
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateEvacuationLosses_MultipleUnitTypes_JoinsUnitNames()
+        public void CreateMessages_EvacuationLosses_JoinsLostUnitNames()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.EvacuationLosses,
-                    MessageType.Fleet,
-                    "losses:{system}",
-                    "body:{units}",
-                    FactionImages()
-                )
-            );
-            EvacuationLossesResult result = new EvacuationLossesResult
-            {
-                Location = new Planet { DisplayName = "Coruscant" },
-                LostShips = { new CapitalShip { DisplayName = "Nebulon-B Frigate" } },
-                LostStarfighters = { new Starfighter { DisplayName = "X-wing Squadron" } },
-                LostRegiments = { new Regiment { DisplayName = "Infantry Regiment" } },
-            };
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            Message message = factory.CreateEvacuationLosses(Alliance(), result);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.EvacuationLosses,
+                            MessageType.Fleet,
+                            "losses:{system}",
+                            "body:{units}",
+                            FactionImages()
+                        ),
+                    },
+                    new EvacuationLossesResult
+                    {
+                        Faction = alliance,
+                        Location = origin,
+                        LostShips = { new CapitalShip { DisplayName = "Nebulon-B Frigate" } },
+                        LostStarfighters = { new Starfighter { DisplayName = "X-wing Squadron" } },
+                        LostRegiments = { new Regiment { DisplayName = "Infantry Regiment" } },
+                    }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("losses:Coruscant", message.Title);
@@ -426,26 +556,36 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMaintenanceAutoscrap_DestroyedObject_InterpolatesItemAndSystem()
+        public void CreateMessages_MaintenanceAutoscrap_ReportsDestroyedObject()
         {
-            MessageFactory factory = CreateFactory(
-                Definition(
-                    MessageResultType.MaintenanceAutoscrap,
-                    MessageType.Resource,
-                    "maintenance:{item}:{system}",
-                    "body:{item}:{system}",
-                    FactionImages()
-                )
-            );
-            GameObjectAutoscrappedResult result = new GameObjectAutoscrappedResult
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Building shipyard = new Building
             {
-                DestroyedObject = new Building { DisplayName = "Shipyard" },
+                DisplayName = "Shipyard",
+                OwnerInstanceID = alliance.InstanceID,
             };
+            game.AttachNode(shipyard, origin);
 
-            Message message = factory.CreateMaintenanceAutoscrap(
-                Alliance(),
-                result,
-                new Planet { DisplayName = "Coruscant" }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MaintenanceAutoscrap,
+                            MessageType.Resource,
+                            "maintenance:{item}:{system}",
+                            "body:{item}:{system}",
+                            FactionImages()
+                        ),
+                    },
+                    new GameObjectAutoscrappedResult
+                    {
+                        DestroyedObject = shipyard,
+                        Context = origin,
+                    }
+                ),
+                alliance
             );
 
             Assert.AreEqual(MessageType.Resource, message.Type);
@@ -455,131 +595,99 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateSpaceBattle_AttackerVictoryForAttacker_UsesVictoryDefinition()
+        public void CreateMessages_SpaceBattle_UsesWinnerPerspective()
         {
-            MessageFactory factory = CreateFactory(SpaceBattleDefinitions());
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = new Fleet { OwnerInstanceID = Alliance().InstanceID },
-                DefenderFleet = new Fleet { OwnerInstanceID = Empire().InstanceID },
-                Planet = new Planet { DisplayName = "Yavin" },
-                Winner = CombatSide.Attacker,
-            };
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
 
-            Message message = factory.CreateSpaceBattle(Alliance(), result, Empire());
-
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("victory:Alliance:Empire:Yavin", message.Title);
-            Assert.AreEqual("body:Alliance:Empire:Yavin", message.Body);
-            Assert.AreEqual("alliance-image", message.DisplayImagePath);
-        }
-
-        [Test]
-        public void CreateSpaceBattle_AttackerVictoryForDefender_UsesDefeatDefinition()
-        {
-            MessageFactory factory = CreateFactory(SpaceBattleDefinitions());
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = new Fleet { OwnerInstanceID = Alliance().InstanceID },
-                DefenderFleet = new Fleet { OwnerInstanceID = Empire().InstanceID },
-                Planet = new Planet { DisplayName = "Yavin" },
-                Winner = CombatSide.Attacker,
-            };
-
-            Message message = factory.CreateSpaceBattle(Empire(), result, Alliance());
-
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("defeat:Empire:Alliance:Yavin", message.Title);
-            Assert.AreEqual("body:Empire:Alliance:Yavin", message.Body);
-            Assert.AreEqual("empire-image", message.DisplayImagePath);
-        }
-
-        [Test]
-        public void CreateBombardment_OwnedSystemWithTargetLosses_UsesOwnedTargetLossesDefinition()
-        {
-            MessageFactory factory = CreateFactory(BombardmentDefinitions());
-            BombardmentResult result = new BombardmentResult
-            {
-                AttackingFaction = Alliance(),
-                Planet = new Planet
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                SpaceBattleDefinitions(),
+                new SpaceCombatResult
                 {
-                    DisplayName = "Coruscant",
-                    OwnerInstanceID = Empire().InstanceID,
-                },
-                DestroyedBuildings = { new Building { DisplayName = "Shield Generator" } },
-            };
+                    AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
+                    DefenderFleet = new Fleet { OwnerInstanceID = empire.InstanceID },
+                    Planet = target,
+                    Winner = CombatSide.Attacker,
+                }
+            );
 
-            Message message = factory.CreateBombardment(Alliance(), result, Empire());
+            Assert.AreEqual(
+                "victory:Alliance:Empire:Yavin",
+                FirstMessageFor(deliveries, alliance).Title
+            );
+            Assert.AreEqual(
+                "defeat:Empire:Alliance:Yavin",
+                FirstMessageFor(deliveries, empire).Title
+            );
+        }
+
+        [Test]
+        public void CreateMessages_Bombardment_UsesOwnershipAndLossSelectors()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    BombardmentDefinitions(),
+                    new BombardmentResult
+                    {
+                        AttackingFaction = alliance,
+                        Planet = target,
+                        DestroyedBuildings = { new Building { DisplayName = "Shield Generator" } },
+                    }
+                ),
+                alliance
+            );
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("owned-target:Alliance:Empire:Coruscant", message.Title);
-            Assert.AreEqual("body:Alliance:Empire:Coruscant", message.Body);
+            Assert.AreEqual("owned-target:Alliance:Empire:Yavin", message.Title);
             Assert.AreEqual("target-losses-image", message.DisplayImagePath);
         }
 
         [Test]
-        public void CreateBombardment_NeutralSystemWithoutLosses_UsesNeutralNoLossesDefinition()
+        public void CreateMessages_PlanetaryAssault_UsesOwnershipAndOutcomeSelectors()
         {
-            MessageFactory factory = CreateFactory(BombardmentDefinitions());
-            BombardmentResult result = new BombardmentResult
-            {
-                AttackingFaction = Alliance(),
-                Planet = new Planet { DisplayName = "Ord Mantell" },
-            };
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
 
-            Message message = factory.CreateBombardment(Alliance(), result, null);
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    AssaultDefinitions(),
+                    new PlanetaryAssaultResult
+                    {
+                        AttackingFaction = alliance,
+                        Planet = target,
+                        Success = false,
+                    }
+                ),
+                empire
+            );
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("neutral-none:Alliance::Ord Mantell", message.Title);
-            Assert.AreEqual("body:Alliance::Ord Mantell", message.Body);
-            Assert.AreEqual("no-losses-image", message.DisplayImagePath);
-        }
-
-        [Test]
-        public void CreatePlanetaryAssault_OwnedSystemDefended_UsesOwnedFailedDefinitionAndAttackerImage()
-        {
-            MessageFactory factory = CreateFactory(AssaultDefinitions());
-            PlanetaryAssaultResult result = new PlanetaryAssaultResult
-            {
-                AttackingFaction = Alliance(),
-                Planet = new Planet
-                {
-                    DisplayName = "Coruscant",
-                    OwnerInstanceID = Empire().InstanceID,
-                },
-                Success = false,
-            };
-
-            Message message = factory.CreatePlanetaryAssault(Empire(), result, Empire());
-
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("owned-failed:Alliance:Empire:Coruscant", message.Title);
-            Assert.AreEqual("body:Alliance:Empire:Coruscant", message.Body);
+            Assert.AreEqual("owned-failed:Alliance:Empire:Yavin", message.Title);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        [Test]
-        public void CreatePlanetaryAssault_NeutralSuccess_UsesNeutralSuccessDefinition()
+        private static List<MessageDelivery> CreateMessages(
+            GameRoot game,
+            MessageDefinition[] definitions,
+            params GameResult[] results
+        )
         {
-            MessageFactory factory = CreateFactory(AssaultDefinitions());
-            PlanetaryAssaultResult result = new PlanetaryAssaultResult
-            {
-                AttackingFaction = Alliance(),
-                Planet = new Planet { DisplayName = "Ord Mantell" },
-                Success = true,
-            };
-
-            Message message = factory.CreatePlanetaryAssault(Alliance(), result, null);
-
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("neutral-success:Alliance::Ord Mantell", message.Title);
-            Assert.AreEqual("body:Alliance::Ord Mantell", message.Body);
-            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            MessageFactory factory = new MessageFactory(definitions);
+            return factory.CreateMessages(results, game);
         }
 
-        private static MessageFactory CreateFactory(params MessageDefinition[] definitions)
+        private static Message FirstMessageFor(
+            IEnumerable<MessageDelivery> deliveries,
+            Faction faction
+        )
         {
-            return new MessageFactory(definitions);
+            return deliveries.First(delivery => delivery.Faction == faction).Message;
         }
 
         private static MessageDefinition Definition(
@@ -764,14 +872,75 @@ namespace Rebellion.Tests.Game.Messages
             return new MessageImageMap { Default = path };
         }
 
-        private static Faction Alliance()
+        private static (
+            GameRoot game,
+            Faction alliance,
+            Planet origin,
+            Planet destination
+        ) BuildMessageScene()
         {
-            return new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            game.Factions.Add(alliance);
+            PlanetSystem system = new PlanetSystem { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(system, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                DisplayName = "Coruscant",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "YAVIN",
+                DisplayName = "Yavin",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(destination, system);
+
+            return (game, alliance, origin, destination);
         }
 
-        private static Faction Empire()
+        private static (
+            GameRoot game,
+            Faction alliance,
+            Faction empire,
+            Planet origin,
+            Planet target
+        ) BuildTwoFactionMessageScene()
         {
-            return new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.Factions.Add(alliance);
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "CORE", DisplayName = "Core" };
+            game.AttachNode(system, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "CORUSCANT",
+                DisplayName = "Coruscant",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "YAVIN",
+                DisplayName = "Yavin",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(target, system);
+
+            return (game, alliance, empire, origin, target);
         }
     }
 }

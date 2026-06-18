@@ -5,6 +5,9 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Messages
 {
+    /// <summary>
+    /// Selects the game result category that can produce a message.
+    /// </summary>
     public enum MessageResultType
     {
         None,
@@ -29,6 +32,9 @@ namespace Rebellion.Game.Messages
         PlanetaryAssault,
     }
 
+    /// <summary>
+    /// Selects the result outcome variant that can produce a message.
+    /// </summary>
     public enum MessageResultOutcome
     {
         None,
@@ -43,6 +49,9 @@ namespace Rebellion.Game.Messages
         AttackerLosses,
     }
 
+    /// <summary>
+    /// Selects the planet ownership variant that can produce a message.
+    /// </summary>
     public enum MessagePlanetOwnership
     {
         None,
@@ -50,6 +59,9 @@ namespace Rebellion.Game.Messages
         Neutral,
     }
 
+    /// <summary>
+    /// Defines the templates, selectors, and image map for one generated message.
+    /// </summary>
     public class MessageDefinition : BaseGameEntity
     {
         public MessageResultType ResultType { get; set; }

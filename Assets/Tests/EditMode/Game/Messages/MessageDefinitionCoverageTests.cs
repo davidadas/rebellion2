@@ -13,10 +13,10 @@ using Rebellion.Game.Units;
 namespace Rebellion.Tests.Game.Messages
 {
     [TestFixture]
-    public class MessageFactoryDeliveryTests
+    public class MessageDefinitionCoverageTests
     {
         [Test]
-        public void CreateMessages_FleetArrived_ReturnsFleetDeliveryForOwner()
+        public void CreateMessages_WithConfiguredFleetArrivalDefinition_ReturnsFleetDelivery()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Fleet fleet = new Fleet
@@ -36,7 +36,47 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_BuildingDeployed_ReturnsResourceDeliveryForOwner()
+        public void CreateMessages_WithConfiguredShipArrivalDefinition_ReturnsFleetDelivery()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            CapitalShip firstShip = new CapitalShip
+            {
+                InstanceID = "SHIP1",
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                InstanceID = "SHIP2",
+                DisplayName = "Corellian Corvette",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new UnitArrivedResult { Unit = firstShip, Destination = destination },
+                new UnitArrivedResult { Unit = secondShip, Destination = destination }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredSeatOfPowerDefinition_ReturnsMissionDelivery()
+        {
+            (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new SeatOfPowerChangedResult { Officer = officer, IsAtSeat = true }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Mission, 1);
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredFacilityDefinition_ReturnsResourceDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Building mine = new Building
@@ -57,7 +97,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ManufacturingCompleted_ReturnsManufacturingDelivery()
+        public void CreateMessages_WithConfiguredManufacturingDefinition_ReturnsManufacturingDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
@@ -75,7 +115,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SabotageSucceeded_ReturnsMissionDeliveriesForActorAndTarget()
+        public void CreateMessages_WithConfiguredSabotageDefinitions_ReturnsActorAndTargetDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -109,7 +149,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_MissionFoiled_ReturnsMissionDeliveriesForActorAndTarget()
+        public void CreateMessages_WithConfiguredFoiledMissionDefinitions_ReturnsActorAndTargetDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -136,7 +176,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ResearchCompletedAndExhausted_ReturnsManufacturingDeliveries()
+        public void CreateMessages_WithConfiguredResearchDefinitions_ReturnsManufacturingDeliveries()
         {
             (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
 
@@ -160,7 +200,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_UprisingStarted_ReturnsPopularSupportDeliveriesForOwnerAndInstigator()
+        public void CreateMessages_WithConfiguredUprisingDefinition_ReturnsControllerAndInstigatorDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -175,7 +215,20 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_BlockadeStarted_ReturnsFleetDeliveriesForBlockaderAndOwner()
+        public void CreateMessages_WithConfiguredUprisingEndedDefinition_ReturnsControllerDelivery()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new PlanetUprisingEndedResult { Planet = target }
+            );
+
+            AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredBlockadeDefinitions_ReturnsBlockaderAndOwnerDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -200,7 +253,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_EvacuationLosses_ReturnsFleetDeliveryForFaction()
+        public void CreateMessages_WithConfiguredEvacuationDefinition_ReturnsFleetDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
@@ -218,7 +271,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_MaintenanceAutoscrap_ReturnsResourceDeliveryForOwner()
+        public void CreateMessages_WithConfiguredAutoscrapDefinition_ReturnsResourceDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Building shipyard = new Building
@@ -239,7 +292,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SpaceCombat_ReturnsConflictDeliveriesForBothFactions()
+        public void CreateMessages_WithConfiguredSpaceCombatDefinitions_ReturnsConflictDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -260,7 +313,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_Bombardment_ReturnsConflictDeliveriesForAttackerAndDefender()
+        public void CreateMessages_WithConfiguredBombardmentDefinitions_ReturnsConflictDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -275,7 +328,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_PlanetaryAssault_ReturnsConflictDeliveriesForAttackerAndDefender()
+        public void CreateMessages_WithConfiguredAssaultDefinitions_ReturnsConflictDeliveries()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();

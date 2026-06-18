@@ -433,6 +433,28 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void AddMessage_MissingMessageBucket_CreatesBucketAndAddsMessage()
+        {
+            _faction.Messages.Remove(MessageType.Manufacturing);
+            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+
+            _faction.AddMessage(message);
+
+            Assert.Contains(message, _faction.Messages[MessageType.Manufacturing]);
+        }
+
+        [Test]
+        public void AddMessage_NullMessageDictionary_CreatesDictionaryAndAddsMessage()
+        {
+            _faction.Messages = null;
+            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+
+            _faction.AddMessage(message);
+
+            Assert.Contains(message, _faction.Messages[MessageType.Manufacturing]);
+        }
+
+        [Test]
         public void RemoveMessage_ExistingMessage_RemovesFromList()
         {
             Message message = new Message(MessageType.Mission, "Mission completed");
@@ -444,6 +466,24 @@ namespace Rebellion.Tests.Game.Factions
                 _faction.Messages[MessageType.Mission].Contains(message),
                 "Should remove message from list"
             );
+        }
+
+        [Test]
+        public void RemoveMessage_MissingMessageBucket_DoesNotThrow()
+        {
+            _faction.Messages.Remove(MessageType.Manufacturing);
+            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+
+            Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
+        }
+
+        [Test]
+        public void RemoveMessage_NullMessageDictionary_DoesNotThrow()
+        {
+            _faction.Messages = null;
+            Message message = new Message(MessageType.Manufacturing, "Manufacturing idle");
+
+            Assert.DoesNotThrow(() => _faction.RemoveMessage(message));
         }
 
         [Test]
