@@ -8,7 +8,7 @@ namespace Rebellion.Tests.Managers
     public class GameManagerTests
     {
         [Test]
-        public void Construct_AfterDeserializedGame_RebuildsResearchCatalogForEachFaction()
+        public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
             GameRoot game = new GameRoot();
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };

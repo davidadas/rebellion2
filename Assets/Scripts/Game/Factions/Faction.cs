@@ -514,7 +514,18 @@ namespace Rebellion.Game.Factions
         /// <param name="message">The message to add.</param>
         public void AddMessage(Message message)
         {
-            Messages[message.Type].Add(message);
+            if (message == null)
+                return;
+
+            Messages ??= new Dictionary<MessageType, List<Message>>();
+
+            if (!Messages.TryGetValue(message.Type, out List<Message> messages))
+            {
+                messages = new List<Message>();
+                Messages[message.Type] = messages;
+            }
+
+            messages.Add(message);
         }
 
         /// <summary>
@@ -523,7 +534,14 @@ namespace Rebellion.Game.Factions
         /// <param name="message">The message to remove.</param>
         public void RemoveMessage(Message message)
         {
-            Messages[message.Type].Remove(message);
+            if (message == null)
+                return;
+
+            if (Messages == null)
+                return;
+
+            if (Messages.TryGetValue(message.Type, out List<Message> messages))
+                messages.Remove(message);
         }
 
         /// <summary>

@@ -12,6 +12,7 @@ namespace Rebellion.Tests.Game.Factions
             Message message = new Message(MessageType.Conflict, "Test message");
 
             Assert.AreEqual(MessageType.Conflict, message.Type, "Type should match");
+            Assert.AreEqual("Test message", message.Title, "Title should match");
             Assert.AreEqual("Test message", message.Text, "Text should match");
             Assert.IsFalse(message.Read, "Read should be false initially");
         }

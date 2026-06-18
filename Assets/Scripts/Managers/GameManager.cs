@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -33,6 +34,7 @@ public class GameManager
     private PlanetaryControlSystem _planetaryControlSystem;
     private UprisingSystem _uprisingManager;
     private VictorySystem _victoryManager;
+    private MessageFactory _messageFactory;
     private IRandomNumberProvider _randomProvider;
     private CombatDecisionContext _pendingCombatDecision;
     private float? _tickInterval;
@@ -87,6 +89,7 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
+        _messageFactory = new MessageFactory(ResourceManager.GetGameData<MessageDefinition>());
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
@@ -282,6 +285,8 @@ public class GameManager
     /// <param name="results">Batch of results from a system tick.</param>
     private void ProcessResults(List<GameResult> results)
     {
+        ProcessMessageDeliveries(results);
+
         foreach (VictoryResult result in results.OfType<VictoryResult>())
         {
             // TODO: Set game over flag, trigger victory screen.
@@ -301,5 +306,19 @@ public class GameManager
             if (result.Outcome == MissionOutcome.Success)
                 ProcessResults(_jediSystem.ApplyForceGrowth(result.Mission.MainParticipants));
         }
+    }
+
+    private void ProcessMessageDeliveries(List<GameResult> results)
+    {
+        foreach (MessageDelivery delivery in _messageFactory.CreateMessages(results, _game))
+            AddMessage(delivery.Faction, delivery.Message);
+    }
+
+    private static void AddMessage(Faction faction, Message message)
+    {
+        if (faction == null || message == null)
+            return;
+
+        faction.AddMessage(message);
     }
 }
