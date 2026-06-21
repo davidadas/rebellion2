@@ -3,6 +3,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -11,6 +12,7 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public override bool CanceledOnOwnershipChange => false;
+        internal override bool CanLoseParticipantsWhenFoiled => false;
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -74,10 +76,52 @@ namespace Rebellion.Game.Missions
             return GetParent() is Planet;
         }
 
-        /// <summary>
-        /// Espionage does not award mission skill improvements.
-        /// </summary>
-        protected override void ImproveMissionParticipantRatings() { }
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            List<GameResult> results = new List<GameResult>();
+            List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
+
+            foreach (IMissionParticipant participant in MainParticipants)
+            {
+                double successThreshold = GetAgentProbability(participant);
+                double rolledValue = provider.NextDouble() * 100;
+                if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
+                    successfulParticipants.Add(participant);
+            }
+
+            MissionOutcome outcome;
+            if (successfulParticipants.Count > 0 && IsMissionSatisfied(game))
+            {
+                outcome = MissionOutcome.Success;
+                results.AddRange(OnSuccess(game, provider));
+                ImproveSuccessfulParticipants(successfulParticipants);
+            }
+            else
+            {
+                outcome = MissionOutcome.Failed;
+                results.AddRange(OnFailed(game, provider));
+            }
+
+            results.Add(BuildCompletedResult(outcome, game));
+            return results;
+        }
+
+        private void ImproveSuccessfulParticipants(List<IMissionParticipant> participants)
+        {
+            if (!CanImproveRatingsAgainstTarget())
+                return;
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (participant is Officer officer && participant.CanImproveMissionRating)
+                    officer.IncrementBaseRating(ParticipantRating);
+            }
+        }
+
+        private bool CanImproveRatingsAgainstTarget()
+        {
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
+        }
 
         /// <summary>
         /// Captures a fog-of-war snapshot of the target planet for the owning faction.

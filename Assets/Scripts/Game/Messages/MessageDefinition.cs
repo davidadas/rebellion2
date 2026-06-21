@@ -15,6 +15,7 @@ namespace Rebellion.Game.Messages
         ShipsArrived,
         EmperorSeatOfPower,
         FacilityDeployed,
+        UnitDeployed,
         ManufacturingIdle,
         MissionReport,
         EnemyMissionFoiled,

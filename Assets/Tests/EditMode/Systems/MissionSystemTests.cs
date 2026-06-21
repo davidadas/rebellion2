@@ -881,6 +881,48 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_EspionageDetected_FoilsWithoutCaptureOrKill()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            planet.VisitingFactionIDs.Add("empire");
+            MissionContext ctx = new MissionContext
+            {
+                Game = game,
+                OwnerInstanceId = "empire",
+                Target = planet,
+                MainParticipants = new List<IMissionParticipant> { spy },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+            EspionageMission mission = EspionageMission.TryCreate(ctx);
+            Assert.IsNotNull(mission);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsFalse(spy.IsKilled);
+            Assert.IsFalse(results.Any(r => r is OfficerCaptureStateResult));
+            Assert.IsFalse(results.Any(r => r is OfficerKilledResult));
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+            Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
         public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToCaptorPlanet()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =

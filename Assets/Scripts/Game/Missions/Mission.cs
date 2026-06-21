@@ -170,6 +170,8 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public virtual bool CanceledOnOwnershipChange => true;
 
+        internal virtual bool CanLoseParticipantsWhenFoiled => true;
+
         /// <summary>
         /// Returns whether this mission should be canceled before its next tick.
         /// </summary>
@@ -358,7 +360,7 @@ namespace Rebellion.Game.Missions
             double successThreshold
         )
         {
-            return rolledValue <= successThreshold;
+            return rolledValue < successThreshold;
         }
 
         /// <summary>
@@ -392,7 +394,10 @@ namespace Rebellion.Game.Missions
             IMissionParticipant decoy = DecoyParticipants[
                 provider.NextInt(0, DecoyParticipants.Count)
             ];
-            return provider.NextDouble() * 100 <= GetDecoyProbability(decoy);
+            return IsSuccessfulProbabilityRoll(
+                provider.NextDouble() * 100,
+                GetDecoyProbability(decoy)
+            );
         }
 
         /// <summary>
@@ -408,7 +413,7 @@ namespace Rebellion.Game.Missions
             if (foilProbability <= 0)
                 return false;
 
-            return provider.NextDouble() * 100 <= foilProbability;
+            return IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, foilProbability);
         }
 
         /// <summary>

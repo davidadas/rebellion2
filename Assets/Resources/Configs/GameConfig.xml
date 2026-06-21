@@ -1562,24 +1562,60 @@
       </TickRanges>
       <Foil>
         <Entry>
-          <Key>0</Key>
-          <Value>85</Value>
-        </Entry>
-        <Entry>
-          <Key>5</Key>
-          <Value>89</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>93</Value>
-        </Entry>
-        <Entry>
-          <Key>15</Key>
-          <Value>97</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
+          <Key>-20</Key>
           <Value>99</Value>
+        </Entry>
+        <Entry>
+          <Key>-19</Key>
+          <Value>98</Value>
+        </Entry>
+        <Entry>
+          <Key>-9</Key>
+          <Value>96</Value>
+        </Entry>
+        <Entry>
+          <Key>1</Key>
+          <Value>94</Value>
+        </Entry>
+        <Entry>
+          <Key>11</Key>
+          <Value>90</Value>
+        </Entry>
+        <Entry>
+          <Key>21</Key>
+          <Value>80</Value>
+        </Entry>
+        <Entry>
+          <Key>31</Key>
+          <Value>70</Value>
+        </Entry>
+        <Entry>
+          <Key>41</Key>
+          <Value>60</Value>
+        </Entry>
+        <Entry>
+          <Key>51</Key>
+          <Value>50</Value>
+        </Entry>
+        <Entry>
+          <Key>61</Key>
+          <Value>45</Value>
+        </Entry>
+        <Entry>
+          <Key>71</Key>
+          <Value>40</Value>
+        </Entry>
+        <Entry>
+          <Key>81</Key>
+          <Value>35</Value>
+        </Entry>
+        <Entry>
+          <Key>91</Key>
+          <Value>30</Value>
+        </Entry>
+        <Entry>
+          <Key>101</Key>
+          <Value>25</Value>
         </Entry>
       </Foil>
       <KillOrCapture>

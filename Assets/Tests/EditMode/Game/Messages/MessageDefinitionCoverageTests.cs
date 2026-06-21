@@ -97,6 +97,26 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_WithConfiguredUnitDeploymentDefinition_ReturnsManufacturingDelivery()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Starfighter fighter = new Starfighter
+            {
+                DisplayName = "X-wing Squadron",
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayImagePath = "fighter-image",
+            };
+            game.AttachNode(fighter, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new GameObjectDeployedResult { GameObject = fighter }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Manufacturing, 1);
+        }
+
+        [Test]
         public void CreateMessages_WithConfiguredManufacturingDefinition_ReturnsManufacturingDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();

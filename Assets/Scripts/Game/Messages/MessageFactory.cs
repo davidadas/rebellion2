@@ -174,6 +174,23 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        private Message CreateUnitDeployed(Faction faction, IGameEntity unit, Planet destination)
+        {
+            Message message = CreateMessage(
+                GetDefinition(MessageResultType.UnitDeployed),
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", unit?.GetDisplayName() ?? string.Empty },
+                    { "system", destination?.GetDisplayName() ?? string.Empty },
+                }
+            );
+            if (message != null && !string.IsNullOrEmpty(unit?.GetDisplayImagePath()))
+                message.DisplayImagePath = unit.GetDisplayImagePath();
+
+            return message;
+        }
+
         /// <summary>
         /// Creates a manufacturing idle message.
         /// </summary>
@@ -937,7 +954,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds messages for deployed buildings.
+        /// Adds messages for deployed manufactured objects.
         /// </summary>
         /// <param name="results">The deployment results to process.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
@@ -950,14 +967,35 @@ namespace Rebellion.Game.Messages
         {
             foreach (GameObjectDeployedResult result in results)
             {
-                if (result.GameObject is not Building building || building.Movement != null)
+                if (result.GameObject is not ISceneNode gameObject)
                     continue;
 
-                Faction faction = GetFaction(game, building.GetOwnerInstanceID());
+                if (gameObject is Building building)
+                {
+                    if (building.Movement != null)
+                        continue;
+
+                    Faction faction = GetFaction(game, building.GetOwnerInstanceID());
+                    AddDelivery(
+                        deliveries,
+                        faction,
+                        CreateFacilityDeployed(
+                            faction,
+                            building,
+                            building.GetParentOfType<Planet>()
+                        )
+                    );
+                    continue;
+                }
+
+                if (gameObject is not IManufacturable)
+                    continue;
+
+                Faction owner = GetFaction(game, gameObject.GetOwnerInstanceID());
                 AddDelivery(
                     deliveries,
-                    faction,
-                    CreateFacilityDeployed(faction, building, building.GetParentOfType<Planet>())
+                    owner,
+                    CreateUnitDeployed(owner, gameObject, gameObject.GetParentOfType<Planet>())
                 );
             }
         }

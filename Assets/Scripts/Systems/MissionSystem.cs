@@ -148,9 +148,9 @@ namespace Rebellion.Systems
                 return results;
 
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
-            bool participantStateChanged = ResolveDetection(mission, results);
+            bool missionFoiled = ResolveDetection(mission, results);
 
-            if (participantStateChanged || mission.ShouldAbort(_game))
+            if (missionFoiled || mission.ShouldAbort(_game))
             {
                 results.Add(
                     new MissionCompletedResult
@@ -322,7 +322,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission to check for detection.</param>
         /// <param name="results">Collection to append generated results to.</param>
-        /// <returns>True if any participant state changed.</returns>
+        /// <returns>True if the mission was foiled.</returns>
         private bool ResolveDetection(Mission mission, List<GameResult> results)
         {
             if (!mission.RollFoilCheck(_provider))
@@ -330,6 +330,9 @@ namespace Rebellion.Systems
 
             if (mission.RollDecoyCheck(_provider))
                 return false;
+
+            if (!mission.CanLoseParticipantsWhenFoiled)
+                return true;
 
             int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
@@ -437,7 +440,7 @@ namespace Rebellion.Systems
                     ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
                     : _game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability;
 
-            if (_provider.NextDouble() * 100 <= captureProbability)
+            if (_provider.NextDouble() * 100 < captureProbability)
             {
                 officer.IsCaptured = true;
                 officer.CaptorInstanceID = planet?.OwnerInstanceID;

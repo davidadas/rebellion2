@@ -88,6 +88,13 @@
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Unit Deployed</DisplayName>
+    <ResultType>UnitDeployed</ResultType>
+    <MessageType>Manufacturing</MessageType>
+    <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
+    <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Shipyard Idle</DisplayName>
     <ResultType>ManufacturingIdle</ResultType>
     <MessageType>Manufacturing</MessageType>

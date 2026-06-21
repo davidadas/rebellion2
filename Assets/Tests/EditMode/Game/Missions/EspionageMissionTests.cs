@@ -3,11 +3,13 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -63,6 +65,42 @@ namespace Rebellion.Tests.Game.Missions
                 empire.Fog.Snapshots.ContainsKey("sys1"),
                 "Espionage success should capture a FOW snapshot for the faction"
             );
+        }
+
+        [Test]
+        public void Execute_EnemyPlanetTarget_CapturesCurrentPlanetContents()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            Building building = new Building
+            {
+                InstanceID = "enemy_building",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(building, enemyPlanet);
+
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sys1"].Planets["enemy_planet"];
+            Assert.IsTrue(snapshot.Buildings.Any(item => item.InstanceID == "enemy_building"));
         }
 
         [Test]
@@ -126,6 +164,146 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Success,
                 completed.Outcome,
                 "Espionage should still succeed when planet changed ownership before execution"
+            );
+        }
+
+        [Test]
+        public void Execute_ForeignPlanetTarget_ImprovesSuccessfulOfficerEspionageRating()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual(
+                ratingBefore + 1,
+                officer.GetBaseRating(OfficerRating.Espionage),
+                "Officer espionage rating should improve on successful espionage against another faction"
+            );
+        }
+
+        [Test]
+        public void Execute_MultipleParticipants_ImprovesOnlySuccessfulOfficers()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            officer.SetBaseRating(OfficerRating.Espionage, 0);
+            Officer successfulOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            successfulOfficer.SetBaseRating(OfficerRating.Espionage, 100);
+            int failedRatingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+            int successfulRatingBefore = successfulOfficer.GetBaseRating(OfficerRating.Espionage);
+
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer, successfulOfficer },
+                new List<IMissionParticipant>()
+            );
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 0 }, { 100, 100 } }
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual(failedRatingBefore, officer.GetBaseRating(OfficerRating.Espionage));
+            Assert.AreEqual(
+                successfulRatingBefore + 1,
+                successfulOfficer.GetBaseRating(OfficerRating.Espionage)
+            );
+        }
+
+        [Test]
+        public void Execute_DecoyParticipant_DoesNotImproveOfficerEspionageRating()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            int decoyRatingBefore = decoy.GetBaseRating(OfficerRating.Espionage);
+
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { decoy }
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual(
+                decoyRatingBefore,
+                decoy.GetBaseRating(OfficerRating.Espionage),
+                "Decoys should not improve from successful espionage execution"
+            );
+        }
+
+        [Test]
+        public void Execute_OwnPlanetTarget_DoesNotImproveOfficerEspionageRating()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            empPlanet.VisitingFactionIDs.Add("empire");
+            int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
+
+            EspionageMission mission = CreateMission(
+                game,
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(new StubRNG());
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.AreEqual(
+                ratingBefore,
+                officer.GetBaseRating(OfficerRating.Espionage),
+                "Officer espionage rating should not improve on successful espionage against an owned planet"
             );
         }
 

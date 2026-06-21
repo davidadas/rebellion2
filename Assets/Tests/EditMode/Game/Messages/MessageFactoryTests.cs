@@ -188,6 +188,78 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DeployedStarfighter_UsesUnitDefinitionAndImage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Starfighter fighter = new Starfighter
+            {
+                DisplayName = "X-wing Squadron",
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayImagePath = "fighter-image",
+            };
+            game.AttachNode(fighter, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.UnitDeployed,
+                            MessageType.Manufacturing,
+                            "unit:{item}:{system}",
+                            "body:{item}:{system}",
+                            DefaultImage("fallback-image")
+                        ),
+                    },
+                    new GameObjectDeployedResult { GameObject = fighter }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Manufacturing, message.Type);
+            Assert.AreEqual("unit:X-wing Squadron:Coruscant", message.Title);
+            Assert.AreEqual("body:X-wing Squadron:Coruscant", message.Body);
+            Assert.AreEqual("fighter-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_DeployedRegiment_UsesUnitDefinitionAndImage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Infantry Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayImagePath = "regiment-image",
+            };
+            game.AttachNode(regiment, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.UnitDeployed,
+                            MessageType.Manufacturing,
+                            "unit:{item}:{system}",
+                            "body:{item}:{system}",
+                            DefaultImage("fallback-image")
+                        ),
+                    },
+                    new GameObjectDeployedResult { GameObject = regiment }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Manufacturing, message.Type);
+            Assert.AreEqual("unit:Infantry Regiment:Coruscant", message.Title);
+            Assert.AreEqual("body:Infantry Regiment:Coruscant", message.Body);
+            Assert.AreEqual("regiment-image", message.DisplayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_ManufacturingCompleted_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
