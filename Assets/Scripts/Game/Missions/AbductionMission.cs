@@ -85,11 +85,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the report detail that blocks abduction after participants arrive.
+        /// Resolves whether abduction can execute after participants arrive.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game) =>
+        public override MissionReportDetail? ResolvePreExecutionFailure(GameRoot game) =>
             HasValidTarget(game) ? null : MissionReportDetail.TargetUnavailable;
 
         /// <summary>
@@ -140,6 +140,21 @@ namespace Rebellion.Game.Missions
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        /// <summary>
+        /// Returns the mission party plus a successfully captured target officer.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The movable passengers that return with this mission.</returns>
+        public override IEnumerable<IMovable> GetReturnPassengers(GameRoot game)
+        {
+            foreach (IMovable passenger in base.GetReturnPassengers(game))
+                yield return passenger;
+
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target?.IsCaptured == true && target.CaptorInstanceID == OwnerInstanceID)
+                yield return target;
         }
 
         /// <summary>

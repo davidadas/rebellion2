@@ -871,6 +871,26 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_MainParticipantRemoved_ReturnsFailedMissionCompletedResult()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.Initiate(new StubRNG());
+            mission.RemoveChild(officer);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionReportDetail.Failure, completed.ReportDetail);
+            Assert.IsFalse(completed.CanContinue);
+            Assert.AreEqual(0, game.GetSceneNodesByType<StubMission>().Count);
+        }
+
+        [Test]
         public void UpdateMission_DetectionRollFails_MissionContinues()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -981,7 +1001,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToCaptorPlanet()
+        public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToMissionPlanet()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -1004,7 +1024,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 planet,
                 spy.GetParent(),
-                "Captured mission participant should be held on the captor-owned planet"
+                "Captured mission participant should stay on the mission planet"
             );
             Assert.AreEqual(
                 0,
@@ -1729,6 +1749,43 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(
                 officer.Movement,
                 "Captured officer should not have movement queued during teardown"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_CapturedParticipantWithDifferentCaptor_StaysOnMissionPlanet()
+        {
+            (GameRoot game, Planet missionPlanet, Officer officer, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            Planet rebelPlanet = new Planet
+            {
+                InstanceID = "rebel_planet",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(rebelPlanet, missionPlanet.GetParent());
+
+            StubMission mission = CreateMission(game, missionPlanet, officer);
+            game.MoveNode(officer, mission);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            system.UpdateMission(mission);
+
+            Assert.AreEqual(
+                missionPlanet,
+                officer.GetParent(),
+                "Captured participant should not be moved to a separate captor planet"
             );
         }
     }

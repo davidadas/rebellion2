@@ -76,6 +76,8 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            destination = ResolveLiveNode(destination);
+
             if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
                 return;
 
@@ -85,12 +87,18 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (unit is Officer capturedOfficer && capturedOfficer.IsCaptured)
+            if (unit is Officer { IsCaptured: true })
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
-                );
-                return;
+                Planet originPlanet = unit.GetParentOfType<Planet>();
+                Planet destinationPlanet =
+                    destination as Planet ?? destination.GetParentOfType<Planet>();
+                if (originPlanet != destinationPlanet)
+                {
+                    GameLogger.Warning(
+                        $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
+                    );
+                    return;
+                }
             }
 
             ExecuteMove(unit, destination);
@@ -294,13 +302,21 @@ namespace Rebellion.Systems
         {
             string captorId = capturedOfficer.CaptorInstanceID;
             return !string.IsNullOrEmpty(captorId)
-                && units
-                    .OfType<Officer>()
-                    .Any(escort =>
-                        !ReferenceEquals(escort, capturedOfficer)
-                        && !escort.IsCaptured
-                        && escort.GetOwnerInstanceID() == captorId
-                    );
+                && units.Any(escort =>
+                    !ReferenceEquals(escort, capturedOfficer)
+                    && !IsCapturedOfficer(escort)
+                    && escort.GetOwnerInstanceID() == captorId
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a movable unit is a captured officer.
+        /// </summary>
+        /// <param name="unit">The movable unit to inspect.</param>
+        /// <returns>True if the unit is a captured officer.</returns>
+        private static bool IsCapturedOfficer(IMovable unit)
+        {
+            return unit is Officer officer && officer.IsCaptured;
         }
 
         /// <summary>

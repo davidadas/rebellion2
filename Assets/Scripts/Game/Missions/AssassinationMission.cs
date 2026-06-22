@@ -86,11 +86,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the report detail that blocks assassination after participants arrive.
+        /// Resolves whether assassination can execute after participants arrive.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game) =>
+        public override MissionReportDetail? ResolvePreExecutionFailure(GameRoot game) =>
             HasValidTarget(game) ? null : MissionReportDetail.TargetUnavailable;
 
         /// <summary>

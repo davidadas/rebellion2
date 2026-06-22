@@ -102,11 +102,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the report detail that blocks research after participants arrive.
+        /// Resolves whether research can execute after participants arrive.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The blocking failure detail, or null when research can advance.</returns>
-        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game)
+        /// <returns>The failure detail, or null when research can advance.</returns>
+        public override MissionReportDetail? ResolvePreExecutionFailure(GameRoot game)
         {
             Planet planet = GetParent() as Planet;
             if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
@@ -188,7 +188,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
             MissionReportDetail reportDetail =
-                GetBlockingReportDetail(game) ?? MissionReportDetail.TargetUnavailable;
+                ResolvePreExecutionFailure(game) ?? MissionReportDetail.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
             Planet planet = GetParent() as Planet;
 

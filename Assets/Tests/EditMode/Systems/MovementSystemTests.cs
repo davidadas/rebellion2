@@ -479,6 +479,35 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_CapturedOfficerAtSamePlanet_ReparentsWithoutMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            AbductionMission mission = new AbductionMission
+            {
+                InstanceID = "m1",
+                OwnerInstanceID = "empire",
+                TargetInstanceID = origin.InstanceID,
+                HasInitiated = true,
+            };
+            game.AttachNode(mission, origin);
+            mission.MainParticipants.Add(officer);
+            game.MoveNode(officer, mission);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "rebels";
+
+            movement.RequestMove(officer, origin);
+
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_CompletedBuilding_DoesNotMove()
         {
             (
@@ -639,6 +668,45 @@ namespace Rebellion.Tests.Systems
                 Officer escort,
                 MovementSystem movement
             ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+
+            Assert.AreEqual(destination, escort.GetParent(), "Escort should move to destination");
+            Assert.AreEqual(destination, captive.GetParent(), "Captive should move with escort");
+        }
+
+        [Test]
+        public void RequestMove_GroupCapturedOfficerWithCapturingSpecialForcesEscort_BothMove()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, origin);
 
             Officer captive = new Officer
             {

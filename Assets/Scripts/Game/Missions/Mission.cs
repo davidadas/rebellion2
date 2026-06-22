@@ -204,13 +204,6 @@ namespace Rebellion.Game.Missions
         public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
 
         /// <summary>
-        /// Returns the report detail that blocks this mission from advancing this tick.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The blocking failure detail, or null when the mission can advance.</returns>
-        public virtual MissionReportDetail? GetBlockingReportDetail(GameRoot game) => null;
-
-        /// <summary>
         /// Starts the mission and chooses its duration.
         /// </summary>
         /// <param name="provider">RNG provider for rolling the duration spread.</param>
@@ -257,6 +250,40 @@ namespace Rebellion.Game.Missions
         /// <returns>Combined list of main and decoy participants.</returns>
         public List<IMissionParticipant> GetAllParticipants() =>
             MainParticipants.Concat(DecoyParticipants).ToList();
+
+        /// <summary>
+        /// Returns the movable passengers that should leave with the mission party at teardown.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The movable passengers that return with this mission.</returns>
+        public virtual IEnumerable<IMovable> GetReturnPassengers(GameRoot game) =>
+            GetAllParticipants().OfType<IMovable>();
+
+        /// <summary>
+        /// Returns captured mission participants that should stay at the mission location.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>Captured officers that should not return with the mission party.</returns>
+        public virtual IEnumerable<Officer> GetCapturedParticipants(GameRoot game) =>
+            GetAllParticipants()
+                .OfType<Officer>()
+                .Where(officer =>
+                    officer.IsCaptured && officer.CaptorInstanceID != OwnerInstanceID
+                );
+
+        /// <summary>
+        /// Returns whether any mission participant is still travelling to the mission.
+        /// </summary>
+        /// <returns>True if any participant has active movement.</returns>
+        public bool IsWaitingForParticipants() =>
+            GetAllParticipants().Any(participant => participant.Movement != null);
+
+        /// <summary>
+        /// Resolves the mission failure detail before progress or execution occurs.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The failure detail, or null when the mission may advance.</returns>
+        public virtual MissionReportDetail? ResolvePreExecutionFailure(GameRoot game) => null;
 
         /// <summary>
         /// Captures the current mission participant IDs.
@@ -537,6 +564,7 @@ namespace Rebellion.Game.Missions
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
                 ReportDetail = GetDefaultReportDetail(outcome),
+                CanContinue = ShouldRepeatAfterCompletion(game),
                 Tick = game.CurrentTick,
             };
         }

@@ -292,6 +292,7 @@ namespace Rebellion.Game.Results
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
         public MissionReportDetail ReportDetail { get; set; }
+        public bool CanContinue { get; set; }
     }
 
     /// <summary>

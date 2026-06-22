@@ -91,6 +91,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
             mission.Initiate(new StubRNG());
 
             while (!mission.IsComplete())
@@ -111,6 +112,58 @@ namespace Rebellion.Tests.Game.Missions
                 empPlanet,
                 target.GetParent(),
                 "Abducted officer should return to the abductor's origin"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_SuccessfulAbductionWithSpecialForces_MovesTargetToAbductorOrigin()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SpecialForces commando = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypes = new List<MissionType> { MissionType.Abduction },
+            };
+            game.AttachNode(commando, empPlanet);
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+
+            AbductionMission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { commando },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(commando, mission);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(0.0), movement);
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
+            Assert.AreEqual(
+                empPlanet,
+                target.GetParent(),
+                "Abducted officer should return with the special-forces escort"
             );
         }
 
