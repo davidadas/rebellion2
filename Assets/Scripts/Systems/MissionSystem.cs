@@ -77,16 +77,30 @@ namespace Rebellion.Systems
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
             IMissionParticipant participant = null
-        ) =>
-            _missionFactory.CanCreateMission(
+        )
+        {
+            ISceneNode liveTarget = ResolveSceneNode(target);
+            if (liveTarget == null)
+                return false;
+
+            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
+            if (targetOfficer != null && liveTargetOfficer == null)
+                return false;
+
+            IMissionParticipant liveParticipant = ResolveMissionParticipant(participant);
+            if (participant != null && liveParticipant == null)
+                return false;
+
+            return _missionFactory.CanCreateMission(
                 missionType,
                 ownerInstanceId,
-                target,
+                liveTarget,
                 _provider,
-                targetOfficer,
+                liveTargetOfficer,
                 discipline,
-                participant
+                liveParticipant
             );
+        }
 
         /// <summary>
         /// Initiates a mission with a single participant and target.
@@ -109,23 +123,242 @@ namespace Rebellion.Systems
                 participant,
             };
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-            string ownerInstanceId = participant.OwnerInstanceID;
-
-            Mission mission = _missionFactory.CreateMission(
+            InitiateMission(
                 missionType,
-                ownerInstanceId,
                 mainParticipants,
                 decoyParticipants,
                 target,
-                _provider,
                 targetOfficer,
                 discipline
             );
+        }
+
+        /// <summary>
+        /// Initiates a mission with participant lists and a target.
+        /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        public bool InitiateMission(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            if (mainParticipants == null || mainParticipants.Count == 0 || target == null)
+                return false;
+
+            decoyParticipants ??= new List<IMissionParticipant>();
+            mainParticipants = ResolveMissionParticipants(mainParticipants);
+            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
+            target = ResolveSceneNode(target);
+            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
+            if (targetOfficer != null && liveTargetOfficer == null)
+                return false;
+            targetOfficer = liveTargetOfficer;
+
+            if (mainParticipants == null || decoyParticipants == null || target == null)
+                return false;
+
+            return CreateAndBeginMission(
+                missionType,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                targetOfficer,
+                discipline,
+                null
+            );
+        }
+
+        /// <summary>
+        /// Initiates a mission with participant lists and a concrete target beneath the mission planet.
+        /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="targetPlanet">The planet where the mission will occur.</param>
+        /// <param name="specificTarget">The concrete object selected as the mission target.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        public bool InitiateMissionWithSpecificTarget(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            Planet targetPlanet,
+            ISceneNode specificTarget,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            if (mainParticipants == null || mainParticipants.Count == 0 || targetPlanet == null)
+                return false;
+
+            decoyParticipants ??= new List<IMissionParticipant>();
+            mainParticipants = ResolveMissionParticipants(mainParticipants);
+            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
+            Planet liveTargetPlanet = ResolveSceneNode(targetPlanet) as Planet;
+            ISceneNode liveSpecificTarget =
+                specificTarget == null ? null : ResolveSceneNode(specificTarget);
+            if (specificTarget != null && liveSpecificTarget == null)
+                return false;
+
+            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
+            if (targetOfficer != null && liveTargetOfficer == null)
+                return false;
+            targetOfficer = liveTargetOfficer;
+            Officer missionTargetOfficer =
+                targetOfficer ?? GetMissionTargetOfficer(missionType, liveSpecificTarget);
+
+            if (mainParticipants == null || decoyParticipants == null || liveTargetPlanet == null)
+                return false;
+
+            return CreateAndBeginMission(
+                missionType,
+                mainParticipants,
+                decoyParticipants,
+                liveTargetPlanet,
+                missionTargetOfficer,
+                discipline,
+                liveSpecificTarget
+            );
+        }
+
+        /// <summary>
+        /// Returns the officer target implied by a specific target for officer-targeted missions.
+        /// </summary>
+        /// <param name="missionType">The type of mission being created.</param>
+        /// <param name="specificTarget">The concrete object selected as the mission target.</param>
+        /// <returns>The selected officer target, or null when the mission does not target officers.</returns>
+        private static Officer GetMissionTargetOfficer(
+            MissionType missionType,
+            ISceneNode specificTarget
+        )
+        {
+            if (
+                missionType == MissionType.Abduction
+                || missionType == MissionType.Assassination
+                || missionType == MissionType.Rescue
+            )
+                return specificTarget as Officer;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates a mission through the factory and attaches it to its target planet.
+        /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        private bool CreateAndBeginMission(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer,
+            ResearchDiscipline? discipline,
+            ISceneNode specificTarget
+        )
+        {
+            string ownerInstanceId = mainParticipants[0].OwnerInstanceID;
+            if (
+                !_missionFactory.TryCreateMission(
+                    missionType,
+                    ownerInstanceId,
+                    mainParticipants,
+                    decoyParticipants,
+                    target,
+                    out Mission mission,
+                    _provider,
+                    targetOfficer,
+                    discipline,
+                    specificTarget
+                )
+            )
+                return false;
 
             Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();
+            if (planet == null)
+                return false;
+
             _game.AttachNode(mission, planet);
 
             BeginMission(mission);
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves mission participants to their live scene graph instances.
+        /// </summary>
+        /// <param name="participants">The participant references to resolve.</param>
+        /// <returns>Resolved participants, or null if any participant cannot be resolved.</returns>
+        private List<IMissionParticipant> ResolveMissionParticipants(
+            List<IMissionParticipant> participants
+        )
+        {
+            List<IMissionParticipant> resolvedParticipants = new List<IMissionParticipant>();
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                ISceneNode node = participant as ISceneNode;
+                IMissionParticipant resolvedParticipant =
+                    ResolveSceneNode(node) as IMissionParticipant;
+                if (resolvedParticipant == null)
+                    return null;
+
+                resolvedParticipants.Add(resolvedParticipant);
+            }
+
+            return resolvedParticipants;
+        }
+
+        /// <summary>
+        /// Resolves one mission participant to its live scene graph instance.
+        /// </summary>
+        /// <param name="participant">The participant reference to resolve.</param>
+        /// <returns>The live participant, or null when no participant is supplied or resolvable.</returns>
+        private IMissionParticipant ResolveMissionParticipant(IMissionParticipant participant)
+        {
+            return participant is ISceneNode node
+                ? ResolveSceneNode(node) as IMissionParticipant
+                : null;
+        }
+
+        /// <summary>
+        /// Resolves an officer target to its live scene graph instance.
+        /// </summary>
+        /// <param name="targetOfficer">The officer reference to resolve.</param>
+        /// <returns>The live officer target, or null when no target is supplied or resolvable.</returns>
+        private Officer ResolveTargetOfficer(Officer targetOfficer)
+        {
+            return targetOfficer == null ? null : ResolveSceneNode(targetOfficer) as Officer;
+        }
+
+        /// <summary>
+        /// Resolves a scene node reference to its live scene graph instance.
+        /// </summary>
+        /// <param name="node">The scene node reference to resolve.</param>
+        /// <returns>The live scene node, or null if it cannot be resolved.</returns>
+        private ISceneNode ResolveSceneNode(ISceneNode node)
+        {
+            if (node == null)
+                return null;
+
+            return _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
         }
 
         /// <summary>
@@ -135,6 +368,16 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission to update.</param>
         /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
+        {
+            return AdvanceMission(mission);
+        }
+
+        /// <summary>
+        /// Advances a single mission through one lifecycle step.
+        /// </summary>
+        /// <param name="mission">The mission to advance.</param>
+        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
+        private List<GameResult> AdvanceMission(Mission mission)
         {
             List<GameResult> results = new List<GameResult>();
 
@@ -147,22 +390,34 @@ namespace Rebellion.Systems
             if (HasParticipantInTransit(mission))
                 return results;
 
+            List<IMissionParticipant> participantsBeforeStart = mission.GetAllParticipants();
+            MissionReportDetail? blockingReportDetail = mission.GetBlockingReportDetail(_game);
+            if (blockingReportDetail.HasValue)
+            {
+                results.Add(
+                    mission.BuildCompletedResult(
+                        MissionOutcome.Failed,
+                        blockingReportDetail.Value,
+                        _game,
+                        participantsBeforeStart
+                    )
+                );
+                TearDownMission(mission);
+                return results;
+            }
+
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool missionFoiled = ResolveDetection(mission, results);
 
             if (missionFoiled || mission.ShouldAbort(_game))
             {
                 results.Add(
-                    new MissionCompletedResult
-                    {
-                        Mission = mission,
-                        MissionName = mission.DisplayName,
-                        TargetName =
-                            (mission.GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
-                        Participants = participantsBeforeDetection,
-                        Outcome = MissionOutcome.Foiled,
-                        Tick = _game.CurrentTick,
-                    }
+                    mission.BuildCompletedResult(
+                        MissionOutcome.Foiled,
+                        MissionReportDetail.Foiled,
+                        _game,
+                        participantsBeforeDetection
+                    )
                 );
                 TearDownMission(mission);
                 return results;
@@ -175,7 +430,7 @@ namespace Rebellion.Systems
 
             results.AddRange(mission.Execute(_game, _provider));
 
-            if (mission.CanContinue(_game))
+            if (mission.ShouldRepeatAfterCompletion(_game))
             {
                 BeginMission(mission);
             }
@@ -200,7 +455,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Moves all participants back to their recorded origin (planet or fleet), falling back to
         /// the nearest friendly planet if the origin has moved away or no longer exists, then
-        /// detaches the mission. Called when CanContinue returns false or ShouldAbort fires.
+        /// detaches the mission. Called when ShouldRepeatAfterCompletion returns false or ShouldAbort fires.
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
         private void TearDownMission(Mission mission)

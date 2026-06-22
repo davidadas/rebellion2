@@ -82,7 +82,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsFalse(
                 mission.ShouldAbort(game),
-                "Mission should continue when participant membership is unchanged"
+                "Mission should not abort when participant membership is unchanged"
             );
         }
 

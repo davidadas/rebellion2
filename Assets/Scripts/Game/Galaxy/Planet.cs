@@ -196,7 +196,7 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the number of mined resources counting only completed, stationary mines.
-        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// Does not apply any blockade cut; callers that need the blockade penalty
         /// should apply it separately or use <see cref="GetAvailableMinedResources"/>.
         /// </summary>
         /// <returns>The number of active mined resources, capped by resource nodes.</returns>
@@ -228,7 +228,7 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the refinement capacity counting only completed, stationary refineries.
-        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// Does not apply any blockade cut; callers that need the blockade penalty
         /// should apply it separately or use <see cref="GetAvailableRefinementCapacity"/>.
         /// </summary>
         /// <returns>The number of active refineries.</returns>
@@ -631,6 +631,11 @@ namespace Rebellion.Game.Galaxy
             return Buildings.Count(b => b.GetBuildingType() == buildingType);
         }
 
+        /// <summary>
+        /// Returns whether a manufactured entity is complete and stationary.
+        /// </summary>
+        /// <param name="entity">The manufactured entity to inspect.</param>
+        /// <returns>True when the entity is complete and has no active movement.</returns>
         private static bool IsEntityActive(IManufacturable entity)
         {
             return entity.ManufacturingStatus == ManufacturingStatus.Complete
@@ -917,7 +922,7 @@ namespace Rebellion.Game.Galaxy
                 default:
                     throw new InvalidOperationException(
                         $"Cannot add {child.GetDisplayName()} to {this.GetDisplayName()}. "
-                            + $"Only fleets, officers, buildings, missions, and regiments are allowed."
+                            + "Only fleets, officers, buildings, missions, regiments, special forces, and starfighters are allowed."
                     );
             }
         }

@@ -25,6 +25,14 @@ namespace Rebellion.Game.Missions
             DisplayName = "Jedi Training";
         }
 
+        /// <summary>
+        /// Initializes a Jedi training mission with the selected trainer.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="trainerInstanceId">Officer selected as the trainer.</param>
         private JediTrainingMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -73,6 +81,13 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Selects the strongest eligible trainer on the target planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="ownerInstanceId">Faction requesting training.</param>
+        /// <param name="planet">Planet where training would occur.</param>
+        /// <returns>The selected trainer instance ID, or null if none are eligible.</returns>
         private static string SelectTrainer(GameRoot game, string ownerInstanceId, Planet planet)
         {
             Officer trainer = game.GetSceneNodesByType<Officer>()
@@ -181,11 +196,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns true while at least one student has not yet reached force qualification.
+        /// Returns true after completion while at least one student still needs training.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if training should continue.</returns>
-        public override bool CanContinue(GameRoot game)
+        /// <returns>True if training should repeat.</returns>
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             int threshold = game.Config.Jedi.ForceQualifiedThreshold;
             return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);

@@ -4,6 +4,7 @@ using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game.Events;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization
@@ -209,6 +210,82 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml.Trim(),
                 "Serialized XML should match expected XML."
             );
+        }
+
+        [Test]
+        public void Serialize_GameEventConditionals_UsesPersistableAliasElementNames()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "EVENT_TEST",
+                Conditionals = new List<GameConditional>
+                {
+                    new TickCountConditional
+                    {
+                        InstanceID = "TICK_CONDITION",
+                        ConditionalValue = "30",
+                        ConditionalType = "GreaterThan",
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, gameEvent);
+
+            Assert.IsTrue(serializedXml.Contains("<TickCount Value=\"30\" Type=\"GreaterThan\">"));
+            Assert.IsFalse(serializedXml.Contains("<TickCountConditional"));
+        }
+
+        [Test]
+        public void Deserialize_GameEventConditionals_WithPersistableAlias_UsesConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<GameEvent>
+  <InstanceID>EVENT_TEST</InstanceID>
+  <IsRepeatable>false</IsRepeatable>
+  <Conditionals>
+    <TickCount Value=""30"" Type=""GreaterThan"">
+      <InstanceID>TICK_CONDITION</InstanceID>
+    </TickCount>
+  </Conditionals>
+  <Actions />
+</GameEvent>";
+
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual(1, deserialized.Conditionals.Count);
+            TickCountConditional conditional = deserialized.Conditionals[0] as TickCountConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("30", conditional.ConditionalValue);
+            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+        }
+
+        [Test]
+        public void Deserialize_GameEventConditionals_WithLegacyClrName_UsesConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<GameEvent>
+  <InstanceID>EVENT_TEST</InstanceID>
+  <IsRepeatable>false</IsRepeatable>
+  <Conditionals>
+    <TickCountConditional Value=""30"" Type=""GreaterThan"">
+      <InstanceID>TICK_CONDITION</InstanceID>
+    </TickCountConditional>
+  </Conditionals>
+  <Actions />
+</GameEvent>";
+
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual(1, deserialized.Conditionals.Count);
+            TickCountConditional conditional = deserialized.Conditionals[0] as TickCountConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("30", conditional.ConditionalValue);
+            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
         }
 
         [Test]

@@ -17,6 +17,10 @@ namespace Rebellion.Game.Missions
     {
         private readonly GameRoot _game;
 
+        /// <summary>
+        /// Initializes a mission factory for the supplied game state.
+        /// </summary>
+        /// <param name="game">The game state used for validation and mission configuration.</param>
         public MissionFactory(GameRoot game)
         {
             _game = game;
@@ -29,10 +33,11 @@ namespace Rebellion.Game.Missions
         /// <param name="missionType">The type of mission to check.</param>
         /// <param name="ownerInstanceId">The faction attempting the mission.</param>
         /// <param name="target">The target scene node.</param>
-        /// <param name="provider">RNG provider for target selection; pass the game's live provider — missions like Recruitment always need it.</param>
+        /// <param name="provider">RNG provider for target selection; pass the game's live provider because missions like Recruitment always need it.</param>
         /// <param name="targetOfficer">Optional pre-selected officer target.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
         /// <param name="participant">Optional acting participant for participant-specific mission gates.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True if the mission can be created with the given parameters.</returns>
         public bool CanCreateMission(
             MissionType missionType,
@@ -41,36 +46,125 @@ namespace Rebellion.Game.Missions
             IRandomNumberProvider provider,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            IMissionParticipant participant = null
+            IMissionParticipant participant = null,
+            ISceneNode specificTarget = null
         )
         {
-            Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
-            if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
-                return false;
-
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>();
             if (participant != null)
                 mainParticipants.Add(participant);
 
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = new List<IMissionParticipant>(),
-                RandomProvider = provider,
-                TargetOfficer = targetOfficer,
-                Discipline = discipline,
-            };
+            return CanCreateMission(
+                missionType,
+                ownerInstanceId,
+                mainParticipants,
+                new List<IMissionParticipant>(),
+                target,
+                provider,
+                targetOfficer,
+                discipline,
+                specificTarget
+            );
+        }
 
-            return TryCreateByType(missionType, ctx) != null;
+        /// <summary>
+        /// Returns whether a mission can be created for the supplied participant lists and target.
+        /// </summary>
+        /// <param name="missionType">The type of mission to check.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="provider">RNG provider for missions that choose a target during creation.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission can be created; otherwise false.</returns>
+        public bool CanCreateMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            IRandomNumberProvider provider,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
+        )
+        {
+            return TryBuildMission(
+                missionType,
+                ownerInstanceId,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                provider,
+                targetOfficer,
+                discipline,
+                specificTarget,
+                requireMainParticipants: false,
+                configureMission: false,
+                out _
+            );
+        }
+
+        /// <summary>
+        /// Creates a mission when all supplied inputs are valid.
+        /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="mission">The created mission when validation succeeds.</param>
+        /// <param name="provider">RNG provider for missions that choose a target during creation.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when a mission was created; otherwise false.</returns>
+        public bool TryCreateMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            out Mission mission,
+            IRandomNumberProvider provider = null,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
+        )
+        {
+            return TryBuildMission(
+                missionType,
+                ownerInstanceId,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                provider,
+                targetOfficer,
+                discipline,
+                specificTarget,
+                requireMainParticipants: true,
+                configureMission: true,
+                out mission
+            );
         }
 
         /// <summary>
         /// Creates a mission of the specified type, or throws if creation fails.
         /// Performs shared validation, then delegates to the mission-specific TryCreate.
         /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="provider">RNG provider for missions that choose a target during creation.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>The created mission.</returns>
         public Mission CreateMission(
             MissionType missionType,
             string ownerInstanceId,
@@ -79,52 +173,36 @@ namespace Rebellion.Game.Missions
             ISceneNode target,
             IRandomNumberProvider provider = null,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
-            if (mainParticipants == null || mainParticipants.Count == 0)
-                throw new ArgumentException(
-                    "At least one main participant is required.",
-                    nameof(mainParticipants)
-                );
-
-            Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
-            if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
+            if (
+                !TryCreateMission(
+                    missionType,
+                    ownerInstanceId,
+                    mainParticipants,
+                    decoyParticipants,
+                    target,
+                    out Mission mission,
+                    provider,
+                    targetOfficer,
+                    discipline,
+                    specificTarget
+                )
+            )
                 throw new InvalidOperationException(
-                    $"Faction '{ownerInstanceId}' cannot perform {missionType} missions."
-                );
-
-            foreach (IMissionParticipant participant in mainParticipants.Concat(decoyParticipants))
-            {
-                if (!participant.CanPerformMission(missionType))
-                    throw new InvalidOperationException(
-                        $"Participant '{participant.GetDisplayName()}' cannot perform {missionType} missions."
-                    );
-            }
-
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-                RandomProvider = provider,
-                TargetOfficer = targetOfficer,
-                Discipline = discipline,
-            };
-
-            Mission mission =
-                TryCreateByType(missionType, ctx)
-                ?? throw new InvalidOperationException(
                     $"Cannot create {missionType} mission with the given parameters."
                 );
-
-            ConfigureMission(mission, _game.Config?.ProbabilityTables?.Mission);
 
             return mission;
         }
 
+        /// <summary>
+        /// Applies configured probability and tick tables to a mission.
+        /// </summary>
+        /// <param name="mission">The mission to configure.</param>
+        /// <param name="missionTables">Configured mission probability and tick tables.</param>
         public static void ConfigureMission(
             Mission mission,
             GameConfig.MissionProbabilityTablesConfig missionTables
@@ -153,10 +231,88 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Returns the mission's existing success table or a default table.
+        /// </summary>
+        /// <param name="mission">The mission whose success table should be read.</param>
+        /// <returns>A success probability table.</returns>
         private static ProbabilityTable GetExistingOrDefaultSuccessTable(Mission mission)
         {
             return mission.SuccessProbabilityTable
                 ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
+        }
+
+        /// <summary>
+        /// Runs the shared mission validation and optional configuration path.
+        /// </summary>
+        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="provider">RNG provider for missions that choose a target during creation.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <param name="requireMainParticipants">Whether at least one primary participant is required.</param>
+        /// <param name="configureMission">Whether to apply configured mission probability and tick tables.</param>
+        /// <param name="mission">The created mission when validation succeeds.</param>
+        /// <returns>True when a mission was created; otherwise false.</returns>
+        private bool TryBuildMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            IRandomNumberProvider provider,
+            Officer targetOfficer,
+            ResearchDiscipline? discipline,
+            ISceneNode specificTarget,
+            bool requireMainParticipants,
+            bool configureMission,
+            out Mission mission
+        )
+        {
+            mission = null;
+            mainParticipants ??= new List<IMissionParticipant>();
+            decoyParticipants ??= new List<IMissionParticipant>();
+
+            if (requireMainParticipants && mainParticipants.Count == 0)
+                return false;
+
+            Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
+            if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
+                return false;
+
+            foreach (
+                IMissionParticipant missionParticipant in mainParticipants.Concat(decoyParticipants)
+            )
+            {
+                if (missionParticipant?.CanPerformMission(missionType) != true)
+                    return false;
+            }
+
+            MissionContext ctx = new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = ownerInstanceId,
+                Target = target,
+                SpecificTarget = specificTarget,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+                RandomProvider = provider,
+                TargetOfficer = targetOfficer,
+                Discipline = discipline,
+            };
+
+            mission = TryCreateByType(missionType, ctx);
+            if (mission == null)
+                return false;
+
+            if (configureMission)
+                ConfigureMission(mission, _game.Config?.ProbabilityTables?.Mission);
+
+            return true;
         }
 
         /// <summary>

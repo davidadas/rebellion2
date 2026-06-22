@@ -25,6 +25,14 @@ namespace Rebellion.Game.Missions
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes a rescue mission with its selected officer target.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="targetOfficerInstanceId">Officer selected as the rescue target.</param>
         private RescueMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -58,11 +66,12 @@ namespace Rebellion.Game.Missions
                 return null;
 
             Officer target = ctx.TargetOfficer;
+            Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
                 || target.GetOwnerInstanceID() != ctx.OwnerInstanceId
                 || !target.IsCaptured
-                || target.GetParentOfType<Planet>() != planet
+                || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
 
@@ -76,12 +85,30 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns the report detail that blocks rescue after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
+        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game) =>
+            HasValidTarget(game) ? null : MissionReportDetail.TargetUnavailable;
+
+        /// <summary>
         /// Returns false if the target officer is no longer captured or has moved
         /// away from the mission's planet before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the target is still captured and on the mission planet.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
+        {
+            return HasValidTarget(game);
+        }
+
+        /// <summary>
+        /// Returns whether the selected officer can still be rescued.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target remains captured at the mission planet.</returns>
+        private bool HasValidTarget(GameRoot game)
         {
             Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return captive?.IsCaptured == true
@@ -123,11 +150,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rescue missions do not repeat — one attempt per mission.
+        /// Rescue missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

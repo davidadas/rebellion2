@@ -154,7 +154,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_UnrecruitedOfficersAvailable_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_UnrecruitedOfficersAvailable_ReturnsTrue()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
@@ -164,7 +164,7 @@ namespace Rebellion.Tests.Game.Missions
 
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
 
-            Assert.IsTrue(mission.CanContinue(game));
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_NoUnrecruitedOfficersAvailable_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_NoUnrecruitedOfficersAvailable_ReturnsFalse()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
@@ -207,7 +207,7 @@ namespace Rebellion.Tests.Game.Missions
             // Remove all unrecruited officers after mission creation
             game.UnrecruitedOfficers.Clear();
 
-            Assert.IsFalse(mission.CanContinue(game));
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]

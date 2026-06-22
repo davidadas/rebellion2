@@ -293,7 +293,11 @@ namespace Rebellion.Util.Serialization
             writer.WriteStartElement(elementName);
             foreach (object item in collection)
             {
-                WriteValue(item, writer, item.GetType().Name);
+                WriteValue(
+                    item,
+                    writer,
+                    ReflectionHelper.GetPersistableElementName(item.GetType())
+                );
             }
             writer.WriteEndElement();
         }
@@ -506,7 +510,7 @@ namespace Rebellion.Util.Serialization
 
             IDictionary dictionary = (IDictionary)Activator.CreateInstance(type);
 
-            // Self-closing element (e.g. <Snapshots />) — consume and return empty.
+            // Self-closing element (e.g. <Snapshots />), consume and return empty.
             if (reader.IsEmptyElement)
             {
                 reader.Read();
@@ -608,7 +612,7 @@ namespace Rebellion.Util.Serialization
             IList collection
         )
         {
-            // Self-closing element (e.g. <UnrecruitedOfficers />) — consume and return empty.
+            // Self-closing element (e.g. <UnrecruitedOfficers />), consume and return empty.
             if (reader.IsEmptyElement)
             {
                 reader.Read();
@@ -737,14 +741,22 @@ namespace Rebellion.Util.Serialization
             {
                 foreach (PersistableIncludeAttribute includeAttr in objAttributes.IncludeAttributes)
                 {
-                    if (includeAttr.PersistableType.Name == actualTypeName)
+                    if (
+                        includeAttr.PersistableType.Name == actualTypeName
+                        || includeAttr.PersistableType.FullName == actualTypeName
+                        || ReflectionHelper.GetPersistableElementName(includeAttr.PersistableType)
+                            == actualTypeName
+                    )
                     {
                         return includeAttr.PersistableType;
                     }
                 }
             }
 
-            Type resolvedType = ReflectionHelper.GetTypeByName(actualTypeName) ?? objType;
+            IDictionary<string, Type> persistableMap = ReflectionHelper.GetPersistableObjectMap();
+            Type resolvedType = persistableMap.TryGetValue(actualTypeName, out Type persistableType)
+                ? persistableType
+                : ReflectionHelper.GetTypeByName(actualTypeName) ?? objType;
 
             if (!objType.IsAssignableFrom(resolvedType))
             {
@@ -1081,30 +1093,64 @@ namespace Rebellion.Util.Serialization
             if (_persistableObjectMap != null)
                 return _persistableObjectMap;
 
-            _persistableObjectMap = AppDomain
-                .CurrentDomain.GetAssemblies()
-                .SelectMany(a =>
-                {
-                    try
-                    {
-                        return a.GetTypes();
-                    }
-                    catch (ReflectionTypeLoadException e)
-                    {
-                        return e.Types.Where(t => t != null);
-                    }
-                })
-                .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
-                .GroupBy(type =>
-                    (
-                        (PersistableObjectAttribute)
-                            Attribute.GetCustomAttribute(type, typeof(PersistableObjectAttribute))
-                    )?.Name
-                    ?? type.Name
-                )
-                .ToDictionary(g => g.Key, g => g.First());
+            Dictionary<string, Type> persistableMap = new Dictionary<string, Type>();
 
+            foreach (
+                Type type in AppDomain
+                    .CurrentDomain.GetAssemblies()
+                    .SelectMany(a =>
+                    {
+                        try
+                        {
+                            return a.GetTypes();
+                        }
+                        catch (ReflectionTypeLoadException e)
+                        {
+                            return e.Types.Where(t => t != null);
+                        }
+                    })
+                    .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
+            )
+            {
+                AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);
+                AddPersistableTypeName(persistableMap, type.Name, type);
+                AddPersistableTypeName(persistableMap, type.FullName, type);
+            }
+
+            _persistableObjectMap = persistableMap;
             return _persistableObjectMap;
+        }
+
+        /// <summary>
+        /// Returns the XML element name used for a persistable object type.
+        /// </summary>
+        /// <param name="type">The type whose element name should be returned.</param>
+        /// <returns>The configured persistable name, or the CLR type name when none is configured.</returns>
+        public static string GetPersistableElementName(Type type)
+        {
+            PersistableObjectAttribute attr = (PersistableObjectAttribute)
+                Attribute.GetCustomAttribute(type, typeof(PersistableObjectAttribute), false);
+
+            return string.IsNullOrWhiteSpace(attr?.Name) ? type.Name : attr.Name;
+        }
+
+        /// <summary>
+        /// Adds a persistable type name mapping when the name is populated and unused.
+        /// </summary>
+        /// <param name="persistableMap">The map receiving the type name.</param>
+        /// <param name="name">The name that can resolve the type.</param>
+        /// <param name="type">The type resolved by the name.</param>
+        private static void AddPersistableTypeName(
+            IDictionary<string, Type> persistableMap,
+            string name,
+            Type type
+        )
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
+            if (!persistableMap.ContainsKey(name))
+                persistableMap.Add(name, type);
         }
 
         /// <summary>

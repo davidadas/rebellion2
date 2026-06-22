@@ -55,6 +55,13 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Initializes a reconnaissance mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private ReconnaissanceMission(
             string ownerInstanceId,
             Planet target,
@@ -84,6 +91,9 @@ namespace Rebellion.Game.Missions
             return GetParent() is Planet;
         }
 
+        /// <summary>
+        /// Reconnaissance does not award mission skill improvements.
+        /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
@@ -108,7 +118,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

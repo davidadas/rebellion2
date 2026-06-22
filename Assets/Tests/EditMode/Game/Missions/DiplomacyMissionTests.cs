@@ -295,12 +295,12 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsFalse(
                 mission.ShouldAbort(game),
-                "Diplomacy mission should continue when target planet joins the mission faction"
+                "Diplomacy mission should not abort when target planet joins the mission faction"
             );
         }
 
         [Test]
-        public void CanContinue_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
@@ -308,8 +308,8 @@ namespace Rebellion.Tests.Game.Missions
             planet.OwnerInstanceID = "empire";
 
             Assert.IsTrue(
-                mission.CanContinue(game),
-                "Diplomacy mission should continue below 100 support after target joins the mission faction"
+                mission.ShouldRepeatAfterCompletion(game),
+                "Diplomacy mission should repeat below 100 support after target joins the mission faction"
             );
         }
 
@@ -402,32 +402,32 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(
                 MissionOutcome.Success,
                 completed.Outcome,
-                "Mission succeeds even when support is already at max; CanContinue tears it down after"
+                "Mission succeeds even when support is already at max; ShouldRepeatAfterCompletion tears it down after"
             );
         }
 
         [Test]
-        public void CanContinue_SupportReachedMax_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
             planet.SetFullPopularSupport("empire");
 
             Assert.IsFalse(
-                mission.CanContinue(game),
+                mission.ShouldRepeatAfterCompletion(game),
                 "Mission should cancel when support is at 100"
             );
         }
 
         [Test]
-        public void CanContinue_SupportBelowMax_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
             Assert.IsTrue(
-                mission.CanContinue(game),
-                "Mission should continue when support is below 100"
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should repeat when support is below 100"
             );
         }
 

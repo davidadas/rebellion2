@@ -102,7 +102,7 @@ public class StubMission : Mission
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
-    public override bool CanContinue(GameRoot game) => false;
+    public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 }
 
 /// <summary>

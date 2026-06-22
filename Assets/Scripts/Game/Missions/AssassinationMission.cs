@@ -25,6 +25,14 @@ namespace Rebellion.Game.Missions
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an assassination mission with its selected officer target.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="targetOfficerInstanceId">Officer selected as the assassination target.</param>
         private AssassinationMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -58,12 +66,13 @@ namespace Rebellion.Game.Missions
                 return null;
 
             Officer target = ctx.TargetOfficer;
+            Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
                 || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
                 || target.IsCaptured
                 || target.IsKilled
-                || target.GetParentOfType<Planet>() != planet
+                || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
 
@@ -77,6 +86,14 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns the report detail that blocks assassination after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
+        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game) =>
+            HasValidTarget(game) ? null : MissionReportDetail.TargetUnavailable;
+
+        /// <summary>
         /// Returns false if the target officer has already been killed or has moved
         /// away from the mission's planet before execution.
         /// </summary>
@@ -84,8 +101,19 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the target is still alive and on the mission planet.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
+            return HasValidTarget(game);
+        }
+
+        /// <summary>
+        /// Returns whether the selected officer can still be assassinated.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target is alive, free, and at the mission planet.</returns>
+        private bool HasValidTarget(GameRoot game)
+        {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return target?.IsKilled == false
+                && !target.IsCaptured
                 && target.GetParentOfType<Planet>() == GetParent() as Planet;
         }
 
@@ -165,11 +193,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Assassination missions do not repeat — one attempt per mission.
+        /// Assassination missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

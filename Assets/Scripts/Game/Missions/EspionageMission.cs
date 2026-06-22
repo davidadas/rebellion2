@@ -26,6 +26,13 @@ namespace Rebellion.Game.Missions
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an espionage mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private EspionageMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -76,6 +83,12 @@ namespace Rebellion.Game.Missions
             return GetParent() is Planet;
         }
 
+        /// <summary>
+        /// Executes the espionage attempt and snapshots the target planet on success.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for success rolls.</param>
+        /// <returns>All results produced by the outcome, with a MissionCompletedResult appended.</returns>
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -106,6 +119,10 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <summary>
+        /// Improves ratings for participants that succeeded in the espionage attempt.
+        /// </summary>
+        /// <param name="participants">Participants whose success rolls passed.</param>
         private void ImproveSuccessfulParticipants(List<IMissionParticipant> participants)
         {
             if (!CanImproveRatingsAgainstTarget())
@@ -118,6 +135,10 @@ namespace Rebellion.Game.Missions
             }
         }
 
+        /// <summary>
+        /// Returns whether this mission target allows participant rating improvement.
+        /// </summary>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
         private bool CanImproveRatingsAgainstTarget()
         {
             return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
@@ -142,11 +163,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Espionage missions do not repeat — one attempt per mission.
+        /// Espionage missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

@@ -108,6 +108,24 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void AddSpecialForces_ValidOwner_AddsSpecialForces()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+
+            _capitalShip.AddSpecialForces(specialForces);
+
+            Assert.Contains(specialForces, _capitalShip.SpecialForces);
+        }
+
+        [Test]
+        public void AddSpecialForces_InvalidOwner_ThrowsException()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "INVALID" };
+
+            Assert.Throws<SceneAccessException>(() => _capitalShip.AddSpecialForces(specialForces));
+        }
+
+        [Test]
         public void CanAcceptChild_CapturedEnemyOfficer_ReturnsTrue()
         {
             Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = true };
@@ -121,6 +139,22 @@ namespace Rebellion.Tests.Game.Units
             Officer officer = new Officer { OwnerInstanceID = "INVALID", IsCaptured = false };
 
             Assert.IsFalse(_capitalShip.CanAcceptChild(officer));
+        }
+
+        [Test]
+        public void CanAcceptChild_FriendlySpecialForces_ReturnsTrue()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+
+            Assert.IsTrue(_capitalShip.CanAcceptChild(specialForces));
+        }
+
+        [Test]
+        public void CanAcceptChild_EnemySpecialForces_ReturnsFalse()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "INVALID" };
+
+            Assert.IsFalse(_capitalShip.CanAcceptChild(specialForces));
         }
 
         [Test]
@@ -157,20 +191,33 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void RemoveSpecialForces_ExistingSpecialForces_RemovesItFromFleet()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+            _capitalShip.AddSpecialForces(specialForces);
+
+            _capitalShip.RemoveChild(specialForces);
+
+            Assert.IsFalse(_capitalShip.SpecialForces.Contains(specialForces));
+        }
+
+        [Test]
         public void GetChildren_FleetWithChildren_ReturnsAllChildNodes()
         {
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddOfficer(officer);
             _capitalShip.AddStarfighter(starfighter);
             _capitalShip.AddRegiment(regiment);
+            _capitalShip.AddSpecialForces(specialForces);
 
             IEnumerable<ISceneNode> children = _capitalShip.GetChildren();
 
             CollectionAssert.AreEquivalent(
-                new ISceneNode[] { officer, starfighter, regiment },
+                new ISceneNode[] { officer, starfighter, regiment, specialForces },
                 children,
                 "CapitalShip should return correct children."
             );
@@ -204,6 +251,16 @@ namespace Rebellion.Tests.Game.Units
             _capitalShip.AddChild(officer);
 
             Assert.Contains(officer, _capitalShip.Officers);
+        }
+
+        [Test]
+        public void AddChild_ValidSpecialForces_AddsToFleet()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+
+            _capitalShip.AddChild(specialForces);
+
+            Assert.Contains(specialForces, _capitalShip.SpecialForces);
         }
 
         [Test]
@@ -248,15 +305,28 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void RemoveChild_ExistingSpecialForces_RemovesIt()
+        {
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+            _capitalShip.AddChild(specialForces);
+
+            _capitalShip.RemoveChild(specialForces);
+
+            Assert.IsFalse(_capitalShip.SpecialForces.Contains(specialForces));
+        }
+
+        [Test]
         public void SerializeAndDeserialize_CapitalShipWithChildren_MaintainsState()
         {
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
             Starfighter starfighter = new Starfighter();
             Regiment regiment = new Regiment();
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
 
             _capitalShip.AddOfficer(officer);
             _capitalShip.AddStarfighter(starfighter);
             _capitalShip.AddRegiment(regiment);
+            _capitalShip.AddSpecialForces(specialForces);
 
             string serialized = SerializationHelper.Serialize(_capitalShip);
             CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
@@ -290,6 +360,11 @@ namespace Rebellion.Tests.Game.Units
                 _capitalShip.Regiments.Count,
                 deserialized.Regiments.Count,
                 "Regiments should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _capitalShip.SpecialForces.Count,
+                deserialized.SpecialForces.Count,
+                "SpecialForces should be correctly deserialized."
             );
         }
 

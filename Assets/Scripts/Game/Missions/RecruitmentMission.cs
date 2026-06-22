@@ -25,6 +25,14 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.Leadership;
         }
 
+        /// <summary>
+        /// Initializes a recruitment mission with its current selected recruit.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="targetOfficerInstanceId">Officer selected as the recruit, or null before selection.</param>
         private RecruitmentMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -143,7 +151,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if at least one unrecruited officer is available for this faction.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;
         }

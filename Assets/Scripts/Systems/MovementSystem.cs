@@ -175,7 +175,7 @@ namespace Rebellion.Systems
         /// <returns>True if the whole group can move.</returns>
         private bool CanMoveGroup(List<IMovable> units, ISceneNode destination)
         {
-            ISceneNode groupOrigin = null;
+            Planet groupOrigin = null;
             foreach (IMovable unit in units)
             {
                 if (unit == null)
@@ -187,7 +187,7 @@ namespace Rebellion.Systems
                 if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
                     return false;
 
-                ISceneNode unitOrigin = unit.GetParent();
+                Planet unitOrigin = unit.GetParentOfType<Planet>();
                 if (unitOrigin == null)
                 {
                     GameLogger.Warning(
@@ -715,6 +715,14 @@ namespace Rebellion.Systems
                 return;
             }
 
+            if (destinationPlanet == originPlanet)
+            {
+                _game.MoveNode(unit, destination);
+                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+                unit.Movement = null;
+                return;
+            }
+
             _game.MoveNode(unit, destination);
             ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
 
@@ -880,7 +888,7 @@ namespace Rebellion.Systems
                 return fleet.FindShipForStarfighter();
             if (unit is Regiment)
                 return fleet.FindShipForRegiment();
-            if (unit is Officer && fleet.CapitalShips.Count > 0)
+            if ((unit is Officer || unit is SpecialForces) && fleet.CapitalShips.Count > 0)
                 return fleet.CapitalShips[0];
             return null;
         }

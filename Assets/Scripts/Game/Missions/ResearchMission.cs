@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
@@ -28,6 +29,14 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Initializes a research mission for the selected discipline.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="discipline">Research discipline advanced by the mission.</param>
         private ResearchMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -76,6 +85,11 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Returns the display name for a research discipline mission.
+        /// </summary>
+        /// <param name="discipline">The research discipline.</param>
+        /// <returns>The mission display name.</returns>
         private static string GetMissionName(ResearchDiscipline discipline)
         {
             return discipline switch
@@ -84,6 +98,63 @@ namespace Rebellion.Game.Missions
                 ResearchDiscipline.TroopTraining => "Troop Training",
                 ResearchDiscipline.FacilityDesign => "Facility Design",
                 _ => "Research",
+            };
+        }
+
+        /// <summary>
+        /// Returns the report detail that blocks research after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The blocking failure detail, or null when research can advance.</returns>
+        public override MissionReportDetail? GetBlockingReportDetail(GameRoot game)
+        {
+            Planet planet = GetParent() as Planet;
+            if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
+                return null;
+
+            if (
+                planet != null
+                && planet.GetOwnerInstanceID() == OwnerInstanceID
+                && !HasResearchFacility(planet, Discipline)
+            )
+            {
+                return MissionReportDetail.NoResearchFacilities;
+            }
+
+            return MissionReportDetail.TargetUnavailable;
+        }
+
+        /// <summary>
+        /// Returns whether a planet has a facility that can support the research discipline.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="discipline">The research discipline being performed.</param>
+        /// <returns>True when the planet has a matching completed facility.</returns>
+        internal static bool HasResearchFacility(Planet planet, ResearchDiscipline? discipline)
+        {
+            if (planet == null || !discipline.HasValue)
+                return false;
+
+            return discipline.Value switch
+            {
+                ResearchDiscipline.ShipDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Ship)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Troop).Count > 0,
+                ResearchDiscipline.TroopTraining => planet
+                    .GetProductionFacilities(ManufacturingType.Troop)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Building).Count > 0,
+                ResearchDiscipline.FacilityDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Building)
+                    .Count > 0
+                    || planet
+                        .GetAllBuildings()
+                        .Any(building =>
+                            building.BuildingType == BuildingType.Mine
+                            && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                        ),
+                _ => false,
             };
         }
 
@@ -116,19 +187,33 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
+            MissionReportDetail reportDetail =
+                GetBlockingReportDetail(game) ?? MissionReportDetail.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            Planet planet = GetParent() as Planet;
 
-            if (faction != null && IsMissionSatisfied(game))
+            if (
+                faction != null
+                && IsMissionSatisfied(game)
+                && HasResearchFacility(planet, Discipline)
+            )
             {
                 int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
                 if (earnedPoints > 0)
                 {
                     outcome = MissionOutcome.Success;
                     AwardAccumulatedPoints(faction, earnedPoints, game, results);
+                    reportDetail = results.OfType<ResearchOrderedResult>().Any()
+                        ? MissionReportDetail.ResearchBreakthrough
+                        : MissionReportDetail.ResearchProgress;
+                }
+                else
+                {
+                    reportDetail = MissionReportDetail.Failure;
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, game));
+            results.Add(BuildCompletedResult(outcome, reportDetail, game));
             return results;
         }
 
@@ -251,10 +336,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Research missions repeat as long as the mission target is still satisfied.
+        /// Research missions repeat after completion as long as the mission target is still satisfied.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <returns>True if the mission should continue.</returns>
-        public override bool CanContinue(GameRoot game) => IsMissionSatisfied(game);
+        /// <returns>True if the mission should repeat.</returns>
+        public override bool ShouldRepeatAfterCompletion(GameRoot game) => IsMissionSatisfied(game);
     }
 }

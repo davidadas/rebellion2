@@ -24,6 +24,13 @@ namespace Rebellion.Game.Missions
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an incite uprising mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private InciteUprisingMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -125,11 +132,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Incite Uprising missions do not repeat — one attempt per mission.
+        /// Incite Uprising missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

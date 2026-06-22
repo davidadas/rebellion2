@@ -15,8 +15,24 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public abstract class Mission : ContainerNode
     {
+        private string configKey;
+
         // Mission identity.
-        public string ConfigKey { get; set; }
+        public string ConfigKey
+        {
+            get => configKey;
+            set
+            {
+                configKey = value;
+                TypeID = value;
+                if (!string.IsNullOrEmpty(value) && Enum.TryParse(value, out MissionType type))
+                    MissionType = type;
+            }
+        }
+
+        [PersistableIgnore]
+        public MissionType MissionType { get; set; }
+
         public string TargetInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
 
@@ -181,11 +197,18 @@ namespace Rebellion.Game.Missions
             MainParticipants.Count == 0 || HaveParticipantsChanged();
 
         /// <summary>
-        /// Returns whether the mission should continue after completion.
+        /// Returns whether the mission should repeat after completing one execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should continue; false to tear down and send participants home.</returns>
-        public abstract bool CanContinue(GameRoot game);
+        /// <returns>True if the mission should repeat; false to tear down and send participants home.</returns>
+        public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
+
+        /// <summary>
+        /// Returns the report detail that blocks this mission from advancing this tick.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The blocking failure detail, or null when the mission can advance.</returns>
+        public virtual MissionReportDetail? GetBlockingReportDetail(GameRoot game) => null;
 
         /// <summary>
         /// Starts the mission and chooses its duration.
@@ -454,17 +477,20 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;
+            MissionReportDetail reportDetail;
 
             if (CheckMissionSuccess(provider))
             {
                 if (!IsMissionSatisfied(game))
                 {
                     outcome = MissionOutcome.Failed;
+                    reportDetail = MissionReportDetail.TargetUnavailable;
                     results.AddRange(OnFailed(game, provider));
                 }
                 else
                 {
                     outcome = MissionOutcome.Success;
+                    reportDetail = MissionReportDetail.Success;
                     results.AddRange(OnSuccess(game, provider));
                     ImproveMissionParticipantRatings();
                 }
@@ -472,12 +498,21 @@ namespace Rebellion.Game.Missions
             else
             {
                 outcome = MissionOutcome.Failed;
+                reportDetail = GetFailedReportDetail(game);
                 results.AddRange(OnFailed(game, provider));
             }
 
-            results.Add(BuildCompletedResult(outcome, game));
+            results.Add(BuildCompletedResult(outcome, reportDetail, game));
             return results;
         }
+
+        /// <summary>
+        /// Returns the report detail for a failed mission success roll.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The failed mission report detail.</returns>
+        protected virtual MissionReportDetail GetFailedReportDetail(GameRoot game) =>
+            MissionReportDetail.Failure;
 
         /// <summary>
         /// Builds the <see cref="MissionCompletedResult"/> that terminates an Execute call.
@@ -485,17 +520,59 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="outcome">The resolved mission outcome.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="participants">Optional participant snapshot to include in the result.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
-        protected MissionCompletedResult BuildCompletedResult(MissionOutcome outcome, GameRoot game)
+        protected internal MissionCompletedResult BuildCompletedResult(
+            MissionOutcome outcome,
+            GameRoot game,
+            List<IMissionParticipant> participants = null
+        )
         {
             return new MissionCompletedResult
             {
                 Mission = this,
                 MissionName = DisplayName,
+                MissionType = MissionType,
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
-                Participants = GetAllParticipants(),
+                Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
+                ReportDetail = GetDefaultReportDetail(outcome),
                 Tick = game.CurrentTick,
+            };
+        }
+
+        /// <summary>
+        /// Builds the <see cref="MissionCompletedResult"/> with an explicit report detail.
+        /// </summary>
+        /// <param name="outcome">The resolved mission outcome.</param>
+        /// <param name="reportDetail">The report detail to include.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="participants">Optional participant snapshot to include in the result.</param>
+        /// <returns>A populated MissionCompletedResult.</returns>
+        protected internal MissionCompletedResult BuildCompletedResult(
+            MissionOutcome outcome,
+            MissionReportDetail reportDetail,
+            GameRoot game,
+            List<IMissionParticipant> participants = null
+        )
+        {
+            MissionCompletedResult result = BuildCompletedResult(outcome, game, participants);
+            result.ReportDetail = reportDetail;
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the default report detail for a mission outcome.
+        /// </summary>
+        /// <param name="outcome">The mission outcome.</param>
+        /// <returns>The default report detail for the outcome.</returns>
+        private static MissionReportDetail GetDefaultReportDetail(MissionOutcome outcome)
+        {
+            return outcome switch
+            {
+                MissionOutcome.Success => MissionReportDetail.Success,
+                MissionOutcome.Foiled => MissionReportDetail.Foiled,
+                _ => MissionReportDetail.Failure,
             };
         }
 

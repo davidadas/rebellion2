@@ -21,6 +21,13 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.Diplomacy;
         }
 
+        /// <summary>
+        /// Initializes a diplomacy mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private DiplomacyMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -224,7 +231,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the planet is owned or neutral, not in uprising, and support is below 100.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             if (GetParent() is Planet planet)
             {
