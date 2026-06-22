@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
@@ -87,6 +88,55 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        public override bool CanStart(GameRoot game)
+        {
+            Planet planet = GetParent() as Planet;
+            return IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline);
+        }
+
+        public override MissionReportDetail GetCannotStartReportDetail(GameRoot game)
+        {
+            Planet planet = GetParent() as Planet;
+            if (
+                planet != null
+                && planet.GetOwnerInstanceID() == OwnerInstanceID
+                && !HasResearchFacility(planet, Discipline)
+            )
+            {
+                return MissionReportDetail.NoResearchFacilities;
+            }
+
+            return MissionReportDetail.TargetUnavailable;
+        }
+
+        internal static bool HasResearchFacility(Planet planet, ResearchDiscipline? discipline)
+        {
+            if (planet == null || !discipline.HasValue)
+                return false;
+
+            return discipline.Value switch
+            {
+                ResearchDiscipline.ShipDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Ship)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Troop).Count > 0,
+                ResearchDiscipline.TroopTraining => planet
+                    .GetProductionFacilities(ManufacturingType.Troop)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Building).Count > 0,
+                ResearchDiscipline.FacilityDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Building)
+                    .Count > 0
+                    || planet
+                        .GetAllBuildings()
+                        .Any(building =>
+                            building.BuildingType == BuildingType.Mine
+                            && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                        ),
+                _ => false,
+            };
+        }
+
         /// <summary>
         /// Checks whether the mission target planet is still owned by the mission's faction.
         /// </summary>
@@ -116,19 +166,32 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
+            MissionReportDetail reportDetail = GetCannotStartReportDetail(game);
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            Planet planet = GetParent() as Planet;
 
-            if (faction != null && IsMissionSatisfied(game))
+            if (
+                faction != null
+                && IsMissionSatisfied(game)
+                && HasResearchFacility(planet, Discipline)
+            )
             {
                 int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
                 if (earnedPoints > 0)
                 {
                     outcome = MissionOutcome.Success;
                     AwardAccumulatedPoints(faction, earnedPoints, game, results);
+                    reportDetail = results.OfType<ResearchOrderedResult>().Any()
+                        ? MissionReportDetail.ResearchBreakthrough
+                        : MissionReportDetail.ResearchProgress;
+                }
+                else
+                {
+                    reportDetail = MissionReportDetail.Failure;
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, game));
+            results.Add(BuildCompletedResult(outcome, reportDetail, game));
             return results;
         }
 

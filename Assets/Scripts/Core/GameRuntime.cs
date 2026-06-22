@@ -1,4 +1,3 @@
-using System;
 using Rebellion.Game;
 using UnityEngine.SceneManagement;
 
@@ -13,8 +12,6 @@ public sealed class GameRuntime
 
     public bool HasActiveGame => _activeGameSession != null;
 
-    public event Action ToggleSettingsMenuRequested;
-
     /// <summary>
     /// Get the current active game instance.
     /// </summary>
@@ -22,6 +19,11 @@ public sealed class GameRuntime
     public GameRoot GetActiveGame()
     {
         return _activeGameSession?.GetGame();
+    }
+
+    public GameManager GetActiveGameManager()
+    {
+        return _activeGameSession;
     }
 
     /// <summary>
@@ -84,42 +86,59 @@ public sealed class GameRuntime
     /// </summary>
     public void QuickLoad()
     {
-        string savePath = SaveGameManager.Instance.GetSaveFilePath("quicksave");
+        LoadGame("quicksave");
+    }
 
+    public bool LoadGame(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return false;
+
+        string savePath = SaveGameManager.Instance.GetSaveFilePath(fileName);
         if (!System.IO.File.Exists(savePath))
-            return;
+            return false;
 
         if (HasActiveGame)
-            HotReloadGame();
+            HotReloadGame(fileName);
         else
-            ColdStartFromSave();
+            ColdStartFromSave(fileName);
+
+        return true;
+    }
+
+    public bool SaveGame(string fileName, string displayName)
+    {
+        if (string.IsNullOrEmpty(fileName) || !HasActiveGame)
+            return false;
+
+        GameRoot game = _activeGameSession.GetGame();
+        if (game == null)
+            return false;
+
+        game.Metadata ??= new GameMetadata();
+        game.Metadata.SaveDisplayName = displayName;
+        game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        SaveGameManager.Instance.SaveGameData(game, fileName);
+        return true;
     }
 
     /// <summary>
     /// Loads the quicksave into the current active game session without reloading the scene.
     /// </summary>
-    private void HotReloadGame()
+    private void HotReloadGame(string fileName)
     {
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData("quicksave");
+        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(fileName);
         _activeGameSession.ReplaceGame(loadedGame);
     }
 
     /// <summary>
     /// Loads the quicksave by setting the launch context and transitioning to the strategy scene.
     /// </summary>
-    private void ColdStartFromSave()
+    private void ColdStartFromSave(string fileName)
     {
         GameLaunchContext.IsLoadGame = true;
-        GameLaunchContext.SaveFileName = "quicksave";
+        GameLaunchContext.SaveFileName = fileName;
+        GameLaunchContext.PlayIntroCutscene = false;
         SceneManager.LoadScene("StrategyView");
-    }
-
-    /// <summary>
-    /// Toggle settings menu.
-    /// Execution depends on current scene context.
-    /// </summary>
-    public void ToggleSettingsMenu()
-    {
-        ToggleSettingsMenuRequested?.Invoke();
     }
 }

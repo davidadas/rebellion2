@@ -11,8 +11,6 @@
 /[Tt]emp/
 /[Uu]ser[Ss]ettings/
 
-# Unity Files
-*.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/
@@ -38,13 +36,15 @@ node_modules
 .vsconfig
 
 # Assets - local files not tracked in source control
+temp-source/
+temp-source.meta
 Assets/_Recovery/
-Assets/Resources/Art/
-Assets/Resources/Audio/
-Assets/Resources/UI/
-Assets/Resources/Videos/
-Assets/Videos/
-Assets/TextMesh Pro/
+Assets/Resources/Art/**/*
+Assets/Resources/Audio/**/*
+Assets/Resources/UI/**/*
+Assets/Resources/Videos/**/*
+Assets/Videos/**/*
+Assets/TextMesh Pro/**/*
 
 # C# Files
 **/*.sln

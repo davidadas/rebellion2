@@ -95,6 +95,8 @@ namespace Rebellion.Game.Missions
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore) => 0;
 
+        protected override bool IsMissionSatisfied(GameRoot game) => true;
+
         /// <summary>
         /// Returns the participant's diplomacy success probability for the current target.
         /// </summary>

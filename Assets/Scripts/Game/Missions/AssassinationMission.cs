@@ -58,12 +58,13 @@ namespace Rebellion.Game.Missions
                 return null;
 
             Officer target = ctx.TargetOfficer;
+            Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
                 || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
                 || target.IsCaptured
                 || target.IsKilled
-                || target.GetParentOfType<Planet>() != planet
+                || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
 
@@ -76,16 +77,15 @@ namespace Rebellion.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Returns false if the target officer has already been killed or has moved
-        /// away from the mission's planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still alive and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        public override bool CanStart(GameRoot game) => HasValidTarget(game);
+
+        protected override bool IsMissionSatisfied(GameRoot game) => HasValidTarget(game);
+
+        private bool HasValidTarget(GameRoot game)
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return target?.IsKilled == false
+                && !target.IsCaptured
                 && target.GetParentOfType<Planet>() == GetParent() as Planet;
         }
 

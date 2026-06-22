@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -17,14 +19,20 @@ namespace Rebellion.Game.Messages
     public class MessageFactory
     {
         private readonly MessageDefinition[] _definitions;
+        private readonly EncyclopediaEntries _encyclopediaEntries;
 
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
         /// </summary>
         /// <param name="definitions">The message definitions used to select templates and images.</param>
-        public MessageFactory(IEnumerable<MessageDefinition> definitions)
+        /// <param name="encyclopediaEntries">The encyclopedia entries used to resolve entity card images.</param>
+        public MessageFactory(
+            IEnumerable<MessageDefinition> definitions,
+            EncyclopediaEntries encyclopediaEntries = null
+        )
         {
             _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();
+            _encyclopediaEntries = encyclopediaEntries;
         }
 
         /// <summary>
@@ -36,11 +44,38 @@ namespace Rebellion.Game.Messages
         public List<MessageDelivery> CreateMessages(IEnumerable<GameResult> results, GameRoot game)
         {
             GameResult[] resultArray = results?.ToArray() ?? Array.Empty<GameResult>();
+            MissionCompletedResult[] missionResults = resultArray
+                .OfType<MissionCompletedResult>()
+                .ToArray();
+            OfficerKilledResult[] killedResults = resultArray
+                .OfType<OfficerKilledResult>()
+                .ToArray();
+            ForceDiscoveryResult[] forceDiscoveryResults = resultArray
+                .OfType<ForceDiscoveryResult>()
+                .ToArray();
+            GameObjectSabotagedResult[] sabotageResults = resultArray
+                .OfType<GameObjectSabotagedResult>()
+                .ToArray();
             List<MessageDelivery> deliveries = new List<MessageDelivery>();
 
             AddArrivalMessages(resultArray.OfType<UnitArrivedResult>(), game, deliveries);
-            AddMissionMessages(resultArray.OfType<MissionCompletedResult>(), game, deliveries);
-            AddSabotageMessages(resultArray.OfType<GameObjectSabotagedResult>(), game, deliveries);
+            AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
+            AddOfficerMessages(
+                resultArray.OfType<OfficerRecruitedResult>(),
+                resultArray.OfType<OfficerCaptureStateResult>(),
+                resultArray.OfType<OfficerInjuredResult>(),
+                killedResults,
+                missionResults,
+                game,
+                deliveries
+            );
+            AddForceMessages(
+                resultArray.OfType<ForceExperienceResult>(),
+                forceDiscoveryResults,
+                game,
+                deliveries
+            );
+            AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
                 resultArray.OfType<ResearchOrderedResult>(),
                 resultArray.OfType<ResearchExhaustedResult>(),
@@ -52,6 +87,10 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddPopularSupportOwnershipMessages(
+                resultArray.OfType<PlanetOwnershipChangedResult>(),
+                deliveries
+            );
             AddBlockadeMessages(
                 resultArray.OfType<BlockadeChangedResult>(),
                 resultArray.OfType<EvacuationLossesResult>(),
@@ -60,6 +99,12 @@ namespace Rebellion.Game.Messages
             );
             AddMaintenanceMessages(
                 resultArray.OfType<GameObjectAutoscrappedResult>(),
+                game,
+                deliveries
+            );
+            AddRepairMessages(
+                resultArray.OfType<ShipHullDamageResult>(),
+                resultArray.OfType<FighterDamageResult>(),
                 game,
                 deliveries
             );
@@ -170,7 +215,8 @@ namespace Rebellion.Game.Messages
                 {
                     { "item", building?.GetDisplayName() ?? string.Empty },
                     { "system", destination?.GetDisplayName() ?? string.Empty },
-                }
+                },
+                imageOverride: GetMessageImagePath(building)
             );
         }
 
@@ -209,11 +255,19 @@ namespace Rebellion.Game.Messages
         /// <param name="faction">The faction that launched the mission.</param>
         /// <param name="result">The completed mission result.</param>
         /// <param name="target">The mission target planet.</param>
+        /// <param name="game">The game state used to resolve mission-specific targets.</param>
+        /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
+        /// <param name="killedResults">Officer death results in the current batch.</param>
+        /// <param name="sabotageResults">Sabotage results in the current batch.</param>
         /// <returns>The mission report message, or null when no matching definition exists.</returns>
         private Message CreateMissionReport(
             Faction faction,
             MissionCompletedResult result,
-            Planet target
+            Planet target,
+            GameRoot game,
+            HashSet<string> killedOfficerIDs,
+            IEnumerable<OfficerKilledResult> killedResults,
+            IEnumerable<GameObjectSabotagedResult> sabotageResults
         )
         {
             if (result == null)
@@ -223,15 +277,34 @@ namespace Rebellion.Game.Messages
                 result.Outcome == MissionOutcome.Success
                     ? MessageResultOutcome.Success
                     : MessageResultOutcome.Failed;
+            MissionReportDetail reportDetail = GetMissionReportDetail(result);
+            string missionName = GetMissionName(result);
+            string participantName = GetMissionParticipantName(result);
+            string officerName = GetMissionOfficerName(result, game, killedResults);
+            string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
+            string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
 
             return CreateMessage(
-                GetDefinition(MessageResultType.MissionReport, outcome),
+                GetMissionDefinition(
+                    MessageResultType.MissionReport,
+                    outcome,
+                    GetMissionType(result),
+                    reportDetail
+                ),
                 faction,
                 new Dictionary<string, string>
                 {
-                    { "mission", GetMissionName(result) },
+                    { "mission", missionName },
                     { "system", GetTargetName(result, target) },
-                }
+                    {
+                        "participant",
+                        string.IsNullOrEmpty(participantName) ? missionName : participantName
+                    },
+                    { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
+                    { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
+                    { "assassination_result", assassinationResult },
+                },
+                overlayImagePath: GetMissionReportOverlayImagePath(result, game)
             );
         }
 
@@ -252,13 +325,95 @@ namespace Rebellion.Game.Messages
                 return null;
 
             return CreateMessage(
-                GetDefinition(MessageResultType.EnemyMissionFoiled, MessageResultOutcome.Foiled),
+                GetMissionDefinition(
+                    MessageResultType.EnemyMissionFoiled,
+                    MessageResultOutcome.Foiled,
+                    GetMissionType(result),
+                    MissionReportDetail.Foiled
+                ),
                 faction,
                 new Dictionary<string, string>
                 {
                     { "mission", GetMissionName(result) },
                     { "system", GetTargetName(result, target) },
-                }
+                },
+                overlayImagePath: GetMissionParticipantOverlayImagePath(result)
+            );
+        }
+
+        private Message CreateOfficerMessage(
+            MessageResultType resultType,
+            Faction faction,
+            Officer officer,
+            Planet planet
+        )
+        {
+            if (officer == null)
+                return null;
+
+            return CreateMessage(
+                GetDefinition(resultType),
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "officer", officer.GetDisplayName() ?? string.Empty },
+                    { "system", planet?.GetDisplayName() ?? string.Empty },
+                },
+                overlayImagePath: GetMessageImagePath(officer)
+            );
+        }
+
+        private Message CreateForceGrowth(
+            Faction faction,
+            ForceExperienceResult result,
+            GameRoot game
+        )
+        {
+            if (result?.Officer == null)
+                return null;
+
+            return CreateMessage(
+                GetDefinition(MessageResultType.ForceGrowth),
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "rank", GetForceRankText(result.Officer, game) },
+                },
+                overlayImagePath: GetMessageImagePath(result.Officer)
+            );
+        }
+
+        private Message CreateCapitalShipRepaired(Faction faction, ShipHullDamageResult result)
+        {
+            if (result?.Ship == null || result.Ship.IsDamaged())
+                return null;
+
+            return CreateMessage(
+                GetDefinition(MessageResultType.CapitalShipRepaired),
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", GetDisplayName(result.Ship) },
+                    { "attachment", GetAttachmentName(result.Ship) },
+                },
+                imageOverride: GetEncyclopediaImagePath(result.Ship, faction)
+            );
+        }
+
+        private Message CreateStarfighterRepaired(Faction faction, FighterDamageResult result)
+        {
+            if (result?.Fighter == null || result.Fighter.HasLosses())
+                return null;
+
+            return CreateMessage(
+                GetDefinition(MessageResultType.StarfighterRepaired),
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "item", GetDisplayName(result.Fighter) },
+                    { "attachment", GetAttachmentName(result.Fighter) },
+                },
+                imageOverride: GetEncyclopediaImagePath(result.Fighter, faction)
             );
         }
 
@@ -378,6 +533,22 @@ namespace Rebellion.Game.Messages
                     { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                 },
                 controller
+            );
+        }
+
+        private Message CreatePlanetJoinedBySupport(PlanetOwnershipChangedResult result)
+        {
+            if (result?.NewOwner == null)
+                return null;
+
+            return CreateMessage(
+                GetDefinition(MessageResultType.PlanetJoinedBySupport),
+                result.NewOwner,
+                new Dictionary<string, string>
+                {
+                    { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                }
             );
         }
 
@@ -669,14 +840,25 @@ namespace Rebellion.Game.Messages
         /// Adds messages for completed missions.
         /// </summary>
         /// <param name="results">The completed mission results to process.</param>
+        /// <param name="killedResults">The officer death results in the current batch.</param>
+        /// <param name="sabotageResults">The sabotage results in the current batch.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddMissionMessages(
             IEnumerable<MissionCompletedResult> results,
+            IEnumerable<OfficerKilledResult> killedResults,
+            IEnumerable<GameObjectSabotagedResult> sabotageResults,
             GameRoot game,
             List<MessageDelivery> deliveries
         )
         {
+            OfficerKilledResult[] killedArray =
+                killedResults?.ToArray() ?? Array.Empty<OfficerKilledResult>();
+            HashSet<string> killedOfficerIDs = killedArray
+                .Select(result => result.TargetOfficer?.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet();
+
             foreach (MissionCompletedResult result in results)
             {
                 Planet target = GetMissionTarget(result);
@@ -684,7 +866,15 @@ namespace Rebellion.Game.Messages
                 AddDelivery(
                     deliveries,
                     actorFaction,
-                    CreateMissionReport(actorFaction, result, target)
+                    CreateMissionReport(
+                        actorFaction,
+                        result,
+                        target,
+                        game,
+                        killedOfficerIDs,
+                        killedArray,
+                        sabotageResults
+                    )
                 );
 
                 Faction targetFaction = GetFaction(game, target?.OwnerInstanceID);
@@ -696,6 +886,143 @@ namespace Rebellion.Game.Messages
                     targetFaction,
                     CreateEnemyMissionFoiled(targetFaction, result, target)
                 );
+            }
+        }
+
+        private void AddOfficerMessages(
+            IEnumerable<OfficerRecruitedResult> recruitedResults,
+            IEnumerable<OfficerCaptureStateResult> captureResults,
+            IEnumerable<OfficerInjuredResult> injuredResults,
+            IEnumerable<OfficerKilledResult> killedResults,
+            IEnumerable<MissionCompletedResult> missionResults,
+            GameRoot game,
+            List<MessageDelivery> deliveries
+        )
+        {
+            OfficerKilledResult[] killedArray =
+                killedResults?.ToArray() ?? Array.Empty<OfficerKilledResult>();
+            HashSet<string> killedOfficerIDs = killedArray
+                .Select(result => result.TargetOfficer?.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet();
+            HashSet<string> reportedRecruitmentOfficerIDs = (
+                missionResults ?? Enumerable.Empty<MissionCompletedResult>()
+            )
+                .Where(result =>
+                    result.Outcome == MissionOutcome.Success && result.Mission is RecruitmentMission
+                )
+                .Select(result => GetMissionOfficerInstanceID(result.Mission))
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet();
+
+            foreach (OfficerRecruitedResult result in recruitedResults)
+            {
+                if (
+                    reportedRecruitmentOfficerIDs.Contains(
+                        result.Officer?.InstanceID ?? string.Empty
+                    )
+                )
+                {
+                    continue;
+                }
+
+                Planet planet = result.Planet ?? GetOfficerPlanet(result.Officer);
+                AddDelivery(
+                    deliveries,
+                    result.Faction,
+                    CreateOfficerMessage(
+                        MessageResultType.OfficerRecruited,
+                        result.Faction,
+                        result.Officer,
+                        planet
+                    )
+                );
+            }
+
+            foreach (OfficerCaptureStateResult result in captureResults)
+            {
+                Officer officer = GetCaptureStateOfficer(result);
+                Faction faction = GetOwnerFaction(game, officer);
+                Planet planet = GetOfficerPlanet(officer, result.Context);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateOfficerMessage(
+                        result.IsCaptured
+                            ? MessageResultType.OfficerCaptured
+                            : MessageResultType.OfficerReleased,
+                        faction,
+                        officer,
+                        planet
+                    )
+                );
+            }
+
+            foreach (OfficerInjuredResult result in injuredResults)
+            {
+                if (
+                    result.Severity > 0
+                    && killedOfficerIDs.Contains(result.Officer?.InstanceID ?? string.Empty)
+                )
+                {
+                    continue;
+                }
+
+                Faction faction = GetOwnerFaction(game, result.Officer);
+                Planet planet = GetOfficerPlanet(result.Officer);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateOfficerMessage(
+                        result.Severity > 0
+                            ? MessageResultType.OfficerInjured
+                            : MessageResultType.OfficerRecovered,
+                        faction,
+                        result.Officer,
+                        planet
+                    )
+                );
+            }
+
+            foreach (OfficerKilledResult result in killedArray)
+            {
+                Faction faction = GetOwnerFaction(game, result.TargetOfficer);
+                Planet planet = GetOfficerPlanet(result.TargetOfficer, result.Context);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateOfficerMessage(
+                        MessageResultType.OfficerKilled,
+                        faction,
+                        result.TargetOfficer,
+                        planet
+                    )
+                );
+            }
+        }
+
+        private void AddForceMessages(
+            IEnumerable<ForceExperienceResult> experienceResults,
+            IEnumerable<ForceDiscoveryResult> discoveryResults,
+            GameRoot game,
+            List<MessageDelivery> deliveries
+        )
+        {
+            HashSet<string> discoveredOfficerIDs = (
+                discoveryResults ?? Enumerable.Empty<ForceDiscoveryResult>()
+            )
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .Select(result => result.Officer?.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet();
+
+            foreach (ForceExperienceResult result in experienceResults)
+            {
+                if (discoveredOfficerIDs.Contains(result.Officer?.InstanceID ?? string.Empty))
+                    continue;
+
+                Faction faction = GetOwnerFaction(game, result.Officer);
+                AddDelivery(deliveries, faction, CreateForceGrowth(faction, result, game));
             }
         }
 
@@ -795,6 +1122,20 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        private void AddPopularSupportOwnershipMessages(
+            IEnumerable<PlanetOwnershipChangedResult> results,
+            List<MessageDelivery> deliveries
+        )
+        {
+            foreach (PlanetOwnershipChangedResult result in results)
+            {
+                if (result.Reason != PlanetOwnershipChangeReason.PopularSupport)
+                    continue;
+
+                AddDelivery(deliveries, result.NewOwner, CreatePlanetJoinedBySupport(result));
+            }
+        }
+
         /// <summary>
         /// Adds messages for blockades and evacuation losses.
         /// </summary>
@@ -869,6 +1210,26 @@ namespace Rebellion.Game.Messages
                     faction,
                     CreateMaintenanceAutoscrap(faction, result, location)
                 );
+            }
+        }
+
+        private void AddRepairMessages(
+            IEnumerable<ShipHullDamageResult> shipResults,
+            IEnumerable<FighterDamageResult> fighterResults,
+            GameRoot game,
+            List<MessageDelivery> deliveries
+        )
+        {
+            foreach (ShipHullDamageResult result in shipResults)
+            {
+                Faction faction = GetOwnerFaction(game, result.Ship);
+                AddDelivery(deliveries, faction, CreateCapitalShipRepaired(faction, result));
+            }
+
+            foreach (FighterDamageResult result in fighterResults)
+            {
+                Faction faction = GetOwnerFaction(game, result.Fighter);
+                AddDelivery(deliveries, faction, CreateStarfighterRepaired(faction, result));
             }
         }
 
@@ -1031,12 +1392,16 @@ namespace Rebellion.Game.Messages
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="values">The values to substitute into the templates.</param>
         /// <param name="imageFaction">The faction used for faction-specific image selection.</param>
+        /// <param name="imageOverride">The explicit image path to use before definition image lookup.</param>
+        /// <param name="overlayImagePath">The optional image path to render over the message background.</param>
         /// <returns>The created message, or null when the definition is missing.</returns>
         private Message CreateMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
-            Faction imageFaction = null
+            Faction imageFaction = null,
+            string imageOverride = null,
+            string overlayImagePath = null
         )
         {
             if (definition == null)
@@ -1048,7 +1413,10 @@ namespace Rebellion.Game.Messages
             return new Message(definition.MessageType, title, body)
             {
                 DisplayName = title,
-                DisplayImagePath = definition.ImageMap?.GetForFaction(imageFaction ?? faction),
+                DisplayImageKey = definition.ImageKey,
+                DisplayImagePath =
+                    imageOverride ?? definition.ImageMap?.GetForFaction(imageFaction ?? faction),
+                OverlayImagePath = overlayImagePath,
             };
         }
 
@@ -1077,8 +1445,86 @@ namespace Rebellion.Game.Messages
                 && definition.PlanetOwnership == planetOwnership
                 && definition.BuildingType == buildingType
                 && definition.ManufacturingType == manufacturingType
+                && definition.MissionType == MissionType.None
+                && definition.MissionReportDetail == MissionReportDetail.None
                 && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
             );
+        }
+
+        private MessageDefinition GetMissionDefinition(
+            MessageResultType resultType,
+            MessageResultOutcome outcome,
+            MissionType missionType,
+            MissionReportDetail reportDetail = MissionReportDetail.None
+        )
+        {
+            MessageDefinition definition = FindMissionDefinition(
+                resultType,
+                outcome,
+                missionType,
+                reportDetail
+            );
+
+            if (definition != null)
+                return definition;
+
+            bool canUseGenericDefinition = CanUseGenericMissionDefinition(reportDetail);
+
+            if (reportDetail != MissionReportDetail.None && canUseGenericDefinition)
+            {
+                definition = FindMissionDefinition(
+                    resultType,
+                    outcome,
+                    missionType,
+                    MissionReportDetail.None
+                );
+            }
+
+            if (definition != null || missionType == MissionType.None)
+                return definition;
+
+            definition = FindMissionDefinition(resultType, outcome, MissionType.None, reportDetail);
+
+            if (definition != null || reportDetail == MissionReportDetail.None)
+                return definition;
+
+            if (!canUseGenericDefinition)
+                return null;
+
+            return FindMissionDefinition(
+                resultType,
+                outcome,
+                MissionType.None,
+                MissionReportDetail.None
+            );
+        }
+
+        private MessageDefinition FindMissionDefinition(
+            MessageResultType resultType,
+            MessageResultOutcome outcome,
+            MissionType missionType,
+            MissionReportDetail reportDetail
+        )
+        {
+            return _definitions.FirstOrDefault(candidate =>
+                candidate.ResultType == resultType
+                && candidate.Outcome == outcome
+                && candidate.PlanetOwnership == MessagePlanetOwnership.None
+                && candidate.BuildingType == BuildingType.None
+                && candidate.ManufacturingType == ManufacturingType.None
+                && candidate.MissionType == missionType
+                && candidate.MissionReportDetail == reportDetail
+            );
+        }
+
+        private static bool CanUseGenericMissionDefinition(MissionReportDetail reportDetail)
+        {
+            return reportDetail
+                is MissionReportDetail.None
+                    or MissionReportDetail.Success
+                    or MissionReportDetail.Failure
+                    or MissionReportDetail.Foiled
+                    or MissionReportDetail.ResearchBreakthrough;
         }
 
         /// <summary>
@@ -1089,6 +1535,51 @@ namespace Rebellion.Game.Messages
         private static string GetMissionName(MissionCompletedResult result)
         {
             return result.MissionName ?? result.Mission?.GetDisplayName() ?? string.Empty;
+        }
+
+        private static string GetMissionParticipantName(MissionCompletedResult result)
+        {
+            string name =
+                GetFirstParticipantDisplayName(result?.Participants)
+                ?? GetFirstParticipantDisplayName(result?.Mission?.GetAllParticipants());
+            return name ?? string.Empty;
+        }
+
+        private static string GetFirstParticipantDisplayName(
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+                .OfType<IGameEntity>()
+                .Select(GetDisplayName)
+                .FirstOrDefault(name => !string.IsNullOrEmpty(name));
+        }
+
+        private static MissionType GetMissionType(MissionCompletedResult result)
+        {
+            if (result == null)
+                return MissionType.None;
+
+            if (result.MissionType != MissionType.None)
+                return result.MissionType;
+
+            return result.Mission?.MissionType ?? MissionType.None;
+        }
+
+        private static MissionReportDetail GetMissionReportDetail(MissionCompletedResult result)
+        {
+            if (result == null)
+                return MissionReportDetail.None;
+
+            if (result.ReportDetail != MissionReportDetail.None)
+                return result.ReportDetail;
+
+            return result.Outcome switch
+            {
+                MissionOutcome.Success => MissionReportDetail.Success,
+                MissionOutcome.Foiled => MissionReportDetail.Foiled,
+                _ => MissionReportDetail.Failure,
+            };
         }
 
         /// <summary>
@@ -1102,6 +1593,83 @@ namespace Rebellion.Game.Messages
             return target?.GetDisplayName() ?? result.TargetName ?? string.Empty;
         }
 
+        private static string GetMissionOfficerName(
+            MissionCompletedResult result,
+            GameRoot game,
+            IEnumerable<OfficerKilledResult> killedResults
+        )
+        {
+            string officerID = GetMissionOfficerInstanceID(result?.Mission);
+            if (string.IsNullOrEmpty(officerID))
+                return string.Empty;
+
+            string sceneName = GetDisplayName(game?.GetSceneNodeByInstanceID<Officer>(officerID));
+            if (!string.IsNullOrEmpty(sceneName))
+                return sceneName;
+
+            return GetDisplayName(
+                (killedResults ?? Enumerable.Empty<OfficerKilledResult>())
+                    .Select(killedResult => killedResult.TargetOfficer)
+                    .FirstOrDefault(officer => officer?.InstanceID == officerID)
+            );
+        }
+
+        private static string GetMissionOfficerInstanceID(Mission mission)
+        {
+            return mission switch
+            {
+                RecruitmentMission recruitmentMission => recruitmentMission.TargetOfficerInstanceID,
+                AbductionMission abductionMission => abductionMission.TargetOfficerInstanceID,
+                AssassinationMission assassinationMission =>
+                    assassinationMission.TargetOfficerInstanceID,
+                RescueMission rescueMission => rescueMission.TargetOfficerInstanceID,
+                _ => null,
+            };
+        }
+
+        private static string GetMissionObjectTargetName(
+            MissionCompletedResult result,
+            GameRoot game,
+            IEnumerable<GameObjectSabotagedResult> sabotageResults
+        )
+        {
+            if (result?.Mission is not SabotageMission sabotageMission)
+                return string.Empty;
+
+            IGameEntity target = game?.GetSceneNodeByInstanceID<IGameEntity>(
+                sabotageMission.TargetInstanceID
+            );
+            string targetName = GetDisplayName(target);
+            if (!string.IsNullOrEmpty(targetName))
+                return targetName;
+
+            return GetDisplayName(
+                (sabotageResults ?? Enumerable.Empty<GameObjectSabotagedResult>())
+                    .Select(sabotageResult => sabotageResult.SabotagedObject)
+                    .FirstOrDefault(sabotagedObject =>
+                        sabotagedObject?.GetInstanceID() == sabotageMission.TargetInstanceID
+                    )
+            );
+        }
+
+        private static string GetAssassinationResultText(
+            MissionCompletedResult result,
+            HashSet<string> killedOfficerIDs
+        )
+        {
+            if (
+                result?.Outcome != MissionOutcome.Success
+                || result.Mission is not AssassinationMission assassinationMission
+            )
+            {
+                return string.Empty;
+            }
+
+            return killedOfficerIDs.Contains(assassinationMission.TargetOfficerInstanceID)
+                ? "has been eliminated"
+                : "has been injured";
+        }
+
         /// <summary>
         /// Gets the display name for a game entity.
         /// </summary>
@@ -1110,6 +1678,107 @@ namespace Rebellion.Game.Messages
         private static string GetDisplayName(IGameEntity entity)
         {
             return entity?.GetDisplayName() ?? string.Empty;
+        }
+
+        private static string GetAttachmentName(IGameEntity entity)
+        {
+            if (entity is not ISceneNode sceneNode)
+                return string.Empty;
+
+            return sceneNode.GetParent()?.GetDisplayName() ?? string.Empty;
+        }
+
+        private static string GetForceRankText(Officer officer, GameRoot game)
+        {
+            GameConfig.JediConfig config = game?.Config?.Jedi;
+            if (config == null || officer?.IsJedi != true)
+                return "None";
+
+            if (officer.ForceRank >= config.RankLabelForceMaster)
+                return "Jedi Master";
+            if (officer.ForceRank >= config.RankLabelForceKnight)
+                return "Jedi Knight";
+            if (officer.ForceRank >= config.RankLabelForceStudent)
+                return "Jedi Student";
+            if (officer.ForceRank >= config.RankLabelTrainee)
+                return "Trainee";
+            if (officer.ForceRank >= config.RankLabelNovice)
+                return "Novice";
+            return "None";
+        }
+
+        private static string GetMessageImagePath(IGameEntity entity)
+        {
+            return string.IsNullOrEmpty(entity?.MessageImagePath) ? null : entity.MessageImagePath;
+        }
+
+        private string GetEncyclopediaImagePath(IGameEntity entity, Faction faction)
+        {
+            string encyclopediaImagePath = _encyclopediaEntries
+                ?.FindEntry(entity?.TypeID, faction?.InstanceID)
+                ?.ImagePath;
+            if (!string.IsNullOrEmpty(encyclopediaImagePath))
+                return encyclopediaImagePath;
+
+            return string.IsNullOrEmpty(entity?.DisplayImagePath) ? null : entity.DisplayImagePath;
+        }
+
+        private static string GetMissionReportOverlayImagePath(
+            MissionCompletedResult result,
+            GameRoot game
+        )
+        {
+            string targetImagePath = GetMissionTargetOverlayImagePath(result, game);
+            if (!string.IsNullOrEmpty(targetImagePath))
+                return targetImagePath;
+
+            return GetMissionParticipantOverlayImagePath(result);
+        }
+
+        private static string GetMissionTargetOverlayImagePath(
+            MissionCompletedResult result,
+            GameRoot game
+        )
+        {
+            if (
+                result?.Outcome != MissionOutcome.Success
+                || result.Mission is not RecruitmentMission recruitmentMission
+            )
+            {
+                return null;
+            }
+
+            string targetOfficerInstanceID = recruitmentMission.TargetOfficerInstanceID;
+            if (string.IsNullOrEmpty(targetOfficerInstanceID))
+                return null;
+
+            return GetMessageImagePath(
+                game?.GetSceneNodeByInstanceID<Officer>(targetOfficerInstanceID)
+            );
+        }
+
+        private static string GetMissionParticipantOverlayImagePath(MissionCompletedResult result)
+        {
+            string imagePath = GetFirstParticipantImagePath(result?.Participants);
+            if (!string.IsNullOrEmpty(imagePath))
+                return imagePath;
+
+            return GetFirstParticipantImagePath(result?.Mission?.GetAllParticipants());
+        }
+
+        private static string GetFirstParticipantImagePath(
+            IEnumerable<IMissionParticipant> participants
+        )
+        {
+            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+                .OfType<IGameEntity>()
+                .Select(GetMessageImagePath)
+                .FirstOrDefault(path => !string.IsNullOrEmpty(path));
+        }
+
+        private static Officer GetCaptureStateOfficer(OfficerCaptureStateResult result)
+        {
+            return result?.TargetOfficer ?? result?.CapturedOfficer ?? result?.LinkedOfficer;
         }
 
         /// <summary>
@@ -1262,6 +1931,13 @@ namespace Rebellion.Game.Messages
         {
             return result?.Mission?.GetParent() as Planet
                 ?? result?.Mission?.GetLastParent() as Planet;
+        }
+
+        private static Planet GetOfficerPlanet(Officer officer, IGameEntity context = null)
+        {
+            return GetResultPlanet(context)
+                ?? officer?.GetParentOfType<Planet>()
+                ?? officer?.GetLastParent() as Planet;
         }
 
         /// <summary>

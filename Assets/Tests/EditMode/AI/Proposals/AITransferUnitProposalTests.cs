@@ -50,7 +50,7 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreEqual(targetFleet, ship.GetParent());
-            Assert.IsNotNull(ship.Movement);
+            Assert.IsNull(ship.Movement);
         }
 
         [Test]

@@ -744,6 +744,8 @@ namespace Rebellion.Game
 
             /// <summary>Tick interval for slow speed.</summary>
             public float SlowTickIntervalSeconds { get; set; } = 60f;
+
+            public float VerySlowTickIntervalSeconds { get; set; } = 120f;
         }
 
         /// <summary>

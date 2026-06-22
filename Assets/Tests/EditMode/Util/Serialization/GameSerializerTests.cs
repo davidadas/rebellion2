@@ -4,6 +4,7 @@ using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game.Events;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization
@@ -610,6 +611,30 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Serialize_GameEventConditionals_UsesPersistableAliasElementNames()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "EVENT_TEST",
+                Conditionals = new List<GameConditional>
+                {
+                    new TickCountConditional
+                    {
+                        InstanceID = "TICK_CONDITION",
+                        ConditionalValue = "30",
+                        ConditionalType = "GreaterThan",
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, gameEvent);
+
+            Assert.IsTrue(serializedXml.Contains("<TickCount Value=\"30\" Type=\"GreaterThan\">"));
+            Assert.IsFalse(serializedXml.Contains("<TickCountConditional"));
+        }
+
+        [Test]
         public void Serialize_NestedItem_WithInterfaceAndDeeplyNested_ReturnsExpectedXml()
         {
             GameSerializer serializer = new GameSerializer(typeof(DeeplyNestedItem));
@@ -761,6 +786,60 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(TestEnum.Value1, ((SimpleItem)deserialized.Items[0]).EnumValue);
             Assert.AreEqual("PublicValue1", ((SimpleItem)deserialized.Items[0]).PublicVariable);
             Assert.AreEqual("CollectionPublicValue", deserialized.PublicVariable);
+        }
+
+        [Test]
+        public void Deserialize_GameEventConditionals_WithPersistableAlias_UsesConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<GameEvent>
+  <IsRepeatable>False</IsRepeatable>
+  <Conditionals>
+    <TickCount Value=""30"" Type=""GreaterThan"">
+      <InstanceID>TICK_CONDITION</InstanceID>
+    </TickCount>
+  </Conditionals>
+  <Actions />
+  <InstanceID>EVENT_TEST</InstanceID>
+</GameEvent>";
+
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual(1, deserialized.Conditionals.Count);
+            Assert.IsInstanceOf<TickCountConditional>(deserialized.Conditionals[0]);
+            TickCountConditional conditional = (TickCountConditional)deserialized.Conditionals[0];
+            Assert.AreEqual("30", conditional.ConditionalValue);
+            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+            Assert.AreEqual("TICK_CONDITION", conditional.InstanceID);
+        }
+
+        [Test]
+        public void Deserialize_GameEventConditionals_WithLegacyClrName_UsesConcreteType()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<GameEvent>
+  <IsRepeatable>False</IsRepeatable>
+  <Conditionals>
+    <TickCountConditional Value=""30"" Type=""GreaterThan"">
+      <InstanceID>TICK_CONDITION</InstanceID>
+    </TickCountConditional>
+  </Conditionals>
+  <Actions />
+  <InstanceID>EVENT_TEST</InstanceID>
+</GameEvent>";
+
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, xmlInput);
+
+            Assert.AreEqual(1, deserialized.Conditionals.Count);
+            Assert.IsInstanceOf<TickCountConditional>(deserialized.Conditionals[0]);
+            TickCountConditional conditional = (TickCountConditional)deserialized.Conditionals[0];
+            Assert.AreEqual("30", conditional.ConditionalValue);
+            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+            Assert.AreEqual("TICK_CONDITION", conditional.InstanceID);
         }
 
         [Test]

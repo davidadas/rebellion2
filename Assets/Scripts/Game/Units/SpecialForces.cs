@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -30,6 +31,7 @@ namespace Rebellion.Game.Units
         public List<MissionType> AllowedMissionTypes { get; set; } = new List<MissionType>();
 
         // Mission rating info.
+        [PersistableMember(Name = "Skills")]
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
             new Dictionary<OfficerRating, int>
             {

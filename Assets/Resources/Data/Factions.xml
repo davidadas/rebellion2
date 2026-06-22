@@ -4,9 +4,315 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID />
+    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes>
       <MissionType>Assassination</MissionType>
     </DisallowedMissionTypes>
+    <Messages>
+      <Entry>
+        <Key>PopularSupport</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Fleet</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Mission</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Resource</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Manufacturing</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Defense</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Conflict</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Chat</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Advice</Key>
+        <Value>
+          <ArrayOfMessage>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Victory Conditions</Title>
+              <Text>To defeat the Empire, you must capture Darth Vader, Emperor Palpatine, and the Emperor's home planet of Coruscant.  If you chose 'Headquarters Only Victory', you need only capture Coruscant. The Empire will quickly begin searching for Master Luke, President Mon Mothma and our headquarters. We must protect them if we are to succeed. Use the Objectives window from my right click menu to see how the campaign is progressing.</Text>
+              <Body>To defeat the Empire, you must capture Darth Vader, Emperor Palpatine, and the Emperor's home planet of Coruscant.  If you chose 'Headquarters Only Victory', you need only capture Coruscant. The Empire will quickly begin searching for Master Luke, President Mon Mothma and our headquarters. We must protect them if we are to succeed. Use the Objectives window from my right click menu to see how the campaign is progressing.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Mon Mothma, Luke Skywalker and other Rebel Leaders</Title>
+              <Text>In order to defeat the Empire, I offer the following advice: have Mon Mothma recruit others to our cause, move Luke and his companions off Yavin and have them further our presence in the galaxy with diplomacy.&#10;&#10;To send a character on a mission, right-click on the character and select `Mission' from the menu.  Using the target cursor, select a target for the mission and the Mission window will then open. Select the mission using the arrow below the mission displayed and click the check mark at the bottom of the window</Text>
+              <Body>In order to defeat the Empire, I offer the following advice: have Mon Mothma recruit others to our cause, move Luke and his companions off Yavin and have them further our presence in the galaxy with diplomacy.&#10;&#10;To send a character on a mission, right-click on the character and select `Mission' from the menu.  Using the target cursor, select a target for the mission and the Mission window will then open. Select the mission using the arrow below the mission displayed and click the check mark at the bottom of the window</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Galactic Information Display</Title>
+              <Text>The Galactic Information Display (`GID') provides a visual overview of the current state of the galaxy as last updated by Alliance informants. Systems under our control are red, Imperial-controlled systems are green, and neutral systems are blue.  Gray stars indicate unexplored systems.&#10;&#10;Click on the rightmost control panel in the Command Center and select what you would like to view from the menu for rapid location of our resources. Note the presence of a legend in the upper left corner of the GID; double-click on the legend to view a key to the information contained in each display.</Text>
+              <Body>The Galactic Information Display (`GID') provides a visual overview of the current state of the galaxy as last updated by Alliance informants. Systems under our control are red, Imperial-controlled systems are green, and neutral systems are blue.  Gray stars indicate unexplored systems.&#10;&#10;Click on the rightmost control panel in the Command Center and select what you would like to view from the menu for rapid location of our resources. Note the presence of a legend in the upper left corner of the GID; double-click on the legend to view a key to the information contained in each display.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Positioning Fleets</Title>
+              <Text>With the information available in the GID, locate our fleets. As the Empire wishes to destroy our headquarters, may I suggest bringing some other ships there to help protect it.&#10;To do this, double click on a fleet icon and examine the ships there. When you have found a likely fleet, drag it to our headquarters. As it will take some time in getting there, you may want to choose fleets which are close to that system.</Text>
+              <Body>With the information available in the GID, locate our fleets. As the Empire wishes to destroy our headquarters, may I suggest bringing some other ships there to help protect it.&#10;To do this, double click on a fleet icon and examine the ships there. When you have found a likely fleet, drag it to our headquarters. As it will take some time in getting there, you may want to choose fleets which are close to that system.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Battle Alert</Title>
+              <Text>Should Imperial ships encounter Alliance ships over a system, a battle will ensue.  You will be notified via a Battle Alert window. Use the buttons in the vertical panel on the right of the Battle Alert window to obtain information about the units and system involved.&#10;&#10;There are three different approaches to resolving  the battle with the buttons along the bottom of the window: you can play it out, have me work out the results, or advise me to work out the results with your order to withdraw from the fight. Might I suggest you let me handle the battles while you are learning about the campaign.</Text>
+              <Body>Should Imperial ships encounter Alliance ships over a system, a battle will ensue.  You will be notified via a Battle Alert window. Use the buttons in the vertical panel on the right of the Battle Alert window to obtain information about the units and system involved.&#10;&#10;There are three different approaches to resolving  the battle with the buttons along the bottom of the window: you can play it out, have me work out the results, or advise me to work out the results with your order to withdraw from the fight. Might I suggest you let me handle the battles while you are learning about the campaign.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Manufacturing New Items</Title>
+              <Text>To build new units, such as ships, troops or facilities, first locate a system with the appropriate idle manufacturing facility.  Double-click on that system's Manufacturing and Production icon to view the corresponding window. Right-click to the right of the facility from which you wish to build, and select `Build' from the menu.  This will bring up the Build window. Click on the arrow below the default unit to view a complete list of available items.  Select the unit you wish to build and click the check-mark at the bottom of the window to execute your order.</Text>
+              <Body>To build new units, such as ships, troops or facilities, first locate a system with the appropriate idle manufacturing facility.  Double-click on that system's Manufacturing and Production icon to view the corresponding window. Right-click to the right of the facility from which you wish to build, and select `Build' from the menu.  This will bring up the Build window. Click on the arrow below the default unit to view a complete list of available items.  Select the unit you wish to build and click the check-mark at the bottom of the window to execute your order.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Adjusting Time</Title>
+              <Text>If the campaign against the Empire ever becomes overwhelming, I would suggest you slow the pace of events. Right-click on the time display at the upper-right of the Command Center and click on the desired setting.  I advise setting the speed of the time to Very Slow while you learn to manipulate our resources.</Text>
+              <Body>If the campaign against the Empire ever becomes overwhelming, I would suggest you slow the pace of events. Right-click on the time display at the upper-right of the Command Center and click on the desired setting.  I advise setting the speed of the time to Very Slow while you learn to manipulate our resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Furthering Our Cause</Title>
+              <Text>Might I suggest some ways to help us overtake the Empire? By having several of the same type of facility on one system, you will be able to build items more quickly. Find our strong diplomatic characters to sway neutral planets to our side. Strengthen our defenses by building more troops and fighters and placing fleets around valuable planets. Most importantly keep in mind our victory conditions for destroying the Empire and protect our leaders from capture.</Text>
+              <Body>Might I suggest some ways to help us overtake the Empire? By having several of the same type of facility on one system, you will be able to build items more quickly. Find our strong diplomatic characters to sway neutral planets to our side. Strengthen our defenses by building more troops and fighters and placing fleets around valuable planets. Most importantly keep in mind our victory conditions for destroying the Empire and protect our leaders from capture.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Advice Available</Title>
+              <Text>With your permission, I will provide advice on the conduct of this campaign.  If you require my assistance, click the arrows at the top of this message to view additional advice.  If you'll not be needing my advice, close this message window, right-click on my image in the Command Center, and select 'Agent Advice' from the menu. To access this message at a later time, click on the Agent icon in the vertical row currently located to the left of this message. To view other advice messages, click on the 'Message Index' button, the second button from the top on the right.</Text>
+              <Body>With your permission, I will provide advice on the conduct of this campaign.  If you require my assistance, click the arrows at the top of this message to view additional advice.  If you'll not be needing my advice, close this message window, right-click on my image in the Command Center, and select 'Agent Advice' from the menu. To access this message at a later time, click on the Agent icon in the vertical row currently located to the left of this message. To view other advice messages, click on the 'Message Index' button, the second button from the top on the right.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Maintenance Points</Title>
+              <Text>Every unit, except mines, refineries, and characters, costs a specific number of maintenance points.  The number of points currently in our maintenance pool is displayed in the rightmost monitor above the GID. Our maintenance pool will decrease each time we build a new unit.  Maintenance points will also be lost as the result of loss of mines or refineries.  We can increase the size of our maintenance pool by building additional mines and refineries, taking control of systems with existing mines and refineries, or scrapping units that are no longer necessary to our efforts.</Text>
+              <Body>Every unit, except mines, refineries, and characters, costs a specific number of maintenance points.  The number of points currently in our maintenance pool is displayed in the rightmost monitor above the GID. Our maintenance pool will decrease each time we build a new unit.  Maintenance points will also be lost as the result of loss of mines or refineries.  We can increase the size of our maintenance pool by building additional mines and refineries, taking control of systems with existing mines and refineries, or scrapping units that are no longer necessary to our efforts.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Characters and Special Forces</Title>
+              <Text>Characters and Special Forces (Personnel) are some of our most valuable resources.  Characters can engage in missions such as Diplomacy, Sabotage, Recruitment, and Research; characters are also capable of taking on leadership roles including 'Admiral', 'Commander', or 'General'.  Special Forces are small troop units that can each perform a limited number of missions. Special forces available to you include Guerrillas, Infiltrators, Bothan Spies, and Y-wing Longprobes.  These can be used to augment our other personnel as necessary.</Text>
+              <Body>Characters and Special Forces (Personnel) are some of our most valuable resources.  Characters can engage in missions such as Diplomacy, Sabotage, Recruitment, and Research; characters are also capable of taking on leadership roles including 'Admiral', 'Commander', or 'General'.  Special Forces are small troop units that can each perform a limited number of missions. Special forces available to you include Guerrillas, Infiltrators, Bothan Spies, and Y-wing Longprobes.  These can be used to augment our other personnel as necessary.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Finders</Title>
+              <Text>At the bottom of the Command Center is a row of panels from which you can access information about our systems and resources.  Information about Imperial-controlled resources, as reported by our field personnel, can also be accessed.  These 'Finders' include (from left to right): the System Finder (locates known systems by name), the Fleet Finder (locates fleets or ships), the Troop Finder (locates troops), and the Personnel Finder (locates characters and special forces).  Click on any of these consoles to view the information contained therein.</Text>
+              <Body>At the bottom of the Command Center is a row of panels from which you can access information about our systems and resources.  Information about Imperial-controlled resources, as reported by our field personnel, can also be accessed.  These 'Finders' include (from left to right): the System Finder (locates known systems by name), the Fleet Finder (locates fleets or ships), the Troop Finder (locates troops), and the Personnel Finder (locates characters and special forces).  Click on any of these consoles to view the information contained therein.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Galactic Encyclopedia</Title>
+              <Text>Might I recommend consulting the Galactic Encyclopedia for more detailed information about the galaxy and everything in it?  The  Encyclopedia can be accessed by clicking on the fifth panel from the left at the bottom of the Command Center.  Alternately, you can access the Encyclopedia by clicking on the Encyclopedia icon available in many windows, or by right-clicking on an item and selecting 'Encyclopedia' from the pop-up menu.</Text>
+              <Body>Might I recommend consulting the Galactic Encyclopedia for more detailed information about the galaxy and everything in it?  The  Encyclopedia can be accessed by clicking on the fifth panel from the left at the bottom of the Command Center.  Alternately, you can access the Encyclopedia by clicking on the Encyclopedia icon available in many windows, or by right-clicking on an item and selecting 'Encyclopedia' from the pop-up menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Galaxy Overview</Title>
+              <Text>You can request a general summary of our resources by using the 'Galaxy Overview' agent command.  The Galaxy Overview will show you which units and in what quantities we currently possess.  The total maintenance points being used by these items is also displayed.  To access the Galaxy Overview, right-click on my image in the Command Center, then select 'Galaxy Overview' from the pop-up menu.</Text>
+              <Body>You can request a general summary of our resources by using the 'Galaxy Overview' agent command.  The Galaxy Overview will show you which units and in what quantities we currently possess.  The total maintenance points being used by these items is also displayed.  To access the Galaxy Overview, right-click on my image in the Command Center, then select 'Galaxy Overview' from the pop-up menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Messages</Title>
+              <Text>Incoming messages are sorted within the Message Index under the following categories: All Messages, Loyalty, Fleet, Mission, Resource, Manufacturing, Defense, Conflict, Chat, and Advice. R2-D2 will notify you each time a new message is received; the appropriate icon will also highlight in the Message Alert bar that runs down the left side of the Command Center.  Note that the icons in the Message Alert bar match the tabs in the Message Index.  Press F6 to access the Message Index from the Command Center; alternately, you can click on the appropriate Message Alert icon to view messages of a specific type.</Text>
+              <Body>Incoming messages are sorted within the Message Index under the following categories: All Messages, Loyalty, Fleet, Mission, Resource, Manufacturing, Defense, Conflict, Chat, and Advice. R2-D2 will notify you each time a new message is received; the appropriate icon will also highlight in the Message Alert bar that runs down the left side of the Command Center.  Note that the icons in the Message Alert bar match the tabs in the Message Index.  Press F6 to access the Message Index from the Command Center; alternately, you can click on the appropriate Message Alert icon to view messages of a specific type.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>What We Know About the Empire</Title>
+              <Text>At the start of this campaign, we had some information about enemy-controlled systems and resources, which you can see indicated on some enemy systems.  We cannot fully trust this information -- R2-D2 has calculated that the odds of this information remaining accurate are 1,583,942:1.  New information can be obtained by deploying personnel on Espionage missions throughout the galaxy.</Text>
+              <Body>At the start of this campaign, we had some information about enemy-controlled systems and resources, which you can see indicated on some enemy systems.  We cannot fully trust this information -- R2-D2 has calculated that the odds of this information remaining accurate are 1,583,942:1.  New information can be obtained by deploying personnel on Espionage missions throughout the galaxy.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Exploration and Colonization</Title>
+              <Text>We can explore unknown systems by sending Longprobe Y-wing units on Reconnaissance missions to those locations.  We can also make use of our capital ships for exploration; these ships risk destruction, however, should they encounter an Imperial fleet.  If we should locate an unpopulated system through the course of our exploration, we can send a regiment of troopers via ship to establish a base there.  Building facilities on that system will bring colonists who will provide a very loyal population base.  Longprobe Y-wings are considered special forces and can be accessed through their system's Defenses window. </Text>
+              <Body>We can explore unknown systems by sending Longprobe Y-wing units on Reconnaissance missions to those locations.  We can also make use of our capital ships for exploration; these ships risk destruction, however, should they encounter an Imperial fleet.  If we should locate an unpopulated system through the course of our exploration, we can send a regiment of troopers via ship to establish a base there.  Building facilities on that system will bring colonists who will provide a very loyal population base.  Longprobe Y-wings are considered special forces and can be accessed through their system's Defenses window. </Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Fleet Window</Title>
+              <Text>The Fleet window allows detailed control of our space-based assets.  Select and double-click on a fleet to examine its contents, including capital ships, fighter squadrons, trooper regiments, and personnel.  These units will then be sorted and displayed under the tabs at the right of the fleet window.  Click on the appropriate tab to view and control each of these resources.</Text>
+              <Body>The Fleet window allows detailed control of our space-based assets.  Select and double-click on a fleet to examine its contents, including capital ships, fighter squadrons, trooper regiments, and personnel.  These units will then be sorted and displayed under the tabs at the right of the fleet window.  Click on the appropriate tab to view and control each of these resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Creating Fleets</Title>
+              <Text>At the start of this campaign, we were in possession of at least one capital ship.  Additional ships may be built using our shipyards.  Existing ships may be joined to form a fleet by dragging one ship to a fleet; existing fleets may also be joined in a similar manner.  </Text>
+              <Body>At the start of this campaign, we were in possession of at least one capital ship.  Additional ships may be built using our shipyards.  Existing ships may be joined to form a fleet by dragging one ship to a fleet; existing fleets may also be joined in a similar manner.  </Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Blockades</Title>
+              <Text>We may blockade an enemy-controlled system by simply moving one of our fleets to a system where no enemy fleet is located.  Blockading a Imperial-controlled system will prevent the Empire from accessing crucial resources. While the blockade remains, production stops, mines and refineries produce no materials, and all maintenance from them is lost; in addition, any personnel or troops located at that system prior to the blockade risk capture or destruction should they attempt to escape the blockade.  Of course, the population of a system will resent our blockading force, and loyalty may eventually swing against us.</Text>
+              <Body>We may blockade an enemy-controlled system by simply moving one of our fleets to a system where no enemy fleet is located.  Blockading a Imperial-controlled system will prevent the Empire from accessing crucial resources. While the blockade remains, production stops, mines and refineries produce no materials, and all maintenance from them is lost; in addition, any personnel or troops located at that system prior to the blockade risk capture or destruction should they attempt to escape the blockade.  Of course, the population of a system will resent our blockading force, and loyalty may eventually swing against us.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Bombardments</Title>
+              <Text>We can use fleets to destroy system-based units, including garrisons.  To order an orbital bombardment, move a fleet to the planet you wish to bombard; once the fleet has arrived at its destination, right-click on the fleet, and select 'Orbital Bombardment' from the pop-up menu.  There are three types of orbital bombardments available to us: General, Military, and Civilian.  I must caution you, however, that the population may turn against us if we destroy non-military targets.</Text>
+              <Body>We can use fleets to destroy system-based units, including garrisons.  To order an orbital bombardment, move a fleet to the planet you wish to bombard; once the fleet has arrived at its destination, right-click on the fleet, and select 'Orbital Bombardment' from the pop-up menu.  There are three types of orbital bombardments available to us: General, Military, and Civilian.  I must caution you, however, that the population may turn against us if we destroy non-military targets.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Planetary Assault</Title>
+              <Text>Our troops can take control of an enemy or neutral system from orbit by performing a planetary assault.  To launch an assault, right-click on the ship or fleet that is orbiting the target system and select 'Planetary Assault' from the pop-up menu.  Please note that a ship or fleet must contain troops in order to perform an assault.  I might add that a system with two or more shields cannot be assaulted.  We must send Sabotage missions or bombardments to destroy shields before our troops can be sent in.</Text>
+              <Body>Our troops can take control of an enemy or neutral system from orbit by performing a planetary assault.  To launch an assault, right-click on the ship or fleet that is orbiting the target system and select 'Planetary Assault' from the pop-up menu.  Please note that a ship or fleet must contain troops in order to perform an assault.  I might add that a system with two or more shields cannot be assaulted.  We must send Sabotage missions or bombardments to destroy shields before our troops can be sent in.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Manufacturing and Production Window</Title>
+              <Text>From the Manufacturing and Production window you may examine and control the shipyards, training facilities, construction yards, mines, and refineries on a specific system.  Shipyards, training facilities, and construction yards are used to build ships, train troops or special forces, or build other facilities respectively.  Mines produce raw materials that are converted to refined materials by refineries.</Text>
+              <Body>From the Manufacturing and Production window you may examine and control the shipyards, training facilities, construction yards, mines, and refineries on a specific system.  Shipyards, training facilities, and construction yards are used to build ships, train troops or special forces, or build other facilities respectively.  Mines produce raw materials that are converted to refined materials by refineries.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Mines and Refineries</Title>
+              <Text>Mines produce raw materials for use by refineries.  Refineries convert the raw materials to refined materials, which are stored for use in the construction of new units.  The first and second monitors from the left above the GID indicate the numbers of raw and refined materials points currently available to us.  Although refineries depend on mines for materials, our mines and refineries need not be located on the same systems.  Refineries will draw from any available Alliance-controlled mine.  Optimally, however, we should have at least one refinery for each mine - maintaining this balance generates maintenance points, and allows the production cycle to function more efficiently.</Text>
+              <Body>Mines produce raw materials for use by refineries.  Refineries convert the raw materials to refined materials, which are stored for use in the construction of new units.  The first and second monitors from the left above the GID indicate the numbers of raw and refined materials points currently available to us.  Although refineries depend on mines for materials, our mines and refineries need not be located on the same systems.  Refineries will draw from any available Alliance-controlled mine.  Optimally, however, we should have at least one refinery for each mine - maintaining this balance generates maintenance points, and allows the production cycle to function more efficiently.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Agent Management</Title>
+              <Text>For your convenience, I can be directed to manage garrisons or production.  When asked to 'Manage Garrisons', I will use available training facilities to provide garrisons on systems where they are required.  If directed to 'Manage Production', I will order our construction yards to produce mines and refineries in order to maximize our production and maintenance capabilities. You can issue any of these on-going commands to me by closing this message, right-clicking on my image in the Command Center, and selecting the appropriate command from my pop-up menu.</Text>
+              <Body>For your convenience, I can be directed to manage garrisons or production.  When asked to 'Manage Garrisons', I will use available training facilities to provide garrisons on systems where they are required.  If directed to 'Manage Production', I will order our construction yards to produce mines and refineries in order to maximize our production and maintenance capabilities. You can issue any of these on-going commands to me by closing this message, right-clicking on my image in the Command Center, and selecting the appropriate command from my pop-up menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Giving Your Agent Build Orders</Title>
+              <Text>If you want a specific unit constructed, you can direct me to locate an idle facility and build that unit to a destination of your choosing.  To instruct me to build a unit, close this message window, right-click on my image in the Command Center, select 'Build Ships', 'Build Troops' or 'Build Facilities' from my pop-up menu, and use the target cursor to select a destination to which the unit should be built.  The Build Window will then come up, from which you should select the unit and quantity of that unit which you wish me to build.  Once you have made your selections, click on the check-mark at the bottom of the build window so that I may act upon your request.</Text>
+              <Body>If you want a specific unit constructed, you can direct me to locate an idle facility and build that unit to a destination of your choosing.  To instruct me to build a unit, close this message window, right-click on my image in the Command Center, select 'Build Ships', 'Build Troops' or 'Build Facilities' from my pop-up menu, and use the target cursor to select a destination to which the unit should be built.  The Build Window will then come up, from which you should select the unit and quantity of that unit which you wish me to build.  Once you have made your selections, click on the check-mark at the bottom of the build window so that I may act upon your request.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The System Defenses Window</Title>
+              <Text>The System Defense window allows you to view and control our system-based military resources.  These resources are sorted within the System Defenses window under the following tabs: Personnel (characters and special forces), Garrisons (trooper regiments), Fighter Squadrons (X-wings, Y-wings, etc.), Shield Generators, and Batteries.  Click on the appropriate tab to view and control each of these resources.</Text>
+              <Body>The System Defense window allows you to view and control our system-based military resources.  These resources are sorted within the System Defenses window under the following tabs: Personnel (characters and special forces), Garrisons (trooper regiments), Fighter Squadrons (X-wings, Y-wings, etc.), Shield Generators, and Batteries.  Click on the appropriate tab to view and control each of these resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Selecting Characters for Missions</Title>
+              <Text>We have many skillful characters at our disposal who may be assigned to special missions in order to sway campaign conditions to our favor.  Each character has a unique set of abilities which make him or her more or less capable of succeeding at certain missions.  To examine a character's abilities, right-click on that character and select 'Status' from the pop-up menu.  In the Status Window you will see, among other items, a listing of the character's values in Diplomacy, Espionage, Combat, and Leadership. Many missions require skills in these areas; the higher a character's values are in a particular category, the more likely it is that they will succeed on a mission requiring that skill.  Other missions, such as Ship Design Research, require more specialized abilities; you can discover whether your character is capable of such missions by again examining their status window under `R&amp;D capabilities'.</Text>
+              <Body>We have many skillful characters at our disposal who may be assigned to special missions in order to sway campaign conditions to our favor.  Each character has a unique set of abilities which make him or her more or less capable of succeeding at certain missions.  To examine a character's abilities, right-click on that character and select 'Status' from the pop-up menu.  In the Status Window you will see, among other items, a listing of the character's values in Diplomacy, Espionage, Combat, and Leadership. Many missions require skills in these areas; the higher a character's values are in a particular category, the more likely it is that they will succeed on a mission requiring that skill.  Other missions, such as Ship Design Research, require more specialized abilities; you can discover whether your character is capable of such missions by again examining their status window under `R&amp;D capabilities'.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Defensive Facilities</Title>
+              <Text>System defense facilities have rather specialized uses: shields guard against enemy assaults and bombardments; ion cannons paralyze attacking ships and allow for evacuations while a system is under blockade; laser batteries destroy attacking ships or troops. Having defense facilities in place on each of our key systems will hinder the Empire's ability to take our systems by force.  Defense facilities can be built via construction yards to any Alliance-controlled system which possesses enough free energy to support the facilities.</Text>
+              <Body>System defense facilities have rather specialized uses: shields guard against enemy assaults and bombardments; ion cannons paralyze attacking ships and allow for evacuations while a system is under blockade; laser batteries destroy attacking ships or troops. Having defense facilities in place on each of our key systems will hinder the Empire's ability to take our systems by force.  Defense facilities can be built via construction yards to any Alliance-controlled system which possesses enough free energy to support the facilities.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Garrisons</Title>
+              <Text>Order can be maintained on an Alliance-controlled system against the wishes of the population through the use of garrisons.  Systems taken by force will require the presence of garrisons in order for us to maintain control.  Systems gained through Diplomacy or other non-military means will not require a garrison.  However, having troops stationed on each of our key systems will weaken the Empire's ability to take those systems by assault.  Click on the Trooper Regiments tab on any of our systems' Defense windows to see the number of trooper regiments ('Garrison Requirement') we need to maintain order.</Text>
+              <Body>Order can be maintained on an Alliance-controlled system against the wishes of the population through the use of garrisons.  Systems taken by force will require the presence of garrisons in order for us to maintain control.  Systems gained through Diplomacy or other non-military means will not require a garrison.  However, having troops stationed on each of our key systems will weaken the Empire's ability to take those systems by assault.  Click on the Trooper Regiments tab on any of our systems' Defense windows to see the number of trooper regiments ('Garrison Requirement') we need to maintain order.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Uprisings</Title>
+              <Text>If the number of troops on a system falls below the established garrison requirement, or if the Empire conducts a successful mission to incite an uprising, the population of that system will revolt.  A system in such a state is said to be in 'uprising', and all production on that system ceases.   If the uprising is not shortly subdued, facilities on that system may eventually be destroyed, or the planet may even desert the Alliance and join the Empire!  Uprisings can be subdued by placing twice the normal garrison on the system or by sending a character to perform a 'Subdue Uprising' mission at that location. While these measures can be taken to subdue such a situation, I strongly suggest not allowing our systems to go into uprising.</Text>
+              <Body>If the number of troops on a system falls below the established garrison requirement, or if the Empire conducts a successful mission to incite an uprising, the population of that system will revolt.  A system in such a state is said to be in 'uprising', and all production on that system ceases.   If the uprising is not shortly subdued, facilities on that system may eventually be destroyed, or the planet may even desert the Alliance and join the Empire!  Uprisings can be subdued by placing twice the normal garrison on the system or by sending a character to perform a 'Subdue Uprising' mission at that location. While these measures can be taken to subdue such a situation, I strongly suggest not allowing our systems to go into uprising.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+          </ArrayOfMessage>
+        </Value>
+      </Entry>
+    </Messages>
     <Settings>
       <RefinementMultiplier>1</RefinementMultiplier>
       <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
@@ -21,7 +327,313 @@
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID />
+    <PlayerID>PLAYER1</PlayerID>
     <DisallowedMissionTypes />
+    <Messages>
+      <Entry>
+        <Key>PopularSupport</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Fleet</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Mission</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Resource</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Manufacturing</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Defense</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Conflict</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Chat</Key>
+        <Value>
+          <ArrayOfMessage />
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>Advice</Key>
+        <Value>
+          <ArrayOfMessage>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Victory Conditions</Title>
+              <Text>If the Rebellion is to be crushed, you must seek out and destroy their headquarters.  In addition, the Emperor has ordered that the Rebel leaders, Senator Mon Mothma and Luke Skywalker, must be captured. If you chose 'Headquarters Only Victory', you need only destroy the Rebel headquarters. At the same time, the Rebels will be attempting to capture the Emperor and Lord Vader as well as invade the Imperial capital at Coruscant. Use the Objectives window from my right click menu to see how the campaign is progressing.</Text>
+              <Body>If the Rebellion is to be crushed, you must seek out and destroy their headquarters.  In addition, the Emperor has ordered that the Rebel leaders, Senator Mon Mothma and Luke Skywalker, must be captured. If you chose 'Headquarters Only Victory', you need only destroy the Rebel headquarters. At the same time, the Rebels will be attempting to capture the Emperor and Lord Vader as well as invade the Imperial capital at Coruscant. Use the Objectives window from my right click menu to see how the campaign is progressing.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Emperor Palpatine and Lord Vader</Title>
+              <Text>In order to maximize your potential in defeating the Rebel scum, I offer the following advice: have the Emperor recruit others to our cause and locate Lord Vader to have him recruit loyal personnel or conduct diplomacy on our behalf.&#10;&#10;To send a character on a mission, right-click on the character and select `Mission' from the menu.  Using the target cursor, select a target for the mission and the Mission window will then open. Select the mission using the arrow below the mission displayed and click the check mark at the bottom of the window.</Text>
+              <Body>In order to maximize your potential in defeating the Rebel scum, I offer the following advice: have the Emperor recruit others to our cause and locate Lord Vader to have him recruit loyal personnel or conduct diplomacy on our behalf.&#10;&#10;To send a character on a mission, right-click on the character and select `Mission' from the menu.  Using the target cursor, select a target for the mission and the Mission window will then open. Select the mission using the arrow below the mission displayed and click the check mark at the bottom of the window.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Galactic Information Display</Title>
+              <Text>The Galactic Information Display (`GID') provides a visual overview of the current state of the galaxy as Imperial Intelligence knows it. Systems under our control are green, Rebel-controlled systems are red, and neutral systems are blue.  Gray stars indicate unexplored systems.&#10;&#10;Click on the rightmost control panel in the Command Center and select what you would like to view from the menu for rapid location of our resources. Note the presence of a legend in the upper left corner of the GID; double-click on the legend to view a key to the information contained in each display.</Text>
+              <Body>The Galactic Information Display (`GID') provides a visual overview of the current state of the galaxy as Imperial Intelligence knows it. Systems under our control are green, Rebel-controlled systems are red, and neutral systems are blue.  Gray stars indicate unexplored systems.&#10;&#10;Click on the rightmost control panel in the Command Center and select what you would like to view from the menu for rapid location of our resources. Note the presence of a legend in the upper left corner of the GID; double-click on the legend to view a key to the information contained in each display.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Positioning Fleets</Title>
+              <Text>With the information available in the GID, note the location of our fleets. As the Alliance is determined to overthrow Coruscant, you should have a fleet there to defend it. I'd suggest bringing some other ships there to help protect it.&#10;&#10;To do this, double click on a fleet icon and examine the ships there. When you have found a likely fleet, drag it to Coruscant. As it will take some time in getting there, you may want to choose fleets which are close to that system.</Text>
+              <Body>With the information available in the GID, note the location of our fleets. As the Alliance is determined to overthrow Coruscant, you should have a fleet there to defend it. I'd suggest bringing some other ships there to help protect it.&#10;&#10;To do this, double click on a fleet icon and examine the ships there. When you have found a likely fleet, drag it to Coruscant. As it will take some time in getting there, you may want to choose fleets which are close to that system.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Battle Alert</Title>
+              <Text>Should Imperial ships encounter Rebel ships over a system, a battle will ensue.  You will be notified via a Battle Alert window. Use the buttons in the vertical panel on the right of the Battle Alert window to obtain information about the units and system involved.&#10;&#10;The buttons along the bottom of the window allow three different approaches to resolving the battle: you may play it out, instruct me to work out the results, or advise me to work out the results with your order to withdraw from the fight. I suggest you let me handle the battles while you are learning about the campaign.</Text>
+              <Body>Should Imperial ships encounter Rebel ships over a system, a battle will ensue.  You will be notified via a Battle Alert window. Use the buttons in the vertical panel on the right of the Battle Alert window to obtain information about the units and system involved.&#10;&#10;The buttons along the bottom of the window allow three different approaches to resolving the battle: you may play it out, instruct me to work out the results, or advise me to work out the results with your order to withdraw from the fight. I suggest you let me handle the battles while you are learning about the campaign.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Manufacturing New Items</Title>
+              <Text>To build new units, such as ships, troops, or facilities, first locate a system with the appropriate idle manufacturing facility.  Double-click on that system's Manufacturing and Production icon to view the corresponding window. Right-click to the right of the facility from which you wish to build, and select `Build' from the menu.  This will bring up the Build window.  A default unit will be displayed in this window; click on the scrolling arrow below this unit to view a complete list of available items.  Select the unit you wish to build and click the check-mark at the bottom of the window to execute your order.</Text>
+              <Body>To build new units, such as ships, troops, or facilities, first locate a system with the appropriate idle manufacturing facility.  Double-click on that system's Manufacturing and Production icon to view the corresponding window. Right-click to the right of the facility from which you wish to build, and select `Build' from the menu.  This will bring up the Build window.  A default unit will be displayed in this window; click on the scrolling arrow below this unit to view a complete list of available items.  Select the unit you wish to build and click the check-mark at the bottom of the window to execute your order.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Adjusting Time</Title>
+              <Text>If the war effort becomes too overwhelming for you, you may wish to slow the pace of events. Right-click on the time display at the upper-right of the Command Center and click on the desired setting.  I advise setting the speed of the time to Very Slow while you learn to manipulate our resources.</Text>
+              <Body>If the war effort becomes too overwhelming for you, you may wish to slow the pace of events. Right-click on the time display at the upper-right of the Command Center and click on the desired setting.  I advise setting the speed of the time to Very Slow while you learn to manipulate our resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Furthering Our Cause</Title>
+              <Text>An important part to any war campaign is maximizing the potential of our resources. Use multiple facilities to build items quickly. Examine the attributes of new personnel and decide what missions or commands would be best for them. Continue to strengthen our fleets with more ships, troops and fighters. Expand the Empire by gaining control of other systems either by diplomacy or with force. Finally, always keep in mind that you are attempting to obtain your victory conditions to ultimately crush the Rebellion.</Text>
+              <Body>An important part to any war campaign is maximizing the potential of our resources. Use multiple facilities to build items quickly. Examine the attributes of new personnel and decide what missions or commands would be best for them. Continue to strengthen our fleets with more ships, troops and fighters. Expand the Empire by gaining control of other systems either by diplomacy or with force. Finally, always keep in mind that you are attempting to obtain your victory conditions to ultimately crush the Rebellion.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Advice Available</Title>
+              <Text>I am most willing to instruct you in the correct methods of conducting this campaign.  Click the arrows at the top of this message to view additional instructions. If you feel capable of conducting this campaign on your own, close this message, right-click on my image in the Command Center and select `Agent Advice' from the pop-up menu. Should you later acknowledge a need for my assistance, follow the same procedure to reactivate `Agent Advice'.  You may access this message, as well as further instructions, by clicking on the Agent icon in the Message Alert bar located to the right of this message.</Text>
+              <Body>I am most willing to instruct you in the correct methods of conducting this campaign.  Click the arrows at the top of this message to view additional instructions. If you feel capable of conducting this campaign on your own, close this message, right-click on my image in the Command Center and select `Agent Advice' from the pop-up menu. Should you later acknowledge a need for my assistance, follow the same procedure to reactivate `Agent Advice'.  You may access this message, as well as further instructions, by clicking on the Agent icon in the Message Alert bar located to the right of this message.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Maintenance Points</Title>
+              <Text>Every unit, except mines, refineries, and characters, costs a specific number of maintenance points.  The number of points currently in our maintenance pool is displayed in the rightmost monitor above the GID. Our maintenance pool will decrease each time we build a new unit.  Maintenance points will also be lost as the result of loss of mines or refineries.  We can increase the size of our maintenance pool by building additional mines and refineries, taking control of systems with existing mines and refineries, or scrapping units that are no longer necessary to our efforts.</Text>
+              <Body>Every unit, except mines, refineries, and characters, costs a specific number of maintenance points.  The number of points currently in our maintenance pool is displayed in the rightmost monitor above the GID. Our maintenance pool will decrease each time we build a new unit.  Maintenance points will also be lost as the result of loss of mines or refineries.  We can increase the size of our maintenance pool by building additional mines and refineries, taking control of systems with existing mines and refineries, or scrapping units that are no longer necessary to our efforts.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Characters and Special Forces</Title>
+              <Text>Characters and Special Forces (Personnel) are most valuable to the Empire.  Personnel can engage in missions such as Espionage, Sabotage, and Recruitment. Characters are also capable of taking on leadership roles including 'Admiral', 'Commander', or 'General'. Special forces available to you include Imperial Commandos, Imperial Espionage Droids, Imperial Probe Droids, and Noghri Death Commandos. Our personnel should be used whenever possible to defeat the Rebel scum.</Text>
+              <Body>Characters and Special Forces (Personnel) are most valuable to the Empire.  Personnel can engage in missions such as Espionage, Sabotage, and Recruitment. Characters are also capable of taking on leadership roles including 'Admiral', 'Commander', or 'General'. Special forces available to you include Imperial Commandos, Imperial Espionage Droids, Imperial Probe Droids, and Noghri Death Commandos. Our personnel should be used whenever possible to defeat the Rebel scum.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Finders</Title>
+              <Text>At the bottom of the Command Center is a row of panels from which you may access information about our systems and resources.  Information about Rebel-controlled resources, as reported by our field personnel, may also be accessed.  These 'Finders' include (from left to right): the System Finder (locates known systems by name), the Fleet Finder (locates fleets or ships), the Troop Finder (locates troops), and the Personnel Finder (locates characters and special forces).  Click on any of these consoles to view the information contained therein.</Text>
+              <Body>At the bottom of the Command Center is a row of panels from which you may access information about our systems and resources.  Information about Rebel-controlled resources, as reported by our field personnel, may also be accessed.  These 'Finders' include (from left to right): the System Finder (locates known systems by name), the Fleet Finder (locates fleets or ships), the Troop Finder (locates troops), and the Personnel Finder (locates characters and special forces).  Click on any of these consoles to view the information contained therein.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Galactic Encyclopedia</Title>
+              <Text>Consult the Galactic Encyclopedia for more detailed information about the galaxy and everything in it.  The Encyclopedia may be accessed by the fifth panel from the left at the bottom of the Command Center, Encyclopedia icon available in many windows, or by right-clicking on an item and selecting 'Encyclopedia' from the pop-up menu.</Text>
+              <Body>Consult the Galactic Encyclopedia for more detailed information about the galaxy and everything in it.  The Encyclopedia may be accessed by the fifth panel from the left at the bottom of the Command Center, Encyclopedia icon available in many windows, or by right-clicking on an item and selecting 'Encyclopedia' from the pop-up menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Galaxy Overview</Title>
+              <Text>You may request a general summary of our resources by using the 'Galaxy Overview' agent command.  The Galaxy Overview will show you what units and the number of each we currently possess.  The total maintenance points being used by these items will also be displayed.  To access the Galaxy Overview, right-click on my image in the Command Center, then select 'Galaxy Overview' from the pop-up menu.</Text>
+              <Body>You may request a general summary of our resources by using the 'Galaxy Overview' agent command.  The Galaxy Overview will show you what units and the number of each we currently possess.  The total maintenance points being used by these items will also be displayed.  To access the Galaxy Overview, right-click on my image in the Command Center, then select 'Galaxy Overview' from the pop-up menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Message Window</Title>
+              <Text>Incoming messages are sorted within the Message Index under the following categories: All Messages, Loyalty, Fleet, Mission, Resource, Manufacturing, Defense, Conflict, Chat, and Advice.  SD-7 will notify you each time a new message is received; the appropriate icon will also highlight in the Message Alert bar that runs down the right side of the Command Center.  Note that the icons in the Message Alert bar match the tabs in the Message Index; click on the appropriate Message Alert icon to view messages of a specific type. Alternately, click on SD-7 or hit F6 to see All Messages. </Text>
+              <Body>Incoming messages are sorted within the Message Index under the following categories: All Messages, Loyalty, Fleet, Mission, Resource, Manufacturing, Defense, Conflict, Chat, and Advice.  SD-7 will notify you each time a new message is received; the appropriate icon will also highlight in the Message Alert bar that runs down the right side of the Command Center.  Note that the icons in the Message Alert bar match the tabs in the Message Index; click on the appropriate Message Alert icon to view messages of a specific type. Alternately, click on SD-7 or hit F6 to see All Messages. </Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>What We Know About the Rebel Alliance</Title>
+              <Text>At the start of this campaign, we had some information about Rebel-controlled systems and resources, as is represented on the Galactic Information Display.  We cannot fully trust this information - Imperial Intelligence tells us that Rebel resources, including their headquarters, can be easily relocated at the whim of the Rebel leaders. New information can be obtained by deploying personnel on Espionage missions throughout the galaxy.</Text>
+              <Body>At the start of this campaign, we had some information about Rebel-controlled systems and resources, as is represented on the Galactic Information Display.  We cannot fully trust this information - Imperial Intelligence tells us that Rebel resources, including their headquarters, can be easily relocated at the whim of the Rebel leaders. New information can be obtained by deploying personnel on Espionage missions throughout the galaxy.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Exploration and Colonization</Title>
+              <Text>There are many systems along the rim of the galaxy that are little known to us.  The Rebels are likely to use these systems as hiding places from which to spread chaos throughout the galaxy. We can explore these systems by deploying Imperial Probe Droids on Reconnaissance missions there.  We can also employ our capital ships for exploration; these ships risk destruction, however, should they encounter a Rebel fleet.  If our units locate an unpopulated system, a regiment of troopers may be sent via ship to establish a base there.  Building facilities on that system will bring colonists who will be most loyal to the Empire.</Text>
+              <Body>There are many systems along the rim of the galaxy that are little known to us.  The Rebels are likely to use these systems as hiding places from which to spread chaos throughout the galaxy. We can explore these systems by deploying Imperial Probe Droids on Reconnaissance missions there.  We can also employ our capital ships for exploration; these ships risk destruction, however, should they encounter a Rebel fleet.  If our units locate an unpopulated system, a regiment of troopers may be sent via ship to establish a base there.  Building facilities on that system will bring colonists who will be most loyal to the Empire.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Fleet Window</Title>
+              <Text>The Fleet window allows detailed control of our space-based assets.  Select and double-click on a fleet to examine its contents, including capital ships, fighter squadrons, trooper regiments, and personnel.  These units will then be sorted and displayed under the tabs at the right of the fleet window.  Click on the appropriate tab to view and control each of these resources.</Text>
+              <Body>The Fleet window allows detailed control of our space-based assets.  Select and double-click on a fleet to examine its contents, including capital ships, fighter squadrons, trooper regiments, and personnel.  These units will then be sorted and displayed under the tabs at the right of the fleet window.  Click on the appropriate tab to view and control each of these resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Creating Fleets</Title>
+              <Text>At the start of this campaign, we were in possession of at least one capital ship.  Additional ships may be built using our shipyards.  Existing ships may be joined to form a fleet by dragging one ship to a fleet; existing fleets may also be joined in a similar manner.  </Text>
+              <Body>At the start of this campaign, we were in possession of at least one capital ship.  Additional ships may be built using our shipyards.  Existing ships may be joined to form a fleet by dragging one ship to a fleet; existing fleets may also be joined in a similar manner.  </Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Blockades</Title>
+              <Text>We may blockade an enemy-controlled system by simply moving one of our fleets to a system where no enemy fleet is located.  Blockading a Rebel-controlled system will prevent the Rebel Alliance from accessing crucial resources. While the blockade remains, production stops, mines and refineries produce no materials, and all maintenance from them is lost; in addition, any personnel or troops located at that system prior to the blockade risk capture or destruction should they attempt to escape the blockade.  Of course, the population of a system will resent our blockading force, and loyalty may eventually swing against us.</Text>
+              <Body>We may blockade an enemy-controlled system by simply moving one of our fleets to a system where no enemy fleet is located.  Blockading a Rebel-controlled system will prevent the Rebel Alliance from accessing crucial resources. While the blockade remains, production stops, mines and refineries produce no materials, and all maintenance from them is lost; in addition, any personnel or troops located at that system prior to the blockade risk capture or destruction should they attempt to escape the blockade.  Of course, the population of a system will resent our blockading force, and loyalty may eventually swing against us.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Bombardments</Title>
+              <Text>Fleets may be used to destroy land-based units, including garrisons, on a system where no enemy fleet is located.  To order an orbital bombardment, move a fleet to the system you wish to bombard; once the fleet has arrived at the chosen system, right-click on the fleet, and select 'Orbital Bombardment' from the pop-up menu.  There are three types of orbital bombardments available to us: General, Military, and Civilian; be aware, however, that system loyalty may shift in the Rebel's favor if we destroy non-military targets.</Text>
+              <Body>Fleets may be used to destroy land-based units, including garrisons, on a system where no enemy fleet is located.  To order an orbital bombardment, move a fleet to the system you wish to bombard; once the fleet has arrived at the chosen system, right-click on the fleet, and select 'Orbital Bombardment' from the pop-up menu.  There are three types of orbital bombardments available to us: General, Military, and Civilian; be aware, however, that system loyalty may shift in the Rebel's favor if we destroy non-military targets.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Planetary Assaults</Title>
+              <Text>Our troops can take control of an enemy or neutral system from orbit by performing a planetary assault.  To launch an assault, right-click on the ship or fleet that is orbiting the target system and select 'Planetary Assault' from the pop-up menu. Note that a ship or fleet must contain troops in order to perform an assault and a system with two or more shields cannot be assaulted.  We must deploy Sabotage missions to destroy shields before our troops can be sent in.</Text>
+              <Body>Our troops can take control of an enemy or neutral system from orbit by performing a planetary assault.  To launch an assault, right-click on the ship or fleet that is orbiting the target system and select 'Planetary Assault' from the pop-up menu. Note that a ship or fleet must contain troops in order to perform an assault and a system with two or more shields cannot be assaulted.  We must deploy Sabotage missions to destroy shields before our troops can be sent in.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The Manufacturing and Production Window</Title>
+              <Text>From the Manufacturing and Production window you may examine and control the shipyards, training facilities, construction yards, mines, and refineries on a specific system. These facilities are used to build ships, train troops or special forces, or build other facilities respectively.  Mines produce raw materials that are converted to refined materials by refineries.</Text>
+              <Body>From the Manufacturing and Production window you may examine and control the shipyards, training facilities, construction yards, mines, and refineries on a specific system. These facilities are used to build ships, train troops or special forces, or build other facilities respectively.  Mines produce raw materials that are converted to refined materials by refineries.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Mines and Refineries</Title>
+              <Text>Mines produce raw materials for use by refineries.  Refineries convert the raw materials to refined materials, which are stored for use in the construction of new units.  The first and second monitors from the left above the GID indicate the numbers of raw and refined materials points currently available to us.  Although refineries depend on mines for materials, our mines and refineries need not be located on the same systems.  Refineries will draw from any available Empire-controlled mine.  Optimally, however, we should have at least one refinery for each mine - maintaining this balance generates maintenance points, and allows the production cycle to function more efficiently.</Text>
+              <Body>Mines produce raw materials for use by refineries.  Refineries convert the raw materials to refined materials, which are stored for use in the construction of new units.  The first and second monitors from the left above the GID indicate the numbers of raw and refined materials points currently available to us.  Although refineries depend on mines for materials, our mines and refineries need not be located on the same systems.  Refineries will draw from any available Empire-controlled mine.  Optimally, however, we should have at least one refinery for each mine - maintaining this balance generates maintenance points, and allows the production cycle to function more efficiently.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Agent Management</Title>
+              <Text>At your command, I will manage our garrisons or production.  When ordered to 'Manage Garrisons', I will use available training facilities to provide garrisons on systems as required.  If directed to 'Manage Production', I will order our construction yards to produce mines and refineries in order to maximize our production and maintenance capabilities. To issue any of these on-going commands to me, close this message, right-click on my image in the Command Center, and select the appropriate directive from the menu.</Text>
+              <Body>At your command, I will manage our garrisons or production.  When ordered to 'Manage Garrisons', I will use available training facilities to provide garrisons on systems as required.  If directed to 'Manage Production', I will order our construction yards to produce mines and refineries in order to maximize our production and maintenance capabilities. To issue any of these on-going commands to me, close this message, right-click on my image in the Command Center, and select the appropriate directive from the menu.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Giving your Agent Build Orders</Title>
+              <Text>If you want a specific unit constructed, you may direct me to locate an idle facility and build that unit to a destination of your choosing.  To instruct me to build a unit, close this message window, right-click on my image in the Command Center, select 'Build Ships', 'Build Troops' or 'Build Facilities' from the menu, and use the target cursor to select a destination to which the unit should be built.  The Build Window will then come up; select the unit and quantity of that unit you wish constructed, then click the check-mark at the bottom of the build window so that I may carry out your orders.</Text>
+              <Body>If you want a specific unit constructed, you may direct me to locate an idle facility and build that unit to a destination of your choosing.  To instruct me to build a unit, close this message window, right-click on my image in the Command Center, select 'Build Ships', 'Build Troops' or 'Build Facilities' from the menu, and use the target cursor to select a destination to which the unit should be built.  The Build Window will then come up; select the unit and quantity of that unit you wish constructed, then click the check-mark at the bottom of the build window so that I may carry out your orders.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>The System Defenses Window</Title>
+              <Text>The System Defenses window allows you to view and control our land-based military resources.  These resources are sorted within the System Defenses window under the following tabs: Personnel (characters and special forces), Garrisons (trooper regiments), Fighter Squadrons (TIE Fighters, TIE Bombers, etc.), Shield Generators, and Batteries.  Click on the appropriate tab to view and control each of these resources.</Text>
+              <Body>The System Defenses window allows you to view and control our land-based military resources.  These resources are sorted within the System Defenses window under the following tabs: Personnel (characters and special forces), Garrisons (trooper regiments), Fighter Squadrons (TIE Fighters, TIE Bombers, etc.), Shield Generators, and Batteries.  Click on the appropriate tab to view and control each of these resources.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Selecting Characters for Missions</Title>
+              <Text>We have many skillful characters at our disposal who may be deployed on missions in order to sway campaign conditions to the favor of the Empire.  Each character has a unique set of abilities which make him or her more or less capable of succeeding at certain missions.  To examine a character's abilities, right-click on that character and select 'Status' from the menu.  The character's values in Diplomacy, Espionage, Combat, and Leadership, among other items, will be visible in the Status Window.  Many missions, such as Espionage or Diplomacy require skills in these areas; the higher a character's values are in a particular category, the more likely it is that they will succeed on a mission requiring that skill.  Research missions, however, require more specialized abilities; you can discover whether a character is capable of such missions by examining the `R&amp;D' section of their status window.</Text>
+              <Body>We have many skillful characters at our disposal who may be deployed on missions in order to sway campaign conditions to the favor of the Empire.  Each character has a unique set of abilities which make him or her more or less capable of succeeding at certain missions.  To examine a character's abilities, right-click on that character and select 'Status' from the menu.  The character's values in Diplomacy, Espionage, Combat, and Leadership, among other items, will be visible in the Status Window.  Many missions, such as Espionage or Diplomacy require skills in these areas; the higher a character's values are in a particular category, the more likely it is that they will succeed on a mission requiring that skill.  Research missions, however, require more specialized abilities; you can discover whether a character is capable of such missions by examining the `R&amp;D' section of their status window.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Defensive Facilities</Title>
+              <Text>System-based defense facilities have rather specialized uses: shields guard against enemy assaults and bombardments; ion cannons paralyze attacking ships and allow for evacuations while a system is under blockade; laser batteries destroy attacking ships or troops. Having defense facilities in place on each of our key systems will hinder the Rebel Alliance's ability to take our systems by force.  Defense facilities can be built via construction yards to any Imperial-controlled system which possesses enough free energy to support the facilities.</Text>
+              <Body>System-based defense facilities have rather specialized uses: shields guard against enemy assaults and bombardments; ion cannons paralyze attacking ships and allow for evacuations while a system is under blockade; laser batteries destroy attacking ships or troops. Having defense facilities in place on each of our key systems will hinder the Rebel Alliance's ability to take our systems by force.  Defense facilities can be built via construction yards to any Imperial-controlled system which possesses enough free energy to support the facilities.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Garrisons</Title>
+              <Text>Order can be maintained on an Imperial-controlled system against the wishes of the population through the use of garrisons.  Systems taken by force will require the presence of garrisons in order for us to maintain control.  Systems gained through Diplomacy or other non-military means will not require a garrison.  However, having troops stationed on each of our key systems will weaken the Rebel Alliance's ability to take those systems by assault.  Click on the Trooper Regiments tab on any of our systems' Defenses windows to see the number of trooper regiments ('Garrison Requirement') we need to maintain order.</Text>
+              <Body>Order can be maintained on an Imperial-controlled system against the wishes of the population through the use of garrisons.  Systems taken by force will require the presence of garrisons in order for us to maintain control.  Systems gained through Diplomacy or other non-military means will not require a garrison.  However, having troops stationed on each of our key systems will weaken the Rebel Alliance's ability to take those systems by assault.  Click on the Trooper Regiments tab on any of our systems' Defenses windows to see the number of trooper regiments ('Garrison Requirement') we need to maintain order.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+            <Message>
+              <Type>Advice</Type>
+              <Title>Uprisings</Title>
+              <Text>If the Rebel Alliance conducts a successful mission to incite an uprising at one of our systems, or if the number of troops on a system falls below the established garrison requirement, the system is said to be in 'uprising', and all production on that system ceases.   If the uprising is not shortly subdued, facilities on that system may eventually be destroyed, or the system may join the Rebel Alliance.  Uprisings can be subdued by placing twice the normal garrison on the system or by sending a character to perform a 'Subdue Uprising' mission at that location.</Text>
+              <Body>If the Rebel Alliance conducts a successful mission to incite an uprising at one of our systems, or if the number of troops on a system falls below the established garrison requirement, the system is said to be in 'uprising', and all production on that system ceases.   If the uprising is not shortly subdued, facilities on that system may eventually be destroyed, or the system may join the Rebel Alliance.  Uprisings can be subdued by placing twice the normal garrison on the system or by sending a character to perform a 'Subdue Uprising' mission at that location.</Body>
+              <DisplayImageKey>advice</DisplayImageKey>
+              <Read>false</Read>
+            </Message>
+          </ArrayOfMessage>
+        </Value>
+      </Entry>
+    </Messages>
     <Settings>
       <RefinementMultiplier>1</RefinementMultiplier>
       <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>

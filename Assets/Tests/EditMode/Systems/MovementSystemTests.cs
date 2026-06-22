@@ -1219,6 +1219,166 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_CapitalShipToFleetAtSamePlanet_ReparentsWithoutTransit()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            game.AttachNode(sourceFleet, planet);
+
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, sourceFleet);
+
+            Fleet destinationFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destinationFleet, planet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(capitalShip, destinationFleet);
+
+            Assert.IsNull(capitalShip.Movement);
+            Assert.AreEqual(destinationFleet, capitalShip.GetParent());
+            Assert.IsFalse(sourceFleet.CapitalShips.Contains(capitalShip));
+        }
+
+        [Test]
+        public void RequestMove_GroupFromDifferentShipsAtSamePlanet_MovesAllToDestinationFleet()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("f0", "empire");
+            game.AttachNode(sourceFleet, planet);
+
+            CapitalShip firstSourceShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip secondSourceShip = new CapitalShip
+            {
+                InstanceID = "cs2",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(firstSourceShip, sourceFleet);
+            game.AttachNode(secondSourceShip, sourceFleet);
+
+            Officer firstOfficer = EntityFactory.CreateOfficer("o1", "empire");
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(firstOfficer, firstSourceShip);
+            game.AttachNode(secondOfficer, secondSourceShip);
+
+            Fleet destinationFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destinationFleet, planet);
+            CapitalShip destinationShip = new CapitalShip
+            {
+                InstanceID = "cs3",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(destinationShip, destinationFleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(
+                new List<IMovable> { firstOfficer, secondOfficer },
+                destinationFleet
+            );
+
+            Assert.AreEqual(destinationShip, firstOfficer.GetParent());
+            Assert.AreEqual(destinationShip, secondOfficer.GetParent());
+            Assert.IsFalse(firstSourceShip.Officers.Contains(firstOfficer));
+            Assert.IsFalse(secondSourceShip.Officers.Contains(secondOfficer));
+        }
+
+        [Test]
+        public void RequestMove_SpecialForcesToFleetAtSamePlanet_BoardsFirstShip()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planet, system);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "Spec Ops",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, planet);
+
+            Fleet destinationFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(destinationFleet, planet);
+            CapitalShip destinationShip = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(destinationShip, destinationFleet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            movement.RequestMove(specialForces, destinationFleet);
+
+            Assert.IsNull(specialForces.Movement);
+            Assert.AreEqual(destinationShip, specialForces.GetParent());
+            Assert.IsFalse(planet.SpecialForces.Contains(specialForces));
+            Assert.Contains(specialForces, destinationShip.SpecialForces);
+        }
+
+        [Test]
         public void UpdateMovement_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();

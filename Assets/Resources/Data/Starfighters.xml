@@ -7,6 +7,11 @@
     <TypeID>SFEM01</TypeID>
     <DisplayName>TIE Fighter Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_fighter_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;3&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;3&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;5&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;0&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;0&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;No&#xA;&#xA;TIE fighters make up the bulk of all the Imperial starfighter corps.  The small craft has no life support mechanism, shield generators, or hyperdrive making them cheap to produce in large numbers.  Armaments are restricted to two laser cannons mounted below the pilot's control pod.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -34,6 +39,11 @@
     <TypeID>SFEM02</TypeID>
     <DisplayName>TIE Bomber Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_bomber_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;3&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;3&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;5&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;3&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;0&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;No&#xA;&#xA;A special purpose TIE model, the TIE bomber has two pods contained between bent wing solar panels.  One pod contains the pilot and gunner, and is used to control the craft.  The secondary pod contains the starfighter's weapon suite, including laser cannons, and heavy assault bombs.  The bomber, like other TIE models, has no hyperdrive, life support or shielding.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -61,6 +71,11 @@
     <TypeID>SFEM03</TypeID>
     <DisplayName>TIE Interceptor Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_interceptor_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;3&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;3&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;8&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;0&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;0&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;No&#xA;&#xA;An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and manueverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -88,6 +103,11 @@
     <TypeID>SFEM04</TypeID>
     <DisplayName>TIE Defender Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_empire_tie_defender_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;5&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;7&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;10&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;0&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;5&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;Yes&#xA;&#xA;The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient manuevering thrusters are housed in the three odd shaped solar panels which give the Defender manuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -118,6 +138,11 @@
     <TypeID>SFAL01</TypeID>
     <DisplayName>Y-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_rebel_y_wing_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;5&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;4&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;5&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;3&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;5&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;Yes&#xA;&#xA;The older, twin-engine Y-wing still sees lots of action in the Alliance fleet.  Mounting a turreted laser cannon and ion cannon, in addition to heavier armor, the Y-wing a good choice for heavy assault missions.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -145,6 +170,11 @@
     <TypeID>SFAL02</TypeID>
     <DisplayName>X-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_rebel_x_wing_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;5&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;4&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;8&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;0&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;5&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;Yes&#xA;&#xA;Designed by the Incom Corporation, the T-65 X-wing is a small, single-pilot starfighter with exceptional maneuverability.  Mounting laser cannons on the tips of its four S-foils, the X-wing can bring an impressive amount of firepower against a single target.  The X-wing also mounts an efficient hyperdrive and shield generator.</Description>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -175,6 +205,11 @@
     </AllowedOwnerInstanceIDs>
     <DisplayName>A-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_rebel_a_wing_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;5&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;4&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;5&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;0&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;5&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;Yes&#xA;&#xA;The A-wing is a lightweight, extremely quick and agile starfighter.  The A-wing carries twin, wing-mounted blaster cannons, an extensive sensor package and light combat shielding which make it an ideal choice for hit and fade missions.  It was crafted to be the Alliance's solution to the newer and faster TIE models.</Description>
     <ConstructionCost>5</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>
@@ -202,6 +237,11 @@
     </AllowedOwnerInstanceIDs>
     <DisplayName>B-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_primary</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/UI/Units/ent_fighter_rebel_b_wing_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;&#x9;&#x9;7&#xA;Maintenance Cost:&#x9;&#x9;&#x9;&#x9;&#x9;8&#xA;Attack Strength (Laser Cannon):&#x9;&#x9;8&#xA;Attack Strength (Ion Cannon):&#x9;&#x9;6&#xA;Shield Energy:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;9&#xA;Hyperdrive:&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;Yes&#xA;&#xA;The unusual looking B-wing fighter was conceived by Admiral Ackbar to be a new generation of heavy assault starfighter.  Carrying proton torpedo launchers, blaster cannons and ion cannons which are mounted to its gyroscopically stabilized cockpit, the B-wing is a formidable opponent.</Description>
     <ConstructionCost>7</ConstructionCost>
     <MaintenanceCost>8</MaintenanceCost>

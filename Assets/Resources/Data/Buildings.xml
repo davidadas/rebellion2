@@ -12,6 +12,9 @@
     <BuildingType>ConstructionFacility</BuildingType>
     <DisplayName>Construction Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_construction_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_construction_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_construction_yard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_construction_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;10&#xA;Bombardment Defense:&#x9;&#x9;3&#xA;&#xA;Construction yards convert refined materials into facilities.  Construction yards are used to build all types of facilities on any system controlled by your side.  Construction yards are deployed on systems.  In order to deploy a construction yard on a system, there must be at least one free energy point there.</Description>
     <ProductionType>Building</ProductionType>
     <ConstructionCost>10</ConstructionCost>
@@ -30,6 +33,9 @@
     <BuildingType>TrainingFacility</BuildingType>
     <DisplayName>Training Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_training_facility</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_training_facility_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_training_facility_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_training_facility_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;10&#xA;Bombardment Defense:&#x9;&#x9;3&#xA;&#xA;Training facilities train new trooper regiments and SpecForces by converting refined materials into the equipment used by the new trooper regiments. In order to deploy a training facility at a system, there must be at least one unused energy point at that system.</Description>
     <ProductionType>Troop</ProductionType>
     <ConstructionCost>10</ConstructionCost>
@@ -48,6 +54,9 @@
     <BuildingType>Shipyard</BuildingType>
     <DisplayName>Orbital Shipyard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_ship_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_ship_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_shipyard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_ship_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;20&#xA;Maintenance Cost:&#x9;&#x9;&#x9;13&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;Shipyards convert refined material points into ships and fighters.  Shipyards are deployed at systems.  In order to deploy a shipyard to a system, there must be at least one free energy point at the target system.</Description>
     <ProductionType>Ship</ProductionType>
     <ConstructionCost>20</ConstructionCost>
@@ -66,6 +75,9 @@
     <BuildingType>Mine</BuildingType>
     <DisplayName>Mining Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_mine</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_mine_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_mine_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_mine_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;20&#xA;Maintenance Cost:&#x9;&#x9;&#x9;0&#xA;Bombardment Defense:&#x9;&#x9;5&#xA;&#xA;Mines are used to extract raw materials from systems.  In order to deploy a mine on a system, the system must have one unused energy point and one unused raw material point.  Mines work together with refineries to produce maintenance points.  Maintenance points are required to provide the materials and parts required to keep units in the field.</Description>
     <ProductionType>None</ProductionType>
     <ConstructionCost>20</ConstructionCost>
@@ -84,6 +96,9 @@
     <BuildingType>Refinery</BuildingType>
     <DisplayName>Refinery</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_refinery</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_refinery_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_refinery_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_refinery_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;20&#xA;Maintenance Cost:&#x9;&#x9;&#x9;0&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;Refineries convert the raw materials extracted by mines into refined material.  Refined material is used by manufacturing facilities (such as shipyards) to build ships and facilities, and to equip troops.  Refineries are deployed on systems.  There must be at least one unused energy point at a system before a refinery can be deployed there.  Refineries work together with mines to produce maintenance points.  Maintenance points are required to provide the materials and parts required to keep units in the field.</Description>
     <ProductionType>None</ProductionType>
     <ConstructionCost>20</ConstructionCost>
@@ -102,6 +117,9 @@
     <BuildingType>TrainingFacility</BuildingType>
     <DisplayName>Advanced Training Facility</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_advanced_training_facility</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_advanced_training_facility_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_advanced_training_facility_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_advanced_training_facility_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;10&#xA;Bombardment Defense:&#x9;&#x9;4&#xA;&#xA;An Advance Training Facility trains new troops in half the time of a standard training facility.</Description>
     <ProductionType>Troop</ProductionType>
     <ConstructionCost>10</ConstructionCost>
@@ -120,6 +138,9 @@
     <BuildingType>Shipyard</BuildingType>
     <DisplayName>Advanced Orbital Shipyard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_advanced_ship_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_advanced_ship_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_advanced_shipyard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_advanced_ship_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;20&#xA;Maintenance Cost:&#x9;&#x9;&#x9;20&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;An Advanced Shipyard is an advanced form of shipyard which builds ships in half the time of a standard shipyard.</Description>
     <ProductionType>Ship</ProductionType>
     <ConstructionCost>20</ConstructionCost>
@@ -138,6 +159,9 @@
     <BuildingType>ConstructionFacility</BuildingType>
     <DisplayName>Advanced Construction Yard</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_building_advanced_construction_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/UI/Units/ent_building_advanced_construction_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_advanced_construction_yard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/UI/Units/ent_building_advanced_construction_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;10&#xA;Bombardment Defense:&#x9;&#x9;4&#xA;&#xA;An Advanced Construction Yard can produce new facilities in half the time of a standard construction yard.</Description>
     <ProductionType>Building</ProductionType>
     <ConstructionCost>10</ConstructionCost>

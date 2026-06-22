@@ -69,6 +69,79 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_SpecificBuildingTarget_RemovesSelectedBuilding()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Building firstBuilding = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building selectedBuilding = new Building
+            {
+                InstanceID = "b2",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(firstBuilding, enemyPlanet);
+            game.AttachNode(selectedBuilding, enemyPlanet);
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                selectedBuilding,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsTrue(enemyPlanet.GetAllBuildings().Contains(firstBuilding));
+            Assert.IsFalse(enemyPlanet.GetAllBuildings().Contains(selectedBuilding));
+            Assert.AreEqual(
+                selectedBuilding.InstanceID,
+                results.OfType<GameObjectSabotagedResult>().First().SabotagedObject.InstanceID
+            );
+        }
+
+        [Test]
+        public void TryCreate_OfficerTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer targetOfficer = EntityFactory.CreateOfficer("enemy_officer", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                targetOfficer,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void Execute_BuildingOnEnemyPlanet_ReturnsBuildingSabotagedResult()
         {
             (

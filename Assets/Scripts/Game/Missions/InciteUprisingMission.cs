@@ -76,6 +76,8 @@ namespace Rebellion.Game.Missions
             return base.ShouldAbort(game) || GetParent() is Planet p && p.IsInUprising;
         }
 
+        protected override bool IsMissionSatisfied(GameRoot game) => true;
+
         /// <summary>
         /// Returns the participant's chance to incite the target planet.
         /// </summary>

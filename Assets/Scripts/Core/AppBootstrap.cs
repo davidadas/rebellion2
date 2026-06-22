@@ -10,8 +10,12 @@ public sealed class AppBootstrap : MonoBehaviour
     public static AppBootstrap Instance { get; private set; }
 
     [SerializeField]
-    private GlobalInputHandler inputHandler;
+    private InputActionsManager inputActionsManager;
 
+    [SerializeField]
+    private AppInputController appInputController;
+
+    private CancelStack cancelStack;
     private GameRuntime _runtime;
 
     /// <summary>
@@ -39,7 +43,8 @@ public sealed class AppBootstrap : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+        if (transform.parent == null)
+            DontDestroyOnLoad(gameObject);
 
         InitializeRuntime();
     }
@@ -48,25 +53,31 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         _runtime = new GameRuntime();
 
-        if (inputHandler == null)
-            inputHandler = CreateInputHandler();
+        if (inputActionsManager == null)
+            inputActionsManager = CreateInputActionsManager();
 
-        if (inputHandler != null)
-            inputHandler.Initialize(_runtime);
+        cancelStack ??= new CancelStack();
+
+        if (appInputController == null)
+            appInputController = CreateAppInputController();
+
+        appInputController.Initialize(inputActionsManager, cancelStack, _runtime);
     }
 
-    private GlobalInputHandler CreateInputHandler()
+    private InputActionsManager CreateInputActionsManager()
     {
-        // For scene testing, create minimal input handler as child.
-        GameObject inputObj = new GameObject("GlobalInputHandler");
+        GameObject inputObj = new GameObject("InputActionsManager");
         inputObj.transform.SetParent(transform);
 
-        GlobalInputHandler handler = inputObj.AddComponent<GlobalInputHandler>();
+        return inputObj.AddComponent<InputActionsManager>();
+    }
 
-        // Future-proof: allow handler to configure defaults.
-        handler.ConfigureDefaults();
+    private AppInputController CreateAppInputController()
+    {
+        GameObject inputObj = new GameObject("AppInputController");
+        inputObj.transform.SetParent(transform);
 
-        return handler;
+        return inputObj.AddComponent<AppInputController>();
     }
 
     /// <summary>
@@ -76,5 +87,15 @@ public sealed class AppBootstrap : MonoBehaviour
     public GameRuntime GetRuntime()
     {
         return _runtime;
+    }
+
+    public InputActionsManager GetInputActionsManager()
+    {
+        return inputActionsManager;
+    }
+
+    public CancelStack GetCancelStack()
+    {
+        return cancelStack;
     }
 }

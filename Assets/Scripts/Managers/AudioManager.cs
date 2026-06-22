@@ -26,7 +26,7 @@ public class AudioManager : UnityEngine.MonoBehaviour
     public float masterVolume = 1f;
 
     [UnityEngine.Range(0f, 1f)]
-    public float musicVolume = 1f;
+    public float musicVolume;
 
     [UnityEngine.Range(0f, 1f)]
     public float sfxVolume = 1f;
@@ -51,7 +51,8 @@ public class AudioManager : UnityEngine.MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+        if (transform.parent == null)
+            DontDestroyOnLoad(gameObject);
         ApplyVolumes();
     }
 
@@ -247,6 +248,18 @@ public class AudioManager : UnityEngine.MonoBehaviour
         ambienceSource.clip = clip;
         ambienceSource.loop = loop;
         ambienceSource.Play();
+    }
+
+    public void SetMusicVolume(float volume)
+    {
+        musicVolume = UnityEngine.Mathf.Clamp01(volume);
+        ApplyVolumes();
+    }
+
+    public void SetSfxVolume(float volume)
+    {
+        sfxVolume = UnityEngine.Mathf.Clamp01(volume);
+        ApplyVolumes();
     }
 
     /// <summary>

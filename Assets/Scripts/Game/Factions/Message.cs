@@ -21,6 +21,8 @@ namespace Rebellion.Game.Factions
         public string Title;
         public string Text;
         public string Body;
+        public string DisplayImageKey;
+        public string OverlayImagePath;
         public bool Read;
 
         /// <summary>

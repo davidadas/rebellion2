@@ -207,7 +207,9 @@ namespace Rebellion.Systems
                     if (support <= threshold)
                         continue;
 
-                    results.Add(TransferPlanet(planet, faction));
+                    PlanetOwnershipChangedResult ownershipChange = TransferPlanet(planet, faction);
+                    ownershipChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                    results.Add(ownershipChange);
 
                     GameLogger.Log(
                         $"Planet {planet.GetDisplayName()} transferred to {faction.DisplayName} (support {support} > {threshold})"

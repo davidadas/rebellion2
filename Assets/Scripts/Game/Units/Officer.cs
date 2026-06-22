@@ -118,6 +118,7 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
 
         // Mission rating info.
+        [PersistableMember(Name = "Skills")]
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
             new Dictionary<OfficerRating, int>
             {

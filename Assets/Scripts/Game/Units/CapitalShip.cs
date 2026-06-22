@@ -59,6 +59,7 @@ namespace Rebellion.Game.Units
         public List<Officer> Officers = new List<Officer>();
         public List<Regiment> Regiments = new List<Regiment>();
         public List<Starfighter> Starfighters = new List<Starfighter>();
+        public List<SpecialForces> SpecialForces = new List<SpecialForces>();
 
         // Weapon Info.
         public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons = new Dictionary<
@@ -273,6 +274,15 @@ namespace Rebellion.Game.Units
             Officers.Add(officer);
         }
 
+        public void AddSpecialForces(SpecialForces specialForces)
+        {
+            if (this.OwnerInstanceID != specialForces.OwnerInstanceID)
+            {
+                throw new SceneAccessException(specialForces, this);
+            }
+            SpecialForces.Add(specialForces);
+        }
+
         /// <summary>
         /// Returns true if this ship can accept the child: Starfighters and Regiments require spare
         /// capacity; Officers must share the ship's owner or be captured.
@@ -287,6 +297,8 @@ namespace Rebellion.Game.Units
                 return GetExcessRegimentCapacity() > 0;
             if (child is Officer officer)
                 return officer.IsCaptured || officer.GetOwnerInstanceID() == GetOwnerInstanceID();
+            if (child is SpecialForces specialForces)
+                return specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
             return false;
         }
 
@@ -309,6 +321,10 @@ namespace Rebellion.Game.Units
             {
                 AddOfficer(officer);
             }
+            else if (child is SpecialForces specialForces)
+            {
+                AddSpecialForces(specialForces);
+            }
         }
 
         /// <summary>
@@ -328,6 +344,10 @@ namespace Rebellion.Game.Units
             else if (child is Officer officer)
             {
                 Officers.Remove(officer);
+            }
+            else if (child is SpecialForces specialForces)
+            {
+                SpecialForces.Remove(specialForces);
             }
         }
 
@@ -372,6 +392,7 @@ namespace Rebellion.Game.Units
         {
             return Officers
                 .Cast<ISceneNode>()
+                .Concat(SpecialForces.Cast<ISceneNode>())
                 .Concat(Starfighters.Cast<ISceneNode>())
                 .Concat(Regiments.Cast<ISceneNode>());
         }

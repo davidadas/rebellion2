@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml;
 using System.Xml.Schema;
@@ -10,6 +11,12 @@ using Rebellion.Util.Serialization;
 /// </summary>
 public static class ResourceManager
 {
+    private const string _artRoot = "Art/";
+    private const string _legacyArtRoot = "Art/UI/";
+    private const string _legacyEncyclopediaRoot = _legacyArtRoot + "Encyclopedia/";
+    private const string _hdEncyclopediaRoot = _artRoot + "HD/UI/Encyclopedia/";
+    private const string _originalArtRoot = "Art/Original/UI/";
+
     /// <summary>
     /// Loads and deserializes a strongly-typed configuration object
     /// from the Resources/Configs folder using the custom XML serializer.
@@ -82,6 +89,33 @@ public static class ResourceManager
     }
 
     /// <summary>
+    /// Loads and deserializes one strongly typed data object from the Resources/Data folder.
+    /// </summary>
+    /// <typeparam name="T">The data object type to deserialize.</typeparam>
+    /// <returns>The deserialized data object.</returns>
+    public static T GetData<T>()
+        where T : class
+    {
+        string typeName = typeof(T).Name;
+        string filePath = Path.Combine("Data", typeName);
+
+        UnityEngine.TextAsset asset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(filePath);
+        if (asset == null)
+            throw new Exception($"Data not found at: {filePath}");
+
+        GameSerializerSettings settings = new GameSerializerSettings { RootName = typeName };
+        GameSerializer serializer = new GameSerializer(typeof(T), settings);
+
+        using MemoryStream stream = new MemoryStream(asset.bytes);
+        object result = serializer.Deserialize(stream);
+
+        if (result == null)
+            throw new Exception($"Failed to deserialize data: {typeName}");
+
+        return (T)result;
+    }
+
+    /// <summary>
     /// Loads a single AudioClip from the specified Resources path.
     /// </summary>
     /// <param name="path">Resources path to the audio file.</param>
@@ -146,10 +180,25 @@ public static class ResourceManager
         return LoadResource<UnityEngine.Sprite>(path, "Sprite not found at: ");
     }
 
+    public static UnityEngine.Texture2D GetTexture(string path)
+    {
+        return LoadResource<UnityEngine.Texture2D>(path, "Texture not found at: ");
+    }
+
+    public static UnityEngine.Texture2D TryGetTexture(string path)
+    {
+        return TryLoadResource<UnityEngine.Texture2D>(path);
+    }
+
+    public static UnityEngine.Sprite TryGetSprite(string path)
+    {
+        return TryLoadResource<UnityEngine.Sprite>(path);
+    }
+
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = UnityEngine.Resources.Load<T>(path);
+        T resource = TryLoadResource<T>(path);
 
         if (resource == null)
         {
@@ -157,6 +206,45 @@ public static class ResourceManager
         }
 
         return resource;
+    }
+
+    private static T TryLoadResource<T>(string path)
+        where T : UnityEngine.Object
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        foreach (string candidatePath in GetResourcePathCandidates(path))
+        {
+            T resource = UnityEngine.Resources.Load<T>(candidatePath);
+            if (resource != null)
+                return resource;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetResourcePathCandidates(string path)
+    {
+        if (IsLegacyEncyclopediaPath(path))
+            yield return _hdEncyclopediaRoot + path[_legacyEncyclopediaRoot.Length..];
+
+        if (IsLegacyArtPath(path))
+            yield return _originalArtRoot + path[_legacyArtRoot.Length..];
+
+        yield return path;
+    }
+
+    private static bool IsLegacyEncyclopediaPath(string path)
+    {
+        return path.StartsWith(_legacyEncyclopediaRoot, StringComparison.Ordinal);
+    }
+
+    private static bool IsLegacyArtPath(string path)
+    {
+        return path.StartsWith(_legacyArtRoot, StringComparison.Ordinal)
+            && !path.StartsWith(_originalArtRoot, StringComparison.Ordinal)
+            && !path.StartsWith(_artRoot + "HD/", StringComparison.Ordinal);
     }
 
     private static T[] LoadResourceGroup<T>(string folderPath, string errorPrefix)

@@ -118,6 +118,54 @@ namespace Rebellion.Tests.Systems
             return (game, planet, spy, defender, movement);
         }
 
+        private (
+            GameRoot game,
+            Planet targetPlanet,
+            Officer participant,
+            Officer target,
+            MissionSystem missionSystem
+        ) BuildOfficerTargetMissionScene(
+            string targetOwnerInstanceId,
+            bool targetIsCaptured = false
+        )
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", targetOwnerInstanceId);
+            target.IsCaptured = targetIsCaptured;
+            game.AttachNode(target, enemyPlanet);
+
+            MissionSystem missionSystem = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+
+            return (game, enemyPlanet, officer, target, missionSystem);
+        }
+
+        private static void AssertFailedStartResult<TMission>(
+            GameRoot game,
+            Mission mission,
+            List<GameResult> results
+        )
+            where TMission : Mission
+        {
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Failed)
+            );
+            Assert.IsNull(mission.GetParent());
+            Assert.IsFalse(game.GetSceneNodesByType<TMission>().Any());
+        }
+
         [Test]
         public void UpdateMission_CompletedNoFriendlyPlanet_SkipsMovement()
         {
@@ -606,6 +654,606 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void GetCreatableMissionOptions_OwnPlanet_ReturnsAlphabeticalNames()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            empPlanet.AddVisitor("empire");
+            Officer recruit = EntityFactory.CreateOfficer("recruit", null);
+            recruit.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(recruit);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    empPlanet
+                )
+                .ConvertAll(option => option.Name);
+
+            List<string> sortedNames = new List<string>(names);
+            sortedNames.Sort(System.StringComparer.Ordinal);
+            Assert.GreaterOrEqual(names.Count, 2);
+            CollectionAssert.AreEqual(sortedNames, names);
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_EnemyOfficerTarget_IncludesCaptureAndAssassination()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    enemyPlanet,
+                    targetOfficer
+                )
+                .ConvertAll(option => option.Name);
+
+            CollectionAssert.Contains(names, "Assassination");
+            CollectionAssert.Contains(names, "Capture");
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_EnemyOfficerFactionViewTarget_IncludesCaptureAndAssassination()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Officer viewTarget = viewPlanet.Officers.First(target =>
+                target.InstanceID == targetOfficer.InstanceID
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    viewPlanet,
+                    viewTarget
+                )
+                .ConvertAll(option => option.Name);
+
+            Assert.AreNotSame(targetOfficer, viewTarget);
+            CollectionAssert.Contains(names, "Assassination");
+            CollectionAssert.Contains(names, "Capture");
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_CapturedOfficerFactionViewTarget_IncludesRescue()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "empire");
+            targetOfficer.IsCaptured = true;
+            targetOfficer.CaptorInstanceID = "rebels";
+            game.AttachNode(targetOfficer, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Officer viewTarget = viewPlanet.Officers.First(target =>
+                target.InstanceID == targetOfficer.InstanceID
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    viewPlanet,
+                    viewTarget
+                )
+                .ConvertAll(option => option.Name);
+
+            Assert.AreNotSame(targetOfficer, viewTarget);
+            CollectionAssert.Contains(names, "Rescue");
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_EnemyManufacturableTarget_IncludesSabotage()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Building target = new Building
+            {
+                InstanceID = "shield",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Defense,
+                DefenseFacilityClass = DefenseFacilityClass.Shield,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, enemyPlanet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    enemyPlanet,
+                    target
+                )
+                .ConvertAll(option => option.Name);
+
+            CollectionAssert.Contains(names, "Sabotage");
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_EnemyRegimentFactionViewTarget_IncludesSabotage()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = new Regiment
+            {
+                InstanceID = "target_regiment",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Regiment viewTarget = viewPlanet.Regiments.First(regiment =>
+                regiment.InstanceID == target.InstanceID
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    viewPlanet,
+                    viewTarget
+                )
+                .ConvertAll(option => option.Name);
+
+            Assert.AreNotSame(target, viewTarget);
+            CollectionAssert.Contains(names, "Sabotage");
+        }
+
+        [Test]
+        public void InitiateMissionWithSpecificTarget_EnemyRegimentFactionViewTarget_AttachesToLivePlanet()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = new Regiment
+            {
+                InstanceID = "target_regiment",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Regiment viewTarget = viewPlanet.Regiments.First(regiment =>
+                regiment.InstanceID == target.InstanceID
+            );
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Sabotage,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                viewPlanet,
+                viewTarget
+            );
+            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().FirstOrDefault();
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            Assert.AreNotSame(target, viewTarget);
+            Assert.AreEqual(enemyPlanet, mission.GetParent());
+            Assert.AreEqual(target.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void InitiateMissionWithSpecificTarget_EnemyOfficerFactionViewTarget_AttachesToLivePlanet()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Officer viewTarget = viewPlanet.Officers.First(target =>
+                target.InstanceID == targetOfficer.InstanceID
+            );
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Abduction,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                viewPlanet,
+                viewTarget,
+                viewTarget
+            );
+            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>()
+                .FirstOrDefault();
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            Assert.AreNotSame(targetOfficer, viewTarget);
+            Assert.AreEqual(enemyPlanet, mission.GetParent());
+            Assert.AreEqual(targetOfficer.InstanceID, mission.TargetOfficerInstanceID);
+            Assert.AreEqual(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void UpdateMission_FactionViewSabotageTargetMissingAtArrival_AbortsMission()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = new Regiment
+            {
+                InstanceID = "target_regiment",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, enemyPlanet);
+            Fleet scoutFleet = EntityFactory.CreateFleet("scout", "empire");
+            CapitalShip scoutShip = new CapitalShip
+            {
+                InstanceID = "scout_ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(scoutFleet, enemyPlanet);
+            game.AttachNode(scoutShip, scoutFleet);
+
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+            Faction empire = game.Factions.First(faction => faction.InstanceID == "empire");
+            GalaxyMap factionView = fog.BuildFactionView(empire);
+            Planet viewPlanet = factionView
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .First(planet => planet.InstanceID == enemyPlanet.InstanceID);
+            Regiment viewTarget = viewPlanet.Regiments.First(regiment =>
+                regiment.InstanceID == target.InstanceID
+            );
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Sabotage,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                viewPlanet,
+                viewTarget
+            );
+            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().FirstOrDefault();
+            game.DetachNode(target);
+            officer.Movement = null;
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            Assert.IsFalse(results.OfType<GameObjectSabotagedResult>().Any());
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Failed)
+            );
+            Assert.IsNull(mission.GetParent());
+            Assert.IsFalse(game.GetSceneNodesByType<SabotageMission>().Any());
+        }
+
+        [Test]
+        public void UpdateMission_AbductionTargetCapturedBeforeArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet enemyPlanet,
+                Officer officer,
+                Officer target,
+                MissionSystem system
+            ) = BuildOfficerTargetMissionScene("rebels");
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Abduction,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                enemyPlanet,
+                target,
+                target
+            );
+            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>()
+                .FirstOrDefault();
+            target.IsCaptured = true;
+            officer.Movement = null;
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            AssertFailedStartResult<AbductionMission>(game, mission, results);
+        }
+
+        [Test]
+        public void UpdateMission_AssassinationTargetCapturedBeforeArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet enemyPlanet,
+                Officer officer,
+                Officer target,
+                MissionSystem system
+            ) = BuildOfficerTargetMissionScene("rebels");
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Assassination,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                enemyPlanet,
+                target,
+                target
+            );
+            AssassinationMission mission = game.GetSceneNodesByType<AssassinationMission>()
+                .FirstOrDefault();
+            target.IsCaptured = true;
+            officer.Movement = null;
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            AssertFailedStartResult<AssassinationMission>(game, mission, results);
+        }
+
+        [Test]
+        public void UpdateMission_RescueTargetFreedBeforeArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet enemyPlanet,
+                Officer officer,
+                Officer target,
+                MissionSystem system
+            ) = BuildOfficerTargetMissionScene("empire", targetIsCaptured: true);
+
+            bool started = system.InitiateMissionWithSpecificTarget(
+                MissionType.Rescue,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                enemyPlanet,
+                target,
+                target
+            );
+            RescueMission mission = game.GetSceneNodesByType<RescueMission>().FirstOrDefault();
+            target.IsCaptured = false;
+            officer.Movement = null;
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            AssertFailedStartResult<RescueMission>(game, mission, results);
+        }
+
+        [Test]
+        public void GetCreatableMissionOptions_EnemyStarfighterTarget_ExcludesPlanetMissions()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Starfighter target = new Starfighter
+            {
+                InstanceID = "tie",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, enemyPlanet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, fog)
+            );
+
+            List<string> names = system
+                .GetCreatableMissionOptions(
+                    "empire",
+                    new List<IMissionParticipant> { officer },
+                    enemyPlanet,
+                    target
+                )
+                .ConvertAll(option => option.Name);
+
+            CollectionAssert.Contains(names, "Sabotage");
+            CollectionAssert.DoesNotContain(names, "Espionage");
+            CollectionAssert.DoesNotContain(names, "Incite Uprising");
+        }
+
+        [Test]
+        public void InitiateMission_WithFactionViewObjects_UsesLiveSceneGraphNodes()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Faction faction = game.Factions[0];
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            GalaxyMap view = fog.BuildFactionView(faction);
+            Planet viewPlanet = view.PlanetSystems[0].Planets[0];
+            Officer viewOfficer = viewPlanet.Officers[0];
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+
+            bool started = missionSystem.InitiateMission(
+                MissionType.Research,
+                new List<IMissionParticipant> { viewOfficer },
+                new List<IMissionParticipant>(),
+                viewPlanet,
+                null,
+                ResearchDiscipline.ShipDesign
+            );
+
+            Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
+
+            Assert.IsTrue(started);
+            Assert.IsNotNull(mission);
+            Assert.AreSame(viewOfficer, officer, "Own faction-view units are live, not copies");
+            Assert.AreEqual(mission, officer.GetParent());
+            Assert.AreNotSame(
+                viewPlanet,
+                mission.GetParent(),
+                "Copy target must resolve to the live planet"
+            );
+            Assert.AreEqual(planet, mission.GetParent());
+            Assert.IsFalse(planet.Officers.Contains(officer));
+        }
+
+        [Test]
         public void IsOnMission_AfterBeginMission_ReturnsTrue()
         {
             GameConfig config = TestConfig.Create();
@@ -877,6 +1525,40 @@ namespace Rebellion.Tests.Systems
                     .OfType<MissionCompletedResult>()
                     .Any(r => r.Outcome == MissionOutcome.Foiled),
                 "Should produce MissionCompletedResult with Foiled outcome"
+            );
+        }
+
+        [Test]
+        public void UpdateMission_AllParticipantsInTransit_NoDetectionOrCapture()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+            spy.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 0 };
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(
+                spy.IsCaptured,
+                "An in-transit participant must not be captured before arrival"
+            );
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(r => r.Outcome == MissionOutcome.Foiled),
+                "Mission must not be foiled while all participants are still in transit"
             );
         }
 

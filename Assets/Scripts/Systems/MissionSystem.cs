@@ -24,6 +24,68 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
         private readonly MissionFactory _missionFactory;
+        private static readonly List<MissionOption> _missionOptions = new List<MissionOption>
+        {
+            new MissionOption(MissionType.Diplomacy, null, "Diplomacy", MissionIconKeys.Diplomacy),
+            new MissionOption(MissionType.Espionage, null, "Espionage", MissionIconKeys.Espionage),
+            new MissionOption(
+                MissionType.Research,
+                ResearchDiscipline.ShipDesign,
+                "Ship Design Research",
+                MissionIconKeys.ResearchShipDesign
+            ),
+            new MissionOption(
+                MissionType.Research,
+                ResearchDiscipline.FacilityDesign,
+                "Facility Design Research",
+                MissionIconKeys.ResearchFacilityDesign
+            ),
+            new MissionOption(
+                MissionType.Research,
+                ResearchDiscipline.TroopTraining,
+                "Troop Training Research",
+                MissionIconKeys.ResearchTroopTraining
+            ),
+            new MissionOption(
+                MissionType.Reconnaissance,
+                null,
+                "Reconnaissance",
+                MissionIconKeys.Reconnaissance
+            ),
+            new MissionOption(
+                MissionType.Recruitment,
+                null,
+                "Recruitment",
+                MissionIconKeys.Recruitment
+            ),
+            new MissionOption(
+                MissionType.InciteUprising,
+                null,
+                "Incite Uprising",
+                MissionIconKeys.InciteUprising
+            ),
+            new MissionOption(
+                MissionType.SubdueUprising,
+                null,
+                "Subdue Uprising",
+                MissionIconKeys.SubdueUprising
+            ),
+            new MissionOption(
+                MissionType.JediTraining,
+                null,
+                "Jedi Training",
+                MissionIconKeys.JediTraining
+            ),
+            new MissionOption(MissionType.Rescue, null, "Rescue", MissionIconKeys.Rescue),
+            new MissionOption(MissionType.Abduction, null, "Capture", MissionIconKeys.Abduction),
+            new MissionOption(
+                MissionType.Assassination,
+                null,
+                "Assassination",
+                MissionIconKeys.Assassination
+            ),
+            new MissionOption(MissionType.Sabotage, null, "Sabotage", MissionIconKeys.Sabotage),
+        };
 
         /// <summary>
         /// Creates a new MissionSystem.
@@ -88,6 +150,288 @@ namespace Rebellion.Systems
                 participant
             );
 
+        public List<MissionOption> GetCreatableMissionOptions(
+            string ownerInstanceId,
+            List<IMissionParticipant> participants,
+            Planet targetPlanet,
+            ISceneNode specificTarget = null
+        )
+        {
+            List<MissionOption> options = new List<MissionOption>();
+            if (
+                string.IsNullOrEmpty(ownerInstanceId)
+                || participants == null
+                || participants.Count == 0
+                || targetPlanet == null
+            )
+                return options;
+
+            foreach (MissionOption option in _missionOptions)
+            {
+                if (
+                    CanCreateMissionOption(
+                        option,
+                        ownerInstanceId,
+                        participants,
+                        targetPlanet,
+                        specificTarget
+                    )
+                )
+                    options.Add(option);
+            }
+
+            return options.OrderBy(option => option.Name, StringComparer.Ordinal).ToList();
+        }
+
+        public bool HasCreatableMissionOptions(
+            string ownerInstanceId,
+            List<IMissionParticipant> participants
+        )
+        {
+            if (
+                string.IsNullOrEmpty(ownerInstanceId)
+                || participants == null
+                || participants.Count == 0
+            )
+                return false;
+
+            foreach (MissionOption option in _missionOptions)
+            {
+                if (
+                    CanFactionAttemptMission(option.Type, ownerInstanceId)
+                    && AllParticipantsCanAttemptMission(option, participants)
+                )
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool CanCreateMissionOption(
+            MissionOption option,
+            string ownerInstanceId,
+            List<IMissionParticipant> participants,
+            Planet targetPlanet,
+            ISceneNode specificTarget
+        )
+        {
+            if (
+                !IsTargetValidForMissionOption(
+                    option,
+                    ownerInstanceId,
+                    targetPlanet,
+                    specificTarget
+                )
+            )
+                return false;
+
+            if (!CanFactionAttemptMission(option.Type, ownerInstanceId))
+                return false;
+
+            if (!AllParticipantsCanAttemptMission(option, participants))
+                return false;
+
+            return _missionFactory.CanCreateMission(
+                option.Type,
+                ownerInstanceId,
+                participants,
+                new List<IMissionParticipant>(),
+                targetPlanet,
+                _provider,
+                GetMissionTargetOfficer(option.Type, specificTarget),
+                option.Discipline,
+                specificTarget
+            );
+        }
+
+        private static Officer GetMissionTargetOfficer(
+            MissionType missionType,
+            ISceneNode specificTarget
+        )
+        {
+            if (
+                missionType == MissionType.Abduction
+                || missionType == MissionType.Assassination
+                || missionType == MissionType.Rescue
+            )
+                return specificTarget as Officer;
+
+            return null;
+        }
+
+        private bool CanFactionAttemptMission(MissionType missionType, string ownerInstanceId)
+        {
+            Faction faction = _game.Factions.Find(faction => faction.InstanceID == ownerInstanceId);
+            return faction?.DisallowedMissionTypes.Contains(missionType) != true;
+        }
+
+        private static bool AllParticipantsCanAttemptMission(
+            MissionOption option,
+            List<IMissionParticipant> participants
+        )
+        {
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (!IsMissionParticipantAvailable(participant))
+                    return false;
+
+                if (!participant.CanPerformMission(option.Type))
+                    return false;
+
+                if (!CanParticipantAttemptResearch(option, participant))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsMissionParticipantAvailable(IMissionParticipant participant)
+        {
+            if (participant == null || participant.Movement != null || participant.IsOnMission())
+                return false;
+
+            if (participant is Officer officer && (officer.IsCaptured || officer.InjuryPoints > 0))
+                return false;
+
+            if (
+                participant is IManufacturable manufacturable
+                && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
+            )
+                return false;
+
+            return true;
+        }
+
+        private static bool CanParticipantAttemptResearch(
+            MissionOption option,
+            IMissionParticipant participant
+        )
+        {
+            if (option.Type != MissionType.Research || !option.Discipline.HasValue)
+                return true;
+
+            return participant is Officer officer
+                && officer.GetEffectiveRating(
+                    Officer.GetRatingForResearchDiscipline(option.Discipline.Value)
+                ) > 0;
+        }
+
+        private static bool IsTargetValidForMissionOption(
+            MissionOption option,
+            string ownerInstanceId,
+            Planet targetPlanet,
+            ISceneNode specificTarget
+        )
+        {
+            if (specificTarget != null)
+                return IsSpecificTargetValidForMissionOption(
+                    option,
+                    ownerInstanceId,
+                    targetPlanet,
+                    specificTarget
+                );
+
+            return IsTargetPlanetValidForMissionOption(option, ownerInstanceId, targetPlanet);
+        }
+
+        private static bool IsTargetPlanetValidForMissionOption(
+            MissionOption option,
+            string ownerInstanceId,
+            Planet targetPlanet
+        )
+        {
+            string targetOwnerId = targetPlanet.GetOwnerInstanceID();
+            return option.Type switch
+            {
+                MissionType.Diplomacy => targetPlanet.IsColonized
+                    && !targetPlanet.IsInUprising
+                    && (targetOwnerId == null || targetOwnerId == ownerInstanceId)
+                    && targetPlanet.GetPopularSupport(ownerInstanceId) < 100,
+                MissionType.Espionage => true,
+                MissionType.Reconnaissance => targetOwnerId != ownerInstanceId,
+                MissionType.Recruitment => targetOwnerId == ownerInstanceId,
+                MissionType.InciteUprising => !string.IsNullOrEmpty(targetOwnerId)
+                    && targetOwnerId != ownerInstanceId
+                    && !targetPlanet.IsInUprising,
+                MissionType.SubdueUprising => targetOwnerId == ownerInstanceId
+                    && targetPlanet.IsInUprising,
+                MissionType.JediTraining => targetOwnerId == ownerInstanceId,
+                MissionType.Research => targetOwnerId == ownerInstanceId
+                    && ResearchMission.HasResearchFacility(targetPlanet, option.Discipline),
+                MissionType.Sabotage => !string.IsNullOrEmpty(targetOwnerId)
+                    && targetOwnerId != ownerInstanceId
+                    && HasSabotageTarget(targetPlanet),
+                _ => false,
+            };
+        }
+
+        private static bool IsSpecificTargetValidForMissionOption(
+            MissionOption option,
+            string ownerInstanceId,
+            Planet targetPlanet,
+            ISceneNode specificTarget
+        )
+        {
+            if (specificTarget is Officer officer)
+                return IsTargetOfficerValidForMissionOption(
+                    option,
+                    ownerInstanceId,
+                    targetPlanet,
+                    officer
+                );
+
+            if (option.Type != MissionType.Sabotage)
+                return false;
+
+            if (!CanSabotageTarget(specificTarget))
+                return false;
+
+            if (specificTarget is IMovable movable && movable.Movement != null)
+                return false;
+
+            string targetOwnerId = specificTarget.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(targetOwnerId))
+                targetOwnerId = targetPlanet.GetOwnerInstanceID();
+
+            return !string.IsNullOrEmpty(targetOwnerId) && targetOwnerId != ownerInstanceId;
+        }
+
+        private static bool CanSabotageTarget(ISceneNode specificTarget)
+        {
+            if (specificTarget is not IManufacturable manufacturable)
+                return false;
+
+            return manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building;
+        }
+
+        private static bool IsTargetOfficerValidForMissionOption(
+            MissionOption option,
+            string ownerInstanceId,
+            Planet targetPlanet,
+            Officer officer
+        )
+        {
+            Planet officerPlanet = officer.GetParentOfType<Planet>();
+            if (officer.Movement != null || officerPlanet?.InstanceID != targetPlanet.InstanceID)
+                return false;
+
+            return option.Type switch
+            {
+                MissionType.Rescue => officer.IsCaptured,
+                MissionType.Abduction => officer.GetOwnerInstanceID() != ownerInstanceId
+                    && !officer.IsCaptured,
+                MissionType.Assassination => officer.GetOwnerInstanceID() != ownerInstanceId
+                    && !officer.IsCaptured
+                    && !officer.IsKilled,
+                _ => false,
+            };
+        }
+
+        private static bool HasSabotageTarget(Planet planet)
+        {
+            return planet?.GetAllBuildings().Any(building => CanSabotageTarget(building)) == true;
+        }
+
         /// <summary>
         /// Initiates a mission with a single participant and target.
         /// </summary>
@@ -109,7 +453,92 @@ namespace Rebellion.Systems
                 participant,
             };
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-            string ownerInstanceId = participant.OwnerInstanceID;
+            InitiateMission(
+                missionType,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                targetOfficer,
+                discipline
+            );
+        }
+
+        public bool InitiateMission(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            if (mainParticipants == null || mainParticipants.Count == 0 || target == null)
+                return false;
+
+            decoyParticipants ??= new List<IMissionParticipant>();
+            mainParticipants = ResolveMissionParticipants(mainParticipants);
+            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
+            target = ResolveSceneNode(target);
+
+            if (mainParticipants == null || decoyParticipants == null || target == null)
+                return false;
+
+            return CreateAndBeginMission(
+                missionType,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                targetOfficer,
+                discipline,
+                null
+            );
+        }
+
+        public bool InitiateMissionWithSpecificTarget(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            Planet targetPlanet,
+            ISceneNode specificTarget,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            if (mainParticipants == null || mainParticipants.Count == 0 || targetPlanet == null)
+                return false;
+
+            decoyParticipants ??= new List<IMissionParticipant>();
+            mainParticipants = ResolveMissionParticipants(mainParticipants);
+            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
+            Planet liveTargetPlanet = ResolveSceneNode(targetPlanet) as Planet;
+            Officer missionTargetOfficer =
+                targetOfficer ?? GetMissionTargetOfficer(missionType, specificTarget);
+
+            if (mainParticipants == null || decoyParticipants == null || liveTargetPlanet == null)
+                return false;
+
+            return CreateAndBeginMission(
+                missionType,
+                mainParticipants,
+                decoyParticipants,
+                liveTargetPlanet,
+                missionTargetOfficer,
+                discipline,
+                specificTarget
+            );
+        }
+
+        private bool CreateAndBeginMission(
+            MissionType missionType,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer,
+            ResearchDiscipline? discipline,
+            ISceneNode specificTarget
+        )
+        {
+            string ownerInstanceId = mainParticipants[0].OwnerInstanceID;
 
             Mission mission = _missionFactory.CreateMission(
                 missionType,
@@ -119,13 +548,46 @@ namespace Rebellion.Systems
                 target,
                 _provider,
                 targetOfficer,
-                discipline
+                discipline,
+                specificTarget
             );
 
             Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();
+            if (planet == null)
+                return false;
+
             _game.AttachNode(mission, planet);
 
             BeginMission(mission);
+            return true;
+        }
+
+        private List<IMissionParticipant> ResolveMissionParticipants(
+            List<IMissionParticipant> participants
+        )
+        {
+            List<IMissionParticipant> resolvedParticipants = new List<IMissionParticipant>();
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                ISceneNode node = participant as ISceneNode;
+                IMissionParticipant resolvedParticipant =
+                    ResolveSceneNode(node) as IMissionParticipant;
+                if (resolvedParticipant == null)
+                    return null;
+
+                resolvedParticipants.Add(resolvedParticipant);
+            }
+
+            return resolvedParticipants;
+        }
+
+        private ISceneNode ResolveSceneNode(ISceneNode node)
+        {
+            if (node == null)
+                return null;
+
+            return _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
         }
 
         /// <summary>
@@ -147,22 +609,33 @@ namespace Rebellion.Systems
             if (HasParticipantInTransit(mission))
                 return results;
 
+            List<IMissionParticipant> participantsBeforeStart = mission.GetAllParticipants();
+            if (!mission.CanStart(_game))
+            {
+                results.Add(
+                    mission.BuildCompletedResult(
+                        MissionOutcome.Failed,
+                        mission.GetCannotStartReportDetail(_game),
+                        _game,
+                        participantsBeforeStart
+                    )
+                );
+                TearDownMission(mission);
+                return results;
+            }
+
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool participantStateChanged = ResolveDetection(mission, results);
 
             if (participantStateChanged || mission.ShouldAbort(_game))
             {
                 results.Add(
-                    new MissionCompletedResult
-                    {
-                        Mission = mission,
-                        MissionName = mission.DisplayName,
-                        TargetName =
-                            (mission.GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
-                        Participants = participantsBeforeDetection,
-                        Outcome = MissionOutcome.Foiled,
-                        Tick = _game.CurrentTick,
-                    }
+                    mission.BuildCompletedResult(
+                        MissionOutcome.Foiled,
+                        MissionReportDetail.Foiled,
+                        _game,
+                        participantsBeforeDetection
+                    )
                 );
                 TearDownMission(mission);
                 return results;
@@ -325,6 +798,9 @@ namespace Rebellion.Systems
         /// <returns>True if any participant state changed.</returns>
         private bool ResolveDetection(Mission mission, List<GameResult> results)
         {
+            if (mission.AllParticipantsInTransit())
+                return false;
+
             if (!mission.RollFoilCheck(_provider))
                 return false;
 

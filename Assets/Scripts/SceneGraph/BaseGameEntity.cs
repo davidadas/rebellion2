@@ -28,6 +28,14 @@ namespace Rebellion.SceneGraph
         public string TypeID { get; set; }
         public string DisplayName { get; set; }
         public string DisplayImagePath { get; set; }
+        public string SmallDisplayImagePath { get; set; }
+        public string MessageImagePath { get; set; }
+        public string InTransitImagePath { get; set; }
+        public string InTransitSmallImagePath { get; set; }
+        public string DamagedImagePath { get; set; }
+        public string DamagedSmallImagePath { get; set; }
+        public string CapturedOverlayImagePath { get; set; }
+        public string InjuredImagePath { get; set; }
         public string Description { get; set; }
 
         /// <summary>

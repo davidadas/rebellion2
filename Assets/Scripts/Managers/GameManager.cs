@@ -3,13 +3,18 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Coordinates all game systems each tick and routes results to cross-cutting handlers.
@@ -89,7 +94,10 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        _messageFactory = new MessageFactory(ResourceManager.GetGameData<MessageDefinition>());
+        _messageFactory = new MessageFactory(
+            ResourceManager.GetGameData<MessageDefinition>(),
+            ResourceManager.GetData<EncyclopediaEntries>()
+        );
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
@@ -179,6 +187,195 @@ public class GameManager
     /// <returns>The faction whose PlayerID is set.</returns>
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
 
+    public bool StartManufacturing(
+        Planet producer,
+        IManufacturable template,
+        Planet destination,
+        int count
+    ) => StartManufacturing(producer, template, (ISceneNode)destination, count);
+
+    public bool StartManufacturing(
+        Planet producer,
+        IManufacturable template,
+        ISceneNode destination,
+        int count
+    )
+    {
+        if (producer == null || template == null || destination == null || count <= 0)
+            return false;
+
+        bool started = false;
+        Fleet capitalShipDestination = null;
+        Planet destinationPlanet = destination as Planet;
+        Fleet destinationFleet = destination as Fleet;
+        CapitalShip destinationShip = destination as CapitalShip;
+        for (int i = 0; i < count; i++)
+        {
+            IManufacturable item = template.GetDeepCopy();
+            if (item is not ISceneNode sceneNode)
+                return started;
+
+            sceneNode.OwnerInstanceID = producer.GetOwnerInstanceID();
+            item.ManufacturingStatus = ManufacturingStatus.Building;
+            item.ManufacturingProgress = 0;
+            if (item is IMovable movable)
+                movable.Movement = null;
+
+            bool enqueued;
+            if (destinationFleet != null)
+            {
+                enqueued = _manufacturingManager.Enqueue(producer, item, destinationFleet);
+            }
+            else if (destinationShip != null)
+            {
+                enqueued = _manufacturingManager.Enqueue(producer, item, destinationShip);
+            }
+            else if (destinationPlanet != null && item is CapitalShip)
+            {
+                capitalShipDestination ??= CreateFleetAtPlanet(
+                    destinationPlanet,
+                    producer.GetOwnerInstanceID()
+                );
+                if (capitalShipDestination == null)
+                    return started;
+
+                enqueued = _manufacturingManager.Enqueue(producer, item, capitalShipDestination);
+            }
+            else if (destinationPlanet != null)
+            {
+                enqueued = _manufacturingManager.Enqueue(producer, item, destinationPlanet);
+            }
+            else
+            {
+                return started;
+            }
+
+            if (!enqueued)
+            {
+                DetachEmptyManufacturingFleet(capitalShipDestination);
+                return started;
+            }
+
+            started = true;
+        }
+
+        return started;
+    }
+
+    public bool StopManufacturing(Planet producer, ManufacturingType type)
+    {
+        return _manufacturingManager.ClearQueue(producer, type);
+    }
+
+    public Fleet CreateFleetAtPlanet(Planet destination, string ownerInstanceId)
+    {
+        if (destination == null || string.IsNullOrEmpty(ownerInstanceId))
+            return null;
+
+        Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+        if (faction == null)
+            return null;
+
+        Fleet fleet = faction.CreateFleet();
+        _game.AttachNode(fleet, destination);
+        return fleet;
+    }
+
+    private void DetachEmptyManufacturingFleet(Fleet fleet)
+    {
+        if (fleet == null || fleet.CapitalShips.Count > 0 || fleet.GetParent() == null)
+            return;
+
+        _game.DetachNode(fleet);
+    }
+
+    public bool CanCreateMission(
+        MissionType missionType,
+        string ownerInstanceId,
+        ISceneNode target,
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null,
+        IMissionParticipant participant = null
+    )
+    {
+        return _missionManager.CanCreateMission(
+            missionType,
+            ownerInstanceId,
+            target,
+            targetOfficer,
+            discipline,
+            participant
+        );
+    }
+
+    public List<MissionOption> GetCreatableMissionOptions(
+        string ownerInstanceId,
+        List<IMissionParticipant> participants,
+        Planet targetPlanet,
+        ISceneNode specificTarget = null
+    )
+    {
+        return _missionManager.GetCreatableMissionOptions(
+            ownerInstanceId,
+            participants,
+            targetPlanet,
+            specificTarget
+        );
+    }
+
+    public bool HasCreatableMissionOptions(
+        string ownerInstanceId,
+        List<IMissionParticipant> participants
+    )
+    {
+        return _missionManager.HasCreatableMissionOptions(ownerInstanceId, participants);
+    }
+
+    public bool InitiateMission(
+        MissionType missionType,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        ISceneNode target,
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null
+    )
+    {
+        return _missionManager.InitiateMission(
+            missionType,
+            mainParticipants,
+            decoyParticipants,
+            target,
+            targetOfficer,
+            discipline
+        );
+    }
+
+    public bool InitiateMissionWithSpecificTarget(
+        MissionType missionType,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants,
+        Planet targetPlanet,
+        ISceneNode specificTarget,
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null
+    )
+    {
+        return _missionManager.InitiateMissionWithSpecificTarget(
+            missionType,
+            mainParticipants,
+            decoyParticipants,
+            targetPlanet,
+            specificTarget,
+            targetOfficer,
+            discipline
+        );
+    }
+
+    public void RequestMove(List<IMovable> units, ISceneNode destination)
+    {
+        _movementManager.RequestMove(units, destination);
+    }
+
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
@@ -204,6 +401,9 @@ public class GameManager
             case TickSpeed.Slow:
                 _tickInterval = _game.Config.GameSpeed.SlowTickIntervalSeconds;
                 break;
+            case TickSpeed.VerySlow:
+                _tickInterval = _game.Config.GameSpeed.VerySlowTickIntervalSeconds;
+                break;
             case TickSpeed.Paused:
                 _stopwatch.Stop();
                 _tickInterval = null;
@@ -212,6 +412,11 @@ public class GameManager
 
         if (_tickInterval != null)
             _stopwatch.Start();
+    }
+
+    public TickSpeed GetGameSpeed()
+    {
+        return _game.GetGameSpeed();
     }
 
     /// <summary>
@@ -266,7 +471,7 @@ public class GameManager
 
         ProcessResults(_missionManager.ProcessTick());
         _eventManager.ProcessEvents(_game.GetEventPool());
-        ProcessResults(_aiSystem.ProcessTick());
+        // ProcessResults(_aiSystem.ProcessTick());
 
         ProcessResults(_blockadeManager.ProcessTick());
         ProcessResults(_planetaryControlSystem.ProcessTick());
@@ -285,7 +490,7 @@ public class GameManager
     /// <param name="results">Batch of results from a system tick.</param>
     private void ProcessResults(List<GameResult> results)
     {
-        ProcessMessageDeliveries(results);
+        ProcessMessages(results);
 
         foreach (VictoryResult result in results.OfType<VictoryResult>())
         {
@@ -308,7 +513,7 @@ public class GameManager
         }
     }
 
-    private void ProcessMessageDeliveries(List<GameResult> results)
+    private void ProcessMessages(List<GameResult> results)
     {
         foreach (MessageDelivery delivery in _messageFactory.CreateMessages(results, _game))
             AddMessage(delivery.Faction, delivery.Message);

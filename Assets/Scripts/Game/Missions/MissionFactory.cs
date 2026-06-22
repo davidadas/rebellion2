@@ -33,6 +33,7 @@ namespace Rebellion.Game.Missions
         /// <param name="targetOfficer">Optional pre-selected officer target.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
         /// <param name="participant">Optional acting participant for participant-specific mission gates.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True if the mission can be created with the given parameters.</returns>
         public bool CanCreateMission(
             MissionType missionType,
@@ -41,24 +42,62 @@ namespace Rebellion.Game.Missions
             IRandomNumberProvider provider,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            IMissionParticipant participant = null
+            IMissionParticipant participant = null,
+            ISceneNode specificTarget = null
+        )
+        {
+            List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>();
+            if (participant != null)
+                mainParticipants.Add(participant);
+
+            return CanCreateMission(
+                missionType,
+                ownerInstanceId,
+                mainParticipants,
+                new List<IMissionParticipant>(),
+                target,
+                provider,
+                targetOfficer,
+                discipline,
+                specificTarget
+            );
+        }
+
+        public bool CanCreateMission(
+            MissionType missionType,
+            string ownerInstanceId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            IRandomNumberProvider provider,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
             Faction faction = _game.Factions.Find(f => f.InstanceID == ownerInstanceId);
             if (faction?.DisallowedMissionTypes.Contains(missionType) == true)
                 return false;
 
-            List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>();
-            if (participant != null)
-                mainParticipants.Add(participant);
+            mainParticipants ??= new List<IMissionParticipant>();
+            decoyParticipants ??= new List<IMissionParticipant>();
+
+            foreach (
+                IMissionParticipant missionParticipant in mainParticipants.Concat(decoyParticipants)
+            )
+            {
+                if (missionParticipant?.CanPerformMission(missionType) != true)
+                    return false;
+            }
 
             MissionContext ctx = new MissionContext
             {
                 Game = _game,
                 OwnerInstanceId = ownerInstanceId,
                 Target = target,
+                SpecificTarget = specificTarget,
                 MainParticipants = mainParticipants,
-                DecoyParticipants = new List<IMissionParticipant>(),
+                DecoyParticipants = decoyParticipants,
                 RandomProvider = provider,
                 TargetOfficer = targetOfficer,
                 Discipline = discipline,
@@ -79,7 +118,8 @@ namespace Rebellion.Game.Missions
             ISceneNode target,
             IRandomNumberProvider provider = null,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
             if (mainParticipants == null || mainParticipants.Count == 0)
@@ -107,6 +147,7 @@ namespace Rebellion.Game.Missions
                 Game = _game,
                 OwnerInstanceId = ownerInstanceId,
                 Target = target,
+                SpecificTarget = specificTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
                 RandomProvider = provider,

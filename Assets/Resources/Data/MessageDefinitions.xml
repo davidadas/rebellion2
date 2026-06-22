@@ -23,6 +23,20 @@
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Capital Ship Repaired</DisplayName>
+    <ResultType>CapitalShipRepaired</ResultType>
+    <MessageType>Fleet</MessageType>
+    <TitleTemplate>Capital Ship Repaired</TitleTemplate>
+    <BodyTemplate>{item} attached to {attachment} has repaired all battle damage and is fully operational.</BodyTemplate>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Squadron At Full Strength</DisplayName>
+    <ResultType>StarfighterRepaired</ResultType>
+    <MessageType>Fleet</MessageType>
+    <TitleTemplate>Squadron at Full Strength</TitleTemplate>
+    <BodyTemplate>The {item} attached to {attachment} has replaced all fighters lost in combat.</BodyTemplate>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Emperor Seat Of Power</DisplayName>
     <ResultType>EmperorSeatOfPower</ResultType>
     <MessageType>Mission</MessageType>
@@ -121,27 +135,298 @@
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
-    <DisplayName>Mission Report Success</DisplayName>
+    <DisplayName>Diplomacy Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
-    <TitleTemplate>Mission Report</TitleTemplate>
-    <BodyTemplate>{mission} mission to {system} was successful.</BodyTemplate>
+    <MissionType>Diplomacy</MissionType>
+    <TitleTemplate>Diplomacy Mission Report</TitleTemplate>
+    <BodyTemplate>The diplomacy mission to {system} has increased popular support on that system.  </BodyTemplate>
     <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_mission_report_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_mission_report_empire</FNEMP1>
+      <Default>Art/UI/Messages/ui_message_mission_report_diplomacy</Default>
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
-    <DisplayName>Mission Report Failed</DisplayName>
+    <DisplayName>Recon Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Reconnaissance</MissionType>
+    <TitleTemplate>Recon Mission Report</TitleTemplate>
+    <BodyTemplate>The reconnaissance mission to {system} was successful.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Espionage Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Espionage</MissionType>
+    <TitleTemplate>Espionage Mission Report</TitleTemplate>
+    <BodyTemplate>The espionage mission to {system} was successful.  </BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Sabotage Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Sabotage</MissionType>
+    <TitleTemplate>Sabotage Mission Report</TitleTemplate>
+    <BodyTemplate>The sabotage mission to {system} targeting the {target} is complete.  The target was destroyed.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Incite Uprising Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>InciteUprising</MissionType>
+    <TitleTemplate>Incite Uprising Mission Report</TitleTemplate>
+    <BodyTemplate>The Incite Uprising mission to {system} was successful.  </BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Recruitment Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Recruitment</MissionType>
+    <TitleTemplate>{participant} Recruits {officer}</TitleTemplate>
+    <BodyTemplate>My recruitment mission to {system} was successful. {officer} is at your command.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Abduction Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Abduction</MissionType>
+    <TitleTemplate>Abduction Mission Report</TitleTemplate>
+    <BodyTemplate>The mission to abduct {officer} from {system} succeeded.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Assassination Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Assassination</MissionType>
+    <TitleTemplate>Assassination Mission Report</TitleTemplate>
+    <BodyTemplate>The assassination mission to {system} is complete.  {officer} {assassination_result}.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Subdue Uprising Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>SubdueUprising</MissionType>
+    <TitleTemplate>Subdue Uprising Mission Report</TitleTemplate>
+    <BodyTemplate>The Subdue Uprising mission to {system} was successful.  Order has been restored.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Rescue Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Rescue</MissionType>
+    <TitleTemplate>Rescue Mission Report</TitleTemplate>
+    <BodyTemplate>The mission to rescue {officer} from {system} succeeded.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Research Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Research</MissionType>
+    <TitleTemplate>{mission} Mission Report</TitleTemplate>
+    <BodyTemplate>The {mission} Mission at {system} has produced valuable results.  </BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Jedi Training Mission Report Success</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Success</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>JediTraining</MissionType>
+    <TitleTemplate>Jedi Training Mission Report</TitleTemplate>
+    <BodyTemplate>The Jedi Training mission on {system} has been a success.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Diplomacy Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
-    <TitleTemplate>Mission Report</TitleTemplate>
-    <BodyTemplate>{mission} mission to {system} failed.</BodyTemplate>
+    <MissionType>Diplomacy</MissionType>
+    <TitleTemplate>Diplomacy Mission Report</TitleTemplate>
+    <BodyTemplate>The diplomacy mission to {system} had no effect on our popular support on that system.  </BodyTemplate>
     <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_mission_report_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_mission_report_empire</FNEMP1>
+      <Default>Art/UI/Messages/ui_message_mission_report_diplomacy</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Recon Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Reconnaissance</MissionType>
+    <TitleTemplate>Recon Mission Report</TitleTemplate>
+    <BodyTemplate>The reconnaissance mission to {system} failed.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Espionage Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Espionage</MissionType>
+    <TitleTemplate>Espionage Mission Report</TitleTemplate>
+    <BodyTemplate>The espionage mission to {system} was not successful.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Sabotage Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Sabotage</MissionType>
+    <TitleTemplate>Sabotage Mission Report</TitleTemplate>
+    <BodyTemplate>The sabotage mission to {system} targeting the {target} is complete.    The target was not destroyed.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Incite Uprising Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>InciteUprising</MissionType>
+    <TitleTemplate>Incite Uprising Mission Report</TitleTemplate>
+    <BodyTemplate>My Incite Uprising mission to {system} has not produced results.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Recruitment Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Recruitment</MissionType>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My recruitment mission to {system} is complete.  I have failed to recruit anyone.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Abduction Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Abduction</MissionType>
+    <TitleTemplate>Abduction Mission Report</TitleTemplate>
+    <BodyTemplate>The mission to abduct {officer} from {system} failed.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Assassination Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Assassination</MissionType>
+    <TitleTemplate>Assassination Mission Report</TitleTemplate>
+    <BodyTemplate>The assassination mission to {system} is complete.  {officer} has not been eliminated.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Subdue Uprising Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>SubdueUprising</MissionType>
+    <TitleTemplate>Subdue Uprising Mission Report</TitleTemplate>
+    <BodyTemplate>The Subdue Uprising mission to {system} failed.  The populace is still in a state of uprising.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Rescue Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Rescue</MissionType>
+    <TitleTemplate>Rescue Mission Report</TitleTemplate>
+    <BodyTemplate>The mission to rescue {officer} from {system} failed.&#10;</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Research Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>Research</MissionType>
+    <TitleTemplate>{mission} Mission Report</TitleTemplate>
+    <BodyTemplate>The {mission} Mission at {system} has not produced new information.  </BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Jedi Training Mission Report Failed</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Failed</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>JediTraining</MissionType>
+    <TitleTemplate>Jedi Training Mission Report</TitleTemplate>
+    <BodyTemplate>The Jedi Training mission on  {system} has failed.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Incite Uprising Enemy Mission Foiled</DisplayName>
+    <ResultType>EnemyMissionFoiled</ResultType>
+    <Outcome>Foiled</Outcome>
+    <MessageType>Mission</MessageType>
+    <MissionType>InciteUprising</MissionType>
+    <TitleTemplate>Enemy Mission Foiled</TitleTemplate>
+    <BodyTemplate>An enemy {mission} mission to {system} has been foiled by our forces.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_empire</FNEMP1>
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
@@ -161,11 +446,82 @@
     <ResultType>SabotageStrike</ResultType>
     <MessageType>Mission</MessageType>
     <TitleTemplate>Saboteurs Strike at {system}</TitleTemplate>
-    <BodyTemplate>Saboteurs destroyed {item} at {system}.</BodyTemplate>
+    <BodyTemplate>The following units were destroyed by saboteurs at {system}:&#10;{item}</BodyTemplate>
     <ImageMap>
       <FNALL1>Art/UI/Messages/ui_message_destroyed_object_alliance</FNALL1>
       <FNEMP1>Art/UI/Messages/ui_message_destroyed_object_empire</FNEMP1>
     </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Recruited</DisplayName>
+    <ResultType>OfficerRecruited</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Recruited</TitleTemplate>
+    <BodyTemplate>{officer} has joined our forces at {system}.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Captured</DisplayName>
+    <ResultType>OfficerCaptured</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Captured</TitleTemplate>
+    <BodyTemplate>{officer} was captured at {system}.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_character_captured_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_character_captured_empire</FNEMP1>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Released</DisplayName>
+    <ResultType>OfficerReleased</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Escaped</TitleTemplate>
+    <BodyTemplate>{officer} has escaped from imprisonment at {system}.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_prisoner_escape</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Injured</DisplayName>
+    <ResultType>OfficerInjured</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Injured</TitleTemplate>
+    <BodyTemplate>{officer} has been injured.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_character_injured</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Recovered</DisplayName>
+    <ResultType>OfficerRecovered</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Healed</TitleTemplate>
+    <BodyTemplate>{officer} has been healed of all injuries.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_character_recovered</Default>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Killed</DisplayName>
+    <ResultType>OfficerKilled</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Killed</TitleTemplate>
+    <BodyTemplate>{officer} has been killed.</BodyTemplate>
+    <ImageMap>
+      <FNALL1>Art/UI/Messages/ui_message_character_killed_alliance</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_character_killed_empire</FNEMP1>
+    </ImageMap>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Force Growth</DisplayName>
+    <ResultType>ForceGrowth</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Force Growth</TitleTemplate>
+    <BodyTemplate>My recent experience has given me new insights and I have grown in my skills in the Force.  My ranking is {rank}.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Ship</DisplayName>
@@ -174,6 +530,9 @@
     <ResearchDiscipline>ShipDesign</ResearchDiscipline>
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_research_report</Default>
+    </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Troop</DisplayName>
@@ -182,6 +541,9 @@
     <ResearchDiscipline>TroopTraining</ResearchDiscipline>
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_research_report</Default>
+    </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Facility</DisplayName>
@@ -190,6 +552,9 @@
     <ResearchDiscipline>FacilityDesign</ResearchDiscipline>
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
+    <ImageMap>
+      <Default>Art/UI/Messages/ui_message_research_report</Default>
+    </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Ship</DisplayName>
@@ -246,6 +611,14 @@
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Planet Joined by Support</DisplayName>
+    <ResultType>PlanetJoinedBySupport</ResultType>
+    <MessageType>PopularSupport</MessageType>
+    <TitleTemplate>{system} Joins</TitleTemplate>
+    <BodyTemplate>Popular support on {system} has caused that world to join the {faction}.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Blockade Initiated</DisplayName>
     <ResultType>BlockadeInitiated</ResultType>
     <MessageType>Fleet</MessageType>
@@ -297,8 +670,8 @@
     <TitleTemplate>Battle at {system}</TitleTemplate>
     <BodyTemplate>The {faction} fleet is victorious.</BodyTemplate>
     <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire</FNEMP1>
+      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance_victory</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire_victory</FNEMP1>
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>
@@ -309,8 +682,8 @@
     <TitleTemplate>Battle at {system}</TitleTemplate>
     <BodyTemplate>The {faction} fleet is defeated.</BodyTemplate>
     <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire</FNEMP1>
+      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance_defeat</FNALL1>
+      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire_defeat</FNEMP1>
     </ImageMap>
   </MessageDefinition>
   <MessageDefinition>

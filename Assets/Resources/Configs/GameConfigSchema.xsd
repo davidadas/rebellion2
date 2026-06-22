@@ -610,6 +610,7 @@
               <xs:element name="FastTickIntervalSeconds" type="xs:decimal" />
               <xs:element name="MediumTickIntervalSeconds" type="xs:decimal" />
               <xs:element name="SlowTickIntervalSeconds" type="xs:decimal" />
+              <xs:element name="VerySlowTickIntervalSeconds" type="xs:decimal" />
             </xs:all>
           </xs:complexType>
         </xs:element>

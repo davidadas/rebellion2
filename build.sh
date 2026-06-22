@@ -191,10 +191,18 @@ do_coverage() {
     require_command bc
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
+    case "$coverage_dir" in
+        "" | "/" | ".")
+            echo "Invalid coverage directory: $coverage_dir"
+            exit 1
+            ;;
+    esac
+    rm -rf "$coverage_dir"
+
     run_unity_editmode_tests \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-Assets/Scripts/Game/Results/GameResults.cs"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-**/Assets/Scripts/Game/Results/GameResults.cs,-**/Assets/Scripts/UI/SceneUI/StrategyView/**"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

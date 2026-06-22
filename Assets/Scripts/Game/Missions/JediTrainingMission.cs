@@ -126,6 +126,8 @@ namespace Rebellion.Game.Missions
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore) => 0;
 
+        protected override bool IsMissionSatisfied(GameRoot game) => true;
+
         /// <summary>
         /// Jedi training does not award mission skill improvements.
         /// </summary>

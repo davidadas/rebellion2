@@ -142,5 +142,10 @@ namespace Rebellion.Game.Units
         {
             return Movement == null;
         }
+
+        public bool IsOperationalFacility()
+        {
+            return ManufacturingStatus == ManufacturingStatus.Complete && Movement == null;
+        }
     }
 }

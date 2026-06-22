@@ -58,11 +58,12 @@ namespace Rebellion.Game.Missions
                 return null;
 
             Officer target = ctx.TargetOfficer;
+            Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
                 || target.GetOwnerInstanceID() != ctx.OwnerInstanceId
                 || !target.IsCaptured
-                || target.GetParentOfType<Planet>() != planet
+                || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
 
@@ -75,13 +76,11 @@ namespace Rebellion.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Returns false if the target officer is no longer captured or has moved
-        /// away from the mission's planet before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the target is still captured and on the mission planet.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        public override bool CanStart(GameRoot game) => HasValidTarget(game);
+
+        protected override bool IsMissionSatisfied(GameRoot game) => HasValidTarget(game);
+
+        private bool HasValidTarget(GameRoot game)
         {
             Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return captive?.IsCaptured == true

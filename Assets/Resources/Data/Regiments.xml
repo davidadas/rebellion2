@@ -170,7 +170,7 @@
   </Regiment>
   <Regiment>
     <TypeID>REAL005</TypeID>
-    <DisplayName>Wookie Regiment</DisplayName>
+    <DisplayName>Wookiee Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_wookiee_primary</DisplayImagePath>
     <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;8&#xA;Attack Strength:&#x9;&#x9;&#x9;8&#xA;Defense Strength:&#x9;&#x9;&#x9;4&#xA;Bombardment Defense:&#x9;&#x9;4&#xA;&#xA;Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</Description>
     <AllowedOwnerInstanceIDs>

@@ -20,6 +20,7 @@ namespace Rebellion.Game
         Medium,
         Slow,
         Paused,
+        VerySlow,
     }
 
     /// <summary>
@@ -67,7 +68,7 @@ namespace Rebellion.Game
 
         // Game state.
         public int CurrentTick;
-        public TickSpeed GameSpeed = TickSpeed.Medium;
+        public TickSpeed GameSpeed = TickSpeed.VerySlow;
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();

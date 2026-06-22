@@ -24,6 +24,8 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class Fleet : ContainerNode, IMovable
     {
+        public const string EncyclopediaTypeID = "FLEET";
+
         // Movement Info.
         public MovementState Movement { get; set; }
 
@@ -49,7 +51,10 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
-        public Fleet() { }
+        public Fleet()
+        {
+            TypeID = EncyclopediaTypeID;
+        }
 
         public Fleet(
             string ownerInstanceId,
@@ -160,6 +165,11 @@ namespace Rebellion.Game.Units
         public IEnumerable<Officer> GetOfficers()
         {
             return CapitalShips.SelectMany(ship => ship.Officers);
+        }
+
+        public IEnumerable<SpecialForces> GetSpecialForces()
+        {
+            return CapitalShips.SelectMany(ship => ship.SpecialForces);
         }
 
         /// <summary>

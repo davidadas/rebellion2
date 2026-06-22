@@ -325,6 +325,38 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void GetSpecialForces_FleetWithSpecialForces_ReturnsAllSpecialForcesAcrossFleet()
+        {
+            SpecialForces firstSpecialForces = new SpecialForces { OwnerInstanceID = "FACTION1" };
+            SpecialForces secondSpecialForces = new SpecialForces { OwnerInstanceID = "FACTION1" };
+            SpecialForces thirdSpecialForces = new SpecialForces { OwnerInstanceID = "FACTION1" };
+
+            _fleet.AddChild(_capitalShip1);
+            _fleet.AddChild(_capitalShip2);
+            _capitalShip1.AddSpecialForces(firstSpecialForces);
+            _capitalShip1.AddSpecialForces(secondSpecialForces);
+            _capitalShip2.AddSpecialForces(thirdSpecialForces);
+
+            IEnumerable<SpecialForces> specialForces = _fleet.GetSpecialForces();
+
+            CollectionAssert.AreEquivalent(
+                new SpecialForces[] { firstSpecialForces, secondSpecialForces, thirdSpecialForces },
+                specialForces,
+                "Should return all special forces from all capital ships"
+            );
+        }
+
+        [Test]
+        public void GetSpecialForces_WhenNoSpecialForces_ReturnsEmpty()
+        {
+            _fleet.AddChild(_capitalShip1);
+
+            IEnumerable<SpecialForces> specialForces = _fleet.GetSpecialForces();
+
+            Assert.IsEmpty(specialForces, "Should return empty collection when no special forces");
+        }
+
+        [Test]
         public void AddChild_WithOfficer_ThrowsSceneAccessException()
         {
             Officer officer = new Officer { OwnerInstanceID = "FACTION1" };

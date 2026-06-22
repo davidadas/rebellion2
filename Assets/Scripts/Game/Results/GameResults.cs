@@ -18,6 +18,18 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
+    public enum MissionReportDetail
+    {
+        None,
+        Success,
+        Failure,
+        Foiled,
+        TargetUnavailable,
+        NoResearchFacilities,
+        ResearchProgress,
+        ResearchBreakthrough,
+    }
+
     public enum ForceEventType
     {
         DiscoveringForceUser,
@@ -59,6 +71,12 @@ namespace Rebellion.Game.Results
         Battle,
         Bombardment,
         Assault,
+    }
+
+    public enum PlanetOwnershipChangeReason
+    {
+        None,
+        PopularSupport,
     }
 
     public enum FleetStateType
@@ -183,6 +201,7 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Faction PreviousOwner { get; set; }
         public Faction NewOwner { get; set; }
+        public PlanetOwnershipChangeReason Reason { get; set; }
     }
 
     /// <summary>
@@ -274,10 +293,12 @@ namespace Rebellion.Game.Results
     {
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
+        public MissionType MissionType { get; set; }
         public string TargetName { get; set; }
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
+        public MissionReportDetail ReportDetail { get; set; }
     }
 
     /// <summary>

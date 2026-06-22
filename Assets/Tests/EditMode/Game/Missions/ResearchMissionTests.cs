@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Missions
@@ -44,6 +46,36 @@ namespace Rebellion.Tests.Game.Missions
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
             _game.AttachNode(_planet, sys);
+
+            AddProductionFacility("shipyard1", BuildingType.Shipyard, ManufacturingType.Ship);
+            AddProductionFacility(
+                "training1",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AddProductionFacility(
+                "construction1",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+        }
+
+        private void AddProductionFacility(
+            string instanceID,
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceID,
+                OwnerInstanceID = "empire",
+                BuildingType = buildingType,
+                ProductionType = productionType,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(building, _planet);
         }
 
         private ResearchMission CreateMission(
@@ -163,6 +195,22 @@ namespace Rebellion.Tests.Game.Missions
                 0,
                 _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
             );
+        }
+
+        [Test]
+        public void Execute_WithoutResearchFacility_ReportsNoResearchFacilities()
+        {
+            Officer officer = CreateOfficer(shipSkill: 100);
+            ResearchMission mission = CreateMission(officer);
+            _planet.Buildings.Clear();
+
+            MissionCompletedResult completed = mission
+                .Execute(_game, new FixedRNG(0.0))
+                .OfType<MissionCompletedResult>()
+                .Single();
+
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionReportDetail.NoResearchFacilities, completed.ReportDetail);
         }
 
         [Test]

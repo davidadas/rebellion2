@@ -25,49 +25,67 @@ namespace Rebellion.Game.Missions
 
         private SabotageMission(
             string ownerInstanceId,
-            ISceneNode target,
+            ISceneNode missionTarget,
+            string sabotageTargetInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
             : base(
                 "Sabotage",
                 ownerInstanceId,
-                RequirePlanetTarget(target, "Sabotage").GetInstanceID(),
+                missionTarget.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Combat,
                 null
             )
         {
+            TargetInstanceID = sabotageTargetInstanceId;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
-        /// <summary>
-        /// Returns a new SabotageMission if the target is a planet, or null.
-        /// </summary>
-        /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-        /// <returns>A configured mission, or null if the target is not a planet.</returns>
         public static SabotageMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet))
+            if (ctx.Target == null)
+                return null;
+
+            ISceneNode sabotageTarget = ctx.SpecificTarget ?? ctx.Target;
+            if (sabotageTarget == null || sabotageTarget is Officer)
+                return null;
+
+            if (sabotageTarget is IManufacturable manufacturable)
+            {
+                if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
+                    return null;
+            }
+
+            if (sabotageTarget is IMovable movable && movable.Movement != null)
+                return null;
+
+            Planet missionPlanet = ctx.Target as Planet ?? sabotageTarget.GetParentOfType<Planet>();
+            if (missionPlanet == null)
                 return null;
 
             return new SabotageMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                missionPlanet,
+                sabotageTarget.GetInstanceID(),
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );
         }
 
-        /// <summary>
-        /// Returns false if the target planet has no buildings remaining before execution.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>True if the planet still has at least one building.</returns>
-        protected override bool IsMissionSatisfied(GameRoot game)
+        public override bool CanStart(GameRoot game) => HasValidTarget(game);
+
+        protected override bool IsMissionSatisfied(GameRoot game) => HasValidTarget(game);
+
+        private bool HasValidTarget(GameRoot game)
         {
-            return GetParent() is Planet p && p.GetAllBuildings().Count > 0;
+            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
+            if (target is Planet planet)
+                return planet.GetAllBuildings().Count > 0;
+
+            return target != null && target.GetParentOfType<Planet>() == GetParent() as Planet;
         }
 
         /// <summary>
@@ -75,17 +93,13 @@ namespace Rebellion.Game.Missions
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 
-        /// <summary>
-        /// Destroys the first building on the target planet.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for sabotage).</param>
-        /// <returns>One GameObjectSabotagedResult.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
             Planet planet = GetParent() as Planet;
-            List<Building> buildings = planet.GetAllBuildings();
-            Building target = buildings[0];
+            ISceneNode target = GetSabotageTarget(game);
+            if (target == null)
+                return new List<GameResult>();
+
             game.DetachNode(target);
 
             return new List<GameResult>
@@ -98,6 +112,16 @@ namespace Rebellion.Game.Missions
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        private ISceneNode GetSabotageTarget(GameRoot game)
+        {
+            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
+            if (target is not Planet planet)
+                return target;
+
+            List<Building> buildings = planet.GetAllBuildings();
+            return buildings.Count > 0 ? buildings[0] : null;
         }
 
         /// <summary>
