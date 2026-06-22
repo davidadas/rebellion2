@@ -252,26 +252,6 @@ namespace Rebellion.Game.Missions
             MainParticipants.Concat(DecoyParticipants).ToList();
 
         /// <summary>
-        /// Returns the movable passengers that should leave with the mission party at teardown.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The movable passengers that return with this mission.</returns>
-        public virtual IEnumerable<IMovable> GetReturnPassengers(GameRoot game) =>
-            GetAllParticipants().OfType<IMovable>();
-
-        /// <summary>
-        /// Returns captured mission participants that should stay at the mission location.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>Captured officers that should not return with the mission party.</returns>
-        public virtual IEnumerable<Officer> GetCapturedParticipants(GameRoot game) =>
-            GetAllParticipants()
-                .OfType<Officer>()
-                .Where(officer =>
-                    officer.IsCaptured && officer.CaptorInstanceID != OwnerInstanceID
-                );
-
-        /// <summary>
         /// Returns whether any mission participant is still travelling to the mission.
         /// </summary>
         /// <returns>True if any participant has active movement.</returns>

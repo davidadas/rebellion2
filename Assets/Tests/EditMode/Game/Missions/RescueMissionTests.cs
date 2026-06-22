@@ -67,6 +67,50 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void UpdateMission_SuccessfulRescue_MovesTargetToRescuerOrigin()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(captive, enemyPlanet);
+
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(new StubRNG());
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(0.0), movement);
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsFalse(captive.IsCaptured, "Rescued officer should no longer be captured");
+            Assert.AreEqual(
+                empPlanet,
+                captive.GetParent(),
+                "Rescued officer should return to the rescuer's origin"
+            );
+        }
+
+        [Test]
         public void Execute_CapturedOfficerOnTargetPlanet_ReturnsOfficerRescuedResult()
         {
             (

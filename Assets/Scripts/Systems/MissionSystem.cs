@@ -392,7 +392,7 @@ namespace Rebellion.Systems
                         mission.GetAllParticipants()
                     )
                 );
-                TearDownMission(mission);
+                TearDownMission(mission, null);
                 return results;
             }
 
@@ -407,7 +407,7 @@ namespace Rebellion.Systems
                         mission.GetAllParticipants()
                     )
                 );
-                TearDownMission(mission);
+                TearDownMission(mission, null);
                 return results;
             }
 
@@ -494,7 +494,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                TearDownMission(mission);
+                TearDownMission(mission, completedResult);
             }
 
             return true;
@@ -506,14 +506,15 @@ namespace Rebellion.Systems
         /// detaches the mission. Called when a mission completion result cannot continue.
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
-        private void TearDownMission(Mission mission)
+        /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
+        private void TearDownMission(Mission mission, MissionCompletedResult completedResult)
         {
             Planet missionPlanet = mission.GetParent() as Planet;
             Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
             ISceneNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
 
             MoveCapturedParticipants(mission, missionPlanet);
-            MoveReturnPassengersToOrigin(mission, origin);
+            MoveReturnPassengersToOrigin(mission, completedResult, origin);
             _game.DetachNode(mission);
         }
 
@@ -568,35 +569,22 @@ namespace Rebellion.Systems
         /// Moves all eligible mission return passengers to the resolved return location.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
+        /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
         /// <param name="origin">The location passengers should return to.</param>
-        private void MoveReturnPassengersToOrigin(Mission mission, ISceneNode origin)
+        private void MoveReturnPassengersToOrigin(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            ISceneNode origin
+        )
         {
             if (origin == null)
                 return;
 
-            List<IMovable> returnPassengers = mission
-                .GetReturnPassengers(_game)
-                .Where(passenger => CanReturnPassengerMove(mission, passenger))
+            List<IMovable> returnPassengers = GetReturnPassengers(mission, completedResult)
                 .Distinct()
                 .ToList();
-
             if (returnPassengers.Count > 0)
                 _movementManager.RequestMove(returnPassengers, origin);
-        }
-
-        /// <summary>
-        /// Returns whether a passenger should receive the return movement order.
-        /// </summary>
-        /// <param name="mission">The mission being torn down.</param>
-        /// <param name="passenger">The passenger to inspect.</param>
-        /// <returns>True if the passenger may return with this mission.</returns>
-        private static bool CanReturnPassengerMove(Mission mission, IMovable passenger)
-        {
-            if (passenger is not Officer officer)
-                return true;
-
-            return !officer.IsKilled
-                && (!officer.IsCaptured || officer.CaptorInstanceID == mission.OwnerInstanceID);
         }
 
         /// <summary>
@@ -609,8 +597,80 @@ namespace Rebellion.Systems
             if (missionPlanet == null)
                 return;
 
-            foreach (Officer officer in mission.GetCapturedParticipants(_game).ToList())
+            foreach (Officer officer in GetCapturedMissionParticipants(mission))
                 _movementManager.RequestMove(officer, missionPlanet);
+        }
+
+        private IEnumerable<IMovable> GetFreeMissionParticipants(Mission mission)
+        {
+            return mission
+                .GetAllParticipants()
+                .OfType<IMovable>()
+                .Where(IsFreeParticipant)
+                .Distinct();
+        }
+
+        private IEnumerable<IMovable> GetReturnPassengers(
+            Mission mission,
+            MissionCompletedResult completedResult
+        )
+        {
+            foreach (IMovable participant in GetFreeMissionParticipants(mission))
+                yield return participant;
+
+            if (completedResult?.Outcome != MissionOutcome.Success)
+                yield break;
+
+            Officer transferredTarget = GetSuccessfulTransferTarget(mission);
+            if (transferredTarget != null)
+                yield return transferredTarget;
+        }
+
+        private static IEnumerable<Officer> GetCapturedMissionParticipants(Mission mission)
+        {
+            return mission.GetAllParticipants().OfType<Officer>().Where(IsCapturedParticipant);
+        }
+
+        private static bool IsFreeParticipant(IMovable participant)
+        {
+            return participant is not Officer officer || (!officer.IsKilled && !officer.IsCaptured);
+        }
+
+        private static bool IsCapturedParticipant(Officer officer)
+        {
+            return officer.IsCaptured;
+        }
+
+        private Officer GetSuccessfulTransferTarget(Mission mission)
+        {
+            if (mission is AbductionMission abduction)
+                return GetAbductedOfficer(abduction);
+            if (mission is RescueMission rescue)
+                return GetRescuedOfficer(rescue);
+
+            return null;
+        }
+
+        private Officer GetAbductedOfficer(AbductionMission mission)
+        {
+            Officer target = _game.GetSceneNodeByInstanceID<Officer>(
+                mission.TargetOfficerInstanceID
+            );
+            return target?.IsCaptured == true && target.CaptorInstanceID == mission.OwnerInstanceID
+                ? target
+                : null;
+        }
+
+        private Officer GetRescuedOfficer(RescueMission mission)
+        {
+            Officer target = _game.GetSceneNodeByInstanceID<Officer>(
+                mission.TargetOfficerInstanceID
+            );
+            return
+                target?.IsCaptured == false
+                && target.GetOwnerInstanceID() == mission.OwnerInstanceID
+                ? target
+                : null;
         }
 
         /// <summary>

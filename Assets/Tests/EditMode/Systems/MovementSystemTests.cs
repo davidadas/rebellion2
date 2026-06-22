@@ -728,6 +728,45 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_GroupCapturedOfficerArrivesAtCaptorPlanet_CompletesMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(
+                new System.Collections.Generic.List<IMovable> { escort, captive },
+                destination
+            );
+            escort.Movement.TicksElapsed = escort.Movement.TransitTicks;
+            captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
+
+            List<GameResult> results = movement.ProcessTick();
+
+            Assert.AreEqual(destination, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+            Assert.IsTrue(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, captive))
+            );
+        }
+
+        [Test]
         public void RequestMove_GroupCapturedOfficerWithoutEscort_NotMoved()
         {
             (

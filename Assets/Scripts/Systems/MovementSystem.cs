@@ -479,10 +479,22 @@ namespace Rebellion.Systems
             Planet destinationPlanet
         )
         {
-            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(destinationOwner)
-                && destinationOwner != movable.GetOwnerInstanceID()
-                && !CanEnterHostileOrbit(movable, destination);
+            string destinationOwner = destination.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(destinationOwner))
+                destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(destinationOwner))
+                return false;
+
+            if (destinationOwner == movable.GetOwnerInstanceID())
+                return false;
+
+            if (
+                movable is Officer { IsCaptured: true } officer
+                && officer.CaptorInstanceID == destinationOwner
+            )
+                return false;
+
+            return !CanEnterHostileOrbit(movable, destination);
         }
 
         /// <summary>

@@ -143,21 +143,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the mission party plus a successfully captured target officer.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The movable passengers that return with this mission.</returns>
-        public override IEnumerable<IMovable> GetReturnPassengers(GameRoot game)
-        {
-            foreach (IMovable passenger in base.GetReturnPassengers(game))
-                yield return passenger;
-
-            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-            if (target?.IsCaptured == true && target.CaptorInstanceID == OwnerInstanceID)
-                yield return target;
-        }
-
-        /// <summary>
         /// Abduction missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
