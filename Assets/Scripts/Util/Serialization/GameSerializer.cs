@@ -743,7 +743,6 @@ namespace Rebellion.Util.Serialization
                 {
                     if (
                         includeAttr.PersistableType.Name == actualTypeName
-                        || includeAttr.PersistableType.FullName == actualTypeName
                         || ReflectionHelper.GetPersistableElementName(includeAttr.PersistableType)
                             == actualTypeName
                     )
@@ -756,7 +755,7 @@ namespace Rebellion.Util.Serialization
             IDictionary<string, Type> persistableMap = ReflectionHelper.GetPersistableObjectMap();
             Type resolvedType = persistableMap.TryGetValue(actualTypeName, out Type persistableType)
                 ? persistableType
-                : ReflectionHelper.GetTypeByName(actualTypeName) ?? objType;
+                : objType;
 
             if (!objType.IsAssignableFrom(resolvedType))
             {
@@ -1114,7 +1113,6 @@ namespace Rebellion.Util.Serialization
             {
                 AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);
                 AddPersistableTypeName(persistableMap, type.Name, type);
-                AddPersistableTypeName(persistableMap, type.FullName, type);
             }
 
             _persistableObjectMap = persistableMap;

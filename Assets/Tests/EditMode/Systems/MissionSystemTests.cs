@@ -1108,6 +1108,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_DetectionSucceedsWithoutCaptureOrKill_FoilsMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _, MovementSystem movement) =
+                BuildDetectionScene();
+
+            spy.IsCaptured = true;
+            spy.CaptorInstanceID = "rebels";
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+            mission.Initiate(new StubRNG());
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
+            Assert.IsFalse(results.Any(result => result is OfficerKilledResult));
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+            Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
         public void UpdateMission_DetectionSucceedsHighCapture_MovesCaptiveToMissionPlanet()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -1153,6 +1185,7 @@ namespace Rebellion.Tests.Systems
             mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 0 } }
             );
+            mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1255,6 +1288,7 @@ namespace Rebellion.Tests.Systems
             mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
                 new Dictionary<int, int> { { -200, 0 } }
             );
+            mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);

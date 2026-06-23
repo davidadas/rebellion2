@@ -558,6 +558,34 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_GroupToFactionViewFleet_BoardsLiveFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer officer, MovementSystem movement) =
+                BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            Fleet liveFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(liveFleet, origin);
+
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, liveFleet);
+
+            Fleet viewFleet = EntityFactory.CreateFleet(liveFleet.InstanceID, "empire");
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, viewFleet);
+
+            Assert.AreEqual(ship, officer.GetParent());
+            Assert.AreEqual(ship, officer2.GetParent());
+        }
+
+        [Test]
         public void RequestMove_GroupUnitsAtDifferentLocations_NoneMove()
         {
             (

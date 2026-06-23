@@ -263,32 +263,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Deserialize_GameEventConditionals_WithLegacyClrName_UsesConcreteType()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
-            string xmlInput =
-                @"<?xml version=""1.0"" encoding=""utf-8""?>
-<GameEvent>
-  <InstanceID>EVENT_TEST</InstanceID>
-  <IsRepeatable>false</IsRepeatable>
-  <Conditionals>
-    <TickCountConditional Value=""30"" Type=""GreaterThan"">
-      <InstanceID>TICK_CONDITION</InstanceID>
-    </TickCountConditional>
-  </Conditionals>
-  <Actions />
-</GameEvent>";
-
-            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, xmlInput);
-
-            Assert.AreEqual(1, deserialized.Conditionals.Count);
-            TickCountConditional conditional = deserialized.Conditionals[0] as TickCountConditional;
-            Assert.IsNotNull(conditional);
-            Assert.AreEqual("30", conditional.ConditionalValue);
-            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
-        }
-
-        [Test]
         public void Deserialize_SingleObject_ReturnsExpectedObject()
         {
             GameSerializer serializer = new GameSerializer(typeof(SimpleItem));

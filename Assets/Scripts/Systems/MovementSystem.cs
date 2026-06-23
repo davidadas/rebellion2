@@ -168,6 +168,8 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            destination = ResolveLiveNode(destination);
+
             if (!CanMoveGroup(units, destination))
                 return;
 

@@ -460,7 +460,9 @@ namespace Rebellion.Systems
         private void TearDownMission(Mission mission, MissionCompletedResult completedResult)
         {
             Planet missionPlanet = mission.GetParent() as Planet;
-            Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Faction faction = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == mission.OwnerInstanceID);
             ISceneNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
 
             MoveCapturedParticipants(mission, missionPlanet);
@@ -642,16 +644,11 @@ namespace Rebellion.Systems
 
             int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
-            bool participantStateChanged = false;
 
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-            {
-                participantStateChanged =
-                    ResolveFoiledParticipant(participant, defenderCombat, planet, mission, results)
-                    || participantStateChanged;
-            }
+                ResolveFoiledParticipant(participant, defenderCombat, planet, mission, results);
 
-            return participantStateChanged;
+            return true;
         }
 
         /// <summary>

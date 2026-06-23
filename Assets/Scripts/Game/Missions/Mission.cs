@@ -423,10 +423,14 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return null;
 
+            HashSet<string> participantIds = GetParticipantIds();
             return planet
                 .GetAllOfficers()
                 .FirstOrDefault(o =>
-                    o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled
+                    o.GetOwnerInstanceID() != OwnerInstanceID
+                    && !participantIds.Contains(o.InstanceID)
+                    && !o.IsCaptured
+                    && !o.IsKilled
                 );
         }
 
