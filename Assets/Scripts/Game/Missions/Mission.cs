@@ -276,11 +276,12 @@ namespace Rebellion.Game.Missions
             GetAllParticipants().Any(participant => participant.Movement != null);
 
         /// <summary>
-        /// Resolves the mission failure detail before progress or execution occurs.
+        /// Resolves the mission failure reason before progress or execution occurs.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The failure detail, or null when the mission may advance.</returns>
-        public virtual MissionReportDetail? ResolvePreExecutionFailure(GameRoot game) => null;
+        /// <returns>The failure reason, or null when the mission may advance.</returns>
+        public virtual MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game) =>
+            null;
 
         /// <summary>
         /// Captures the current mission participant IDs.
@@ -635,20 +636,20 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;
-            MissionReportDetail reportDetail;
+            MissionCompletionReason completionReason;
 
             if (CheckMissionSuccess(provider))
             {
                 if (!IsMissionSatisfied(game))
                 {
                     outcome = MissionOutcome.Failed;
-                    reportDetail = MissionReportDetail.TargetUnavailable;
+                    completionReason = MissionCompletionReason.TargetUnavailable;
                     results.AddRange(OnFailed(game, provider));
                 }
                 else
                 {
                     outcome = MissionOutcome.Success;
-                    reportDetail = MissionReportDetail.Success;
+                    completionReason = MissionCompletionReason.Success;
                     results.AddRange(OnSuccess(game, provider));
                     ImproveMissionParticipantRatings();
                 }
@@ -656,21 +657,21 @@ namespace Rebellion.Game.Missions
             else
             {
                 outcome = MissionOutcome.Failed;
-                reportDetail = GetFailedReportDetail(game);
+                completionReason = GetFailedCompletionReason(game);
                 results.AddRange(OnFailed(game, provider));
             }
 
-            results.Add(BuildCompletedResult(outcome, reportDetail, game));
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
             return results;
         }
 
         /// <summary>
-        /// Returns the report detail for a failed mission success roll.
+        /// Returns the completion reason for a failed mission success roll.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The failed mission report detail.</returns>
-        protected virtual MissionReportDetail GetFailedReportDetail(GameRoot game) =>
-            MissionReportDetail.Failure;
+        /// <returns>The failed mission completion reason.</returns>
+        protected virtual MissionCompletionReason GetFailedCompletionReason(GameRoot game) =>
+            MissionCompletionReason.Failure;
 
         /// <summary>
         /// Builds the <see cref="MissionCompletedResult"/> that terminates an Execute call.
@@ -694,44 +695,44 @@ namespace Rebellion.Game.Missions
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
-                ReportDetail = GetDefaultReportDetail(outcome),
+                CompletionReason = GetDefaultCompletionReason(outcome),
                 CanContinue = ShouldRepeatAfterCompletion(game),
                 Tick = game.CurrentTick,
             };
         }
 
         /// <summary>
-        /// Builds the <see cref="MissionCompletedResult"/> with an explicit report detail.
+        /// Builds the <see cref="MissionCompletedResult"/> with an explicit completion reason.
         /// </summary>
         /// <param name="outcome">The resolved mission outcome.</param>
-        /// <param name="reportDetail">The report detail to include.</param>
+        /// <param name="completionReason">The completion reason to include.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="participants">Optional participant snapshot to include in the result.</param>
         /// <returns>A populated MissionCompletedResult.</returns>
         protected internal MissionCompletedResult BuildCompletedResult(
             MissionOutcome outcome,
-            MissionReportDetail reportDetail,
+            MissionCompletionReason completionReason,
             GameRoot game,
             List<IMissionParticipant> participants = null
         )
         {
             MissionCompletedResult result = BuildCompletedResult(outcome, game, participants);
-            result.ReportDetail = reportDetail;
+            result.CompletionReason = completionReason;
             return result;
         }
 
         /// <summary>
-        /// Returns the default report detail for a mission outcome.
+        /// Returns the default completion reason for a mission outcome.
         /// </summary>
         /// <param name="outcome">The mission outcome.</param>
-        /// <returns>The default report detail for the outcome.</returns>
-        private static MissionReportDetail GetDefaultReportDetail(MissionOutcome outcome)
+        /// <returns>The default completion reason for the outcome.</returns>
+        private static MissionCompletionReason GetDefaultCompletionReason(MissionOutcome outcome)
         {
             return outcome switch
             {
-                MissionOutcome.Success => MissionReportDetail.Success,
-                MissionOutcome.Foiled => MissionReportDetail.Foiled,
-                _ => MissionReportDetail.Failure,
+                MissionOutcome.Success => MissionCompletionReason.Success,
+                MissionOutcome.Foiled => MissionCompletionReason.Foiled,
+                _ => MissionCompletionReason.Failure,
             };
         }
 

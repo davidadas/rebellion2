@@ -336,7 +336,7 @@ namespace Rebellion.Systems
                     BuildTerminatingMissionResult(
                         mission,
                         MissionOutcome.Failed,
-                        MissionReportDetail.Failure,
+                        MissionCompletionReason.Failure,
                         mission.GetAllParticipants()
                     )
                 );
@@ -344,14 +344,16 @@ namespace Rebellion.Systems
                 return results;
             }
 
-            MissionReportDetail? failureDetail = mission.ResolvePreExecutionFailure(_game);
-            if (failureDetail.HasValue)
+            MissionCompletionReason? failureReason = mission.ResolvePreExecutionFailureReason(
+                _game
+            );
+            if (failureReason.HasValue)
             {
                 results.Add(
                     BuildTerminatingMissionResult(
                         mission,
                         MissionOutcome.Failed,
-                        failureDetail.Value,
+                        failureReason.Value,
                         mission.GetAllParticipants()
                     )
                 );
@@ -390,7 +392,7 @@ namespace Rebellion.Systems
                 BuildTerminatingMissionResult(
                     mission,
                     MissionOutcome.Foiled,
-                    MissionReportDetail.Foiled,
+                    MissionCompletionReason.Foiled,
                     participantsBeforeDetection
                 )
             );
@@ -402,19 +404,19 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission being terminated.</param>
         /// <param name="outcome">The mission outcome to report.</param>
-        /// <param name="reportDetail">The mission report detail to report.</param>
+        /// <param name="completionReason">The mission completion reason to report.</param>
         /// <param name="participants">Participants captured before teardown side effects.</param>
         /// <returns>A non-continuing mission completion result.</returns>
         private MissionCompletedResult BuildTerminatingMissionResult(
             Mission mission,
             MissionOutcome outcome,
-            MissionReportDetail reportDetail,
+            MissionCompletionReason completionReason,
             List<IMissionParticipant> participants
         )
         {
             MissionCompletedResult result = mission.BuildCompletedResult(
                 outcome,
-                reportDetail,
+                completionReason,
                 _game,
                 participants
             );

@@ -216,7 +216,10 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.NoResearchFacilities, completed.ReportDetail);
+            Assert.AreEqual(
+                MissionCompletionReason.NoResearchFacilities,
+                completed.CompletionReason
+            );
         }
 
         [Test]

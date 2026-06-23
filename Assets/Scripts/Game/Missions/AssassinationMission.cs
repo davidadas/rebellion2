@@ -90,8 +90,8 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionReportDetail? ResolvePreExecutionFailure(GameRoot game) =>
-            HasValidTarget(game) ? null : MissionReportDetail.TargetUnavailable;
+        public override MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game) =>
+            HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
 
         /// <summary>
         /// Returns false if the target officer has already been killed or has moved

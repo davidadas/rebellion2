@@ -913,7 +913,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.Failure, completed.ReportDetail);
+            Assert.AreEqual(MissionCompletionReason.Failure, completed.CompletionReason);
             Assert.IsFalse(completed.CanContinue);
             Assert.AreEqual(0, game.GetSceneNodesByType<StubMission>().Count);
         }
@@ -1739,7 +1739,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.TargetUnavailable, completed.ReportDetail);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
         }
 
@@ -1768,7 +1768,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.TargetUnavailable, completed.ReportDetail);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<AbductionMission>().Count);
         }
 
@@ -1798,7 +1798,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.TargetUnavailable, completed.ReportDetail);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<AssassinationMission>().Count);
         }
 
@@ -1827,7 +1827,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionReportDetail.TargetUnavailable, completed.ReportDetail);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<RescueMission>().Count);
         }
 

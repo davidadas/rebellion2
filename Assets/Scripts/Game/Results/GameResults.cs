@@ -18,7 +18,7 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
-    public enum MissionReportDetail
+    public enum MissionCompletionReason
     {
         None,
         Success,
@@ -291,7 +291,7 @@ namespace Rebellion.Game.Results
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
-        public MissionReportDetail ReportDetail { get; set; }
+        public MissionCompletionReason CompletionReason { get; set; }
         public bool CanContinue { get; set; }
     }
 

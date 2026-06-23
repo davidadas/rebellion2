@@ -105,8 +105,8 @@ namespace Rebellion.Game.Missions
         /// Resolves whether research can execute after participants arrive.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The failure detail, or null when research can advance.</returns>
-        public override MissionReportDetail? ResolvePreExecutionFailure(GameRoot game)
+        /// <returns>The failure reason, or null when research can advance.</returns>
+        public override MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game)
         {
             Planet planet = GetParent() as Planet;
             if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
@@ -118,10 +118,10 @@ namespace Rebellion.Game.Missions
                 && !HasResearchFacility(planet, Discipline)
             )
             {
-                return MissionReportDetail.NoResearchFacilities;
+                return MissionCompletionReason.NoResearchFacilities;
             }
 
-            return MissionReportDetail.TargetUnavailable;
+            return MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
@@ -188,8 +188,8 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
-            MissionReportDetail reportDetail =
-                ResolvePreExecutionFailure(game) ?? MissionReportDetail.TargetUnavailable;
+            MissionCompletionReason completionReason =
+                ResolvePreExecutionFailureReason(game) ?? MissionCompletionReason.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
             Planet planet = GetParent() as Planet;
 
@@ -204,17 +204,17 @@ namespace Rebellion.Game.Missions
                 {
                     outcome = MissionOutcome.Success;
                     AwardAccumulatedPoints(faction, earnedPoints, game, results);
-                    reportDetail = results.OfType<ResearchOrderedResult>().Any()
-                        ? MissionReportDetail.ResearchBreakthrough
-                        : MissionReportDetail.ResearchProgress;
+                    completionReason = results.OfType<ResearchOrderedResult>().Any()
+                        ? MissionCompletionReason.ResearchBreakthrough
+                        : MissionCompletionReason.ResearchProgress;
                 }
                 else
                 {
-                    reportDetail = MissionReportDetail.Failure;
+                    completionReason = MissionCompletionReason.Failure;
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, reportDetail, game));
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
             return results;
         }
 
