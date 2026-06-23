@@ -91,8 +91,9 @@ namespace Rebellion.Game.Missions
         /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
         /// </summary>
         /// <param name="defenseScore">Ignored.</param>
+        /// <param name="game">Ignored.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Looks up the recruitment success chance for a participant at the mission planet.

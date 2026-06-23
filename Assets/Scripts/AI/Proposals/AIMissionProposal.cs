@@ -183,11 +183,10 @@ namespace Rebellion.AI.Proposals
 
             return context.Missions.CanCreateMission(
                 MissionType,
-                Participant.OwnerInstanceID,
+                Participant,
                 TargetPlanet,
                 TargetOfficer,
-                Discipline,
-                Participant
+                Discipline
             );
         }
 

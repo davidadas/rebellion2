@@ -12,7 +12,7 @@ namespace Rebellion.Game.Missions
     public class EspionageMission : Mission
     {
         public override bool CanceledOnOwnershipChange => false;
-        internal override bool CanLoseParticipantsWhenFoiled => false;
+        internal override bool AppliesFoiledParticipantConsequences => false;
 
         /// <summary>
         /// Default constructor used for deserialization.

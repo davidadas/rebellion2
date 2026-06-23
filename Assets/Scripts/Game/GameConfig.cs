@@ -778,6 +778,10 @@ namespace Rebellion.Game
             /// <summary>Percentage of defender espionage subtracted from the decoy score.</summary>
             public int DecoyDefenderScalingPercent { get; set; }
 
+            public int FoilDefenderScalingPercent { get; set; }
+
+            public int FoilFlatScoreAdjustment { get; set; }
+
             /// <summary>Diplomacy success probability table.</summary>
             public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 

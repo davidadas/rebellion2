@@ -88,8 +88,9 @@ namespace Rebellion.Game.Missions
         /// Subdue Uprising missions are never foiled — they target own planets.
         /// </summary>
         /// <param name="defenseScore">Ignored.</param>
+        /// <param name="game">Ignored.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Ends the uprising on the target planet.

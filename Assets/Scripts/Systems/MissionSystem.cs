@@ -63,19 +63,19 @@ namespace Rebellion.Systems
         /// Returns whether a mission of the given type can be created for the target.
         /// </summary>
         /// <param name="missionType">The type of mission to check.</param>
-        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
+        /// <param name="participant">The officer or unit performing the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
-        /// <param name="participant">Optional acting participant for participant-specific mission gates.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True if a mission of this type can be created.</returns>
         public bool CanCreateMission(
             MissionType missionType,
-            string ownerInstanceId,
+            IMissionParticipant participant,
             ISceneNode target,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            IMissionParticipant participant = null
+            ISceneNode specificTarget = null
         )
         {
             ISceneNode liveTarget = ResolveSceneNode(target);
@@ -87,17 +87,28 @@ namespace Rebellion.Systems
                 return false;
 
             IMissionParticipant liveParticipant = ResolveMissionParticipant(participant);
-            if (participant != null && liveParticipant == null)
+            if (liveParticipant == null)
                 return false;
 
-            return _missionFactory.CanCreateMission(
+            ISceneNode liveSpecificTarget =
+                specificTarget == null ? null : ResolveSceneNode(specificTarget);
+            if (specificTarget != null && liveSpecificTarget == null)
+                return false;
+
+            if (liveTargetOfficer == null && liveSpecificTarget is Officer selectedOfficer)
+                liveTargetOfficer = selectedOfficer;
+
+            return _missionFactory.TryCreateMission(
                 missionType,
-                ownerInstanceId,
+                liveParticipant.GetOwnerInstanceID(),
+                new List<IMissionParticipant> { liveParticipant },
+                new List<IMissionParticipant>(),
                 liveTarget,
+                out _,
                 _provider,
                 liveTargetOfficer,
                 discipline,
-                liveParticipant
+                liveSpecificTarget
             );
         }
 
@@ -109,12 +120,15 @@ namespace Rebellion.Systems
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
-        public void InitiateMission(
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        public bool InitiateMission(
             MissionType missionType,
             IMissionParticipant participant,
             ISceneNode target,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>
@@ -122,13 +136,14 @@ namespace Rebellion.Systems
                 participant,
             };
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-            InitiateMission(
+            return InitiateMission(
                 missionType,
                 mainParticipants,
                 decoyParticipants,
                 target,
                 targetOfficer,
-                discipline
+                discipline,
+                specificTarget
             );
         }
 
@@ -141,6 +156,7 @@ namespace Rebellion.Systems
         /// <param name="target">The mission target.</param>
         /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
         /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True when the mission was created and begun; otherwise false.</returns>
         public bool InitiateMission(
             MissionType missionType,
@@ -148,7 +164,8 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants,
             ISceneNode target,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
             if (mainParticipants == null || mainParticipants.Count == 0 || target == null)
@@ -158,10 +175,16 @@ namespace Rebellion.Systems
             mainParticipants = ResolveMissionParticipants(mainParticipants);
             decoyParticipants = ResolveMissionParticipants(decoyParticipants);
             target = ResolveSceneNode(target);
+            ISceneNode liveSpecificTarget =
+                specificTarget == null ? null : ResolveSceneNode(specificTarget);
+            if (specificTarget != null && liveSpecificTarget == null)
+                return false;
+
             Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
             if (targetOfficer != null && liveTargetOfficer == null)
                 return false;
-            targetOfficer = liveTargetOfficer;
+            if (liveTargetOfficer == null && liveSpecificTarget is Officer selectedOfficer)
+                liveTargetOfficer = selectedOfficer;
 
             if (mainParticipants == null || decoyParticipants == null || target == null)
                 return false;
@@ -171,85 +194,10 @@ namespace Rebellion.Systems
                 mainParticipants,
                 decoyParticipants,
                 target,
-                targetOfficer,
-                discipline,
-                null
-            );
-        }
-
-        /// <summary>
-        /// Initiates a mission with participant lists and a concrete target beneath the mission planet.
-        /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
-        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
-        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
-        /// <param name="targetPlanet">The planet where the mission will occur.</param>
-        /// <param name="specificTarget">The concrete object selected as the mission target.</param>
-        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
-        /// <param name="discipline">Optional research discipline for research missions.</param>
-        /// <returns>True when the mission was created and begun; otherwise false.</returns>
-        public bool InitiateMissionWithSpecificTarget(
-            MissionType missionType,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            Planet targetPlanet,
-            ISceneNode specificTarget,
-            Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
-        )
-        {
-            if (mainParticipants == null || mainParticipants.Count == 0 || targetPlanet == null)
-                return false;
-
-            decoyParticipants ??= new List<IMissionParticipant>();
-            mainParticipants = ResolveMissionParticipants(mainParticipants);
-            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
-            Planet liveTargetPlanet = ResolveSceneNode(targetPlanet) as Planet;
-            ISceneNode liveSpecificTarget =
-                specificTarget == null ? null : ResolveSceneNode(specificTarget);
-            if (specificTarget != null && liveSpecificTarget == null)
-                return false;
-
-            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
-            if (targetOfficer != null && liveTargetOfficer == null)
-                return false;
-            targetOfficer = liveTargetOfficer;
-            Officer missionTargetOfficer =
-                targetOfficer ?? GetMissionTargetOfficer(missionType, liveSpecificTarget);
-
-            if (mainParticipants == null || decoyParticipants == null || liveTargetPlanet == null)
-                return false;
-
-            return CreateAndBeginMission(
-                missionType,
-                mainParticipants,
-                decoyParticipants,
-                liveTargetPlanet,
-                missionTargetOfficer,
+                liveTargetOfficer,
                 discipline,
                 liveSpecificTarget
             );
-        }
-
-        /// <summary>
-        /// Returns the officer target implied by a specific target for officer-targeted missions.
-        /// </summary>
-        /// <param name="missionType">The type of mission being created.</param>
-        /// <param name="specificTarget">The concrete object selected as the mission target.</param>
-        /// <returns>The selected officer target, or null when the mission does not target officers.</returns>
-        private static Officer GetMissionTargetOfficer(
-            MissionType missionType,
-            ISceneNode specificTarget
-        )
-        {
-            if (
-                missionType == MissionType.Abduction
-                || missionType == MissionType.Assassination
-                || missionType == MissionType.Rescue
-            )
-                return specificTarget as Officer;
-
-            return null;
         }
 
         /// <summary>
@@ -533,7 +481,7 @@ namespace Rebellion.Systems
         {
             ISceneNode origin = GetMissionReturnOrigin(mission, missionPlanet);
 
-            if (origin == null)
+            if (origin == null && faction != null)
                 origin = faction.GetNearestFriendlyPlanetTo(mission);
 
             if (origin == null && missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
@@ -681,13 +629,13 @@ namespace Rebellion.Systems
         /// <returns>True if the mission was foiled.</returns>
         private bool ResolveDetection(Mission mission, List<GameResult> results)
         {
-            if (!mission.RollFoilCheck(_provider))
+            if (!mission.RollFoilCheck(_provider, _game))
                 return false;
 
             if (mission.RollDecoyCheck(_provider))
                 return false;
 
-            if (!mission.CanLoseParticipantsWhenFoiled)
+            if (!mission.AppliesFoiledParticipantConsequences)
                 return true;
 
             int defenderCombat = GetFoilDefenderCombatSkill(mission);

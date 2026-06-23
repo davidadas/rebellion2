@@ -172,8 +172,9 @@ namespace Rebellion.Game.Missions
         /// Research missions target own planets and are never foiled.
         /// </summary>
         /// <param name="defenseScore">The defense score (unused).</param>
+        /// <param name="game">Ignored.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Resolves one mission execution: each main participant rolls independently;

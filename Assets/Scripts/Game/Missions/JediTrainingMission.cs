@@ -138,8 +138,9 @@ namespace Rebellion.Game.Missions
         /// Jedi training targets own planets and is never foiled.
         /// </summary>
         /// <param name="defenseScore">Ignored.</param>
+        /// <param name="game">Ignored.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Jedi training does not award mission skill improvements.

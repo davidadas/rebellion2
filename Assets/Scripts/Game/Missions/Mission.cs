@@ -15,6 +15,8 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public abstract class Mission : ContainerNode
     {
+        private const int _ratingPercentScale = 100;
+
         private string configKey;
 
         // Mission identity.
@@ -69,6 +71,12 @@ namespace Rebellion.Game.Missions
 
         [PersistableIgnore]
         public int DecoyDefenderScalingPercent { get; set; }
+
+        [PersistableIgnore]
+        public int FoilDefenderScalingPercent { get; set; }
+
+        [PersistableIgnore]
+        public int FoilFlatScoreAdjustment { get; set; }
 
         [PersistableIgnore]
         public int BaseTicks;
@@ -140,6 +148,8 @@ namespace Rebellion.Game.Missions
         /// <param name="foilProbabilityTable">The mission foil probability table.</param>
         /// <param name="killOrCaptureProbabilityTable">The kill-or-capture probability table.</param>
         /// <param name="decoyDefenderScalingPercent">The defender scaling percentage for decoy checks.</param>
+        /// <param name="foilDefenderScalingPercent">The defender scaling percentage for foil checks.</param>
+        /// <param name="foilFlatScoreAdjustment">The flat score adjustment for foil checks.</param>
         /// <param name="baseTicks">The minimum mission duration.</param>
         /// <param name="spreadTicks">The random mission duration spread.</param>
         public virtual void Configure(
@@ -148,6 +158,8 @@ namespace Rebellion.Game.Missions
             ProbabilityTable foilProbabilityTable,
             ProbabilityTable killOrCaptureProbabilityTable,
             int decoyDefenderScalingPercent,
+            int foilDefenderScalingPercent,
+            int foilFlatScoreAdjustment,
             int baseTicks,
             int spreadTicks
         )
@@ -157,6 +169,8 @@ namespace Rebellion.Game.Missions
             FoilProbabilityTable = foilProbabilityTable;
             KillOrCaptureProbabilityTable = killOrCaptureProbabilityTable;
             DecoyDefenderScalingPercent = decoyDefenderScalingPercent;
+            FoilDefenderScalingPercent = foilDefenderScalingPercent;
+            FoilFlatScoreAdjustment = foilFlatScoreAdjustment;
             BaseTicks = baseTicks;
             SpreadTicks = spreadTicks;
         }
@@ -186,7 +200,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public virtual bool CanceledOnOwnershipChange => true;
 
-        internal virtual bool CanLoseParticipantsWhenFoiled => true;
+        /// <summary>
+        /// Returns whether detected mission participants suffer capture, death, or destruction.
+        /// </summary>
+        internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         /// <summary>
         /// Returns whether this mission should be canceled before its next tick.
@@ -315,6 +332,25 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns the sum of defense ratings of all enemy regiments on the target planet.
+        /// </summary>
+        /// <returns>Total defense rating, or 0 if no valid planet target.</returns>
+        protected internal double GetDefenseScore()
+        {
+            Planet planet = GetParent() as Planet;
+            if (planet == null)
+                return 0;
+
+            double score = 0;
+            foreach (ISceneNode child in planet.GetChildren())
+            {
+                if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
+                    score += regiment.DefenseRating;
+            }
+            return score;
+        }
+
+        /// <summary>
         /// Returns the decoy participant's success probability.
         /// </summary>
         /// <param name="decoy">The decoy participant to evaluate.</param>
@@ -351,32 +387,164 @@ namespace Rebellion.Game.Missions
         /// Returns the probability that enemy forces detect the mission.
         /// </summary>
         /// <param name="defenseScore">Sum of enemy regiment defense ratings on the target planet.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The foil probability.</returns>
-        protected virtual double GetFoilProbability(double defenseScore)
+        protected virtual double GetFoilProbability(double defenseScore, GameRoot game)
         {
             if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
                 return 0;
 
-            return FoilProbabilityTable.Lookup((int)defenseScore);
+            Officer defender = FindDefender();
+            if (defender == null)
+                return 0;
+
+            int defenderEspionage = defender.GetEffectiveRating(OfficerRating.Espionage);
+            int scaledDefender =
+                defenderEspionage * FoilDefenderScalingPercent / _ratingPercentScale;
+            int supportRating = GetSupportRating(game);
+            int score =
+                GetAveragedRating(ParticipantRating)
+                - scaledDefender
+                - (int)defenseScore
+                - supportRating
+                - FoilFlatScoreAdjustment;
+            return FoilProbabilityTable.Lookup(score);
         }
 
         /// <summary>
-        /// Returns the sum of defense ratings of all enemy regiments on the target planet.
+        /// Finds the first eligible enemy officer on the mission's target planet.
+        /// Returns null if no eligible defender exists.
         /// </summary>
-        /// <returns>Total defense rating, or 0 if no valid planet target.</returns>
-        protected internal double GetDefenseScore()
+        /// <returns>A defending officer, or null.</returns>
+        internal Officer FindDefender()
         {
             Planet planet = GetParent() as Planet;
             if (planet == null)
+                return null;
+
+            return planet
+                .GetAllOfficers()
+                .FirstOrDefault(o =>
+                    o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled
+                );
+        }
+
+        /// <summary>
+        /// Returns the average effective rating for the mission's main participants.
+        /// </summary>
+        /// <param name="rating">The rating to average.</param>
+        /// <returns>The averaged effective rating, or 0 when no main participants exist.</returns>
+        private int GetAveragedRating(OfficerRating rating)
+        {
+            if (MainParticipants.Count == 0)
                 return 0;
 
-            double score = 0;
-            foreach (ISceneNode child in planet.GetChildren())
+            return MainParticipants.Sum(participant => participant.GetEffectiveRating(rating))
+                / MainParticipants.Count;
+        }
+
+        /// <summary>
+        /// Returns the best available defensive support rating for the mission target.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The support rating, or 0 when no support applies.</returns>
+        private int GetSupportRating(GameRoot game)
+        {
+            ISceneNode target = ResolveTarget(game);
+            string targetOwnerId = target?.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(targetOwnerId))
+                return 0;
+
+            Planet planet = ResolveSupportPlanet(target);
+            if (planet == null)
+                return 0;
+
+            return GetBestSupportRating(planet, targetOwnerId, GetContainerId(target));
+        }
+
+        /// <summary>
+        /// Returns the live mission target used by detection support checks.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The live target node, or the mission parent when no target node is found.</returns>
+        private ISceneNode ResolveTarget(GameRoot game)
+        {
+            return game?.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID) ?? GetParent();
+        }
+
+        /// <summary>
+        /// Returns the planet whose children can provide support for the target.
+        /// </summary>
+        /// <param name="target">The mission target.</param>
+        /// <returns>The support planet, or null when none can be resolved.</returns>
+        private Planet ResolveSupportPlanet(ISceneNode target)
+        {
+            if (target is Planet planet)
+                return planet;
+
+            return target?.GetParentOfType<Planet>() ?? GetParent() as Planet;
+        }
+
+        /// <summary>
+        /// Returns the strongest support rating from candidates on the support planet.
+        /// </summary>
+        /// <param name="planet">The planet containing support candidates.</param>
+        /// <param name="targetOwnerId">The faction that owns the target.</param>
+        /// <param name="targetContainer">The target's containing node ID.</param>
+        /// <returns>The selected support rating.</returns>
+        private int GetBestSupportRating(
+            Planet planet,
+            string targetOwnerId,
+            string targetContainer
+        )
+        {
+            int sameContainerRating = 0;
+            int otherContainerRating = 0;
+
+            foreach (
+                IMissionParticipant candidate in planet.GetChildren<IMissionParticipant>(_ => true)
+            )
             {
-                if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
-                    score += regiment.DefenseRating;
+                if (candidate.GetOwnerInstanceID() != targetOwnerId || !CanSupportFoil(candidate))
+                    continue;
+
+                int value = candidate.GetEffectiveRating(OfficerRating.Espionage);
+                if (GetContainerId(candidate) == targetContainer)
+                    sameContainerRating = Math.Max(sameContainerRating, value);
+                else
+                    otherContainerRating = Math.Max(otherContainerRating, value);
             }
-            return score;
+
+            return sameContainerRating != 0 ? sameContainerRating : otherContainerRating;
+        }
+
+        /// <summary>
+        /// Returns whether a participant can contribute defensive support to a detection check.
+        /// </summary>
+        /// <param name="candidate">The support candidate.</param>
+        /// <returns>True when the candidate can support detection.</returns>
+        private static bool CanSupportFoil(IMissionParticipant candidate)
+        {
+            if (candidate is Officer officer)
+            {
+                return officer.Movement == null
+                    && officer.GetParent() is not Mission
+                    && !officer.IsCaptured
+                    && !officer.IsKilled
+                    && officer.InjuryPoints == 0;
+            }
+
+            return candidate is SpecialForces specialForces && specialForces.IsMovable();
+        }
+
+        /// <summary>
+        /// Returns the container ID used to group target and support candidate locations.
+        /// </summary>
+        /// <param name="node">The node to inspect.</param>
+        /// <returns>The parent ID when present; otherwise the node ID or an empty string.</returns>
+        private static string GetContainerId(ISceneNode node)
+        {
+            return node?.GetParent()?.GetInstanceID() ?? node?.GetInstanceID() ?? string.Empty;
         }
 
         /// <summary>
@@ -434,11 +602,12 @@ namespace Rebellion.Game.Missions
         /// Rolls the mission detection check.
         /// </summary>
         /// <param name="provider">RNG provider for the foil roll.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if the mission is detected this tick.</returns>
-        internal bool RollFoilCheck(IRandomNumberProvider provider)
+        internal bool RollFoilCheck(IRandomNumberProvider provider, GameRoot game)
         {
             double defenseScore = GetDefenseScore();
-            double foilProbability = GetFoilProbability(defenseScore);
+            double foilProbability = GetFoilProbability(defenseScore, game);
 
             if (foilProbability <= 0)
                 return false;
@@ -454,24 +623,6 @@ namespace Rebellion.Game.Missions
         internal bool RollDecoyCheck(IRandomNumberProvider provider)
         {
             return CheckDecoySuccessful(provider);
-        }
-
-        /// <summary>
-        /// Finds the first eligible enemy officer on the mission's target planet.
-        /// Returns null if no eligible defender exists.
-        /// </summary>
-        /// <returns>A defending officer, or null.</returns>
-        internal Officer FindDefender()
-        {
-            Planet planet = GetParent() as Planet;
-            if (planet == null)
-                return null;
-
-            return planet
-                .GetAllOfficers()
-                .FirstOrDefault(o =>
-                    o.GetOwnerInstanceID() != OwnerInstanceID && !o.IsCaptured && !o.IsKilled
-                );
         }
 
         /// <summary>

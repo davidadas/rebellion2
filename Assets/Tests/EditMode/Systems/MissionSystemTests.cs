@@ -238,6 +238,34 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_MissingOwnerFaction_DetachesMission()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+
+            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(planetSystem, game.Galaxy);
+
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = null,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(planet, planetSystem);
+
+            StubMission mission = new StubMission(null, planet.InstanceID);
+            game.AttachNode(mission, planet);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+
+            Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
+            Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
+        }
+
+        [Test]
         public void UpdateMission_CompletedParticipantParentedToMission_DoesNotThrow()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
@@ -920,6 +948,85 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_RatingBasedFoilScore_DetectsMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            spy.SetBaseRating(OfficerRating.Diplomacy, 200);
+            defender.SetBaseRating(OfficerRating.Espionage, 10);
+            planet.Regiments.Single().DefenseRating = 10;
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilDefenderScalingPercent = 35;
+            mission.FoilFlatScoreAdjustment = -1;
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 0 }, { 50, 100 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
+        public void UpdateMission_FoilSupport_DetectsMission()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
+                BuildDetectionScene();
+
+            spy.SetBaseRating(OfficerRating.Diplomacy, 100);
+            defender.SetBaseRating(OfficerRating.Espionage, 0);
+            planet.Regiments.Single().DefenseRating = 0;
+
+            SpecialForces support = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            support.SetBaseRating(OfficerRating.Espionage, 100);
+            game.AttachNode(support, planet);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.FoilDefenderScalingPercent = 35;
+            mission.FoilFlatScoreAdjustment = -1;
+            mission.FoilProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { 0, 100 }, { 2, 0 } }
+            );
+            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int> { { -200, 100 } }
+            );
+            game.AttachNode(mission, planet);
+            mission.MainParticipants.Add(spy);
+            spy.SetParent(mission);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(spy.IsCaptured);
+            Assert.IsTrue(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
+        }
+
+        [Test]
         public void UpdateMission_DetectionSucceedsHighCapture_CapturesParticipant()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
@@ -1134,7 +1241,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_DetectionWithNoDefender_StillAppliesKillOrCapture()
+        public void UpdateMission_NoDefender_DoesNotFoil()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender, MovementSystem movement) =
                 BuildDetectionScene();
@@ -1156,10 +1263,14 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(
-                spy.IsKilled || spy.IsCaptured,
-                "Detected spy should face kill-or-capture even without a defending officer"
+            Assert.IsFalse(spy.IsKilled);
+            Assert.IsFalse(spy.IsCaptured);
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
+            Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
@@ -1452,7 +1563,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMissionWithSpecificTarget_EnemyRegimentFactionViewTarget_AttachesToLivePlanet()
+        public void InitiateMission_EnemyRegimentFactionViewTarget_AttachesToLivePlanet()
         {
             (
                 GameRoot game,
@@ -1470,12 +1581,11 @@ namespace Rebellion.Tests.Systems
             viewRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
             viewRegiment.SetParent(viewPlanet);
 
-            bool created = missions.InitiateMissionWithSpecificTarget(
+            bool created = missions.InitiateMission(
                 MissionType.Sabotage,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 viewPlanet,
-                viewRegiment
+                specificTarget: viewRegiment
             );
 
             SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
@@ -1485,7 +1595,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMissionWithSpecificTarget_EnemyOfficerFactionViewTarget_AttachesToLivePlanet()
+        public void InitiateMission_EnemyOfficerFactionViewTarget_AttachesToLivePlanet()
         {
             (
                 GameRoot game,
@@ -1499,12 +1609,11 @@ namespace Rebellion.Tests.Systems
             Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
             viewTarget.SetParent(viewPlanet);
 
-            bool created = missions.InitiateMissionWithSpecificTarget(
+            bool created = missions.InitiateMission(
                 MissionType.Abduction,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 viewPlanet,
-                viewTarget
+                specificTarget: viewTarget
             );
 
             AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
@@ -1514,7 +1623,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMissionWithSpecificTarget_StaleCompletedViewTarget_ReturnsFalse()
+        public void InitiateMission_StaleCompletedViewTarget_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -1533,12 +1642,11 @@ namespace Rebellion.Tests.Systems
             viewRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
             viewRegiment.SetParent(viewPlanet);
 
-            bool created = missions.InitiateMissionWithSpecificTarget(
+            bool created = missions.InitiateMission(
                 MissionType.Sabotage,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 viewPlanet,
-                viewRegiment
+                specificTarget: viewRegiment
             );
 
             Assert.IsFalse(created);
@@ -1546,7 +1654,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMissionWithSpecificTarget_IneligibleSpecificTarget_ReturnsFalse()
+        public void InitiateMission_IneligibleSpecificTarget_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -1557,12 +1665,11 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
 
-            bool created = missions.InitiateMissionWithSpecificTarget(
+            bool created = missions.InitiateMission(
                 MissionType.Sabotage,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                target
+                specificTarget: target
             );
 
             Assert.IsFalse(created);
@@ -1570,7 +1677,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMissionWithSpecificTarget_SabotageTargetOnDifferentPlanet_ReturnsFalse()
+        public void InitiateMission_SabotageTargetOnDifferentPlanet_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -1592,12 +1699,11 @@ namespace Rebellion.Tests.Systems
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, otherPlanet);
 
-            bool created = missions.InitiateMissionWithSpecificTarget(
+            bool created = missions.InitiateMission(
                 MissionType.Sabotage,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                regiment
+                specificTarget: regiment
             );
 
             Assert.IsFalse(created);
@@ -1619,12 +1725,11 @@ namespace Rebellion.Tests.Systems
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, targetPlanet);
 
-            missions.InitiateMissionWithSpecificTarget(
+            missions.InitiateMission(
                 MissionType.Sabotage,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                regiment
+                specificTarget: regiment
             );
             SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
             participant.Movement = null;
@@ -1649,12 +1754,11 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            missions.InitiateMissionWithSpecificTarget(
+            missions.InitiateMission(
                 MissionType.Abduction,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                target
+                specificTarget: target
             );
             AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
             participant.Movement = null;
@@ -1679,12 +1783,11 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            missions.InitiateMissionWithSpecificTarget(
+            missions.InitiateMission(
                 MissionType.Assassination,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                target
+                specificTarget: target
             );
             AssassinationMission mission = game.GetSceneNodesByType<AssassinationMission>()
                 .Single();
@@ -1710,12 +1813,11 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: true, capturedTarget: true);
-            missions.InitiateMissionWithSpecificTarget(
+            missions.InitiateMission(
                 MissionType.Rescue,
-                new List<IMissionParticipant> { participant },
-                new List<IMissionParticipant>(),
+                participant,
                 targetPlanet,
-                target
+                specificTarget: target
             );
             RescueMission mission = game.GetSceneNodesByType<RescueMission>().Single();
             participant.Movement = null;

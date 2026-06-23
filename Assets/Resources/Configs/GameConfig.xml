@@ -1452,6 +1452,8 @@
         </Entry>
       </SubdueUprising>
       <DecoyDefenderScalingPercent>35</DecoyDefenderScalingPercent>
+      <FoilDefenderScalingPercent>35</FoilDefenderScalingPercent>
+      <FoilFlatScoreAdjustment>-1</FoilFlatScoreAdjustment>
       <Decoy>
         <Entry>
           <Key>-20</Key>

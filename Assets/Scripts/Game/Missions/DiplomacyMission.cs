@@ -99,8 +99,9 @@ namespace Rebellion.Game.Missions
         /// Diplomacy missions are never foiled — they target own or neutral planets.
         /// </summary>
         /// <param name="defenseScore">Ignored.</param>
+        /// <param name="game">Ignored.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Returns the participant's diplomacy success probability for the current target.
