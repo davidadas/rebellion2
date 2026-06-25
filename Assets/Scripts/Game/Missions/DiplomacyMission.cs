@@ -10,13 +10,15 @@ namespace Rebellion.Game.Missions
 {
     public class DiplomacyMission : Mission
     {
+        public const string MissionTypeID = "Diplomacy";
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public DiplomacyMission()
             : base()
         {
-            ConfigKey = "Diplomacy";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Diplomacy;
         }
@@ -35,7 +37,7 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Diplomacy",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
                 mainParticipants,

@@ -286,7 +286,7 @@ namespace Rebellion.Game.Results
     {
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
-        public MissionType MissionType { get; set; }
+        public string MissionTypeID { get; set; }
         public string TargetName { get; set; }
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();

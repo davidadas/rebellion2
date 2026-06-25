@@ -50,6 +50,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -82,6 +83,15 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, enemyPlanet);
 
             SabotageMission mission = CreateSabotageMission(
                 "empire",

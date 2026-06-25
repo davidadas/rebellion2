@@ -11,6 +11,8 @@ namespace Rebellion.Game.Missions
 {
     public class EspionageMission : Mission
     {
+        public const string MissionTypeID = "Espionage";
+
         public override bool CanceledOnOwnershipChange => false;
         internal override bool AppliesFoiledParticipantConsequences => false;
 
@@ -20,7 +22,7 @@ namespace Rebellion.Game.Missions
         public EspionageMission()
             : base()
         {
-            ConfigKey = "Espionage";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -40,7 +42,7 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Espionage",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Espionage").GetInstanceID(),
                 mainParticipants,

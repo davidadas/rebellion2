@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "sf1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypes = new List<MissionType> { MissionType.Abduction },
+                AllowedMissionTypeIDs = new List<string> { AbductionMission.MissionTypeID },
             };
             game.AttachNode(commando, empPlanet);
 

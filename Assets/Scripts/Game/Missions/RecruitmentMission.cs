@@ -12,6 +12,8 @@ namespace Rebellion.Game.Missions
 {
     public class RecruitmentMission : Mission
     {
+        public const string MissionTypeID = "Recruitment";
+
         public string TargetOfficerInstanceID { get; set; }
 
         /// <summary>
@@ -20,7 +22,7 @@ namespace Rebellion.Game.Missions
         public RecruitmentMission()
             : base()
         {
-            ConfigKey = "Recruitment";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Leadership;
         }
@@ -41,7 +43,7 @@ namespace Rebellion.Game.Missions
             string targetOfficerInstanceId
         )
             : base(
-                "Recruitment",
+                MissionTypeID,
                 ownerInstanceId,
                 target.GetInstanceID(),
                 mainParticipants,

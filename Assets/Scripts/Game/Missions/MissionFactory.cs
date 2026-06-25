@@ -29,7 +29,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Creates a mission when all supplied inputs are valid.
         /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
         /// <param name="ownerInstanceId">The faction attempting the mission.</param>
         /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
         /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
@@ -41,7 +41,7 @@ namespace Rebellion.Game.Missions
         /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True when a mission was created; otherwise false.</returns>
         public bool TryCreateMission(
-            MissionType missionType,
+            string missionTypeId,
             string ownerInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
@@ -64,14 +64,14 @@ namespace Rebellion.Game.Missions
             if (faction == null)
                 return false;
 
-            if (faction.DisallowedMissionTypes.Contains(missionType))
+            if (faction.DisallowedMissionTypeIDs.Contains(missionTypeId))
                 return false;
 
             foreach (
                 IMissionParticipant missionParticipant in mainParticipants.Concat(decoyParticipants)
             )
             {
-                if (missionParticipant?.CanPerformMission(missionType) != true)
+                if (missionParticipant?.CanPerformMission(missionTypeId) != true)
                     return false;
             }
 
@@ -88,7 +88,7 @@ namespace Rebellion.Game.Missions
                 Discipline = discipline,
             };
 
-            mission = TryCreateByType(missionType, ctx);
+            mission = TryCreateByType(missionTypeId, ctx);
             if (mission == null)
                 return false;
 
@@ -145,27 +145,27 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Dispatches to the appropriate mission subclass's TryCreate based on mission type.
         /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
         /// <param name="ctx">Context containing participants, target, and owner info.</param>
         /// <returns>The created mission, or null if creation fails.</returns>
-        private static Mission TryCreateByType(MissionType missionType, MissionContext ctx)
+        private static Mission TryCreateByType(string missionTypeId, MissionContext ctx)
         {
-            return missionType switch
+            return missionTypeId switch
             {
-                MissionType.Reconnaissance => ReconnaissanceMission.TryCreate(ctx),
-                MissionType.Diplomacy => DiplomacyMission.TryCreate(ctx),
-                MissionType.Recruitment => RecruitmentMission.TryCreate(ctx),
-                MissionType.SubdueUprising => SubdueUprisingMission.TryCreate(ctx),
-                MissionType.Abduction => AbductionMission.TryCreate(ctx),
-                MissionType.Assassination => AssassinationMission.TryCreate(ctx),
-                MissionType.Espionage => EspionageMission.TryCreate(ctx),
-                MissionType.Sabotage => SabotageMission.TryCreate(ctx),
-                MissionType.InciteUprising => InciteUprisingMission.TryCreate(ctx),
-                MissionType.Rescue => RescueMission.TryCreate(ctx),
-                MissionType.Research => ctx.Discipline.HasValue
+                ReconnaissanceMission.MissionTypeID => ReconnaissanceMission.TryCreate(ctx),
+                DiplomacyMission.MissionTypeID => DiplomacyMission.TryCreate(ctx),
+                RecruitmentMission.MissionTypeID => RecruitmentMission.TryCreate(ctx),
+                SubdueUprisingMission.MissionTypeID => SubdueUprisingMission.TryCreate(ctx),
+                AbductionMission.MissionTypeID => AbductionMission.TryCreate(ctx),
+                AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(ctx),
+                EspionageMission.MissionTypeID => EspionageMission.TryCreate(ctx),
+                SabotageMission.MissionTypeID => SabotageMission.TryCreate(ctx),
+                InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(ctx),
+                RescueMission.MissionTypeID => RescueMission.TryCreate(ctx),
+                ResearchMission.MissionTypeID => ctx.Discipline.HasValue
                     ? ResearchMission.TryCreate(ctx, ctx.Discipline.Value)
                     : null,
-                MissionType.JediTraining => JediTrainingMission.TryCreate(ctx),
+                JediTrainingMission.MissionTypeID => JediTrainingMission.TryCreate(ctx),
                 _ => null,
             };
         }

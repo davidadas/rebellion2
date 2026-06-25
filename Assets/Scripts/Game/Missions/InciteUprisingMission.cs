@@ -10,6 +10,8 @@ namespace Rebellion.Game.Missions
 {
     public class InciteUprisingMission : Mission
     {
+        public const string MissionTypeID = "InciteUprising";
+
         public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>
@@ -18,7 +20,7 @@ namespace Rebellion.Game.Missions
         public InciteUprisingMission()
             : base()
         {
-            ConfigKey = "InciteUprising";
+            ConfigKey = MissionTypeID;
             DisplayName = "Incite Uprising";
             ParticipantRating = OfficerRating.Leadership;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -38,7 +40,7 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "InciteUprising",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
                 mainParticipants,

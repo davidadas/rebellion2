@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class SabotageMission : Mission
     {
+        public const string MissionTypeID = "Sabotage";
+
         public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>
@@ -17,7 +19,7 @@ namespace Rebellion.Game.Missions
         public SabotageMission()
             : base()
         {
-            ConfigKey = "Sabotage";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -39,7 +41,7 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Sabotage",
+                MissionTypeID,
                 ownerInstanceId,
                 missionTarget.GetInstanceID(),
                 mainParticipants,

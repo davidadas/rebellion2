@@ -508,7 +508,7 @@ namespace Rebellion.Tests.Game.Factions
                 InstanceID = "SPECOPS1",
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypes = new List<MissionType> { MissionType.Sabotage },
+                AllowedMissionTypeIDs = new List<string> { SabotageMission.MissionTypeID },
             };
 
             SpecialForces buildingSpecialForces = new SpecialForces
@@ -516,7 +516,7 @@ namespace Rebellion.Tests.Game.Factions
                 InstanceID = "SPECOPS2",
                 OwnerInstanceID = "FACTION1",
                 ManufacturingStatus = ManufacturingStatus.Building,
-                AllowedMissionTypes = new List<MissionType> { MissionType.Sabotage },
+                AllowedMissionTypeIDs = new List<string> { SabotageMission.MissionTypeID },
             };
 
             SpecialForces unqualifiedSpecialForces = new SpecialForces

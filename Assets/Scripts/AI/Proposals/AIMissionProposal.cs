@@ -19,9 +19,9 @@ namespace Rebellion.AI.Proposals
         public IMissionParticipant Participant { get; }
 
         /// <summary>
-        /// Mission type to start.
+        /// Mission type ID to start.
         /// </summary>
-        public MissionType MissionType { get; }
+        public string MissionTypeID { get; }
 
         /// <summary>
         /// Planet targeted by the mission.
@@ -42,63 +42,63 @@ namespace Rebellion.AI.Proposals
         /// Creates a mission proposal.
         /// </summary>
         /// <param name="participant">Participant assigned to the mission.</param>
-        /// <param name="missionType">Mission type to start.</param>
+        /// <param name="missionTypeId">Mission type ID to start.</param>
         /// <param name="targetPlanet">Planet targeted by the mission.</param>
         public AIMissionProposal(
             IMissionParticipant participant,
-            MissionType missionType,
+            string missionTypeId,
             Planet targetPlanet
         )
-            : this(participant, missionType, targetPlanet, null, null) { }
+            : this(participant, missionTypeId, targetPlanet, null, null) { }
 
         /// <summary>
         /// Creates a mission proposal with an officer target.
         /// </summary>
         /// <param name="participant">Participant assigned to the mission.</param>
-        /// <param name="missionType">Mission type to start.</param>
+        /// <param name="missionTypeId">Mission type ID to start.</param>
         /// <param name="targetPlanet">Planet targeted by the mission.</param>
         /// <param name="targetOfficer">Officer targeted by the mission.</param>
         public AIMissionProposal(
             IMissionParticipant participant,
-            MissionType missionType,
+            string missionTypeId,
             Planet targetPlanet,
             Officer targetOfficer
         )
-            : this(participant, missionType, targetPlanet, targetOfficer, null) { }
+            : this(participant, missionTypeId, targetPlanet, targetOfficer, null) { }
 
         /// <summary>
         /// Creates a research mission proposal.
         /// </summary>
         /// <param name="officer">Officer assigned to the research mission.</param>
-        /// <param name="missionType">Mission type to start.</param>
+        /// <param name="missionTypeId">Mission type ID to start.</param>
         /// <param name="targetPlanet">Planet targeted by the mission.</param>
         /// <param name="discipline">Research discipline advanced by the mission.</param>
         public AIMissionProposal(
             Officer officer,
-            MissionType missionType,
+            string missionTypeId,
             Planet targetPlanet,
             ResearchDiscipline discipline
         )
-            : this(officer, missionType, targetPlanet, null, discipline) { }
+            : this(officer, missionTypeId, targetPlanet, null, discipline) { }
 
         /// <summary>
         /// Creates a mission proposal.
         /// </summary>
         /// <param name="participant">Participant assigned to the mission.</param>
-        /// <param name="missionType">Mission type to start.</param>
+        /// <param name="missionTypeId">Mission type ID to start.</param>
         /// <param name="targetPlanet">Planet targeted by the mission.</param>
         /// <param name="targetOfficer">Officer targeted by the mission.</param>
         /// <param name="discipline">Research discipline advanced by the mission.</param>
         private AIMissionProposal(
             IMissionParticipant participant,
-            MissionType missionType,
+            string missionTypeId,
             Planet targetPlanet,
             Officer targetOfficer,
             ResearchDiscipline? discipline
         )
         {
             Participant = participant;
-            MissionType = missionType;
+            MissionTypeID = missionTypeId;
             TargetPlanet = targetPlanet;
             TargetOfficer = targetOfficer;
             Discipline = discipline;
@@ -123,13 +123,13 @@ namespace Rebellion.AI.Proposals
         /// <param name="claimKeys">The claim list to update.</param>
         private void AddMissionSpecificClaims(List<string> claimKeys)
         {
-            if (MissionType == MissionType.Recruitment)
+            if (MissionTypeID == RecruitmentMission.MissionTypeID)
             {
                 claimKeys.Add($"mission:recruitment:{Participant.OwnerInstanceID}");
                 return;
             }
 
-            if (MissionType == MissionType.Research && Discipline.HasValue)
+            if (MissionTypeID == ResearchMission.MissionTypeID && Discipline.HasValue)
             {
                 claimKeys.Add($"mission:research:{Participant.OwnerInstanceID}:{Discipline.Value}");
                 return;
@@ -141,7 +141,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            claimKeys.Add($"mission:{MissionType}:planet:{TargetPlanet.InstanceID}");
+            claimKeys.Add($"mission:{MissionTypeID}:planet:{TargetPlanet.InstanceID}");
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace Rebellion.AI.Proposals
             return string.Join(
                 ":",
                 "mission",
-                MissionType,
+                MissionTypeID,
                 TargetPlanet?.InstanceID,
                 TargetOfficer?.InstanceID,
                 Discipline?.ToString(),
@@ -182,7 +182,7 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             return context.Missions.CanCreateMission(
-                MissionType,
+                MissionTypeID,
                 Participant,
                 TargetPlanet,
                 TargetOfficer,
@@ -202,7 +202,7 @@ namespace Rebellion.AI.Proposals
             try
             {
                 context.Missions.InitiateMission(
-                    MissionType,
+                    MissionTypeID,
                     Participant,
                     TargetPlanet,
                     TargetOfficer,
@@ -236,10 +236,10 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (!Participant.CanPerformMission(MissionType))
+            if (!Participant.CanPerformMission(MissionTypeID))
                 return false;
 
-            if (MissionType == MissionType.Research && !Discipline.HasValue)
+            if (MissionTypeID == ResearchMission.MissionTypeID && !Discipline.HasValue)
                 return false;
 
             if (RequiresTargetOfficer() && TargetOfficer == null)
@@ -254,7 +254,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission requires an officer target.</returns>
         private bool RequiresTargetOfficer()
         {
-            return MissionType == MissionType.Abduction || MissionType == MissionType.Assassination;
+            return MissionTypeID == AbductionMission.MissionTypeID
+                || MissionTypeID == AssassinationMission.MissionTypeID;
         }
     }
 }

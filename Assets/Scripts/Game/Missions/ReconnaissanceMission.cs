@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class ReconnaissanceMission : Mission
     {
+        public const string MissionTypeID = "Reconnaissance";
+
         public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>
@@ -17,7 +19,7 @@ namespace Rebellion.Game.Missions
         public ReconnaissanceMission()
             : base()
         {
-            ConfigKey = "Reconnaissance";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -43,7 +45,7 @@ namespace Rebellion.Game.Missions
                 ctx.MainParticipants.Any()
                 && !ctx
                     .MainParticipants.OfType<SpecialForces>()
-                    .Any(sf => sf.AllowedMissionTypes.Contains(MissionType.Reconnaissance))
+                    .Any(sf => sf.AllowedMissionTypeIDs.Contains(MissionTypeID))
             )
                 return null;
 

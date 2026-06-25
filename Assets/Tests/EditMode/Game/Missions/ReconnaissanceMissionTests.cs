@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
-                AllowedMissionTypes = new List<MissionType> { MissionType.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
         }
 

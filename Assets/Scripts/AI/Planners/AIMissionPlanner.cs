@@ -94,7 +94,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, MissionType.Recruitment, target)
+                    new AIMissionProposal(participant, RecruitmentMission.MissionTypeID, target)
                 );
         }
 
@@ -122,7 +122,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, MissionType.Diplomacy, planet)
+                    new AIMissionProposal(participant, DiplomacyMission.MissionTypeID, planet)
                 );
         }
 
@@ -150,7 +150,12 @@ namespace Rebellion.AI.Planners
                     TryAddProposal(
                         context,
                         proposals,
-                        new AIMissionProposal(officer, MissionType.Research, planet, discipline)
+                        new AIMissionProposal(
+                            officer,
+                            ResearchMission.MissionTypeID,
+                            planet,
+                            discipline
+                        )
                     );
             }
         }
@@ -174,7 +179,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, MissionType.Sabotage, planet)
+                    new AIMissionProposal(participant, SabotageMission.MissionTypeID, planet)
                 );
         }
 
@@ -198,14 +203,19 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, MissionType.Abduction, planet, targetOfficer)
+                    new AIMissionProposal(
+                        participant,
+                        AbductionMission.MissionTypeID,
+                        planet,
+                        targetOfficer
+                    )
                 );
                 TryAddProposal(
                     context,
                     proposals,
                     new AIMissionProposal(
                         participant,
-                        MissionType.Assassination,
+                        AssassinationMission.MissionTypeID,
                         planet,
                         targetOfficer
                     )

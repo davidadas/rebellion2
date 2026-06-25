@@ -680,7 +680,7 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement = new MovementSystem(game, fog);
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
-            missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
+            missionSystem.InitiateMission(SabotageMission.MissionTypeID, officer, targetPlanet);
 
             Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
             Assert.IsNotNull(mission, "Mission should be created");
@@ -734,7 +734,7 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement = new MovementSystem(game, fog);
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
-            missionSystem.InitiateMission(MissionType.Sabotage, officer, targetPlanet);
+            missionSystem.InitiateMission(SabotageMission.MissionTypeID, officer, targetPlanet);
 
             Assert.IsTrue(
                 officer.IsOnMission(),
@@ -1549,7 +1549,7 @@ namespace Rebellion.Tests.Systems
             MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
             system.InitiateMission(
-                MissionType.Research,
+                ResearchMission.MissionTypeID,
                 officer,
                 planet,
                 discipline: ResearchDiscipline.FacilityDesign
@@ -1584,7 +1584,7 @@ namespace Rebellion.Tests.Systems
             Officer viewParticipant = EntityFactory.CreateOfficer(participant.InstanceID, "empire");
 
             bool created = missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 new List<IMissionParticipant> { viewParticipant },
                 new List<IMissionParticipant>(),
                 viewPlanet
@@ -1616,7 +1616,7 @@ namespace Rebellion.Tests.Systems
             viewRegiment.SetParent(viewPlanet);
 
             bool created = missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewRegiment
@@ -1644,7 +1644,7 @@ namespace Rebellion.Tests.Systems
             viewTarget.SetParent(viewPlanet);
 
             bool created = missions.InitiateMission(
-                MissionType.Abduction,
+                AbductionMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewTarget
@@ -1677,7 +1677,7 @@ namespace Rebellion.Tests.Systems
             viewRegiment.SetParent(viewPlanet);
 
             bool canCreate = missions.CanCreateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewRegiment
@@ -1708,7 +1708,7 @@ namespace Rebellion.Tests.Systems
             viewRegiment.SetParent(viewPlanet);
 
             bool created = missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewRegiment
@@ -1741,7 +1741,7 @@ namespace Rebellion.Tests.Systems
             viewRegiment.SetParent(viewPlanet);
 
             missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewRegiment
@@ -1770,7 +1770,7 @@ namespace Rebellion.Tests.Systems
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
 
             bool created = missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: target
@@ -1804,7 +1804,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment, otherPlanet);
 
             bool created = missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: regiment
@@ -1830,7 +1830,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment, targetPlanet);
 
             missions.InitiateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: regiment
@@ -1859,7 +1859,7 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
             missions.InitiateMission(
-                MissionType.Abduction,
+                AbductionMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: target
@@ -1903,7 +1903,7 @@ namespace Rebellion.Tests.Systems
             game.MoveNode(target, otherPlanet);
 
             bool created = missions.InitiateMission(
-                MissionType.Abduction,
+                AbductionMission.MissionTypeID,
                 participant,
                 viewPlanet,
                 specificTarget: viewTarget
@@ -1932,7 +1932,7 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
             missions.InitiateMission(
-                MissionType.Assassination,
+                AssassinationMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: target
@@ -1962,7 +1962,7 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: true, capturedTarget: true);
             missions.InitiateMission(
-                MissionType.Rescue,
+                RescueMission.MissionTypeID,
                 participant,
                 targetPlanet,
                 specificTarget: target

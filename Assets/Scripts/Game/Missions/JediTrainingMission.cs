@@ -13,6 +13,8 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public class JediTrainingMission : Mission
     {
+        public const string MissionTypeID = "JediTraining";
+
         public string TrainerInstanceID { get; set; }
 
         /// <summary>
@@ -21,7 +23,7 @@ namespace Rebellion.Game.Missions
         public JediTrainingMission()
             : base()
         {
-            ConfigKey = "JediTraining";
+            ConfigKey = MissionTypeID;
             DisplayName = "Jedi Training";
         }
 
@@ -41,7 +43,7 @@ namespace Rebellion.Game.Missions
             string trainerInstanceId
         )
             : base(
-                "JediTraining",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
                 mainParticipants,

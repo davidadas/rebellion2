@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class AbductionMission : Mission
     {
+        public const string MissionTypeID = "Abduction";
+
         public string TargetOfficerInstanceID { get; set; }
 
         public override bool CanceledOnOwnershipChange => false;
@@ -19,7 +21,7 @@ namespace Rebellion.Game.Missions
         public AbductionMission()
             : base()
         {
-            ConfigKey = "Abduction";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -41,7 +43,7 @@ namespace Rebellion.Game.Missions
             string targetOfficerInstanceId
         )
             : base(
-                "Abduction",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Abduction").GetInstanceID(),
                 mainParticipants,

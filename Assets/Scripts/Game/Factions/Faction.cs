@@ -19,7 +19,7 @@ namespace Rebellion.Game.Factions
     {
         // Faction Info.
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
-        public List<MissionType> DisallowedMissionTypes { get; set; } = new List<MissionType>();
+        public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
 
         private FactionSettings _settings = new FactionSettings();
 
@@ -616,7 +616,7 @@ namespace Rebellion.Game.Factions
             if (participant is SpecialForces specialForces)
             {
                 return specialForces.ManufacturingStatus == ManufacturingStatus.Complete
-                    && specialForces.AllowedMissionTypes.Count > 0;
+                    && specialForces.AllowedMissionTypeIDs.Count > 0;
             }
 
             return true;

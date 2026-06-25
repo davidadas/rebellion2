@@ -16,6 +16,8 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public class ResearchMission : Mission
     {
+        public const string MissionTypeID = "Research";
+
         public ResearchDiscipline Discipline { get; set; }
 
         /// <summary>
@@ -24,7 +26,7 @@ namespace Rebellion.Game.Missions
         public ResearchMission()
             : base()
         {
-            ConfigKey = "Research";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.None;
         }
@@ -45,7 +47,7 @@ namespace Rebellion.Game.Missions
             ResearchDiscipline discipline
         )
             : base(
-                "Research",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Research").GetInstanceID(),
                 mainParticipants,

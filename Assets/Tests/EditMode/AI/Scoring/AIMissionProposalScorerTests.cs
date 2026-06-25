@@ -40,11 +40,11 @@ namespace Rebellion.Tests.AI.Scoring
 
             double lowSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Diplomacy, lowSupport)
+                new AIMissionProposal(officer, DiplomacyMission.MissionTypeID, lowSupport)
             );
             double highSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Diplomacy, highSupport)
+                new AIMissionProposal(officer, DiplomacyMission.MissionTypeID, highSupport)
             );
 
             Assert.Greater(lowSupportScore, highSupportScore);
@@ -76,11 +76,11 @@ namespace Rebellion.Tests.AI.Scoring
 
             double lowSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Recruitment, lowSupport)
+                new AIMissionProposal(officer, RecruitmentMission.MissionTypeID, lowSupport)
             );
             double highSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Recruitment, highSupport)
+                new AIMissionProposal(officer, RecruitmentMission.MissionTypeID, highSupport)
             );
 
             Assert.Greater(highSupportScore, lowSupportScore);
@@ -108,11 +108,21 @@ namespace Rebellion.Tests.AI.Scoring
 
             double weakTargetScore = scorer.Score(
                 context,
-                new AIMissionProposal(actor, MissionType.Abduction, enemyPlanet, weakTarget)
+                new AIMissionProposal(
+                    actor,
+                    AbductionMission.MissionTypeID,
+                    enemyPlanet,
+                    weakTarget
+                )
             );
             double strongTargetScore = scorer.Score(
                 context,
-                new AIMissionProposal(actor, MissionType.Abduction, enemyPlanet, strongTarget)
+                new AIMissionProposal(
+                    actor,
+                    AbductionMission.MissionTypeID,
+                    enemyPlanet,
+                    strongTarget
+                )
             );
 
             Assert.Greater(weakTargetScore, strongTargetScore);

@@ -27,7 +27,7 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
 
         // Mission Qualification.
-        public List<MissionType> AllowedMissionTypes { get; set; } = new List<MissionType>();
+        public List<string> AllowedMissionTypeIDs { get; set; } = new List<string>();
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
@@ -43,10 +43,10 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns whether this unit can perform a mission type.
         /// </summary>
-        /// <param name="missionType">The mission type to inspect.</param>
+        /// <param name="missionTypeId">The mission type ID to inspect.</param>
         /// <returns>True if this unit is allowed to perform the mission type.</returns>
-        public bool CanPerformMission(MissionType missionType) =>
-            AllowedMissionTypes.Contains(missionType);
+        public bool CanPerformMission(string missionTypeId) =>
+            AllowedMissionTypeIDs.Contains(missionTypeId);
 
         /// <summary>
         /// Default constructor used for deserialization.

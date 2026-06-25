@@ -62,7 +62,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns whether a mission of the given type can be created for the target.
         /// </summary>
-        /// <param name="missionType">The type of mission to check.</param>
+        /// <param name="missionTypeId">The mission type ID to check.</param>
         /// <param name="participant">The officer or unit performing the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
@@ -70,7 +70,7 @@ namespace Rebellion.Systems
         /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True if a mission of this type can be created.</returns>
         public bool CanCreateMission(
-            MissionType missionType,
+            string missionTypeId,
             IMissionParticipant participant,
             ISceneNode target,
             Officer targetOfficer = null,
@@ -89,7 +89,7 @@ namespace Rebellion.Systems
             Officer selectedTargetOfficer = targetOfficer ?? specificTarget as Officer;
 
             return _missionFactory.TryCreateMission(
-                missionType,
+                missionTypeId,
                 liveParticipant.GetOwnerInstanceID(),
                 new List<IMissionParticipant> { liveParticipant },
                 new List<IMissionParticipant>(),
@@ -105,7 +105,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Initiates a mission with a single participant and target.
         /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
         /// <param name="participant">The officer or unit performing the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
@@ -113,7 +113,7 @@ namespace Rebellion.Systems
         /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True when the mission was created and begun; otherwise false.</returns>
         public bool InitiateMission(
-            MissionType missionType,
+            string missionTypeId,
             IMissionParticipant participant,
             ISceneNode target,
             Officer targetOfficer = null,
@@ -127,7 +127,7 @@ namespace Rebellion.Systems
             };
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
             return InitiateMission(
-                missionType,
+                missionTypeId,
                 mainParticipants,
                 decoyParticipants,
                 target,
@@ -140,7 +140,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Initiates a mission with participant lists and a target.
         /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
         /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
         /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
         /// <param name="target">The mission target.</param>
@@ -149,7 +149,7 @@ namespace Rebellion.Systems
         /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True when the mission was created and begun; otherwise false.</returns>
         public bool InitiateMission(
-            MissionType missionType,
+            string missionTypeId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
             ISceneNode target,
@@ -172,7 +172,7 @@ namespace Rebellion.Systems
                 return false;
 
             return CreateAndBeginMission(
-                missionType,
+                missionTypeId,
                 mainParticipants,
                 decoyParticipants,
                 target,
@@ -185,7 +185,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates a mission through the factory and attaches it to its target planet.
         /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
         /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
         /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
         /// <param name="target">The mission target.</param>
@@ -194,7 +194,7 @@ namespace Rebellion.Systems
         /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
         /// <returns>True when the mission was created and begun; otherwise false.</returns>
         private bool CreateAndBeginMission(
-            MissionType missionType,
+            string missionTypeId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
             ISceneNode target,
@@ -206,7 +206,7 @@ namespace Rebellion.Systems
             string ownerInstanceId = mainParticipants[0].OwnerInstanceID;
             if (
                 !_missionFactory.TryCreateMission(
-                    missionType,
+                    missionTypeId,
                     ownerInstanceId,
                     mainParticipants,
                     decoyParticipants,

@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -75,14 +75,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void TryCreateMission_DisallowedMissionType_ReturnsFalse()
+        public void TryCreateMission_DisallowedMissionTypeID_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             game.Factions.Find(f => f.InstanceID == "empire")
-                .DisallowedMissionTypes.Add(MissionType.Sabotage);
+                .DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
 
             bool created = factory.TryCreateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                MissionType.Sabotage,
+                SabotageMission.MissionTypeID,
                 "unknown",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                MissionType.Recruitment,
+                RecruitmentMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                MissionType.Recruitment,
+                RecruitmentMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsMain = true;
 
             bool created = factory.TryCreateMission(
-                MissionType.Recruitment,
+                RecruitmentMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                MissionType.Research,
+                ResearchMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
@@ -197,7 +197,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                MissionType.Research,
+                ResearchMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),

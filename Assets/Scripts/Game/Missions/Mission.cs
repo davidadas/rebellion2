@@ -27,13 +27,8 @@ namespace Rebellion.Game.Missions
             {
                 configKey = value;
                 TypeID = value;
-                if (!string.IsNullOrEmpty(value) && Enum.TryParse(value, out MissionType type))
-                    MissionType = type;
             }
         }
-
-        [PersistableIgnore]
-        public MissionType MissionType { get; set; }
 
         public string TargetInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
@@ -689,7 +684,7 @@ namespace Rebellion.Game.Missions
             {
                 Mission = this,
                 MissionName = DisplayName,
-                MissionType = MissionType,
+                MissionTypeID = TypeID,
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,

@@ -348,13 +348,13 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void CanPerformMission_AnyMissionType_ReturnsTrue()
+        public void CanPerformMission_AnyMissionTypeID_ReturnsTrue()
         {
             Officer officer = new Officer();
 
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Sabotage));
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Espionage));
-            Assert.IsTrue(officer.CanPerformMission(MissionType.Assassination));
+            Assert.IsTrue(officer.CanPerformMission(SabotageMission.MissionTypeID));
+            Assert.IsTrue(officer.CanPerformMission(EspionageMission.MissionTypeID));
+            Assert.IsTrue(officer.CanPerformMission(AssassinationMission.MissionTypeID));
         }
     }
 }

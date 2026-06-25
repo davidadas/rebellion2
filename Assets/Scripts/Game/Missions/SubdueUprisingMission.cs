@@ -8,13 +8,15 @@ namespace Rebellion.Game.Missions
 {
     public class SubdueUprisingMission : Mission
     {
+        public const string MissionTypeID = "SubdueUprising";
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public SubdueUprisingMission()
             : base()
         {
-            ConfigKey = "SubdueUprising";
+            ConfigKey = MissionTypeID;
             DisplayName = "Subdue Uprising";
             ParticipantRating = OfficerRating.Leadership;
         }
@@ -33,7 +35,7 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "SubdueUprising",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
                 mainParticipants,

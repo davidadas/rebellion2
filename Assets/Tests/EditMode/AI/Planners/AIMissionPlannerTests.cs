@@ -32,7 +32,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionType == MissionType.Recruitment)
+                    .Any(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
             );
         }
 
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 proposals
                     .OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionType == MissionType.Recruitment)
+                    .Any(proposal => proposal.MissionTypeID == RecruitmentMission.MissionTypeID)
             );
         }
 

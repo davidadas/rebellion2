@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class RescueMission : Mission
     {
+        public const string MissionTypeID = "Rescue";
+
         public string TargetOfficerInstanceID { get; set; }
 
         public override bool CanceledOnOwnershipChange => false;
@@ -19,7 +21,7 @@ namespace Rebellion.Game.Missions
         public RescueMission()
             : base()
         {
-            ConfigKey = "Rescue";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -41,7 +43,7 @@ namespace Rebellion.Game.Missions
             string targetOfficerInstanceId
         )
             : base(
-                "Rescue",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Rescue").GetInstanceID(),
                 mainParticipants,
