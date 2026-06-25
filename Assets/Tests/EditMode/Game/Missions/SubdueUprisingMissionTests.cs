@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_UprisingEndedBeforeExecution_ReturnsTrue()
+        public void GetAbortReason_UprisingEndedBeforeExecution_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -150,8 +150,9 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.EndUprising();
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when uprising ends before mission executes"
             );
         }

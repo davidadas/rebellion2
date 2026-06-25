@@ -257,34 +257,36 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_WhenUprisingStarts_ReturnsTrue()
+        public void GetAbortReason_WhenUprisingStarts_ReturnsFailure()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
             planet.BeginUprising();
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet enters uprising"
             );
         }
 
         [Test]
-        public void ShouldAbort_WhenPlanetTakenByThirdFaction_ReturnsTrue()
+        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
             planet.OwnerInstanceID = "rebels";
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet is taken by another faction"
             );
         }
 
         [Test]
-        public void ShouldAbort_WhenPlanetTakenByMissionFaction_ReturnsFalse()
+        public void GetAbortReason_WhenPlanetTakenByMissionFaction_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -298,8 +300,8 @@ namespace Rebellion.Tests.Game.Missions
 
             planet.OwnerInstanceID = "empire";
 
-            Assert.IsFalse(
-                mission.ShouldAbort(game),
+            Assert.IsNull(
+                mission.GetAbortReason(game),
                 "Diplomacy mission should not abort when target planet joins the mission faction"
             );
         }

@@ -89,8 +89,14 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
-        public override MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game) =>
-            HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        {
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
+        }
 
         /// <summary>
         /// Returns false if the target officer is no longer captured or has moved
@@ -147,6 +153,18 @@ namespace Rebellion.Game.Missions
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        /// <summary>
+        /// Returns the rescued officer when they are free and belong to the mission owner.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The rescued officer when eligible to return with the mission group.</returns>
+        internal override IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game)
+        {
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target?.IsCaptured == false && target.GetOwnerInstanceID() == OwnerInstanceID)
+                yield return target;
         }
 
         /// <summary>

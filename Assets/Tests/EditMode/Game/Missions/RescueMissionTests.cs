@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -108,6 +109,54 @@ namespace Rebellion.Tests.Game.Missions
                 captive.GetParent(),
                 "Rescued officer should return to the rescuer's origin"
             );
+        }
+
+        [Test]
+        public void GetSuccessfulReturnPassengers_TargetRescuedByOwner_ReturnsTarget()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(captive, enemyPlanet);
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
+
+            CollectionAssert.AreEqual(new IMovable[] { captive }, passengers);
+        }
+
+        [Test]
+        public void GetSuccessfulReturnPassengers_TargetStillCaptured_ReturnsEmpty()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(captive, enemyPlanet);
+            RescueMission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
+
+            Assert.IsEmpty(passengers);
         }
 
         [Test]

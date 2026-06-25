@@ -106,8 +106,12 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The failure reason, or null when research can advance.</returns>
-        public override MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game)
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
             Planet planet = GetParent() as Planet;
             if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
                 return null;
@@ -189,7 +193,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
             MissionCompletionReason completionReason =
-                ResolvePreExecutionFailureReason(game) ?? MissionCompletionReason.TargetUnavailable;
+                GetAbortReason(game) ?? MissionCompletionReason.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
             Planet planet = GetParent() as Planet;
 

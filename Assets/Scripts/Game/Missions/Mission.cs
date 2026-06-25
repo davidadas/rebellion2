@@ -206,12 +206,14 @@ namespace Rebellion.Game.Missions
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         /// <summary>
-        /// Returns whether this mission should be canceled before its next tick.
+        /// Returns why this mission must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public virtual bool ShouldAbort(GameRoot game) =>
-            MainParticipants.Count == 0 || HaveParticipantsChanged();
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public virtual MissionCompletionReason? GetAbortReason(GameRoot game) =>
+            MainParticipants.Count == 0 || HaveParticipantsChanged()
+                ? MissionCompletionReason.Failure
+                : null;
 
         /// <summary>
         /// Returns whether the mission should repeat after completing one execution.
@@ -274,14 +276,6 @@ namespace Rebellion.Game.Missions
         /// <returns>True if any participant has active movement.</returns>
         public bool IsWaitingForParticipants() =>
             GetAllParticipants().Any(participant => participant.Movement != null);
-
-        /// <summary>
-        /// Resolves the mission failure reason before progress or execution occurs.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The failure reason, or null when the mission may advance.</returns>
-        public virtual MissionCompletionReason? ResolvePreExecutionFailureReason(GameRoot game) =>
-            null;
 
         /// <summary>
         /// Captures the current mission participant IDs.
@@ -780,6 +774,14 @@ namespace Rebellion.Game.Missions
             GameRoot game,
             IRandomNumberProvider provider
         ) => new List<GameResult>();
+
+        /// <summary>
+        /// Returns extra movable units that should travel home with mission participants after a successful mission.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>Additional units to return after successful mission completion.</returns>
+        internal virtual IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game) =>
+            Enumerable.Empty<IMovable>();
 
         /// <summary>
         /// Returns all mission participants as children of the mission.

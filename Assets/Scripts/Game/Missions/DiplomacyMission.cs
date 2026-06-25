@@ -79,20 +79,22 @@ namespace Rebellion.Game.Missions
         /// is taken by a third faction.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            if (base.ShouldAbort(game))
-                return true;
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
             if (GetParent() is Planet planet)
             {
                 if (planet.IsInUprising)
-                    return true;
+                    return MissionCompletionReason.Failure;
                 string owner = planet.GetOwnerInstanceID();
                 if (owner != null && owner != OwnerInstanceID)
-                    return true;
+                    return MissionCompletionReason.Failure;
             }
-            return false;
+            return null;
         }
 
         /// <summary>

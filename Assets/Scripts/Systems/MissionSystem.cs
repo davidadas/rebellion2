@@ -330,30 +330,14 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return results;
 
-            if (mission.ShouldAbort(_game))
+            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
+            if (abortReason.HasValue)
             {
                 results.Add(
                     BuildTerminatingMissionResult(
                         mission,
                         MissionOutcome.Failed,
-                        MissionCompletionReason.Failure,
-                        mission.GetAllParticipants()
-                    )
-                );
-                TearDownMission(mission, null);
-                return results;
-            }
-
-            MissionCompletionReason? failureReason = mission.ResolvePreExecutionFailureReason(
-                _game
-            );
-            if (failureReason.HasValue)
-            {
-                results.Add(
-                    BuildTerminatingMissionResult(
-                        mission,
-                        MissionOutcome.Failed,
-                        failureReason.Value,
+                        abortReason.Value,
                         mission.GetAllParticipants()
                     )
                 );
@@ -385,7 +369,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
             bool missionFoiled = ResolveDetection(mission, results);
 
-            if (!missionFoiled && !mission.ShouldAbort(_game))
+            if (!missionFoiled)
                 return results;
 
             results.Add(
@@ -553,6 +537,11 @@ namespace Rebellion.Systems
                 _movementManager.RequestMove(officer, missionPlanet);
         }
 
+        /// <summary>
+        /// Returns mission participants that can travel back after teardown.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <returns>The movable participants that are neither killed nor captured.</returns>
         private IEnumerable<IMovable> GetFreeMissionParticipants(Mission mission)
         {
             return mission
@@ -562,6 +551,12 @@ namespace Rebellion.Systems
                 .Distinct();
         }
 
+        /// <summary>
+        /// Returns all units that should return with a completed mission group.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <param name="completedResult">The completed mission result, or null before execution.</param>
+        /// <returns>The movable units that should return to the mission origin.</returns>
         private IEnumerable<IMovable> GetReturnPassengers(
             Mission mission,
             MissionCompletedResult completedResult
@@ -573,56 +568,38 @@ namespace Rebellion.Systems
             if (completedResult?.Outcome != MissionOutcome.Success)
                 yield break;
 
-            Officer transferredTarget = GetSuccessfulTransferTarget(mission);
-            if (transferredTarget != null)
-                yield return transferredTarget;
+            foreach (IMovable passenger in mission.GetSuccessfulReturnPassengers(_game))
+                yield return passenger;
         }
 
+        /// <summary>
+        /// Returns mission officers that were captured during the mission.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <returns>The captured mission officers.</returns>
         private static IEnumerable<Officer> GetCapturedMissionParticipants(Mission mission)
         {
             return mission.GetAllParticipants().OfType<Officer>().Where(IsCapturedParticipant);
         }
 
+        /// <summary>
+        /// Returns whether a movable participant can travel home after mission teardown.
+        /// </summary>
+        /// <param name="participant">The participant to inspect.</param>
+        /// <returns>True when the participant is not a killed or captured officer.</returns>
         private static bool IsFreeParticipant(IMovable participant)
         {
             return participant is not Officer officer || (!officer.IsKilled && !officer.IsCaptured);
         }
 
+        /// <summary>
+        /// Returns whether an officer was captured during mission resolution.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True when the officer is captured.</returns>
         private static bool IsCapturedParticipant(Officer officer)
         {
             return officer.IsCaptured;
-        }
-
-        private Officer GetSuccessfulTransferTarget(Mission mission)
-        {
-            if (mission is AbductionMission abduction)
-                return GetAbductedOfficer(abduction);
-            if (mission is RescueMission rescue)
-                return GetRescuedOfficer(rescue);
-
-            return null;
-        }
-
-        private Officer GetAbductedOfficer(AbductionMission mission)
-        {
-            Officer target = _game.GetSceneNodeByInstanceID<Officer>(
-                mission.TargetOfficerInstanceID
-            );
-            return target?.IsCaptured == true && target.CaptorInstanceID == mission.OwnerInstanceID
-                ? target
-                : null;
-        }
-
-        private Officer GetRescuedOfficer(RescueMission mission)
-        {
-            Officer target = _game.GetSceneNodeByInstanceID<Officer>(
-                mission.TargetOfficerInstanceID
-            );
-            return
-                target?.IsCaptured == false
-                && target.GetOwnerInstanceID() == mission.OwnerInstanceID
-                ? target
-                : null;
         }
 
         /// <summary>

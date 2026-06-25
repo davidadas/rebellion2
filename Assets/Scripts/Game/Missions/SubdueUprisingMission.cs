@@ -68,10 +68,16 @@ namespace Rebellion.Game.Missions
         /// Extends base cancellation to also cancel when the uprising ends before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            return base.ShouldAbort(game) || !(GetParent() is Planet p && p.IsInUprising);
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return GetParent() is Planet p && p.IsInUprising
+                ? null
+                : MissionCompletionReason.Failure;
         }
 
         /// <summary>

@@ -191,7 +191,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_UprisingAlreadyStarted_ReturnsTrue()
+        public void GetAbortReason_UprisingAlreadyStarted_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -212,8 +212,9 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.BeginUprising();
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when planet is already in uprising"
             );
         }

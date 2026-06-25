@@ -106,20 +106,21 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Cancels if any main participant or the trainer is captured or killed.
+        /// Returns why Jedi training must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when training may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            if (base.ShouldAbort(game))
-                return true;
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
 
             Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
             if (trainer == null)
-                return true;
+                return MissionCompletionReason.Failure;
 
-            return trainer.IsCaptured || trainer.IsKilled;
+            return trainer.IsCaptured || trainer.IsKilled ? MissionCompletionReason.Failure : null;
         }
 
         /// <summary>

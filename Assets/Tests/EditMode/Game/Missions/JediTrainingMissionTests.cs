@@ -135,26 +135,26 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_TrainerCaptured_ReturnsTrue()
+        public void GetAbortReason_TrainerCaptured_ReturnsFailure()
         {
             JediTrainingMission mission = CreateMission();
             _trainer.IsCaptured = true;
-            Assert.IsTrue(mission.ShouldAbort(_game));
+            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void ShouldAbort_TrainerKilled_ReturnsTrue()
+        public void GetAbortReason_TrainerKilled_ReturnsFailure()
         {
             JediTrainingMission mission = CreateMission();
             _trainer.IsKilled = true;
-            Assert.IsTrue(mission.ShouldAbort(_game));
+            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void ShouldAbort_TrainerAlive_ReturnsFalse()
+        public void GetAbortReason_TrainerAlive_ReturnsNull()
         {
             JediTrainingMission mission = CreateMission();
-            Assert.IsFalse(mission.ShouldAbort(_game));
+            Assert.IsNull(mission.GetAbortReason(_game));
         }
 
         [Test]

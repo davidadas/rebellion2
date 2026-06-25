@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantRemoved_ReturnsTrue()
+        public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -54,14 +54,15 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.RemoveChild(officer);
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when main participant is removed"
             );
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantUnchanged_ReturnsFalse()
+        public void GetAbortReason_MainParticipantUnchanged_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -80,8 +81,8 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());
 
-            Assert.IsFalse(
-                mission.ShouldAbort(game),
+            Assert.IsNull(
+                mission.GetAbortReason(game),
                 "Mission should not abort when participant membership is unchanged"
             );
         }
@@ -235,7 +236,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_DecoyParticipantRemoved_ReturnsTrue()
+        public void GetAbortReason_DecoyParticipantRemoved_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -259,8 +260,9 @@ namespace Rebellion.Tests.Game.Missions
 
             mission.RemoveChild(decoy);
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when any participant is removed"
             );
         }
