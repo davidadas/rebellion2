@@ -51,6 +51,42 @@ namespace Rebellion.Tests.AI.Scoring
         }
 
         [Test]
+        public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet lowSupport = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "low-support",
+                empire.InstanceID
+            );
+            Planet highSupport = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "high-support",
+                empire.InstanceID
+            );
+            lowSupport.SetPopularSupport(empire.InstanceID, 20);
+            highSupport.SetPopularSupport(empire.InstanceID, 80);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Leadership] = 80;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double lowSupportScore = scorer.Score(
+                context,
+                new AIMissionProposal(officer, MissionType.Recruitment, lowSupport)
+            );
+            double highSupportScore = scorer.Score(
+                context,
+                new AIMissionProposal(officer, MissionType.Recruitment, highSupport)
+            );
+
+            Assert.Greater(highSupportScore, lowSupportScore);
+        }
+
+        [Test]
         public void Score_TargetedOfficerMission_ReturnsLowerScoreForStrongerTarget()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

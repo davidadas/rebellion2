@@ -113,9 +113,10 @@ namespace Rebellion.Game.Missions
             if (!(GetParent() is Planet planet))
                 return base.GetAgentProbability(agent);
 
+            int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int score =
                 GetTargetTroopState(planet)
-                - planet.GetPopularSupport(OwnerInstanceID)
+                - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
             return SuccessProbabilityTable.Lookup(score);
         }

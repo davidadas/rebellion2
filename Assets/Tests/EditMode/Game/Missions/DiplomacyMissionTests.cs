@@ -217,9 +217,9 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesRegimentDefenseMinusSupportPlusDiplomacyRating()
+        public void Execute_SuccessProbability_UsesRegimentDefenseMinusOpposingSupportPlusDiplomacyRating()
         {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.SetBaseRating(OfficerRating.Diplomacy, 40);
             Regiment regiment = new Regiment
@@ -239,7 +239,12 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, planet);
             mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 10, 100 }, { 11, 0 } }
+                new Dictionary<int, int>
+                {
+                    { -20, 0 },
+                    { 40, 100 },
+                    { 41, 0 },
+                }
             );
             mission.Initiate(new StubRNG());
 

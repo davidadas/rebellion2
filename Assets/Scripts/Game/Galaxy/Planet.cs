@@ -16,6 +16,8 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode
     {
+        private const int _maximumPopularSupport = 100;
+
         // Planet Properties.
         public bool IsColonized { get; set; }
         public int SystemDataId { get; set; }
@@ -258,13 +260,23 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns the planet's popular support that is not aligned with the faction.
+        /// </summary>
+        /// <param name="factionInstanceId">The instance ID of the faction.</param>
+        /// <returns>The opposing popular support value.</returns>
+        public int GetOpposingPopularSupport(string factionInstanceId)
+        {
+            return _maximumPopularSupport - GetPopularSupport(factionInstanceId);
+        }
+
+        /// <summary>
         /// Sets the popular support for a faction on the planet.
         /// </summary>
         /// <param name="factionInstanceId">The instance ID of the faction.</param>
         /// <param name="support">The new level of support for the faction.</param>
         public void SetPopularSupport(string factionInstanceId, int support)
         {
-            int boundedSupport = Math.Clamp(support, 0, 100);
+            int boundedSupport = Math.Clamp(support, 0, _maximumPopularSupport);
             int currentSupport = PopularSupport.TryGetValue(
                 factionInstanceId,
                 out int existingSupport
@@ -274,13 +286,13 @@ namespace Rebellion.Game.Galaxy
             int supportDifference = boundedSupport - currentSupport;
             int totalSupport = PopularSupport.Values.Sum();
 
-            if (totalSupport + supportDifference <= 100)
+            if (totalSupport + supportDifference <= _maximumPopularSupport)
             {
                 PopularSupport[factionInstanceId] = boundedSupport;
             }
             else
             {
-                int overage = totalSupport + supportDifference - 100;
+                int overage = totalSupport + supportDifference - _maximumPopularSupport;
                 ShiftFactionSupport(factionInstanceId, overage);
                 PopularSupport[factionInstanceId] = boundedSupport;
             }

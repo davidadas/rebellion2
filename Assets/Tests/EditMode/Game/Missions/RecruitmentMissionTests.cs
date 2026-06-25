@@ -7,6 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -151,6 +152,34 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+        }
+
+        [Test]
+        public void Execute_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
+        {
+            (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(target);
+            officer.SetBaseRating(OfficerRating.Leadership, 40);
+
+            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            mission.SuccessProbabilityTable = new ProbabilityTable(
+                new Dictionary<int, int>
+                {
+                    { -40, 0 },
+                    { 20, 100 },
+                    { 21, 0 },
+                }
+            );
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
         }
 
         [Test]
