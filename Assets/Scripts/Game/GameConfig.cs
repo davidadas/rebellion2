@@ -778,8 +778,10 @@ namespace Rebellion.Game
             /// <summary>Percentage of defender espionage subtracted from the decoy score.</summary>
             public int DecoyDefenderScalingPercent { get; set; }
 
+            /// <summary>Percentage of defender espionage applied to mission foil checks.</summary>
             public int FoilDefenderScalingPercent { get; set; }
 
+            /// <summary>Flat modifier applied to mission foil checks.</summary>
             public int FoilFlatScoreAdjustment { get; set; }
 
             /// <summary>Diplomacy success probability table.</summary>

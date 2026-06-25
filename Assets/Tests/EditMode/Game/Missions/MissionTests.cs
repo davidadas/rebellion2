@@ -19,13 +19,15 @@ namespace Rebellion.Tests.Game.Missions
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode specificTarget = null
         )
         {
             MissionContext ctx = new MissionContext
             {
                 OwnerInstanceId = ownerInstanceId,
                 Target = target,
+                SpecificTarget = specificTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
@@ -43,11 +45,20 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+            };
+            game.AttachNode(building, enemyPlanet);
+
             SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(new StubRNG());

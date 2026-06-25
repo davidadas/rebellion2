@@ -81,7 +81,7 @@ namespace Rebellion.Game.Missions
 
             if (
                 ctx.SpecificTarget != null
-                && sabotageTarget.GetParentOfType<Planet>() != missionPlanet
+                && sabotageTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
             )
                 return null;
 
@@ -129,7 +129,19 @@ namespace Rebellion.Game.Missions
             if (target is Planet planet)
                 return planet.GetAllBuildings().Count > 0;
 
-            return target != null && target.GetParentOfType<Planet>() == GetParent() as Planet;
+            if (target == null || target is Officer)
+                return false;
+
+            if (
+                target is IManufacturable manufacturable
+                && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
+            )
+                return false;
+
+            if (target is IMovable movable && movable.Movement != null)
+                return false;
+
+            return target.GetParentOfType<Planet>() == GetParent() as Planet;
         }
 
         /// <summary>

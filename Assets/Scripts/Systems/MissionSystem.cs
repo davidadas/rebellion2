@@ -82,21 +82,11 @@ namespace Rebellion.Systems
             if (liveTarget == null)
                 return false;
 
-            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
-            if (targetOfficer != null && liveTargetOfficer == null)
-                return false;
-
             IMissionParticipant liveParticipant = ResolveMissionParticipant(participant);
             if (liveParticipant == null)
                 return false;
 
-            ISceneNode liveSpecificTarget =
-                specificTarget == null ? null : ResolveSceneNode(specificTarget);
-            if (specificTarget != null && liveSpecificTarget == null)
-                return false;
-
-            if (liveTargetOfficer == null && liveSpecificTarget is Officer selectedOfficer)
-                liveTargetOfficer = selectedOfficer;
+            Officer selectedTargetOfficer = targetOfficer ?? specificTarget as Officer;
 
             return _missionFactory.TryCreateMission(
                 missionType,
@@ -106,9 +96,9 @@ namespace Rebellion.Systems
                 liveTarget,
                 out _,
                 _provider,
-                liveTargetOfficer,
+                selectedTargetOfficer,
                 discipline,
-                liveSpecificTarget
+                specificTarget
             );
         }
 
@@ -175,16 +165,8 @@ namespace Rebellion.Systems
             mainParticipants = ResolveMissionParticipants(mainParticipants);
             decoyParticipants = ResolveMissionParticipants(decoyParticipants);
             target = ResolveSceneNode(target);
-            ISceneNode liveSpecificTarget =
-                specificTarget == null ? null : ResolveSceneNode(specificTarget);
-            if (specificTarget != null && liveSpecificTarget == null)
-                return false;
 
-            Officer liveTargetOfficer = ResolveTargetOfficer(targetOfficer);
-            if (targetOfficer != null && liveTargetOfficer == null)
-                return false;
-            if (liveTargetOfficer == null && liveSpecificTarget is Officer selectedOfficer)
-                liveTargetOfficer = selectedOfficer;
+            Officer selectedTargetOfficer = targetOfficer ?? specificTarget as Officer;
 
             if (mainParticipants == null || decoyParticipants == null || target == null)
                 return false;
@@ -194,9 +176,9 @@ namespace Rebellion.Systems
                 mainParticipants,
                 decoyParticipants,
                 target,
-                liveTargetOfficer,
+                selectedTargetOfficer,
                 discipline,
-                liveSpecificTarget
+                specificTarget
             );
         }
 
@@ -283,16 +265,6 @@ namespace Rebellion.Systems
             return participant is ISceneNode node
                 ? ResolveSceneNode(node) as IMissionParticipant
                 : null;
-        }
-
-        /// <summary>
-        /// Resolves an officer target to its live scene graph instance.
-        /// </summary>
-        /// <param name="targetOfficer">The officer reference to resolve.</param>
-        /// <returns>The live officer target, or null when no target is supplied or resolvable.</returns>
-        private Officer ResolveTargetOfficer(Officer targetOfficer)
-        {
-            return targetOfficer == null ? null : ResolveSceneNode(targetOfficer) as Officer;
         }
 
         /// <summary>

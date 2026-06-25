@@ -1657,7 +1657,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMission_StaleCompletedViewTarget_ReturnsFalse()
+        public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Regiment liveRegiment = EntityFactory.CreateRegiment("regiment", "rebels");
+            liveRegiment.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(liveRegiment, targetPlanet);
+
+            Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
+            Regiment viewRegiment = EntityFactory.CreateRegiment(liveRegiment.InstanceID, "rebels");
+            viewRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            viewRegiment.SetParent(viewPlanet);
+
+            bool canCreate = missions.CanCreateMission(
+                MissionType.Sabotage,
+                participant,
+                viewPlanet,
+                specificTarget: viewRegiment
+            );
+
+            Assert.IsTrue(canCreate);
+            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+        }
+
+        [Test]
+        public void InitiateMission_StaleCompletedViewTarget_CreatesMissionFromKnownIntel()
         {
             (
                 GameRoot game,
@@ -1683,7 +1714,46 @@ namespace Rebellion.Tests.Systems
                 specificTarget: viewRegiment
             );
 
-            Assert.IsFalse(created);
+            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Assert.IsTrue(created);
+            Assert.AreEqual(targetPlanet, mission.GetParent());
+            Assert.AreEqual(liveRegiment.InstanceID, mission.TargetInstanceID);
+        }
+
+        [Test]
+        public void UpdateMission_StaleCompletedViewTargetStillBuildingAtArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Regiment liveRegiment = EntityFactory.CreateRegiment("regiment", "rebels");
+            liveRegiment.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(liveRegiment, targetPlanet);
+
+            Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
+            Regiment viewRegiment = EntityFactory.CreateRegiment(liveRegiment.InstanceID, "rebels");
+            viewRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            viewRegiment.SetParent(viewPlanet);
+
+            missions.InitiateMission(
+                MissionType.Sabotage,
+                participant,
+                viewPlanet,
+                specificTarget: viewRegiment
+            );
+            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            participant.Movement = null;
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
         }
 
@@ -1801,6 +1871,50 @@ namespace Rebellion.Tests.Systems
             List<GameResult> results = missions.UpdateMission(mission);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(0, game.GetSceneNodesByType<AbductionMission>().Count);
+        }
+
+        [Test]
+        public void UpdateMission_AbductionTargetMovedAfterFactionViewSnapshot_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Planet otherPlanet = new Planet
+            {
+                InstanceID = "other-planet",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { "rebels", 50 } },
+            };
+            game.AttachNode(otherPlanet, targetPlanet.GetParent());
+
+            Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
+            Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
+            viewTarget.SetParent(viewPlanet);
+
+            game.MoveNode(target, otherPlanet);
+
+            bool created = missions.InitiateMission(
+                MissionType.Abduction,
+                participant,
+                viewPlanet,
+                specificTarget: viewTarget
+            );
+            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
+            participant.Movement = null;
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.IsTrue(created);
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.AreEqual(0, game.GetSceneNodesByType<AbductionMission>().Count);
