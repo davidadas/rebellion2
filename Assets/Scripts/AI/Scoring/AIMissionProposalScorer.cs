@@ -69,12 +69,12 @@ namespace Rebellion.AI.Scoring
         private double ScoreRecruitment(AITurnContext context, AIMissionProposal proposal)
         {
             int leadership = GetParticipantRating(proposal.Participant, OfficerRating.Leadership);
-            int support =
+            int opposingSupport =
                 proposal.TargetPlanet?.GetOpposingPopularSupport(context.Faction.InstanceID) ?? 0;
             ProbabilityTable table = new ProbabilityTable(
                 context.Game.Config.ProbabilityTables.Mission.Recruitment
             );
-            return table.Lookup(leadership - support);
+            return table.Lookup(leadership - opposingSupport);
         }
 
         /// <summary>
