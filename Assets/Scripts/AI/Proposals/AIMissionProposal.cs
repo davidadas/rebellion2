@@ -182,11 +182,14 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             return context.Missions.CanCreateMission(
-                MissionTypeID,
-                Participant,
-                TargetPlanet,
-                TargetOfficer,
-                Discipline
+                new MissionStartRequest
+                {
+                    MissionTypeID = MissionTypeID,
+                    Target = TargetPlanet,
+                    TargetOfficer = TargetOfficer,
+                    Discipline = Discipline,
+                    MainParticipants = new List<IMissionParticipant> { Participant },
+                }
             );
         }
 
@@ -202,11 +205,14 @@ namespace Rebellion.AI.Proposals
             try
             {
                 context.Missions.InitiateMission(
-                    MissionTypeID,
-                    Participant,
-                    TargetPlanet,
-                    TargetOfficer,
-                    Discipline
+                    new MissionStartRequest
+                    {
+                        MissionTypeID = MissionTypeID,
+                        Target = TargetPlanet,
+                        TargetOfficer = TargetOfficer,
+                        Discipline = Discipline,
+                        MainParticipants = new List<IMissionParticipant> { Participant },
+                    }
                 );
             }
             catch (InvalidOperationException)

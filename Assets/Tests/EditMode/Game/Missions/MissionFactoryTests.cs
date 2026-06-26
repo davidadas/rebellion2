@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -56,17 +57,33 @@ namespace Rebellion.Tests.Game.Missions
             };
         }
 
+        private static MissionStartRequest CreateRequest(
+            string missionTypeID,
+            string ownerInstanceID,
+            IMissionParticipant participant,
+            Planet target,
+            IRandomNumberProvider provider = null,
+            ResearchDiscipline? discipline = null
+        )
+        {
+            return new MissionStartRequest
+            {
+                MissionTypeID = missionTypeID,
+                OwnerInstanceID = ownerInstanceID,
+                Target = target,
+                MainParticipants = new List<IMissionParticipant> { participant },
+                RandomProvider = provider,
+                Discipline = discipline,
+            };
+        }
+
         [Test]
         public void TryCreateMission_ValidSabotageTarget_ReturnsTrue()
         {
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                SabotageMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
+                CreateRequest(SabotageMission.MissionTypeID, "empire", officer, planet),
                 out Mission mission
             );
 
@@ -82,11 +99,7 @@ namespace Rebellion.Tests.Game.Missions
                 .DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
 
             bool created = factory.TryCreateMission(
-                SabotageMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
+                CreateRequest(SabotageMission.MissionTypeID, "empire", officer, planet),
                 out _
             );
 
@@ -99,11 +112,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                SabotageMission.MissionTypeID,
-                "unknown",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
+                CreateRequest(SabotageMission.MissionTypeID, "unknown", officer, planet),
                 out _
             );
 
@@ -118,13 +127,14 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                RecruitmentMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
-                out Mission mission,
-                provider: new StubRNG()
+                CreateRequest(
+                    RecruitmentMission.MissionTypeID,
+                    "empire",
+                    officer,
+                    planet,
+                    provider: new StubRNG()
+                ),
+                out Mission mission
             );
 
             Assert.IsTrue(created);
@@ -139,13 +149,14 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                RecruitmentMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
-                out Mission mission,
-                provider: null
+                CreateRequest(
+                    RecruitmentMission.MissionTypeID,
+                    "empire",
+                    officer,
+                    planet,
+                    provider: null
+                ),
+                out Mission mission
             );
 
             Assert.IsTrue(created);
@@ -159,13 +170,14 @@ namespace Rebellion.Tests.Game.Missions
             officer.IsMain = true;
 
             bool created = factory.TryCreateMission(
-                RecruitmentMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
-                out _,
-                provider: new StubRNG()
+                CreateRequest(
+                    RecruitmentMission.MissionTypeID,
+                    "empire",
+                    officer,
+                    planet,
+                    provider: new StubRNG()
+                ),
+                out _
             );
 
             Assert.IsFalse(created);
@@ -177,13 +189,14 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                ResearchMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
-                out Mission mission,
-                discipline: ResearchDiscipline.ShipDesign
+                CreateRequest(
+                    ResearchMission.MissionTypeID,
+                    "empire",
+                    officer,
+                    planet,
+                    discipline: ResearchDiscipline.ShipDesign
+                ),
+                out Mission mission
             );
 
             Assert.IsTrue(created);
@@ -197,11 +210,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                ResearchMission.MissionTypeID,
-                "empire",
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>(),
-                planet,
+                CreateRequest(ResearchMission.MissionTypeID, "empire", officer, planet),
                 out _
             );
 
