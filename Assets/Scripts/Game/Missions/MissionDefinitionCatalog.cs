@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Research;
 
 namespace Rebellion.Game.Missions
 {
@@ -113,6 +114,43 @@ namespace Rebellion.Game.Missions
             },
         };
 
+        private static readonly List<MissionOption> _options = new List<MissionOption>
+        {
+            CreateOption(MissionTypeIDs.Diplomacy),
+            CreateOption(MissionTypeIDs.Espionage),
+            CreateOption(
+                MissionTypeIDs.Research,
+                ResearchDiscipline.ShipDesign,
+                "Ship Design Research"
+            ),
+            CreateOption(
+                MissionTypeIDs.Research,
+                ResearchDiscipline.FacilityDesign,
+                "Facility Design Research"
+            ),
+            CreateOption(
+                MissionTypeIDs.Research,
+                ResearchDiscipline.TroopTraining,
+                "Troop Training Research"
+            ),
+            CreateOption(MissionTypeIDs.Reconnaissance),
+            CreateOption(MissionTypeIDs.Recruitment),
+            CreateOption(MissionTypeIDs.InciteUprising),
+            CreateOption(MissionTypeIDs.SubdueUprising),
+            CreateOption(MissionTypeIDs.JediTraining),
+            CreateOption(MissionTypeIDs.Rescue),
+            CreateOption(MissionTypeIDs.Abduction),
+            CreateOption(MissionTypeIDs.Assassination),
+            CreateOption(MissionTypeIDs.Sabotage),
+        };
+
+        public static IReadOnlyList<MissionOption> Options => _options;
+
+        /// <summary>
+        /// Returns the mission definition for a mission type ID.
+        /// </summary>
+        /// <param name="instanceID">The mission type ID to look up.</param>
+        /// <returns>The matching definition, or null when the ID is unknown.</returns>
         public static MissionDefinition Get(string instanceID)
         {
             return instanceID != null && _definitions.TryGetValue(instanceID, out var definition)
@@ -120,6 +158,15 @@ namespace Rebellion.Game.Missions
                 : null;
         }
 
+        /// <summary>
+        /// Creates a mission definition entry for the catalog.
+        /// </summary>
+        /// <param name="instanceID">The mission type ID.</param>
+        /// <param name="behavior">The behavior used by this mission type.</param>
+        /// <param name="participantRating">The rating primary participants use for the mission.</param>
+        /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
+        /// <param name="displayName">The display name for the mission.</param>
+        /// <returns>The configured mission definition.</returns>
         private static MissionDefinition Create(
             string instanceID,
             MissionBehavior behavior,
@@ -136,6 +183,32 @@ namespace Rebellion.Game.Missions
                 DecoyParticipantRating = decoyParticipantRating,
                 Behavior = behavior,
             };
+        }
+
+        /// <summary>
+        /// Creates a selectable mission option from a catalog mission definition.
+        /// </summary>
+        /// <param name="missionTypeID">The mission type ID used to find the backing definition.</param>
+        /// <param name="discipline">The research discipline used by research options.</param>
+        /// <param name="displayName">The display name override for this option.</param>
+        /// <returns>The configured mission option.</returns>
+        private static MissionOption CreateOption(
+            string missionTypeID,
+            ResearchDiscipline? discipline = null,
+            string displayName = null
+        )
+        {
+            MissionDefinition definition = Get(missionTypeID);
+            if (definition == null)
+                throw new KeyNotFoundException(missionTypeID);
+
+            return new MissionOption(
+                missionTypeID,
+                displayName ?? definition.DisplayName,
+                definition.ParticipantRating,
+                definition.DecoyParticipantRating,
+                discipline
+            );
         }
     }
 }

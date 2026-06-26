@@ -15,9 +15,13 @@ namespace Rebellion.Game.Missions
 {
     internal sealed class ReconnaissanceMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
+
+        /// <inheritdoc />
         public override bool ImprovesParticipantRatings => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -47,12 +51,14 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet planet
                 && !planet.WasVisitedBy(mission.GetOwnerInstanceID());
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -67,6 +73,7 @@ namespace Rebellion.Game.Missions
 
     internal sealed class DiplomacyMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -94,6 +101,7 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             if (mission.GetParent() is Planet planet)
@@ -109,12 +117,14 @@ namespace Rebellion.Game.Missions
             return null;
         }
 
+        /// <inheritdoc />
         public override double GetFoilProbability(
             Mission mission,
             double defenseScore,
             GameRoot game
         ) => 0;
 
+        /// <inheritdoc />
         public override double GetAgentProbability(
             Mission mission,
             IMissionParticipant agent,
@@ -132,6 +142,7 @@ namespace Rebellion.Game.Missions
             return mission.LookupSuccessProbability(game, score);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -165,6 +176,7 @@ namespace Rebellion.Game.Missions
             return new List<GameResult>();
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(Mission mission, GameRoot game)
         {
             if (mission.GetParent() is Planet planet)
@@ -180,6 +192,13 @@ namespace Rebellion.Game.Missions
             return false;
         }
 
+        /// <summary>
+        /// Returns the diplomacy support bonus for the mission owner.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="ownerInstanceID">The faction that owns the mission.</param>
+        /// <param name="bonus">The configured support bonus.</param>
+        /// <returns>The support bonus after faction settings are applied.</returns>
         private static int GetFactionSuccessSupportBonus(
             GameRoot game,
             string ownerInstanceID,
@@ -195,6 +214,14 @@ namespace Rebellion.Game.Missions
             return bonus;
         }
 
+        /// <summary>
+        /// Returns the diplomacy support shift for the target planet.
+        /// </summary>
+        /// <param name="planet">The planet whose support is changing.</param>
+        /// <param name="ownerInstanceID">The faction that owns the mission.</param>
+        /// <param name="config">The support shift configuration.</param>
+        /// <param name="provider">The random number provider used by support rolls.</param>
+        /// <returns>The rolled support shift.</returns>
         private static int GetFactionSupportShift(
             Planet planet,
             string ownerInstanceID,
@@ -224,6 +251,13 @@ namespace Rebellion.Game.Missions
             return 0;
         }
 
+        /// <summary>
+        /// Rolls a support shift from the configured base and range.
+        /// </summary>
+        /// <param name="baseShift">The configured base support shift.</param>
+        /// <param name="range">The configured support shift range.</param>
+        /// <param name="provider">The random number provider used by the roll.</param>
+        /// <returns>The rolled support shift.</returns>
         private static int RollSupportShift(
             int baseShift,
             int range,
@@ -233,6 +267,11 @@ namespace Rebellion.Game.Missions
             return baseShift + (range > 0 ? provider.NextInt(0, range + 1) : 0);
         }
 
+        /// <summary>
+        /// Returns the first completed regiment's uprising defense value on a planet.
+        /// </summary>
+        /// <param name="planet">The planet being checked.</param>
+        /// <returns>The regiment uprising defense value, or zero when none applies.</returns>
         private static int GetTargetTroopState(Planet planet)
         {
             foreach (Regiment regiment in planet.GetAllRegiments())
@@ -247,6 +286,7 @@ namespace Rebellion.Game.Missions
 
     internal sealed class RecruitmentMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             List<Officer> unrecruited = request.Game.GetUnrecruitedOfficers(
@@ -270,17 +310,20 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return game.GetUnrecruitedOfficers(mission.OwnerInstanceID).Count > 0;
         }
 
+        /// <inheritdoc />
         public override double GetFoilProbability(
             Mission mission,
             double defenseScore,
             GameRoot game
         ) => 0;
 
+        /// <inheritdoc />
         public override double GetAgentProbability(
             Mission mission,
             IMissionParticipant agent,
@@ -295,6 +338,7 @@ namespace Rebellion.Game.Missions
             return mission.LookupSuccessProbability(game, score);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -330,6 +374,7 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(Mission mission, GameRoot game)
         {
             return game.GetUnrecruitedOfficers(mission.OwnerInstanceID).Count > 0;
@@ -338,6 +383,7 @@ namespace Rebellion.Game.Missions
 
     internal sealed class SubdueUprisingMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -356,6 +402,7 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet p && p.IsInUprising
@@ -363,17 +410,20 @@ namespace Rebellion.Game.Missions
                 : MissionCompletionReason.Failure;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet { IsInUprising: true };
         }
 
+        /// <inheritdoc />
         public override double GetFoilProbability(
             Mission mission,
             double defenseScore,
             GameRoot game
         ) => 0;
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -397,8 +447,10 @@ namespace Rebellion.Game.Missions
 
     internal sealed class InciteUprisingMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -422,6 +474,7 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet p && p.IsInUprising
@@ -429,6 +482,7 @@ namespace Rebellion.Game.Missions
                 : null;
         }
 
+        /// <inheritdoc />
         public override double GetAgentProbability(
             Mission mission,
             IMissionParticipant agent,
@@ -457,6 +511,7 @@ namespace Rebellion.Game.Missions
             return mission.LookupSuccessProbability(game, score);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -480,8 +535,10 @@ namespace Rebellion.Game.Missions
 
     internal sealed class AbductionMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -509,16 +566,19 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -547,6 +607,7 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <inheritdoc />
         public override IEnumerable<IMovable> GetSuccessfulReturnPassengers(
             Mission mission,
             GameRoot game
@@ -559,6 +620,12 @@ namespace Rebellion.Game.Missions
                 yield return target;
         }
 
+        /// <summary>
+        /// Returns whether the abduction target is still available at the mission location.
+        /// </summary>
+        /// <param name="mission">The mission being checked.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target can still be abducted.</returns>
         private static bool HasValidTarget(Mission mission, GameRoot game)
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(
@@ -571,8 +638,10 @@ namespace Rebellion.Game.Missions
 
     internal sealed class AssassinationMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -601,16 +670,19 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -656,6 +728,12 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <summary>
+        /// Returns whether the assassination target is still available at the mission location.
+        /// </summary>
+        /// <param name="mission">The mission being checked.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target can still be assassinated.</returns>
         private static bool HasValidTarget(Mission mission, GameRoot game)
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(
@@ -666,6 +744,12 @@ namespace Rebellion.Game.Missions
                 && target.GetParentOfType<Planet>() == mission.GetParent() as Planet;
         }
 
+        /// <summary>
+        /// Rolls the injury severity applied by an assassination.
+        /// </summary>
+        /// <param name="config">The assassination configuration.</param>
+        /// <param name="provider">The random number provider used by the roll.</param>
+        /// <returns>The rolled injury severity.</returns>
         private static int RollInjury(
             GameConfig.AssassinationConfig config,
             IRandomNumberProvider provider
@@ -676,6 +760,12 @@ namespace Rebellion.Game.Missions
                 + provider.NextInt(0, config.SecondaryInjuryRange + 1);
         }
 
+        /// <summary>
+        /// Rolls whether an assassination kills its target.
+        /// </summary>
+        /// <param name="config">The assassination configuration.</param>
+        /// <param name="provider">The random number provider used by the roll.</param>
+        /// <returns>True when the target is killed.</returns>
         private static bool RollKillCheck(
             GameConfig.AssassinationConfig config,
             IRandomNumberProvider provider
@@ -687,8 +777,10 @@ namespace Rebellion.Game.Missions
 
     internal sealed class RescueMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -716,16 +808,19 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -761,6 +856,7 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <inheritdoc />
         public override IEnumerable<IMovable> GetSuccessfulReturnPassengers(
             Mission mission,
             GameRoot game
@@ -776,6 +872,12 @@ namespace Rebellion.Game.Missions
                 yield return target;
         }
 
+        /// <summary>
+        /// Returns whether the rescue target is still captive at the mission location.
+        /// </summary>
+        /// <param name="mission">The mission being checked.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target can still be rescued.</returns>
         private static bool HasValidTarget(Mission mission, GameRoot game)
         {
             Officer captive = game.GetSceneNodeByInstanceID<Officer>(
@@ -788,9 +890,13 @@ namespace Rebellion.Game.Missions
 
     internal sealed class SabotageMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
+
+        /// <inheritdoc />
         public override bool ImprovesParticipantRatings => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             if (request.Target == null)
@@ -831,16 +937,19 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return HasValidTarget(mission, game);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -867,6 +976,12 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <summary>
+        /// Returns whether the sabotage target is still valid at the mission location.
+        /// </summary>
+        /// <param name="mission">The mission being checked.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target can still be sabotaged.</returns>
         private static bool HasValidTarget(Mission mission, GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(mission.TargetInstanceID);
@@ -888,6 +1003,12 @@ namespace Rebellion.Game.Missions
             return target.GetParentOfType<Planet>() == mission.GetParent() as Planet;
         }
 
+        /// <summary>
+        /// Returns the concrete object destroyed by a sabotage mission.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The sabotage target, or null when none is available.</returns>
         private static ISceneNode GetSabotageTarget(Mission mission, GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(mission.TargetInstanceID);
@@ -901,9 +1022,13 @@ namespace Rebellion.Game.Missions
 
     internal sealed class EspionageMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool CanceledOnOwnershipChange => false;
+
+        /// <inheritdoc />
         public override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -919,11 +1044,13 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet;
         }
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             Mission mission,
             GameRoot game,
@@ -958,6 +1085,7 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -974,6 +1102,11 @@ namespace Rebellion.Game.Missions
             return new List<GameResult>();
         }
 
+        /// <summary>
+        /// Improves successful espionage participants when the target is hostile.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="participants">The participants that succeeded.</param>
         private static void ImproveSuccessfulParticipants(
             Mission mission,
             List<IMissionParticipant> participants
@@ -995,6 +1128,7 @@ namespace Rebellion.Game.Missions
 
     internal sealed class ResearchMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -1023,6 +1157,7 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             Planet planet = mission.GetParent() as Planet;
@@ -1043,18 +1178,21 @@ namespace Rebellion.Game.Missions
             return MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
             return mission.GetParent() is Planet p
                 && p.GetOwnerInstanceID() == mission.OwnerInstanceID;
         }
 
+        /// <inheritdoc />
         public override double GetFoilProbability(
             Mission mission,
             double defenseScore,
             GameRoot game
         ) => 0;
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             Mission mission,
             GameRoot game,
@@ -1097,11 +1235,17 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(Mission mission, GameRoot game)
         {
             return IsMissionSatisfied(mission, game);
         }
 
+        /// <summary>
+        /// Returns the display name for a research discipline mission.
+        /// </summary>
+        /// <param name="discipline">The research discipline being advanced.</param>
+        /// <returns>The mission display name.</returns>
         private static string GetMissionName(ResearchDiscipline discipline)
         {
             return discipline switch
@@ -1113,6 +1257,12 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <summary>
+        /// Returns whether a planet has a facility that can support the research discipline.
+        /// </summary>
+        /// <param name="planet">The planet being checked.</param>
+        /// <param name="discipline">The research discipline being advanced.</param>
+        /// <returns>True when the planet can support the research mission.</returns>
         internal static bool HasResearchFacility(Planet planet, ResearchDiscipline discipline)
         {
             if (planet == null || discipline == ResearchDiscipline.None)
@@ -1141,6 +1291,13 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <summary>
+        /// Accumulates research progress from successful participants.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="config">The research configuration.</param>
+        /// <param name="provider">The random number provider used by research rolls.</param>
+        /// <returns>The research points earned this execution.</returns>
         private static int AccumulatePointsFromParticipants(
             Mission mission,
             GameConfig.ResearchConfig config,
@@ -1160,6 +1317,13 @@ namespace Rebellion.Game.Missions
             return earnedPoints;
         }
 
+        /// <summary>
+        /// Rolls whether a research participant contributes progress.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="officer">The officer attempting research.</param>
+        /// <param name="provider">The random number provider used by the roll.</param>
+        /// <returns>True when the officer contributes progress.</returns>
         private static bool RollSuccess(
             Mission mission,
             Officer officer,
@@ -1170,6 +1334,12 @@ namespace Rebellion.Game.Missions
             return provider.NextDouble() * 100 < chance;
         }
 
+        /// <summary>
+        /// Rolls the research reward for a successful participant.
+        /// </summary>
+        /// <param name="config">The research configuration.</param>
+        /// <param name="provider">The random number provider used by the roll.</param>
+        /// <returns>The research points awarded.</returns>
         private static int RollReward(
             GameConfig.ResearchConfig config,
             IRandomNumberProvider provider
@@ -1178,6 +1348,14 @@ namespace Rebellion.Game.Missions
             return config.BaseResearchPoints + provider.NextInt(0, config.ResearchDiceRange + 1);
         }
 
+        /// <summary>
+        /// Applies accumulated research progress and emits research results.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="faction">The faction receiving research progress.</param>
+        /// <param name="earnedPoints">The research points to apply.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="results">The result list to append to.</param>
         private static void AwardAccumulatedPoints(
             Mission mission,
             Faction faction,
@@ -1195,6 +1373,14 @@ namespace Rebellion.Game.Missions
                 results.Add(BuildExhaustedResult(mission, faction, game));
         }
 
+        /// <summary>
+        /// Creates a result for a newly ordered research item.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="faction">The faction receiving the research item.</param>
+        /// <param name="unlocked">The technology that became available.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The research ordered result.</returns>
         private static ResearchOrderedResult BuildOrderedResult(
             Mission mission,
             Faction faction,
@@ -1213,6 +1399,13 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <summary>
+        /// Creates a result indicating no further research remains for the discipline.
+        /// </summary>
+        /// <param name="mission">The mission being resolved.</param>
+        /// <param name="faction">The faction whose research is exhausted.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The research exhausted result.</returns>
         private static ResearchExhaustedResult BuildExhaustedResult(
             Mission mission,
             Faction faction,
@@ -1232,8 +1425,10 @@ namespace Rebellion.Game.Missions
 
     internal sealed class JediTrainingMissionBehavior : MissionBehavior
     {
+        /// <inheritdoc />
         public override bool ImprovesParticipantRatings => false;
 
+        /// <inheritdoc />
         public override Mission TryCreate(MissionStartRequest request, MissionDefinition definition)
         {
             Planet planet = RequirePlanet(request.Target);
@@ -1256,6 +1451,7 @@ namespace Rebellion.Game.Missions
             return mission;
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(Mission mission, GameRoot game)
         {
             Officer trainer = game.GetSceneNodeByInstanceID<Officer>(mission.TrainerInstanceID);
@@ -1265,6 +1461,7 @@ namespace Rebellion.Game.Missions
             return trainer.IsCaptured || trainer.IsKilled ? MissionCompletionReason.Failure : null;
         }
 
+        /// <inheritdoc />
         public override double GetAgentProbability(
             Mission mission,
             IMissionParticipant agent,
@@ -1277,12 +1474,14 @@ namespace Rebellion.Game.Missions
             return 0;
         }
 
+        /// <inheritdoc />
         public override double GetFoilProbability(
             Mission mission,
             double defenseScore,
             GameRoot game
         ) => 0;
 
+        /// <inheritdoc />
         public override List<GameResult> OnSuccess(
             Mission mission,
             GameRoot game,
@@ -1327,12 +1526,20 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(Mission mission, GameRoot game)
         {
             int threshold = game.Config.Jedi.ForceQualifiedThreshold;
             return mission.MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);
         }
 
+        /// <summary>
+        /// Selects the strongest available trainer on a planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="ownerInstanceId">The faction requesting training.</param>
+        /// <param name="planet">The planet hosting the training mission.</param>
+        /// <returns>The selected trainer ID, or null when no trainer is available.</returns>
         private static string SelectTrainer(GameRoot game, string ownerInstanceId, Planet planet)
         {
             Officer trainer = game.GetSceneNodesByType<Officer>()

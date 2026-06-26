@@ -1556,6 +1556,104 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void GetAvailableMissionOptions_OwnPlanetResearch_ReturnsResearchOptions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            MissionOption[] researchOptions = options
+                .Where(option => option.MissionTypeID == MissionTypeIDs.Research)
+                .ToArray();
+            Assert.AreEqual(3, researchOptions.Length);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    ResearchDiscipline.ShipDesign,
+                    ResearchDiscipline.FacilityDesign,
+                    ResearchDiscipline.TroopTraining,
+                },
+                researchOptions.Select(option => option.Discipline).ToArray()
+            );
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_DisallowedResearch_ExcludesResearchOptions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            game.Factions.Single().DisallowedMissionTypeIDs.Add(MissionTypeIDs.Research);
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_ReconnaissanceSpecialForces_ReturnsReconnaissanceOption()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "sys1",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(target, system);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
+            game.AttachNode(specialForces, origin);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, specialForces, target)
+            );
+
+            Assert.AreEqual(1, options.Count);
+            Assert.AreEqual(MissionTypeIDs.Reconnaissance, options.Single().MissionTypeID);
+        }
+
+        [Test]
         public void InitiateMission_WithFactionViewObjects_UsesLiveSceneGraphNodes()
         {
             (

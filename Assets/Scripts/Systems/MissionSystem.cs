@@ -65,6 +65,19 @@ namespace Rebellion.Systems
                 && _missionFactory.TryCreateMission(resolvedRequest, out _);
         }
 
+        /// <summary>
+        /// Returns the mission options available for the supplied mission start request.
+        /// </summary>
+        /// <param name="request">The mission start request to resolve and evaluate.</param>
+        /// <returns>The mission options that can be created from the resolved request.</returns>
+        public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
+        {
+            MissionStartRequest resolvedRequest = ResolveStartRequest(request);
+            return resolvedRequest != null
+                ? _missionFactory.GetAvailableMissionOptions(resolvedRequest)
+                : new List<MissionOption>();
+        }
+
         public bool InitiateMission(MissionStartRequest request)
         {
             MissionStartRequest resolvedRequest = ResolveStartRequest(request);

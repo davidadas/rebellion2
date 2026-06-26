@@ -17,6 +17,27 @@ namespace Rebellion.Game.Missions
             _game = game;
         }
 
+        /// <summary>
+        /// Returns the mission options that can create a mission from the supplied request.
+        /// </summary>
+        /// <param name="request">The start request containing the target and participants to evaluate.</param>
+        /// <returns>The mission options that pass mission creation validation.</returns>
+        public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
+        {
+            List<MissionOption> options = new List<MissionOption>();
+            if (request == null)
+                return options;
+
+            foreach (MissionOption option in MissionDefinitionCatalog.Options)
+            {
+                MissionStartRequest optionRequest = CreateOptionRequest(request, option);
+                if (TryCreateMission(optionRequest, out _))
+                    options.Add(option);
+            }
+
+            return options;
+        }
+
         public bool TryCreateMission(MissionStartRequest request, out Mission mission)
         {
             mission = null;
@@ -59,6 +80,32 @@ namespace Rebellion.Game.Missions
             request.DecoyParticipants = decoyParticipants;
             mission = behavior.TryCreate(request, definition);
             return mission != null;
+        }
+
+        /// <summary>
+        /// Creates a mission start request for a specific mission option.
+        /// </summary>
+        /// <param name="request">The source request containing target and participant context.</param>
+        /// <param name="option">The mission option being evaluated.</param>
+        /// <returns>The request populated with the option's mission type and discipline.</returns>
+        private static MissionStartRequest CreateOptionRequest(
+            MissionStartRequest request,
+            MissionOption option
+        )
+        {
+            return new MissionStartRequest
+            {
+                Game = request.Game,
+                MissionTypeID = option.MissionTypeID,
+                OwnerInstanceID = request.OwnerInstanceID,
+                Target = request.Target,
+                SpecificTarget = request.SpecificTarget,
+                MainParticipants = request.MainParticipants,
+                DecoyParticipants = request.DecoyParticipants,
+                RandomProvider = request.RandomProvider,
+                TargetOfficer = request.TargetOfficer,
+                Discipline = option.Discipline,
+            };
         }
     }
 }
