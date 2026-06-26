@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AssassinationMissionTests
     {
-        private static AssassinationMission CreateAssassinationMission(
+        private static Mission CreateAssassinationMission(
             GameRoot game,
             string ownerInstanceId,
             ISceneNode target,
@@ -24,16 +24,15 @@ namespace Rebellion.Tests.Game.Missions
             Officer targetOfficer
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-                TargetOfficer = targetOfficer,
-            };
-            return AssassinationMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Assassination,
+                game,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                targetOfficer: targetOfficer
+            );
         }
 
         [Test]
@@ -50,7 +49,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -77,7 +76,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 null,
@@ -100,7 +99,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 officer,
@@ -122,7 +121,7 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -151,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
             game.AttachNode(friendly, empPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -181,7 +180,7 @@ namespace Rebellion.Tests.Game.Missions
             target.IsCaptured = true;
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -208,7 +207,7 @@ namespace Rebellion.Tests.Game.Missions
             target.IsKilled = true;
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -233,7 +232,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -262,7 +261,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -308,7 +307,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -354,7 +353,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -406,7 +405,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -446,7 +445,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AssassinationMission mission = CreateAssassinationMission(
+            Mission mission = CreateAssassinationMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -474,7 +473,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            AssassinationMission mission = new AssassinationMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -489,8 +488,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            AssassinationMission deserialized =
-                SerializationHelper.Deserialize<AssassinationMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Assassination", deserialized.ConfigKey);

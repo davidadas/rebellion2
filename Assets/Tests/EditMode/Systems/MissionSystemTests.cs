@@ -409,15 +409,15 @@ namespace Rebellion.Tests.Systems
         }
 
         /// <summary>
-        /// Builds a scene with a rebels-owned planet, a rebels officer running DiplomacyMission,
-        /// and an empire officer running InciteUprisingMission. Both missions are advanced to
+        /// Builds a scene with a rebels-owned planet, a rebels officer running Mission,
+        /// and an empire officer running Mission. Both missions are advanced to
         /// MaxProgress - 1 so a single UpdateMission call completes each one.
         /// The InciteUprising table is seeded to guarantee success with StubRNG.
         /// </summary>
         private (
             GameRoot game,
-            DiplomacyMission diplomacyMission,
-            InciteUprisingMission inciteMission,
+            Mission diplomacyMission,
+            Mission inciteMission,
             MissionSystem missionSystem
         ) BuildConcurrentMissionsScene()
         {
@@ -467,14 +467,13 @@ namespace Rebellion.Tests.Systems
 
             rebelsPlanet.AddVisitor("rebels");
 
-            DiplomacyMission diplomacyMission = DiplomacyMission.TryCreate(
-                new MissionContext
-                {
-                    OwnerInstanceId = "rebels",
-                    Target = rebelsPlanet,
-                    MainParticipants = new List<IMissionParticipant> { rebelsOfficer },
-                    DecoyParticipants = new List<IMissionParticipant>(),
-                }
+            Mission diplomacyMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                game,
+                "rebels",
+                rebelsPlanet,
+                new List<IMissionParticipant> { rebelsOfficer },
+                new List<IMissionParticipant>()
             );
             game.AttachNode(diplomacyMission, rebelsPlanet);
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
@@ -482,14 +481,13 @@ namespace Rebellion.Tests.Systems
                 { -200, 100 },
             };
 
-            InciteUprisingMission inciteMission = InciteUprisingMission.TryCreate(
-                new MissionContext
-                {
-                    OwnerInstanceId = "empire",
-                    Target = rebelsPlanet,
-                    MainParticipants = new List<IMissionParticipant> { empireOfficer },
-                    DecoyParticipants = new List<IMissionParticipant>(),
-                }
+            Mission inciteMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                game,
+                "empire",
+                rebelsPlanet,
+                new List<IMissionParticipant> { empireOfficer },
+                new List<IMissionParticipant>()
             );
             game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
             {
@@ -522,8 +520,8 @@ namespace Rebellion.Tests.Systems
             // On the following UpdateMission, the pre-tick abort check cancels diplo.
             (
                 GameRoot game,
-                DiplomacyMission diplomacyMission,
-                InciteUprisingMission inciteMission,
+                Mission diplomacyMission,
+                Mission inciteMission,
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
@@ -536,8 +534,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 0,
-                game.GetSceneNodesByType<DiplomacyMission>().Count,
-                "DiplomacyMission should be canceled on the tick after the uprising fires"
+                game.GetSceneNodesByType<Mission>().Count,
+                "Mission should be canceled on the tick after the uprising fires"
             );
         }
 
@@ -549,8 +547,8 @@ namespace Rebellion.Tests.Systems
             // immediately — diplo never executes.
             (
                 GameRoot game,
-                DiplomacyMission diplomacyMission,
-                InciteUprisingMission inciteMission,
+                Mission diplomacyMission,
+                Mission inciteMission,
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
@@ -559,8 +557,8 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(
                 0,
-                game.GetSceneNodesByType<DiplomacyMission>().Count,
-                "DiplomacyMission should be canceled immediately when uprising fires before its turn"
+                game.GetSceneNodesByType<Mission>().Count,
+                "Mission should be canceled immediately when uprising fires before its turn"
             );
         }
 
@@ -744,7 +742,7 @@ namespace Rebellion.Tests.Systems
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
-                CreateRequest(SabotageMission.MissionTypeID, officer, targetPlanet)
+                CreateRequest(MissionTypeIDs.Sabotage, officer, targetPlanet)
             );
 
             Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
@@ -800,7 +798,7 @@ namespace Rebellion.Tests.Systems
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
-                CreateRequest(SabotageMission.MissionTypeID, officer, targetPlanet)
+                CreateRequest(MissionTypeIDs.Sabotage, officer, targetPlanet)
             );
 
             Assert.IsTrue(
@@ -1121,15 +1119,14 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             planet.VisitingFactionIDs.Add("empire");
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = "empire",
-                Target = planet,
-                MainParticipants = new List<IMissionParticipant> { spy },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            EspionageMission mission = EspionageMission.TryCreate(ctx);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Espionage,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { spy },
+                new List<IMissionParticipant>()
+            );
             Assert.IsNotNull(mission);
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
@@ -1545,14 +1542,14 @@ namespace Rebellion.Tests.Systems
 
             system.InitiateMission(
                 CreateRequest(
-                    ResearchMission.MissionTypeID,
+                    MissionTypeIDs.Research,
                     officer,
                     planet,
                     discipline: ResearchDiscipline.FacilityDesign
                 )
             );
 
-            ResearchMission mission = game.GetSceneNodesByType<ResearchMission>().FirstOrDefault();
+            Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
             Assert.IsNotNull(mission, "Research mission should be created and attached");
             Assert.AreEqual(ResearchDiscipline.FacilityDesign, mission.Discipline);
             Assert.AreEqual(planet, mission.GetParent());
@@ -1582,14 +1579,14 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     new List<IMissionParticipant> { viewParticipant },
                     new List<IMissionParticipant>(),
                     viewPlanet
                 )
             );
 
-            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
             Assert.AreEqual(participant, mission.MainParticipants.Single());
@@ -1616,14 +1613,14 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
                     specificTarget: viewRegiment
                 )
             );
 
-            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
             Assert.AreEqual(regiment.InstanceID, mission.TargetInstanceID);
@@ -1646,14 +1643,14 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    AbductionMission.MissionTypeID,
+                    MissionTypeIDs.Abduction,
                     participant,
                     viewPlanet,
                     specificTarget: viewTarget
                 )
             );
 
-            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
             Assert.AreEqual(target.InstanceID, mission.TargetOfficerInstanceID);
@@ -1681,7 +1678,7 @@ namespace Rebellion.Tests.Systems
 
             bool canCreate = missions.CanCreateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
                     specificTarget: viewRegiment
@@ -1689,7 +1686,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(canCreate);
-            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1714,14 +1711,14 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
                     specificTarget: viewRegiment
                 )
             );
 
-            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
             Assert.AreEqual(liveRegiment.InstanceID, mission.TargetInstanceID);
@@ -1749,13 +1746,13 @@ namespace Rebellion.Tests.Systems
 
             missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
                     specificTarget: viewRegiment
                 )
             );
-            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
 
             List<GameResult> results = missions.UpdateMission(mission);
@@ -1763,7 +1760,7 @@ namespace Rebellion.Tests.Systems
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1780,7 +1777,7 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
                     specificTarget: target
@@ -1788,7 +1785,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsFalse(created);
-            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1816,7 +1813,7 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
                     specificTarget: regiment
@@ -1824,7 +1821,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsFalse(created);
-            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1844,13 +1841,13 @@ namespace Rebellion.Tests.Systems
 
             missions.InitiateMission(
                 CreateRequest(
-                    SabotageMission.MissionTypeID,
+                    MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
                     specificTarget: regiment
                 )
             );
-            SabotageMission mission = game.GetSceneNodesByType<SabotageMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
             game.DetachNode(regiment);
 
@@ -1859,7 +1856,7 @@ namespace Rebellion.Tests.Systems
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<SabotageMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1875,13 +1872,13 @@ namespace Rebellion.Tests.Systems
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
             missions.InitiateMission(
                 CreateRequest(
-                    AbductionMission.MissionTypeID,
+                    MissionTypeIDs.Abduction,
                     participant,
                     targetPlanet,
                     specificTarget: target
                 )
             );
-            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
             target.IsCaptured = true;
 
@@ -1890,7 +1887,7 @@ namespace Rebellion.Tests.Systems
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<AbductionMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1921,13 +1918,13 @@ namespace Rebellion.Tests.Systems
 
             bool created = missions.InitiateMission(
                 CreateRequest(
-                    AbductionMission.MissionTypeID,
+                    MissionTypeIDs.Abduction,
                     participant,
                     viewPlanet,
                     specificTarget: viewTarget
                 )
             );
-            AbductionMission mission = game.GetSceneNodesByType<AbductionMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
 
             List<GameResult> results = missions.UpdateMission(mission);
@@ -1936,7 +1933,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(created);
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<AbductionMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1952,14 +1949,13 @@ namespace Rebellion.Tests.Systems
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
             missions.InitiateMission(
                 CreateRequest(
-                    AssassinationMission.MissionTypeID,
+                    MissionTypeIDs.Assassination,
                     participant,
                     targetPlanet,
                     specificTarget: target
                 )
             );
-            AssassinationMission mission = game.GetSceneNodesByType<AssassinationMission>()
-                .Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
             target.IsCaptured = true;
 
@@ -1968,7 +1964,7 @@ namespace Rebellion.Tests.Systems
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<AssassinationMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
@@ -1984,13 +1980,13 @@ namespace Rebellion.Tests.Systems
             ) = BuildOfficerTargetMissionScene(friendlyTarget: true, capturedTarget: true);
             missions.InitiateMission(
                 CreateRequest(
-                    RescueMission.MissionTypeID,
+                    MissionTypeIDs.Rescue,
                     participant,
                     targetPlanet,
                     specificTarget: target
                 )
             );
-            RescueMission mission = game.GetSceneNodesByType<RescueMission>().Single();
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
             target.IsCaptured = false;
 
@@ -1999,7 +1995,7 @@ namespace Rebellion.Tests.Systems
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
-            Assert.AreEqual(0, game.GetSceneNodesByType<RescueMission>().Count);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]

@@ -46,49 +46,19 @@ namespace Rebellion.Game.Missions
                     return false;
             }
 
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = request.OwnerInstanceID,
-                Target = request.Target,
-                SpecificTarget = request.SpecificTarget,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-                RandomProvider = request.RandomProvider,
-                TargetOfficer = request.TargetOfficer,
-                Discipline = request.Discipline,
-            };
+            MissionDefinition definition = MissionDefinitionCatalog.Get(request.MissionTypeID);
+            if (definition == null)
+                return false;
 
-            mission = TryCreateByType(request.MissionTypeID, ctx);
+            MissionBehavior behavior = definition.Behavior;
+            if (behavior == null)
+                return false;
+
+            request.Game = _game;
+            request.MainParticipants = mainParticipants;
+            request.DecoyParticipants = decoyParticipants;
+            mission = behavior.TryCreate(request, definition);
             return mission != null;
-        }
-
-        /// <summary>
-        /// Dispatches to the appropriate mission subclass's TryCreate based on mission type.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type ID to create.</param>
-        /// <param name="ctx">Context containing participants, target, and owner info.</param>
-        /// <returns>The created mission, or null if creation fails.</returns>
-        private static Mission TryCreateByType(string missionTypeId, MissionContext ctx)
-        {
-            return missionTypeId switch
-            {
-                ReconnaissanceMission.MissionTypeID => ReconnaissanceMission.TryCreate(ctx),
-                DiplomacyMission.MissionTypeID => DiplomacyMission.TryCreate(ctx),
-                RecruitmentMission.MissionTypeID => RecruitmentMission.TryCreate(ctx),
-                SubdueUprisingMission.MissionTypeID => SubdueUprisingMission.TryCreate(ctx),
-                AbductionMission.MissionTypeID => AbductionMission.TryCreate(ctx),
-                AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(ctx),
-                EspionageMission.MissionTypeID => EspionageMission.TryCreate(ctx),
-                SabotageMission.MissionTypeID => SabotageMission.TryCreate(ctx),
-                InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(ctx),
-                RescueMission.MissionTypeID => RescueMission.TryCreate(ctx),
-                ResearchMission.MissionTypeID => ctx.Discipline.HasValue
-                    ? ResearchMission.TryCreate(ctx, ctx.Discipline.Value)
-                    : null,
-                JediTrainingMission.MissionTypeID => JediTrainingMission.TryCreate(ctx),
-                _ => null,
-            };
         }
     }
 }

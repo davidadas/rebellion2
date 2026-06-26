@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class AbductionMissionTests
     {
-        private static AbductionMission CreateAbductionMission(
+        private static Mission CreateAbductionMission(
             GameRoot game,
             string ownerInstanceId,
             ISceneNode target,
@@ -24,16 +24,15 @@ namespace Rebellion.Tests.Game.Missions
             Officer targetOfficer
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-                TargetOfficer = targetOfficer,
-            };
-            return AbductionMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Abduction,
+                game,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                targetOfficer: targetOfficer
+            );
         }
 
         private static void MakeAbductionAlwaysSucceed(GameRoot game)
@@ -60,7 +59,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -94,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -134,7 +133,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -157,7 +156,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -190,7 +189,7 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "sf1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                AllowedMissionTypeIDs = new List<string> { AbductionMission.MissionTypeID },
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Abduction },
             };
             game.AttachNode(commando, empPlanet);
 
@@ -198,7 +197,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(target, enemyPlanet);
             MakeAbductionAlwaysSucceed(game);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -240,7 +239,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -276,7 +275,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -328,7 +327,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -368,7 +367,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -404,7 +403,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 null,
@@ -427,7 +426,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 officer,
@@ -449,7 +448,7 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -478,7 +477,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer friendly = EntityFactory.CreateOfficer("friendly", "empire");
             game.AttachNode(friendly, empPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -508,7 +507,7 @@ namespace Rebellion.Tests.Game.Missions
             target.IsCaptured = true;
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -533,7 +532,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -562,7 +561,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
 
-            AbductionMission mission = CreateAbductionMission(
+            Mission mission = CreateAbductionMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -581,7 +580,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            AbductionMission mission = new AbductionMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -596,7 +595,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            AbductionMission deserialized = SerializationHelper.Deserialize<AbductionMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Abduction", deserialized.ConfigKey);

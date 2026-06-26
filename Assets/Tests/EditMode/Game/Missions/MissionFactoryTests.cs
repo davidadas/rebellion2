@@ -83,12 +83,12 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(SabotageMission.MissionTypeID, "empire", officer, planet),
+                CreateRequest(MissionTypeIDs.Sabotage, "empire", officer, planet),
                 out Mission mission
             );
 
             Assert.IsTrue(created);
-            Assert.IsInstanceOf<SabotageMission>(mission);
+            Assert.IsInstanceOf<Mission>(mission);
         }
 
         [Test]
@@ -96,10 +96,10 @@ namespace Rebellion.Tests.Game.Missions
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             game.Factions.Find(f => f.InstanceID == "empire")
-                .DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
+                .DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
 
             bool created = factory.TryCreateMission(
-                CreateRequest(SabotageMission.MissionTypeID, "empire", officer, planet),
+                CreateRequest(MissionTypeIDs.Sabotage, "empire", officer, planet),
                 out _
             );
 
@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(SabotageMission.MissionTypeID, "unknown", officer, planet),
+                CreateRequest(MissionTypeIDs.Sabotage, "unknown", officer, planet),
                 out _
             );
 
@@ -128,7 +128,7 @@ namespace Rebellion.Tests.Game.Missions
 
             bool created = factory.TryCreateMission(
                 CreateRequest(
-                    RecruitmentMission.MissionTypeID,
+                    MissionTypeIDs.Recruitment,
                     "empire",
                     officer,
                     planet,
@@ -138,7 +138,7 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsTrue(created);
-            Assert.IsInstanceOf<RecruitmentMission>(mission);
+            Assert.IsInstanceOf<Mission>(mission);
         }
 
         [Test]
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
 
             bool created = factory.TryCreateMission(
                 CreateRequest(
-                    RecruitmentMission.MissionTypeID,
+                    MissionTypeIDs.Recruitment,
                     "empire",
                     officer,
                     planet,
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsTrue(created);
-            Assert.IsInstanceOf<RecruitmentMission>(mission);
+            Assert.IsInstanceOf<Mission>(mission);
         }
 
         [Test]
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Game.Missions
 
             bool created = factory.TryCreateMission(
                 CreateRequest(
-                    RecruitmentMission.MissionTypeID,
+                    MissionTypeIDs.Recruitment,
                     "empire",
                     officer,
                     planet,
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
 
             bool created = factory.TryCreateMission(
                 CreateRequest(
-                    ResearchMission.MissionTypeID,
+                    MissionTypeIDs.Research,
                     "empire",
                     officer,
                     planet,
@@ -200,8 +200,8 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsTrue(created);
-            Assert.IsInstanceOf<ResearchMission>(mission);
-            Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
+            Assert.IsInstanceOf<Mission>(mission);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, ((Mission)mission).Discipline);
         }
 
         [Test]
@@ -210,7 +210,7 @@ namespace Rebellion.Tests.Game.Missions
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(ResearchMission.MissionTypeID, "empire", officer, planet),
+                CreateRequest(MissionTypeIDs.Research, "empire", officer, planet),
                 out _
             );
 

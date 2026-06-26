@@ -10,6 +10,7 @@ namespace Rebellion.Game.Research
     /// </summary>
     public enum ResearchDiscipline
     {
+        None = -1,
         ShipDesign = 0,
         FacilityDesign = 1,
         TroopTraining = 2,

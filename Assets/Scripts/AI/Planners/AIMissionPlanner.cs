@@ -94,7 +94,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, RecruitmentMission.MissionTypeID, target)
+                    new AIMissionProposal(participant, MissionTypeIDs.Recruitment, target)
                 );
         }
 
@@ -122,7 +122,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, DiplomacyMission.MissionTypeID, planet)
+                    new AIMissionProposal(participant, MissionTypeIDs.Diplomacy, planet)
                 );
         }
 
@@ -150,12 +150,7 @@ namespace Rebellion.AI.Planners
                     TryAddProposal(
                         context,
                         proposals,
-                        new AIMissionProposal(
-                            officer,
-                            ResearchMission.MissionTypeID,
-                            planet,
-                            discipline
-                        )
+                        new AIMissionProposal(officer, MissionTypeIDs.Research, planet, discipline)
                     );
             }
         }
@@ -179,7 +174,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participant, SabotageMission.MissionTypeID, planet)
+                    new AIMissionProposal(participant, MissionTypeIDs.Sabotage, planet)
                 );
         }
 
@@ -205,7 +200,7 @@ namespace Rebellion.AI.Planners
                     proposals,
                     new AIMissionProposal(
                         participant,
-                        AbductionMission.MissionTypeID,
+                        MissionTypeIDs.Abduction,
                         planet,
                         targetOfficer
                     )
@@ -215,7 +210,7 @@ namespace Rebellion.AI.Planners
                     proposals,
                     new AIMissionProposal(
                         participant,
-                        AssassinationMission.MissionTypeID,
+                        MissionTypeIDs.Assassination,
                         planet,
                         targetOfficer
                     )

@@ -34,18 +34,18 @@ namespace Rebellion.AI.Scoring
 
             return missionProposal.MissionTypeID switch
             {
-                RecruitmentMission.MissionTypeID => ScoreRecruitment(context, missionProposal),
-                DiplomacyMission.MissionTypeID => ScoreDiplomacy(context, missionProposal),
-                ResearchMission.MissionTypeID => ScoreResearch(missionProposal),
-                SabotageMission.MissionTypeID => ScorePrimaryRating(missionProposal),
-                AbductionMission.MissionTypeID => ScoreTargetedOfficerMission(missionProposal),
-                AssassinationMission.MissionTypeID => ScoreTargetedOfficerMission(missionProposal),
-                EspionageMission.MissionTypeID => ScorePrimaryRating(missionProposal),
-                ReconnaissanceMission.MissionTypeID => ScorePrimaryRating(missionProposal),
-                InciteUprisingMission.MissionTypeID => ScorePrimaryRating(missionProposal),
-                SubdueUprisingMission.MissionTypeID => ScorePrimaryRating(missionProposal),
-                RescueMission.MissionTypeID => ScoreTargetedOfficerMission(missionProposal),
-                JediTrainingMission.MissionTypeID => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Recruitment => ScoreRecruitment(context, missionProposal),
+                MissionTypeIDs.Diplomacy => ScoreDiplomacy(context, missionProposal),
+                MissionTypeIDs.Research => ScoreResearch(missionProposal),
+                MissionTypeIDs.Sabotage => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Abduction => ScoreTargetedOfficerMission(missionProposal),
+                MissionTypeIDs.Assassination => ScoreTargetedOfficerMission(missionProposal),
+                MissionTypeIDs.Espionage => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Reconnaissance => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.InciteUprising => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.SubdueUprising => ScorePrimaryRating(missionProposal),
+                MissionTypeIDs.Rescue => ScoreTargetedOfficerMission(missionProposal),
+                MissionTypeIDs.JediTraining => ScorePrimaryRating(missionProposal),
                 _ => 0,
             };
         }
@@ -122,18 +122,18 @@ namespace Rebellion.AI.Scoring
         {
             return proposal.MissionTypeID switch
             {
-                ReconnaissanceMission.MissionTypeID => OfficerRating.Espionage,
-                DiplomacyMission.MissionTypeID => OfficerRating.Diplomacy,
-                RecruitmentMission.MissionTypeID => OfficerRating.Leadership,
-                SubdueUprisingMission.MissionTypeID => OfficerRating.Leadership,
-                AbductionMission.MissionTypeID => OfficerRating.Combat,
-                AssassinationMission.MissionTypeID => OfficerRating.Combat,
-                EspionageMission.MissionTypeID => OfficerRating.Espionage,
-                SabotageMission.MissionTypeID => OfficerRating.Combat,
-                InciteUprisingMission.MissionTypeID => OfficerRating.Leadership,
-                RescueMission.MissionTypeID => OfficerRating.Combat,
-                ResearchMission.MissionTypeID => OfficerRating.None,
-                JediTrainingMission.MissionTypeID => OfficerRating.Diplomacy,
+                MissionTypeIDs.Reconnaissance => OfficerRating.Espionage,
+                MissionTypeIDs.Diplomacy => OfficerRating.Diplomacy,
+                MissionTypeIDs.Recruitment => OfficerRating.Leadership,
+                MissionTypeIDs.SubdueUprising => OfficerRating.Leadership,
+                MissionTypeIDs.Abduction => OfficerRating.Combat,
+                MissionTypeIDs.Assassination => OfficerRating.Combat,
+                MissionTypeIDs.Espionage => OfficerRating.Espionage,
+                MissionTypeIDs.Sabotage => OfficerRating.Combat,
+                MissionTypeIDs.InciteUprising => OfficerRating.Leadership,
+                MissionTypeIDs.Rescue => OfficerRating.Combat,
+                MissionTypeIDs.Research => OfficerRating.None,
+                MissionTypeIDs.JediTraining => OfficerRating.Diplomacy,
                 _ => OfficerRating.Espionage,
             };
         }

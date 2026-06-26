@@ -352,9 +352,9 @@ namespace Rebellion.Tests.Game.Units
         {
             Officer officer = new Officer();
 
-            Assert.IsTrue(officer.CanPerformMission(SabotageMission.MissionTypeID));
-            Assert.IsTrue(officer.CanPerformMission(EspionageMission.MissionTypeID));
-            Assert.IsTrue(officer.CanPerformMission(AssassinationMission.MissionTypeID));
+            Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Sabotage));
+            Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Espionage));
+            Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Assassination));
         }
     }
 }

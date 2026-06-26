@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
-        private static SabotageMission CreateSabotageMission(
+        private static Mission CreateSabotageMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
@@ -23,15 +23,15 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode specificTarget = null
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                SpecificTarget = specificTarget,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-            };
-            return SabotageMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Sabotage,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                specificTarget
+            );
         }
 
         [Test]
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -181,14 +181,14 @@ namespace Rebellion.Tests.Game.Missions
 
             int ratingBefore = officer.GetBaseRating(OfficerRating.Leadership);
 
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = "empire",
-                Target = enemyPlanet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                null,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             game.AttachNode(decoy, empPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },

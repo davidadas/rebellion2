@@ -100,6 +100,7 @@ namespace Rebellion.Systems
                 decoyParticipants,
                 target
             );
+            resolvedRequest.Game = _game;
             resolvedRequest.TargetOfficer = targetOfficer;
             resolvedRequest.RandomProvider = _provider;
             return resolvedRequest;

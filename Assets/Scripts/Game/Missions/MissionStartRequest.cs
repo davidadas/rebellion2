@@ -8,6 +8,7 @@ namespace Rebellion.Game.Missions
 {
     public class MissionStartRequest
     {
+        public GameRoot Game { get; set; }
         public string MissionTypeID { get; set; }
         public string OwnerInstanceID { get; set; }
         public ISceneNode Target { get; set; }
@@ -30,6 +31,7 @@ namespace Rebellion.Game.Missions
             return new MissionStartRequest
             {
                 MissionTypeID = MissionTypeID,
+                Game = Game,
                 OwnerInstanceID = ownerInstanceID,
                 Target = target,
                 SpecificTarget = SpecificTarget,
