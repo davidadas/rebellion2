@@ -1,6 +1,7 @@
 # Rebellion 2
 
 A remake of the 1998 Star Wars Rebellion PC game by Coolhand Interactive.
+<img width="1421" height="794" alt="Screenshot 2026-06-26 at 4 20 33 AM" src="https://github.com/user-attachments/assets/a440fc8c-6916-47a5-a7eb-5a8811700844" />
 
 ## Setup
 
