@@ -148,7 +148,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SuccessProbabilityTable_DoesNotAffectSupportGain()
+        public void OnSuccess_SuccessProbability_DoesNotAffectSupportGain()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -161,9 +161,10 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 70 } }
-            );
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 0, 70 },
+            };
             game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
@@ -238,15 +239,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int>
-                {
-                    { -20, 0 },
-                    { 40, 100 },
-                    { 41, 0 },
-                }
-            );
-            mission.Initiate(new StubRNG());
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -20, 0 },
+                { 40, 100 },
+                { 41, 0 },
+            };
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -397,7 +396,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             planet.SetFullPopularSupport("empire");
 

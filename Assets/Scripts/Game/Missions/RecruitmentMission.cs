@@ -48,8 +48,7 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Leadership,
-                null
+                OfficerRating.Leadership
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -92,24 +91,25 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
-        /// <param name="game">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because recruitment cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because recruitment cannot be foiled.</param>
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Looks up the recruitment success chance for a participant at the mission planet.
         /// </summary>
-        /// <param name="agent">The participant whose leadership skill is evaluated.</param>
+        /// <param name="agent">The participant whose leadership rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>Success probability from the recruitment table.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent);
+                return base.GetAgentProbability(agent, game);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int score = agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>

@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             empPlanet.EndUprising();
 
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             empPlanet.EndUprising();
 

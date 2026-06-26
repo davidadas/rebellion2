@@ -42,8 +42,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Diplomacy,
-                null
+                OfficerRating.Diplomacy
             ) { }
 
         /// <summary>
@@ -102,8 +101,8 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Diplomacy missions are never foiled — they target own or neutral planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
-        /// <param name="game">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because diplomacy cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because diplomacy cannot be foiled.</param>
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
@@ -111,18 +110,19 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's diplomacy success probability for the current target.
         /// </summary>
         /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The participant's diplomacy success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent);
+                return base.GetAgentProbability(agent, game);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int score =
                 GetTargetTroopState(planet)
                 - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>

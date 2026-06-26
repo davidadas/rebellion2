@@ -47,8 +47,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Espionage").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Espionage,
-                null
+                OfficerRating.Espionage
             )
         {
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -98,7 +97,7 @@ namespace Rebellion.Game.Missions
 
             foreach (IMissionParticipant participant in MainParticipants)
             {
-                double successThreshold = GetAgentProbability(participant);
+                double successThreshold = GetAgentProbability(participant, game);
                 double rolledValue = provider.NextDouble() * 100;
                 if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
                     successfulParticipants.Add(participant);

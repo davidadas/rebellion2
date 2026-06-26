@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -208,7 +208,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             enemyPlanet.BeginUprising();
 
@@ -244,11 +244,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 1 }, { 100, 99 } }
-            );
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -200, 1 },
+                { 100, 99 },
+            };
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();

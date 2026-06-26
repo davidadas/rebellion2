@@ -41,7 +41,6 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Leadership,
-                null,
                 displayName: "Subdue Uprising"
             ) { }
 
@@ -95,8 +94,8 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Subdue Uprising missions are never foiled — they target own planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
-        /// <param name="game">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because subdue uprising cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 

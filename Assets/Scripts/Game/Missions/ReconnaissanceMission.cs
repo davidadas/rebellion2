@@ -76,8 +76,7 @@ namespace Rebellion.Game.Missions
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Espionage,
-                null
+                OfficerRating.Espionage
             )
         {
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -94,7 +93,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Reconnaissance does not award mission skill improvements.
+        /// Reconnaissance does not award mission rating improvements.
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 

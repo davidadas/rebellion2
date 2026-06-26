@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 

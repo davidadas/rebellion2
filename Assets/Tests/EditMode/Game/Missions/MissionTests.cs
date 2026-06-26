@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Game.Missions
                 building
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             mission.RemoveChild(officer);
 
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             Assert.IsNull(
                 mission.GetAbortReason(game),
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { decoy }
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             mission.RemoveChild(decoy);
 
@@ -305,11 +305,9 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new System.Collections.Generic.Dictionary<int, int> { { 0, 0 } }
-            );
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int> { { 0, 0 } };
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();

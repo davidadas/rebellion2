@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             return mission;
         }
 
@@ -165,14 +165,12 @@ namespace Rebellion.Tests.Game.Missions
             officer.SetBaseRating(OfficerRating.Leadership, 40);
 
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int>
-                {
-                    { -40, 0 },
-                    { 20, 100 },
-                    { 21, 0 },
-                }
-            );
+            game.Config.ProbabilityTables.Mission.Recruitment = new Dictionary<int, int>
+            {
+                { -40, 0 },
+                { 20, 100 },
+                { 21, 0 },
+            };
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -211,7 +209,7 @@ namespace Rebellion.Tests.Game.Missions
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Assert.AreEqual("empire", firstTarget.OwnerInstanceID);

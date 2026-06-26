@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
@@ -89,57 +88,7 @@ namespace Rebellion.Game.Missions
             };
 
             mission = TryCreateByType(missionTypeId, ctx);
-            if (mission == null)
-                return false;
-
-            ConfigureMission(mission, _game.Config?.ProbabilityTables?.Mission);
-            return true;
-        }
-
-        /// <summary>
-        /// Applies configured probability and tick tables to a mission.
-        /// </summary>
-        /// <param name="mission">The mission to configure.</param>
-        /// <param name="missionTables">Configured mission probability and tick tables.</param>
-        public static void ConfigureMission(
-            Mission mission,
-            GameConfig.MissionProbabilityTablesConfig missionTables
-        )
-        {
-            if (mission == null)
-                throw new ArgumentNullException(nameof(mission));
-            if (missionTables == null)
-                return;
-
-            Dictionary<int, int> successTable = missionTables.GetSuccessTable(mission.ConfigKey);
-            GameConfig.MissionTickConfig tickConfig = missionTables.TickRanges.GetTickConfig(
-                mission.ConfigKey
-            );
-
-            mission.Configure(
-                successTable != null
-                    ? new ProbabilityTable(successTable)
-                    : GetExistingOrDefaultSuccessTable(mission),
-                new ProbabilityTable(missionTables.Decoy),
-                new ProbabilityTable(missionTables.Foil),
-                new ProbabilityTable(missionTables.KillOrCapture),
-                missionTables.DecoyDefenderScalingPercent,
-                missionTables.FoilDefenderScalingPercent,
-                missionTables.FoilFlatScoreAdjustment,
-                tickConfig != null ? tickConfig.Base : mission.BaseTicks,
-                tickConfig != null ? tickConfig.Spread : mission.SpreadTicks
-            );
-        }
-
-        /// <summary>
-        /// Returns the mission's existing success table or a default table.
-        /// </summary>
-        /// <param name="mission">The mission whose success table should be read.</param>
-        /// <returns>A success probability table.</returns>
-        private static ProbabilityTable GetExistingOrDefaultSuccessTable(Mission mission)
-        {
-            return mission.SuccessProbabilityTable
-                ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
+            return mission != null;
         }
 
         /// <summary>

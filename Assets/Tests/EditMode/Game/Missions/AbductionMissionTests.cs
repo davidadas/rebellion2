@@ -36,6 +36,15 @@ namespace Rebellion.Tests.Game.Missions
             return AbductionMission.TryCreate(ctx);
         }
 
+        private static void MakeAbductionAlwaysSucceed(GameRoot game)
+        {
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
+        }
+
         [Test]
         public void Execute_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
@@ -49,6 +58,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -59,7 +69,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -82,6 +92,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -93,7 +104,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             game.MoveNode(officer, mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -185,6 +196,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -196,7 +208,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             game.MoveNode(commando, mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -237,7 +249,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -273,7 +285,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target is captured after mission creation but before execution
             target.IsCaptured = true;
@@ -325,7 +337,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
@@ -365,7 +377,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             game.DetachNode(target);
 

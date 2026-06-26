@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -94,7 +94,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             Assert.DoesNotThrow(() => MissionSceneBuilder.RunToSuccess(mission, game));
         }
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Planet changes hands before execution — espionage is still valid on any visited planet
             enemyPlanet.OwnerInstanceID = "empire";
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -225,11 +225,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { officer, successfulOfficer },
                 new List<IMissionParticipant>()
             );
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 0 }, { 100, 100 } }
-            );
+            game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 100, 100 },
+            };
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -263,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { decoy }
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -296,7 +298,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 

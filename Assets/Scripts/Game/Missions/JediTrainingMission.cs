@@ -49,7 +49,6 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Diplomacy,
-                null,
                 displayName: "Jedi Training"
             )
         {
@@ -129,24 +128,25 @@ namespace Rebellion.Game.Missions
         /// Returns the student's training success probability.
         /// </summary>
         /// <param name="agent">The mission participant (student) to evaluate.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The student's training success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (agent is Officer officer)
-                return SuccessProbabilityTable.Lookup(officer.ForceRank);
+                return LookupSuccessProbability(game, officer.ForceRank);
             return 0;
         }
 
         /// <summary>
         /// Jedi training targets own planets and is never foiled.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
-        /// <param name="game">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because training cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because training cannot be foiled.</param>
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
-        /// Jedi training does not award mission skill improvements.
+        /// Jedi training does not award mission rating improvements.
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 

@@ -70,6 +70,21 @@ namespace Rebellion.Tests.Systems
             return mission;
         }
 
+        private static void SetFoilTable(GameRoot game, Dictionary<int, int> table)
+        {
+            game.Config.ProbabilityTables.Mission.Foil = table;
+        }
+
+        private static void SetDecoyTable(GameRoot game, Dictionary<int, int> table)
+        {
+            game.Config.ProbabilityTables.Mission.Decoy = table;
+        }
+
+        private static void SetKillOrCaptureTable(GameRoot game, Dictionary<int, int> table)
+        {
+            game.Config.ProbabilityTables.Mission.KillOrCapture = table;
+        }
+
         private (
             GameRoot game,
             Planet planet,
@@ -419,6 +434,10 @@ namespace Rebellion.Tests.Systems
                 }
             );
             game.AttachNode(diplomacyMission, rebelsPlanet);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -200, 100 },
+            };
 
             InciteUprisingMission inciteMission = InciteUprisingMission.TryCreate(
                 new MissionContext
@@ -429,14 +448,15 @@ namespace Rebellion.Tests.Systems
                     DecoyParticipants = new List<IMissionParticipant>(),
                 }
             );
-            inciteMission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -200, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
             game.AttachNode(inciteMission, rebelsPlanet);
 
-            StubRNG rng = new StubRNG();
-            diplomacyMission.Initiate(rng);
-            inciteMission.Initiate(rng);
+            diplomacyMission.Initiate(0);
+            inciteMission.Initiate(0);
 
             while (diplomacyMission.CurrentProgress < diplomacyMission.MaxProgress - 1)
                 diplomacyMission.IncrementProgress();
@@ -848,7 +868,7 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(traveler);
             officer.SetParent(mission);
             traveler.SetParent(mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
@@ -872,18 +892,14 @@ namespace Rebellion.Tests.Systems
             };
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.MainParticipants.Add(traveler);
             spy.SetParent(mission);
             traveler.SetParent(mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
 
@@ -905,7 +921,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             mission.RemoveChild(officer);
             MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
@@ -925,12 +941,10 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 10 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 10 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(1);
 
             MissionSystem system = new MissionSystem(game, new FixedRNG(0.99), movement);
 
@@ -958,14 +972,10 @@ namespace Rebellion.Tests.Systems
             planet.Regiments.Single().DefenseRating = 10;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilDefenderScalingPercent = 35;
-            mission.FoilFlatScoreAdjustment = -1;
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 0 }, { 50, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
+            game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 0 }, { 50, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1002,14 +1012,10 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(support, planet);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilDefenderScalingPercent = 35;
-            mission.FoilFlatScoreAdjustment = -1;
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 }, { 2, 0 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 35;
+            game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = -1;
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 }, { 2, 0 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1033,12 +1039,8 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1082,12 +1084,8 @@ namespace Rebellion.Tests.Systems
             };
             EspionageMission mission = EspionageMission.TryCreate(ctx);
             Assert.IsNotNull(mission);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             spy.SetParent(mission);
 
@@ -1117,13 +1115,11 @@ namespace Rebellion.Tests.Systems
             spy.CaptorInstanceID = "rebels";
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
 
@@ -1146,12 +1142,8 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1179,12 +1171,8 @@ namespace Rebellion.Tests.Systems
                 BuildDetectionScene();
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 0 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1208,7 +1196,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(5);
 
             officer.InjuryPoints = 1;
@@ -1233,10 +1221,8 @@ namespace Rebellion.Tests.Systems
             game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability = 100;
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = null;
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int>());
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
@@ -1260,9 +1246,7 @@ namespace Rebellion.Tests.Systems
             );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
 
@@ -1282,12 +1266,8 @@ namespace Rebellion.Tests.Systems
             game.DetachNode(defender);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 0 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 0 } });
             mission.SetExecutionTick(5);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
@@ -1317,16 +1297,10 @@ namespace Rebellion.Tests.Systems
             decoy.SetBaseRating(OfficerRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             mission.DecoyParticipantRating = OfficerRating.Espionage;
-            mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
@@ -1360,16 +1334,10 @@ namespace Rebellion.Tests.Systems
             };
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             mission.DecoyParticipantRating = OfficerRating.Combat;
-            mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
@@ -1405,16 +1373,10 @@ namespace Rebellion.Tests.Systems
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             mission.DecoyParticipantRating = OfficerRating.Espionage;
-            mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 0 }, { 200, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetDecoyTable(game, new Dictionary<int, int> { { -200, 0 }, { 200, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
@@ -1446,16 +1408,10 @@ namespace Rebellion.Tests.Systems
             strongDecoy.SetBaseRating(OfficerRating.Espionage, 200);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             mission.DecoyParticipantRating = OfficerRating.Espionage;
-            mission.DecoyProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -50, 0 }, { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(weakDecoy);
@@ -1481,12 +1437,8 @@ namespace Rebellion.Tests.Systems
             Officer secondSpy = EntityFactory.CreateOfficer("o2", "empire");
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.MainParticipants.Add(secondSpy);
@@ -1518,12 +1470,8 @@ namespace Rebellion.Tests.Systems
             SpecialForces sf = new SpecialForces { InstanceID = "sf1", OwnerInstanceID = "empire" };
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
-            mission.FoilProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
-            mission.KillOrCaptureProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { -200, 100 } }
-            );
+            SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
+            SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(sf);
             sf.SetParent(mission);

@@ -585,7 +585,7 @@ namespace Rebellion.Systems
             if (!mission.RollFoilCheck(_provider, _game))
                 return false;
 
-            if (mission.RollDecoyCheck(_provider))
+            if (mission.RollDecoyCheck(_provider, _game))
                 return false;
 
             if (!mission.AppliesFoiledParticipantConsequences)
@@ -595,7 +595,7 @@ namespace Rebellion.Systems
             Planet planet = mission.GetParent() as Planet;
 
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-                ResolveFoiledParticipant(participant, defenderCombat, planet, mission, results);
+                ResolveFoiledParticipant(participant, defenderCombat, planet, results);
 
             return true;
         }
@@ -604,7 +604,7 @@ namespace Rebellion.Systems
         /// Gets the combat value used by the mission foil consequence roll.
         /// </summary>
         /// <param name="mission">The detected mission.</param>
-        /// <returns>The defender's combat skill, or 0 when no defender is present.</returns>
+        /// <returns>The defender's combat rating, or 0 when no defender is present.</returns>
         private static int GetFoilDefenderCombatSkill(Mission mission)
         {
             Officer defender = mission.FindDefender();
@@ -617,14 +617,12 @@ namespace Rebellion.Systems
         /// <param name="participant">The detected participant.</param>
         /// <param name="defenderCombat">The defender combat value.</param>
         /// <param name="planet">The mission planet.</param>
-        /// <param name="mission">The detected mission.</param>
         /// <param name="results">Collection to append generated results to.</param>
         /// <returns>True if the participant state changed.</returns>
         private bool ResolveFoiledParticipant(
             IMissionParticipant participant,
             int defenderCombat,
             Planet planet,
-            Mission mission,
             List<GameResult> results
         )
         {
@@ -633,7 +631,7 @@ namespace Rebellion.Systems
                 if (officer.IsCaptured || officer.IsKilled)
                     return false;
 
-                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet, mission));
+                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet));
                 return true;
             }
 
@@ -673,24 +671,19 @@ namespace Rebellion.Systems
         /// Resolves whether a detected officer is killed or captured.
         /// </summary>
         /// <param name="officer">The officer who was detected.</param>
-        /// <param name="defenderCombat">The defending officer's combat skill.</param>
+        /// <param name="defenderCombat">The defending officer's combat rating.</param>
         /// <param name="planet">The planet where the mission takes place.</param>
-        /// <param name="mission">The mission that was foiled.</param>
         /// <returns>One capture or kill result.</returns>
         private List<GameResult> ResolveKillOrCapture(
             Officer officer,
             int defenderCombat,
-            Planet planet,
-            Mission mission
+            Planet planet
         )
         {
             List<GameResult> results = new List<GameResult>();
 
             int delta = defenderCombat - officer.GetEffectiveRating(OfficerRating.Combat);
-            double captureProbability =
-                mission.KillOrCaptureProbabilityTable != null
-                    ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
-                    : _game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability;
+            double captureProbability = GetKillOrCaptureProbability(delta);
 
             if (_provider.NextDouble() * 100 < captureProbability)
             {
@@ -725,6 +718,21 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Returns the configured capture probability for a foiled officer.
+        /// </summary>
+        /// <param name="score">The kill-or-capture score.</param>
+        /// <returns>The configured capture probability.</returns>
+        private double GetKillOrCaptureProbability(int score)
+        {
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
+            return LookupProbability(
+                missionTables.KillOrCapture,
+                score,
+                missionTables.DefaultKillOrCaptureProbability
+            );
+        }
+
+        /// <summary>
         /// Sends all participants to the mission and starts its timer.
         /// RequestMove immediately reparents each participant to the mission node
         /// and marks them in transit for the physical journey.
@@ -742,7 +750,52 @@ namespace Rebellion.Systems
                 }
             }
 
-            mission.Initiate(_provider);
+            mission.Initiate(RollMissionDuration(mission));
+        }
+
+        /// <summary>
+        /// Rolls the configured duration for a mission.
+        /// </summary>
+        /// <param name="mission">The mission whose duration should be rolled.</param>
+        /// <returns>The mission duration in ticks.</returns>
+        private int RollMissionDuration(Mission mission)
+        {
+            GameConfig.MissionTickConfig tickConfig =
+                _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
+                    mission.ConfigKey
+                );
+            int baseTicks = tickConfig?.Base ?? 0;
+            int spreadTicks = tickConfig?.Spread ?? 0;
+            return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+        }
+
+        /// <summary>
+        /// Returns the mission probability table config for the current game.
+        /// </summary>
+        /// <returns>The configured mission probability tables.</returns>
+        private GameConfig.MissionProbabilityTablesConfig GetMissionTables()
+        {
+            return _game.Config?.ProbabilityTables?.Mission
+                ?? new GameConfig.MissionProbabilityTablesConfig();
+        }
+
+        /// <summary>
+        /// Returns the configured probability for a score.
+        /// </summary>
+        /// <param name="entries">The configured probability table entries.</param>
+        /// <param name="score">The score to look up.</param>
+        /// <param name="defaultValue">The value returned when the table is empty.</param>
+        /// <returns>The configured probability value.</returns>
+        private static int LookupProbability(
+            Dictionary<int, int> entries,
+            int score,
+            int defaultValue = 0
+        )
+        {
+            if (entries == null || entries.Count == 0)
+                return defaultValue;
+
+            return new ProbabilityTable(entries).Lookup(score);
         }
     }
 }

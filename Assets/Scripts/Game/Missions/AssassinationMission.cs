@@ -48,8 +48,7 @@ namespace Rebellion.Game.Missions
                 RequirePlanetTarget(target, "Assassination").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat,
-                null
+                OfficerRating.Combat
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;

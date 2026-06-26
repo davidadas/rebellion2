@@ -53,7 +53,6 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 Officer.GetRatingForResearchDiscipline(discipline),
-                null,
                 displayName: GetMissionName(discipline)
             )
         {
@@ -167,7 +166,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Checks whether the mission target planet is still owned by the mission's faction.
         /// </summary>
-        /// <param name="game">The game instance.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if the parent planet is owned by this faction.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
@@ -178,7 +177,7 @@ namespace Rebellion.Game.Missions
         /// Research missions target own planets and are never foiled.
         /// </summary>
         /// <param name="defenseScore">The defense score (unused).</param>
-        /// <param name="game">Ignored.</param>
+        /// <param name="game">The current game state, unused because research cannot be foiled.</param>
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
@@ -345,7 +344,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Research missions repeat after completion as long as the mission target is still satisfied.
         /// </summary>
-        /// <param name="game">The game instance.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if the mission should repeat.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => IsMissionSatisfied(game);
     }

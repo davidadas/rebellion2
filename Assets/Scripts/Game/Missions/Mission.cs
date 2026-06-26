@@ -52,33 +52,6 @@ namespace Rebellion.Game.Missions
         public OfficerRating ParticipantRating { get; set; }
         public bool HasInitiated;
 
-        [PersistableIgnore]
-        public ProbabilityTable SuccessProbabilityTable { get; set; }
-
-        [PersistableIgnore]
-        public ProbabilityTable DecoyProbabilityTable { get; set; }
-
-        [PersistableIgnore]
-        public ProbabilityTable FoilProbabilityTable { get; set; }
-
-        [PersistableIgnore]
-        public ProbabilityTable KillOrCaptureProbabilityTable { get; set; }
-
-        [PersistableIgnore]
-        public int DecoyDefenderScalingPercent { get; set; }
-
-        [PersistableIgnore]
-        public int FoilDefenderScalingPercent { get; set; }
-
-        [PersistableIgnore]
-        public int FoilFlatScoreAdjustment { get; set; }
-
-        [PersistableIgnore]
-        public int BaseTicks;
-
-        [PersistableIgnore]
-        public int SpreadTicks;
-
         // Mission progress.
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
@@ -104,7 +77,6 @@ namespace Rebellion.Game.Missions
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
         /// <param name="participantRating">Rating used by primary participants.</param>
-        /// <param name="successProbabilityTable">Mission success probability table.</param>
         /// <param name="displayName">Display name to show for this mission.</param>
         protected Mission(
             string configKey,
@@ -113,7 +85,6 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
             OfficerRating participantRating,
-            ProbabilityTable successProbabilityTable,
             string displayName = null
         )
         {
@@ -127,47 +98,6 @@ namespace Rebellion.Game.Missions
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
             ParticipantRating = participantRating;
-
-            SuccessProbabilityTable =
-                successProbabilityTable
-                ?? new ProbabilityTable(new Dictionary<int, int> { { 0, 50 } });
-            DecoyProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
-            FoilProbabilityTable = new ProbabilityTable(new Dictionary<int, int> { { 0, 0 } });
-        }
-
-        /// <summary>
-        /// Applies resolved probability tables and duration settings.
-        /// </summary>
-        /// <param name="successProbabilityTable">The mission success probability table.</param>
-        /// <param name="decoyProbabilityTable">The decoy success probability table.</param>
-        /// <param name="foilProbabilityTable">The mission foil probability table.</param>
-        /// <param name="killOrCaptureProbabilityTable">The kill-or-capture probability table.</param>
-        /// <param name="decoyDefenderScalingPercent">The defender scaling percentage for decoy checks.</param>
-        /// <param name="foilDefenderScalingPercent">The defender scaling percentage for foil checks.</param>
-        /// <param name="foilFlatScoreAdjustment">The flat score adjustment for foil checks.</param>
-        /// <param name="baseTicks">The minimum mission duration.</param>
-        /// <param name="spreadTicks">The random mission duration spread.</param>
-        public virtual void Configure(
-            ProbabilityTable successProbabilityTable,
-            ProbabilityTable decoyProbabilityTable,
-            ProbabilityTable foilProbabilityTable,
-            ProbabilityTable killOrCaptureProbabilityTable,
-            int decoyDefenderScalingPercent,
-            int foilDefenderScalingPercent,
-            int foilFlatScoreAdjustment,
-            int baseTicks,
-            int spreadTicks
-        )
-        {
-            SuccessProbabilityTable = successProbabilityTable;
-            DecoyProbabilityTable = decoyProbabilityTable;
-            FoilProbabilityTable = foilProbabilityTable;
-            KillOrCaptureProbabilityTable = killOrCaptureProbabilityTable;
-            DecoyDefenderScalingPercent = decoyDefenderScalingPercent;
-            FoilDefenderScalingPercent = foilDefenderScalingPercent;
-            FoilFlatScoreAdjustment = foilFlatScoreAdjustment;
-            BaseTicks = baseTicks;
-            SpreadTicks = spreadTicks;
         }
 
         /// <summary>
@@ -220,11 +150,11 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Starts the mission and chooses its duration.
         /// </summary>
-        /// <param name="provider">RNG provider for rolling the duration spread.</param>
-        public void Initiate(IRandomNumberProvider provider)
+        /// <param name="maxProgress">The rolled mission duration.</param>
+        public void Initiate(int maxProgress)
         {
             CurrentProgress = 0;
-            MaxProgress = BaseTicks + provider.NextInt(0, SpreadTicks + 1);
+            MaxProgress = maxProgress;
             CaptureParticipantIds();
             HasInitiated = true;
         }
@@ -245,12 +175,6 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <returns>True if the mission has completed.</returns>
         public bool IsComplete() => CurrentProgress >= MaxProgress;
-
-        /// <summary>
-        /// Returns the configured mission duration values.
-        /// </summary>
-        /// <returns>The base duration and random duration spread.</returns>
-        public int[] GetTickRange() => new int[] { BaseTicks, SpreadTicks };
 
         /// <summary>
         /// Forces MaxProgress to a specific tick count, bypassing randomization. Used in tests.
@@ -314,11 +238,12 @@ namespace Rebellion.Game.Missions
         /// Returns the participant's mission success probability.
         /// </summary>
         /// <param name="agent">The participant whose rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The participant's success probability.</returns>
-        protected virtual double GetAgentProbability(IMissionParticipant agent)
+        protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             int score = agent.GetEffectiveRating(ParticipantRating);
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
@@ -344,8 +269,9 @@ namespace Rebellion.Game.Missions
         /// Returns the decoy participant's success probability.
         /// </summary>
         /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The decoy success probability.</returns>
-        protected double GetDecoyProbability(IMissionParticipant decoy)
+        protected double GetDecoyProbability(IMissionParticipant decoy, GameRoot game)
         {
             int bestDefenderEspionage = 0;
             if (GetParent() is Planet planet)
@@ -368,9 +294,13 @@ namespace Rebellion.Game.Missions
 
             int decoyEspionage = decoy.GetEffectiveRating(DecoyParticipantRating);
             int targetDefense = (int)GetDefenseScore();
-            int scaledDefender = bestDefenderEspionage * DecoyDefenderScalingPercent / 100;
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
+            int scaledDefender =
+                bestDefenderEspionage
+                * missionTables.DecoyDefenderScalingPercent
+                / _ratingPercentScale;
             int score = decoyEspionage - targetDefense - scaledDefender;
-            return DecoyProbabilityTable.Lookup(score);
+            return LookupProbability(missionTables.Decoy, score);
         }
 
         /// <summary>
@@ -389,16 +319,63 @@ namespace Rebellion.Game.Missions
                 return 0;
 
             int defenderEspionage = defender.GetEffectiveRating(OfficerRating.Espionage);
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             int scaledDefender =
-                defenderEspionage * FoilDefenderScalingPercent / _ratingPercentScale;
+                defenderEspionage * missionTables.FoilDefenderScalingPercent / _ratingPercentScale;
             int supportRating = GetSupportRating(game);
             int score =
                 GetAveragedRating(ParticipantRating)
                 - scaledDefender
                 - (int)defenseScore
                 - supportRating
-                - FoilFlatScoreAdjustment;
-            return FoilProbabilityTable.Lookup(score);
+                - missionTables.FoilFlatScoreAdjustment;
+            return LookupProbability(missionTables.Foil, score);
+        }
+
+        /// <summary>
+        /// Returns the success probability for this mission's configured table.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="score">The mission success score.</param>
+        /// <returns>The configured success probability.</returns>
+        protected double LookupSuccessProbability(GameRoot game, int score)
+        {
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
+            return LookupProbability(
+                missionTables.GetSuccessTable(ConfigKey),
+                score,
+                missionTables.DefaultSuccessProbability
+            );
+        }
+
+        /// <summary>
+        /// Returns the mission probability table config for the current game.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured mission probability tables.</returns>
+        private static GameConfig.MissionProbabilityTablesConfig GetMissionTables(GameRoot game)
+        {
+            return game?.Config?.ProbabilityTables?.Mission
+                ?? new GameConfig.MissionProbabilityTablesConfig();
+        }
+
+        /// <summary>
+        /// Returns the configured probability for a score.
+        /// </summary>
+        /// <param name="entries">The configured probability table entries.</param>
+        /// <param name="score">The score to look up.</param>
+        /// <param name="defaultValue">The value returned when the table is empty.</param>
+        /// <returns>The configured probability value.</returns>
+        private static int LookupProbability(
+            Dictionary<int, int> entries,
+            int score,
+            int defaultValue = 0
+        )
+        {
+            if (entries == null || entries.Count == 0)
+                return defaultValue;
+
+            return new ProbabilityTable(entries).Lookup(score);
         }
 
         /// <summary>
@@ -559,12 +536,13 @@ namespace Rebellion.Game.Missions
         /// Returns whether any main participant succeeds.
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if at least one participant succeeds.</returns>
-        protected bool CheckMissionSuccess(IRandomNumberProvider provider)
+        protected bool CheckMissionSuccess(IRandomNumberProvider provider, GameRoot game)
         {
             foreach (IMissionParticipant participant in MainParticipants)
             {
-                double successThreshold = GetAgentProbability(participant);
+                double successThreshold = GetAgentProbability(participant, game);
                 double rolledValue = provider.NextDouble() * 100;
                 if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
                     return true;
@@ -577,8 +555,9 @@ namespace Rebellion.Game.Missions
         /// Returns false if no decoys are assigned.
         /// </summary>
         /// <param name="provider">RNG provider for selection and probability roll.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if the selected decoy succeeds.</returns>
-        protected bool CheckDecoySuccessful(IRandomNumberProvider provider)
+        protected bool CheckDecoySuccessful(IRandomNumberProvider provider, GameRoot game)
         {
             if (DecoyParticipants.Count == 0)
                 return false;
@@ -588,7 +567,7 @@ namespace Rebellion.Game.Missions
             ];
             return IsSuccessfulProbabilityRoll(
                 provider.NextDouble() * 100,
-                GetDecoyProbability(decoy)
+                GetDecoyProbability(decoy, game)
             );
         }
 
@@ -613,10 +592,11 @@ namespace Rebellion.Game.Missions
         /// Rolls the decoy response check.
         /// </summary>
         /// <param name="provider">RNG provider for decoy rolls.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if a decoy prevents capture.</returns>
-        internal bool RollDecoyCheck(IRandomNumberProvider provider)
+        internal bool RollDecoyCheck(IRandomNumberProvider provider, GameRoot game)
         {
-            return CheckDecoySuccessful(provider);
+            return CheckDecoySuccessful(provider, game);
         }
 
         /// <summary>
@@ -631,7 +611,7 @@ namespace Rebellion.Game.Missions
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
 
-            if (CheckMissionSuccess(provider))
+            if (CheckMissionSuccess(provider, game))
             {
                 if (!IsMissionSatisfied(game))
                 {

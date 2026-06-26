@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Missions
         public void OnSuccess_StudentBelowTrainer_GainsTrainingAdjustment()
         {
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             // QueueRNG(0.0, 0.99): first value passes the success roll,
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             _student.ForceValue = 150;
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             mission.Execute(_game, new FixedRNG(0.0));
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             int diplomacyBefore = _student.Ratings[OfficerRating.Diplomacy];
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             mission.Execute(_game, new FixedRNG(0.0));
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
         public void OnSuccess_StudentBelowTrainer_ReturnsForceTrainingResult()
         {
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             List<GameResult> results = mission.Execute(_game, new QueueRNG(0.0, 0.99));
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
             _game.AttachNode(mission, _planet);
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             // 0.0 passes the success roll (first student triggers early return),

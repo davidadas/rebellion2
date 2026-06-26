@@ -800,6 +800,9 @@ namespace Rebellion.Game
             /// <summary>Kill-or-capture outcome table.</summary>
             public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
 
+            /// <summary>Fallback mission success probability when a table has no match.</summary>
+            public int DefaultSuccessProbability { get; set; } = 50;
+
             /// <summary>Fallback kill-or-capture probability when the table has no match.</summary>
             public int DefaultKillOrCaptureProbability { get; set; } = 50;
 

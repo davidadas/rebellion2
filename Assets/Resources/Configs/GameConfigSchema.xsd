@@ -633,6 +633,10 @@
                     <xs:element name="Foil" type="IntTableType" />
                     <xs:element name="KillOrCapture" type="IntTableType" />
                     <xs:element
+                      name="DefaultSuccessProbability"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
                       name="DefaultKillOrCaptureProbability"
                       type="xs:nonNegativeInteger"
                     />

@@ -1678,6 +1678,7 @@
           <Value>99</Value>
         </Entry>
       </KillOrCapture>
+      <DefaultSuccessProbability>50</DefaultSuccessProbability>
       <DefaultKillOrCaptureProbability>50</DefaultKillOrCaptureProbability>
     </Mission>
   </ProbabilityTables>

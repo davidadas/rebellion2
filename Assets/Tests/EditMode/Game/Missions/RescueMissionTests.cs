@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.AttachNode(mission, enemyPlanet);
             game.MoveNode(officer, mission);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -183,7 +183,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -220,7 +220,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Officer is freed after mission creation but before execution
             captive.IsCaptured = false;
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Captive is freed before mission executes
             captive.IsCaptured = false;
@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Captive is moved to a different planet before mission executes
             game.MoveNode(captive, empPlanet);
@@ -382,7 +382,7 @@ namespace Rebellion.Tests.Game.Missions
                 captive
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Captive removed from scene before mission executes
             game.DetachNode(captive);

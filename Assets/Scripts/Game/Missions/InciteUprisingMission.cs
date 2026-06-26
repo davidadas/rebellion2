@@ -46,7 +46,6 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Leadership,
-                null,
                 displayName: "Incite Uprising"
             )
         {
@@ -94,9 +93,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns the participant's chance to incite the target planet.
         /// </summary>
-        /// <param name="agent">The participant whose leadership skill is evaluated.</param>
+        /// <param name="agent">The participant whose leadership rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The participant's uprising success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
                 throw new InvalidOperationException(
@@ -114,7 +114,7 @@ namespace Rebellion.Game.Missions
             }
 
             int score = leadershipSkill - enemySupport - regimentStrength;
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>

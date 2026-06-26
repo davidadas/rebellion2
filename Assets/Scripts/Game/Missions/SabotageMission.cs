@@ -46,8 +46,7 @@ namespace Rebellion.Game.Missions
                 missionTarget.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat,
-                null
+                OfficerRating.Combat
             )
         {
             TargetInstanceID = sabotageTargetInstanceId;
@@ -147,7 +146,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sabotage does not award mission skill improvements.
+        /// Sabotage does not award mission rating improvements.
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 

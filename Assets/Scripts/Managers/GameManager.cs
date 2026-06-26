@@ -5,7 +5,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -52,7 +51,6 @@ public class GameManager
         SetGame(game);
         InitializeSystems();
         RebuildDerivedState();
-        RehydrateMissions();
         SetGameSpeed(_game.GetGameSpeed());
     }
 
@@ -65,7 +63,6 @@ public class GameManager
         SetGame(newGame);
         InitializeSystems();
         RebuildDerivedState();
-        RehydrateMissions();
         _tickTimer = 0f;
         _stopwatch.Restart();
         SetGameSpeed(_game.GetGameSpeed());
@@ -143,22 +140,6 @@ public class GameManager
             faction.RebuildResearchCatalog(templates);
 
         _manufacturingManager.RebuildQueues();
-    }
-
-    /// <summary>
-    /// Applies saved mission probability tables to missions already in the scene graph.
-    /// </summary>
-    private void RehydrateMissions()
-    {
-        GameConfig.MissionProbabilityTablesConfig missionTables = _game
-            .Config
-            ?.ProbabilityTables
-            ?.Mission;
-        if (missionTables == null)
-            return;
-
-        foreach (Mission mission in _game.GetSceneNodesByType<Mission>())
-            MissionFactory.ConfigureMission(mission, missionTables);
     }
 
     /// <summary>
