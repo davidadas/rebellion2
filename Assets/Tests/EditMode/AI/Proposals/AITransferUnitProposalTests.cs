@@ -14,7 +14,7 @@ namespace Rebellion.Tests.AI.Proposals
     public class AITransferUnitProposalTests
     {
         [Test]
-        public void Execute_WithValidCapitalShipTransfer_MovesUnitToTargetFleet()
+        public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreEqual(targetFleet, ship.GetParent());
-            Assert.IsNotNull(ship.Movement);
+            Assert.IsNull(ship.Movement);
         }
 
         [Test]

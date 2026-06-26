@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Systems
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
 
             Assert.AreEqual(_targetPlanet, diplomacyMission.GetParent());
-            Assert.IsTrue(diplomacyMission.CanContinue(_game));
+            Assert.IsTrue(diplomacyMission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]

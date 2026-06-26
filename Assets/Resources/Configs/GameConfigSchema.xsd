@@ -624,12 +624,18 @@
                     <xs:element name="Abduction" type="IntTableType" />
                     <xs:element name="Assassination" type="IntTableType" />
                     <xs:element name="DecoyDefenderScalingPercent" type="xs:nonNegativeInteger" />
+                    <xs:element name="FoilDefenderScalingPercent" type="xs:nonNegativeInteger" />
+                    <xs:element name="FoilFlatScoreAdjustment" type="xs:integer" />
                     <xs:element name="Decoy" type="IntTableType" />
                     <xs:element name="Diplomacy" type="IntTableType" />
                     <xs:element name="DeathStarSabotage" type="IntTableType" />
                     <xs:element name="Espionage" type="IntTableType" />
                     <xs:element name="Foil" type="IntTableType" />
                     <xs:element name="KillOrCapture" type="IntTableType" />
+                    <xs:element
+                      name="DefaultSuccessProbability"
+                      type="xs:nonNegativeInteger"
+                    />
                     <xs:element
                       name="DefaultKillOrCaptureProbability"
                       type="xs:nonNegativeInteger"

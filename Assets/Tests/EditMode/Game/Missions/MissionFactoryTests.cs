@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -58,156 +57,155 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanCreateMission_ValidSabotageTarget_ReturnsTrue()
-        {
-            (_, Planet planet, _, MissionFactory factory) = BuildScene();
-
-            Assert.IsTrue(
-                factory.CanCreateMission(MissionType.Sabotage, "empire", planet, new StubRNG())
-            );
-        }
-
-        [Test]
-        public void CanCreateMission_DisallowedMissionType_ReturnsFalse()
-        {
-            (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
-            game.Factions.Find(f => f.InstanceID == "empire")
-                .DisallowedMissionTypes.Add(MissionType.Sabotage);
-
-            Assert.IsFalse(
-                factory.CanCreateMission(MissionType.Sabotage, "empire", planet, new StubRNG())
-            );
-        }
-
-        [Test]
-        public void CanCreateMission_RecruitmentWithProviderAndUnrecruited_ReturnsTrue()
-        {
-            (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
-            game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
-
-            Assert.IsTrue(
-                factory.CanCreateMission(
-                    MissionType.Recruitment,
-                    "empire",
-                    planet,
-                    provider: new StubRNG()
-                )
-            );
-        }
-
-        [Test]
-        public void CanCreateMission_RecruitmentWithoutProvider_ReturnsTrue()
-        {
-            (GameRoot game, Planet planet, _, MissionFactory factory) = BuildScene();
-            game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
-
-            Assert.IsTrue(
-                factory.CanCreateMission(MissionType.Recruitment, "empire", planet, provider: null)
-            );
-        }
-
-        [Test]
-        public void CanCreateMission_RecruitmentNoUnrecruited_ReturnsFalse()
-        {
-            (_, Planet planet, _, MissionFactory factory) = BuildScene();
-
-            Assert.IsFalse(
-                factory.CanCreateMission(
-                    MissionType.Recruitment,
-                    "empire",
-                    planet,
-                    provider: new StubRNG()
-                )
-            );
-        }
-
-        [Test]
-        public void CreateMission_DisallowedMissionType_Throws()
-        {
-            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
-            game.Factions.Find(f => f.InstanceID == "empire")
-                .DisallowedMissionTypes.Add(MissionType.Sabotage);
-
-            Assert.Throws<InvalidOperationException>(() =>
-                factory.CreateMission(
-                    MissionType.Sabotage,
-                    "empire",
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>(),
-                    planet
-                )
-            );
-        }
-
-        [Test]
-        public void CreateMission_ValidSabotage_ReturnsMission()
+        public void TryCreateMission_ValidSabotageTarget_ReturnsTrue()
         {
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
-            Mission mission = factory.CreateMission(
-                MissionType.Sabotage,
+            bool created = factory.TryCreateMission(
+                SabotageMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
-                planet
+                planet,
+                out Mission mission
             );
 
-            Assert.IsNotNull(mission);
+            Assert.IsTrue(created);
             Assert.IsInstanceOf<SabotageMission>(mission);
         }
 
         [Test]
-        public void CreateMission_RecruitmentWithProvider_ReturnsMission()
+        public void TryCreateMission_DisallowedMissionTypeID_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            game.Factions.Find(f => f.InstanceID == "empire")
+                .DisallowedMissionTypeIDs.Add(SabotageMission.MissionTypeID);
+
+            bool created = factory.TryCreateMission(
+                SabotageMission.MissionTypeID,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_UnknownOwner_ReturnsFalse()
+        {
+            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+
+            bool created = factory.TryCreateMission(
+                SabotageMission.MissionTypeID,
+                "unknown",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_RecruitmentWithProviderAndUnrecruited_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             officer.IsMain = true;
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
-            Mission mission = factory.CreateMission(
-                MissionType.Recruitment,
+            bool created = factory.TryCreateMission(
+                RecruitmentMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
                 planet,
+                out Mission mission,
                 provider: new StubRNG()
             );
 
-            Assert.IsNotNull(mission);
+            Assert.IsTrue(created);
             Assert.IsInstanceOf<RecruitmentMission>(mission);
         }
 
         [Test]
-        public void CreateMission_ResearchWithDiscipline_BuildsResearchMissionWithMatchingDiscipline()
+        public void TryCreateMission_RecruitmentWithoutProvider_ReturnsTrue()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            officer.IsMain = true;
+            game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
-            Mission mission = factory.CreateMission(
-                MissionType.Research,
+            bool created = factory.TryCreateMission(
+                RecruitmentMission.MissionTypeID,
                 "empire",
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>(),
                 planet,
+                out Mission mission,
+                provider: null
+            );
+
+            Assert.IsTrue(created);
+            Assert.IsInstanceOf<RecruitmentMission>(mission);
+        }
+
+        [Test]
+        public void TryCreateMission_RecruitmentNoUnrecruited_ReturnsFalse()
+        {
+            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            officer.IsMain = true;
+
+            bool created = factory.TryCreateMission(
+                RecruitmentMission.MissionTypeID,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                out _,
+                provider: new StubRNG()
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_ResearchWithDiscipline_BuildsResearchMissionWithMatchingDiscipline()
+        {
+            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+
+            bool created = factory.TryCreateMission(
+                ResearchMission.MissionTypeID,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                out Mission mission,
                 discipline: ResearchDiscipline.ShipDesign
             );
 
+            Assert.IsTrue(created);
             Assert.IsInstanceOf<ResearchMission>(mission);
             Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
         }
 
         [Test]
-        public void CreateMission_ResearchWithoutDiscipline_Throws()
+        public void TryCreateMission_ResearchWithoutDiscipline_ReturnsFalse()
         {
             (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
-            Assert.Throws<InvalidOperationException>(() =>
-                factory.CreateMission(
-                    MissionType.Research,
-                    "empire",
-                    new List<IMissionParticipant> { officer },
-                    new List<IMissionParticipant>(),
-                    planet
-                )
+            bool created = factory.TryCreateMission(
+                ResearchMission.MissionTypeID,
+                "empire",
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                planet,
+                out _
             );
+
+            Assert.IsFalse(created);
         }
     }
 }

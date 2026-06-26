@@ -148,7 +148,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SuccessProbabilityTable_DoesNotAffectSupportGain()
+        public void OnSuccess_SuccessProbability_DoesNotAffectSupportGain()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -161,9 +161,10 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 70 } }
-            );
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 0, 70 },
+            };
             game.Config.SupportShift.DiplomacyCompletionSupportBonus = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
@@ -217,9 +218,9 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesRegimentDefenseMinusSupportPlusDiplomacyRating()
+        public void Execute_SuccessProbability_UsesRegimentDefenseMinusOpposingSupportPlusDiplomacyRating()
         {
-            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             officer.SetBaseRating(OfficerRating.Diplomacy, 40);
             Regiment regiment = new Regiment
@@ -238,10 +239,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 10, 100 }, { 11, 0 } }
-            );
-            mission.Initiate(new StubRNG());
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -20, 0 },
+                { 40, 100 },
+                { 41, 0 },
+            };
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -252,34 +256,36 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_WhenUprisingStarts_ReturnsTrue()
+        public void GetAbortReason_WhenUprisingStarts_ReturnsFailure()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
             planet.BeginUprising();
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet enters uprising"
             );
         }
 
         [Test]
-        public void ShouldAbort_WhenPlanetTakenByThirdFaction_ReturnsTrue()
+        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
             planet.OwnerInstanceID = "rebels";
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet is taken by another faction"
             );
         }
 
         [Test]
-        public void ShouldAbort_WhenPlanetTakenByMissionFaction_ReturnsFalse()
+        public void GetAbortReason_WhenPlanetTakenByMissionFaction_ReturnsNull()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -293,14 +299,14 @@ namespace Rebellion.Tests.Game.Missions
 
             planet.OwnerInstanceID = "empire";
 
-            Assert.IsFalse(
-                mission.ShouldAbort(game),
-                "Diplomacy mission should continue when target planet joins the mission faction"
+            Assert.IsNull(
+                mission.GetAbortReason(game),
+                "Diplomacy mission should not abort when target planet joins the mission faction"
             );
         }
 
         [Test]
-        public void CanContinue_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_WhenPlanetTakenByMissionFactionBelowMaxSupport_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 70, planetOwner: null);
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
@@ -308,8 +314,8 @@ namespace Rebellion.Tests.Game.Missions
             planet.OwnerInstanceID = "empire";
 
             Assert.IsTrue(
-                mission.CanContinue(game),
-                "Diplomacy mission should continue below 100 support after target joins the mission faction"
+                mission.ShouldRepeatAfterCompletion(game),
+                "Diplomacy mission should repeat below 100 support after target joins the mission faction"
             );
         }
 
@@ -390,7 +396,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             planet.SetFullPopularSupport("empire");
 
@@ -402,32 +408,32 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(
                 MissionOutcome.Success,
                 completed.Outcome,
-                "Mission succeeds even when support is already at max; CanContinue tears it down after"
+                "Mission succeeds even when support is already at max; ShouldRepeatAfterCompletion tears it down after"
             );
         }
 
         [Test]
-        public void CanContinue_SupportReachedMax_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_SupportReachedMax_ReturnsFalse()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
             planet.SetFullPopularSupport("empire");
 
             Assert.IsFalse(
-                mission.CanContinue(game),
+                mission.ShouldRepeatAfterCompletion(game),
                 "Mission should cancel when support is at 100"
             );
         }
 
         [Test]
-        public void CanContinue_SupportBelowMax_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_SupportBelowMax_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 99, planetOwner: "empire");
             DiplomacyMission mission = CreateAndAttachMission(game, planet);
 
             Assert.IsTrue(
-                mission.CanContinue(game),
-                "Mission should continue when support is below 100"
+                mission.ShouldRepeatAfterCompletion(game),
+                "Mission should repeat when support is below 100"
             );
         }
 

@@ -778,6 +778,12 @@ namespace Rebellion.Game
             /// <summary>Percentage of defender espionage subtracted from the decoy score.</summary>
             public int DecoyDefenderScalingPercent { get; set; }
 
+            /// <summary>Percentage of defender espionage applied to mission foil checks.</summary>
+            public int FoilDefenderScalingPercent { get; set; }
+
+            /// <summary>Flat modifier applied to mission foil checks.</summary>
+            public int FoilFlatScoreAdjustment { get; set; }
+
             /// <summary>Diplomacy success probability table.</summary>
             public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 
@@ -793,6 +799,9 @@ namespace Rebellion.Game
 
             /// <summary>Kill-or-capture outcome table.</summary>
             public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
+
+            /// <summary>Fallback mission success probability when a table has no match.</summary>
+            public int DefaultSuccessProbability { get; set; } = 50;
 
             /// <summary>Fallback kill-or-capture probability when the table has no match.</summary>
             public int DefaultKillOrCaptureProbability { get; set; } = 50;

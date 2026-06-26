@@ -3,6 +3,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -10,7 +11,10 @@ namespace Rebellion.Game.Missions
 {
     public class EspionageMission : Mission
     {
+        public const string MissionTypeID = "Espionage";
+
         public override bool CanceledOnOwnershipChange => false;
+        internal override bool AppliesFoiledParticipantConsequences => false;
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -18,12 +22,19 @@ namespace Rebellion.Game.Missions
         public EspionageMission()
             : base()
         {
-            ConfigKey = "Espionage";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Espionage;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an espionage mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private EspionageMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -31,13 +42,12 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Espionage",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Espionage").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Espionage,
-                null
+                OfficerRating.Espionage
             )
         {
             DecoyParticipantRating = OfficerRating.Espionage;
@@ -75,9 +85,65 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Espionage does not award mission skill improvements.
+        /// Executes the espionage attempt and snapshots the target planet on success.
         /// </summary>
-        protected override void ImproveMissionParticipantRatings() { }
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for success rolls.</param>
+        /// <returns>All results produced by the outcome, with a MissionCompletedResult appended.</returns>
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            List<GameResult> results = new List<GameResult>();
+            List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
+
+            foreach (IMissionParticipant participant in MainParticipants)
+            {
+                double successThreshold = GetAgentProbability(participant, game);
+                double rolledValue = provider.NextDouble() * 100;
+                if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
+                    successfulParticipants.Add(participant);
+            }
+
+            MissionOutcome outcome;
+            if (successfulParticipants.Count > 0 && IsMissionSatisfied(game))
+            {
+                outcome = MissionOutcome.Success;
+                results.AddRange(OnSuccess(game, provider));
+                ImproveSuccessfulParticipants(successfulParticipants);
+            }
+            else
+            {
+                outcome = MissionOutcome.Failed;
+                results.AddRange(OnFailed(game, provider));
+            }
+
+            results.Add(BuildCompletedResult(outcome, game));
+            return results;
+        }
+
+        /// <summary>
+        /// Improves ratings for participants that succeeded in the espionage attempt.
+        /// </summary>
+        /// <param name="participants">Participants whose success rolls passed.</param>
+        private void ImproveSuccessfulParticipants(List<IMissionParticipant> participants)
+        {
+            if (!CanImproveRatingsAgainstTarget())
+                return;
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (participant is Officer officer && participant.CanImproveMissionRating)
+                    officer.IncrementBaseRating(ParticipantRating);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether this mission target allows participant rating improvement.
+        /// </summary>
+        /// <returns>True when the target planet is not owned by the mission faction.</returns>
+        private bool CanImproveRatingsAgainstTarget()
+        {
+            return GetParent() is Planet planet && planet.GetOwnerInstanceID() != OwnerInstanceID;
+        }
 
         /// <summary>
         /// Captures a fog-of-war snapshot of the target planet for the owning faction.
@@ -98,11 +164,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Espionage missions do not repeat — one attempt per mission.
+        /// Espionage missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

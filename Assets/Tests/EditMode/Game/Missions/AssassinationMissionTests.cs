@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -316,11 +316,12 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>(),
                 target
             );
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new Dictionary<int, int> { { 0, 100 } }
-            );
+            game.Config.ProbabilityTables.Mission.Assassination = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -362,7 +363,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target is killed after mission creation but before execution
             target.IsKilled = true;
@@ -414,7 +415,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
@@ -454,7 +455,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             game.DetachNode(target);
 

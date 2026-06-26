@@ -12,6 +12,8 @@ namespace Rebellion.Game.Missions
 {
     public class RecruitmentMission : Mission
     {
+        public const string MissionTypeID = "Recruitment";
+
         public string TargetOfficerInstanceID { get; set; }
 
         /// <summary>
@@ -20,11 +22,19 @@ namespace Rebellion.Game.Missions
         public RecruitmentMission()
             : base()
         {
-            ConfigKey = "Recruitment";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Leadership;
         }
 
+        /// <summary>
+        /// Initializes a recruitment mission with its current selected recruit.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="targetOfficerInstanceId">Officer selected as the recruit, or null before selection.</param>
         private RecruitmentMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -33,13 +43,12 @@ namespace Rebellion.Game.Missions
             string targetOfficerInstanceId
         )
             : base(
-                "Recruitment",
+                MissionTypeID,
                 ownerInstanceId,
                 target.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Leadership,
-                null
+                OfficerRating.Leadership
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -82,24 +91,25 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Recruitment missions are never foiled — they target unaffiliated officers, not enemy planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because recruitment cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because recruitment cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Looks up the recruitment success chance for a participant at the mission planet.
         /// </summary>
-        /// <param name="agent">The participant whose leadership skill is evaluated.</param>
+        /// <param name="agent">The participant whose leadership rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>Success probability from the recruitment table.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent);
+                return base.GetAgentProbability(agent, game);
 
-            int score =
-                agent.GetEffectiveRating(OfficerRating.Leadership)
-                - planet.GetPopularSupport(OwnerInstanceID);
-            return SuccessProbabilityTable.Lookup(score);
+            int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
+            int score = agent.GetEffectiveRating(OfficerRating.Leadership) - opposingSupport;
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
@@ -143,7 +153,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if at least one unrecruited officer is available for this faction.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return game.GetUnrecruitedOfficers(OwnerInstanceID).Count > 0;
         }

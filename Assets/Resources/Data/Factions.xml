@@ -4,9 +4,9 @@
     <InstanceID>FNALL1</InstanceID>
     <DisplayName>Alliance</DisplayName>
     <HQInstanceID />
-    <DisallowedMissionTypes>
-      <MissionType>Assassination</MissionType>
-    </DisallowedMissionTypes>
+    <DisallowedMissionTypeIDs>
+      <String>Assassination</String>
+    </DisallowedMissionTypeIDs>
     <Settings>
       <RefinementMultiplier>1</RefinementMultiplier>
       <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>
@@ -21,7 +21,7 @@
     <InstanceID>FNEMP1</InstanceID>
     <DisplayName>Empire</DisplayName>
     <HQInstanceID />
-    <DisallowedMissionTypes />
+    <DisallowedMissionTypeIDs />
     <Settings>
       <RefinementMultiplier>1</RefinementMultiplier>
       <ResourceProcessingPointsPerFacility>50</ResourceProcessingPointsPerFacility>

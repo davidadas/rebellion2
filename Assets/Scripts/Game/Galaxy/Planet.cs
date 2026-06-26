@@ -16,6 +16,8 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode
     {
+        private const int _maximumPopularSupport = 100;
+
         // Planet Properties.
         public bool IsColonized { get; set; }
         public int SystemDataId { get; set; }
@@ -196,7 +198,7 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the number of mined resources counting only completed, stationary mines.
-        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// Does not apply any blockade cut; callers that need the blockade penalty
         /// should apply it separately or use <see cref="GetAvailableMinedResources"/>.
         /// </summary>
         /// <returns>The number of active mined resources, capped by resource nodes.</returns>
@@ -228,7 +230,7 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the refinement capacity counting only completed, stationary refineries.
-        /// Does not apply any blockade cut — callers that need the blockade penalty
+        /// Does not apply any blockade cut; callers that need the blockade penalty
         /// should apply it separately or use <see cref="GetAvailableRefinementCapacity"/>.
         /// </summary>
         /// <returns>The number of active refineries.</returns>
@@ -258,13 +260,23 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns the planet's popular support that is not aligned with the faction.
+        /// </summary>
+        /// <param name="factionInstanceId">The instance ID of the faction.</param>
+        /// <returns>The opposing popular support value.</returns>
+        public int GetOpposingPopularSupport(string factionInstanceId)
+        {
+            return _maximumPopularSupport - GetPopularSupport(factionInstanceId);
+        }
+
+        /// <summary>
         /// Sets the popular support for a faction on the planet.
         /// </summary>
         /// <param name="factionInstanceId">The instance ID of the faction.</param>
         /// <param name="support">The new level of support for the faction.</param>
         public void SetPopularSupport(string factionInstanceId, int support)
         {
-            int boundedSupport = Math.Clamp(support, 0, 100);
+            int boundedSupport = Math.Clamp(support, 0, _maximumPopularSupport);
             int currentSupport = PopularSupport.TryGetValue(
                 factionInstanceId,
                 out int existingSupport
@@ -274,13 +286,13 @@ namespace Rebellion.Game.Galaxy
             int supportDifference = boundedSupport - currentSupport;
             int totalSupport = PopularSupport.Values.Sum();
 
-            if (totalSupport + supportDifference <= 100)
+            if (totalSupport + supportDifference <= _maximumPopularSupport)
             {
                 PopularSupport[factionInstanceId] = boundedSupport;
             }
             else
             {
-                int overage = totalSupport + supportDifference - 100;
+                int overage = totalSupport + supportDifference - _maximumPopularSupport;
                 ShiftFactionSupport(factionInstanceId, overage);
                 PopularSupport[factionInstanceId] = boundedSupport;
             }
@@ -631,6 +643,11 @@ namespace Rebellion.Game.Galaxy
             return Buildings.Count(b => b.GetBuildingType() == buildingType);
         }
 
+        /// <summary>
+        /// Returns whether a manufactured entity is complete and stationary.
+        /// </summary>
+        /// <param name="entity">The manufactured entity to inspect.</param>
+        /// <returns>True when the entity is complete and has no active movement.</returns>
         private static bool IsEntityActive(IManufacturable entity)
         {
             return entity.ManufacturingStatus == ManufacturingStatus.Complete
@@ -917,7 +934,7 @@ namespace Rebellion.Game.Galaxy
                 default:
                     throw new InvalidOperationException(
                         $"Cannot add {child.GetDisplayName()} to {this.GetDisplayName()}. "
-                            + $"Only fleets, officers, buildings, missions, and regiments are allowed."
+                            + "Only fleets, officers, buildings, missions, regiments, special forces, and starfighters are allowed."
                     );
             }
         }

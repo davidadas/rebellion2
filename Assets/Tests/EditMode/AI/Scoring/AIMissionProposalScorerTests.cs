@@ -40,14 +40,50 @@ namespace Rebellion.Tests.AI.Scoring
 
             double lowSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Diplomacy, lowSupport)
+                new AIMissionProposal(officer, DiplomacyMission.MissionTypeID, lowSupport)
             );
             double highSupportScore = scorer.Score(
                 context,
-                new AIMissionProposal(officer, MissionType.Diplomacy, highSupport)
+                new AIMissionProposal(officer, DiplomacyMission.MissionTypeID, highSupport)
             );
 
             Assert.Greater(lowSupportScore, highSupportScore);
+        }
+
+        [Test]
+        public void Score_RecruitmentProposal_ReturnsHigherScoreForHigherSupportPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet lowSupport = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "low-support",
+                empire.InstanceID
+            );
+            Planet highSupport = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "high-support",
+                empire.InstanceID
+            );
+            lowSupport.SetPopularSupport(empire.InstanceID, 20);
+            highSupport.SetPopularSupport(empire.InstanceID, 80);
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.Ratings[OfficerRating.Leadership] = 80;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double lowSupportScore = scorer.Score(
+                context,
+                new AIMissionProposal(officer, RecruitmentMission.MissionTypeID, lowSupport)
+            );
+            double highSupportScore = scorer.Score(
+                context,
+                new AIMissionProposal(officer, RecruitmentMission.MissionTypeID, highSupport)
+            );
+
+            Assert.Greater(highSupportScore, lowSupportScore);
         }
 
         [Test]
@@ -72,11 +108,21 @@ namespace Rebellion.Tests.AI.Scoring
 
             double weakTargetScore = scorer.Score(
                 context,
-                new AIMissionProposal(actor, MissionType.Abduction, enemyPlanet, weakTarget)
+                new AIMissionProposal(
+                    actor,
+                    AbductionMission.MissionTypeID,
+                    enemyPlanet,
+                    weakTarget
+                )
             );
             double strongTargetScore = scorer.Score(
                 context,
-                new AIMissionProposal(actor, MissionType.Abduction, enemyPlanet, strongTarget)
+                new AIMissionProposal(
+                    actor,
+                    AbductionMission.MissionTypeID,
+                    enemyPlanet,
+                    strongTarget
+                )
             );
 
             Assert.Greater(weakTargetScore, strongTargetScore);

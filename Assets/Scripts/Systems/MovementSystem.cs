@@ -76,6 +76,8 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            destination = ResolveLiveNode(destination);
+
             if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
                 return;
 
@@ -85,12 +87,18 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (unit is Officer capturedOfficer && capturedOfficer.IsCaptured)
+            if (unit is Officer { IsCaptured: true })
             {
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
-                );
-                return;
+                Planet originPlanet = unit.GetParentOfType<Planet>();
+                Planet destinationPlanet =
+                    destination as Planet ?? destination.GetParentOfType<Planet>();
+                if (originPlanet != destinationPlanet)
+                {
+                    GameLogger.Warning(
+                        $"RequestMove rejected: {unit.GetDisplayName()} is captured and cannot be ordered to move."
+                    );
+                    return;
+                }
             }
 
             ExecuteMove(unit, destination);
@@ -160,6 +168,8 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
+            destination = ResolveLiveNode(destination);
+
             if (!CanMoveGroup(units, destination))
                 return;
 
@@ -175,7 +185,7 @@ namespace Rebellion.Systems
         /// <returns>True if the whole group can move.</returns>
         private bool CanMoveGroup(List<IMovable> units, ISceneNode destination)
         {
-            ISceneNode groupOrigin = null;
+            Planet groupOrigin = null;
             foreach (IMovable unit in units)
             {
                 if (unit == null)
@@ -187,7 +197,7 @@ namespace Rebellion.Systems
                 if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
                     return false;
 
-                ISceneNode unitOrigin = unit.GetParent();
+                Planet unitOrigin = unit.GetParentOfType<Planet>();
                 if (unitOrigin == null)
                 {
                     GameLogger.Warning(
@@ -294,13 +304,21 @@ namespace Rebellion.Systems
         {
             string captorId = capturedOfficer.CaptorInstanceID;
             return !string.IsNullOrEmpty(captorId)
-                && units
-                    .OfType<Officer>()
-                    .Any(escort =>
-                        !ReferenceEquals(escort, capturedOfficer)
-                        && !escort.IsCaptured
-                        && escort.GetOwnerInstanceID() == captorId
-                    );
+                && units.Any(escort =>
+                    !ReferenceEquals(escort, capturedOfficer)
+                    && !IsCapturedOfficer(escort)
+                    && escort.GetOwnerInstanceID() == captorId
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a movable unit is a captured officer.
+        /// </summary>
+        /// <param name="unit">The movable unit to inspect.</param>
+        /// <returns>True if the unit is a captured officer.</returns>
+        private static bool IsCapturedOfficer(IMovable unit)
+        {
+            return unit is Officer officer && officer.IsCaptured;
         }
 
         /// <summary>
@@ -463,10 +481,22 @@ namespace Rebellion.Systems
             Planet destinationPlanet
         )
         {
-            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(destinationOwner)
-                && destinationOwner != movable.GetOwnerInstanceID()
-                && !CanEnterHostileOrbit(movable, destination);
+            string destinationOwner = destination.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(destinationOwner))
+                destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(destinationOwner))
+                return false;
+
+            if (destinationOwner == movable.GetOwnerInstanceID())
+                return false;
+
+            if (
+                movable is Officer { IsCaptured: true } officer
+                && officer.CaptorInstanceID == destinationOwner
+            )
+                return false;
+
+            return !CanEnterHostileOrbit(movable, destination);
         }
 
         /// <summary>
@@ -715,6 +745,14 @@ namespace Rebellion.Systems
                 return;
             }
 
+            if (destinationPlanet == originPlanet)
+            {
+                _game.MoveNode(unit, destination);
+                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+                unit.Movement = null;
+                return;
+            }
+
             _game.MoveNode(unit, destination);
             ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
 
@@ -880,7 +918,7 @@ namespace Rebellion.Systems
                 return fleet.FindShipForStarfighter();
             if (unit is Regiment)
                 return fleet.FindShipForRegiment();
-            if (unit is Officer && fleet.CapitalShips.Count > 0)
+            if ((unit is Officer || unit is SpecialForces) && fleet.CapitalShips.Count > 0)
                 return fleet.CapitalShips[0];
             return null;
         }

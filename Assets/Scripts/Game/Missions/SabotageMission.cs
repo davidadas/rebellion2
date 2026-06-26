@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class SabotageMission : Mission
     {
+        public const string MissionTypeID = "Sabotage";
+
         public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>
@@ -17,47 +19,94 @@ namespace Rebellion.Game.Missions
         public SabotageMission()
             : base()
         {
-            ConfigKey = "Sabotage";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes a sabotage mission with its selected target object.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="missionTarget">Planet where the mission occurs.</param>
+        /// <param name="sabotageTargetInstanceId">Object selected as the sabotage target.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private SabotageMission(
             string ownerInstanceId,
-            ISceneNode target,
+            ISceneNode missionTarget,
+            string sabotageTargetInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Sabotage",
+                MissionTypeID,
                 ownerInstanceId,
-                RequirePlanetTarget(target, "Sabotage").GetInstanceID(),
+                missionTarget.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat,
-                null
+                OfficerRating.Combat
             )
         {
+            TargetInstanceID = sabotageTargetInstanceId;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
         /// <summary>
-        /// Returns a new SabotageMission if the target is a planet, or null.
+        /// Returns a new SabotageMission if the target can be sabotaged.
         /// </summary>
-        /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
-        /// <returns>A configured mission, or null if the target is not a planet.</returns>
+        /// <param name="ctx">Mission context providing owner, target planet, participants, and optional concrete target.</param>
+        /// <returns>A configured mission, or null if the target is not eligible.</returns>
         public static SabotageMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet))
+            if (ctx.Target == null)
+                return null;
+
+            ISceneNode sabotageTarget = ctx.SpecificTarget ?? ctx.Target;
+            if (sabotageTarget == null || sabotageTarget is Officer)
+                return null;
+
+            if (sabotageTarget is IManufacturable manufacturable)
+            {
+                if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
+                    return null;
+            }
+
+            if (sabotageTarget is IMovable movable && movable.Movement != null)
+                return null;
+
+            Planet missionPlanet = ctx.Target as Planet ?? sabotageTarget.GetParentOfType<Planet>();
+            if (missionPlanet == null)
+                return null;
+
+            if (
+                ctx.SpecificTarget != null
+                && sabotageTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
+            )
                 return null;
 
             return new SabotageMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                missionPlanet,
+                sabotageTarget.GetInstanceID(),
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );
+        }
+
+        /// <summary>
+        /// Resolves whether sabotage can execute after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        {
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
         }
 
         /// <summary>
@@ -67,11 +116,37 @@ namespace Rebellion.Game.Missions
         /// <returns>True if the planet still has at least one building.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
-            return GetParent() is Planet p && p.GetAllBuildings().Count > 0;
+            return HasValidTarget(game);
         }
 
         /// <summary>
-        /// Sabotage does not award mission skill improvements.
+        /// Returns whether the selected sabotage target is still present at the mission planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the selected target can still be sabotaged.</returns>
+        private bool HasValidTarget(GameRoot game)
+        {
+            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
+            if (target is Planet planet)
+                return planet.GetAllBuildings().Count > 0;
+
+            if (target == null || target is Officer)
+                return false;
+
+            if (
+                target is IManufacturable manufacturable
+                && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
+            )
+                return false;
+
+            if (target is IMovable movable && movable.Movement != null)
+                return false;
+
+            return target.GetParentOfType<Planet>() == GetParent() as Planet;
+        }
+
+        /// <summary>
+        /// Sabotage does not award mission rating improvements.
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 
@@ -84,8 +159,10 @@ namespace Rebellion.Game.Missions
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
             Planet planet = GetParent() as Planet;
-            List<Building> buildings = planet.GetAllBuildings();
-            Building target = buildings[0];
+            ISceneNode target = GetSabotageTarget(game);
+            if (target == null)
+                return new List<GameResult>();
+
             game.DetachNode(target);
 
             return new List<GameResult>
@@ -101,11 +178,26 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Sabotage missions do not repeat — one attempt per mission.
+        /// Returns the concrete object that should be destroyed by the sabotage mission.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The selected target, or the first building on a planet target.</returns>
+        private ISceneNode GetSabotageTarget(GameRoot game)
+        {
+            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
+            if (target is not Planet planet)
+                return target;
+
+            List<Building> buildings = planet.GetAllBuildings();
+            return buildings.Count > 0 ? buildings[0] : null;
+        }
+
+        /// <summary>
+        /// Sabotage missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

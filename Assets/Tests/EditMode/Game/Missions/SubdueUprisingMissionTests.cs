@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -112,7 +112,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_UprisingEndedBeforeExecution_ReturnsTrue()
+        public void GetAbortReason_UprisingEndedBeforeExecution_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -146,12 +146,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             empPlanet.EndUprising();
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when uprising ends before mission executes"
             );
         }
@@ -176,7 +177,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, empPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             empPlanet.EndUprising();
 

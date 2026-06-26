@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
@@ -15,6 +16,8 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public class ResearchMission : Mission
     {
+        public const string MissionTypeID = "Research";
+
         public ResearchDiscipline Discipline { get; set; }
 
         /// <summary>
@@ -23,11 +26,19 @@ namespace Rebellion.Game.Missions
         public ResearchMission()
             : base()
         {
-            ConfigKey = "Research";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Initializes a research mission for the selected discipline.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="discipline">Research discipline advanced by the mission.</param>
         private ResearchMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -36,13 +47,12 @@ namespace Rebellion.Game.Missions
             ResearchDiscipline discipline
         )
             : base(
-                "Research",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Research").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 Officer.GetRatingForResearchDiscipline(discipline),
-                null,
                 displayName: GetMissionName(discipline)
             )
         {
@@ -76,6 +86,11 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Returns the display name for a research discipline mission.
+        /// </summary>
+        /// <param name="discipline">The research discipline.</param>
+        /// <returns>The mission display name.</returns>
         private static string GetMissionName(ResearchDiscipline discipline)
         {
             return discipline switch
@@ -88,9 +103,70 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Resolves whether research can execute after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The failure reason, or null when research can advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        {
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            Planet planet = GetParent() as Planet;
+            if (IsMissionSatisfied(game) && HasResearchFacility(planet, Discipline))
+                return null;
+
+            if (
+                planet != null
+                && planet.GetOwnerInstanceID() == OwnerInstanceID
+                && !HasResearchFacility(planet, Discipline)
+            )
+            {
+                return MissionCompletionReason.NoResearchFacilities;
+            }
+
+            return MissionCompletionReason.TargetUnavailable;
+        }
+
+        /// <summary>
+        /// Returns whether a planet has a facility that can support the research discipline.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="discipline">The research discipline being performed.</param>
+        /// <returns>True when the planet has a matching completed facility.</returns>
+        internal static bool HasResearchFacility(Planet planet, ResearchDiscipline? discipline)
+        {
+            if (planet == null || !discipline.HasValue)
+                return false;
+
+            return discipline.Value switch
+            {
+                ResearchDiscipline.ShipDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Ship)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Troop).Count > 0,
+                ResearchDiscipline.TroopTraining => planet
+                    .GetProductionFacilities(ManufacturingType.Troop)
+                    .Count > 0
+                    || planet.GetProductionFacilities(ManufacturingType.Building).Count > 0,
+                ResearchDiscipline.FacilityDesign => planet
+                    .GetProductionFacilities(ManufacturingType.Building)
+                    .Count > 0
+                    || planet
+                        .GetAllBuildings()
+                        .Any(building =>
+                            building.BuildingType == BuildingType.Mine
+                            && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                        ),
+                _ => false,
+            };
+        }
+
+        /// <summary>
         /// Checks whether the mission target planet is still owned by the mission's faction.
         /// </summary>
-        /// <param name="game">The game instance.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>True if the parent planet is owned by this faction.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
@@ -101,8 +177,9 @@ namespace Rebellion.Game.Missions
         /// Research missions target own planets and are never foiled.
         /// </summary>
         /// <param name="defenseScore">The defense score (unused).</param>
+        /// <param name="game">The current game state, unused because research cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Resolves one mission execution: each main participant rolls independently;
@@ -116,19 +193,33 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
+            MissionCompletionReason completionReason =
+                GetAbortReason(game) ?? MissionCompletionReason.TargetUnavailable;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            Planet planet = GetParent() as Planet;
 
-            if (faction != null && IsMissionSatisfied(game))
+            if (
+                faction != null
+                && IsMissionSatisfied(game)
+                && HasResearchFacility(planet, Discipline)
+            )
             {
                 int earnedPoints = AccumulatePointsFromParticipants(game.Config.Research, provider);
                 if (earnedPoints > 0)
                 {
                     outcome = MissionOutcome.Success;
                     AwardAccumulatedPoints(faction, earnedPoints, game, results);
+                    completionReason = results.OfType<ResearchOrderedResult>().Any()
+                        ? MissionCompletionReason.ResearchBreakthrough
+                        : MissionCompletionReason.ResearchProgress;
+                }
+                else
+                {
+                    completionReason = MissionCompletionReason.Failure;
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, game));
+            results.Add(BuildCompletedResult(outcome, completionReason, game));
             return results;
         }
 
@@ -251,10 +342,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Research missions repeat as long as the mission target is still satisfied.
+        /// Research missions repeat after completion as long as the mission target is still satisfied.
         /// </summary>
-        /// <param name="game">The game instance.</param>
-        /// <returns>True if the mission should continue.</returns>
-        public override bool CanContinue(GameRoot game) => IsMissionSatisfied(game);
+        /// <param name="game">The current game state.</param>
+        /// <returns>True if the mission should repeat.</returns>
+        public override bool ShouldRepeatAfterCompletion(GameRoot game) => IsMissionSatisfied(game);
     }
 }

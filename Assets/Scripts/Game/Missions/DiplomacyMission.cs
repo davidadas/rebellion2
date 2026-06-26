@@ -10,17 +10,26 @@ namespace Rebellion.Game.Missions
 {
     public class DiplomacyMission : Mission
     {
+        public const string MissionTypeID = "Diplomacy";
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public DiplomacyMission()
             : base()
         {
-            ConfigKey = "Diplomacy";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Diplomacy;
         }
 
+        /// <summary>
+        /// Initializes a diplomacy mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private DiplomacyMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -28,13 +37,12 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "Diplomacy",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Diplomacy").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Diplomacy,
-                null
+                OfficerRating.Diplomacy
             ) { }
 
         /// <summary>
@@ -72,44 +80,49 @@ namespace Rebellion.Game.Missions
         /// is taken by a third faction.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            if (base.ShouldAbort(game))
-                return true;
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
             if (GetParent() is Planet planet)
             {
                 if (planet.IsInUprising)
-                    return true;
+                    return MissionCompletionReason.Failure;
                 string owner = planet.GetOwnerInstanceID();
                 if (owner != null && owner != OwnerInstanceID)
-                    return true;
+                    return MissionCompletionReason.Failure;
             }
-            return false;
+            return null;
         }
 
         /// <summary>
         /// Diplomacy missions are never foiled — they target own or neutral planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because diplomacy cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because diplomacy cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Returns the participant's diplomacy success probability for the current target.
         /// </summary>
         /// <param name="agent">The participant whose diplomacy rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The participant's diplomacy success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
-                return base.GetAgentProbability(agent);
+                return base.GetAgentProbability(agent, game);
 
+            int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int score =
                 GetTargetTroopState(planet)
-                - planet.GetPopularSupport(OwnerInstanceID)
+                - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
@@ -224,7 +237,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the planet is owned or neutral, not in uprising, and support is below 100.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             if (GetParent() is Planet planet)
             {

@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Missions
         public void OnSuccess_StudentBelowTrainer_GainsTrainingAdjustment()
         {
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             // QueueRNG(0.0, 0.99): first value passes the success roll,
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             _student.ForceValue = 150;
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             mission.Execute(_game, new FixedRNG(0.0));
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             int diplomacyBefore = _student.Ratings[OfficerRating.Diplomacy];
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             mission.Execute(_game, new FixedRNG(0.0));
@@ -135,49 +135,49 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_TrainerCaptured_ReturnsTrue()
+        public void GetAbortReason_TrainerCaptured_ReturnsFailure()
         {
             JediTrainingMission mission = CreateMission();
             _trainer.IsCaptured = true;
-            Assert.IsTrue(mission.ShouldAbort(_game));
+            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void ShouldAbort_TrainerKilled_ReturnsTrue()
+        public void GetAbortReason_TrainerKilled_ReturnsFailure()
         {
             JediTrainingMission mission = CreateMission();
             _trainer.IsKilled = true;
-            Assert.IsTrue(mission.ShouldAbort(_game));
+            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void ShouldAbort_TrainerAlive_ReturnsFalse()
+        public void GetAbortReason_TrainerAlive_ReturnsNull()
         {
             JediTrainingMission mission = CreateMission();
-            Assert.IsFalse(mission.ShouldAbort(_game));
+            Assert.IsNull(mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void CanContinue_StudentForceQualified_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_StudentForceQualified_ReturnsFalse()
         {
             JediTrainingMission mission = CreateMission();
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
-            Assert.IsFalse(mission.CanContinue(_game));
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]
-        public void CanContinue_StudentBelowForceQualified_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_StudentBelowForceQualified_ReturnsTrue()
         {
             JediTrainingMission mission = CreateMission();
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
-            Assert.IsTrue(mission.CanContinue(_game));
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]
         public void OnSuccess_StudentBelowTrainer_ReturnsForceTrainingResult()
         {
             JediTrainingMission mission = CreateMission();
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             List<GameResult> results = mission.Execute(_game, new QueueRNG(0.0, 0.99));
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             JediTrainingMission mission = JediTrainingMission.TryCreate(ctx);
             _game.AttachNode(mission, _planet);
-            mission.Initiate(new FixedRNG());
+            mission.Initiate(0);
             mission.SetExecutionTick(0);
 
             // 0.0 passes the success roll (first student triggers early return),
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_MultipleStudentsOneQualified_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_MultipleStudentsOneQualified_ReturnsTrue()
         {
             Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
             student2.IsJedi = true;
@@ -255,13 +255,13 @@ namespace Rebellion.Tests.Game.Missions
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
 
             Assert.IsTrue(
-                mission.CanContinue(_game),
-                "Should continue while any student is below threshold"
+                mission.ShouldRepeatAfterCompletion(_game),
+                "Should repeat while any student is below threshold"
             );
         }
 
         [Test]
-        public void CanContinue_MultipleStudentsAllQualified_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_MultipleStudentsAllQualified_ReturnsFalse()
         {
             Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
             student2.IsJedi = true;
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.Game.Missions
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
 
             Assert.IsFalse(
-                mission.CanContinue(_game),
+                mission.ShouldRepeatAfterCompletion(_game),
                 "Should stop when all students are qualified"
             );
         }

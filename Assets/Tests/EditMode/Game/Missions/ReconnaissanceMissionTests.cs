@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
-                AllowedMissionTypes = new List<MissionType> { MissionType.Reconnaissance },
+                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
             };
         }
 
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 

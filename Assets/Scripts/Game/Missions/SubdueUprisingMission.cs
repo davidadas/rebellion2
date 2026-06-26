@@ -8,17 +8,26 @@ namespace Rebellion.Game.Missions
 {
     public class SubdueUprisingMission : Mission
     {
+        public const string MissionTypeID = "SubdueUprising";
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public SubdueUprisingMission()
             : base()
         {
-            ConfigKey = "SubdueUprising";
+            ConfigKey = MissionTypeID;
             DisplayName = "Subdue Uprising";
             ParticipantRating = OfficerRating.Leadership;
         }
 
+        /// <summary>
+        /// Initializes a subdue uprising mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private SubdueUprisingMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -26,13 +35,12 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "SubdueUprising",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Subdue Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Leadership,
-                null,
                 displayName: "Subdue Uprising"
             ) { }
 
@@ -61,10 +69,16 @@ namespace Rebellion.Game.Missions
         /// Extends base cancellation to also cancel when the uprising ends before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            return base.ShouldAbort(game) || !(GetParent() is Planet p && p.IsInUprising);
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return GetParent() is Planet p && p.IsInUprising
+                ? null
+                : MissionCompletionReason.Failure;
         }
 
         /// <summary>
@@ -80,9 +94,10 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Subdue Uprising missions are never foiled — they target own planets.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because subdue uprising cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because subdue uprising cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Ends the uprising on the target planet.
@@ -109,11 +124,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Subdue Uprising missions do not repeat — one attempt per mission.
+        /// Subdue Uprising missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

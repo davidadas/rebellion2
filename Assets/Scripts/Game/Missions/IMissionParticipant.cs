@@ -49,11 +49,11 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Returns whether this participant is qualified to perform the given mission type.
-        /// Officers are unrestricted; spec ops check their AllowedMissionTypes.
+        /// Officers are unrestricted; spec ops check their allowed mission type IDs.
         /// </summary>
-        /// <param name="missionType">The mission type to check eligibility for.</param>
+        /// <param name="missionTypeId">The mission type ID to check eligibility for.</param>
         /// <returns>True if this participant can perform the mission type.</returns>
-        public bool CanPerformMission(MissionType missionType);
+        public bool CanPerformMission(string missionTypeId);
 
         /// <summary>
         /// Returns whether this participant is currently assigned to a mission.

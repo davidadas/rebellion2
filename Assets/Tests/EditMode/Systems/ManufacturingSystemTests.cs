@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -172,6 +173,28 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("B1", queue[0].InstanceID);
             Assert.AreEqual("B2", queue[1].InstanceID);
             Assert.AreEqual("B3", queue[2].InstanceID);
+        }
+
+        [Test]
+        public void ClearQueue_QueuedBuilding_RemovesItemAndQueueBucket()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            bool cleared = _manager.ClearQueue(_coruscant, ManufacturingType.Building);
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                _coruscant.GetManufacturingQueue();
+
+            Assert.IsTrue(cleared);
+            Assert.IsFalse(queue.ContainsKey(ManufacturingType.Building));
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>("MINE1"));
         }
 
         [Test]
@@ -1662,6 +1685,141 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, fleets.Count, "Ship should join the explicitly specified fleet.");
             Assert.AreEqual(2, fleets[0].CapitalShips.Count);
             Assert.AreEqual(ManufacturingStatus.Building, newShip.ManufacturingStatus);
+        }
+
+        [Test]
+        public void Enqueue_FleetDestinationOwnedByDifferentFaction_ReturnsFalse()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "rebels");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "rebels",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, _provider, _movement);
+
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, fleet, ignoreCost: true));
+            Assert.IsNull(fighter.GetParent());
+        }
+
+        [Test]
+        public void Enqueue_CapitalShipDestinationAvailable_QueuesPassengerOnShip()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, _provider, _movement);
+
+            Assert.IsTrue(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
+            Assert.AreEqual(carrier, fighter.GetParent());
+            Assert.Contains(fighter, carrier.Starfighters);
+        }
+
+        [Test]
+        public void Enqueue_CapitalShipDestinationInTransit_ReturnsFalse()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            game.AttachNode(carrier, fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, _provider, _movement);
+
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
+            Assert.IsNull(fighter.GetParent());
+        }
+
+        [Test]
+        public void Enqueue_CapitalShipDestinationUnderConstruction_ReturnsFalse()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(carrier, fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem mfg = new ManufacturingSystem(game, _provider, _movement);
+
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
+            Assert.IsNull(fighter.GetParent());
         }
 
         [Test]

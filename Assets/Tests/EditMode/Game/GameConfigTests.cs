@@ -164,6 +164,8 @@ namespace Rebellion.Tests.Game
                 config.ProbabilityTables.Mission,
                 "Mission probability tables should not be null"
             );
+            Assert.AreEqual(35, config.ProbabilityTables.Mission.FoilDefenderScalingPercent);
+            Assert.AreEqual(-1, config.ProbabilityTables.Mission.FoilFlatScoreAdjustment);
 
             Assert.Greater(
                 config.ProbabilityTables.Mission.Abduction.Count,

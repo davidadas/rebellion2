@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -35,6 +36,15 @@ namespace Rebellion.Tests.Game.Missions
             return AbductionMission.TryCreate(ctx);
         }
 
+        private static void MakeAbductionAlwaysSucceed(GameRoot game)
+        {
+            game.Config.ProbabilityTables.Mission.Abduction = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
+        }
+
         [Test]
         public void Execute_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
@@ -48,6 +58,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -58,7 +69,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -81,6 +92,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
 
             AbductionMission mission = CreateAbductionMission(
                 game,
@@ -91,7 +103,8 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -111,6 +124,105 @@ namespace Rebellion.Tests.Game.Missions
                 empPlanet,
                 target.GetParent(),
                 "Abducted officer should return to the abductor's origin"
+            );
+        }
+
+        [Test]
+        public void GetSuccessfulReturnPassengers_TargetCapturedByOwner_ReturnsTarget()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            AbductionMission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            target.IsCaptured = true;
+            target.CaptorInstanceID = "empire";
+
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
+
+            CollectionAssert.AreEqual(new IMovable[] { target }, passengers);
+        }
+
+        [Test]
+        public void GetSuccessfulReturnPassengers_TargetNotCapturedByOwner_ReturnsEmpty()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            AbductionMission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            target.IsCaptured = true;
+            target.CaptorInstanceID = "rebels";
+
+            List<IMovable> passengers = mission.GetSuccessfulReturnPassengers(game).ToList();
+
+            Assert.IsEmpty(passengers);
+        }
+
+        [Test]
+        public void UpdateMission_SuccessfulAbductionWithSpecialForces_MovesTargetToAbductorOrigin()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SpecialForces commando = new SpecialForces
+            {
+                InstanceID = "sf1",
+                DisplayName = "sf1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { AbductionMission.MissionTypeID },
+            };
+            game.AttachNode(commando, empPlanet);
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, enemyPlanet);
+            MakeAbductionAlwaysSucceed(game);
+
+            AbductionMission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { commando },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(commando, mission);
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(0.0), movement);
+
+            missionSystem.UpdateMission(mission);
+
+            Assert.IsTrue(target.IsCaptured, "Target officer should remain captured");
+            Assert.AreEqual(
+                empPlanet,
+                target.GetParent(),
+                "Abducted officer should return with the special-forces escort"
             );
         }
 
@@ -137,7 +249,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -173,7 +285,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target is captured after mission creation but before execution
             target.IsCaptured = true;
@@ -225,7 +337,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             // Target moves to a different planet before mission executes
             game.MoveNode(target, anotherEnemyPlanet);
@@ -265,7 +377,7 @@ namespace Rebellion.Tests.Game.Missions
                 target
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             game.DetachNode(target);
 

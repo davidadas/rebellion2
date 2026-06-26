@@ -22,10 +22,10 @@
       <Combat>20</Combat>
       <Leadership>50</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>InciteUprising</MissionType>
-      <MissionType>SubdueUprising</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>InciteUprising</String>
+      <String>SubdueUprising</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPAL002</TypeID>
@@ -46,11 +46,11 @@
       <Combat>55</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Rescue</MissionType>
-      <MissionType>Sabotage</MissionType>
-      <MissionType>Abduction</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Rescue</String>
+      <String>Sabotage</String>
+      <String>Abduction</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPAL003</TypeID>
@@ -71,9 +71,9 @@
       <Combat>30</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Reconnaissance</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Reconnaissance</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPAL004</TypeID>
@@ -94,9 +94,9 @@
       <Combat>0</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Espionage</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Espionage</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <!--   **************************************************  -->
   <!--   ********************* EMPIRE *********************  -->
@@ -120,9 +120,9 @@
       <Combat>10</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Reconnaissance</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Reconnaissance</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPEM002</TypeID>
@@ -143,9 +143,9 @@
       <Combat>5</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Espionage</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Espionage</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPEM003</TypeID>
@@ -166,11 +166,11 @@
       <Combat>55</Combat>
       <Leadership>50</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Sabotage</MissionType>
-      <MissionType>InciteUprising</MissionType>
-      <MissionType>SubdueUprising</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Sabotage</String>
+      <String>InciteUprising</String>
+      <String>SubdueUprising</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
   <SpecialForce>
     <TypeID>SPEM004</TypeID>
@@ -191,10 +191,10 @@
       <Combat>70</Combat>
       <Leadership>0</Leadership>
     </Ratings>
-    <AllowedMissionTypes>
-      <MissionType>Rescue</MissionType>
-      <MissionType>Abduction</MissionType>
-      <MissionType>Assassination</MissionType>
-    </AllowedMissionTypes>
+    <AllowedMissionTypeIDs>
+      <String>Rescue</String>
+      <String>Abduction</String>
+      <String>Assassination</String>
+    </AllowedMissionTypeIDs>
   </SpecialForce>
 </SpecialForces>

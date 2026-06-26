@@ -10,6 +10,8 @@ namespace Rebellion.Game.Missions
 {
     public class InciteUprisingMission : Mission
     {
+        public const string MissionTypeID = "InciteUprising";
+
         public override bool CanceledOnOwnershipChange => false;
 
         /// <summary>
@@ -18,12 +20,19 @@ namespace Rebellion.Game.Missions
         public InciteUprisingMission()
             : base()
         {
-            ConfigKey = "InciteUprising";
+            ConfigKey = MissionTypeID;
             DisplayName = "Incite Uprising";
             ParticipantRating = OfficerRating.Leadership;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an incite uprising mission for the selected planet.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
         private InciteUprisingMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -31,13 +40,12 @@ namespace Rebellion.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
             : base(
-                "InciteUprising",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Incite Uprising").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Leadership,
-                null,
                 displayName: "Incite Uprising"
             )
         {
@@ -70,18 +78,25 @@ namespace Rebellion.Game.Missions
         /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when the mission may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            return base.ShouldAbort(game) || GetParent() is Planet p && p.IsInUprising;
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return GetParent() is Planet p && p.IsInUprising
+                ? MissionCompletionReason.Failure
+                : null;
         }
 
         /// <summary>
         /// Returns the participant's chance to incite the target planet.
         /// </summary>
-        /// <param name="agent">The participant whose leadership skill is evaluated.</param>
+        /// <param name="agent">The participant whose leadership rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The participant's uprising success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (!(GetParent() is Planet planet))
                 throw new InvalidOperationException(
@@ -99,7 +114,7 @@ namespace Rebellion.Game.Missions
             }
 
             int score = leadershipSkill - enemySupport - regimentStrength;
-            return SuccessProbabilityTable.Lookup(score);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>
@@ -125,11 +140,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Incite Uprising missions do not repeat — one attempt per mission.
+        /// Incite Uprising missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

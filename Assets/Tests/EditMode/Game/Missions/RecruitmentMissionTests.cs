@@ -7,6 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -56,7 +57,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             return mission;
         }
 
@@ -154,7 +155,33 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_UnrecruitedOfficersAvailable_ReturnsTrue()
+        public void Execute_SuccessProbability_UsesOpposingSupportAndLeadershipRating()
+        {
+            (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(target);
+            officer.SetBaseRating(OfficerRating.Leadership, 40);
+
+            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            game.Config.ProbabilityTables.Mission.Recruitment = new Dictionary<int, int>
+            {
+                { -40, 0 },
+                { 20, 100 },
+                { 21, 0 },
+            };
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_UnrecruitedOfficersAvailable_ReturnsTrue()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
@@ -164,7 +191,7 @@ namespace Rebellion.Tests.Game.Missions
 
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
 
-            Assert.IsTrue(mission.CanContinue(game));
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]
@@ -182,7 +209,7 @@ namespace Rebellion.Tests.Game.Missions
             RecruitmentMission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Assert.AreEqual("empire", firstTarget.OwnerInstanceID);
@@ -193,7 +220,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_NoUnrecruitedOfficersAvailable_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_NoUnrecruitedOfficersAvailable_ReturnsFalse()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
@@ -207,7 +234,7 @@ namespace Rebellion.Tests.Game.Missions
             // Remove all unrecruited officers after mission creation
             game.UnrecruitedOfficers.Clear();
 
-            Assert.IsFalse(mission.CanContinue(game));
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(game));
         }
 
         [Test]

@@ -26,7 +26,9 @@ namespace Rebellion.Tests.AI.Phases
             officer.Ratings[OfficerRating.Diplomacy] = 90;
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            context.AddProposal(new AIMissionProposal(officer, MissionType.Diplomacy, planet));
+            context.AddProposal(
+                new AIMissionProposal(officer, DiplomacyMission.MissionTypeID, planet)
+            );
 
             new AIScoringPhase().Execute(context);
 

@@ -18,13 +18,15 @@ namespace Rebellion.Tests.Game.Missions
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode specificTarget = null
         )
         {
             MissionContext ctx = new MissionContext
             {
                 OwnerInstanceId = ownerInstanceId,
                 Target = target,
+                SpecificTarget = specificTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
@@ -57,7 +59,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
@@ -94,7 +96,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -132,7 +134,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -174,7 +176,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             game.DetachNode(building);
 
@@ -188,6 +190,80 @@ namespace Rebellion.Tests.Game.Missions
                 completed.Outcome,
                 "Mission should fail when all buildings removed before execution"
             );
+        }
+
+        [Test]
+        public void Execute_SpecificBuildingTarget_RemovesSelectedBuilding()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Building firstBuilding = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building selectedBuilding = new Building
+            {
+                InstanceID = "b2",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(firstBuilding, enemyPlanet);
+            game.AttachNode(selectedBuilding, enemyPlanet);
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                selectedBuilding
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b2"));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+            Assert.AreEqual(
+                selectedBuilding,
+                results.OfType<GameObjectSabotagedResult>().Single().SabotagedObject
+            );
+        }
+
+        [Test]
+        public void TryCreate_OfficerTarget_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(targetOfficer, enemyPlanet);
+
+            SabotageMission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                targetOfficer
+            );
+
+            Assert.IsNull(mission);
         }
 
         [Test]

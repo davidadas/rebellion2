@@ -123,6 +123,15 @@ namespace Rebellion.Systems
             if (faction == null || destination == null)
                 return false;
 
+            if (
+                !string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    item.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
             ISceneNode parent = destination;
 
             if (item is Starfighter)
@@ -160,6 +169,70 @@ namespace Rebellion.Systems
 
             CommitToQueue(planet, item, ignoreCost);
             return true;
+        }
+
+        /// <summary>
+        /// Queues a starfighter or regiment for deployment to a specific capital ship.
+        /// </summary>
+        /// <param name="planet">The planet where production is queued.</param>
+        /// <param name="item">The item to produce.</param>
+        /// <param name="destination">The capital ship receiving the completed item.</param>
+        /// <param name="ignoreCost">Whether to queue the item without checking maintenance headroom.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        public bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            CapitalShip destination,
+            bool ignoreCost = false
+        )
+        {
+            Faction faction = GetValidatedFaction(planet, item);
+            if (faction == null || destination == null)
+                return false;
+
+            if (
+                !string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    item.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            if (item is Starfighter or Regiment && !IsManufacturingCarrierAvailable(destination))
+                return false;
+
+            if (!destination.CanAcceptChild((ISceneNode)item))
+                return false;
+
+            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+                return false;
+
+            _game.AttachNode((ISceneNode)item, destination);
+
+            _pendingResults.Add(
+                new ManufacturingDeployedResult
+                {
+                    Faction = faction,
+                    DeployedObject = item as IGameEntity,
+                    Location = destination,
+                    Tick = _game.CurrentTick,
+                }
+            );
+
+            CommitToQueue(planet, item, ignoreCost);
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether a capital ship can receive manufacturing output.
+        /// </summary>
+        /// <param name="ship">The destination ship to inspect.</param>
+        /// <returns>True when the ship is complete and not in transit.</returns>
+        private static bool IsManufacturingCarrierAvailable(CapitalShip ship)
+        {
+            return ship?.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null;
         }
 
         /// <summary>
@@ -761,6 +834,66 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Clears one manufacturing queue on a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose queue should be cleared.</param>
+        /// <param name="type">The manufacturing queue type to clear.</param>
+        /// <returns>True when a populated queue was cleared; otherwise false.</returns>
+        public bool ClearQueue(Planet planet, ManufacturingType type)
+        {
+            if (planet == null || type == ManufacturingType.None)
+                return false;
+
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                planet.GetManufacturingQueue();
+            if (
+                !queue.TryGetValue(type, out List<IManufacturable> items)
+                || items == null
+                || items.Count == 0
+            )
+                return false;
+
+            ClearQueueItems(planet, type, items);
+            queue.Remove(type);
+            return true;
+        }
+
+        /// <summary>
+        /// Detaches queued manufacturing items and resets the facilities assigned to their queue.
+        /// </summary>
+        /// <param name="planet">The planet whose queued items are being cleared.</param>
+        /// <param name="type">The manufacturing queue type being cleared.</param>
+        /// <param name="items">The queued items to clear.</param>
+        private void ClearQueueItems(
+            Planet planet,
+            ManufacturingType type,
+            List<IManufacturable> items
+        )
+        {
+            foreach (IManufacturable item in items.ToList())
+            {
+                ISceneNode sceneNode = item;
+                ISceneNode parent = sceneNode.GetParent();
+                if (parent != null)
+                    _game.DetachNode(sceneNode);
+
+                if (
+                    parent is Fleet fleet
+                    && fleet.CapitalShips.Count == 0
+                    && fleet.GetParent() != null
+                )
+                    _game.DetachNode(fleet);
+
+                GameLogger.Debug(
+                    $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
+                );
+            }
+
+            items.Clear();
+            ResetProductionFacilities(planet, type);
+        }
+
+        /// <summary>
         /// Applies a popular support shift at the production planet when an item completes.
         /// Boosts faction support on completion.
         /// </summary>
@@ -817,22 +950,8 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                foreach (IManufacturable item in items.ToList())
-                {
-                    ISceneNode sceneNode = item;
-
-                    if (sceneNode.GetParent() != null)
-                    {
-                        _game.DetachNode(sceneNode);
-                    }
-
-                    GameLogger.Debug(
-                        $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()} due to ownership change"
-                    );
-                }
-
-                items.Clear();
-                ResetProductionFacilities(planet, type);
+                ClearQueueItems(planet, type, items);
+                queue.Remove(type);
             }
         }
 

@@ -13,6 +13,8 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public class JediTrainingMission : Mission
     {
+        public const string MissionTypeID = "JediTraining";
+
         public string TrainerInstanceID { get; set; }
 
         /// <summary>
@@ -21,10 +23,18 @@ namespace Rebellion.Game.Missions
         public JediTrainingMission()
             : base()
         {
-            ConfigKey = "JediTraining";
+            ConfigKey = MissionTypeID;
             DisplayName = "Jedi Training";
         }
 
+        /// <summary>
+        /// Initializes a Jedi training mission with the selected trainer.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="trainerInstanceId">Officer selected as the trainer.</param>
         private JediTrainingMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -33,13 +43,12 @@ namespace Rebellion.Game.Missions
             string trainerInstanceId
         )
             : base(
-                "JediTraining",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Jedi Training").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Diplomacy,
-                null,
                 displayName: "Jedi Training"
             )
         {
@@ -73,6 +82,13 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Selects the strongest eligible trainer on the target planet.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="ownerInstanceId">Faction requesting training.</param>
+        /// <param name="planet">Planet where training would occur.</param>
+        /// <returns>The selected trainer instance ID, or null if none are eligible.</returns>
         private static string SelectTrainer(GameRoot game, string ownerInstanceId, Planet planet)
         {
             Officer trainer = game.GetSceneNodesByType<Officer>()
@@ -91,43 +107,46 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Cancels if any main participant or the trainer is captured or killed.
+        /// Returns why Jedi training must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should be aborted.</returns>
-        public override bool ShouldAbort(GameRoot game)
+        /// <returns>The abort reason, or null when training may advance.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
-            if (base.ShouldAbort(game))
-                return true;
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
 
             Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
             if (trainer == null)
-                return true;
+                return MissionCompletionReason.Failure;
 
-            return trainer.IsCaptured || trainer.IsKilled;
+            return trainer.IsCaptured || trainer.IsKilled ? MissionCompletionReason.Failure : null;
         }
 
         /// <summary>
         /// Returns the student's training success probability.
         /// </summary>
         /// <param name="agent">The mission participant (student) to evaluate.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The student's training success probability.</returns>
-        protected override double GetAgentProbability(IMissionParticipant agent)
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             if (agent is Officer officer)
-                return SuccessProbabilityTable.Lookup(officer.ForceRank);
+                return LookupSuccessProbability(game, officer.ForceRank);
             return 0;
         }
 
         /// <summary>
         /// Jedi training targets own planets and is never foiled.
         /// </summary>
-        /// <param name="defenseScore">Ignored.</param>
+        /// <param name="defenseScore">The defense score, unused because training cannot be foiled.</param>
+        /// <param name="game">The current game state, unused because training cannot be foiled.</param>
         /// <returns>Always 0.</returns>
-        protected override double GetFoilProbability(double defenseScore) => 0;
+        protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
-        /// Jedi training does not award mission skill improvements.
+        /// Jedi training does not award mission rating improvements.
         /// </summary>
         protected override void ImproveMissionParticipantRatings() { }
 
@@ -181,11 +200,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns true while at least one student has not yet reached force qualification.
+        /// Returns true after completion while at least one student still needs training.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if training should continue.</returns>
-        public override bool CanContinue(GameRoot game)
+        /// <returns>True if training should repeat.</returns>
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             int threshold = game.Config.Jedi.ForceQualifiedThreshold;
             return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);

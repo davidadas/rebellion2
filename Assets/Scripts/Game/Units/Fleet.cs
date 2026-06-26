@@ -154,6 +154,15 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns all special forces carried by the fleet's capital ships.
+        /// </summary>
+        /// <returns>Special forces currently assigned to ships in this fleet.</returns>
+        public IEnumerable<SpecialForces> GetSpecialForces()
+        {
+            return CapitalShips.SelectMany(ship => ship.SpecialForces);
+        }
+
+        /// <summary>
         /// Returns all officers across the fleet.
         /// </summary>
         /// <returns>All officers in the fleet.</returns>
@@ -264,7 +273,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Planetary assault strength: <c>(personnel / divisor + 1) * combat_value</c>.
         /// Personnel comes from the fleet commander's Leadership skill. The commander
-        /// must be a General — only ground officers contribute to assault personnel.
+        /// must be a General; only ground officers contribute to assault personnel.
         /// Fleets without a General get a baseline strength equal to the combat value.
         /// </summary>
         /// <param name="assaultPersonnelDivisor">

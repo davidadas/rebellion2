@@ -14,6 +14,7 @@ namespace Rebellion.Game.Missions
         public GameRoot Game { get; set; }
         public string OwnerInstanceId { get; set; }
         public ISceneNode Target { get; set; }
+        public ISceneNode SpecificTarget { get; set; }
         public List<IMissionParticipant> MainParticipants { get; set; }
         public List<IMissionParticipant> DecoyParticipants { get; set; }
         public IRandomNumberProvider RandomProvider { get; set; }

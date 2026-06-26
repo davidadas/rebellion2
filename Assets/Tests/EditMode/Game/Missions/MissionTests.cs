@@ -19,13 +19,15 @@ namespace Rebellion.Tests.Game.Missions
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode specificTarget = null
         )
         {
             MissionContext ctx = new MissionContext
             {
                 OwnerInstanceId = ownerInstanceId,
                 Target = target,
+                SpecificTarget = specificTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
@@ -33,7 +35,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantRemoved_ReturnsTrue()
+        public void GetAbortReason_MainParticipantRemoved_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -43,25 +45,36 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, enemyPlanet);
+
             SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             mission.RemoveChild(officer);
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when main participant is removed"
             );
         }
 
         [Test]
-        public void ShouldAbort_MainParticipantUnchanged_ReturnsFalse()
+        public void GetAbortReason_MainParticipantUnchanged_ReturnsNull()
         {
             (
                 GameRoot game,
@@ -71,6 +84,15 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "rebels",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(building, enemyPlanet);
+
             SabotageMission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
@@ -78,11 +100,11 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
-            Assert.IsFalse(
-                mission.ShouldAbort(game),
-                "Mission should continue when participant membership is unchanged"
+            Assert.IsNull(
+                mission.GetAbortReason(game),
+                "Mission should not abort when participant membership is unchanged"
             );
         }
 
@@ -104,7 +126,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -134,7 +156,7 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -168,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -235,7 +257,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldAbort_DecoyParticipantRemoved_ReturnsTrue()
+        public void GetAbortReason_DecoyParticipantRemoved_ReturnsFailure()
         {
             (
                 GameRoot game,
@@ -255,12 +277,13 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { decoy }
             );
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             mission.RemoveChild(decoy);
 
-            Assert.IsTrue(
-                mission.ShouldAbort(game),
+            Assert.AreEqual(
+                MissionCompletionReason.Failure,
+                mission.GetAbortReason(game),
                 "Mission should be canceled when any participant is removed"
             );
         }
@@ -282,11 +305,9 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
-            mission.SuccessProbabilityTable = new ProbabilityTable(
-                new System.Collections.Generic.Dictionary<int, int> { { 0, 0 } }
-            );
+            game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int> { { 0, 0 } };
             game.AttachNode(mission, enemyPlanet);
-            mission.Initiate(new StubRNG());
+            mission.Initiate(0);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();

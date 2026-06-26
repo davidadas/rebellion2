@@ -18,6 +18,18 @@ namespace Rebellion.Game.Results
         Foiled,
     }
 
+    public enum MissionCompletionReason
+    {
+        None,
+        Success,
+        Failure,
+        Foiled,
+        TargetUnavailable,
+        NoResearchFacilities,
+        ResearchProgress,
+        ResearchBreakthrough,
+    }
+
     public enum ForceEventType
     {
         DiscoveringForceUser,
@@ -274,10 +286,13 @@ namespace Rebellion.Game.Results
     {
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
+        public string MissionTypeID { get; set; }
         public string TargetName { get; set; }
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
+        public MissionCompletionReason CompletionReason { get; set; }
+        public bool CanContinue { get; set; }
     }
 
     /// <summary>

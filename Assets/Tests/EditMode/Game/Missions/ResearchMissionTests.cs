@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Missions
@@ -44,6 +46,28 @@ namespace Rebellion.Tests.Game.Missions
                 PopularSupport = new Dictionary<string, int> { { "empire", 80 } },
             };
             _game.AttachNode(_planet, sys);
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = "empire",
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "construction",
+                    OwnerInstanceID = "empire",
+                    ProductionType = ManufacturingType.Building,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
         }
 
         private ResearchMission CreateMission(
@@ -181,6 +205,24 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_WithoutResearchFacility_ReportsNoResearchFacilities()
+        {
+            Officer officer = CreateOfficer(shipSkill: 100);
+            ResearchMission mission = CreateMission(officer);
+            foreach (Building building in _planet.GetAllBuildings().ToList())
+                _game.DetachNode(building);
+
+            List<GameResult> results = mission.Execute(_game, new FixedRNG(0.0));
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(
+                MissionCompletionReason.NoResearchFacilities,
+                completed.CompletionReason
+            );
+        }
+
+        [Test]
         public void Execute_Failure_SkillUnchanged()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
@@ -254,23 +296,23 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_OwnedPlanet_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_OwnedPlanet_ReturnsTrue()
         {
             Officer officer = CreateOfficer();
             ResearchMission mission = CreateMission(officer);
 
-            Assert.IsTrue(mission.CanContinue(_game));
+            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]
-        public void CanContinue_PlanetLost_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_PlanetLost_ReturnsFalse()
         {
             Officer officer = CreateOfficer();
             ResearchMission mission = CreateMission(officer);
 
             _planet.OwnerInstanceID = "rebels";
 
-            Assert.IsFalse(mission.CanContinue(_game));
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]
@@ -290,7 +332,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void CanContinue_AfterSuccess_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_AfterSuccess_ReturnsTrue()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             ResearchMission mission = CreateMission(officer);
@@ -298,13 +340,13 @@ namespace Rebellion.Tests.Game.Missions
             mission.Execute(_game, new FixedRNG(0.0));
 
             Assert.IsTrue(
-                mission.CanContinue(_game),
-                "Mission should continue after successful research"
+                mission.ShouldRepeatAfterCompletion(_game),
+                "Mission should repeat after successful research"
             );
         }
 
         [Test]
-        public void CanContinue_AfterFailure_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_AfterFailure_ReturnsTrue()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
             ResearchMission mission = CreateMission(officer);
@@ -312,8 +354,8 @@ namespace Rebellion.Tests.Game.Missions
             mission.Execute(_game, new FixedRNG(0.99));
 
             Assert.IsTrue(
-                mission.CanContinue(_game),
-                "Mission should continue after failed research"
+                mission.ShouldRepeatAfterCompletion(_game),
+                "Mission should repeat after failed research"
             );
         }
 

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -63,45 +62,63 @@ namespace Rebellion.Systems
         /// <summary>
         /// Returns whether a mission of the given type can be created for the target.
         /// </summary>
-        /// <param name="missionType">The type of mission to check.</param>
-        /// <param name="ownerInstanceId">The faction attempting the mission.</param>
-        /// <param name="target">The target planet or scene node.</param>
-        /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
-        /// <param name="discipline">Research discipline for Research missions.</param>
-        /// <param name="participant">Optional acting participant for participant-specific mission gates.</param>
-        /// <returns>True if a mission of this type can be created.</returns>
-        public bool CanCreateMission(
-            MissionType missionType,
-            string ownerInstanceId,
-            ISceneNode target,
-            Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null,
-            IMissionParticipant participant = null
-        ) =>
-            _missionFactory.CanCreateMission(
-                missionType,
-                ownerInstanceId,
-                target,
-                _provider,
-                targetOfficer,
-                discipline,
-                participant
-            );
-
-        /// <summary>
-        /// Initiates a mission with a single participant and target.
-        /// </summary>
-        /// <param name="missionType">The type of mission to create.</param>
+        /// <param name="missionTypeId">The mission type ID to check.</param>
         /// <param name="participant">The officer or unit performing the mission.</param>
         /// <param name="target">The target planet or scene node.</param>
         /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
         /// <param name="discipline">Research discipline for Research missions.</param>
-        public void InitiateMission(
-            MissionType missionType,
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True if a mission of this type can be created.</returns>
+        public bool CanCreateMission(
+            string missionTypeId,
             IMissionParticipant participant,
             ISceneNode target,
             Officer targetOfficer = null,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
+        )
+        {
+            ISceneNode liveTarget = ResolveSceneNode(target);
+            if (liveTarget == null)
+                return false;
+
+            IMissionParticipant liveParticipant = ResolveMissionParticipant(participant);
+            if (liveParticipant == null)
+                return false;
+
+            Officer selectedTargetOfficer = targetOfficer ?? specificTarget as Officer;
+
+            return _missionFactory.TryCreateMission(
+                missionTypeId,
+                liveParticipant.GetOwnerInstanceID(),
+                new List<IMissionParticipant> { liveParticipant },
+                new List<IMissionParticipant>(),
+                liveTarget,
+                out _,
+                _provider,
+                selectedTargetOfficer,
+                discipline,
+                specificTarget
+            );
+        }
+
+        /// <summary>
+        /// Initiates a mission with a single participant and target.
+        /// </summary>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
+        /// <param name="participant">The officer or unit performing the mission.</param>
+        /// <param name="target">The target planet or scene node.</param>
+        /// <param name="targetOfficer">Optional specific officer target for abduction/assassination/rescue.</param>
+        /// <param name="discipline">Research discipline for Research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        public bool InitiateMission(
+            string missionTypeId,
+            IMissionParticipant participant,
+            ISceneNode target,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
         )
         {
             List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>
@@ -109,109 +126,303 @@ namespace Rebellion.Systems
                 participant,
             };
             List<IMissionParticipant> decoyParticipants = new List<IMissionParticipant>();
-            string ownerInstanceId = participant.OwnerInstanceID;
-
-            Mission mission = _missionFactory.CreateMission(
-                missionType,
-                ownerInstanceId,
+            return InitiateMission(
+                missionTypeId,
                 mainParticipants,
                 decoyParticipants,
                 target,
-                _provider,
                 targetOfficer,
-                discipline
+                discipline,
+                specificTarget
             );
+        }
+
+        /// <summary>
+        /// Initiates a mission with participant lists and a target.
+        /// </summary>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        public bool InitiateMission(
+            string missionTypeId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer = null,
+            ResearchDiscipline? discipline = null,
+            ISceneNode specificTarget = null
+        )
+        {
+            if (mainParticipants == null || mainParticipants.Count == 0 || target == null)
+                return false;
+
+            decoyParticipants ??= new List<IMissionParticipant>();
+            mainParticipants = ResolveMissionParticipants(mainParticipants);
+            decoyParticipants = ResolveMissionParticipants(decoyParticipants);
+            target = ResolveSceneNode(target);
+
+            Officer selectedTargetOfficer = targetOfficer ?? specificTarget as Officer;
+
+            if (mainParticipants == null || decoyParticipants == null || target == null)
+                return false;
+
+            return CreateAndBeginMission(
+                missionTypeId,
+                mainParticipants,
+                decoyParticipants,
+                target,
+                selectedTargetOfficer,
+                discipline,
+                specificTarget
+            );
+        }
+
+        /// <summary>
+        /// Creates a mission through the factory and attaches it to its target planet.
+        /// </summary>
+        /// <param name="missionTypeId">The mission type ID to create.</param>
+        /// <param name="mainParticipants">Primary participants assigned to the mission.</param>
+        /// <param name="decoyParticipants">Decoy participants assigned to the mission.</param>
+        /// <param name="target">The mission target.</param>
+        /// <param name="targetOfficer">Optional officer target for officer-targeted missions.</param>
+        /// <param name="discipline">Optional research discipline for research missions.</param>
+        /// <param name="specificTarget">Optional concrete target nested under the mission target.</param>
+        /// <returns>True when the mission was created and begun; otherwise false.</returns>
+        private bool CreateAndBeginMission(
+            string missionTypeId,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants,
+            ISceneNode target,
+            Officer targetOfficer,
+            ResearchDiscipline? discipline,
+            ISceneNode specificTarget
+        )
+        {
+            string ownerInstanceId = mainParticipants[0].OwnerInstanceID;
+            if (
+                !_missionFactory.TryCreateMission(
+                    missionTypeId,
+                    ownerInstanceId,
+                    mainParticipants,
+                    decoyParticipants,
+                    target,
+                    out Mission mission,
+                    _provider,
+                    targetOfficer,
+                    discipline,
+                    specificTarget
+                )
+            )
+                return false;
 
             Planet planet = target is Planet p ? p : target.GetParentOfType<Planet>();
+            if (planet == null)
+                return false;
+
             _game.AttachNode(mission, planet);
 
             BeginMission(mission);
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves mission participants to their live scene graph instances.
+        /// </summary>
+        /// <param name="participants">The participant references to resolve.</param>
+        /// <returns>Resolved participants, or null if any participant cannot be resolved.</returns>
+        private List<IMissionParticipant> ResolveMissionParticipants(
+            List<IMissionParticipant> participants
+        )
+        {
+            List<IMissionParticipant> resolvedParticipants = new List<IMissionParticipant>();
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                ISceneNode node = participant as ISceneNode;
+                IMissionParticipant resolvedParticipant =
+                    ResolveSceneNode(node) as IMissionParticipant;
+                if (resolvedParticipant == null)
+                    return null;
+
+                resolvedParticipants.Add(resolvedParticipant);
+            }
+
+            return resolvedParticipants;
+        }
+
+        /// <summary>
+        /// Resolves one mission participant to its live scene graph instance.
+        /// </summary>
+        /// <param name="participant">The participant reference to resolve.</param>
+        /// <returns>The live participant, or null when no participant is supplied or resolvable.</returns>
+        private IMissionParticipant ResolveMissionParticipant(IMissionParticipant participant)
+        {
+            return participant is ISceneNode node
+                ? ResolveSceneNode(node) as IMissionParticipant
+                : null;
+        }
+
+        /// <summary>
+        /// Resolves a scene node reference to its live scene graph instance.
+        /// </summary>
+        /// <param name="node">The scene node reference to resolve.</param>
+        /// <returns>The live scene node, or null if it cannot be resolved.</returns>
+        private ISceneNode ResolveSceneNode(ISceneNode node)
+        {
+            if (node == null)
+                return null;
+
+            return _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
         }
 
         /// <summary>
         /// Updates a single mission's state for this tick.
-        /// Runs per-tick foil detection before progress, then executes on completion.
         /// </summary>
         /// <param name="mission">The mission to update.</param>
         /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
         {
+            return AdvanceMission(mission);
+        }
+
+        /// <summary>
+        /// Advances a single mission through one lifecycle step.
+        /// </summary>
+        /// <param name="mission">The mission to advance.</param>
+        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
+        private List<GameResult> AdvanceMission(Mission mission)
+        {
             List<GameResult> results = new List<GameResult>();
 
-            if (mission.ShouldAbort(_game))
-            {
-                TearDownMission(mission);
-                return results;
-            }
-
-            if (HasParticipantInTransit(mission))
+            if (mission.IsWaitingForParticipants())
                 return results;
 
-            List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
-            bool participantStateChanged = ResolveDetection(mission, results);
-
-            if (participantStateChanged || mission.ShouldAbort(_game))
+            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
+            if (abortReason.HasValue)
             {
                 results.Add(
-                    new MissionCompletedResult
-                    {
-                        Mission = mission,
-                        MissionName = mission.DisplayName,
-                        TargetName =
-                            (mission.GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
-                        Participants = participantsBeforeDetection,
-                        Outcome = MissionOutcome.Foiled,
-                        Tick = _game.CurrentTick,
-                    }
+                    BuildTerminatingMissionResult(
+                        mission,
+                        MissionOutcome.Failed,
+                        abortReason.Value,
+                        mission.GetAllParticipants()
+                    )
                 );
-                TearDownMission(mission);
+                TearDownMission(mission, null);
                 return results;
             }
 
-            mission.IncrementProgress();
+            results.AddRange(ResolveDetectionInterruption(mission));
+            if (FinishMissionIfCompleted(mission, results))
+                return results;
 
+            mission.IncrementProgress();
             if (!mission.IsComplete())
                 return results;
 
             results.AddRange(mission.Execute(_game, _provider));
+            FinishMissionIfCompleted(mission, results);
+            return results;
+        }
 
-            if (mission.CanContinue(_game))
+        /// <summary>
+        /// Resolves mission detection before a mission advances progress.
+        /// </summary>
+        /// <param name="mission">The mission to inspect.</param>
+        /// <returns>Detection results, including a mission completion result when detection ends the mission.</returns>
+        private List<GameResult> ResolveDetectionInterruption(Mission mission)
+        {
+            List<GameResult> results = new List<GameResult>();
+            List<IMissionParticipant> participantsBeforeDetection = mission.GetAllParticipants();
+            bool missionFoiled = ResolveDetection(mission, results);
+
+            if (!missionFoiled)
+                return results;
+
+            results.Add(
+                BuildTerminatingMissionResult(
+                    mission,
+                    MissionOutcome.Foiled,
+                    MissionCompletionReason.Foiled,
+                    participantsBeforeDetection
+                )
+            );
+            return results;
+        }
+
+        /// <summary>
+        /// Returns the mission completion result for a terminal mission state.
+        /// </summary>
+        /// <param name="mission">The mission being terminated.</param>
+        /// <param name="outcome">The mission outcome to report.</param>
+        /// <param name="completionReason">The mission completion reason to report.</param>
+        /// <param name="participants">Participants captured before teardown side effects.</param>
+        /// <returns>A non-continuing mission completion result.</returns>
+        private MissionCompletedResult BuildTerminatingMissionResult(
+            Mission mission,
+            MissionOutcome outcome,
+            MissionCompletionReason completionReason,
+            List<IMissionParticipant> participants
+        )
+        {
+            MissionCompletedResult result = mission.BuildCompletedResult(
+                outcome,
+                completionReason,
+                _game,
+                participants
+            );
+            result.CanContinue = false;
+            return result;
+        }
+
+        /// <summary>
+        /// Repeats or tears down a mission when the results include a completion result.
+        /// </summary>
+        /// <param name="mission">The mission to finish.</param>
+        /// <param name="results">Results produced by this mission tick.</param>
+        /// <returns>True if the mission completed this tick.</returns>
+        private bool FinishMissionIfCompleted(Mission mission, List<GameResult> results)
+        {
+            MissionCompletedResult completedResult = results
+                .OfType<MissionCompletedResult>()
+                .LastOrDefault();
+            if (completedResult == null)
+                return false;
+
+            if (completedResult.CanContinue)
             {
                 BeginMission(mission);
             }
             else
             {
-                TearDownMission(mission);
+                TearDownMission(mission, completedResult);
             }
 
-            return results;
-        }
-
-        /// <summary>
-        /// Returns whether any mission participant is still travelling.
-        /// </summary>
-        /// <param name="mission">The mission to inspect.</param>
-        /// <returns>True if any participant has active movement.</returns>
-        private static bool HasParticipantInTransit(Mission mission)
-        {
-            return mission.GetAllParticipants().Any(participant => participant.Movement != null);
+            return true;
         }
 
         /// <summary>
         /// Moves all participants back to their recorded origin (planet or fleet), falling back to
         /// the nearest friendly planet if the origin has moved away or no longer exists, then
-        /// detaches the mission. Called when CanContinue returns false or ShouldAbort fires.
+        /// detaches the mission. Called when a mission completion result cannot continue.
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
-        private void TearDownMission(Mission mission)
+        /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
+        private void TearDownMission(Mission mission, MissionCompletedResult completedResult)
         {
             Planet missionPlanet = mission.GetParent() as Planet;
-            Faction faction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            Faction faction = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == mission.OwnerInstanceID);
             ISceneNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
 
-            MoveAbductedTargetToOrigin(mission, origin);
-            MoveCapturedParticipantsToHoldingPlanets(mission, missionPlanet);
-            MoveParticipantsToOrigin(mission, origin);
+            MoveCapturedParticipants(mission, missionPlanet);
+            MoveReturnPassengersToOrigin(mission, completedResult, origin);
             _game.DetachNode(mission);
         }
 
@@ -230,7 +441,7 @@ namespace Rebellion.Systems
         {
             ISceneNode origin = GetMissionReturnOrigin(mission, missionPlanet);
 
-            if (origin == null)
+            if (origin == null && faction != null)
                 origin = faction.GetNearestFriendlyPlanetTo(mission);
 
             if (origin == null && missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
@@ -263,58 +474,104 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves all eligible mission participants to the resolved return location.
+        /// Moves all eligible mission return passengers to the resolved return location.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
-        /// <param name="origin">The location participants should return to.</param>
-        private void MoveParticipantsToOrigin(Mission mission, ISceneNode origin)
+        /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
+        /// <param name="origin">The location passengers should return to.</param>
+        private void MoveReturnPassengersToOrigin(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            ISceneNode origin
+        )
         {
-            foreach (IMovable movable in mission.GetAllParticipants().Cast<IMovable>().ToList())
-            {
-                if (movable is Officer officer && (officer.IsCaptured || officer.IsKilled))
-                    continue;
+            if (origin == null)
+                return;
 
-                if (origin != null)
-                    _movementManager.RequestMove(movable, origin);
-            }
+            List<IMovable> returnPassengers = GetReturnPassengers(mission, completedResult)
+                .Distinct()
+                .ToList();
+            if (returnPassengers.Count > 0)
+                _movementManager.RequestMove(returnPassengers, origin);
         }
 
         /// <summary>
-        /// Moves a captured abduction target to the abductor's return location.
-        /// </summary>
-        /// <param name="mission">The abduction mission being torn down.</param>
-        /// <param name="origin">The abductor's return location.</param>
-        private void MoveAbductedTargetToOrigin(Mission mission, ISceneNode origin)
-        {
-            if (mission is not AbductionMission abduction || origin == null)
-                return;
-
-            Officer target = _game.GetSceneNodeByInstanceID<Officer>(
-                abduction.TargetOfficerInstanceID
-            );
-            if (target == null)
-                return;
-
-            if (!target.IsCaptured || target.CaptorInstanceID != mission.OwnerInstanceID)
-                return;
-
-            MoveOfficerDirectly(target, origin);
-        }
-
-        /// <summary>
-        /// Moves captured mission participants to planets controlled by their captors.
+        /// Moves captured mission participants to the mission planet before teardown.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        private void MoveCapturedParticipantsToHoldingPlanets(Mission mission, Planet missionPlanet)
+        private void MoveCapturedParticipants(Mission mission, Planet missionPlanet)
         {
-            foreach (Officer officer in mission.GetAllParticipants().OfType<Officer>().ToList())
-            {
-                if (!officer.IsCaptured || officer.CaptorInstanceID == mission.OwnerInstanceID)
-                    continue;
+            if (missionPlanet == null)
+                return;
 
-                MoveCapturedOfficerToHoldingPlanet(officer, missionPlanet);
-            }
+            foreach (Officer officer in GetCapturedMissionParticipants(mission))
+                _movementManager.RequestMove(officer, missionPlanet);
+        }
+
+        /// <summary>
+        /// Returns mission participants that can travel back after teardown.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <returns>The movable participants that are neither killed nor captured.</returns>
+        private IEnumerable<IMovable> GetFreeMissionParticipants(Mission mission)
+        {
+            return mission
+                .GetAllParticipants()
+                .OfType<IMovable>()
+                .Where(IsFreeParticipant)
+                .Distinct();
+        }
+
+        /// <summary>
+        /// Returns all units that should return with a completed mission group.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <param name="completedResult">The completed mission result, or null before execution.</param>
+        /// <returns>The movable units that should return to the mission origin.</returns>
+        private IEnumerable<IMovable> GetReturnPassengers(
+            Mission mission,
+            MissionCompletedResult completedResult
+        )
+        {
+            foreach (IMovable participant in GetFreeMissionParticipants(mission))
+                yield return participant;
+
+            if (completedResult?.Outcome != MissionOutcome.Success)
+                yield break;
+
+            foreach (IMovable passenger in mission.GetSuccessfulReturnPassengers(_game))
+                yield return passenger;
+        }
+
+        /// <summary>
+        /// Returns mission officers that were captured during the mission.
+        /// </summary>
+        /// <param name="mission">The mission being torn down.</param>
+        /// <returns>The captured mission officers.</returns>
+        private static IEnumerable<Officer> GetCapturedMissionParticipants(Mission mission)
+        {
+            return mission.GetAllParticipants().OfType<Officer>().Where(IsCapturedParticipant);
+        }
+
+        /// <summary>
+        /// Returns whether a movable participant can travel home after mission teardown.
+        /// </summary>
+        /// <param name="participant">The participant to inspect.</param>
+        /// <returns>True when the participant is not a killed or captured officer.</returns>
+        private static bool IsFreeParticipant(IMovable participant)
+        {
+            return participant is not Officer officer || (!officer.IsKilled && !officer.IsCaptured);
+        }
+
+        /// <summary>
+        /// Returns whether an officer was captured during mission resolution.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True when the officer is captured.</returns>
+        private static bool IsCapturedParticipant(Officer officer)
+        {
+            return officer.IsCaptured;
         }
 
         /// <summary>
@@ -322,34 +579,32 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission to check for detection.</param>
         /// <param name="results">Collection to append generated results to.</param>
-        /// <returns>True if any participant state changed.</returns>
+        /// <returns>True if the mission was foiled.</returns>
         private bool ResolveDetection(Mission mission, List<GameResult> results)
         {
-            if (!mission.RollFoilCheck(_provider))
+            if (!mission.RollFoilCheck(_provider, _game))
                 return false;
 
-            if (mission.RollDecoyCheck(_provider))
+            if (mission.RollDecoyCheck(_provider, _game))
                 return false;
+
+            if (!mission.AppliesFoiledParticipantConsequences)
+                return true;
 
             int defenderCombat = GetFoilDefenderCombatSkill(mission);
             Planet planet = mission.GetParent() as Planet;
-            bool participantStateChanged = false;
 
             foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
-            {
-                participantStateChanged =
-                    ResolveFoiledParticipant(participant, defenderCombat, planet, mission, results)
-                    || participantStateChanged;
-            }
+                ResolveFoiledParticipant(participant, defenderCombat, planet, results);
 
-            return participantStateChanged;
+            return true;
         }
 
         /// <summary>
         /// Gets the combat value used by the mission foil consequence roll.
         /// </summary>
         /// <param name="mission">The detected mission.</param>
-        /// <returns>The defender's combat skill, or 0 when no defender is present.</returns>
+        /// <returns>The defender's combat rating, or 0 when no defender is present.</returns>
         private static int GetFoilDefenderCombatSkill(Mission mission)
         {
             Officer defender = mission.FindDefender();
@@ -362,14 +617,12 @@ namespace Rebellion.Systems
         /// <param name="participant">The detected participant.</param>
         /// <param name="defenderCombat">The defender combat value.</param>
         /// <param name="planet">The mission planet.</param>
-        /// <param name="mission">The detected mission.</param>
         /// <param name="results">Collection to append generated results to.</param>
         /// <returns>True if the participant state changed.</returns>
         private bool ResolveFoiledParticipant(
             IMissionParticipant participant,
             int defenderCombat,
             Planet planet,
-            Mission mission,
             List<GameResult> results
         )
         {
@@ -378,7 +631,7 @@ namespace Rebellion.Systems
                 if (officer.IsCaptured || officer.IsKilled)
                     return false;
 
-                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet, mission));
+                results.AddRange(ResolveKillOrCapture(officer, defenderCombat, planet));
                 return true;
             }
 
@@ -418,31 +671,25 @@ namespace Rebellion.Systems
         /// Resolves whether a detected officer is killed or captured.
         /// </summary>
         /// <param name="officer">The officer who was detected.</param>
-        /// <param name="defenderCombat">The defending officer's combat skill.</param>
+        /// <param name="defenderCombat">The defending officer's combat rating.</param>
         /// <param name="planet">The planet where the mission takes place.</param>
-        /// <param name="mission">The mission that was foiled.</param>
         /// <returns>One capture or kill result.</returns>
         private List<GameResult> ResolveKillOrCapture(
             Officer officer,
             int defenderCombat,
-            Planet planet,
-            Mission mission
+            Planet planet
         )
         {
             List<GameResult> results = new List<GameResult>();
 
             int delta = defenderCombat - officer.GetEffectiveRating(OfficerRating.Combat);
-            double captureProbability =
-                mission.KillOrCaptureProbabilityTable != null
-                    ? mission.KillOrCaptureProbabilityTable.Lookup(delta)
-                    : _game.Config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability;
+            double captureProbability = GetKillOrCaptureProbability(delta);
 
-            if (_provider.NextDouble() * 100 <= captureProbability)
+            if (_provider.NextDouble() * 100 < captureProbability)
             {
                 officer.IsCaptured = true;
                 officer.CaptorInstanceID = planet?.OwnerInstanceID;
                 officer.CanEscape = true;
-                MoveCapturedOfficerToHoldingPlanet(officer, planet);
                 results.Add(
                     new OfficerCaptureStateResult
                     {
@@ -471,61 +718,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Moves a captured officer to the nearest valid captor-owned planet.
+        /// Returns the configured capture probability for a foiled officer.
         /// </summary>
-        /// <param name="officer">The captured officer to move.</param>
-        /// <param name="missionPlanet">The planet where capture occurred.</param>
-        private void MoveCapturedOfficerToHoldingPlanet(Officer officer, Planet missionPlanet)
+        /// <param name="score">The kill-or-capture score.</param>
+        /// <returns>The configured capture probability.</returns>
+        private double GetKillOrCaptureProbability(int score)
         {
-            Planet holdingPlanet = FindNearestCaptivePlanet(officer, missionPlanet);
-            if (holdingPlanet == null)
-                return;
-
-            MoveOfficerDirectly(officer, holdingPlanet);
-        }
-
-        /// <summary>
-        /// Finds the nearest captor-owned planet that can hold a captured officer.
-        /// </summary>
-        /// <param name="officer">The captured officer.</param>
-        /// <param name="missionPlanet">The planet where capture occurred.</param>
-        /// <returns>The nearest valid holding planet, or null.</returns>
-        private Planet FindNearestCaptivePlanet(Officer officer, Planet missionPlanet)
-        {
-            string captorInstanceId = officer.CaptorInstanceID;
-            if (string.IsNullOrEmpty(captorInstanceId))
-                return null;
-
-            return _game
-                .GetSceneNodesByType<Planet>()
-                .Where(planet => planet.OwnerInstanceID == captorInstanceId && !planet.IsDestroyed)
-                .OrderBy(planet =>
-                    missionPlanet != null ? missionPlanet.GetRawDistanceTo(planet) : 0
-                )
-                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Moves an officer immediately without starting a movement timer.
-        /// </summary>
-        /// <param name="officer">The officer to move.</param>
-        /// <param name="destination">The destination node.</param>
-        private void MoveOfficerDirectly(Officer officer, ISceneNode destination)
-        {
-            if (officer.GetParent() == destination)
-                return;
-
-            if (!destination.CanAcceptChild(officer))
-                return;
-
-            if (officer.GetParent() == null)
-            {
-                _game.AttachNode(officer, destination);
-                return;
-            }
-
-            _game.MoveNode(officer, destination);
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
+            return LookupProbability(
+                missionTables.KillOrCapture,
+                score,
+                missionTables.DefaultKillOrCaptureProbability
+            );
         }
 
         /// <summary>
@@ -546,7 +750,52 @@ namespace Rebellion.Systems
                 }
             }
 
-            mission.Initiate(_provider);
+            mission.Initiate(RollMissionDuration(mission));
+        }
+
+        /// <summary>
+        /// Rolls the configured duration for a mission.
+        /// </summary>
+        /// <param name="mission">The mission whose duration should be rolled.</param>
+        /// <returns>The mission duration in ticks.</returns>
+        private int RollMissionDuration(Mission mission)
+        {
+            GameConfig.MissionTickConfig tickConfig =
+                _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
+                    mission.ConfigKey
+                );
+            int baseTicks = tickConfig?.Base ?? 0;
+            int spreadTicks = tickConfig?.Spread ?? 0;
+            return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+        }
+
+        /// <summary>
+        /// Returns the mission probability table config for the current game.
+        /// </summary>
+        /// <returns>The configured mission probability tables.</returns>
+        private GameConfig.MissionProbabilityTablesConfig GetMissionTables()
+        {
+            return _game.Config?.ProbabilityTables?.Mission
+                ?? new GameConfig.MissionProbabilityTablesConfig();
+        }
+
+        /// <summary>
+        /// Returns the configured probability for a score.
+        /// </summary>
+        /// <param name="entries">The configured probability table entries.</param>
+        /// <param name="score">The score to look up.</param>
+        /// <param name="defaultValue">The value returned when the table is empty.</param>
+        /// <returns>The configured probability value.</returns>
+        private static int LookupProbability(
+            Dictionary<int, int> entries,
+            int score,
+            int defaultValue = 0
+        )
+        {
+            if (entries == null || entries.Count == 0)
+                return defaultValue;
+
+            return new ProbabilityTable(entries).Lookup(score);
         }
     }
 }

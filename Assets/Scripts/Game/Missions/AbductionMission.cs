@@ -9,6 +9,8 @@ namespace Rebellion.Game.Missions
 {
     public class AbductionMission : Mission
     {
+        public const string MissionTypeID = "Abduction";
+
         public string TargetOfficerInstanceID { get; set; }
 
         public override bool CanceledOnOwnershipChange => false;
@@ -19,12 +21,20 @@ namespace Rebellion.Game.Missions
         public AbductionMission()
             : base()
         {
-            ConfigKey = "Abduction";
+            ConfigKey = MissionTypeID;
             DisplayName = ConfigKey;
             ParticipantRating = OfficerRating.Combat;
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
+        /// <summary>
+        /// Initializes an abduction mission with its selected officer target.
+        /// </summary>
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        /// <param name="targetOfficerInstanceId">Officer selected as the abduction target.</param>
         private AbductionMission(
             string ownerInstanceId,
             ISceneNode target,
@@ -33,13 +43,12 @@ namespace Rebellion.Game.Missions
             string targetOfficerInstanceId
         )
             : base(
-                "Abduction",
+                MissionTypeID,
                 ownerInstanceId,
                 RequirePlanetTarget(target, "Abduction").GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
-                OfficerRating.Combat,
-                null
+                OfficerRating.Combat
             )
         {
             TargetOfficerInstanceID = targetOfficerInstanceId;
@@ -58,11 +67,12 @@ namespace Rebellion.Game.Missions
                 return null;
 
             Officer target = ctx.TargetOfficer;
+            Planet targetPlanet = target?.GetParentOfType<Planet>();
             if (
                 target == null
                 || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
                 || target.IsCaptured
-                || target.GetParentOfType<Planet>() != planet
+                || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
 
@@ -76,12 +86,36 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Resolves whether abduction can execute after participants arrive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>TargetUnavailable when the target is no longer valid; otherwise null.</returns>
+        public override MissionCompletionReason? GetAbortReason(GameRoot game)
+        {
+            MissionCompletionReason? reason = base.GetAbortReason(game);
+            if (reason.HasValue)
+                return reason;
+
+            return HasValidTarget(game) ? null : MissionCompletionReason.TargetUnavailable;
+        }
+
+        /// <summary>
         /// Returns false if the target officer has already been captured or has moved
         /// away from the mission's planet before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the target is still free and on the mission planet.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
+        {
+            return HasValidTarget(game);
+        }
+
+        /// <summary>
+        /// Returns whether the selected officer can still be abducted.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the target is still free at the mission planet.</returns>
+        private bool HasValidTarget(GameRoot game)
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return target?.IsCaptured == false
@@ -116,11 +150,23 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Abduction missions do not repeat — one attempt per mission.
+        /// Returns the abducted officer when the mission owner now holds them captive.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The abducted officer when eligible to return with the mission group.</returns>
+        internal override IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game)
+        {
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target?.IsCaptured == true && target.CaptorInstanceID == OwnerInstanceID)
+                yield return target;
+        }
+
+        /// <summary>
+        /// Abduction missions do not repeat after one attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>Always false.</returns>
-        public override bool CanContinue(GameRoot game)
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             return false;
         }

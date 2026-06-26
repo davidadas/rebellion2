@@ -35,7 +35,7 @@ namespace Rebellion.Tests.AI.Phases
             Assert.IsTrue(
                 context
                     .Proposals.OfType<AIMissionProposal>()
-                    .Any(proposal => proposal.MissionType == MissionType.Diplomacy)
+                    .Any(proposal => proposal.MissionTypeID == DiplomacyMission.MissionTypeID)
             );
         }
 

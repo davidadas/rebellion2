@@ -3,9 +3,6 @@ using System.Linq;
 
 namespace Rebellion.Util.Common
 {
-    /// <summary>
-    /// Probability lookup table with linear interpolation.
-    /// </summary>
     public class ProbabilityTable
     {
         private readonly Dictionary<int, int> _table;
@@ -15,14 +12,6 @@ namespace Rebellion.Util.Common
             _table = entries;
         }
 
-        /// <summary>
-        /// Lookup probability for a given value with linear interpolation.
-        /// If value falls between two thresholds, interpolates linearly.
-        /// If value is below all thresholds, returns 0.
-        /// If value is at or above highest threshold, returns that threshold's value.
-        /// </summary>
-        /// <param name="value">Input value (e.g., loyalty)</param>
-        /// <returns>The probability percentage.</returns>
         public int Lookup(int value)
         {
             if (_table.Count == 0)
@@ -30,35 +19,16 @@ namespace Rebellion.Util.Common
 
             List<int> sortedKeys = _table.Keys.OrderBy(k => k).ToList();
 
-            // Value below all thresholds.
             if (value < sortedKeys[0])
-                return 0;
+                return _table[sortedKeys[0]];
 
-            // Value at or above highest threshold.
-            if (value >= sortedKeys[sortedKeys.Count - 1])
-                return _table[sortedKeys[sortedKeys.Count - 1]];
-
-            // Find the two thresholds we're between.
-            for (int i = 0; i < sortedKeys.Count - 1; i++)
+            for (int i = sortedKeys.Count - 1; i >= 0; i--)
             {
-                int lowerThreshold = sortedKeys[i];
-                int upperThreshold = sortedKeys[i + 1];
-
-                if (value >= lowerThreshold && value < upperThreshold)
-                {
-                    int lowerValue = _table[lowerThreshold];
-                    int upperValue = _table[upperThreshold];
-
-                    // Linear interpolation.
-                    double ratio =
-                        (double)(value - lowerThreshold) / (upperThreshold - lowerThreshold);
-                    int interpolated = lowerValue + (int)(ratio * (upperValue - lowerValue));
-
-                    return interpolated;
-                }
+                int threshold = sortedKeys[i];
+                if (value >= threshold)
+                    return _table[threshold];
             }
 
-            // Fallback (should not reach here)
             return 0;
         }
     }

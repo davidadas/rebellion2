@@ -91,18 +91,13 @@ public class StubMission : Mission
             targetInstanceId,
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
-            OfficerRating.Diplomacy,
-            new ProbabilityTable(new Dictionary<int, int> { { 0, 100 } })
-        )
-    {
-        BaseTicks = 1;
-        SpreadTicks = 0;
-    }
+            OfficerRating.Diplomacy
+        ) { }
 
     protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider) =>
         new List<GameResult>();
 
-    public override bool CanContinue(GameRoot game) => false;
+    public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 }
 
 /// <summary>
