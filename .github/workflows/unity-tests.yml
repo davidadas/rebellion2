@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+env:
+  UNITY_VERSION: 6000.4.0f1
+  UNITY_IMAGE_VERSION: 3
+
 jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
@@ -43,7 +47,7 @@ jobs:
             StandaloneWindows64) MODULE="windows-mono" ;;
             StandaloneOSX)       MODULE="mac-mono" ;;
           esac
-          IMAGE="unityci/editor:ubuntu-6000.4.0f1-${MODULE}-3"
+          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-${MODULE}-${{ env.UNITY_IMAGE_VERSION }}"
           for attempt in 1 2 3; do
             docker pull "$IMAGE" && exit 0
             echo "Attempt $attempt failed, retrying in 30s..."
@@ -59,7 +63,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 6000.4.0f1
+          unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
 
       - name: Reset package files
@@ -124,7 +128,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
-          unityVersion: 6000.4.0f1
+          unityVersion: ${{ env.UNITY_VERSION }}
           testMode: editmode
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
