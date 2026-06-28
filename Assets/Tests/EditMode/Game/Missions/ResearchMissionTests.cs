@@ -70,20 +70,20 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        private ResearchMission CreateMission(
+        private Mission CreateMission(
             Officer officer,
             ResearchDiscipline discipline = ResearchDiscipline.ShipDesign
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = "empire",
-                Target = _planet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, discipline);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: discipline
+            );
             _game.AttachNode(mission, _planet);
             return mission;
         }
@@ -109,15 +109,15 @@ namespace Rebellion.Tests.Game.Missions
 
             _planet.OwnerInstanceID = "rebels";
 
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = "empire",
-                Target = _planet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
+            );
 
             Assert.IsNull(mission, "TryCreate should return null for an enemy planet");
         }
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_PositiveResearchSkillAndMinimumRoll_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 75);
-            ResearchMission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
+            Mission mission = CreateMission(officer, ResearchDiscipline.ShipDesign);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_Success_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             int before = _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign);
             mission.Execute(_game, new FixedRNG(0.0));
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_Success_IncrementsMatchingResearchSkill()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_Failure_NoCapacityAwarded()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.99));
 
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_ZeroResearchSkillAndMinimumRoll_DoesNotAwardCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 0);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_RollEqualsResearchChance_DoesNotAwardCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 50);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.5));
 
@@ -208,7 +208,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_WithoutResearchFacility_ReportsNoResearchFacilities()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
             foreach (Building building in _planet.GetAllBuildings().ToList())
                 _game.DetachNode(building);
 
@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_Failure_SkillUnchanged()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.99));
 
@@ -245,15 +245,15 @@ namespace Rebellion.Tests.Game.Missions
             };
             _game.AttachNode(secondOfficer, _planet);
 
-            MissionContext ctx = new MissionContext
-            {
-                Game = _game,
-                OwnerInstanceId = "empire",
-                Target = _planet,
-                MainParticipants = new List<IMissionParticipant> { firstOfficer, secondOfficer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            ResearchMission mission = ResearchMission.TryCreate(ctx, ResearchDiscipline.ShipDesign);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
+            );
             _game.AttachNode(mission, _planet);
 
             mission.Execute(_game, new FixedRNG(0.5));
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_TroopTrainingDiscipline_AwardsTroopCapacity()
         {
             Officer officer = CreateOfficer(troopSkill: 100);
-            ResearchMission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
+            Mission mission = CreateMission(officer, ResearchDiscipline.TroopTraining);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Game.Missions
         public void Execute_MaxSkillOfficer_AwardsResearchCapacity()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.99));
 
@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Game.Missions
         public void ShouldRepeatAfterCompletion_OwnedPlanet_ReturnsTrue()
         {
             Officer officer = CreateOfficer();
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
         }
@@ -308,7 +308,7 @@ namespace Rebellion.Tests.Game.Missions
         public void ShouldRepeatAfterCompletion_PlanetLost_ReturnsFalse()
         {
             Officer officer = CreateOfficer();
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             _planet.OwnerInstanceID = "rebels";
 
@@ -320,7 +320,7 @@ namespace Rebellion.Tests.Game.Missions
         {
             Officer officer = CreateOfficer(shipSkill: 100);
             int leadershipBefore = officer.GetBaseRating(OfficerRating.Leadership);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -335,7 +335,7 @@ namespace Rebellion.Tests.Game.Missions
         public void ShouldRepeatAfterCompletion_AfterSuccess_ReturnsTrue()
         {
             Officer officer = CreateOfficer(shipSkill: 100);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.0));
 
@@ -349,7 +349,7 @@ namespace Rebellion.Tests.Game.Missions
         public void ShouldRepeatAfterCompletion_AfterFailure_ReturnsTrue()
         {
             Officer officer = CreateOfficer(shipSkill: 10);
-            ResearchMission mission = CreateMission(officer);
+            Mission mission = CreateMission(officer);
 
             mission.Execute(_game, new FixedRNG(0.99));
 
@@ -362,7 +362,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_ShipDesignMission_RetainsAllProperties()
         {
-            ResearchMission mission = new ResearchMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -377,7 +377,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
@@ -394,7 +394,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_TroopTrainingMission_RetainsAllProperties()
         {
-            ResearchMission mission = new ResearchMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION2",
                 OwnerInstanceID = "FACTION1",
@@ -405,7 +405,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Troop Training", deserialized.DisplayName);
@@ -415,7 +415,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_FacilityDesignMission_RetainsAllProperties()
         {
-            ResearchMission mission = new ResearchMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION3",
                 OwnerInstanceID = "FACTION1",
@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            ResearchMission deserialized = SerializationHelper.Deserialize<ResearchMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Facility Design", deserialized.DisplayName);

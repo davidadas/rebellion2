@@ -273,17 +273,17 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void CanPerformMission_AllowedType_ReturnsTrue()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
 
-            Assert.IsTrue(_specialForces.CanPerformMission(EspionageMission.MissionTypeID));
+            Assert.IsTrue(_specialForces.CanPerformMission(MissionTypeIDs.Espionage));
         }
 
         [Test]
         public void CanPerformMission_DisallowedType_ReturnsFalse()
         {
-            _specialForces.AllowedMissionTypeIDs.Add(EspionageMission.MissionTypeID);
+            _specialForces.AllowedMissionTypeIDs.Add(MissionTypeIDs.Espionage);
 
-            Assert.IsFalse(_specialForces.CanPerformMission(SabotageMission.MissionTypeID));
+            Assert.IsFalse(_specialForces.CanPerformMission(MissionTypeIDs.Sabotage));
         }
 
         [Test]

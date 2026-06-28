@@ -13,21 +13,21 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SubdueUprisingMissionTests
     {
-        private SubdueUprisingMission CreateSubdueUprisingMission(
+        private Mission CreateSubdueUprisingMission(
             string ownerInstanceId,
             Planet target,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-            };
-            return SubdueUprisingMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.SubdueUprising,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
         }
 
         [Test]
@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = CreateSubdueUprisingMission(
+            Mission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = CreateSubdueUprisingMission(
+            Mission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = CreateSubdueUprisingMission(
+            Mission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = CreateSubdueUprisingMission(
+            Mission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.BeginUprising();
 
-            SubdueUprisingMission mission = CreateSubdueUprisingMission(
+            Mission mission = CreateSubdueUprisingMission(
                 "empire",
                 empPlanet,
                 new List<IMissionParticipant> { officer },
@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            SubdueUprisingMission mission = new SubdueUprisingMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -256,8 +256,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            SubdueUprisingMission deserialized =
-                SerializationHelper.Deserialize<SubdueUprisingMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("SubdueUprising", deserialized.ConfigKey);

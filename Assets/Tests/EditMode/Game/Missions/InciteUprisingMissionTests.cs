@@ -14,21 +14,21 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class InciteUprisingMissionTests
     {
-        private InciteUprisingMission CreateInciteUprisingMission(
+        private Mission CreateInciteUprisingMission(
             string ownerInstanceId,
             Planet target,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-            };
-            return InciteUprisingMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
         }
 
         [Test]
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = CreateInciteUprisingMission(
+            Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = CreateInciteUprisingMission(
+            Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = CreateInciteUprisingMission(
+            Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -201,7 +201,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            InciteUprisingMission mission = CreateInciteUprisingMission(
+            Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(regiment, enemyPlanet);
 
-            InciteUprisingMission mission = CreateInciteUprisingMission(
+            Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            InciteUprisingMission mission = new InciteUprisingMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -279,8 +279,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            InciteUprisingMission deserialized =
-                SerializationHelper.Deserialize<InciteUprisingMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("InciteUprising", deserialized.ConfigKey);

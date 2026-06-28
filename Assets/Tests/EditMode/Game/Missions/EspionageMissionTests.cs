@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class EspionageMissionTests
     {
-        private static EspionageMission CreateMission(
+        private static Mission CreateMission(
             GameRoot game,
             string owner,
             Planet target,
@@ -24,15 +24,14 @@ namespace Rebellion.Tests.Game.Missions
             List<IMissionParticipant> decoy
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = owner,
-                Target = target,
-                MainParticipants = main,
-                DecoyParticipants = decoy,
-            };
-            return EspionageMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Espionage,
+                game,
+                owner,
+                target,
+                main,
+                decoy
+            );
         }
 
         [Test]
@@ -48,7 +47,7 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -86,7 +85,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -116,7 +115,7 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -142,7 +141,7 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -181,7 +180,7 @@ namespace Rebellion.Tests.Game.Missions
             enemyPlanet.VisitingFactionIDs.Add("empire");
             int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -218,7 +217,7 @@ namespace Rebellion.Tests.Game.Missions
             int failedRatingBefore = officer.GetBaseRating(OfficerRating.Espionage);
             int successfulRatingBefore = successfulOfficer.GetBaseRating(OfficerRating.Espionage);
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -257,7 +256,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             int decoyRatingBefore = decoy.GetBaseRating(OfficerRating.Espionage);
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -290,7 +289,7 @@ namespace Rebellion.Tests.Game.Missions
             empPlanet.VisitingFactionIDs.Add("empire");
             int ratingBefore = officer.GetBaseRating(OfficerRating.Espionage);
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 empPlanet,
@@ -321,7 +320,7 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
 
             // empPlanet has no VisitingFactionIDs — empire has not visited it
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 empPlanet,
@@ -345,7 +344,7 @@ namespace Rebellion.Tests.Game.Missions
 
             empPlanet.VisitingFactionIDs.Add("empire");
 
-            EspionageMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 empPlanet,
@@ -362,7 +361,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            EspionageMission mission = new EspionageMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -376,7 +375,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            EspionageMission deserialized = SerializationHelper.Deserialize<EspionageMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Espionage", deserialized.ConfigKey);

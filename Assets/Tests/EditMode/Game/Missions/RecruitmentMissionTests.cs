@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Game.Missions
             return (game, empPlanet, officer);
         }
 
-        private static RecruitmentMission CreateRecruitmentMission(
+        private static Mission CreateRecruitmentMission(
             GameRoot game,
             string ownerInstanceId,
             ISceneNode target,
@@ -35,21 +35,19 @@ namespace Rebellion.Tests.Game.Missions
             List<IMissionParticipant> decoyParticipants
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-                RandomProvider = new StubRNG(),
-            };
-            return RecruitmentMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Recruitment,
+                game,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants
+            );
         }
 
-        private RecruitmentMission CreateMission(GameRoot game, Planet planet, Officer participant)
+        private Mission CreateMission(GameRoot game, Planet planet, Officer participant)
         {
-            RecruitmentMission mission = CreateRecruitmentMission(
+            Mission mission = CreateRecruitmentMission(
                 game,
                 "empire",
                 planet,
@@ -70,7 +68,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Assert.AreEqual("empire", target.OwnerInstanceID);
@@ -85,7 +83,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Assert.AreEqual(empPlanet, target.GetParent());
@@ -100,7 +98,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             Assert.IsFalse(game.UnrecruitedOfficers.Contains(target));
@@ -115,7 +113,7 @@ namespace Rebellion.Tests.Game.Missions
             removedTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(removedTarget);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
 
             game.UnrecruitedOfficers.Remove(removedTarget);
             Officer replacementTarget = EntityFactory.CreateOfficer("replacement", "rebels");
@@ -141,7 +139,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
 
             // Officer leaves the unrecruited pool before the mission executes
             game.UnrecruitedOfficers.Remove(target);
@@ -164,7 +162,7 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(target);
             officer.SetBaseRating(OfficerRating.Leadership, 40);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
             game.Config.ProbabilityTables.Mission.Recruitment = new Dictionary<int, int>
             {
                 { -40, 0 },
@@ -189,7 +187,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
 
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(game));
         }
@@ -206,7 +204,7 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(firstTarget);
             game.UnrecruitedOfficers.Add(secondTarget);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
             MissionSceneBuilder.RunToSuccess(mission, game);
 
             mission.Initiate(0);
@@ -229,7 +227,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
 
             // Remove all unrecruited officers after mission creation
             game.UnrecruitedOfficers.Clear();
@@ -246,7 +244,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateMission(game, empPlanet, officer);
+            Mission mission = CreateMission(game, empPlanet, officer);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -268,7 +266,7 @@ namespace Rebellion.Tests.Game.Missions
             target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
             game.UnrecruitedOfficers.Add(target);
 
-            RecruitmentMission mission = CreateRecruitmentMission(
+            Mission mission = CreateRecruitmentMission(
                 game,
                 "empire",
                 empPlanet,
@@ -285,7 +283,7 @@ namespace Rebellion.Tests.Game.Missions
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
 
             // No unrecruited officers — TryCreate has no valid target
-            RecruitmentMission mission = CreateRecruitmentMission(
+            Mission mission = CreateRecruitmentMission(
                 game,
                 "empire",
                 empPlanet,
@@ -302,7 +300,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_PopulatedMission_RetainsAllProperties()
         {
-            RecruitmentMission mission = new RecruitmentMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -314,9 +312,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            RecruitmentMission deserialized = SerializationHelper.Deserialize<RecruitmentMission>(
-                xml
-            );
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);

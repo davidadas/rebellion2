@@ -8,9 +8,11 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -252,6 +254,64 @@ public static class MissionSceneBuilder
         while (!mission.IsComplete())
             mission.IncrementProgress();
         mission.Execute(game, new FixedRNG(0.0));
+    }
+}
+
+public static class MissionTestFactory
+{
+    public static Mission TryCreate(
+        string missionTypeID,
+        GameRoot game,
+        string ownerInstanceID,
+        ISceneNode target,
+        List<IMissionParticipant> mainParticipants,
+        List<IMissionParticipant> decoyParticipants = null,
+        ISceneNode specificTarget = null,
+        Officer targetOfficer = null,
+        ResearchDiscipline? discipline = null
+    )
+    {
+        MissionDefinition definition = MissionDefinitionCatalog.Get(missionTypeID);
+        MissionBehavior behavior = definition?.Behavior;
+        if (definition == null || behavior == null)
+            return null;
+
+        return behavior.TryCreate(
+            new MissionStartRequest
+            {
+                Game = game,
+                MissionTypeID = missionTypeID,
+                OwnerInstanceID = ownerInstanceID,
+                Target = target,
+                SpecificTarget = specificTarget,
+                MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
+                DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
+                TargetOfficer = targetOfficer,
+                Discipline = discipline,
+            },
+            definition
+        );
+    }
+
+    public static Mission CreateRuntime(
+        string missionTypeID,
+        string ownerInstanceID,
+        string targetInstanceID,
+        List<IMissionParticipant> mainParticipants = null,
+        List<IMissionParticipant> decoyParticipants = null
+    )
+    {
+        MissionDefinition definition = MissionDefinitionCatalog.Get(missionTypeID);
+        if (definition == null)
+            throw new InvalidOperationException($"Unknown mission type '{missionTypeID}'.");
+
+        return new Mission(
+            definition,
+            ownerInstanceID,
+            targetInstanceID,
+            mainParticipants ?? new List<IMissionParticipant>(),
+            decoyParticipants ?? new List<IMissionParticipant>()
+        );
     }
 }
 

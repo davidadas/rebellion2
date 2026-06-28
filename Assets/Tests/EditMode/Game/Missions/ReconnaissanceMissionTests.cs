@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class ReconnaissanceMissionTests
     {
-        private static ReconnaissanceMission CreateMission(
+        private static Mission CreateMission(
             GameRoot game,
             string owner,
             Planet target,
@@ -20,15 +20,14 @@ namespace Rebellion.Tests.Game.Missions
             List<IMissionParticipant> decoy
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                Game = game,
-                OwnerInstanceId = owner,
-                Target = target,
-                MainParticipants = main,
-                DecoyParticipants = decoy,
-            };
-            return ReconnaissanceMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Reconnaissance,
+                game,
+                owner,
+                target,
+                main,
+                decoy
+            );
         }
 
         private static SpecialForces CreateReconTeam(string owner)
@@ -37,7 +36,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
-                AllowedMissionTypeIDs = new List<string> { ReconnaissanceMission.MissionTypeID },
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
             };
         }
 
@@ -55,7 +54,7 @@ namespace Rebellion.Tests.Game.Missions
             SpecialForces reconTeam = CreateReconTeam("empire");
             game.AttachNode(reconTeam, empPlanet);
 
-            ReconnaissanceMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -88,7 +87,7 @@ namespace Rebellion.Tests.Game.Missions
             SpecialForces reconTeam = CreateReconTeam("empire");
             game.AttachNode(reconTeam, empPlanet);
 
-            ReconnaissanceMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -110,7 +109,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            ReconnaissanceMission mission = CreateMission(
+            Mission mission = CreateMission(
                 game,
                 "empire",
                 enemyPlanet,
@@ -124,7 +123,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            ReconnaissanceMission mission = new ReconnaissanceMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -138,8 +137,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            ReconnaissanceMission deserialized =
-                SerializationHelper.Deserialize<ReconnaissanceMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Reconnaissance", deserialized.ConfigKey);

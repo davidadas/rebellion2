@@ -28,12 +28,36 @@ namespace Rebellion.Game.Movement
         /// Position at the start of transit (origin planet coordinates).
         /// Used for interpolating position during transit.
         /// </summary>
-        public Point OriginPosition { get; set; }
+        [PersistableIgnore]
+        public Point OriginPosition
+        {
+            get => new Point(OriginPositionX, OriginPositionY);
+            set
+            {
+                OriginPositionX = value.X;
+                OriginPositionY = value.Y;
+            }
+        }
+
+        public int OriginPositionX { get; set; }
+        public int OriginPositionY { get; set; }
 
         /// <summary>
         /// Current in-transit position (interpolated between origin and destination).
         /// </summary>
-        public Point CurrentPosition { get; set; }
+        [PersistableIgnore]
+        public Point CurrentPosition
+        {
+            get => new Point(CurrentPositionX, CurrentPositionY);
+            set
+            {
+                CurrentPositionX = value.X;
+                CurrentPositionY = value.Y;
+            }
+        }
+
+        public int CurrentPositionX { get; set; }
+        public int CurrentPositionY { get; set; }
 
         /// <summary>
         /// Default constructor for serialization.

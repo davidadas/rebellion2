@@ -235,14 +235,13 @@ namespace Rebellion.Tests.Systems
             _targetPlanet.VisitingFactionIDs = new List<string> { "rebels" };
             Officer officer = EntityFactory.CreateOfficer("o1", "rebels");
 
-            DiplomacyMission diplomacyMission = DiplomacyMission.TryCreate(
-                new MissionContext
-                {
-                    OwnerInstanceId = "rebels",
-                    Target = _targetPlanet,
-                    MainParticipants = new List<IMissionParticipant> { officer },
-                    DecoyParticipants = new List<IMissionParticipant>(),
-                }
+            Mission diplomacyMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                _game,
+                "rebels",
+                _targetPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
             );
             _game.AttachNode(diplomacyMission, _targetPlanet);
 

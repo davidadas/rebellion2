@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class SabotageMissionTests
     {
-        private static SabotageMission CreateSabotageMission(
+        private static Mission CreateSabotageMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
@@ -22,15 +22,15 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode specificTarget = null
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                SpecificTarget = specificTarget,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-            };
-            return SabotageMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Sabotage,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                specificTarget
+            );
         }
 
         [Test]
@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -220,7 +220,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(firstBuilding, enemyPlanet);
             game.AttachNode(selectedBuilding, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -255,7 +255,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer targetOfficer = EntityFactory.CreateOfficer("target", "rebels");
             game.AttachNode(targetOfficer, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            SabotageMission mission = new SabotageMission
+            Mission mission = new Mission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.Game.Missions
             };
 
             string xml = SerializationHelper.Serialize(mission);
-            SabotageMission deserialized = SerializationHelper.Deserialize<SabotageMission>(xml);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Sabotage", deserialized.ConfigKey);

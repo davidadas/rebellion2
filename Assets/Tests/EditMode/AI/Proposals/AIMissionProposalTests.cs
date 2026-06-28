@@ -17,7 +17,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 officer,
-                RecruitmentMission.MissionTypeID,
+                MissionTypeIDs.Recruitment,
                 planet
             );
 
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 officer,
-                DiplomacyMission.MissionTypeID,
+                MissionTypeIDs.Diplomacy,
                 planet
             );
 

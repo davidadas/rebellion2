@@ -10,6 +10,7 @@ namespace Rebellion.Game.Research
     /// </summary>
     public enum ResearchDiscipline
     {
+        None = -1,
         ShipDesign = 0,
         FacilityDesign = 1,
         TroopTraining = 2,
@@ -23,6 +24,8 @@ namespace Rebellion.Game.Research
         /// <summary>
         /// Returns the manufacturing type corresponding to a research discipline.
         /// </summary>
+        /// <param name="discipline">The research discipline to convert.</param>
+        /// <returns>The matching manufacturing type.</returns>
         public static ManufacturingType ToManufacturingType(this ResearchDiscipline discipline) =>
             discipline switch
             {
@@ -35,6 +38,8 @@ namespace Rebellion.Game.Research
         /// <summary>
         /// Returns the research discipline corresponding to a manufacturing type.
         /// </summary>
+        /// <param name="type">The manufacturing type to convert.</param>
+        /// <returns>The matching research discipline.</returns>
         public static ResearchDiscipline ToResearchDiscipline(this ManufacturingType type) =>
             type switch
             {

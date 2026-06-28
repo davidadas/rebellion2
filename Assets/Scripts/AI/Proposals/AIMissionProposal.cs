@@ -123,13 +123,13 @@ namespace Rebellion.AI.Proposals
         /// <param name="claimKeys">The claim list to update.</param>
         private void AddMissionSpecificClaims(List<string> claimKeys)
         {
-            if (MissionTypeID == RecruitmentMission.MissionTypeID)
+            if (MissionTypeID == MissionTypeIDs.Recruitment)
             {
                 claimKeys.Add($"mission:recruitment:{Participant.OwnerInstanceID}");
                 return;
             }
 
-            if (MissionTypeID == ResearchMission.MissionTypeID && Discipline.HasValue)
+            if (MissionTypeID == MissionTypeIDs.Research && Discipline.HasValue)
             {
                 claimKeys.Add($"mission:research:{Participant.OwnerInstanceID}:{Discipline.Value}");
                 return;
@@ -182,11 +182,14 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             return context.Missions.CanCreateMission(
-                MissionTypeID,
-                Participant,
-                TargetPlanet,
-                TargetOfficer,
-                Discipline
+                new MissionStartRequest
+                {
+                    MissionTypeID = MissionTypeID,
+                    Target = TargetPlanet,
+                    TargetOfficer = TargetOfficer,
+                    Discipline = Discipline,
+                    MainParticipants = new List<IMissionParticipant> { Participant },
+                }
             );
         }
 
@@ -202,11 +205,14 @@ namespace Rebellion.AI.Proposals
             try
             {
                 context.Missions.InitiateMission(
-                    MissionTypeID,
-                    Participant,
-                    TargetPlanet,
-                    TargetOfficer,
-                    Discipline
+                    new MissionStartRequest
+                    {
+                        MissionTypeID = MissionTypeID,
+                        Target = TargetPlanet,
+                        TargetOfficer = TargetOfficer,
+                        Discipline = Discipline,
+                        MainParticipants = new List<IMissionParticipant> { Participant },
+                    }
                 );
             }
             catch (InvalidOperationException)
@@ -239,7 +245,7 @@ namespace Rebellion.AI.Proposals
             if (!Participant.CanPerformMission(MissionTypeID))
                 return false;
 
-            if (MissionTypeID == ResearchMission.MissionTypeID && !Discipline.HasValue)
+            if (MissionTypeID == MissionTypeIDs.Research && !Discipline.HasValue)
                 return false;
 
             if (RequiresTargetOfficer() && TargetOfficer == null)
@@ -254,8 +260,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission requires an officer target.</returns>
         private bool RequiresTargetOfficer()
         {
-            return MissionTypeID == AbductionMission.MissionTypeID
-                || MissionTypeID == AssassinationMission.MissionTypeID;
+            return MissionTypeID == MissionTypeIDs.Abduction
+                || MissionTypeID == MissionTypeIDs.Assassination;
         }
     }
 }

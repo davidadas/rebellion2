@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Game.Missions
     [TestFixture]
     public class MissionTests
     {
-        private static SabotageMission CreateSabotageMission(
+        private static Mission CreateSabotageMission(
             string ownerInstanceId,
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
@@ -23,15 +23,15 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode specificTarget = null
         )
         {
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = ownerInstanceId,
-                Target = target,
-                SpecificTarget = specificTarget,
-                MainParticipants = mainParticipants,
-                DecoyParticipants = decoyParticipants,
-            };
-            return SabotageMission.TryCreate(ctx);
+            return MissionTestFactory.TryCreate(
+                MissionTypeIDs.Sabotage,
+                null,
+                ownerInstanceId,
+                target,
+                mainParticipants,
+                decoyParticipants,
+                specificTarget
+            );
         }
 
         [Test]
@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
             };
             game.AttachNode(building, enemyPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -181,14 +181,14 @@ namespace Rebellion.Tests.Game.Missions
 
             int ratingBefore = officer.GetBaseRating(OfficerRating.Leadership);
 
-            MissionContext ctx = new MissionContext
-            {
-                OwnerInstanceId = "empire",
-                Target = enemyPlanet,
-                MainParticipants = new List<IMissionParticipant> { officer },
-                DecoyParticipants = new List<IMissionParticipant>(),
-            };
-            InciteUprisingMission mission = InciteUprisingMission.TryCreate(ctx);
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.InciteUprising,
+                null,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Game.Missions
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             game.AttachNode(decoy, empPlanet);
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            SabotageMission mission = CreateSabotageMission(
+            Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
@@ -320,6 +320,64 @@ namespace Rebellion.Tests.Game.Missions
                 completed.Outcome,
                 "Execute should only return Success or Failed, never Foiled"
             );
+        }
+
+        [Test]
+        public void Serialize_RoundTrip_RestoresDecoyParticipantRating()
+        {
+            Mission mission = new Mission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = MissionTypeIDs.Sabotage,
+                DisplayName = MissionTypeIDs.Sabotage,
+                TargetInstanceID = "PLANET1",
+                ParticipantRating = OfficerRating.Combat,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+
+            Assert.AreEqual(OfficerRating.Espionage, deserialized.DecoyParticipantRating);
+        }
+
+        [Test]
+        public void Serialize_RoundTripActiveMission_PreservesParticipantSceneGraph()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(decoy, empPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { decoy }
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(3);
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            movement.RequestMove(officer, mission);
+            movement.RequestMove(decoy, mission);
+
+            string xml = SerializationHelper.Serialize(game);
+            GameRoot deserialized = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            Mission loadedMission = deserialized.GetSceneNodesByType<Mission>().Single();
+            Officer loadedOfficer = deserialized.GetSceneNodeByInstanceID<Officer>("o1");
+            Officer loadedDecoy = deserialized.GetSceneNodeByInstanceID<Officer>("o2");
+
+            Assert.AreEqual(loadedMission, loadedOfficer.GetParent());
+            Assert.AreEqual(loadedMission, loadedDecoy.GetParent());
+            Assert.AreEqual(loadedOfficer, loadedMission.MainParticipants.Single());
+            Assert.AreEqual(loadedDecoy, loadedMission.DecoyParticipants.Single());
         }
     }
 }
