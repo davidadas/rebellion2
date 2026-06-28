@@ -36,6 +36,21 @@ jobs:
             Library-${{ matrix.targetPlatform }}-
             Library-
 
+      - name: Pre-pull Unity Docker image
+        run: |
+          case "${{ matrix.targetPlatform }}" in
+            StandaloneLinux64)   MODULE="linux-il2cpp" ;;
+            StandaloneWindows64) MODULE="windows-mono" ;;
+            StandaloneOSX)       MODULE="mac-mono" ;;
+          esac
+          IMAGE="unityci/editor:ubuntu-6000.4.0f1-${MODULE}-3"
+          for attempt in 1 2 3; do
+            docker pull "$IMAGE" && exit 0
+            echo "Attempt $attempt failed, retrying in 30s..."
+            sleep 30
+          done
+          exit 1
+
       - name: Build project
         uses: game-ci/unity-builder@v4
         env:
