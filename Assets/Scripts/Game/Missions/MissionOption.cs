@@ -3,6 +3,9 @@ using Rebellion.Game.Research;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Represents a selectable mission option exposed to planning or UI code.
+    /// </summary>
     public sealed class MissionOption
     {
         /// <summary>

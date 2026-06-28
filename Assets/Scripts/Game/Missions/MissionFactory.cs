@@ -4,6 +4,9 @@ using Rebellion.Game.Factions;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Creates runtime missions from validated mission start requests.
+    /// </summary>
     public class MissionFactory
     {
         private readonly GameRoot _game;
@@ -38,6 +41,12 @@ namespace Rebellion.Game.Missions
             return options;
         }
 
+        /// <summary>
+        /// Attempts to create a mission from the supplied start request.
+        /// </summary>
+        /// <param name="request">The mission start request to evaluate.</param>
+        /// <param name="mission">The created mission when creation succeeds.</param>
+        /// <returns>True when a mission was created.</returns>
         public bool TryCreateMission(MissionStartRequest request, out Mission mission)
         {
             mission = null;
@@ -102,7 +111,6 @@ namespace Rebellion.Game.Missions
                 SpecificTarget = request.SpecificTarget,
                 MainParticipants = request.MainParticipants,
                 DecoyParticipants = request.DecoyParticipants,
-                RandomProvider = request.RandomProvider,
                 TargetOfficer = request.TargetOfficer,
                 Discipline = option.Discipline,
             };

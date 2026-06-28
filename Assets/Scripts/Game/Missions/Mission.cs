@@ -28,6 +28,9 @@ namespace Rebellion.Game.Missions
             {
                 configKey = value;
                 TypeID = value;
+                DecoyParticipantRating =
+                    MissionDefinitionCatalog.Get(configKey)?.DecoyParticipantRating
+                    ?? OfficerRating.None;
             }
         }
 
@@ -38,10 +41,8 @@ namespace Rebellion.Game.Missions
         public ResearchDiscipline Discipline { get; set; } = ResearchDiscipline.None;
 
         // Participants.
-        [PersistableIgnore]
         public List<IMissionParticipant> MainParticipants { get; set; }
 
-        [PersistableIgnore]
         public List<IMissionParticipant> DecoyParticipants { get; set; }
 
         [PersistableIgnore]
@@ -263,6 +264,12 @@ namespace Rebellion.Game.Missions
             return GetDefaultAgentProbability(agent, game);
         }
 
+        /// <summary>
+        /// Returns the default success probability for a mission participant.
+        /// </summary>
+        /// <param name="agent">The participant whose mission rating is evaluated.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured success probability.</returns>
         internal double GetDefaultAgentProbability(IMissionParticipant agent, GameRoot game)
         {
             int score = agent.GetEffectiveRating(ParticipantRating);
@@ -341,6 +348,12 @@ namespace Rebellion.Game.Missions
             return GetDefaultFoilProbability(defenseScore, game);
         }
 
+        /// <summary>
+        /// Returns the default probability that opposing forces detect the mission.
+        /// </summary>
+        /// <param name="defenseScore">The defensive score applied to the mission.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured detection probability.</returns>
         internal double GetDefaultFoilProbability(double defenseScore, GameRoot game)
         {
             if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
@@ -645,6 +658,12 @@ namespace Rebellion.Game.Missions
                 : ExecuteDefault(game, provider);
         }
 
+        /// <summary>
+        /// Resolves a completed mission using the default success and failure flow.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">RNG provider for mission rolls.</param>
+        /// <returns>All results produced by the mission execution.</returns>
         internal List<GameResult> ExecuteDefault(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -803,6 +822,10 @@ namespace Rebellion.Game.Missions
             GetBehavior()?.GetSuccessfulReturnPassengers(this, game)
             ?? Enumerable.Empty<IMovable>();
 
+        /// <summary>
+        /// Returns the behavior configured for this mission type.
+        /// </summary>
+        /// <returns>The configured mission behavior, or null when no behavior exists.</returns>
         private MissionBehavior GetBehavior()
         {
             return MissionDefinitionCatalog.Get(ConfigKey)?.Behavior;

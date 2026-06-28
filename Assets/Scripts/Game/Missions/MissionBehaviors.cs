@@ -13,6 +13,9 @@ using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Defines reconnaissance mission behavior.
+    /// </summary>
     internal sealed class ReconnaissanceMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -54,8 +57,7 @@ namespace Rebellion.Game.Missions
         /// <inheritdoc />
         public override bool IsMissionSatisfied(Mission mission, GameRoot game)
         {
-            return mission.GetParent() is Planet planet
-                && !planet.WasVisitedBy(mission.GetOwnerInstanceID());
+            return mission.GetParent() is Planet;
         }
 
         /// <inheritdoc />
@@ -71,6 +73,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines diplomacy mission behavior.
+    /// </summary>
     internal sealed class DiplomacyMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -284,6 +289,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines recruitment mission behavior.
+    /// </summary>
     internal sealed class RecruitmentMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -381,6 +389,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines subdue-uprising mission behavior.
+    /// </summary>
     internal sealed class SubdueUprisingMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -445,6 +456,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines incite-uprising mission behavior.
+    /// </summary>
     internal sealed class InciteUprisingMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -533,6 +547,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines abduction mission behavior.
+    /// </summary>
     internal sealed class AbductionMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -636,6 +653,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines assassination mission behavior.
+    /// </summary>
     internal sealed class AssassinationMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -775,6 +795,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines rescue mission behavior.
+    /// </summary>
     internal sealed class RescueMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -888,6 +911,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines sabotage mission behavior.
+    /// </summary>
     internal sealed class SabotageMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -1020,6 +1046,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines espionage mission behavior.
+    /// </summary>
     internal sealed class EspionageMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -1126,6 +1155,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines research mission behavior.
+    /// </summary>
     internal sealed class ResearchMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />
@@ -1423,6 +1455,9 @@ namespace Rebellion.Game.Missions
         }
     }
 
+    /// <summary>
+    /// Defines Jedi training mission behavior.
+    /// </summary>
     internal sealed class JediTrainingMissionBehavior : MissionBehavior
     {
         /// <inheritdoc />

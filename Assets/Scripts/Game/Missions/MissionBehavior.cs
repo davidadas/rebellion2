@@ -8,6 +8,9 @@ using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Defines mission-specific creation, validation, probability, and outcome behavior.
+    /// </summary>
     public abstract class MissionBehavior
     {
         public virtual bool CanceledOnOwnershipChange => true;

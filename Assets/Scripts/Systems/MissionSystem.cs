@@ -58,6 +58,11 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Returns whether the supplied request can create a mission.
+        /// </summary>
+        /// <param name="request">The mission start request to resolve and evaluate.</param>
+        /// <returns>True when the mission can be created.</returns>
         public bool CanCreateMission(MissionStartRequest request)
         {
             MissionStartRequest resolvedRequest = ResolveStartRequest(request);
@@ -78,12 +83,22 @@ namespace Rebellion.Systems
                 : new List<MissionOption>();
         }
 
+        /// <summary>
+        /// Creates, attaches, and starts a mission from the supplied request.
+        /// </summary>
+        /// <param name="request">The mission start request to resolve and start.</param>
+        /// <returns>True when the mission was started.</returns>
         public bool InitiateMission(MissionStartRequest request)
         {
             MissionStartRequest resolvedRequest = ResolveStartRequest(request);
             return resolvedRequest != null && CreateAndBeginMission(resolvedRequest);
         }
 
+        /// <summary>
+        /// Resolves a mission start request against live scene graph objects.
+        /// </summary>
+        /// <param name="request">The mission start request to resolve.</param>
+        /// <returns>The resolved mission start request, or null when any required object is missing.</returns>
         private MissionStartRequest ResolveStartRequest(MissionStartRequest request)
         {
             if (
@@ -115,10 +130,14 @@ namespace Rebellion.Systems
             );
             resolvedRequest.Game = _game;
             resolvedRequest.TargetOfficer = targetOfficer;
-            resolvedRequest.RandomProvider = _provider;
             return resolvedRequest;
         }
 
+        /// <summary>
+        /// Creates a mission, attaches it to its target planet, and begins participant travel.
+        /// </summary>
+        /// <param name="request">The resolved mission start request.</param>
+        /// <returns>True when the mission was created and started.</returns>
         private bool CreateAndBeginMission(MissionStartRequest request)
         {
             if (!_missionFactory.TryCreateMission(request, out Mission mission))

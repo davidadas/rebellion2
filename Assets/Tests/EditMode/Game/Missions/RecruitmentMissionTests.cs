@@ -41,8 +41,7 @@ namespace Rebellion.Tests.Game.Missions
                 ownerInstanceId,
                 target,
                 mainParticipants,
-                decoyParticipants,
-                randomProvider: new StubRNG()
+                decoyParticipants
             );
         }
 

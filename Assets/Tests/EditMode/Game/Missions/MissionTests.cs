@@ -321,5 +321,63 @@ namespace Rebellion.Tests.Game.Missions
                 "Execute should only return Success or Failed, never Foiled"
             );
         }
+
+        [Test]
+        public void Serialize_RoundTrip_RestoresDecoyParticipantRating()
+        {
+            Mission mission = new Mission
+            {
+                InstanceID = "MISSION1",
+                OwnerInstanceID = "FACTION1",
+                ConfigKey = MissionTypeIDs.Sabotage,
+                DisplayName = MissionTypeIDs.Sabotage,
+                TargetInstanceID = "PLANET1",
+                ParticipantRating = OfficerRating.Combat,
+            };
+
+            string xml = SerializationHelper.Serialize(mission);
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+
+            Assert.AreEqual(OfficerRating.Espionage, deserialized.DecoyParticipantRating);
+        }
+
+        [Test]
+        public void Serialize_RoundTripActiveMission_PreservesParticipantSceneGraph()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(decoy, empPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant> { decoy }
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(3);
+
+            MovementSystem movement = new MovementSystem(game, fog);
+            movement.RequestMove(officer, mission);
+            movement.RequestMove(decoy, mission);
+
+            string xml = SerializationHelper.Serialize(game);
+            GameRoot deserialized = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            Mission loadedMission = deserialized.GetSceneNodesByType<Mission>().Single();
+            Officer loadedOfficer = deserialized.GetSceneNodeByInstanceID<Officer>("o1");
+            Officer loadedDecoy = deserialized.GetSceneNodeByInstanceID<Officer>("o2");
+
+            Assert.AreEqual(loadedMission, loadedOfficer.GetParent());
+            Assert.AreEqual(loadedMission, loadedDecoy.GetParent());
+            Assert.AreEqual(loadedOfficer, loadedMission.MainParticipants.Single());
+            Assert.AreEqual(loadedDecoy, loadedMission.DecoyParticipants.Single());
+        }
     }
 }

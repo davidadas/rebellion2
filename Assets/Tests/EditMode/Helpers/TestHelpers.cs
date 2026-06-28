@@ -268,8 +268,7 @@ public static class MissionTestFactory
         List<IMissionParticipant> decoyParticipants = null,
         ISceneNode specificTarget = null,
         Officer targetOfficer = null,
-        ResearchDiscipline? discipline = null,
-        IRandomNumberProvider randomProvider = null
+        ResearchDiscipline? discipline = null
     )
     {
         MissionDefinition definition = MissionDefinitionCatalog.Get(missionTypeID);
@@ -289,7 +288,6 @@ public static class MissionTestFactory
                 DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
                 TargetOfficer = targetOfficer,
                 Discipline = discipline,
-                RandomProvider = randomProvider,
             },
             definition
         );

@@ -1,5 +1,8 @@
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Defines mission type identifiers used by mission creation and configuration.
+    /// </summary>
     public static class MissionTypeIDs
     {
         public const string Abduction = "Abduction";

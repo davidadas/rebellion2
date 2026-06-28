@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -35,9 +36,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Options_EachOption_UsesCatalogRatings()
+        public void Options_NonResearchOptions_UseCatalogRatings()
         {
-            foreach (MissionOption option in MissionDefinitionCatalog.Options)
+            foreach (
+                MissionOption option in MissionDefinitionCatalog.Options.Where(option =>
+                    option.MissionTypeID != MissionTypeIDs.Research
+                )
+            )
             {
                 MissionDefinition definition = MissionDefinitionCatalog.Get(option.MissionTypeID);
 
@@ -73,6 +78,14 @@ namespace Rebellion.Tests.Game.Missions
                 },
                 options.Select(option => option.DisplayName).ToArray()
             );
+            foreach (MissionOption option in options)
+            {
+                Assert.AreEqual(
+                    Officer.GetRatingForResearchDiscipline(option.Discipline.Value),
+                    option.ParticipantRating
+                );
+                Assert.AreEqual(OfficerRating.None, option.DecoyParticipantRating);
+            }
         }
     }
 }

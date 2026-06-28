@@ -1,8 +1,12 @@
 using System.Collections.Generic;
 using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Game.Missions
 {
+    /// <summary>
+    /// Provides mission definitions and selectable mission options.
+    /// </summary>
     public static class MissionDefinitionCatalog
     {
         private static readonly Dictionary<string, MissionDefinition> _definitions = new Dictionary<
@@ -202,10 +206,15 @@ namespace Rebellion.Game.Missions
             if (definition == null)
                 throw new KeyNotFoundException(missionTypeID);
 
+            OfficerRating participantRating =
+                missionTypeID == MissionTypeIDs.Research && discipline.HasValue
+                    ? Officer.GetRatingForResearchDiscipline(discipline.Value)
+                    : definition.ParticipantRating;
+
             return new MissionOption(
                 missionTypeID,
                 displayName ?? definition.DisplayName,
-                definition.ParticipantRating,
+                participantRating,
                 definition.DecoyParticipantRating,
                 discipline
             );

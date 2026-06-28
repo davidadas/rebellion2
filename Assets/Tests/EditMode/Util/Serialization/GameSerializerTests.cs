@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Movement;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization
@@ -260,6 +262,30 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(conditional);
             Assert.AreEqual("30", conditional.ConditionalValue);
             Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+        }
+
+        [Test]
+        public void Serialize_RoundTripMovementState_PreservesTransitPositions()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(MovementState));
+            MovementState movement = new MovementState
+            {
+                TransitTicks = 9,
+                TicksElapsed = 4,
+                OriginPosition = new Point(12, 34),
+                CurrentPosition = new Point(56, 78),
+            };
+
+            string serializedXml = SerializeToString(serializer, movement);
+            MovementState deserialized = (MovementState)DeserializeFromString(
+                serializer,
+                serializedXml
+            );
+
+            Assert.AreEqual(9, deserialized.TransitTicks);
+            Assert.AreEqual(4, deserialized.TicksElapsed);
+            Assert.AreEqual(new Point(12, 34), deserialized.OriginPosition);
+            Assert.AreEqual(new Point(56, 78), deserialized.CurrentPosition);
         }
 
         [Test]
