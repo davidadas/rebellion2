@@ -65,9 +65,8 @@ namespace Rebellion.Systems
         /// <returns>True when the mission can be created.</returns>
         public bool CanCreateMission(MissionStartRequest request)
         {
-            MissionStartRequest resolvedRequest = ResolveStartRequest(request);
-            return resolvedRequest != null
-                && _missionFactory.TryCreateMission(resolvedRequest, out _);
+            MissionContext context = ResolveMissionContext(request);
+            return context != null && _missionFactory.TryCreateMission(context, out _);
         }
 
         /// <summary>
@@ -77,9 +76,9 @@ namespace Rebellion.Systems
         /// <returns>The mission options that can be created from the resolved request.</returns>
         public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
         {
-            MissionStartRequest resolvedRequest = ResolveStartRequest(request);
-            return resolvedRequest != null
-                ? _missionFactory.GetAvailableMissionOptions(resolvedRequest)
+            MissionContext context = ResolveMissionContext(request);
+            return context != null
+                ? _missionFactory.GetAvailableMissionOptions(context)
                 : new List<MissionOption>();
         }
 
@@ -90,16 +89,16 @@ namespace Rebellion.Systems
         /// <returns>True when the mission was started.</returns>
         public bool InitiateMission(MissionStartRequest request)
         {
-            MissionStartRequest resolvedRequest = ResolveStartRequest(request);
-            return resolvedRequest != null && CreateAndBeginMission(resolvedRequest);
+            MissionContext context = ResolveMissionContext(request);
+            return context != null && CreateAndBeginMission(context);
         }
 
         /// <summary>
         /// Resolves a mission start request against live scene graph objects.
         /// </summary>
         /// <param name="request">The mission start request to resolve.</param>
-        /// <returns>The resolved mission start request, or null when any required object is missing.</returns>
-        private MissionStartRequest ResolveStartRequest(MissionStartRequest request)
+        /// <returns>The resolved mission context, or null when any required object is missing.</returns>
+        private MissionContext ResolveMissionContext(MissionStartRequest request)
         {
             if (
                 request == null
@@ -122,30 +121,33 @@ namespace Rebellion.Systems
 
             Officer targetOfficer = request.TargetOfficer ?? request.SpecificTarget as Officer;
 
-            MissionStartRequest resolvedRequest = request.CreateResolved(
-                mainParticipants[0].GetOwnerInstanceID(),
-                mainParticipants,
-                decoyParticipants,
-                target
-            );
-            resolvedRequest.Game = _game;
-            resolvedRequest.TargetOfficer = targetOfficer;
-            return resolvedRequest;
+            return new MissionContext
+            {
+                Game = _game,
+                MissionTypeID = request.MissionTypeID,
+                OwnerInstanceId = mainParticipants[0].GetOwnerInstanceID(),
+                Target = target,
+                SpecificTarget = request.SpecificTarget,
+                MainParticipants = mainParticipants,
+                DecoyParticipants = decoyParticipants,
+                TargetOfficer = targetOfficer,
+                Discipline = request.Discipline,
+            };
         }
 
         /// <summary>
         /// Creates a mission, attaches it to its target planet, and begins participant travel.
         /// </summary>
-        /// <param name="request">The resolved mission start request.</param>
+        /// <param name="context">The resolved mission context.</param>
         /// <returns>True when the mission was created and started.</returns>
-        private bool CreateAndBeginMission(MissionStartRequest request)
+        private bool CreateAndBeginMission(MissionContext context)
         {
-            if (!_missionFactory.TryCreateMission(request, out Mission mission))
+            if (!_missionFactory.TryCreateMission(context, out Mission mission))
                 return false;
 
-            Planet planet = request.Target is Planet p
+            Planet planet = context.Target is Planet p
                 ? p
-                : request.Target.GetParentOfType<Planet>();
+                : context.Target.GetParentOfType<Planet>();
             if (planet == null)
                 return false;
 

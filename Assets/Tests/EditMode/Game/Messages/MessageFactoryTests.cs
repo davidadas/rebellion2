@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Game.Messages
         public void CreateMessages_MissionSuccess_UsesSuccessReportForActor()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 DisplayName = "Sabotage",
                 OwnerInstanceID = alliance.InstanceID,
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 DisplayName = "Sabotage",
                 OwnerInstanceID = alliance.InstanceID,

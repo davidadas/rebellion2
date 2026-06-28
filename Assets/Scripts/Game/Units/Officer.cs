@@ -132,8 +132,9 @@ namespace Rebellion.Game.Units
         /// Returns whether this officer can perform a mission type.
         /// </summary>
         /// <param name="missionTypeId">The mission type ID to inspect.</param>
-        /// <returns>True for every mission type.</returns>
-        public bool CanPerformMission(string missionTypeId) => true;
+        /// <returns>True if the officer can perform the mission type.</returns>
+        public bool CanPerformMission(string missionTypeId) =>
+            missionTypeId != MissionTypeIDs.Reconnaissance;
 
         /// <summary>
         /// Default constructor used for deserialization.

@@ -242,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            Mission mission = new Mission
+            Mission mission = new SubdueUprisingMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",

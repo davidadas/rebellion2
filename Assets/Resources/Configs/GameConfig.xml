@@ -1147,56 +1147,6 @@
           <Value>99</Value>
         </Entry>
       </Espionage>
-      <Reconnaissance>
-        <Entry>
-          <Key>-1</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Reconnaissance>
       <InciteUprising>
         <Entry>
           <Key>-20</Key>

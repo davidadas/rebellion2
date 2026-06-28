@@ -271,47 +271,38 @@ public static class MissionTestFactory
         ResearchDiscipline? discipline = null
     )
     {
-        MissionDefinition definition = MissionDefinitionCatalog.Get(missionTypeID);
-        MissionBehavior behavior = definition?.Behavior;
-        if (definition == null || behavior == null)
-            return null;
+        MissionContext context = new MissionContext
+        {
+            Game = game,
+            MissionTypeID = missionTypeID,
+            OwnerInstanceId = ownerInstanceID,
+            Target = target,
+            SpecificTarget = specificTarget,
+            MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
+            DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
+            TargetOfficer = targetOfficer ?? specificTarget as Officer,
+            Discipline = discipline,
+        };
 
-        return behavior.TryCreate(
-            new MissionStartRequest
-            {
-                Game = game,
-                MissionTypeID = missionTypeID,
-                OwnerInstanceID = ownerInstanceID,
-                Target = target,
-                SpecificTarget = specificTarget,
-                MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
-                DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
-                TargetOfficer = targetOfficer,
-                Discipline = discipline,
-            },
-            definition
-        );
-    }
-
-    public static Mission CreateRuntime(
-        string missionTypeID,
-        string ownerInstanceID,
-        string targetInstanceID,
-        List<IMissionParticipant> mainParticipants = null,
-        List<IMissionParticipant> decoyParticipants = null
-    )
-    {
-        MissionDefinition definition = MissionDefinitionCatalog.Get(missionTypeID);
-        if (definition == null)
-            throw new InvalidOperationException($"Unknown mission type '{missionTypeID}'.");
-
-        return new Mission(
-            definition,
-            ownerInstanceID,
-            targetInstanceID,
-            mainParticipants ?? new List<IMissionParticipant>(),
-            decoyParticipants ?? new List<IMissionParticipant>()
-        );
+        return missionTypeID switch
+        {
+            AbductionMission.MissionTypeID => AbductionMission.TryCreate(context),
+            AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(context),
+            DiplomacyMission.MissionTypeID => DiplomacyMission.TryCreate(context),
+            EspionageMission.MissionTypeID => EspionageMission.TryCreate(context),
+            InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(context),
+            JediTrainingMission.MissionTypeID => JediTrainingMission.TryCreate(context),
+            ReconnaissanceMission.MissionTypeID => ReconnaissanceMission.TryCreate(context),
+            RecruitmentMission.MissionTypeID => RecruitmentMission.TryCreate(context),
+            RescueMission.MissionTypeID => RescueMission.TryCreate(context),
+            ResearchMission.MissionTypeID when discipline.HasValue => ResearchMission.TryCreate(
+                context,
+                discipline.Value
+            ),
+            SabotageMission.MissionTypeID => SabotageMission.TryCreate(context),
+            SubdueUprisingMission.MissionTypeID => SubdueUprisingMission.TryCreate(context),
+            _ => null,
+        };
     }
 }
 

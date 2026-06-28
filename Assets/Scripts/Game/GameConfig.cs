@@ -809,9 +809,6 @@ namespace Rebellion.Game
             /// <summary>Incite uprising success probability table.</summary>
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Reconnaissance success probability table.</summary>
-            public Dictionary<int, int> Reconnaissance { get; set; } = new Dictionary<int, int>();
-
             /// <summary>Recruitment success probability table.</summary>
             public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
 
@@ -842,7 +839,6 @@ namespace Rebellion.Game
                     "DeathStarSabotage" => DeathStarSabotage,
                     "Espionage" => Espionage,
                     "InciteUprising" => InciteUprising,
-                    "Reconnaissance" => Reconnaissance,
                     "Recruitment" => Recruitment,
                     "Rescue" => Rescue,
                     "Sabotage" => Sabotage,

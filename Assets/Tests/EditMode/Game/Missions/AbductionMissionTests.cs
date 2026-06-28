@@ -574,13 +574,13 @@ namespace Rebellion.Tests.Game.Missions
                 mission,
                 "TryCreate should succeed with a valid enemy officer on the target planet"
             );
-            Assert.AreEqual("target", mission.TargetOfficerInstanceID);
+            Assert.AreEqual("target", ((AbductionMission)mission).TargetOfficerInstanceID);
         }
 
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            Mission mission = new Mission
+            Mission mission = new AbductionMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -599,7 +599,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Abduction", deserialized.ConfigKey);
-            Assert.AreEqual("OFFICER2", deserialized.TargetOfficerInstanceID);
+            Assert.AreEqual("OFFICER2", ((AbductionMission)deserialized).TargetOfficerInstanceID);
             Assert.AreEqual(OfficerRating.Espionage, deserialized.ParticipantRating);
             Assert.IsFalse(deserialized.HasInitiated);
             Assert.AreEqual(5, deserialized.MaxProgress);

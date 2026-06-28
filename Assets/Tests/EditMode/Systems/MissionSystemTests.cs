@@ -1551,7 +1551,10 @@ namespace Rebellion.Tests.Systems
 
             Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
             Assert.IsNotNull(mission, "Research mission should be created and attached");
-            Assert.AreEqual(ResearchDiscipline.FacilityDesign, mission.Discipline);
+            Assert.AreEqual(
+                ResearchDiscipline.FacilityDesign,
+                ((ResearchMission)mission).Discipline
+            );
             Assert.AreEqual(planet, mission.GetParent());
         }
 
@@ -1721,7 +1724,11 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(regiment.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(targetPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(
+                regiment.InstanceID,
+                ((SabotageMission)mission).SabotageTargetInstanceID
+            );
         }
 
         [Test]
@@ -1751,7 +1758,7 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(target.InstanceID, mission.TargetOfficerInstanceID);
+            Assert.AreEqual(target.InstanceID, ((AbductionMission)mission).TargetOfficerInstanceID);
         }
 
         [Test]
@@ -1819,7 +1826,11 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(liveRegiment.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(targetPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(
+                liveRegiment.InstanceID,
+                ((SabotageMission)mission).SabotageTargetInstanceID
+            );
         }
 
         [Test]
