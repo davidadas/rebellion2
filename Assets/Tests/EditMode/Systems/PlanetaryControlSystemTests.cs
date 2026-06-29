@@ -661,7 +661,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_ClaimsForRegimentFaction()
+        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_DoesNotClaim()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild7", "empire");
             planet.IsColonized = true;
@@ -671,13 +671,9 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = _ownershipSystem.ProcessTick();
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetOwnershipChangedResult>()
-                    .Any(r =>
-                        r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
-                    )
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsEmpty(
+                results.OfType<PlanetOwnershipChangedResult>().Where(r => r.Planet == planet)
             );
         }
 

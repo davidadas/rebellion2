@@ -2415,6 +2415,31 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_FleetToNeutralUncolonizedPlanet_IsAllowed()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet-to-uncolonized", "empire");
+            game.AttachNode(fleet, origin);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "fleet-to-uncolonized-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, fleet);
+
+            movement.RequestMove(fleet, destination);
+
+            Assert.AreEqual(destination, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
         public void RequestMove_RegimentToNeutralColonizedPlanet_IsRejected()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =

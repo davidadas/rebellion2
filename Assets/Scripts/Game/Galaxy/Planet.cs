@@ -658,7 +658,8 @@ namespace Rebellion.Game.Galaxy
         /// Adds a building to the planet.
         /// </summary>
         /// <param name="building">The building to add.</param>
-        /// <exception cref="InvalidOperationException">Thrown when the planet is not colonized or at capacity.</exception>
+        /// <exception cref="SceneAccessException">Thrown when the planet is not colonized or ownership is invalid.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the planet is at capacity.</exception>
         private void AddBuilding(Building building)
         {
             if (!IsColonized)

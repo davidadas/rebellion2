@@ -660,7 +660,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_NeutralPlanetWithRegiments_ClaimsForRegimentFaction()
+        public void ProcessTick_NeutralPlanetWithRegiments_DoesNotTransferOwnership()
         {
             (GameRoot game, Planet planet, _, PlanetaryControlSystem system) = BuildScene(
                 support: 61,
@@ -670,7 +670,7 @@ namespace Rebellion.Tests.Systems
 
             system.ProcessTick();
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.IsNull(planet.GetOwnerInstanceID());
         }
 
         [Test]

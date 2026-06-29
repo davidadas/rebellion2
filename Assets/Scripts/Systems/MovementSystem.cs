@@ -873,7 +873,13 @@ namespace Rebellion.Systems
         /// <returns>True if the move is allowed for the uncolonized planet rule.</returns>
         private static bool CanMoveToUncolonizedPlanet(IMovable unit, ISceneNode destination)
         {
+            if (unit.GetParent() == destination)
+                return true;
+
             if (destination is not Planet destinationPlanet || destinationPlanet.IsColonized)
+                return true;
+
+            if (unit is Fleet)
                 return true;
 
             if (unit is not Regiment)
