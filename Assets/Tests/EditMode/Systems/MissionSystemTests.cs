@@ -1574,12 +1574,12 @@ namespace Rebellion.Tests.Systems
                 .Where(option => option.MissionTypeID == MissionTypeIDs.Research)
                 .ToArray();
             Assert.AreEqual(3, researchOptions.Length);
-            CollectionAssert.AreEquivalent(
+            CollectionAssert.AreEqual(
                 new[]
                 {
                     ResearchDiscipline.ShipDesign,
-                    ResearchDiscipline.FacilityDesign,
                     ResearchDiscipline.TroopTraining,
+                    ResearchDiscipline.FacilityDesign,
                 },
                 researchOptions.Select(option => option.Discipline).ToArray()
             );

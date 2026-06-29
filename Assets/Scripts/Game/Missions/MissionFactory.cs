@@ -17,8 +17,49 @@ namespace Rebellion.Game.Missions
         {
             new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
             new MissionOption(
+                RescueMission.MissionTypeID,
+                "Rescue",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                SabotageMission.MissionTypeID,
+                "Sabotage",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
                 EspionageMission.MissionTypeID,
                 "Espionage",
+                OfficerRating.Espionage,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                AbductionMission.MissionTypeID,
+                "Abduction",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                SubdueUprisingMission.MissionTypeID,
+                "Subdue Uprising",
+                OfficerRating.Leadership
+            ),
+            new MissionOption(
+                AssassinationMission.MissionTypeID,
+                "Assassination",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                InciteUprisingMission.MissionTypeID,
+                "Incite Uprising",
+                OfficerRating.Leadership,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                ReconnaissanceMission.MissionTypeID,
+                "Reconnaissance",
                 OfficerRating.Espionage,
                 OfficerRating.Espionage
             ),
@@ -30,21 +71,15 @@ namespace Rebellion.Game.Missions
             ),
             new MissionOption(
                 ResearchMission.MissionTypeID,
-                "Facility Design Research",
-                OfficerRating.FacilityResearch,
-                discipline: ResearchDiscipline.FacilityDesign
-            ),
-            new MissionOption(
-                ResearchMission.MissionTypeID,
                 "Troop Training Research",
                 OfficerRating.TroopResearch,
                 discipline: ResearchDiscipline.TroopTraining
             ),
             new MissionOption(
-                ReconnaissanceMission.MissionTypeID,
-                "Reconnaissance",
-                OfficerRating.Espionage,
-                OfficerRating.Espionage
+                ResearchMission.MissionTypeID,
+                "Facility Design Research",
+                OfficerRating.FacilityResearch,
+                discipline: ResearchDiscipline.FacilityDesign
             ),
             new MissionOption(
                 RecruitmentMission.MissionTypeID,
@@ -52,44 +87,9 @@ namespace Rebellion.Game.Missions
                 OfficerRating.Leadership
             ),
             new MissionOption(
-                InciteUprisingMission.MissionTypeID,
-                "Incite Uprising",
-                OfficerRating.Leadership,
-                OfficerRating.Espionage
-            ),
-            new MissionOption(
-                SubdueUprisingMission.MissionTypeID,
-                "Subdue Uprising",
-                OfficerRating.Leadership
-            ),
-            new MissionOption(
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
                 OfficerRating.Diplomacy
-            ),
-            new MissionOption(
-                RescueMission.MissionTypeID,
-                "Rescue",
-                OfficerRating.Combat,
-                OfficerRating.Espionage
-            ),
-            new MissionOption(
-                AbductionMission.MissionTypeID,
-                "Abduction",
-                OfficerRating.Combat,
-                OfficerRating.Espionage
-            ),
-            new MissionOption(
-                AssassinationMission.MissionTypeID,
-                "Assassination",
-                OfficerRating.Combat,
-                OfficerRating.Espionage
-            ),
-            new MissionOption(
-                SabotageMission.MissionTypeID,
-                "Sabotage",
-                OfficerRating.Combat,
-                OfficerRating.Espionage
             ),
         };
 
