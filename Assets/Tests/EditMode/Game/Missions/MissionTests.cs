@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return MissionTestFactory.TryCreate(
@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Game.Missions
                 target,
                 mainParticipants,
                 decoyParticipants,
-                specificTarget
+                selectedTarget
             );
         }
 
@@ -352,7 +352,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = MissionTypeIDs.Sabotage,
                 DisplayName = MissionTypeIDs.Sabotage,
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Combat,
             };
 

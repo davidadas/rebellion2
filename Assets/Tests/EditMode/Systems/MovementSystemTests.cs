@@ -383,7 +383,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
-                TargetInstanceID = destination.InstanceID,
+                LocationInstanceID = destination.InstanceID,
                 HasInitiated = true,
             };
             game.AttachNode(mission, destination);
@@ -432,7 +432,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
-                TargetInstanceID = destination.InstanceID,
+                LocationInstanceID = destination.InstanceID,
                 HasInitiated = true,
             };
             game.AttachNode(mission, destination);
@@ -492,7 +492,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
-                TargetInstanceID = origin.InstanceID,
+                LocationInstanceID = origin.InstanceID,
                 HasInitiated = true,
             };
             game.AttachNode(mission, origin);

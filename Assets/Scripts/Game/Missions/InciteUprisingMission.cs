@@ -65,7 +65,7 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the planet is neutral, owned by this faction, or already in uprising.</returns>
         public static InciteUprisingMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             string owner = planet.GetOwnerInstanceID();
@@ -74,7 +74,7 @@ namespace Rebellion.Game.Missions
 
             return new InciteUprisingMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );

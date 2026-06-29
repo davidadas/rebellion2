@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Game.Missions
             IMissionParticipant participant,
             Planet target,
             ResearchDiscipline? discipline = null,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return new MissionContext
@@ -96,11 +96,11 @@ namespace Rebellion.Tests.Game.Missions
                 Game = game,
                 MissionTypeID = missionTypeID,
                 OwnerInstanceId = ownerInstanceID,
-                Target = target,
+                Location = target,
                 MainParticipants = new List<IMissionParticipant> { participant },
                 DecoyParticipants = new List<IMissionParticipant>(),
                 Discipline = discipline,
-                SpecificTarget = specificTarget,
+                SelectedTarget = selectedTarget,
             };
         }
 
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
                     "empire",
                     officer,
                     planet,
-                    specificTarget: target
+                    selectedTarget: target
                 ),
                 out Mission mission
             );
@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Game.Missions
                     "empire",
                     officer,
                     planet,
-                    specificTarget: target
+                    selectedTarget: target
                 ),
                 out _
             );
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Game.Missions
                     "unknown",
                     officer,
                     planet,
-                    specificTarget: target
+                    selectedTarget: target
                 ),
                 out _
             );
@@ -184,7 +184,7 @@ namespace Rebellion.Tests.Game.Missions
                     "empire",
                     officer,
                     planet,
-                    specificTarget: target
+                    selectedTarget: target
                 ),
                 out _
             );
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 officer,
                 planet,
-                specificTarget: target
+                selectedTarget: target
             );
             context.MainParticipants.Add(rebelOfficer);
 
@@ -225,7 +225,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 officer,
                 planet,
-                specificTarget: target
+                selectedTarget: target
             );
             context.DecoyParticipants.Add(rebelDecoy);
 
@@ -245,7 +245,7 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 officer,
                 planet,
-                specificTarget: target
+                selectedTarget: target
             );
             context.Game = null;
             context.DecoyParticipants = null;

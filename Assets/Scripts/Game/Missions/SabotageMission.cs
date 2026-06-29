@@ -40,27 +40,27 @@ namespace Rebellion.Game.Missions
         /// Initializes a sabotage mission with its selected target object.
         /// </summary>
         /// <param name="ownerInstanceId">Faction that owns the mission.</param>
-        /// <param name="missionTarget">Planet where the mission occurs.</param>
-        /// <param name="sabotageTargetInstanceId">Object selected as the sabotage target.</param>
+        /// <param name="missionPlanet">Planet where the mission occurs.</param>
+        /// <param name="selectedTarget">Object selected as the sabotage target.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
         private SabotageMission(
             string ownerInstanceId,
-            ISceneNode missionTarget,
-            string sabotageTargetInstanceId,
+            Planet missionPlanet,
+            ISceneNode selectedTarget,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
             : base(
                 MissionTypeID,
                 ownerInstanceId,
-                missionTarget.GetInstanceID(),
+                missionPlanet.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Combat
             )
         {
-            SabotageTargetInstanceID = sabotageTargetInstanceId;
+            SabotageTargetInstanceID = selectedTarget.GetInstanceID();
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
@@ -71,33 +71,34 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the target is not eligible.</returns>
         public static SabotageMission TryCreate(MissionContext ctx)
         {
-            if (ctx.Target == null)
+            if (ctx.Location == null)
                 return null;
 
-            ISceneNode sabotageTarget = ctx.SpecificTarget ?? ctx.Target;
-            if (sabotageTarget is not IManufacturable manufacturable)
+            ISceneNode selectedTarget = ctx.SelectedTarget ?? ctx.Location;
+            if (selectedTarget is not IManufacturable manufacturable)
                 return null;
 
             if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
                 return null;
 
-            if (sabotageTarget is IMovable movable && movable.Movement != null)
+            if (selectedTarget is IMovable movable && movable.Movement != null)
                 return null;
 
-            Planet missionPlanet = ctx.Target as Planet ?? sabotageTarget.GetParentOfType<Planet>();
+            Planet missionPlanet =
+                ctx.Location as Planet ?? selectedTarget.GetParentOfType<Planet>();
             if (missionPlanet == null)
                 return null;
 
             if (
-                ctx.SpecificTarget != null
-                && sabotageTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
+                ctx.SelectedTarget != null
+                && selectedTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
             )
                 return null;
 
             return new SabotageMission(
                 ctx.OwnerInstanceId,
                 missionPlanet,
-                sabotageTarget.GetInstanceID(),
+                selectedTarget,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );

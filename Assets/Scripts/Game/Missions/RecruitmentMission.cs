@@ -68,7 +68,7 @@ namespace Rebellion.Game.Missions
         public static RecruitmentMission TryCreate(MissionContext ctx)
         {
             if (
-                ctx.Target is not Planet planet
+                ctx.Location is not Planet planet
                 || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId
             )
                 return null;
@@ -82,7 +82,7 @@ namespace Rebellion.Game.Missions
 
             return new RecruitmentMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants,
                 null

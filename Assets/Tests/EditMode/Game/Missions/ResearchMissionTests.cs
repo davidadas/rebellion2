@@ -372,7 +372,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Ship Design",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.ShipResearch,
                 Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
-            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
             Assert.AreEqual(OfficerRating.ShipResearch, deserialized.ParticipantRating);
             Assert.AreEqual(
                 ResearchDiscipline.ShipDesign,
@@ -407,7 +407,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Troop Training",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 Discipline = ResearchDiscipline.TroopTraining,
             };
 
@@ -431,7 +431,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Facility Design",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 Discipline = ResearchDiscipline.FacilityDesign,
             };
 

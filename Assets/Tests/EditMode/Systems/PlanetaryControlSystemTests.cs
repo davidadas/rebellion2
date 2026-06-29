@@ -19,8 +19,8 @@ namespace Rebellion.Tests.Systems
     {
         private class UncancelableMission : StubMission
         {
-            public UncancelableMission(string ownerInstanceId, string targetInstanceId)
-                : base(ownerInstanceId, targetInstanceId) { }
+            public UncancelableMission(string ownerInstanceId, string locationInstanceId)
+                : base(ownerInstanceId, locationInstanceId) { }
 
             public override bool CanceledOnOwnershipChange => false;
         }

@@ -329,7 +329,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Recruitment",
                 DisplayName = "Recruitment",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Diplomacy,
                 TargetOfficerInstanceID = "OFFICER4",
             };

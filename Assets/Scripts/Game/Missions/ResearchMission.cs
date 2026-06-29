@@ -71,7 +71,7 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the mission is not eligible.</returns>
         public static ResearchMission TryCreate(MissionContext ctx, ResearchDiscipline discipline)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
@@ -91,7 +91,7 @@ namespace Rebellion.Game.Missions
 
             return new ResearchMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 actingParticipants,
                 ctx.DecoyParticipants,
                 discipline

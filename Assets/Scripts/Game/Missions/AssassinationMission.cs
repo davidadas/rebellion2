@@ -72,7 +72,7 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the target is ineligible.</returns>
         public static AssassinationMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             Officer target = ctx.TargetOfficer;
@@ -88,7 +88,7 @@ namespace Rebellion.Game.Missions
 
             return new AssassinationMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants,
                 target.InstanceID

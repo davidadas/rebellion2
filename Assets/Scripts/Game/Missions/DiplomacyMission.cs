@@ -55,7 +55,7 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the planet is ineligible.</returns>
         public static DiplomacyMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             if (
@@ -72,7 +72,7 @@ namespace Rebellion.Game.Missions
 
             return new DiplomacyMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );

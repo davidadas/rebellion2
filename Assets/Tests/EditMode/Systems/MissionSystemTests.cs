@@ -129,7 +129,7 @@ namespace Rebellion.Tests.Systems
             ISceneNode target,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return CreateRequest(
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Systems
                 target,
                 targetOfficer,
                 discipline,
-                specificTarget
+                selectedTarget
             );
         }
 
@@ -150,16 +150,16 @@ namespace Rebellion.Tests.Systems
             ISceneNode target,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return new MissionStartRequest
             {
                 MissionTypeID = missionTypeID,
-                Target = target,
+                Location = target,
                 TargetOfficer = targetOfficer,
                 Discipline = discipline,
-                SpecificTarget = specificTarget,
+                SelectedTarget = selectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
             };
@@ -785,7 +785,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     officer,
                     targetPlanet,
-                    specificTarget: sabotageTarget
+                    selectedTarget: sabotageTarget
                 )
             );
 
@@ -848,7 +848,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     officer,
                     targetPlanet,
-                    specificTarget: sabotageTarget
+                    selectedTarget: sabotageTarget
                 )
             );
 
@@ -1779,7 +1779,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment, targetPlanet);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
-                CreateRequest(null, participant, targetPlanet, specificTarget: regiment)
+                CreateRequest(null, participant, targetPlanet, selectedTarget: regiment)
             );
 
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
@@ -1864,7 +1864,7 @@ namespace Rebellion.Tests.Systems
                     new List<IMissionParticipant> { viewParticipant },
                     new List<IMissionParticipant>(),
                     viewPlanet,
-                    specificTarget: viewRegiment
+                    selectedTarget: viewRegiment
                 )
             );
 
@@ -1898,14 +1898,14 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
-                    specificTarget: viewRegiment
+                    selectedTarget: viewRegiment
                 )
             );
 
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(targetPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(targetPlanet.InstanceID, mission.LocationInstanceID);
             Assert.AreEqual(
                 regiment.InstanceID,
                 ((SabotageMission)mission).SabotageTargetInstanceID
@@ -1932,7 +1932,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Abduction,
                     participant,
                     viewPlanet,
-                    specificTarget: viewTarget
+                    selectedTarget: viewTarget
                 )
             );
 
@@ -1967,7 +1967,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
-                    specificTarget: viewRegiment
+                    selectedTarget: viewRegiment
                 )
             );
 
@@ -2000,14 +2000,14 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
-                    specificTarget: viewRegiment
+                    selectedTarget: viewRegiment
                 )
             );
 
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             Assert.IsTrue(created);
             Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(targetPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(targetPlanet.InstanceID, mission.LocationInstanceID);
             Assert.AreEqual(
                 liveRegiment.InstanceID,
                 ((SabotageMission)mission).SabotageTargetInstanceID
@@ -2039,7 +2039,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     viewPlanet,
-                    specificTarget: viewRegiment
+                    selectedTarget: viewRegiment
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
@@ -2054,7 +2054,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void InitiateMission_IneligibleSpecificTarget_ReturnsFalse()
+        public void InitiateMission_IneligibleSelectedTarget_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2070,7 +2070,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
-                    specificTarget: target
+                    selectedTarget: target
                 )
             );
 
@@ -2106,7 +2106,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
-                    specificTarget: regiment
+                    selectedTarget: regiment
                 )
             );
 
@@ -2134,7 +2134,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Sabotage,
                     participant,
                     targetPlanet,
-                    specificTarget: regiment
+                    selectedTarget: regiment
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
@@ -2165,7 +2165,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Abduction,
                     participant,
                     targetPlanet,
-                    specificTarget: target
+                    selectedTarget: target
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
@@ -2211,7 +2211,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Abduction,
                     participant,
                     viewPlanet,
-                    specificTarget: viewTarget
+                    selectedTarget: viewTarget
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
@@ -2242,7 +2242,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Assassination,
                     participant,
                     targetPlanet,
-                    specificTarget: target
+                    selectedTarget: target
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
@@ -2273,7 +2273,7 @@ namespace Rebellion.Tests.Systems
                     MissionTypeIDs.Rescue,
                     participant,
                     targetPlanet,
-                    specificTarget: target
+                    selectedTarget: target
                 )
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();

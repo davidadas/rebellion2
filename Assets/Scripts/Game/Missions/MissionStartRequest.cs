@@ -11,8 +11,8 @@ namespace Rebellion.Game.Missions
     public class MissionStartRequest
     {
         public string MissionTypeID { get; set; }
-        public ISceneNode Target { get; set; }
-        public ISceneNode SpecificTarget { get; set; }
+        public ISceneNode Location { get; set; }
+        public ISceneNode SelectedTarget { get; set; }
         public List<IMissionParticipant> MainParticipants { get; set; } =
             new List<IMissionParticipant>();
         public List<IMissionParticipant> DecoyParticipants { get; set; } =

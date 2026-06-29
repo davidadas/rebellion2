@@ -104,7 +104,7 @@ namespace Rebellion.Systems
                 request == null
                 || request.MainParticipants == null
                 || request.MainParticipants.Count == 0
-                || request.Target == null
+                || request.Location == null
             )
                 return null;
 
@@ -114,20 +114,20 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = ResolveMissionParticipants(
                 request.DecoyParticipants ?? new List<IMissionParticipant>()
             );
-            ISceneNode target = ResolveSceneNode(request.Target);
+            ISceneNode location = ResolveSceneNode(request.Location);
 
-            if (mainParticipants == null || decoyParticipants == null || target == null)
+            if (mainParticipants == null || decoyParticipants == null || location == null)
                 return null;
 
-            Officer targetOfficer = request.TargetOfficer ?? request.SpecificTarget as Officer;
+            Officer targetOfficer = request.TargetOfficer ?? request.SelectedTarget as Officer;
 
             return new MissionContext
             {
                 Game = _game,
                 MissionTypeID = request.MissionTypeID,
                 OwnerInstanceId = mainParticipants[0].GetOwnerInstanceID(),
-                Target = target,
-                SpecificTarget = request.SpecificTarget,
+                Location = location,
+                SelectedTarget = request.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
                 TargetOfficer = targetOfficer,
@@ -136,7 +136,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates a mission, attaches it to its target planet, and begins participant travel.
+        /// Creates a mission, attaches it to its location planet, and begins participant travel.
         /// </summary>
         /// <param name="context">The resolved mission context.</param>
         /// <returns>True when the mission was created and started.</returns>
@@ -145,9 +145,9 @@ namespace Rebellion.Systems
             if (!_missionFactory.TryCreateMission(context, out Mission mission))
                 return false;
 
-            Planet planet = context.Target is Planet p
+            Planet planet = context.Location is Planet p
                 ? p
-                : context.Target.GetParentOfType<Planet>();
+                : context.Location.GetParentOfType<Planet>();
             if (planet == null)
                 return false;
 
