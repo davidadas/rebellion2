@@ -112,6 +112,11 @@ namespace Rebellion.Game.Missions
             return trainer?.InstanceID;
         }
 
+        /// <summary>
+        /// Returns whether every selected student can receive Jedi training.
+        /// </summary>
+        /// <param name="students">Selected mission participants to train.</param>
+        /// <returns>True when at least one eligible Jedi student was selected and no ineligible participants were selected.</returns>
         private static bool AreStudentsEligible(List<IMissionParticipant> students)
         {
             if (students == null || students.Count == 0)

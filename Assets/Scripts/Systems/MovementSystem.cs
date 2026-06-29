@@ -848,6 +848,14 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            if (!CanMoveToUncolonizedPlanet(unit, resolvedDestination))
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot land at uncolonized {resolvedDestination.GetDisplayName()}."
+                );
+                return false;
+            }
+
             if (resolvedDestination.CanAcceptChild(unit))
                 return true;
 
@@ -855,6 +863,24 @@ namespace Rebellion.Systems
                 $"RequestMove rejected: {resolvedDestination.GetDisplayName()} cannot accept {unit.GetDisplayName()}"
             );
             return false;
+        }
+
+        /// <summary>
+        /// Checks whether a move can place the unit on an uncolonized planet.
+        /// </summary>
+        /// <param name="unit">The unit being moved.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <returns>True if the move is allowed for the uncolonized planet rule.</returns>
+        private static bool CanMoveToUncolonizedPlanet(IMovable unit, ISceneNode destination)
+        {
+            if (destination is not Planet destinationPlanet || destinationPlanet.IsColonized)
+                return true;
+
+            if (unit is not Regiment)
+                return false;
+
+            Fleet originFleet = unit.GetParentOfType<Fleet>();
+            return originFleet?.GetParentOfType<Planet>() == destinationPlanet;
         }
 
         /// <summary>

@@ -88,7 +88,7 @@ namespace Rebellion.Systems
             List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
 
-            if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
+            if (planet.IsColonized && string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
             {
                 string claimantOwnerId = regiments[0].GetOwnerInstanceID();
                 if (string.IsNullOrEmpty(claimantOwnerId))

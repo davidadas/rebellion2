@@ -89,6 +89,11 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Returns whether every selected participant is a main officer.
+        /// </summary>
+        /// <param name="participants">Selected mission participants to validate.</param>
+        /// <returns>True when at least one main officer was selected and no ineligible participants were selected.</returns>
         private static bool HasOnlyMainOfficerParticipants(List<IMissionParticipant> participants)
         {
             if (participants == null || participants.Count == 0)

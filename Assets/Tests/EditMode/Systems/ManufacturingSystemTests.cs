@@ -135,6 +135,32 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Enqueue_RegimentToUncolonizedPlanet_ReturnsFalse()
+        {
+            PlanetSystem system = _coruscant.GetParentOfType<PlanetSystem>();
+            Planet destination = new Planet
+            {
+                InstanceID = "UNCHARTED",
+                OwnerInstanceID = null,
+                IsColonized = false,
+            };
+            _game.AttachNode(destination, system);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "REGIMENT1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+            };
+
+            bool result = _manager.Enqueue(_coruscant, regiment, destination, ignoreCost: true);
+
+            Assert.IsFalse(result);
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsFalse(_coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
+        }
+
+        [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
             Building building1 = new Building

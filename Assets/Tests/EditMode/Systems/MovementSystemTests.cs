@@ -2119,13 +2119,14 @@ namespace Rebellion.Tests.Systems
         #endregion
 
         [Test]
-        public void ProcessTick_BuildingArrivesAtUncolonizedPlanet_MarksItColonized()
+        public void RequestMove_BuildingUnderConstructionToUncolonizedPlanet_IsRejected()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
                 BuildScene();
 
             origin.EnergyCapacity = 5;
             destination.EnergyCapacity = 5;
+            destination.OwnerInstanceID = null;
             destination.IsColonized = false;
 
             Building building = new Building
@@ -2133,26 +2134,14 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "b1",
                 OwnerInstanceID = "empire",
                 AllowedOwnerInstanceIDs = new List<string> { "empire" },
-                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingStatus = ManufacturingStatus.Building,
             };
-            // Stage the building scene-parented to the destination (the arrival pipeline
-            // expects this) and ready to complete on the next tick.
-            game.AttachNode(building, destination);
-            building.Movement = new MovementState
-            {
-                TransitTicks = 1,
-                TicksElapsed = 1,
-                OriginPosition = origin.GetPosition(),
-                CurrentPosition = origin.GetPosition(),
-            };
+            game.AttachNode(building, origin);
 
-            movement.ProcessTick();
+            movement.RequestMove(building, destination);
 
-            Assert.IsTrue(
-                destination.IsColonized,
-                "Building arrival at an uncolonized planet should colonize it"
-            );
-            Assert.IsNull(building.Movement, "Building should have completed its transit");
+            Assert.AreEqual(origin, building.GetParent());
+            Assert.IsFalse(destination.IsColonized);
         }
 
         [Test]
@@ -2308,7 +2297,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_RegimentToNeutralUncolonizedPlanet_ClaimsImmediately()
+        public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_ClaimsImmediately()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
                 BuildScene();
@@ -2325,7 +2314,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_RegimentToNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
+        public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
             (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
                 BuildScene();
@@ -2335,7 +2324,6 @@ namespace Rebellion.Tests.Systems
             destination.EnergyCapacity = 1;
 
             CapturePlanetSnapshot(game, observer, destination, 5);
-            AddBuilding(game, destination, "hidden-regiment-claim-building", "rebels");
             (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
 
             game.CurrentTick = 20;
@@ -2344,7 +2332,86 @@ namespace Rebellion.Tests.Systems
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, destination);
             Assert.AreEqual(5, snapshot.TickCaptured);
             Assert.IsNull(snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtEnemyUncolonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, destination, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreNotEqual(destination, regiment.GetParent());
+            Assert.AreEqual(destination, regiment.GetParentOfType<Planet>());
+            Assert.AreEqual("rebels", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "reg-from-planet",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, origin);
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreEqual(origin, regiment.GetParent());
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_RegimentFromFleetAtOtherPlanetToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            (Fleet _, Regiment regiment) = StageFleetWithRegimentAt(game, origin, "empire");
+
+            movement.RequestMove(regiment, destination);
+
+            Assert.AreNotEqual(destination, regiment.GetParent());
+            Assert.AreEqual(origin, regiment.GetParentOfType<Planet>());
+            Assert.IsNull(destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void RequestMove_StarfighterToNeutralUncolonizedPlanet_IsRejected()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            destination.OwnerInstanceID = null;
+            destination.IsColonized = false;
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter-to-uncolonized",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(starfighter, origin);
+
+            movement.RequestMove(starfighter, destination);
+
+            Assert.AreEqual(origin, starfighter.GetParent());
+            Assert.IsNull(destination.GetOwnerInstanceID());
         }
 
         [Test]
@@ -2437,30 +2504,6 @@ namespace Rebellion.Tests.Systems
             Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
             game.Factions.Add(faction);
             return faction;
-        }
-
-        private static Building AddBuilding(
-            GameRoot game,
-            Planet planet,
-            string instanceId,
-            string ownerInstanceId
-        )
-        {
-            Building building = new Building
-            {
-                InstanceID = instanceId,
-                OwnerInstanceID = planet.GetOwnerInstanceID(),
-                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
-                BuildingType = BuildingType.Mine,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-
-            game.AttachNode(building, planet);
-
-            if (building.GetOwnerInstanceID() != ownerInstanceId)
-                game.ChangeUnitOwnership(building, ownerInstanceId);
-
-            return building;
         }
 
         private static void CapturePlanetSnapshot(

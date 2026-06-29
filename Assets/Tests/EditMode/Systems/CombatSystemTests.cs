@@ -1053,7 +1053,12 @@ namespace Rebellion.Tests.Systems
 
             PlanetSystem sys2 = new PlanetSystem { InstanceID = "sys2" };
             game.AttachNode(sys2, game.Galaxy);
-            Planet alliancePlanet = new Planet { InstanceID = "p2", OwnerInstanceID = "alliance" };
+            Planet alliancePlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "alliance",
+                IsColonized = true,
+            };
             game.AttachNode(alliancePlanet, sys2);
 
             // Alliance fleet: single ship that is immediately destroyed.
