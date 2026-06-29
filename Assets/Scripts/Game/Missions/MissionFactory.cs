@@ -1,15 +1,97 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Research;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Creates runtime missions from validated mission start requests.
+    /// Thin router that delegates mission creation to each Mission subclass's TryCreate method.
+    /// Handles shared validation (faction restrictions, participant eligibility) before routing.
     /// </summary>
     public class MissionFactory
     {
         private readonly GameRoot _game;
+        private static readonly List<MissionOption> _options = new List<MissionOption>
+        {
+            new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
+            new MissionOption(
+                RescueMission.MissionTypeID,
+                "Rescue",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                SabotageMission.MissionTypeID,
+                "Sabotage",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                EspionageMission.MissionTypeID,
+                "Espionage",
+                OfficerRating.Espionage,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                AbductionMission.MissionTypeID,
+                "Abduction",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                SubdueUprisingMission.MissionTypeID,
+                "Subdue Uprising",
+                OfficerRating.Leadership
+            ),
+            new MissionOption(
+                AssassinationMission.MissionTypeID,
+                "Assassination",
+                OfficerRating.Combat,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                InciteUprisingMission.MissionTypeID,
+                "Incite Uprising",
+                OfficerRating.Leadership,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                ReconnaissanceMission.MissionTypeID,
+                "Reconnaissance",
+                OfficerRating.Espionage,
+                OfficerRating.Espionage
+            ),
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Ship Design Research",
+                OfficerRating.ShipResearch,
+                discipline: ResearchDiscipline.ShipDesign
+            ),
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Troop Training Research",
+                OfficerRating.TroopResearch,
+                discipline: ResearchDiscipline.TroopTraining
+            ),
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Facility Design Research",
+                OfficerRating.FacilityResearch,
+                discipline: ResearchDiscipline.FacilityDesign
+            ),
+            new MissionOption(
+                RecruitmentMission.MissionTypeID,
+                "Recruitment",
+                OfficerRating.Leadership
+            ),
+            new MissionOption(
+                JediTrainingMission.MissionTypeID,
+                "Jedi Training",
+                OfficerRating.Diplomacy
+            ),
+        };
 
         /// <summary>
         /// Initializes a mission factory for the supplied game state.
@@ -21,20 +103,20 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the mission options that can create a mission from the supplied request.
+        /// Returns the mission options that can create a mission from the supplied context.
         /// </summary>
-        /// <param name="request">The start request containing the target and participants to evaluate.</param>
+        /// <param name="context">The resolved mission context containing the target and participants to evaluate.</param>
         /// <returns>The mission options that pass mission creation validation.</returns>
-        public List<MissionOption> GetAvailableMissionOptions(MissionStartRequest request)
+        public List<MissionOption> GetAvailableMissionOptions(MissionContext context)
         {
             List<MissionOption> options = new List<MissionOption>();
-            if (request == null)
+            if (context == null)
                 return options;
 
-            foreach (MissionOption option in MissionDefinitionCatalog.Options)
+            foreach (MissionOption option in _options)
             {
-                MissionStartRequest optionRequest = CreateOptionRequest(request, option);
-                if (TryCreateMission(optionRequest, out _))
+                MissionContext optionContext = CreateOptionContext(context, option);
+                if (TryCreateMission(optionContext, out _))
                     options.Add(option);
             }
 
@@ -42,77 +124,108 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Attempts to create a mission from the supplied start request.
+        /// Creates a mission when the supplied context is valid.
         /// </summary>
-        /// <param name="request">The mission start request to evaluate.</param>
+        /// <param name="context">The resolved mission context to evaluate.</param>
         /// <param name="mission">The created mission when creation succeeds.</param>
         /// <returns>True when a mission was created.</returns>
-        public bool TryCreateMission(MissionStartRequest request, out Mission mission)
+        public bool TryCreateMission(MissionContext context, out Mission mission)
         {
             mission = null;
-            if (request == null || string.IsNullOrEmpty(request.MissionTypeID))
+            if (_game == null || context == null || string.IsNullOrEmpty(context.MissionTypeID))
                 return false;
 
-            List<IMissionParticipant> mainParticipants =
-                request.MainParticipants ?? new List<IMissionParticipant>();
-            List<IMissionParticipant> decoyParticipants =
-                request.DecoyParticipants ?? new List<IMissionParticipant>();
+            MissionContext resolvedContext = new MissionContext
+            {
+                Game = _game,
+                MissionTypeID = context.MissionTypeID,
+                OwnerInstanceId = context.OwnerInstanceId,
+                Target = context.Target,
+                SpecificTarget = context.SpecificTarget,
+                MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
+                DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
+                TargetOfficer = context.TargetOfficer ?? context.SpecificTarget as Officer,
+                Discipline = context.Discipline,
+            };
 
-            if (mainParticipants.Count == 0)
+            if (resolvedContext.MainParticipants.Count == 0)
                 return false;
 
-            Faction faction = _game.Factions.Find(f => f.InstanceID == request.OwnerInstanceID);
+            Faction faction = _game.Factions.Find(f =>
+                f.InstanceID == resolvedContext.OwnerInstanceId
+            );
             if (faction == null)
                 return false;
 
-            if (faction.DisallowedMissionTypeIDs.Contains(request.MissionTypeID))
+            if (faction.DisallowedMissionTypeIDs.Contains(resolvedContext.MissionTypeID))
                 return false;
 
             foreach (
-                IMissionParticipant missionParticipant in mainParticipants.Concat(decoyParticipants)
+                IMissionParticipant missionParticipant in resolvedContext.MainParticipants.Concat(
+                    resolvedContext.DecoyParticipants
+                )
             )
             {
-                if (missionParticipant?.CanPerformMission(request.MissionTypeID) != true)
+                if (
+                    missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
+                    || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
+                )
                     return false;
             }
 
-            MissionDefinition definition = MissionDefinitionCatalog.Get(request.MissionTypeID);
-            if (definition == null)
-                return false;
-
-            MissionBehavior behavior = definition.Behavior;
-            if (behavior == null)
-                return false;
-
-            request.Game = _game;
-            request.MainParticipants = mainParticipants;
-            request.DecoyParticipants = decoyParticipants;
-            mission = behavior.TryCreate(request, definition);
+            mission = TryCreateByType(resolvedContext);
             return mission != null;
         }
 
         /// <summary>
-        /// Creates a mission start request for a specific mission option.
+        /// Creates a mission context for a specific mission option.
         /// </summary>
-        /// <param name="request">The source request containing target and participant context.</param>
+        /// <param name="context">The source context containing target and participant details.</param>
         /// <param name="option">The mission option being evaluated.</param>
-        /// <returns>The request populated with the option's mission type and discipline.</returns>
-        private static MissionStartRequest CreateOptionRequest(
-            MissionStartRequest request,
+        /// <returns>The context populated with the option's mission type and discipline.</returns>
+        private static MissionContext CreateOptionContext(
+            MissionContext context,
             MissionOption option
         )
         {
-            return new MissionStartRequest
+            return new MissionContext
             {
-                Game = request.Game,
+                Game = context.Game,
                 MissionTypeID = option.MissionTypeID,
-                OwnerInstanceID = request.OwnerInstanceID,
-                Target = request.Target,
-                SpecificTarget = request.SpecificTarget,
-                MainParticipants = request.MainParticipants,
-                DecoyParticipants = request.DecoyParticipants,
-                TargetOfficer = request.TargetOfficer,
+                OwnerInstanceId = context.OwnerInstanceId,
+                Target = context.Target,
+                SpecificTarget = context.SpecificTarget,
+                MainParticipants = context.MainParticipants,
+                DecoyParticipants = context.DecoyParticipants,
+                TargetOfficer = context.TargetOfficer,
                 Discipline = option.Discipline,
+            };
+        }
+
+        /// <summary>
+        /// Dispatches to the appropriate mission subclass's TryCreate based on mission context.
+        /// </summary>
+        /// <param name="ctx">Context containing participants, target, and owner info.</param>
+        /// <returns>The created mission, or null if creation fails.</returns>
+        private static Mission TryCreateByType(MissionContext ctx)
+        {
+            return ctx.MissionTypeID switch
+            {
+                ReconnaissanceMission.MissionTypeID => ReconnaissanceMission.TryCreate(ctx),
+                DiplomacyMission.MissionTypeID => DiplomacyMission.TryCreate(ctx),
+                RecruitmentMission.MissionTypeID => RecruitmentMission.TryCreate(ctx),
+                SubdueUprisingMission.MissionTypeID => SubdueUprisingMission.TryCreate(ctx),
+                AbductionMission.MissionTypeID => AbductionMission.TryCreate(ctx),
+                AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(ctx),
+                EspionageMission.MissionTypeID => EspionageMission.TryCreate(ctx),
+                SabotageMission.MissionTypeID => SabotageMission.TryCreate(ctx),
+                InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(ctx),
+                RescueMission.MissionTypeID => RescueMission.TryCreate(ctx),
+                ResearchMission.MissionTypeID => ctx.Discipline.HasValue
+                    ? ResearchMission.TryCreate(ctx, ctx.Discipline.Value)
+                    : null,
+                JediTrainingMission.MissionTypeID => JediTrainingMission.TryCreate(ctx),
+                _ => null,
             };
         }
     }

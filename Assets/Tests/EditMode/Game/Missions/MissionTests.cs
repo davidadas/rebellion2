@@ -325,7 +325,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_RestoresDecoyParticipantRating()
         {
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",

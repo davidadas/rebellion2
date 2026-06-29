@@ -234,6 +234,11 @@ namespace Rebellion.Tests.Game.Missions
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
+            Assert.AreEqual(enemyPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(
+                selectedBuilding.InstanceID,
+                ((SabotageMission)mission).SabotageTargetInstanceID
+            );
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b2"));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
             Assert.AreEqual(
@@ -269,13 +274,14 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Sabotage",
                 DisplayName = "Sabotage",
                 TargetInstanceID = "PLANET1",
+                SabotageTargetInstanceID = "BUILDING1",
                 ParticipantRating = OfficerRating.Combat,
                 HasInitiated = true,
                 MaxProgress = 6,
@@ -288,6 +294,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Sabotage", deserialized.ConfigKey);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual("BUILDING1", ((SabotageMission)deserialized).SabotageTargetInstanceID);
             Assert.AreEqual(OfficerRating.Combat, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(6, deserialized.MaxProgress);

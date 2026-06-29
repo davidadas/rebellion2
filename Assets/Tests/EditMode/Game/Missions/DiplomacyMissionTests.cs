@@ -60,25 +60,31 @@ namespace Rebellion.Tests.Game.Missions
 
         private Mission CreateAndAttachMission(GameRoot game, Planet planet)
         {
+            Officer officer = EntityFactory.CreateOfficer("diplomat", "empire");
+            officer.SetBaseRating(OfficerRating.Diplomacy, 100);
+
             Mission mission = CreateDiplomacyMission(
                 "empire",
                 planet,
-                new List<IMissionParticipant>(),
+                new List<IMissionParticipant> { officer },
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, planet);
             return mission;
         }
 
-        private static List<GameResult> InvokeOnSuccess(
+        private static List<GameResult> ExecuteDiplomacySuccess(
             Mission mission,
             GameRoot game,
             IRandomNumberProvider rng
         )
         {
-            return MissionDefinitionCatalog
-                .Get(MissionTypeIDs.Diplomacy)
-                .Behavior.OnSuccess(mission, game, rng);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -10000, 100 },
+            };
+            mission.Initiate(0);
+            return mission.Execute(game, rng);
         }
 
         [Test]
@@ -87,7 +93,7 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50);
             Mission mission = CreateAndAttachMission(game, planet);
 
-            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -102,7 +108,7 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game = BuildGame(out Planet planet, empireSupport: 60, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
 
-            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -121,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
 
-            List<GameResult> results = InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
@@ -130,12 +136,12 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
+        public void Execute_PlanetAlreadyOwned_IncrementsSupportWithoutChangingOwner()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 61, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
 
-            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.AreEqual(
                 63,
@@ -146,7 +152,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void OnSuccess_SuccessProbability_DoesNotAffectSupportGain()
+        public void Execute_SuccessProbability_DoesNotAffectSupportGain()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -167,13 +173,13 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
-            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.AreEqual(52, planet.GetPopularSupport("empire"));
         }
 
         [Test]
-        public void OnSuccess_OwnedPlanet_UsesDiplomacySupportConfig()
+        public void Execute_OwnedPlanet_UsesDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             Mission mission = CreateAndAttachMission(game, planet);
@@ -181,13 +187,13 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 5;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 10;
 
-            InvokeOnSuccess(mission, game, new SequenceRNG(new[] { 7 }));
+            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 7 }));
 
             Assert.AreEqual(65, planet.GetPopularSupport("empire"));
         }
 
         [Test]
-        public void OnSuccess_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
+        public void Execute_NeutralPlanet_UsesNeutralDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -195,13 +201,13 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 2;
             game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 4;
 
-            InvokeOnSuccess(mission, game, new SequenceRNG(new[] { 4 }));
+            ExecuteDiplomacySuccess(mission, game, new SequenceRNG(new[] { 4 }));
 
             Assert.AreEqual(59, planet.GetPopularSupport("empire"));
         }
 
         [Test]
-        public void OnSuccess_InvertSupportShift_SubtractsCompletionBonus()
+        public void Execute_InvertSupportShift_SubtractsCompletionBonus()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             game.GetFactionByOwnerInstanceID("empire").Settings.InvertSupportShift = true;
@@ -210,7 +216,7 @@ namespace Rebellion.Tests.Game.Missions
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 1;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
-            InvokeOnSuccess(mission, game, new FixedRNG(0.0));
+            ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
 
             Assert.AreEqual(50, planet.GetPopularSupport("empire"));
         }
@@ -438,7 +444,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            Mission mission = new Mission
+            Mission mission = new DiplomacyMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",

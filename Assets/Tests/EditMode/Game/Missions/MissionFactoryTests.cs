@@ -56,7 +56,8 @@ namespace Rebellion.Tests.Game.Missions
             };
         }
 
-        private static MissionStartRequest CreateRequest(
+        private static MissionContext CreateContext(
+            GameRoot game,
             string missionTypeID,
             string ownerInstanceID,
             IMissionParticipant participant,
@@ -64,12 +65,14 @@ namespace Rebellion.Tests.Game.Missions
             ResearchDiscipline? discipline = null
         )
         {
-            return new MissionStartRequest
+            return new MissionContext
             {
+                Game = game,
                 MissionTypeID = missionTypeID,
-                OwnerInstanceID = ownerInstanceID,
+                OwnerInstanceId = ownerInstanceID,
                 Target = target,
                 MainParticipants = new List<IMissionParticipant> { participant },
+                DecoyParticipants = new List<IMissionParticipant>(),
                 Discipline = discipline,
             };
         }
@@ -77,10 +80,10 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void TryCreateMission_ValidSabotageTarget_ReturnsMissionWithMatchingConfigKey()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Sabotage, "empire", officer, planet),
+                CreateContext(game, MissionTypeIDs.Sabotage, "empire", officer, planet),
                 out Mission mission
             );
 
@@ -96,7 +99,7 @@ namespace Rebellion.Tests.Game.Missions
                 .DisallowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Sabotage, "empire", officer, planet),
+                CreateContext(game, MissionTypeIDs.Sabotage, "empire", officer, planet),
                 out _
             );
 
@@ -106,14 +109,87 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void TryCreateMission_UnknownOwner_ReturnsFalse()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Sabotage, "unknown", officer, planet),
+                CreateContext(game, MissionTypeIDs.Sabotage, "unknown", officer, planet),
                 out _
             );
 
             Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_NullGame_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            factory = new MissionFactory(null);
+
+            bool created = factory.TryCreateMission(
+                CreateContext(game, MissionTypeIDs.Sabotage, "empire", officer, planet),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_MixedPrimaryParticipantOwners_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Officer rebelOfficer = EntityFactory.CreateOfficer("o2", "rebels");
+            MissionContext context = CreateContext(
+                game,
+                MissionTypeIDs.Sabotage,
+                "empire",
+                officer,
+                planet
+            );
+            context.MainParticipants.Add(rebelOfficer);
+
+            bool created = factory.TryCreateMission(context, out _);
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_MixedDecoyParticipantOwner_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Officer rebelDecoy = EntityFactory.CreateOfficer("o2", "rebels");
+            MissionContext context = CreateContext(
+                game,
+                MissionTypeIDs.Sabotage,
+                "empire",
+                officer,
+                planet
+            );
+            context.DecoyParticipants.Add(rebelDecoy);
+
+            bool created = factory.TryCreateMission(context, out _);
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_NullOptionalFields_DoesNotMutateContext()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            MissionContext context = CreateContext(
+                game,
+                MissionTypeIDs.Sabotage,
+                "empire",
+                officer,
+                planet
+            );
+            context.Game = null;
+            context.DecoyParticipants = null;
+
+            bool created = factory.TryCreateMission(context, out _);
+
+            Assert.IsTrue(created);
+            Assert.IsNull(context.Game);
+            Assert.IsNull(context.DecoyParticipants);
         }
 
         [Test]
@@ -124,7 +200,7 @@ namespace Rebellion.Tests.Game.Missions
             game.UnrecruitedOfficers.Add(CreateUnrecruitedOfficer("empire"));
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Recruitment, "empire", officer, planet),
+                CreateContext(game, MissionTypeIDs.Recruitment, "empire", officer, planet),
                 out Mission mission
             );
 
@@ -135,11 +211,11 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void TryCreateMission_RecruitmentNoUnrecruited_ReturnsFalse()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
             officer.IsMain = true;
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Recruitment, "empire", officer, planet),
+                CreateContext(game, MissionTypeIDs.Recruitment, "empire", officer, planet),
                 out _
             );
 
@@ -149,10 +225,11 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void TryCreateMission_ResearchWithDiscipline_ReturnsMissionWithMatchingDiscipline()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(
+                CreateContext(
+                    game,
                     MissionTypeIDs.Research,
                     "empire",
                     officer,
@@ -164,16 +241,16 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsTrue(created);
             Assert.AreEqual(MissionTypeIDs.Research, mission.ConfigKey);
-            Assert.AreEqual(ResearchDiscipline.ShipDesign, mission.Discipline);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, ((ResearchMission)mission).Discipline);
         }
 
         [Test]
         public void TryCreateMission_ResearchWithoutDiscipline_ReturnsFalse()
         {
-            (_, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
 
             bool created = factory.TryCreateMission(
-                CreateRequest(MissionTypeIDs.Research, "empire", officer, planet),
+                CreateContext(game, MissionTypeIDs.Research, "empire", officer, planet),
                 out _
             );
 

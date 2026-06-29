@@ -127,7 +127,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
             Assert.AreEqual("empire", replacementTarget.OwnerInstanceID);
-            Assert.AreEqual("replacement", mission.TargetOfficerInstanceID);
+            Assert.AreEqual("replacement", ((RecruitmentMission)mission).TargetOfficerInstanceID);
         }
 
         [Test]
@@ -214,7 +214,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("empire", secondTarget.OwnerInstanceID);
             Assert.IsFalse(game.UnrecruitedOfficers.Contains(firstTarget));
             Assert.IsFalse(game.UnrecruitedOfficers.Contains(secondTarget));
-            Assert.AreEqual("second", mission.TargetOfficerInstanceID);
+            Assert.AreEqual("second", ((RecruitmentMission)mission).TargetOfficerInstanceID);
         }
 
         [Test]
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_PopulatedMission_RetainsAllProperties()
         {
-            Mission mission = new Mission
+            Mission mission = new RecruitmentMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -316,7 +316,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Recruitment", deserialized.ConfigKey);
-            Assert.AreEqual("OFFICER4", deserialized.TargetOfficerInstanceID);
+            Assert.AreEqual("OFFICER4", ((RecruitmentMission)deserialized).TargetOfficerInstanceID);
             Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
         }
     }

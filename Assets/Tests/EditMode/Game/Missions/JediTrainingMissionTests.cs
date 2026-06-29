@@ -94,7 +94,7 @@ namespace Rebellion.Tests.Game.Missions
         public void TryCreate_ValidArgs_SetsTrainerInstanceID()
         {
             Mission mission = CreateMission();
-            Assert.AreEqual(_trainer.InstanceID, mission.TrainerInstanceID);
+            Assert.AreEqual(_trainer.InstanceID, ((JediTrainingMission)mission).TrainerInstanceID);
         }
 
         [Test]

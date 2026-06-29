@@ -379,7 +379,7 @@ namespace Rebellion.Tests.Systems
             ) = BuildScene();
 
             // Attach a mission to the destination planet so the officer can be sent to it
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
@@ -428,7 +428,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(specialForces, origin);
 
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",
@@ -488,7 +488,7 @@ namespace Rebellion.Tests.Systems
                 Officer officer,
                 MovementSystem movement
             ) = BuildScene();
-            Mission mission = new Mission
+            Mission mission = new SabotageMission
             {
                 InstanceID = "m1",
                 OwnerInstanceID = "empire",

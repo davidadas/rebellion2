@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -14,7 +13,7 @@ namespace Rebellion.Game.Missions
     /// <summary>
     /// Base scene node for missions and their assigned participants.
     /// </summary>
-    public class Mission : ContainerNode
+    public abstract class Mission : ContainerNode
     {
         private const int _ratingPercentScale = 100;
 
@@ -28,17 +27,11 @@ namespace Rebellion.Game.Missions
             {
                 configKey = value;
                 TypeID = value;
-                DecoyParticipantRating =
-                    MissionDefinitionCatalog.Get(configKey)?.DecoyParticipantRating
-                    ?? OfficerRating.None;
             }
         }
 
         public string TargetInstanceID { get; set; }
-        public string TargetOfficerInstanceID { get; set; }
-        public string TrainerInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
-        public ResearchDiscipline Discipline { get; set; } = ResearchDiscipline.None;
 
         // Participants.
         public List<IMissionParticipant> MainParticipants { get; set; }
@@ -67,7 +60,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Parameterless constructor for deserialization.
         /// </summary>
-        public Mission()
+        protected Mission()
         {
             MainParticipants = new List<IMissionParticipant>();
             DecoyParticipants = new List<IMissionParticipant>();
@@ -83,7 +76,7 @@ namespace Rebellion.Game.Missions
         /// <param name="decoyParticipants">Decoy mission participants.</param>
         /// <param name="participantRating">Rating used by primary participants.</param>
         /// <param name="displayName">Display name to show for this mission.</param>
-        public Mission(
+        protected Mission(
             string configKey,
             string ownerInstanceId,
             string targetInstanceId,
@@ -103,64 +96,54 @@ namespace Rebellion.Game.Missions
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
             ParticipantRating = participantRating;
-            DecoyParticipantRating =
-                MissionDefinitionCatalog.Get(configKey)?.DecoyParticipantRating
-                ?? OfficerRating.None;
         }
 
-        public Mission(
-            MissionDefinition definition,
-            string ownerInstanceId,
-            string targetInstanceId,
-            List<IMissionParticipant> mainParticipants,
-            List<IMissionParticipant> decoyParticipants,
-            string displayName = null
-        )
-            : this(
-                definition.InstanceID,
-                ownerInstanceId,
-                targetInstanceId,
-                mainParticipants,
-                decoyParticipants,
-                definition.ParticipantRating,
-                displayName ?? definition.DisplayName
-            )
+        /// <summary>
+        /// Validates that <paramref name="target"/> is non-null and is a Planet, then returns it.
+        /// Call at the top of each mission constructor before mission-specific validation.
+        /// </summary>
+        /// <param name="target">The scene node to validate as a Planet.</param>
+        /// <param name="missionName">Human-readable mission name used in the error message.</param>
+        /// <exception cref="ArgumentNullException">target is null.</exception>
+        /// <exception cref="InvalidOperationException">target is not a Planet.</exception>
+        /// <returns>The validated Planet instance.</returns>
+        protected static Planet RequirePlanetTarget(ISceneNode target, string missionName)
         {
-            DecoyParticipantRating = definition.DecoyParticipantRating;
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (!(target is Planet planet))
+                throw new InvalidOperationException(
+                    $"{missionName} target must be a planet. Got: {target.GetType().Name}"
+                );
+            return planet;
         }
 
         /// <summary>
         /// Returns whether this mission is canceled when target ownership changes.
         /// </summary>
-        public virtual bool CanceledOnOwnershipChange =>
-            GetBehavior()?.CanceledOnOwnershipChange ?? true;
+        public virtual bool CanceledOnOwnershipChange => true;
 
         /// <summary>
         /// Returns whether detected mission participants suffer capture, death, or destruction.
         /// </summary>
-        internal virtual bool AppliesFoiledParticipantConsequences =>
-            GetBehavior()?.AppliesFoiledParticipantConsequences ?? true;
+        internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         /// <summary>
         /// Returns why this mission must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The abort reason, or null when the mission may advance.</returns>
-        public virtual MissionCompletionReason? GetAbortReason(GameRoot game)
-        {
-            if (MainParticipants.Count == 0 || HaveParticipantsChanged())
-                return MissionCompletionReason.Failure;
-
-            return GetBehavior()?.GetAbortReason(this, game);
-        }
+        public virtual MissionCompletionReason? GetAbortReason(GameRoot game) =>
+            MainParticipants.Count == 0 || HaveParticipantsChanged()
+                ? MissionCompletionReason.Failure
+                : null;
 
         /// <summary>
         /// Returns whether the mission should repeat after completing one execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the mission should repeat; false to tear down and send participants home.</returns>
-        public virtual bool ShouldRepeatAfterCompletion(GameRoot game) =>
-            GetBehavior()?.ShouldRepeatAfterCompletion(this, game) ?? false;
+        public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
 
         /// <summary>
         /// Starts the mission and chooses its duration.
@@ -257,21 +240,6 @@ namespace Rebellion.Game.Missions
         /// <returns>The participant's success probability.</returns>
         protected virtual double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
-            MissionBehavior behavior = GetBehavior();
-            if (behavior != null)
-                return behavior.GetAgentProbability(this, agent, game);
-
-            return GetDefaultAgentProbability(agent, game);
-        }
-
-        /// <summary>
-        /// Returns the default success probability for a mission participant.
-        /// </summary>
-        /// <param name="agent">The participant whose mission rating is evaluated.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The configured success probability.</returns>
-        internal double GetDefaultAgentProbability(IMissionParticipant agent, GameRoot game)
-        {
             int score = agent.GetEffectiveRating(ParticipantRating);
             return LookupSuccessProbability(game, score);
         }
@@ -341,21 +309,6 @@ namespace Rebellion.Game.Missions
         /// <returns>The foil probability.</returns>
         protected virtual double GetFoilProbability(double defenseScore, GameRoot game)
         {
-            MissionBehavior behavior = GetBehavior();
-            if (behavior != null)
-                return behavior.GetFoilProbability(this, defenseScore, game);
-
-            return GetDefaultFoilProbability(defenseScore, game);
-        }
-
-        /// <summary>
-        /// Returns the default probability that opposing forces detect the mission.
-        /// </summary>
-        /// <param name="defenseScore">The defensive score applied to the mission.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The configured detection probability.</returns>
-        internal double GetDefaultFoilProbability(double defenseScore, GameRoot game)
-        {
             if (GetParent() is Planet planet && planet.OwnerInstanceID == OwnerInstanceID)
                 return 0;
 
@@ -383,7 +336,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="score">The mission success score.</param>
         /// <returns>The configured success probability.</returns>
-        internal double LookupSuccessProbability(GameRoot game, int score)
+        protected double LookupSuccessProbability(GameRoot game, int score)
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             return LookupProbability(
@@ -411,7 +364,7 @@ namespace Rebellion.Game.Missions
         /// <param name="score">The score to look up.</param>
         /// <param name="defaultValue">The value returned when the table is empty.</param>
         /// <returns>The configured probability value.</returns>
-        internal static int LookupProbability(
+        private static int LookupProbability(
             Dictionary<int, int> entries,
             int score,
             int defaultValue = 0
@@ -583,7 +536,7 @@ namespace Rebellion.Game.Missions
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>True if at least one participant succeeds.</returns>
-        internal bool CheckMissionSuccess(IRandomNumberProvider provider, GameRoot game)
+        protected bool CheckMissionSuccess(IRandomNumberProvider provider, GameRoot game)
         {
             foreach (IMissionParticipant participant in MainParticipants)
             {
@@ -602,7 +555,7 @@ namespace Rebellion.Game.Missions
         /// <param name="provider">RNG provider for selection and probability roll.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the selected decoy succeeds.</returns>
-        internal bool CheckDecoySuccessful(IRandomNumberProvider provider, GameRoot game)
+        protected bool CheckDecoySuccessful(IRandomNumberProvider provider, GameRoot game)
         {
             if (DecoyParticipants.Count == 0)
                 return false;
@@ -652,20 +605,6 @@ namespace Rebellion.Game.Missions
         /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
         public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
-            MissionBehavior behavior = GetBehavior();
-            return behavior != null
-                ? behavior.Execute(this, game, provider)
-                : ExecuteDefault(game, provider);
-        }
-
-        /// <summary>
-        /// Resolves a completed mission using the default success and failure flow.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider for mission rolls.</param>
-        /// <returns>All results produced by the mission execution.</returns>
-        internal List<GameResult> ExecuteDefault(GameRoot game, IRandomNumberProvider provider)
-        {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
@@ -703,7 +642,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <returns>The failed mission completion reason.</returns>
         protected virtual MissionCompletionReason GetFailedCompletionReason(GameRoot game) =>
-            GetBehavior()?.GetFailedCompletionReason(this, game) ?? MissionCompletionReason.Failure;
+            MissionCompletionReason.Failure;
 
         /// <summary>
         /// Builds the <see cref="MissionCompletedResult"/> that terminates an Execute call.
@@ -773,9 +712,6 @@ namespace Rebellion.Game.Missions
         /// </summary>
         protected virtual void ImproveMissionParticipantRatings()
         {
-            if (GetBehavior()?.ImprovesParticipantRatings == false)
-                return;
-
             foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
             {
                 if (participant is Officer officer && participant.CanImproveMissionRating)
@@ -788,8 +724,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the mission target conditions are still valid; false to force a Failed outcome.</returns>
-        protected virtual bool IsMissionSatisfied(GameRoot game) =>
-            GetBehavior()?.IsMissionSatisfied(this, game) ?? true;
+        protected virtual bool IsMissionSatisfied(GameRoot game) => true;
 
         /// <summary>
         /// Applies successful mission effects.
@@ -800,7 +735,7 @@ namespace Rebellion.Game.Missions
         protected virtual List<GameResult> OnSuccess(
             GameRoot game,
             IRandomNumberProvider provider
-        ) => GetBehavior()?.OnSuccess(this, game, provider) ?? new List<GameResult>();
+        ) => new List<GameResult>();
 
         /// <summary>
         /// Applies failed mission effects.
@@ -811,7 +746,7 @@ namespace Rebellion.Game.Missions
         protected virtual List<GameResult> OnFailed(
             GameRoot game,
             IRandomNumberProvider provider
-        ) => GetBehavior()?.OnFailed(this, game, provider) ?? new List<GameResult>();
+        ) => new List<GameResult>();
 
         /// <summary>
         /// Returns extra movable units that should travel home with mission participants after a successful mission.
@@ -819,17 +754,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <returns>Additional units to return after successful mission completion.</returns>
         internal virtual IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game) =>
-            GetBehavior()?.GetSuccessfulReturnPassengers(this, game)
-            ?? Enumerable.Empty<IMovable>();
-
-        /// <summary>
-        /// Returns the behavior configured for this mission type.
-        /// </summary>
-        /// <returns>The configured mission behavior, or null when no behavior exists.</returns>
-        private MissionBehavior GetBehavior()
-        {
-            return MissionDefinitionCatalog.Get(ConfigKey)?.Behavior;
-        }
+            Enumerable.Empty<IMovable>();
 
         /// <summary>
         /// Returns all mission participants as children of the mission.

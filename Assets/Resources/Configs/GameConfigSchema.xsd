@@ -641,7 +641,6 @@
                       type="xs:nonNegativeInteger"
                     />
                     <xs:element name="InciteUprising" type="IntTableType" />
-                    <xs:element name="Reconnaissance" type="IntTableType" />
                     <xs:element name="Recruitment" type="IntTableType" />
                     <xs:element name="Rescue" type="IntTableType" />
                     <xs:element name="Sabotage" type="IntTableType" />

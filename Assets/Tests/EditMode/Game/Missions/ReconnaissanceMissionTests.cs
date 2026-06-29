@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -41,7 +43,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_UnvisitedPlanet_MarksVisitedOnly()
+        public void Execute_UnvisitedPlanet_MarksVisitedWithAnyRoll()
         {
             (
                 GameRoot game,
@@ -64,12 +66,93 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            MissionSceneBuilder.RunToSuccess(mission, game);
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
 
             Assert.IsTrue(enemyPlanet.WasVisitedBy("empire"));
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             Assert.IsFalse(empire.Fog.Snapshots.ContainsKey("sys1"));
+        }
+
+        [Test]
+        public void UpdateMission_EnemyDefenderPresent_CompletesWithoutFoil()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
+            defender.SetBaseRating(OfficerRating.Espionage, 200);
+            game.AttachNode(defender, enemyPlanet);
+
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empPlanet);
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(1);
+
+            MissionSystem system = new MissionSystem(
+                game,
+                new FixedRNG(0.01),
+                new MovementSystem(game, fog)
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(enemyPlanet.WasVisitedBy("empire"));
+            Assert.IsFalse(results.OfType<GameObjectDestroyedResult>().Any());
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreEqual(1, game.GetSceneNodesByType<SpecialForces>().Count);
+        }
+
+        [Test]
+        public void TryCreate_NoParticipants_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant>(),
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_NullContext_ReturnsNull()
+        {
+            Assert.IsNull(ReconnaissanceMission.TryCreate(null));
         }
 
         [Test]
@@ -121,9 +204,34 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_MixedPrimaryParticipants_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            SpecialForces reconTeam = CreateReconTeam("empire");
+            game.AttachNode(reconTeam, empPlanet);
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { reconTeam, officer },
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void Serialize_RoundTrip_PreservesData()
         {
-            Mission mission = new Mission
+            Mission mission = new ReconnaissanceMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",

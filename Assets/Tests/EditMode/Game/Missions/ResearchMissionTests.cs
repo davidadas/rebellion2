@@ -362,7 +362,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_ShipDesignMission_RetainsAllProperties()
         {
-            Mission mission = new Mission
+            Mission mission = new ResearchMission
             {
                 InstanceID = "MISSION1",
                 OwnerInstanceID = "FACTION1",
@@ -385,7 +385,10 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
             Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
             Assert.AreEqual(OfficerRating.ShipResearch, deserialized.ParticipantRating);
-            Assert.AreEqual(ResearchDiscipline.ShipDesign, deserialized.Discipline);
+            Assert.AreEqual(
+                ResearchDiscipline.ShipDesign,
+                ((ResearchMission)deserialized).Discipline
+            );
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(15, deserialized.MaxProgress);
             Assert.AreEqual(7, deserialized.CurrentProgress);
@@ -394,7 +397,7 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void SerializeAndDeserialize_TroopTrainingMission_RetainsAllProperties()
         {
-            Mission mission = new Mission
+            Mission mission = new ResearchMission
             {
                 InstanceID = "MISSION2",
                 OwnerInstanceID = "FACTION1",
@@ -409,13 +412,16 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Troop Training", deserialized.DisplayName);
-            Assert.AreEqual(ResearchDiscipline.TroopTraining, deserialized.Discipline);
+            Assert.AreEqual(
+                ResearchDiscipline.TroopTraining,
+                ((ResearchMission)deserialized).Discipline
+            );
         }
 
         [Test]
         public void SerializeAndDeserialize_FacilityDesignMission_RetainsAllProperties()
         {
-            Mission mission = new Mission
+            Mission mission = new ResearchMission
             {
                 InstanceID = "MISSION3",
                 OwnerInstanceID = "FACTION1",
@@ -430,7 +436,10 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Facility Design", deserialized.DisplayName);
-            Assert.AreEqual(ResearchDiscipline.FacilityDesign, deserialized.Discipline);
+            Assert.AreEqual(
+                ResearchDiscipline.FacilityDesign,
+                ((ResearchMission)deserialized).Discipline
+            );
         }
     }
 }
