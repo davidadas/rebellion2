@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -43,7 +44,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_UnvisitedPlanet_MarksVisitedWithAnyRoll()
+        public void Execute_UnvisitedPlanet_CapturesSnapshotWithAnyRoll()
         {
             (
                 GameRoot game,
@@ -75,7 +76,14 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
-            Assert.IsFalse(empire.Fog.Snapshots.ContainsKey("sys1"));
+            Assert.IsTrue(empire.Fog.Snapshots.TryGetValue("sys1", out SystemSnapshot snapshot));
+            Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
+
+            GalaxyMap view = fog.BuildFactionView(empire);
+            Planet viewPlanet = view
+                .PlanetSystems.First(system => system.InstanceID == "sys1")
+                .Planets.First(planet => planet.InstanceID == "enemy_planet");
+            Assert.IsFalse(viewPlanet.IsUnexploredView);
         }
 
         [Test]
