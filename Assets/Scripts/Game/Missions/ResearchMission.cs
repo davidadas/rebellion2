@@ -63,7 +63,8 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns a new ResearchMission if the target is an owned planet and the selected officer can perform the discipline.
+        /// Returns a new ResearchMission if the target is an owned planet and the
+        /// selected officer can perform the discipline.
         /// </summary>
         /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
         /// <param name="discipline">The research discipline this mission advances.</param>
