@@ -54,7 +54,7 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the planet is not owned by this faction or not in uprising.</returns>
         public static SubdueUprisingMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             if (!planet.IsInUprising || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
@@ -62,7 +62,7 @@ namespace Rebellion.Game.Missions
 
             return new SubdueUprisingMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );

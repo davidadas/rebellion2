@@ -86,11 +86,11 @@ public class StubMission : Mission
     /// Full constructor — use when the mission is attached to a planet in the scene graph.
     /// Runs for exactly 1 tick and always succeeds.
     /// </summary>
-    public StubMission(string ownerInstanceId, string targetInstanceId)
+    public StubMission(string ownerInstanceId, string locationInstanceId)
         : base(
             "Stub",
             ownerInstanceId,
-            targetInstanceId,
+            locationInstanceId,
             new List<IMissionParticipant>(),
             new List<IMissionParticipant>(),
             OfficerRating.Diplomacy
@@ -266,7 +266,7 @@ public static class MissionTestFactory
         ISceneNode target,
         List<IMissionParticipant> mainParticipants,
         List<IMissionParticipant> decoyParticipants = null,
-        ISceneNode specificTarget = null,
+        ISceneNode selectedTarget = null,
         Officer targetOfficer = null,
         ResearchDiscipline? discipline = null
     )
@@ -276,11 +276,11 @@ public static class MissionTestFactory
             Game = game,
             MissionTypeID = missionTypeID,
             OwnerInstanceId = ownerInstanceID,
-            Target = target,
-            SpecificTarget = specificTarget,
+            Location = target,
+            SelectedTarget = selectedTarget,
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>(),
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>(),
-            TargetOfficer = targetOfficer ?? specificTarget as Officer,
+            TargetOfficer = targetOfficer ?? selectedTarget as Officer,
             Discipline = discipline,
         };
 
@@ -372,10 +372,10 @@ public static class EntityFactory
     public static StubMission CreateMission(
         string id,
         string ownerInstanceId,
-        string targetInstanceId
+        string locationInstanceId
     )
     {
-        return new StubMission(ownerInstanceId, targetInstanceId) { InstanceID = id };
+        return new StubMission(ownerInstanceId, locationInstanceId) { InstanceID = id };
     }
 }
 

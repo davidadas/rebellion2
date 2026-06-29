@@ -19,8 +19,8 @@ namespace Rebellion.Tests.Systems
     {
         private class UncancelableMission : StubMission
         {
-            public UncancelableMission(string ownerInstanceId, string targetInstanceId)
-                : base(ownerInstanceId, targetInstanceId) { }
+            public UncancelableMission(string ownerInstanceId, string locationInstanceId)
+                : base(ownerInstanceId, locationInstanceId) { }
 
             public override bool CanceledOnOwnershipChange => false;
         }
@@ -545,82 +545,24 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_UncolonizedNeutralPlanetWithRegiment_ClaimsForRegimentFaction()
+        public void ProcessTick_UncolonizedNeutralPlanetWithRegiment_DoesNotClaimWithoutFleetDrop()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild1", "empire");
             _game.MoveNode(regiment, planet);
 
             List<GameResult> results = _ownershipSystem.ProcessTick();
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-            Assert.AreEqual(100, planet.GetPopularSupport("empire"));
-            Assert.AreEqual(0, planet.GetPopularSupport("rebels"));
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetOwnershipChangedResult>()
-                    .Any(r =>
-                        r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
-                    )
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsEmpty(
+                results.OfType<PlanetOwnershipChangedResult>().Where(r => r.Planet == planet)
             );
-        }
-
-        [Test]
-        public void ProcessTick_NeutralClaim_HiddenObserverSnapshot_NotRefreshed()
-        {
-            Faction observer = AddFaction("observer");
-            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
-                "wild-hidden-claim",
-                "empire"
-            );
-            planet.EnergyCapacity = 1;
-
-            CapturePlanetSnapshot(observer, planet, 5);
-            AddBuilding(planet, "hidden-claim-building", "rebels");
-
-            _game.MoveNode(regiment, planet);
-            _game.CurrentTick = 20;
-            _ownershipSystem.ProcessTick();
-
-            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
-            Assert.AreEqual(5, snapshot.TickCaptured);
-            Assert.IsNull(snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
-        }
-
-        [Test]
-        public void ProcessTick_NeutralPlanetWithPreviousOwnerBuildingsClaimedByRegiment_TransfersBuildings()
-        {
-            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
-                "wild-building",
-                "rebels"
-            );
-            planet.EnergyCapacity = 1;
-            _game.MoveNode(regiment, planet);
-
-            Building building = new Building
-            {
-                InstanceID = "wild-building-mine",
-                AllowedOwnerInstanceIDs = new List<string> { "empire" },
-                BuildingType = BuildingType.Mine,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            _game.AttachNode(building, planet);
-            _game.ChangeUnitOwnership(building, "empire");
-
-            _ownershipSystem.ProcessTick();
-
-            Assert.AreEqual("rebels", planet.GetOwnerInstanceID());
-            Assert.AreEqual("rebels", building.GetOwnerInstanceID());
-            Assert.Contains(building, _rebels.GetAllOwnedManufacturables());
-            Assert.IsFalse(_empire.GetAllOwnedManufacturables().Contains(building));
         }
 
         [Test]
         public void ProcessTick_UncolonizedOwnedPlanetWithoutRegiments_ReleasesToNeutral()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild2", "empire");
-            _game.MoveNode(regiment, planet);
-            _ownershipSystem.ProcessTick();
+            _movementSystem.RequestMove(regiment, planet);
             Assert.AreEqual("empire", planet.GetOwnerInstanceID(), "Setup: claim should succeed");
 
             _game.DetachNode(regiment);
@@ -647,12 +589,9 @@ namespace Rebellion.Tests.Systems
                 "wild-hidden-release",
                 "empire"
             );
-            _game.MoveNode(regiment, planet);
-            _ownershipSystem.ProcessTick();
-            planet.EnergyCapacity = 1;
+            _movementSystem.RequestMove(regiment, planet);
 
             CapturePlanetSnapshot(observer, planet, 5);
-            AddBuilding(planet, "hidden-release-building", "empire");
 
             _game.DetachNode(regiment);
             _game.CurrentTick = 20;
@@ -661,7 +600,6 @@ namespace Rebellion.Tests.Systems
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
             Assert.AreEqual(5, snapshot.TickCaptured);
             Assert.AreEqual("empire", snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
         }
 
         [Test]
@@ -671,8 +609,7 @@ namespace Rebellion.Tests.Systems
                 "wild-release-owner",
                 "empire"
             );
-            _game.MoveNode(regiment, planet);
-            _ownershipSystem.ProcessTick();
+            _movementSystem.RequestMove(regiment, planet);
 
             _game.DetachNode(regiment);
             _game.CurrentTick = 20;
@@ -699,40 +636,15 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_UncolonizedOwnedPlanetReleased_EvictsPreviousOwnerOfficers()
-        {
-            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild4", "empire");
-            _game.MoveNode(regiment, planet);
-            _ownershipSystem.ProcessTick();
-
-            Officer officer = EntityFactory.CreateOfficer("o-evict", "empire");
-            _game.AttachNode(officer, planet);
-
-            _game.DetachNode(regiment);
-            _ownershipSystem.ProcessTick();
-
-            Assert.AreNotEqual(
-                planet,
-                officer.GetParentOfType<Planet>(),
-                "Officer should be evacuated when the planet flips back to neutral"
-            );
-        }
-
-        [Test]
-        public void ReconcilePlanet_NeutralUncolonizedPlanetWithRegiment_ClaimsImmediately()
+        public void ReconcilePlanet_UncolonizedNeutralPlanetWithRegiment_DoesNotClaim()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild5", "empire");
             _game.MoveNode(regiment, planet);
 
             List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-            Assert.AreEqual(100, planet.GetPopularSupport("empire"));
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetOwnershipChangedResult>()
-                    .Any(r => r.Planet == planet && r.NewOwner == _empire)
-            );
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsEmpty(results);
         }
 
         [Test]
@@ -749,7 +661,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_ClaimsForRegimentFaction()
+        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_DoesNotClaim()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild7", "empire");
             planet.IsColonized = true;
@@ -759,13 +671,9 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = _ownershipSystem.ProcessTick();
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
-            Assert.IsTrue(
-                results
-                    .OfType<PlanetOwnershipChangedResult>()
-                    .Any(r =>
-                        r.Planet == planet && r.NewOwner == _empire && r.PreviousOwner == null
-                    )
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsEmpty(
+                results.OfType<PlanetOwnershipChangedResult>().Where(r => r.Planet == planet)
             );
         }
 

@@ -176,17 +176,21 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_ZeroResearchSkillAndMinimumRoll_DoesNotAwardCapacity()
+        public void TryCreate_ZeroResearchSkill_ReturnsNull()
         {
             Officer officer = CreateOfficer(shipSkill: 0);
-            Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                0,
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
             );
+
+            Assert.IsNull(mission);
         }
 
         [Test]
@@ -368,7 +372,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Ship Design",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.ShipResearch,
                 Discipline = ResearchDiscipline.ShipDesign,
                 HasInitiated = true,
@@ -383,7 +387,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual("FACTION1", deserialized.OwnerInstanceID);
             Assert.AreEqual("Research", deserialized.ConfigKey);
             Assert.AreEqual("Ship Design", deserialized.DisplayName);
-            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
             Assert.AreEqual(OfficerRating.ShipResearch, deserialized.ParticipantRating);
             Assert.AreEqual(
                 ResearchDiscipline.ShipDesign,
@@ -403,7 +407,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Troop Training",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 Discipline = ResearchDiscipline.TroopTraining,
             };
 
@@ -427,7 +431,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Research",
                 DisplayName = "Facility Design",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 Discipline = ResearchDiscipline.FacilityDesign,
             };
 

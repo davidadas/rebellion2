@@ -31,13 +31,13 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns a reconnaissance mission for an unvisited target planet, or null.
+        /// Returns a reconnaissance mission for an unvisited location planet, or null.
         /// </summary>
-        /// <param name="ctx">Mission context providing owner, target, participants, and fog-of-war.</param>
-        /// <returns>A configured mission, or null if the target is invalid.</returns>
+        /// <param name="ctx">Mission context providing owner, location, participants, and fog-of-war.</param>
+        /// <returns>A configured mission, or null if the location is invalid.</returns>
         public static ReconnaissanceMission TryCreate(MissionContext ctx)
         {
-            if (ctx?.Target is not Planet planet)
+            if (ctx?.Location is not Planet planet)
                 return null;
 
             if (planet.GetOwnerInstanceID() == ctx.OwnerInstanceId)

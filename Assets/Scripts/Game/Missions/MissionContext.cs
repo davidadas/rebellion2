@@ -28,12 +28,12 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Scene node where the mission will be attached.
         /// </summary>
-        public ISceneNode Target { get; set; }
+        public ISceneNode Location { get; set; }
 
         /// <summary>
-        /// Optional scene node selected inside the mission target.
+        /// Optional scene node selected inside the mission location.
         /// </summary>
-        public ISceneNode SpecificTarget { get; set; }
+        public ISceneNode SelectedTarget { get; set; }
 
         /// <summary>
         /// Primary participants assigned to perform the mission.

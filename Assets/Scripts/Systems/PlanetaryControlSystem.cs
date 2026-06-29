@@ -76,7 +76,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Claims or releases an uncolonized planet based on its current regiments.
+        /// Releases abandoned uncolonized owned planets back to neutral control.
         /// </summary>
         /// <param name="planet">The planet to evaluate.</param>
         /// <param name="results">Collection to append any ownership-change results to.</param>
@@ -87,23 +87,6 @@ namespace Rebellion.Systems
 
             List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
-
-            if (string.IsNullOrEmpty(currentOwner) && regiments.Count > 0)
-            {
-                string claimantOwnerId = regiments[0].GetOwnerInstanceID();
-                if (string.IsNullOrEmpty(claimantOwnerId))
-                    return;
-
-                if (regiments.Any(r => r.GetOwnerInstanceID() != claimantOwnerId))
-                    return;
-
-                Faction claimant = _game.GetFactionByOwnerInstanceID(claimantOwnerId);
-                if (claimant == null)
-                    return;
-
-                results.Add(ClaimPlanet(planet, claimant));
-                return;
-            }
 
             if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
             {
@@ -134,29 +117,6 @@ namespace Rebellion.Systems
                 CaptureSnapshotForFaction(planet, previousOwner);
 
             return CreateOwnershipChangedResult(planet, previousOwner, newOwner);
-        }
-
-        /// <summary>
-        /// Claims an uncolonized neutral planet for a faction.
-        /// </summary>
-        /// <param name="planet">The planet being claimed.</param>
-        /// <param name="newOwner">The faction taking control.</param>
-        /// <returns>The ownership-change result.</returns>
-        private PlanetOwnershipChangedResult ClaimPlanet(Planet planet, Faction newOwner)
-        {
-            TransferBuildings(planet, newOwner);
-            _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
-            planet.PopularSupport.Clear();
-
-            foreach (Faction faction in _game.GetFactions())
-            {
-                if (faction.InstanceID == newOwner.InstanceID)
-                    planet.SetFullPopularSupport(faction.InstanceID);
-                else
-                    planet.SetPopularSupport(faction.InstanceID, 0);
-            }
-
-            return CreateOwnershipChangedResult(planet, null, newOwner);
         }
 
         /// <summary>

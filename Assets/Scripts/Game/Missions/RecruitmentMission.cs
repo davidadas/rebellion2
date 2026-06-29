@@ -61,15 +61,20 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns a new RecruitmentMission when this faction has at least one recruitable officer.
+        /// Returns a new RecruitmentMission when this faction has at least one recruitable officer on an owned planet.
         /// </summary>
         /// <param name="ctx">Mission context; must include a valid target.</param>
         /// <returns>A configured mission, or null if no unrecruited officers exist.</returns>
         public static RecruitmentMission TryCreate(MissionContext ctx)
         {
+            if (
+                ctx.Location is not Planet planet
+                || planet.GetOwnerInstanceID() != ctx.OwnerInstanceId
+            )
+                return null;
+
             List<Officer> unrecruited = ctx.Game.GetUnrecruitedOfficers(ctx.OwnerInstanceId);
-            bool areMainCharacters = ctx.MainParticipants.Any(o => o is Officer { IsMain: true });
-            if (ctx.MainParticipants.Count > 0 && !areMainCharacters)
+            if (!HasOnlyMainOfficerParticipants(ctx.MainParticipants))
                 return null;
 
             if (unrecruited.Count == 0)
@@ -77,11 +82,24 @@ namespace Rebellion.Game.Missions
 
             return new RecruitmentMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants,
                 null
             );
+        }
+
+        /// <summary>
+        /// Returns whether every selected participant is a main officer.
+        /// </summary>
+        /// <param name="participants">Selected mission participants to validate.</param>
+        /// <returns>True when at least one main officer was selected and no ineligible participants were selected.</returns>
+        private static bool HasOnlyMainOfficerParticipants(List<IMissionParticipant> participants)
+        {
+            if (participants == null || participants.Count == 0)
+                return false;
+
+            return participants.All(participant => participant is Officer { IsMain: true });
         }
 
         /// <summary>

@@ -76,7 +76,14 @@ namespace Rebellion.Tests.Generation
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             foreach ((string planetId, string ownerId) in planets)
             {
-                sys.Planets.Add(new Planet { InstanceID = planetId, OwnerInstanceID = ownerId });
+                sys.Planets.Add(
+                    new Planet
+                    {
+                        InstanceID = planetId,
+                        OwnerInstanceID = ownerId,
+                        IsColonized = true,
+                    }
+                );
             }
             return sys;
         }
@@ -192,8 +199,22 @@ namespace Rebellion.Tests.Generation
             Officer empireOfficer1 = MakeOfficer("E1", "FNEMP1");
             Officer empireOfficer2 = MakeOfficer("E2", "FNEMP1");
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
-            sys.Planets.Add(new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" });
-            sys.Planets.Add(new Planet { InstanceID = "p2", OwnerInstanceID = "FNEMP1" });
+            sys.Planets.Add(
+                new Planet
+                {
+                    InstanceID = "p1",
+                    OwnerInstanceID = "FNALL1",
+                    IsColonized = true,
+                }
+            );
+            sys.Planets.Add(
+                new Planet
+                {
+                    InstanceID = "p2",
+                    OwnerInstanceID = "FNEMP1",
+                    IsColonized = true,
+                }
+            );
 
             var results = Deploy(
                 new[] { allianceOfficer1, allianceOfficer2, empireOfficer1, empireOfficer2 },
@@ -236,7 +257,12 @@ namespace Rebellion.Tests.Generation
         public void Seed_WithOwnedPlanet_OfficerAddedToPlanet()
         {
             Officer officer = MakeOfficer("O1", "FNALL1");
-            Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             sys.Planets.Add(planet);
 
@@ -248,8 +274,18 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Seed_WithInitialParentId_OfficerAddedToDesignatedPlanet()
         {
-            Planet other = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
-            Planet target = new Planet { InstanceID = "target", OwnerInstanceID = "FNALL1" };
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             sys.Planets.Add(other);
             sys.Planets.Add(target);
@@ -273,8 +309,14 @@ namespace Rebellion.Tests.Generation
                 InstanceID = "YAVIN",
                 TypeID = "PLSUM06",
                 OwnerInstanceID = "FNALL1",
+                IsColonized = true,
             };
-            Planet other = new Planet { InstanceID = "p1", OwnerInstanceID = "FNALL1" };
+            Planet other = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "FNALL1",
+                IsColonized = true,
+            };
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             sys.Planets.Add(other);
             sys.Planets.Add(yavin);

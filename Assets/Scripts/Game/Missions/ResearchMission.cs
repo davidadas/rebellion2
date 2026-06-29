@@ -63,26 +63,35 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns a new ResearchMission if the target is an own planet, or null.
+        /// Returns a new ResearchMission if the target is an owned planet and the
+        /// selected officer can perform the discipline.
         /// </summary>
         /// <param name="ctx">Mission context providing owner, target planet, and participants.</param>
         /// <param name="discipline">The research discipline this mission advances.</param>
-        /// <returns>A configured mission, or null if the planet is not owned by this faction.</returns>
+        /// <returns>A configured mission, or null if the mission is not eligible.</returns>
         public static ResearchMission TryCreate(MissionContext ctx, ResearchDiscipline discipline)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
                 return null;
 
-            List<IMissionParticipant> actingParticipants = new List<IMissionParticipant>();
-            if (ctx.MainParticipants?.Count > 0)
-                actingParticipants.Add(ctx.MainParticipants[0]);
+            if (!HasResearchFacility(planet, discipline))
+                return null;
+
+            Officer researcher = ctx.MainParticipants?.FirstOrDefault() as Officer;
+            if (researcher == null || researcher.GetBaseRating(discipline) <= 0)
+                return null;
+
+            List<IMissionParticipant> actingParticipants = new List<IMissionParticipant>
+            {
+                researcher,
+            };
 
             return new ResearchMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 actingParticipants,
                 ctx.DecoyParticipants,
                 discipline

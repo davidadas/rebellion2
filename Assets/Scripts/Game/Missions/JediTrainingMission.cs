@@ -66,10 +66,13 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the planet is not owned by this faction or no eligible trainer is available.</returns>
         public static JediTrainingMission TryCreate(MissionContext ctx)
         {
-            if (!(ctx.Target is Planet planet))
+            if (!(ctx.Location is Planet planet))
                 return null;
 
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
+                return null;
+
+            if (!AreStudentsEligible(ctx.MainParticipants))
                 return null;
 
             string trainerId = SelectTrainer(ctx.Game, ctx.OwnerInstanceId, planet);
@@ -78,7 +81,7 @@ namespace Rebellion.Game.Missions
 
             return new JediTrainingMission(
                 ctx.OwnerInstanceId,
-                ctx.Target,
+                ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants,
                 trainerId
@@ -110,6 +113,21 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns whether every selected student can receive Jedi training.
+        /// </summary>
+        /// <param name="students">Selected mission participants to train.</param>
+        /// <returns>True when at least one eligible Jedi student was selected and no ineligible participants were selected.</returns>
+        private static bool AreStudentsEligible(List<IMissionParticipant> students)
+        {
+            if (students == null || students.Count == 0)
+                return false;
+
+            return students.All(participant =>
+                participant is Officer { IsJedi: true, IsForceEligible: true }
+            );
+        }
+
+        /// <summary>
         /// Returns why Jedi training must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -119,6 +137,9 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason? reason = base.GetAbortReason(game);
             if (reason.HasValue)
                 return reason;
+
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return MissionCompletionReason.TargetUnavailable;
 
             Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
             if (trainer == null)
@@ -209,6 +230,9 @@ namespace Rebellion.Game.Missions
         /// <returns>True if training should repeat.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return false;
+
             int threshold = game.Config.Jedi.ForceQualifiedThreshold;
             return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);
         }

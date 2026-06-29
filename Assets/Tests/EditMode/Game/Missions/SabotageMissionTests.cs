@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return MissionTestFactory.TryCreate(
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Game.Missions
                 target,
                 mainParticipants,
                 decoyParticipants,
-                specificTarget
+                selectedTarget
             );
         }
 
@@ -49,6 +49,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -56,7 +57,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -86,6 +88,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -93,7 +96,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -124,6 +128,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -131,7 +136,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -166,6 +172,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -173,7 +180,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -234,7 +242,7 @@ namespace Rebellion.Tests.Game.Missions
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
-            Assert.AreEqual(enemyPlanet.InstanceID, mission.TargetInstanceID);
+            Assert.AreEqual(enemyPlanet.InstanceID, mission.LocationInstanceID);
             Assert.AreEqual(
                 selectedBuilding.InstanceID,
                 ((SabotageMission)mission).SabotageTargetInstanceID
@@ -280,7 +288,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Sabotage",
                 DisplayName = "Sabotage",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 SabotageTargetInstanceID = "BUILDING1",
                 ParticipantRating = OfficerRating.Combat,
                 HasInitiated = true,
@@ -293,7 +301,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("Sabotage", deserialized.ConfigKey);
-            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
             Assert.AreEqual("BUILDING1", ((SabotageMission)deserialized).SabotageTargetInstanceID);
             Assert.AreEqual(OfficerRating.Combat, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);

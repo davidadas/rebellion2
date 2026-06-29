@@ -30,7 +30,7 @@ namespace Rebellion.Game.Missions
             }
         }
 
-        public string TargetInstanceID { get; set; }
+        public string LocationInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
 
         // Participants.
@@ -71,7 +71,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="configKey">Mission configuration key.</param>
         /// <param name="ownerInstanceId">Faction that owns the mission.</param>
-        /// <param name="targetInstanceId">Mission target instance ID.</param>
+        /// <param name="locationInstanceId">Mission location instance ID.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
         /// <param name="participantRating">Rating used by primary participants.</param>
@@ -79,7 +79,7 @@ namespace Rebellion.Game.Missions
         protected Mission(
             string configKey,
             string ownerInstanceId,
-            string targetInstanceId,
+            string locationInstanceId,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
             OfficerRating participantRating,
@@ -91,7 +91,7 @@ namespace Rebellion.Game.Missions
             AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId };
 
             OwnerInstanceID = ownerInstanceId;
-            TargetInstanceID = targetInstanceId;
+            LocationInstanceID = locationInstanceId;
 
             MainParticipants = mainParticipants ?? new List<IMissionParticipant>();
             DecoyParticipants = decoyParticipants ?? new List<IMissionParticipant>();
@@ -413,58 +413,58 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the best available defensive support rating for the mission target.
+        /// Returns the best available defensive support rating for the mission location.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The support rating, or 0 when no support applies.</returns>
         private int GetSupportRating(GameRoot game)
         {
-            ISceneNode target = ResolveTarget(game);
-            string targetOwnerId = target?.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId))
+            ISceneNode location = ResolveLocation(game);
+            string locationOwnerId = location?.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(locationOwnerId))
                 return 0;
 
-            Planet planet = ResolveSupportPlanet(target);
+            Planet planet = ResolveSupportPlanet(location);
             if (planet == null)
                 return 0;
 
-            return GetBestSupportRating(planet, targetOwnerId, GetContainerId(target));
+            return GetBestSupportRating(planet, locationOwnerId, GetContainerId(location));
         }
 
         /// <summary>
-        /// Returns the live mission target used by detection support checks.
+        /// Returns the live mission location used by detection support checks.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The live target node, or the mission parent when no target node is found.</returns>
-        private ISceneNode ResolveTarget(GameRoot game)
+        /// <returns>The live location node, or the mission parent when no location node is found.</returns>
+        private ISceneNode ResolveLocation(GameRoot game)
         {
-            return game?.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID) ?? GetParent();
+            return game?.GetSceneNodeByInstanceID<ISceneNode>(LocationInstanceID) ?? GetParent();
         }
 
         /// <summary>
-        /// Returns the planet whose children can provide support for the target.
+        /// Returns the planet whose children can provide support for the location.
         /// </summary>
-        /// <param name="target">The mission target.</param>
+        /// <param name="location">The mission location.</param>
         /// <returns>The support planet, or null when none can be resolved.</returns>
-        private Planet ResolveSupportPlanet(ISceneNode target)
+        private Planet ResolveSupportPlanet(ISceneNode location)
         {
-            if (target is Planet planet)
+            if (location is Planet planet)
                 return planet;
 
-            return target?.GetParentOfType<Planet>() ?? GetParent() as Planet;
+            return location?.GetParentOfType<Planet>() ?? GetParent() as Planet;
         }
 
         /// <summary>
         /// Returns the strongest support rating from candidates on the support planet.
         /// </summary>
         /// <param name="planet">The planet containing support candidates.</param>
-        /// <param name="targetOwnerId">The faction that owns the target.</param>
-        /// <param name="targetContainer">The target's containing node ID.</param>
+        /// <param name="locationOwnerId">The faction that owns the location.</param>
+        /// <param name="locationContainer">The location's containing node ID.</param>
         /// <returns>The selected support rating.</returns>
         private int GetBestSupportRating(
             Planet planet,
-            string targetOwnerId,
-            string targetContainer
+            string locationOwnerId,
+            string locationContainer
         )
         {
             int sameContainerRating = 0;
@@ -474,11 +474,11 @@ namespace Rebellion.Game.Missions
                 IMissionParticipant candidate in planet.GetChildren<IMissionParticipant>(_ => true)
             )
             {
-                if (candidate.GetOwnerInstanceID() != targetOwnerId || !CanSupportFoil(candidate))
+                if (candidate.GetOwnerInstanceID() != locationOwnerId || !CanSupportFoil(candidate))
                     continue;
 
                 int value = candidate.GetEffectiveRating(OfficerRating.Espionage);
-                if (GetContainerId(candidate) == targetContainer)
+                if (GetContainerId(candidate) == locationContainer)
                     sameContainerRating = Math.Max(sameContainerRating, value);
                 else
                     otherContainerRating = Math.Max(otherContainerRating, value);

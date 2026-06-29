@@ -278,6 +278,29 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_MixedMainAndNonMainParticipants_ReturnsNull()
+        {
+            (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
+            Officer secondOfficer = EntityFactory.CreateOfficer("second", "empire");
+            secondOfficer.IsMain = false;
+            game.AttachNode(secondOfficer, empPlanet);
+
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(target);
+
+            Mission mission = CreateRecruitmentMission(
+                game,
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer, secondOfficer },
+                new List<IMissionParticipant>()
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void TryCreate_NoValidTarget_ReturnsNull()
         {
             (GameRoot game, Planet empPlanet, Officer officer) = BuildScene();
@@ -306,7 +329,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Recruitment",
                 DisplayName = "Recruitment",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Diplomacy,
                 TargetOfficerInstanceID = "OFFICER4",
             };

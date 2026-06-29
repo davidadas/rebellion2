@@ -595,7 +595,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Rescue",
                 DisplayName = "Rescue",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Espionage,
                 TargetOfficerInstanceID = "OFFICER3",
                 HasInitiated = true,

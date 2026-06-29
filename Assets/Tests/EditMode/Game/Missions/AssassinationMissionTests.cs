@@ -479,7 +479,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "Assassination",
                 DisplayName = "Assassination",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Combat,
                 TargetOfficerInstanceID = "OFFICER1",
                 HasInitiated = true,

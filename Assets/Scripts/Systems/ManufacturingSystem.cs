@@ -80,6 +80,9 @@ namespace Rebellion.Systems
             if (item is CapitalShip)
                 return false;
 
+            if (!destination.IsColonized)
+                return false;
+
             if (!destination.CanAcceptChild(item))
                 return false;
 

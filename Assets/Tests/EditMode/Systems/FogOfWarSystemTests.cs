@@ -271,7 +271,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
@@ -299,7 +299,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
 
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
 
@@ -731,7 +731,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
@@ -758,7 +758,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
@@ -795,7 +795,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void BuildFactionView_SystemWithMultiplePlanets_MixedVisibilityHandledCorrectly()
         {
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can be attached here
+            MakeTatooineImperial();
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _tatooine);
 
@@ -848,7 +848,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
 
@@ -874,7 +874,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual("CORUSCANT", _alliance.Fog.EntityLastSeenAt["VADER"]);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID; // Set owner so vader can move here
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
 
@@ -943,7 +943,7 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            _tatooine.OwnerInstanceID = _empire.InstanceID;
+            MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
 
@@ -1112,6 +1112,12 @@ namespace Rebellion.Tests.Systems
 
         private Officer CreateOfficer(string id, Faction faction) =>
             EntityFactory.CreateOfficer(id, faction.InstanceID);
+
+        private void MakeTatooineImperial()
+        {
+            _tatooine.OwnerInstanceID = _empire.InstanceID;
+            _tatooine.IsColonized = true;
+        }
 
         private Fleet CreateFleet(string id, Faction faction) =>
             EntityFactory.CreateFleet(id, faction.InstanceID);
@@ -1600,7 +1606,7 @@ namespace Rebellion.Tests.Systems
         {
             // Outer rim planet: popular support is NOT universally visible.
             // Only core system support is always shown.
-            _tatooine.OwnerInstanceID = _empire.InstanceID;
+            MakeTatooineImperial();
             _tatooine.PopularSupport["FNALL1"] = 40;
 
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);

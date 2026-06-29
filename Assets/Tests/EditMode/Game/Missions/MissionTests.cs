@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Game.Missions
             ISceneNode target,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants,
-            ISceneNode specificTarget = null
+            ISceneNode selectedTarget = null
         )
         {
             return MissionTestFactory.TryCreate(
@@ -30,8 +30,16 @@ namespace Rebellion.Tests.Game.Missions
                 target,
                 mainParticipants,
                 decoyParticipants,
-                specificTarget
+                selectedTarget
             );
+        }
+
+        private static Regiment CreateSabotageTarget(GameRoot game, Planet planet)
+        {
+            Regiment target = EntityFactory.CreateRegiment("sabotage-target", "rebels");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(target, planet);
+            return target;
         }
 
         [Test]
@@ -97,7 +105,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -118,12 +127,14 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                target
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -148,12 +159,14 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                target
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -213,12 +226,14 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                target
             );
             game.AttachNode(mission, enemyPlanet);
 
@@ -237,12 +252,14 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                target
             );
             game.AttachNode(mission, enemyPlanet);
 
@@ -269,12 +286,14 @@ namespace Rebellion.Tests.Game.Missions
 
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             game.AttachNode(decoy, empPlanet);
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy }
+                new List<IMissionParticipant> { decoy },
+                target
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -298,12 +317,14 @@ namespace Rebellion.Tests.Game.Missions
                 Officer officer,
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                target
             );
             game.Config.ProbabilityTables.Mission.Sabotage = new Dictionary<int, int> { { 0, 0 } };
             game.AttachNode(mission, enemyPlanet);
@@ -331,7 +352,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = MissionTypeIDs.Sabotage,
                 DisplayName = MissionTypeIDs.Sabotage,
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Combat,
             };
 
@@ -353,12 +374,14 @@ namespace Rebellion.Tests.Game.Missions
             ) = MissionSceneBuilder.Build();
             Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
             game.AttachNode(decoy, empPlanet);
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy }
+                new List<IMissionParticipant> { decoy },
+                target
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(3);

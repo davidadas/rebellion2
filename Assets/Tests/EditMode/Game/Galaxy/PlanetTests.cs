@@ -79,6 +79,15 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void AddOfficer_UncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+        }
+
+        [Test]
         public void AddBuilding_ValidBuilding_AddsToPlanet()
         {
             Building building = new Building
@@ -91,6 +100,47 @@ namespace Rebellion.Tests.Game.Galaxy
 
             List<Building> buildings = _planet.GetAllBuildings();
             Assert.Contains(building, buildings, "Building should be added to the _planet.");
+        }
+
+        [Test]
+        public void AddBuilding_UncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            Building building = new Building { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(building));
+        }
+
+        [Test]
+        public void AddRegiment_UncolonizedNeutralPlanet_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            _planet.OwnerInstanceID = null;
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
+
+            _planet.AddChild(regiment);
+
+            Assert.Contains(regiment, _planet.Regiments);
+        }
+
+        [Test]
+        public void AddRegiment_UncolonizedOwnedPlanetWithMatchingOwner_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNALL1" };
+
+            _planet.AddChild(regiment);
+
+            Assert.Contains(regiment, _planet.Regiments);
+        }
+
+        [Test]
+        public void AddRegiment_UncolonizedOwnedPlanetWithDifferentOwner_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            Regiment regiment = new Regiment { OwnerInstanceID = "FNEMP1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(regiment));
         }
 
         [Test]
@@ -668,6 +718,24 @@ namespace Rebellion.Tests.Game.Galaxy
                 () => _planet.AddChild(starfighter),
                 "Adding a starfighter with a mismatched OwnerInstanceID should throw a SceneAccessException."
             );
+        }
+
+        [Test]
+        public void AddSpecialForces_UncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(specialForces));
+        }
+
+        [Test]
+        public void AddStarfighter_UncolonizedPlanet_ThrowsException()
+        {
+            _planet.IsColonized = false;
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
+
+            Assert.Throws<SceneAccessException>(() => _planet.AddChild(starfighter));
         }
 
         [Test]

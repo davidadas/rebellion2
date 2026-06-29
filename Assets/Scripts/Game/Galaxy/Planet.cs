@@ -658,9 +658,13 @@ namespace Rebellion.Game.Galaxy
         /// Adds a building to the planet.
         /// </summary>
         /// <param name="building">The building to add.</param>
-        /// <exception cref="InvalidOperationException">Thrown when the planet is not colonized or at capacity.</exception>
+        /// <exception cref="SceneAccessException">Thrown when the planet is not colonized or ownership is invalid.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the planet is at capacity.</exception>
         private void AddBuilding(Building building)
         {
+            if (!IsColonized)
+                throw new SceneAccessException(building, this);
+
             ValidateBuilding(building);
             Buildings.Add(building);
         }
@@ -701,6 +705,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="officer">The officer to add.</param>
         private void AddOfficer(Officer officer)
         {
+            if (!IsColonized)
+                throw new SceneAccessException(officer, this);
+
             if (!officer.IsCaptured && officer.GetOwnerInstanceID() != this.OwnerInstanceID)
             {
                 throw new SceneAccessException(officer, this);
@@ -750,7 +757,11 @@ namespace Rebellion.Game.Galaxy
         /// <param name="regiment">The regiment to add.</param>
         private void AddRegiment(Regiment regiment)
         {
-            if (IsColonized && regiment.GetOwnerInstanceID() != this.GetOwnerInstanceID())
+            string ownerInstanceId = GetOwnerInstanceID();
+            if (
+                (IsColonized || !string.IsNullOrEmpty(ownerInstanceId))
+                && regiment.GetOwnerInstanceID() != ownerInstanceId
+            )
                 throw new SceneAccessException(regiment, this);
 
             Regiments.Add(regiment);
@@ -771,6 +782,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="specialForces">The special forces to add.</param>
         private void AddSpecialForces(SpecialForces specialForces)
         {
+            if (!IsColonized)
+                throw new SceneAccessException(specialForces, this);
+
             if (IsColonized && specialForces.GetOwnerInstanceID() != this.GetOwnerInstanceID())
                 throw new SceneAccessException(specialForces, this);
 
@@ -792,6 +806,9 @@ namespace Rebellion.Game.Galaxy
         /// <param name="starfighter">The starfighter to add.</param>
         private void AddStarfighter(Starfighter starfighter)
         {
+            if (!IsColonized)
+                throw new SceneAccessException(starfighter, this);
+
             if (IsColonized && starfighter.GetOwnerInstanceID() != this.GetOwnerInstanceID())
                 throw new SceneAccessException(starfighter, this);
 
@@ -872,9 +889,9 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
-        /// accepted. Officers require owner match or captured status. Regiments and Starfighters
-        /// require owner match unless the planet is uncolonized. Buildings require owner match
-        /// and available energy.
+        /// accepted. Uncolonized planets only accept regiments, and claimed uncolonized planets
+        /// only accept their owner's regiments. Colonized planets accept surface children only
+        /// when ownership and capacity rules permit them.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -886,16 +903,21 @@ namespace Rebellion.Game.Galaxy
                 case Mission _:
                     return true;
                 case Officer officer:
-                    return officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID;
+                    return IsColonized
+                        && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
                 case Regiment regiment:
-                    return !IsColonized || regiment.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    if (!IsColonized && string.IsNullOrEmpty(GetOwnerInstanceID()))
+                        return true;
+
+                    return regiment.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case SpecialForces specialForces:
-                    return !IsColonized
-                        || specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    return IsColonized
+                        && specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Starfighter starfighter:
-                    return !IsColonized || starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
+                    return IsColonized && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:
-                    return building.GetOwnerInstanceID() == GetOwnerInstanceID()
+                    return IsColonized
+                        && building.GetOwnerInstanceID() == GetOwnerInstanceID()
                         && GetAvailableEnergy() > 0;
                 default:
                     return false;

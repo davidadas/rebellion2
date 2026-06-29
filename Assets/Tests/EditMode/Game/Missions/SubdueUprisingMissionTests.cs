@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Game.Missions
                 OwnerInstanceID = "FACTION1",
                 ConfigKey = "SubdueUprising",
                 DisplayName = "Subdue Uprising",
-                TargetInstanceID = "PLANET1",
+                LocationInstanceID = "PLANET1",
                 ParticipantRating = OfficerRating.Diplomacy,
                 HasInitiated = true,
                 MaxProgress = 3,
@@ -260,7 +260,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual("MISSION1", deserialized.InstanceID);
             Assert.AreEqual("SubdueUprising", deserialized.ConfigKey);
-            Assert.AreEqual("PLANET1", deserialized.TargetInstanceID);
+            Assert.AreEqual("PLANET1", deserialized.LocationInstanceID);
             Assert.AreEqual(OfficerRating.Diplomacy, deserialized.ParticipantRating);
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(3, deserialized.MaxProgress);

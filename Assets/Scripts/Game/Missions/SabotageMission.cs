@@ -40,27 +40,27 @@ namespace Rebellion.Game.Missions
         /// Initializes a sabotage mission with its selected target object.
         /// </summary>
         /// <param name="ownerInstanceId">Faction that owns the mission.</param>
-        /// <param name="missionTarget">Planet where the mission occurs.</param>
-        /// <param name="sabotageTargetInstanceId">Object selected as the sabotage target.</param>
+        /// <param name="missionPlanet">Planet where the mission occurs.</param>
+        /// <param name="selectedTarget">Object selected as the sabotage target.</param>
         /// <param name="mainParticipants">Primary mission participants.</param>
         /// <param name="decoyParticipants">Decoy mission participants.</param>
         private SabotageMission(
             string ownerInstanceId,
-            ISceneNode missionTarget,
-            string sabotageTargetInstanceId,
+            Planet missionPlanet,
+            ISceneNode selectedTarget,
             List<IMissionParticipant> mainParticipants,
             List<IMissionParticipant> decoyParticipants
         )
             : base(
                 MissionTypeID,
                 ownerInstanceId,
-                missionTarget.GetInstanceID(),
+                missionPlanet.GetInstanceID(),
                 mainParticipants,
                 decoyParticipants,
                 OfficerRating.Combat
             )
         {
-            SabotageTargetInstanceID = sabotageTargetInstanceId;
+            SabotageTargetInstanceID = selectedTarget.GetInstanceID();
             DecoyParticipantRating = OfficerRating.Espionage;
         }
 
@@ -71,36 +71,34 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the target is not eligible.</returns>
         public static SabotageMission TryCreate(MissionContext ctx)
         {
-            if (ctx.Target == null)
+            if (ctx.Location == null)
                 return null;
 
-            ISceneNode sabotageTarget = ctx.SpecificTarget ?? ctx.Target;
-            if (sabotageTarget == null || sabotageTarget is Officer)
+            ISceneNode selectedTarget = ctx.SelectedTarget ?? ctx.Location;
+            if (selectedTarget is not IManufacturable manufacturable)
                 return null;
 
-            if (sabotageTarget is IManufacturable manufacturable)
-            {
-                if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
-                    return null;
-            }
-
-            if (sabotageTarget is IMovable movable && movable.Movement != null)
+            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
                 return null;
 
-            Planet missionPlanet = ctx.Target as Planet ?? sabotageTarget.GetParentOfType<Planet>();
+            if (selectedTarget is IMovable movable && movable.Movement != null)
+                return null;
+
+            Planet missionPlanet =
+                ctx.Location as Planet ?? selectedTarget.GetParentOfType<Planet>();
             if (missionPlanet == null)
                 return null;
 
             if (
-                ctx.SpecificTarget != null
-                && sabotageTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
+                ctx.SelectedTarget != null
+                && selectedTarget.GetParentOfType<Planet>()?.InstanceID != missionPlanet.InstanceID
             )
                 return null;
 
             return new SabotageMission(
                 ctx.OwnerInstanceId,
                 missionPlanet,
-                sabotageTarget.GetInstanceID(),
+                selectedTarget,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants
             );
@@ -121,10 +119,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the target planet has no buildings remaining before execution.
+        /// Returns false if the selected target can no longer be sabotaged before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the planet still has at least one building.</returns>
+        /// <returns>True if the selected target is still eligible.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
             return HasValidTarget(game);
@@ -138,16 +136,10 @@ namespace Rebellion.Game.Missions
         private bool HasValidTarget(GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is Planet planet)
-                return planet.GetAllBuildings().Count > 0;
-
-            if (target == null || target is Officer)
+            if (target is not IManufacturable manufacturable)
                 return false;
 
-            if (
-                target is IManufacturable manufacturable
-                && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
-            )
+            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
                 return false;
 
             if (target is IMovable movable && movable.Movement != null)
@@ -192,15 +184,10 @@ namespace Rebellion.Game.Missions
         /// Returns the concrete object that should be destroyed by the sabotage mission.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The selected target, or the first building on a planet target.</returns>
+        /// <returns>The selected target.</returns>
         private ISceneNode GetSabotageTarget(GameRoot game)
         {
-            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is not Planet planet)
-                return target;
-
-            List<Building> buildings = planet.GetAllBuildings();
-            return buildings.Count > 0 ? buildings[0] : null;
+            return game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
         }
 
         /// <summary>
