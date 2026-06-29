@@ -75,14 +75,11 @@ namespace Rebellion.Game.Missions
                 return null;
 
             ISceneNode sabotageTarget = ctx.SpecificTarget ?? ctx.Target;
-            if (sabotageTarget == null || sabotageTarget is Officer)
+            if (sabotageTarget is not IManufacturable manufacturable)
                 return null;
 
-            if (sabotageTarget is IManufacturable manufacturable)
-            {
-                if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
-                    return null;
-            }
+            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
+                return null;
 
             if (sabotageTarget is IMovable movable && movable.Movement != null)
                 return null;
@@ -121,10 +118,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns false if the target planet has no buildings remaining before execution.
+        /// Returns false if the selected target can no longer be sabotaged before execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the planet still has at least one building.</returns>
+        /// <returns>True if the selected target is still eligible.</returns>
         protected override bool IsMissionSatisfied(GameRoot game)
         {
             return HasValidTarget(game);
@@ -138,16 +135,10 @@ namespace Rebellion.Game.Missions
         private bool HasValidTarget(GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is Planet planet)
-                return planet.GetAllBuildings().Count > 0;
-
-            if (target == null || target is Officer)
+            if (target is not IManufacturable manufacturable)
                 return false;
 
-            if (
-                target is IManufacturable manufacturable
-                && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building
-            )
+            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
                 return false;
 
             if (target is IMovable movable && movable.Movement != null)
@@ -192,15 +183,10 @@ namespace Rebellion.Game.Missions
         /// Returns the concrete object that should be destroyed by the sabotage mission.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>The selected target, or the first building on a planet target.</returns>
+        /// <returns>The selected target.</returns>
         private ISceneNode GetSabotageTarget(GameRoot game)
         {
-            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is not Planet planet)
-                return target;
-
-            List<Building> buildings = planet.GetAllBuildings();
-            return buildings.Count > 0 ? buildings[0] : null;
+            return game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
         }
 
         /// <summary>

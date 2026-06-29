@@ -72,6 +72,9 @@ namespace Rebellion.Game.Missions
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
                 return null;
 
+            if (!AreStudentsEligible(ctx.MainParticipants))
+                return null;
+
             string trainerId = SelectTrainer(ctx.Game, ctx.OwnerInstanceId, planet);
             if (trainerId == null)
                 return null;
@@ -109,6 +112,16 @@ namespace Rebellion.Game.Missions
             return trainer?.InstanceID;
         }
 
+        private static bool AreStudentsEligible(List<IMissionParticipant> students)
+        {
+            if (students == null || students.Count == 0)
+                return false;
+
+            return students.All(participant =>
+                participant is Officer { IsJedi: true, IsForceEligible: true }
+            );
+        }
+
         /// <summary>
         /// Returns why Jedi training must stop before advancing.
         /// </summary>
@@ -119,6 +132,9 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason? reason = base.GetAbortReason(game);
             if (reason.HasValue)
                 return reason;
+
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return MissionCompletionReason.TargetUnavailable;
 
             Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
             if (trainer == null)
@@ -209,6 +225,9 @@ namespace Rebellion.Game.Missions
         /// <returns>True if training should repeat.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return false;
+
             int threshold = game.Config.Jedi.ForceQualifiedThreshold;
             return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);
         }

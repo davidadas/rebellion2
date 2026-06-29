@@ -49,6 +49,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -56,7 +57,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -86,6 +88,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -93,7 +96,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -124,6 +128,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -131,7 +136,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
@@ -166,6 +172,7 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "b1",
                 OwnerInstanceID = "rebels",
                 BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(building, enemyPlanet);
 
@@ -173,7 +180,8 @@ namespace Rebellion.Tests.Game.Missions
                 "empire",
                 enemyPlanet,
                 new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
+                new List<IMissionParticipant>(),
+                building
             );
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);

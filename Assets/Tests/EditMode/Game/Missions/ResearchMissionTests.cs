@@ -176,17 +176,21 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_ZeroResearchSkillAndMinimumRoll_DoesNotAwardCapacity()
+        public void TryCreate_ZeroResearchSkill_ReturnsNull()
         {
             Officer officer = CreateOfficer(shipSkill: 0);
-            Mission mission = CreateMission(officer);
 
-            mission.Execute(_game, new FixedRNG(0.0));
-
-            Assert.AreEqual(
-                0,
-                _faction.GetResearchCapacityRemaining(ResearchDiscipline.ShipDesign)
+            Mission mission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Research,
+                _game,
+                "empire",
+                _planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.ShipDesign
             );
+
+            Assert.IsNull(mission);
         }
 
         [Test]

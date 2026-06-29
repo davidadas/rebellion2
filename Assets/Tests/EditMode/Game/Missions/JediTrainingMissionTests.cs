@@ -91,6 +91,51 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_NoStudents_ReturnsNull()
+        {
+            Mission mission = CreateMission(new List<IMissionParticipant>());
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_NonOfficerStudent_ReturnsNull()
+        {
+            SpecialForces spec = new SpecialForces
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "rebels",
+            };
+            _game.AttachNode(spec, _planet);
+
+            Mission mission = CreateMission(new List<IMissionParticipant> { spec });
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_NonJediStudent_ReturnsNull()
+        {
+            Officer nonJedi = EntityFactory.CreateOfficer("nonjedi", "rebels");
+            nonJedi.IsJedi = false;
+            nonJedi.IsForceEligible = true;
+            _game.AttachNode(nonJedi, _planet);
+
+            Mission mission = CreateMission(nonJedi);
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_NonForceEligibleStudent_ReturnsNull()
+        {
+            Officer dormant = EntityFactory.CreateOfficer("dormant", "rebels");
+            dormant.IsJedi = true;
+            dormant.IsForceEligible = false;
+            _game.AttachNode(dormant, _planet);
+
+            Mission mission = CreateMission(dormant);
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void TryCreate_ValidArgs_SetsTrainerInstanceID()
         {
             Mission mission = CreateMission();
@@ -161,6 +206,17 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAbortReason_PlanetLost_ReturnsTargetUnavailable()
+        {
+            Mission mission = CreateMission();
+            _planet.OwnerInstanceID = "empire";
+            Assert.AreEqual(
+                MissionCompletionReason.TargetUnavailable,
+                mission.GetAbortReason(_game)
+            );
+        }
+
+        [Test]
         public void ShouldRepeatAfterCompletion_StudentForceQualified_ReturnsFalse()
         {
             Mission mission = CreateMission();
@@ -174,6 +230,14 @@ namespace Rebellion.Tests.Game.Missions
             Mission mission = CreateMission();
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
             Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
+        }
+
+        [Test]
+        public void ShouldRepeatAfterCompletion_PlanetLost_ReturnsFalse()
+        {
+            Mission mission = CreateMission();
+            _planet.OwnerInstanceID = "empire";
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         [Test]

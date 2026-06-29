@@ -86,6 +86,43 @@ namespace Rebellion.Tests.Systems
             game.Config.ProbabilityTables.Mission.KillOrCapture = table;
         }
 
+        private static Regiment CreateCompletedRegiment(string id, string ownerInstanceID)
+        {
+            return new Regiment
+            {
+                InstanceID = id,
+                OwnerInstanceID = ownerInstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        private static void AddResearchFacilities(GameRoot game, Planet planet)
+        {
+            planet.EnergyCapacity = 10;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "construction",
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    ProductionType = ManufacturingType.Building,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+        }
+
         private static MissionStartRequest CreateRequest(
             string missionTypeID,
             IMissionParticipant participant,
@@ -736,13 +773,20 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, empirePlanet);
+            Regiment sabotageTarget = CreateCompletedRegiment("r1", "rebels");
+            game.AttachNode(sabotageTarget, targetPlanet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
-                CreateRequest(MissionTypeIDs.Sabotage, officer, targetPlanet)
+                CreateRequest(
+                    MissionTypeIDs.Sabotage,
+                    officer,
+                    targetPlanet,
+                    specificTarget: sabotageTarget
+                )
             );
 
             Mission mission = game.GetSceneNodesByType<Mission>().FirstOrDefault();
@@ -792,13 +836,20 @@ namespace Rebellion.Tests.Systems
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, empirePlanet);
+            Regiment sabotageTarget = CreateCompletedRegiment("r1", "rebels");
+            game.AttachNode(sabotageTarget, targetPlanet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog);
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
-                CreateRequest(MissionTypeIDs.Sabotage, officer, targetPlanet)
+                CreateRequest(
+                    MissionTypeIDs.Sabotage,
+                    officer,
+                    targetPlanet,
+                    specificTarget: sabotageTarget
+                )
             );
 
             Assert.IsTrue(
@@ -1537,6 +1588,8 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
 
@@ -1564,6 +1617,10 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
+            officer.ShipResearch = 1;
+            officer.TroopResearch = 1;
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
             MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
@@ -1586,11 +1643,67 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void GetAvailableMissionOptions_ResearchWithSingleMatchingRating_ReturnsMatchingResearchOption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.ShipResearch = 1;
+            AddResearchFacilities(game, planet);
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            MissionOption[] researchOptions = options
+                .Where(option => option.MissionTypeID == MissionTypeIDs.Research)
+                .ToArray();
+            Assert.AreEqual(1, researchOptions.Length);
+            Assert.AreEqual(ResearchDiscipline.ShipDesign, researchOptions.Single().Discipline);
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_TroopTrainingWithoutFacility_ExcludesResearchOption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.TroopResearch = 1;
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_ResearchWithoutMatchingRating_ExcludesResearchOptions()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
+        }
+
+        [Test]
         public void GetAvailableMissionOptions_DisallowedResearch_ExcludesResearchOptions()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
+            officer.ShipResearch = 1;
+            officer.TroopResearch = 1;
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
             game.Factions.Single().DisallowedMissionTypeIDs.Add(MissionTypeIDs.Research);
             MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
 
@@ -1599,6 +1712,77 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Research));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_EnemyPlanetRecruitment_ExcludesRecruitmentOption()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            participant.IsMain = true;
+            game.UnrecruitedOfficers.Add(
+                new Officer
+                {
+                    InstanceID = "unrecruited",
+                    AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                }
+            );
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, participant, targetPlanet)
+            );
+
+            Assert.IsFalse(
+                options.Any(option => option.MissionTypeID == MissionTypeIDs.Recruitment)
+            );
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_PlanetOnlySabotageTarget_ExcludesSabotageOption()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Regiment regiment = CreateCompletedRegiment("r1", "rebels");
+            game.AttachNode(regiment, targetPlanet);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, participant, targetPlanet)
+            );
+
+            Assert.IsFalse(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_ManufacturableSabotageTarget_ReturnsSabotageOption()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Regiment regiment = CreateCompletedRegiment("r1", "rebels");
+            game.AttachNode(regiment, targetPlanet);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, participant, targetPlanet, specificTarget: regiment)
+            );
+
+            Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
         }
 
         [Test]
@@ -1667,23 +1851,20 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            Building building = new Building
-            {
-                InstanceID = "b1",
-                OwnerInstanceID = "rebels",
-                BuildingType = BuildingType.Mine,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(building, targetPlanet);
+            Regiment regiment = CreateCompletedRegiment("regiment", "rebels");
+            game.AttachNode(regiment, targetPlanet);
             Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
             Officer viewParticipant = EntityFactory.CreateOfficer(participant.InstanceID, "empire");
+            Regiment viewRegiment = CreateCompletedRegiment(regiment.InstanceID, "rebels");
+            viewRegiment.SetParent(viewPlanet);
 
             bool created = missions.InitiateMission(
                 CreateRequest(
                     MissionTypeIDs.Sabotage,
                     new List<IMissionParticipant> { viewParticipant },
                     new List<IMissionParticipant>(),
-                    viewPlanet
+                    viewPlanet,
+                    specificTarget: viewRegiment
                 )
             );
 
