@@ -677,6 +677,21 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        [Test]
+        public void ProcessTick_PopularSupportTransfer_SetsOwnershipChangeReason()
+        {
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, threshold + 1);
+
+            List<GameResult> results = _ownershipSystem.ProcessTick();
+
+            PlanetOwnershipChangedResult result = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single(r => r.Planet == _targetPlanet);
+            Assert.AreEqual(_rebels, result.NewOwner);
+            Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, result.Reason);
+        }
+
         private Faction AddFaction(string instanceId)
         {
             Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };

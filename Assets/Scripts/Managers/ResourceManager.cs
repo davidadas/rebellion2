@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml;
 using System.Xml.Schema;
@@ -10,6 +11,10 @@ using Rebellion.Util.Serialization;
 /// </summary>
 public static class ResourceManager
 {
+    private const string _artRoot = "Art/";
+    private const string _legacyArtRoot = "Art/UI/";
+    private const string _originalArtRoot = "Art/Original/UI/";
+
     /// <summary>
     /// Loads and deserializes a strongly-typed configuration object
     /// from the Resources/Configs folder using the custom XML serializer.
@@ -53,7 +58,7 @@ public static class ResourceManager
     /// Loads and deserializes all game data entities of type T
     /// from the Resources/Data folder.
     /// </summary>
-    public static T[] GetGameData<T>()
+    public static T[] GetEntityData<T>()
         where T : BaseGameEntity
     {
         string typeName = typeof(T).Name;
@@ -149,7 +154,7 @@ public static class ResourceManager
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = UnityEngine.Resources.Load<T>(path);
+        T resource = TryLoadResource<T>(path);
 
         if (resource == null)
         {
@@ -157,6 +162,37 @@ public static class ResourceManager
         }
 
         return resource;
+    }
+
+    private static T TryLoadResource<T>(string path)
+        where T : UnityEngine.Object
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        foreach (string candidatePath in GetResourcePathCandidates(path))
+        {
+            T resource = UnityEngine.Resources.Load<T>(candidatePath);
+            if (resource != null)
+                return resource;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetResourcePathCandidates(string path)
+    {
+        if (IsLegacyArtPath(path))
+            yield return _originalArtRoot + path[_legacyArtRoot.Length..];
+
+        yield return path;
+    }
+
+    private static bool IsLegacyArtPath(string path)
+    {
+        return path.StartsWith(_legacyArtRoot, StringComparison.Ordinal)
+            && !path.StartsWith(_originalArtRoot, StringComparison.Ordinal)
+            && !path.StartsWith(_artRoot + "HD/", StringComparison.Ordinal);
     }
 
     private static T[] LoadResourceGroup<T>(string folderPath, string errorPrefix)

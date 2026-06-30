@@ -1,6 +1,6 @@
 using Rebellion.SceneGraph;
 
-namespace Rebellion.Game.Factions
+namespace Rebellion.Game.Messages
 {
     public enum MessageType
     {
@@ -21,6 +21,11 @@ namespace Rebellion.Game.Factions
         public string Title;
         public string Text;
         public string Body;
+        public string DisplayImageKey;
+        public string OverlayImagePath;
+        public string MessageVoicePath;
+        public string OfficerVoicePath;
+        public string EventLocationInstanceID;
         public bool Read;
 
         /// <summary>

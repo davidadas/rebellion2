@@ -86,7 +86,7 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        _messageFactory = new MessageFactory(ResourceManager.GetGameData<MessageDefinition>());
+        _messageFactory = new MessageFactory(ResourceManager.GetEntityData<MessageDefinition>());
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
@@ -128,12 +128,12 @@ public class GameManager
     private void RebuildDerivedState()
     {
         IManufacturable[] templates = ResourceManager
-            .GetGameData<Building>()
+            .GetEntityData<Building>()
             .Cast<IManufacturable>()
-            .Concat(ResourceManager.GetGameData<CapitalShip>())
-            .Concat(ResourceManager.GetGameData<Starfighter>())
-            .Concat(ResourceManager.GetGameData<Regiment>())
-            .Concat(ResourceManager.GetGameData<SpecialForces>())
+            .Concat(ResourceManager.GetEntityData<CapitalShip>())
+            .Concat(ResourceManager.GetEntityData<Starfighter>())
+            .Concat(ResourceManager.GetEntityData<Regiment>())
+            .Concat(ResourceManager.GetEntityData<SpecialForces>())
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())
@@ -246,7 +246,7 @@ public class GameManager
             return;
 
         ProcessResults(_missionManager.ProcessTick());
-        _eventManager.ProcessEvents(_game.GetEventPool());
+        ProcessResults(_eventManager.ProcessEvents(_game.GetEventPool()));
         ProcessResults(_aiSystem.ProcessTick());
 
         ProcessResults(_blockadeManager.ProcessTick());

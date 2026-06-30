@@ -154,12 +154,12 @@ namespace Rebellion.Tests.Generation
         public void Build_AfterRebuild_TechnologiesSurvive()
         {
             IManufacturable[] templates = ResourceManager
-                .GetGameData<Building>()
+                .GetEntityData<Building>()
                 .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetGameData<CapitalShip>())
-                .Concat(ResourceManager.GetGameData<Starfighter>())
-                .Concat(ResourceManager.GetGameData<Regiment>())
-                .Concat(ResourceManager.GetGameData<SpecialForces>())
+                .Concat(ResourceManager.GetEntityData<CapitalShip>())
+                .Concat(ResourceManager.GetEntityData<Starfighter>())
+                .Concat(ResourceManager.GetEntityData<Regiment>())
+                .Concat(ResourceManager.GetEntityData<SpecialForces>())
                 .ToArray();
 
             foreach (Faction faction in _game.Factions)
@@ -194,11 +194,11 @@ namespace Rebellion.Tests.Generation
         public void Build_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
             IManufacturable[] templates = ResourceManager
-                .GetGameData<Building>()
+                .GetEntityData<Building>()
                 .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetGameData<CapitalShip>())
-                .Concat(ResourceManager.GetGameData<Starfighter>())
-                .Concat(ResourceManager.GetGameData<Regiment>())
+                .Concat(ResourceManager.GetEntityData<CapitalShip>())
+                .Concat(ResourceManager.GetEntityData<Starfighter>())
+                .Concat(ResourceManager.GetEntityData<Regiment>())
                 .ToArray();
 
             foreach (Faction faction in _game.Factions)

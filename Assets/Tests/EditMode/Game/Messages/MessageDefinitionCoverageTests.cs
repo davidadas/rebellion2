@@ -76,6 +76,199 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_WithConfiguredOfficerDefinitions_ReturnsMissionDelivery()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                DisplayName = "Agent",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath =
+                    "Art/UI/Messages/Characters/ui_message_character_alliance_ackbar",
+            };
+            game.AttachNode(officer, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new OfficerRecruitedResult
+                {
+                    Officer = officer,
+                    Faction = alliance,
+                    Planet = origin,
+                },
+                new OfficerInjuredResult { Officer = officer, Severity = 1 },
+                new OfficerKilledResult { TargetOfficer = officer, Context = origin }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.Mission, 2);
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredOfficerStatusDefinitions_AssignsDetailImages()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                DisplayName = "Agent",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath =
+                    "Art/UI/Messages/Characters/ui_message_character_alliance_ackbar",
+            };
+            game.AttachNode(officer, origin);
+
+            AssertMessageImage(
+                CreateSingleMessage(
+                    game,
+                    alliance,
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = officer,
+                        IsCaptured = true,
+                        Context = origin,
+                    }
+                ),
+                "Art/UI/Messages/ui_message_character_captured_alliance",
+                officer.MessageImagePath
+            );
+            AssertMessageImage(
+                CreateSingleMessage(
+                    game,
+                    alliance,
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = officer,
+                        IsCaptured = false,
+                        Context = origin,
+                    }
+                ),
+                "Art/UI/Messages/ui_message_prisoner_escape",
+                officer.MessageImagePath
+            );
+            AssertMessageImage(
+                CreateSingleMessage(
+                    game,
+                    alliance,
+                    new OfficerInjuredResult { Officer = officer, Severity = 1 }
+                ),
+                "Art/UI/Messages/ui_message_character_injured",
+                officer.MessageImagePath
+            );
+            AssertMessageImage(
+                CreateSingleMessage(
+                    game,
+                    alliance,
+                    new OfficerInjuredResult { Officer = officer, Severity = 0 }
+                ),
+                "Art/UI/Messages/ui_message_character_recovered",
+                officer.MessageImagePath
+            );
+            AssertMessageImage(
+                CreateSingleMessage(
+                    game,
+                    alliance,
+                    new OfficerKilledResult { TargetOfficer = officer, Context = origin }
+                ),
+                "Art/UI/Messages/ui_message_character_killed_alliance",
+                null
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredMissionFallbackDefinitions_AssignsDetailImages()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+
+            Message jediTraining = CreateSingleMessage(
+                game,
+                alliance,
+                new MissionCompletedResult
+                {
+                    Mission = new JediTrainingMission
+                    {
+                        ConfigKey = MissionTypeIDs.JediTraining,
+                        OwnerInstanceID = alliance.InstanceID,
+                    },
+                    TargetName = destination.DisplayName,
+                    Outcome = MissionOutcome.Success,
+                }
+            );
+            Message research = CreateSingleMessage(
+                game,
+                alliance,
+                new MissionCompletedResult
+                {
+                    Mission = new ResearchMission
+                    {
+                        ConfigKey = MissionTypeIDs.Research,
+                        OwnerInstanceID = alliance.InstanceID,
+                        DisplayName = "Ship Design",
+                    },
+                    TargetName = destination.DisplayName,
+                    Outcome = MissionOutcome.Failed,
+                }
+            );
+            Message sabotageFailed = CreateSingleMessage(
+                game,
+                alliance,
+                new MissionCompletedResult
+                {
+                    Mission = new SabotageMission
+                    {
+                        ConfigKey = MissionTypeIDs.Sabotage,
+                        OwnerInstanceID = alliance.InstanceID,
+                        DisplayName = "Sabotage",
+                    },
+                    TargetName = destination.DisplayName,
+                    Outcome = MissionOutcome.Failed,
+                }
+            );
+
+            Assert.AreEqual("mission_report", jediTraining.DisplayImageKey);
+            Assert.IsNull(jediTraining.DisplayImagePath);
+            Assert.IsNull(research.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_research_report",
+                research.DisplayImagePath
+            );
+            Assert.IsNull(sabotageFailed.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_mission_report_espionage",
+                sabotageFailed.DisplayImagePath
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredForceGrowthDefinition_UsesMissionReportKey()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
+                ForceValue = game.Config.Jedi.RankLabelForceKnight,
+                MessageImagePath =
+                    "Art/UI/Messages/Characters/ui_message_character_alliance_luke_skywalker",
+            };
+            game.AttachNode(officer, origin);
+
+            Message message = CreateSingleMessage(
+                game,
+                alliance,
+                new ForceExperienceResult
+                {
+                    Officer = officer,
+                    ExperienceGained = 1,
+                    PreviousForceRank = game.Config.Jedi.RankLabelForceKnight - 1,
+                    CurrentForceRank = game.Config.Jedi.RankLabelForceKnight,
+                }
+            );
+
+            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.IsNull(message.DisplayImagePath);
+            Assert.AreEqual(officer.MessageImagePath, message.OverlayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_WithConfiguredFacilityDefinition_ReturnsResourceDelivery()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -121,6 +314,7 @@ namespace Rebellion.Tests.Game.Messages
                 BuildTwoFactionMessageScene();
             Mission mission = new SabotageMission
             {
+                ConfigKey = MissionTypeIDs.Sabotage,
                 OwnerInstanceID = alliance.InstanceID,
                 DisplayName = "Sabotage",
             };
@@ -155,6 +349,7 @@ namespace Rebellion.Tests.Game.Messages
                 BuildTwoFactionMessageScene();
             Mission mission = new SabotageMission
             {
+                ConfigKey = MissionTypeIDs.Sabotage,
                 OwnerInstanceID = alliance.InstanceID,
                 DisplayName = "Sabotage",
             };
@@ -212,6 +407,12 @@ namespace Rebellion.Tests.Game.Messages
 
             AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
             AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
+            Message message = deliveries.First(delivery => delivery.Faction == alliance).Message;
+            Assert.IsNull(message.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_uprising_started",
+                message.DisplayImagePath
+            );
         }
 
         [Test]
@@ -225,6 +426,29 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredPlanetJoinedBySupportDefinition_ReturnsNewOwnerDelivery()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = null,
+                    NewOwner = alliance,
+                    Reason = PlanetOwnershipChangeReason.PopularSupport,
+                }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
+            Message message = deliveries.Single().Message;
+            Assert.AreEqual("planet_allegiance_evolves", message.DisplayImageKey);
+            Assert.IsNull(message.DisplayImagePath);
         }
 
         [Test]
@@ -424,9 +648,30 @@ namespace Rebellion.Tests.Game.Messages
         )
         {
             MessageFactory factory = new MessageFactory(
-                ResourceManager.GetGameData<MessageDefinition>()
+                ResourceManager.GetEntityData<MessageDefinition>()
             );
             return factory.CreateMessages(results, game).ToList();
+        }
+
+        private static Message CreateSingleMessage(
+            GameRoot game,
+            Faction faction,
+            params GameResult[] results
+        )
+        {
+            return CreateMessages(game, results)
+                .Single(delivery => delivery.Faction == faction)
+                .Message;
+        }
+
+        private static void AssertMessageImage(
+            Message message,
+            string displayImagePath,
+            string overlayImagePath
+        )
+        {
+            Assert.AreEqual(displayImagePath, message.DisplayImagePath);
+            Assert.AreEqual(overlayImagePath, message.OverlayImagePath);
         }
 
         private static void AssertOnlyDeliveries(

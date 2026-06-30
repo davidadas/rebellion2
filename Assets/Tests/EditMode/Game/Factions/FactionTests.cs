@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
@@ -378,12 +379,12 @@ namespace Rebellion.Tests.Game.Factions
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
             IManufacturable[] templates = ResourceManager
-                .GetGameData<Building>()
+                .GetEntityData<Building>()
                 .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetGameData<CapitalShip>())
-                .Concat(ResourceManager.GetGameData<Starfighter>())
-                .Concat(ResourceManager.GetGameData<Regiment>())
-                .Concat(ResourceManager.GetGameData<SpecialForces>())
+                .Concat(ResourceManager.GetEntityData<CapitalShip>())
+                .Concat(ResourceManager.GetEntityData<Starfighter>())
+                .Concat(ResourceManager.GetEntityData<Regiment>())
+                .Concat(ResourceManager.GetEntityData<SpecialForces>())
                 .ToArray();
             alliance.RebuildResearchCatalog(templates);
 

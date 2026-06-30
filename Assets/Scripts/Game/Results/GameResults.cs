@@ -73,6 +73,12 @@ namespace Rebellion.Game.Results
         Assault,
     }
 
+    public enum PlanetOwnershipChangeReason
+    {
+        None,
+        PopularSupport,
+    }
+
     public enum FleetStateType
     {
         Battle,
@@ -195,6 +201,7 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Faction PreviousOwner { get; set; }
         public Faction NewOwner { get; set; }
+        public PlanetOwnershipChangeReason Reason { get; set; }
     }
 
     /// <summary>
@@ -427,6 +434,8 @@ namespace Rebellion.Game.Results
     {
         public Officer Officer { get; set; }
         public int ExperienceGained { get; set; }
+        public int PreviousForceRank { get; set; }
+        public int CurrentForceRank { get; set; }
         public int Detail { get; set; }
     }
 
@@ -700,6 +709,7 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public Planet Planet { get; set; }
     }
 
     public class BombardmentStrikeEvent

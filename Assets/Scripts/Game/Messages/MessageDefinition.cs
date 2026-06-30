@@ -1,5 +1,5 @@
-using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -18,11 +18,21 @@ namespace Rebellion.Game.Messages
         ManufacturingIdle,
         MissionReport,
         EnemyMissionFoiled,
+        OfficerRecruited,
+        OfficerCaptured,
+        OfficerReleased,
+        OfficerInjured,
+        OfficerRecovered,
+        OfficerKilled,
+        ForceGrowth,
+        CapitalShipRepaired,
+        StarfighterRepaired,
         SabotageStrike,
         ResearchComplete,
         ResearchExhausted,
         UprisingStarted,
         UprisingEnded,
+        PlanetJoinedBySupport,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
@@ -68,11 +78,16 @@ namespace Rebellion.Game.Messages
         public MessageResultOutcome Outcome { get; set; }
         public MessagePlanetOwnership PlanetOwnership { get; set; }
         public MessageType MessageType { get; set; }
+        public string MissionTypeID { get; set; }
+        public MissionCompletionReason MissionCompletionReason { get; set; }
         public BuildingType BuildingType { get; set; }
         public ManufacturingType ManufacturingType { get; set; }
         public ResearchDiscipline ResearchDiscipline { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public string ImageKey { get; set; }
         public MessageImageMap ImageMap { get; set; }
+        public string VoicePath { get; set; }
+        public MessageImageMap VoiceMap { get; set; }
     }
 }
