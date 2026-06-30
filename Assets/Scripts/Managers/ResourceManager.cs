@@ -13,6 +13,8 @@ public static class ResourceManager
 {
     private const string _artRoot = "Art/";
     private const string _legacyArtRoot = "Art/UI/";
+    private const string _legacyEncyclopediaRoot = _legacyArtRoot + "Encyclopedia/";
+    private const string _hdEncyclopediaRoot = _artRoot + "HD/UI/Encyclopedia/";
     private const string _originalArtRoot = "Art/Original/UI/";
 
     /// <summary>
@@ -182,10 +184,18 @@ public static class ResourceManager
 
     private static IEnumerable<string> GetResourcePathCandidates(string path)
     {
+        if (IsLegacyEncyclopediaPath(path))
+            yield return _hdEncyclopediaRoot + path[_legacyEncyclopediaRoot.Length..];
+
         if (IsLegacyArtPath(path))
             yield return _originalArtRoot + path[_legacyArtRoot.Length..];
 
         yield return path;
+    }
+
+    private static bool IsLegacyEncyclopediaPath(string path)
+    {
+        return path.StartsWith(_legacyEncyclopediaRoot, StringComparison.Ordinal);
     }
 
     private static bool IsLegacyArtPath(string path)
