@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -9,6 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -67,7 +69,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = mission.Execute(game, new ThrowingRNG());
 
             Assert.IsTrue(enemyPlanet.WasVisitedBy("empire"));
             Assert.AreEqual(
@@ -262,6 +264,19 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
+        }
+
+        private class ThrowingRNG : IRandomNumberProvider
+        {
+            public double NextDouble()
+            {
+                throw new InvalidOperationException();
+            }
+
+            public int NextInt(int min, int max)
+            {
+                throw new InvalidOperationException();
+            }
         }
     }
 }
