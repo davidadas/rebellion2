@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_UnvisitedPlanet_CapturesSnapshotWithAnyRoll()
+        public void Execute_UnvisitedPlanet_CapturesSnapshotWithoutSuccessRoll()
         {
             (
                 GameRoot game,
