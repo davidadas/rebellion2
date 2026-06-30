@@ -205,20 +205,7 @@ namespace Rebellion.Generation
                     continue;
 
                 List<CapitalShip> capitalShips = new List<CapitalShip>();
-                if (fleetConfig.ShipEntries?.Count > 0)
-                {
-                    CreateFixedFleetShips(fleetConfig, factory, capitalShips);
-                }
-                else
-                {
-                    CreateLegacyFixedFleetShips(fleetConfig, factory, capitalShips);
-                    AttachCargoToShip(
-                        capitalShips.FirstOrDefault(),
-                        fleetConfig.Cargo,
-                        fleetConfig,
-                        factory
-                    );
-                }
+                CreateFixedFleetShips(fleetConfig, factory, capitalShips);
 
                 if (capitalShips.Count == 0)
                     continue;
@@ -337,28 +324,6 @@ namespace Rebellion.Generation
 
                     AttachCargoToShip(ship, entry.Cargo, fleetConfig, factory);
                     capitalShips.Add(ship);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Creates ships from legacy fixed-fleet ship entries.
-        /// </summary>
-        /// <param name="fleetConfig">The fixed fleet configuration.</param>
-        /// <param name="factory">Unit factory for creating unit instances.</param>
-        /// <param name="capitalShips">Accumulator for created capital ships.</param>
-        private void CreateLegacyFixedFleetShips(
-            FixedFleet fleetConfig,
-            UnitFactory factory,
-            List<CapitalShip> capitalShips
-        )
-        {
-            foreach (UnitEntry entry in fleetConfig.Ships ?? new List<UnitEntry>())
-            {
-                for (int i = 0; i < entry.Count; i++)
-                {
-                    if (factory.Create(entry.TypeID, fleetConfig.FactionID) is CapitalShip ship)
-                        capitalShips.Add(ship);
                 }
             }
         }

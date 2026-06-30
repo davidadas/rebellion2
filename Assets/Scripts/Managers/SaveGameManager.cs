@@ -95,6 +95,10 @@ public class SaveGameManager
                     stream,
                     _metadataElementName
                 );
+                if (metadata == null)
+                    throw new InvalidOperationException("Save metadata is missing.");
+
+                ValidateSaveVersion(metadata.SaveVersion);
 
                 saves.Add(new SaveGameEntry(Path.GetFileNameWithoutExtension(file.Name), metadata));
             }
@@ -160,12 +164,11 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Reads just the metadata node from a save file to determine its schema version
-    /// without paying for a full deserialize.
+    /// Reads the save version from a save file's metadata.
     /// </summary>
-    /// <param name="saveFilePath">Absolute path to the save file.</param>
-    /// <param name="serializer">Serializer configured for the save's root type.</param>
-    /// <returns>The save version, or 0 for legacy saves written before versioning.</returns>
+    /// <param name="saveFilePath">The save file path.</param>
+    /// <param name="serializer">The serializer used to read the save metadata.</param>
+    /// <returns>The save version.</returns>
     private int PeekSaveVersion(string saveFilePath, GameSerializer serializer)
     {
         using FileStream stream = new FileStream(
@@ -179,15 +182,22 @@ public class SaveGameManager
             stream,
             _metadataElementName
         );
-        return metadata?.SaveVersion ?? 0;
+        if (metadata == null)
+            throw new InvalidOperationException("Save metadata is missing.");
+
+        return metadata.SaveVersion;
     }
 
+    /// <summary>
+    /// Validates that a save version can be loaded by this client.
+    /// </summary>
+    /// <param name="saveVersion">The save version to validate.</param>
     private void ValidateSaveVersion(int saveVersion)
     {
-        if (saveVersion > GameMetadata.CurrentSaveVersion)
+        if (saveVersion != GameMetadata.CurrentSaveVersion)
         {
             throw new InvalidOperationException(
-                $"Save version {saveVersion} is newer than supported version {GameMetadata.CurrentSaveVersion}."
+                $"Save version {saveVersion} is not supported by version {GameMetadata.CurrentSaveVersion}."
             );
         }
     }

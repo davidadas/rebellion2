@@ -105,6 +105,8 @@ namespace Rebellion.Tests.Util.Serialization
         }
     }
 
+    public class SimpleItemCollection : List<SimpleItem> { }
+
     [PersistableObject]
     public class SimpleItemWithDictionary
     {
@@ -1187,6 +1189,43 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(30, deserialized[2].Value);
             Assert.AreEqual(TestEnum.Value3, deserialized[2].EnumValue);
             Assert.AreEqual("Public3", deserialized[2].PublicVariable);
+        }
+
+        [Test]
+        public void Deserialize_ListSubclass_RetainsObjectProperties()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(SimpleItemCollection));
+            string xmlInput =
+                @"<?xml version=""1.0"" encoding=""utf-8""?>
+<SimpleItemCollection>
+  <SimpleItem>
+    <Name>Item1</Name>
+    <Value>10</Value>
+    <EnumValue>Value1</EnumValue>
+    <PublicVariable>Public1</PublicVariable>
+  </SimpleItem>
+  <SimpleItem>
+    <Name>Item2</Name>
+    <Value>20</Value>
+    <EnumValue>Value2</EnumValue>
+    <PublicVariable>Public2</PublicVariable>
+  </SimpleItem>
+</SimpleItemCollection>";
+
+            SimpleItemCollection deserialized = (SimpleItemCollection)DeserializeFromString(
+                serializer,
+                xmlInput
+            );
+
+            Assert.AreEqual(2, deserialized.Count);
+            Assert.AreEqual("Item1", deserialized[0].Name);
+            Assert.AreEqual(10, deserialized[0].Value);
+            Assert.AreEqual(TestEnum.Value1, deserialized[0].EnumValue);
+            Assert.AreEqual("Public1", deserialized[0].PublicVariable);
+            Assert.AreEqual("Item2", deserialized[1].Name);
+            Assert.AreEqual(20, deserialized[1].Value);
+            Assert.AreEqual(TestEnum.Value2, deserialized[1].EnumValue);
+            Assert.AreEqual("Public2", deserialized[1].PublicVariable);
         }
 
         [Test]

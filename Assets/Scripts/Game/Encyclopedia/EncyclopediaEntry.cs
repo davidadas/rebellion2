@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Rebellion.Util.Serialization;
@@ -85,88 +84,5 @@ namespace Rebellion.Game.Encyclopedia
     }
 
     [PersistableObject]
-    public sealed class EncyclopediaEntries : List<EncyclopediaEntry>
-    {
-        /// <summary>
-        /// Gets all entries visible in the requested encyclopedia tab.
-        /// </summary>
-        /// <param name="tab">The encyclopedia tab index.</param>
-        /// <param name="factionInstanceId">The faction instance ID viewing the entries.</param>
-        /// <returns>The visible entries sorted by display name.</returns>
-        public List<EncyclopediaEntry> GetRows(int tab, string factionInstanceId)
-        {
-            List<EncyclopediaEntry> rows = new List<EncyclopediaEntry>();
-            for (int i = 0; i < Count; i++)
-            {
-                EncyclopediaEntry entry = this[i];
-                if (
-                    entry != null
-                    && IsInTab(entry, tab)
-                    && IsVisibleToFaction(entry, factionInstanceId)
-                )
-                    rows.Add(entry);
-            }
-
-            rows.Sort(
-                (left, right) =>
-                    string.Compare(
-                        left?.DisplayName,
-                        right?.DisplayName,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-            );
-            return rows;
-        }
-
-        /// <summary>
-        /// Finds an entry by type ID.
-        /// </summary>
-        /// <param name="typeId">The entry type ID to match.</param>
-        /// <param name="factionInstanceId">The faction instance ID viewing the entry.</param>
-        /// <returns>The matching entry, or null when no entry exists.</returns>
-        public EncyclopediaEntry FindEntry(string typeId, string factionInstanceId)
-        {
-            if (string.IsNullOrEmpty(typeId))
-                return null;
-
-            for (int i = 0; i < Count; i++)
-            {
-                EncyclopediaEntry entry = this[i];
-                if (
-                    string.Equals(entry?.TypeID, typeId, StringComparison.Ordinal)
-                    && IsVisibleToFaction(entry, factionInstanceId)
-                )
-                    return entry;
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Checks whether an entry belongs in a tab.
-        /// </summary>
-        /// <param name="entry">The entry to check.</param>
-        /// <param name="tab">The encyclopedia tab index.</param>
-        /// <returns>True when the entry is visible in the tab.</returns>
-        private static bool IsInTab(EncyclopediaEntry entry, int tab)
-        {
-            return tab == 0
-                || tab == 1 && entry.Category == EncyclopediaEntryCategory.System
-                || tab == 2 && entry.Category == EncyclopediaEntryCategory.Ship
-                || tab == 3 && entry.Category == EncyclopediaEntryCategory.Facility
-                || tab == 4 && entry.Category == EncyclopediaEntryCategory.Mission
-                || tab == 5 && entry.Category == EncyclopediaEntryCategory.Troop
-                || tab == 6 && entry.Category == EncyclopediaEntryCategory.Personnel;
-        }
-
-        private static bool IsVisibleToFaction(EncyclopediaEntry entry, string factionInstanceId)
-        {
-            return string.IsNullOrEmpty(entry.VisibleFactionInstanceID)
-                || string.Equals(
-                    entry.VisibleFactionInstanceID,
-                    factionInstanceId,
-                    StringComparison.Ordinal
-                );
-        }
-    }
+    public sealed class EncyclopediaEntries : List<EncyclopediaEntry> { }
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <SpecialForces>
   <!--   **************************************************  -->
   <!--   ******************** ALLIANCE ********************  -->
@@ -7,7 +7,22 @@
     <TypeID>SPAL001</TypeID>
     <DisplayName>Guerrillas</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_guerrillas_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_guerrillas</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -31,7 +46,22 @@
     <TypeID>SPAL002</TypeID>
     <DisplayName>Infiltrators</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_infiltrators_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_infiltrators</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -56,7 +86,22 @@
     <TypeID>SPAL003</TypeID>
     <DisplayName>Longprobe Y-wing Recon Team</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_longprobe_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_longprobe_y_wing_recon_team</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -79,7 +124,22 @@
     <TypeID>SPAL004</TypeID>
     <DisplayName>Bothan Spies</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_bothan_spies_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_bothan_spies</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -105,7 +165,22 @@
     <TypeID>SPEM001</TypeID>
     <DisplayName>Imperial Probe Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_probe_droid_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Probe droids are designed as reconnaissance and information-gathering units by the Empire.  Each probe droid is contained in a small hyperspace-capable pod allowing them to travel the galaxy without the need for deployment from capital ships.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_probe_droid</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Probe droids are designed as reconnaissance and information-gathering units by the Empire.  Each probe droid is contained in a small hyperspace-capable pod allowing them to travel the galaxy without the need for deployment from capital ships.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Probe droids are designed as reconnaissance and information-gathering units by the Empire.  Each probe droid is contained in a small hyperspace-capable pod allowing them to travel the galaxy without the need for deployment from capital ships.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -128,7 +203,22 @@
     <TypeID>SPEM002</TypeID>
     <DisplayName>Imperial Espionage Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_espionage_droid_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;1&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Imperial espionage droids are designed to look like any other protocol droid, except they have special transmitters built into them. These transmitters allow for communication of information back to the Empire.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_espionage_droid</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Imperial espionage droids are designed to look like any other protocol droid, except they have special transmitters built into them. These transmitters allow for communication of information back to the Empire.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial espionage droids are designed to look like any other protocol droid, except they have special transmitters built into them. These transmitters allow for communication of information back to the Empire.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -151,7 +241,22 @@
     <TypeID>SPEM003</TypeID>
     <DisplayName>Imperial Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_commandos_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Imperial commandos are elite special forces whose missions usually entail the infiltration and sabotage of enemy troops and equipment.  Commandos can also be utilized to instill unrest on enemy systems, or to suppress insurrection on Imperial-controlled worlds.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_commandos</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Imperial commandos are elite special forces whose missions usually entail the infiltration and sabotage of enemy troops and equipment.  Commandos can also be utilized to instill unrest on enemy systems, or to suppress insurrection on Imperial-controlled worlds.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial commandos are elite special forces whose missions usually entail the infiltration and sabotage of enemy troops and equipment.  Commandos can also be utilized to instill unrest on enemy systems, or to suppress insurrection on Imperial-controlled worlds.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -176,7 +281,22 @@
     <TypeID>SPEM004</TypeID>
     <DisplayName>Noghri Death Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_noghri_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;2&#xA;Maintenance Cost:&#x9;&#x9;1&#xA;&#xA;Noghri death commandos are experts in infiltration and assassination.  All Noghri have an extreme loyalty to Lord Vader and will do whatever he commands, including the abduction of enemy personnel or rescue of captured Imperial personnel.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_noghri_death_commandos</EncyclopediaImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Noghri death commandos are experts in infiltration and assassination.  All Noghri have an extreme loyalty to Lord Vader and will do whatever he commands, including the abduction of enemy personnel or rescue of captured Imperial personnel.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Noghri death commandos are experts in infiltration and assassination.  All Noghri have an extreme loyalty to Lord Vader and will do whatever he commands, including the abduction of enemy personnel or rescue of captured Imperial personnel.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>

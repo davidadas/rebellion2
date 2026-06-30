@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <Regiments>
   <!--   **************************************************  -->
   <!--   ********************* EMPIRE *********************  -->
@@ -7,7 +7,37 @@
     <TypeID>REEM001</TypeID>
     <DisplayName>Imperial Fleet Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_empire_imperial_fleet_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;7&#xA;Maintenance Cost:&#x9;&#x9;&#x9;5&#xA;Attack Strength:&#x9;&#x9;&#x9;5&#xA;Defense Strength:&#x9;&#x9;&#x9;3&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;Imperial fleet regiments are the mainstay troops aboard capital ships.  They assist in conducting ground assault missions and are generally better equipped than regular army regiments.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_fleet_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		7
+Maintenance Cost:			5
+Attack Strength:			5
+Defense Strength:			3
+Bombardment Defense:		2
+
+Imperial fleet regiments are the mainstay troops aboard capital ships.  They assist in conducting ground assault missions and are generally better equipped than regular army regiments.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>7</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial fleet regiments are the mainstay troops aboard capital ships.  They assist in conducting ground assault missions and are generally better equipped than regular army regiments.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -25,7 +55,37 @@
     <TypeID>REEM002</TypeID>
     <DisplayName>Imperial Army Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_empire_imperial_army_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;6&#xA;Maintenance Cost:&#x9;&#x9;&#x9;3&#xA;Attack Strength:&#x9;&#x9;&#x9;3&#xA;Defense Strength:&#x9;&#x9;&#x9;5&#xA;Bombardment Defense:&#x9;&#x9;5&#xA;&#xA;Army regiments comprise the largest percentage of Imperial ground troops.  Army regiments are armored the same as fleet regiments, but do not carry the firepower of their fleet counterparts.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_army_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		6
+Maintenance Cost:			3
+Attack Strength:			3
+Defense Strength:			5
+Bombardment Defense:		5
+
+Army regiments comprise the largest percentage of Imperial ground troops.  Army regiments are armored the same as fleet regiments, but do not carry the firepower of their fleet counterparts.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Army regiments comprise the largest percentage of Imperial ground troops.  Army regiments are armored the same as fleet regiments, but do not carry the firepower of their fleet counterparts.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -43,7 +103,37 @@
     <TypeID>REEM003</TypeID>
     <DisplayName>Stormtrooper Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_empire_stormtrooper_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;9&#xA;Maintenance Cost:&#x9;&#x9;&#x9;6&#xA;Attack Strength:&#x9;&#x9;&#x9;6&#xA;Defense Strength:&#x9;&#x9;&#x9;6&#xA;Bombardment Defense:&#x9;&#x9;6&#xA;&#xA;Imperial stormtrooper regiments are the main shock troops of the Empire.  Having a good balance in attack and defense strengths make them ideal for situations from planetary assault to garrison troops.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_stormtrooper_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		9
+Maintenance Cost:			6
+Attack Strength:			6
+Defense Strength:			6
+Bombardment Defense:		6
+
+Imperial stormtrooper regiments are the main shock troops of the Empire.  Having a good balance in attack and defense strengths make them ideal for situations from planetary assault to garrison troops.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>9</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial stormtrooper regiments are the main shock troops of the Empire.  Having a good balance in attack and defense strengths make them ideal for situations from planetary assault to garrison troops.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -61,7 +151,37 @@
     <TypeID>REEM004</TypeID>
     <DisplayName>War Droid Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_empire_war_droid_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;9&#xA;Maintenance Cost:&#x9;&#x9;&#x9;8&#xA;Attack Strength:&#x9;&#x9;&#x9;8&#xA;Defense Strength:&#x9;&#x9;&#x9;2&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;Imperial war droids are the ultimate in heavy assault troops.  These berserker droids basically exterminate everything in sight.  Due to their weak defensive capabilities, war droids should be used in planetary assaults, but not as garrison troops.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_war_droid_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		9
+Maintenance Cost:			8
+Attack Strength:			8
+Defense Strength:			2
+Bombardment Defense:		2
+
+Imperial war droids are the ultimate in heavy assault troops.  These berserker droids basically exterminate everything in sight.  Due to their weak defensive capabilities, war droids should be used in planetary assaults, but not as garrison troops.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>9</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial war droids are the ultimate in heavy assault troops.  These berserker droids basically exterminate everything in sight.  Due to their weak defensive capabilities, war droids should be used in planetary assaults, but not as garrison troops.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -79,7 +199,37 @@
     <TypeID>REEM005</TypeID>
     <DisplayName>Dark Trooper Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_empire_dark_trooper_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;12&#xA;Maintenance Cost:&#x9;&#x9;&#x9;8&#xA;Attack Strength:&#x9;&#x9;&#x9;8&#xA;Defense Strength:&#x9;&#x9;&#x9;8&#xA;Bombardment Defense:&#x9;&#x9;6&#xA;&#xA;Dark troopers have been a closely guarded secret by the Empire.  They are a group of elite stormtroopers that have received a form of limited Force control training making them far deadlier than the average stormtrooper.  Enhanced exo-armor and weaponry make the dark troopers a fearsome force.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_dark_trooper_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		12
+Maintenance Cost:			8
+Attack Strength:			8
+Defense Strength:			8
+Bombardment Defense:		6
+
+Dark troopers have been a closely guarded secret by the Empire.  They are a group of elite stormtroopers that have received a form of limited Force control training making them far deadlier than the average stormtrooper.  Enhanced exo-armor and weaponry make the dark troopers a fearsome force.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Dark troopers have been a closely guarded secret by the Empire.  They are a group of elite stormtroopers that have received a form of limited Force control training making them far deadlier than the average stormtrooper.  Enhanced exo-armor and weaponry make the dark troopers a fearsome force.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -100,7 +250,37 @@
     <TypeID>REAL001</TypeID>
     <DisplayName>Alliance Fleet Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_alliance_fleet_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;8&#xA;Maintenance Cost:&#x9;&#x9;&#x9;6&#xA;Attack Strength:&#x9;&#x9;&#x9;6&#xA;Defense Strength:&#x9;&#x9;&#x9;3&#xA;Bombardment Defense:&#x9;&#x9;5&#xA;&#xA;Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_alliance_fleet_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		8
+Maintenance Cost:			6
+Attack Strength:			6
+Defense Strength:			3
+Bombardment Defense:		5
+
+Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -118,7 +298,37 @@
     <TypeID>REAL002</TypeID>
     <DisplayName>Alliance Army Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_alliance_army_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;6&#xA;Maintenance Cost:&#x9;&#x9;&#x9;3&#xA;Attack Strength:&#x9;&#x9;&#x9;3&#xA;Defense Strength:&#x9;&#x9;&#x9;5&#xA;Bombardment Defense:&#x9;&#x9;5&#xA;&#xA;Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_alliance_army_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		6
+Maintenance Cost:			3
+Attack Strength:			3
+Defense Strength:			5
+Bombardment Defense:		5
+
+Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -136,7 +346,37 @@
     <TypeID>REAL003</TypeID>
     <DisplayName>Sullustan Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_sullustan_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;3&#xA;Maintenance Cost:&#x9;&#x9;&#x9;1&#xA;Attack Strength:&#x9;&#x9;&#x9;1&#xA;Defense Strength:&#x9;&#x9;&#x9;4&#xA;Bombardment Defense:&#x9;&#x9;2&#xA;&#xA;Sullustan regiments have been used by the Alliance primarily as garrison troops because of their low maintenance costs and weak attack strength.  Sullustan troops are excellent at detecting and foiling covert operations on systems where they are based.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_sullustan_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		3
+Maintenance Cost:			1
+Attack Strength:			1
+Defense Strength:			4
+Bombardment Defense:		2
+
+Sullustan regiments have been used by the Alliance primarily as garrison troops because of their low maintenance costs and weak attack strength.  Sullustan troops are excellent at detecting and foiling covert operations on systems where they are based.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Sullustan regiments have been used by the Alliance primarily as garrison troops because of their low maintenance costs and weak attack strength.  Sullustan troops are excellent at detecting and foiling covert operations on systems where they are based.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -154,7 +394,37 @@
     <TypeID>REAL004</TypeID>
     <DisplayName>Mon Calamari regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_mon_calamari_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;6&#xA;Maintenance Cost:&#x9;&#x9;&#x9;4&#xA;Attack Strength:&#x9;&#x9;&#x9;2&#xA;Defense Strength:&#x9;&#x9;&#x9;8&#xA;Bombardment Defense:&#x9;&#x9;9&#xA;&#xA;The Alliance Mon Calamari regiments have the highest defense and bombardment ratings of any troop regiment in the Alliance or the Empire.  This makes them the ideal garrison for holding important systems.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_mon_calamari_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		6
+Maintenance Cost:			4
+Attack Strength:			2
+Defense Strength:			8
+Bombardment Defense:		9
+
+The Alliance Mon Calamari regiments have the highest defense and bombardment ratings of any troop regiment in the Alliance or the Empire.  This makes them the ideal garrison for holding important systems.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>9</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Alliance Mon Calamari regiments have the highest defense and bombardment ratings of any troop regiment in the Alliance or the Empire.  This makes them the ideal garrison for holding important systems.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>
@@ -170,9 +440,39 @@
   </Regiment>
   <Regiment>
     <TypeID>REAL005</TypeID>
-    <DisplayName>Wookie Regiment</DisplayName>
+    <DisplayName>Wookiee Regiment</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_regiment_rebel_wookiee_primary</DisplayImagePath>
-    <Description>Refined Material Cost:&#x9;&#x9;10&#xA;Maintenance Cost:&#x9;&#x9;&#x9;8&#xA;Attack Strength:&#x9;&#x9;&#x9;8&#xA;Defense Strength:&#x9;&#x9;&#x9;4&#xA;Bombardment Defense:&#x9;&#x9;4&#xA;&#xA;Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_wookie_regiment</EncyclopediaImagePath>
+    <Description>Refined Material Cost:		10
+Maintenance Cost:			8
+Attack Strength:			8
+Defense Strength:			4
+Bombardment Defense:		4
+
+Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</Description>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
     </AllowedOwnerInstanceIDs>

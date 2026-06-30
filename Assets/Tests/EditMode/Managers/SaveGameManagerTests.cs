@@ -789,7 +789,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveGameData_MetadataWithStaleVersion_OverwritesWithCurrentSchemaVersion()
+        public void SaveGameData_MetadataWithExistingVersion_OverwritesWithCurrentSchemaVersion()
         {
             GameSummary summary = new GameSummary
             {
@@ -803,7 +803,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                Metadata = new GameMetadata { SaveVersion = 0 },
+                Metadata = new GameMetadata { SaveVersion = GameMetadata.CurrentSaveVersion + 99 },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -815,7 +815,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_SaveVersionNewerThanClient_ThrowsInvalidOperationException()
+        public void LoadGameData_SaveVersionMismatch_ThrowsInvalidOperationException()
         {
             GameSummary summary = new GameSummary
             {
@@ -852,7 +852,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void LoadGameData_LegacySaveWithoutVersionElement_LoadsAsVersionZero()
+        public void LoadGameData_SaveVersionMissing_ThrowsInvalidOperationException()
         {
             GameSummary summary = new GameSummary
             {
@@ -880,7 +880,12 @@ namespace Rebellion.Tests.Managers
             );
             File.WriteAllText(saveFilePath, stripped);
 
-            Assert.DoesNotThrow(() => SaveGameManager.Instance.LoadGameData(_saveFileName));
+            InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
+                SaveGameManager.Instance.LoadGameData(_saveFileName)
+            );
+
+            Assert.That(thrown.Message, Does.Contain("0"));
+            Assert.That(thrown.Message, Does.Contain(GameMetadata.CurrentSaveVersion.ToString()));
         }
     }
 } // namespace Rebellion.Tests.Managers

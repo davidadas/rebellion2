@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Generation;
 using UnityEngine;
@@ -118,8 +119,13 @@ public sealed class GameFlowController : MonoBehaviour
         GameManager gameManager = runtime.StartGame(game);
 
         FactionThemeLibrary themeLibrary = new FactionThemeLibrary();
+        EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
 
-        UIContext uiContext = new UIContext(gameManager.GetGame(), themeLibrary);
+        UIContext uiContext = new UIContext(
+            gameManager.GetGame(),
+            themeLibrary,
+            encyclopediaCatalog
+        );
 
         strategy.Initialize(gameManager, uiContext);
     }

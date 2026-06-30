@@ -469,25 +469,25 @@
         <PlanetTypeID>PLSEW05</PlanetTypeID>
         <FactionID>FNEMP1</FactionID>
         <SpawnChancePct>100</SpawnChancePct>
-        <Ships>
-          <UnitEntry>
+        <ShipEntries>
+          <FixedFleetShip>
             <!-- Imperial Star Destroyer. -->
             <TypeID>CSEM006</TypeID>
             <Count>1</Count>
-          </UnitEntry>
-        </Ships>
-        <Cargo>
-          <UnitEntry>
-            <!-- TIE Fighter. -->
-            <TypeID>SFEM01</TypeID>
-            <Count>6</Count>
-          </UnitEntry>
-          <UnitEntry>
-            <!-- Stormtrooper Regiment. -->
-            <TypeID>REEM003</TypeID>
-            <Count>3</Count>
-          </UnitEntry>
-        </Cargo>
+            <Cargo>
+              <UnitEntry>
+                <!-- TIE Fighter. -->
+                <TypeID>SFEM01</TypeID>
+                <Count>6</Count>
+              </UnitEntry>
+              <UnitEntry>
+                <!-- Stormtrooper Regiment. -->
+                <TypeID>REEM003</TypeID>
+                <Count>3</Count>
+              </UnitEntry>
+            </Cargo>
+          </FixedFleetShip>
+        </ShipEntries>
       </FixedFleet>
       <!-- Yavin starting fleet. -->
       <FixedFleet>
