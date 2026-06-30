@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
@@ -150,7 +152,7 @@ namespace Rebellion.Game.Missions
         protected override void ImproveMissionParticipantRatings() { }
 
         /// <summary>
-        /// Marks the target as visited for the mission owner.
+        /// Marks the target as visited for the mission owner and records the observed planet state.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider.</param>
@@ -162,6 +164,11 @@ namespace Rebellion.Game.Missions
                 return new List<GameResult>();
 
             planet.AddVisitor(OwnerInstanceID);
+
+            Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(faction, planet, system, game?.CurrentTick ?? 0);
 
             return new List<GameResult>();
         }
