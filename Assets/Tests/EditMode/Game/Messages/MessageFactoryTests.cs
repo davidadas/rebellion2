@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Fleet,
                             "arrived:{fleet}:{system}",
                             "body:{fleet}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new UnitArrivedResult { Unit = fleet, Destination = destination }
@@ -81,6 +81,42 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_WithDefinitionVoicePaths_UsesFactionAudioData()
+        {
+            (GameRoot game, _, Faction empire, _, Planet destination) =
+                BuildTwoFactionMessageScene();
+            Fleet fleet = new Fleet
+            {
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = empire.InstanceID,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FleetArrived,
+                            MessageType.Fleet,
+                            "arrived:{fleet}:{system}",
+                            "body:{fleet}:{system}",
+                            voicePaths: new Dictionary<string, string>
+                            {
+                                { "FNALL1", "alliance-voice" },
+                                { "FNEMP1", "empire-voice" },
+                            }
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = fleet, Destination = destination }
+                ),
+                empire
+            );
+
+            Assert.AreEqual("empire-voice", message.MessageVoicePath);
+        }
+
+        [Test]
         public void CreateMessages_ShipArrivals_GroupsShipsByOwnerAndDestination()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
@@ -105,7 +141,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Fleet,
                             "ships:{system}",
                             "body:{ships}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new UnitArrivedResult { Unit = firstShip, Destination = destination },
@@ -200,7 +236,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.Fleet,
                         "repaired",
                         "body:{item}:{attachment}",
-                        imageMap: DefaultImage("repair-background")
+                        imagePath: DefaultImage("repair-background")
                     ),
                 }
             );
@@ -363,7 +399,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(shipyard, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -438,7 +474,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "success:{mission}:{system}",
                             "body:{mission}:{system}",
-                            FactionImages(),
+                            imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Success
                         ),
                     },
@@ -480,7 +516,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "failed:{mission}:{system}",
                             "body:{mission}:{system}",
-                            FactionImages(),
+                            imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
                             missionTypeID: MissionTypeIDs.Sabotage
                         ),
@@ -489,7 +525,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "missing:{mission}:{system}",
                             "missing-body:{mission}:{system}",
-                            FactionImages(),
+                            imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Failed,
                             missionTypeID: MissionTypeIDs.Sabotage,
                             missionCompletionReason: MissionCompletionReason.TargetUnavailable
@@ -522,7 +558,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -531,7 +567,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.Mission,
                         "failed:{mission}:{system}",
                         "body:{mission}:{system}",
-                        FactionImages(),
+                        imagePaths: FactionImages(),
                         outcome: MessageResultOutcome.Failed,
                         missionTypeID: MissionTypeIDs.Sabotage
                     ),
@@ -545,7 +581,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.IsFalse(deliveries.Any(delivery => delivery.Faction == alliance));
+            Assert.IsFalse(deliveries.Any(delivery => delivery.faction == alliance));
         }
 
         [Test]
@@ -570,7 +606,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "success:{mission}:{system}",
                             "body:{mission}:{system}",
-                            FactionImages(),
+                            imagePaths: FactionImages(),
                             outcome: MessageResultOutcome.Success
                         ),
                         Definition(
@@ -758,7 +794,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_RecruitmentMissionSuccessUsesRecruitedOfficerImage()
+        public void CreateMessages_RecruitmentMissionSuccess_UsesParticipantImageOverlay()
         {
             (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
             Mission mission = new RecruitmentMission
@@ -811,7 +847,65 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual("recruitment-image", message.DisplayImagePath);
-            Assert.AreEqual("target-card", message.OverlayImagePath);
+            Assert.AreEqual("participant-card", message.OverlayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_RecruitmentMissionExhausted_ReturnsRecruitmentDoneReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
+            Mission mission = new RecruitmentMission
+            {
+                ConfigKey = MissionTypeIDs.Recruitment,
+                DisplayName = "Recruitment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer participant = new Officer
+            {
+                DisplayName = "Recruiter",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "participant-card",
+            };
+            game.AttachNode(mission, origin);
+
+            List<Message> messages = CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "mission-report",
+                            "mission-body",
+                            DefaultImage("recruitment-image"),
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeID: MissionTypeIDs.Recruitment
+                        ),
+                        Definition(
+                            MessageResultType.RecruitmentExhausted,
+                            MessageType.Mission,
+                            "recruitment-done",
+                            "recruitment-exhausted",
+                            DefaultImage("recruitment-done-image")
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Recruitment",
+                        Outcome = MissionOutcome.Success,
+                        CanContinue = false,
+                        Participants = new List<IMissionParticipant> { participant },
+                    }
+                )
+                .Where(delivery => delivery.faction == alliance)
+                .Select(delivery => delivery.message)
+                .ToList();
+
+            Assert.AreEqual(2, messages.Count);
+            Assert.AreEqual("recruitment-done", messages[1].Title);
+            Assert.AreEqual("recruitment-exhausted", messages[1].Body);
+            Assert.AreEqual("participant-card", messages[1].OverlayImagePath);
         }
 
         [Test]
@@ -862,7 +956,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_FoiledMission_ReturnsFailedActorReportAndFoiledTargetReport()
+        public void CreateMessages_FoiledMission_ReturnsFoiledActorReportAndFoiledTargetReport()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -879,24 +973,24 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
                     Definition(
                         MessageResultType.MissionReport,
                         MessageType.Mission,
-                        "failed:{mission}:{system}",
+                        "actor-foiled:{mission}:{system}",
                         "body:{mission}:{system}",
-                        FactionImages(),
-                        outcome: MessageResultOutcome.Failed
+                        imagePaths: FactionImages(),
+                        outcome: MessageResultOutcome.Foiled
                     ),
                     Definition(
                         MessageResultType.EnemyMissionFoiled,
                         MessageType.Mission,
                         "foiled:{mission}:{system}",
                         "body:{mission}:{system}",
-                        FactionImages(),
+                        imagePaths: FactionImages(),
                         outcome: MessageResultOutcome.Foiled
                     ),
                 },
@@ -909,7 +1003,10 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.AreEqual("failed:Sabotage:Yavin", FirstMessageFor(deliveries, alliance).Title);
+            Assert.AreEqual(
+                "actor-foiled:Sabotage:Yavin",
+                FirstMessageFor(deliveries, alliance).Title
+            );
             Assert.AreEqual("foiled:Sabotage:Yavin", FirstMessageFor(deliveries, empire).Title);
             Assert.AreEqual(
                 "alliance-image",
@@ -1057,7 +1154,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1081,8 +1178,8 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             List<Message> messages = deliveries
-                .Where(delivery => delivery.Faction == alliance)
-                .Select(delivery => delivery.Message)
+                .Where(delivery => delivery.faction == alliance)
+                .Select(delivery => delivery.message)
                 .ToList();
             Assert.AreEqual(1, messages.Count);
             Assert.AreEqual("killed:Agent:Coruscant", messages[0].Title);
@@ -1146,7 +1243,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1178,7 +1275,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1215,7 +1312,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "sabotage:{item}:{system}",
                             "body:{item}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new GameObjectSabotagedResult
@@ -1310,7 +1407,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1319,7 +1416,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType.PopularSupport,
                         "started:{faction}:{system}",
                         "body:{faction}:{system}",
-                        FactionImages()
+                        imagePaths: FactionImages()
                     ),
                 },
                 new PlanetUprisingStartedResult { Planet = target, InstigatorFaction = alliance }
@@ -1344,7 +1441,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.PopularSupport,
                             "ended:{faction}:{system}",
                             "body:{faction}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new PlanetUprisingEndedResult { Planet = target }
@@ -1374,7 +1471,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.PopularSupport,
                             "{system} joins",
                             "support:{system}:{faction}",
-                            imageKey: "mission_report"
+                            imagePaths: FactionImages()
                         ),
                     },
                     new PlanetOwnershipChangedResult
@@ -1391,8 +1488,85 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.PopularSupport, message.Type);
             Assert.AreEqual("Yavin joins", message.Title);
             Assert.AreEqual("support:Yavin:Alliance", message.Body);
-            Assert.AreEqual("mission_report", message.DisplayImageKey);
-            Assert.IsNull(message.DisplayImagePath);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_PlanetJoinedEnemyBySupport_ReportsPreviousOwner()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PlanetJoinedBySupport,
+                            MessageType.PopularSupport,
+                            "{system} joins",
+                            "support:{system}:{faction}",
+                            imagePaths: FactionImages()
+                        ),
+                        Definition(
+                            MessageResultType.PlanetJoinedEnemyBySupport,
+                            MessageType.PopularSupport,
+                            "{system} joins enemy",
+                            "dissent:{system}:{faction}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = target,
+                        PreviousOwner = empire,
+                        NewOwner = alliance,
+                        Reason = PlanetOwnershipChangeReason.PopularSupport,
+                    }
+                ),
+                empire
+            );
+
+            Assert.AreEqual(MessageType.PopularSupport, message.Type);
+            Assert.AreEqual("Yavin joins enemy", message.Title);
+            Assert.AreEqual("dissent:Yavin:Alliance", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_PlanetDeclaredNeutralityBySupport_ReportsPreviousOwner()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PlanetDeclaredNeutralityBySupport,
+                            MessageType.PopularSupport,
+                            "{system} neutral",
+                            "neutral:{system}:{faction}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = target,
+                        PreviousOwner = empire,
+                        NewOwner = null,
+                        Reason = PlanetOwnershipChangeReason.PopularSupport,
+                    }
+                ),
+                empire
+            );
+
+            Assert.AreEqual(MessageType.PopularSupport, message.Type);
+            Assert.AreEqual("Yavin neutral", message.Title);
+            Assert.AreEqual("neutral:Yavin:Empire", message.Body);
+            Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
         [Test]
@@ -1401,7 +1575,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1444,14 +1618,14 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Fleet,
                             "initiated:{faction}:{target}:{fleet}:{system}",
                             "body:{faction}:{target}:{fleet}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                         Definition(
                             MessageResultType.BlockadeDetected,
                             MessageType.Fleet,
                             "detected:{faction}:{fleet}:{system}",
                             "body:{faction}:{fleet}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new BlockadeChangedResult
@@ -1484,7 +1658,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Fleet,
                             "losses:{system}",
                             "body:{units}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new EvacuationLossesResult
@@ -1529,7 +1703,7 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Resource,
                             "maintenance:{item}:{system}",
                             "body:{item}:{system}",
-                            FactionImages()
+                            imagePaths: FactionImages()
                         ),
                     },
                     new GameObjectAutoscrappedResult
@@ -1553,7 +1727,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -1633,7 +1807,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
-        private static List<MessageDelivery> CreateMessages(
+        private static List<(Faction faction, Message message)> CreateMessages(
             GameRoot game,
             MessageDefinition[] definitions,
             params GameResult[] results
@@ -1644,11 +1818,11 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         private static Message FirstMessageFor(
-            IEnumerable<MessageDelivery> deliveries,
+            IEnumerable<(Faction faction, Message message)> deliveries,
             Faction faction
         )
         {
-            return deliveries.First(delivery => delivery.Faction == faction).Message;
+            return deliveries.First(delivery => delivery.faction == faction).message;
         }
 
         private static MessageDefinition Definition(
@@ -1656,7 +1830,7 @@ namespace Rebellion.Tests.Game.Messages
             MessageType messageType,
             string titleTemplate,
             string bodyTemplate,
-            MessageImageMap imageMap = null,
+            string imagePath = null,
             MessageResultOutcome outcome = MessageResultOutcome.None,
             MessagePlanetOwnership planetOwnership = MessagePlanetOwnership.None,
             BuildingType buildingType = BuildingType.None,
@@ -1665,7 +1839,9 @@ namespace Rebellion.Tests.Game.Messages
             string missionTypeID = null,
             MissionCompletionReason missionCompletionReason = MissionCompletionReason.None,
             string imageKey = null,
-            string voicePath = null
+            string voicePath = null,
+            Dictionary<string, string> imagePaths = null,
+            Dictionary<string, string> voicePaths = null
         )
         {
             MessageDefinition definition = new MessageDefinition
@@ -1681,8 +1857,10 @@ namespace Rebellion.Tests.Game.Messages
                 TitleTemplate = titleTemplate,
                 BodyTemplate = bodyTemplate,
                 ImageKey = imageKey,
-                ImageMap = imageMap,
+                ImagePath = imagePath,
+                ImagePaths = imagePaths ?? new Dictionary<string, string>(),
                 VoicePath = voicePath,
+                VoicePaths = voicePaths ?? new Dictionary<string, string>(),
             };
 
             if (researchDiscipline.HasValue)
@@ -1700,10 +1878,10 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "victory:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    new MessageImageMap
+                    imagePaths: new Dictionary<string, string>
                     {
-                        FNALL1 = "alliance-victory-image",
-                        FNEMP1 = "empire-victory-image",
+                        { "FNALL1", "alliance-victory-image" },
+                        { "FNEMP1", "empire-victory-image" },
                     },
                     outcome: MessageResultOutcome.Victory
                 ),
@@ -1712,10 +1890,10 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "defeat:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    new MessageImageMap
+                    imagePaths: new Dictionary<string, string>
                     {
-                        FNALL1 = "alliance-defeat-image",
-                        FNEMP1 = "empire-defeat-image",
+                        { "FNALL1", "alliance-defeat-image" },
+                        { "FNEMP1", "empire-defeat-image" },
                     },
                     outcome: MessageResultOutcome.Defeat
                 ),
@@ -1724,7 +1902,7 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "draw:{faction}:{opponent}:{system}",
                     "body:{faction}:{opponent}:{system}",
-                    FactionImages(),
+                    imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Stalemate
                 ),
             };
@@ -1800,7 +1978,7 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "owned-success:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages(),
+                    imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Success,
                     planetOwnership: MessagePlanetOwnership.Owned
                 ),
@@ -1809,7 +1987,7 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "owned-failed:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages(),
+                    imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Failed,
                     planetOwnership: MessagePlanetOwnership.Owned
                 ),
@@ -1818,7 +1996,7 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "neutral-success:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages(),
+                    imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Success,
                     planetOwnership: MessagePlanetOwnership.Neutral
                 ),
@@ -1827,26 +2005,25 @@ namespace Rebellion.Tests.Game.Messages
                     MessageType.Conflict,
                     "neutral-failed:{faction}:{target}:{system}",
                     "body:{faction}:{target}:{system}",
-                    FactionImages(),
+                    imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Failed,
                     planetOwnership: MessagePlanetOwnership.Neutral
                 ),
             };
         }
 
-        private static MessageImageMap FactionImages()
+        private static Dictionary<string, string> FactionImages()
         {
-            return new MessageImageMap
+            return new Dictionary<string, string>
             {
-                Default = "default-image",
-                FNALL1 = "alliance-image",
-                FNEMP1 = "empire-image",
+                { "FNALL1", "alliance-image" },
+                { "FNEMP1", "empire-image" },
             };
         }
 
-        private static MessageImageMap DefaultImage(string path)
+        private static string DefaultImage(string path)
         {
-            return new MessageImageMap { Default = path };
+            return path;
         }
 
         private static (

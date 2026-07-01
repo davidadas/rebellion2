@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -68,6 +69,10 @@ public class GameManager
         SetGameSpeed(_game.GetGameSpeed());
     }
 
+    /// <summary>
+    /// Sets the active game and ensures required runtime state exists.
+    /// </summary>
+    /// <param name="game">The game instance to make active.</param>
     private void SetGame(GameRoot game)
     {
         if (game == null)
@@ -266,6 +271,7 @@ public class GameManager
     /// <param name="results">Batch of results from a system tick.</param>
     private void ProcessResults(List<GameResult> results)
     {
+        ProcessFogOfWarResults(results);
         ProcessMessageDeliveries(results);
 
         foreach (VictoryResult result in results.OfType<VictoryResult>())
@@ -289,12 +295,46 @@ public class GameManager
         }
     }
 
-    private void ProcessMessageDeliveries(List<GameResult> results)
+    private void ProcessFogOfWarResults(List<GameResult> results)
     {
-        foreach (MessageDelivery delivery in _messageFactory.CreateMessages(results, _game))
-            AddMessage(delivery.Faction, delivery.Message);
+        foreach (GameObjectSabotagedResult result in results.OfType<GameObjectSabotagedResult>())
+            RemoveSabotagedObjectFromActorSnapshot(result);
     }
 
+    private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
+    {
+        if (result?.SabotagedObject == null || result.Saboteur is not ISceneNode saboteur)
+            return;
+
+        Faction faction = _game
+            .GetFactions()
+            .FirstOrDefault(f => f.InstanceID == saboteur.GetOwnerInstanceID());
+        if (faction == null)
+            return;
+
+        _fogOfWarManager.RemoveEntityFromSnapshots(faction, result.SabotagedObject.GetInstanceID());
+    }
+
+    /// <summary>
+    /// Creates and applies faction messages for a result batch.
+    /// </summary>
+    /// <param name="results">The game results to translate into messages.</param>
+    private void ProcessMessageDeliveries(List<GameResult> results)
+    {
+        foreach (
+            (Faction faction, Message message) delivery in _messageFactory.CreateMessages(
+                results,
+                _game
+            )
+        )
+            AddMessage(delivery.faction, delivery.message);
+    }
+
+    /// <summary>
+    /// Adds a message to a faction when both are available.
+    /// </summary>
+    /// <param name="faction">The faction that should receive the message.</param>
+    /// <param name="message">The message to add.</param>
     private static void AddMessage(Faction faction, Message message)
     {
         if (faction == null || message == null)

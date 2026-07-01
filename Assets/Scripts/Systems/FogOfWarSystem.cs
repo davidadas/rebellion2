@@ -47,6 +47,11 @@ namespace Rebellion.Systems
             _recorder.RecordPlanetSnapshot(faction, planet, system, currentTick);
         }
 
+        public void RemoveEntityFromSnapshots(Faction faction, string entityId)
+        {
+            _recorder.RemoveEntityFromSnapshots(faction, entityId);
+        }
+
         /// <summary>
         /// Determines if a faction currently has real-time visibility of a planet.
         /// </summary>

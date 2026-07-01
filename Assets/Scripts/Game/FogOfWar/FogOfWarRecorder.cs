@@ -62,6 +62,20 @@ namespace Rebellion.Game.FogOfWar
             systemSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
+        public void RemoveEntityFromSnapshots(Faction faction, string entityId)
+        {
+            if (faction == null || string.IsNullOrEmpty(entityId))
+                return;
+
+            foreach (SystemSnapshot systemSnapshot in faction.Fog.Snapshots.Values)
+            {
+                foreach (PlanetSnapshot planetSnapshot in systemSnapshot.Planets.Values)
+                    RemoveEntityFromSnapshot(planetSnapshot, entityId);
+            }
+
+            faction.Fog.EntityLastSeenAt.Remove(entityId);
+        }
+
         /// <summary>
         /// Returns the system snapshot for a faction, creating it when needed.
         /// </summary>
@@ -252,6 +266,36 @@ namespace Rebellion.Game.FogOfWar
             oldPlanetSnapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
             oldPlanetSnapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             oldPlanetSnapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
+        }
+
+        private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
+        {
+            snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
+            snapshot.Fleets.RemoveAll(f => f.InstanceID == entityId);
+            snapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
+            snapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
+            snapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
+
+            foreach (Fleet fleet in snapshot.Fleets)
+                RemoveEntityFromFleet(fleet, entityId);
+
+            snapshot.Fleets.RemoveAll(f => f.CapitalShips.Count == 0);
+        }
+
+        private static void RemoveEntityFromFleet(Fleet fleet, string entityId)
+        {
+            foreach (CapitalShip ship in fleet.CapitalShips)
+                RemoveEntityFromCapitalShip(ship, entityId);
+
+            fleet.CapitalShips.RemoveAll(s => s.InstanceID == entityId);
+        }
+
+        private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
+        {
+            ship.Officers.RemoveAll(o => o.InstanceID == entityId);
+            ship.Regiments.RemoveAll(r => r.InstanceID == entityId);
+            ship.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
+            ship.Starfighters.RemoveAll(s => s.InstanceID == entityId);
         }
     }
 }

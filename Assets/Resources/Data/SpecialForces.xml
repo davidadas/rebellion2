@@ -7,6 +7,7 @@
     <TypeID>SPAL001</TypeID>
     <DisplayName>Guerrillas</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_guerrillas_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_guerrillas</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_guerrillas</EncyclopediaImagePath>
     <Description>Refined Material Cost:	1
 Maintenance Cost:		1
@@ -46,6 +47,7 @@ Alliance guerrilla cells have been the nemesis of many Imperial governors, sprea
     <TypeID>SPAL002</TypeID>
     <DisplayName>Infiltrators</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_infiltrators_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_infiltrators</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_infiltrators</EncyclopediaImagePath>
     <Description>Refined Material Cost:	2
 Maintenance Cost:		1
@@ -86,6 +88,7 @@ Infiltrators are the Alliance's elite commando forces.  They are able to enter a
     <TypeID>SPAL003</TypeID>
     <DisplayName>Longprobe Y-wing Recon Team</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_longprobe_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_longprobe_y_wing_recon_team</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_longprobe_y_wing_recon_team</EncyclopediaImagePath>
     <Description>Refined Material Cost:	2
 Maintenance Cost:		1
@@ -124,6 +127,7 @@ Longprobe Y-wing recon teams are used by the Alliance for scouting unknown syste
     <TypeID>SPAL004</TypeID>
     <DisplayName>Bothan Spies</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_rebel_bothan_spies_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_bothan_spies</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_bothan_spies</EncyclopediaImagePath>
     <Description>Refined Material Cost:	1
 Maintenance Cost:		1
@@ -165,6 +169,7 @@ Bothan spies are a wondrous source of intelligence information for the Alliance.
     <TypeID>SPEM001</TypeID>
     <DisplayName>Imperial Probe Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_probe_droid_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_imperial_probe_droid</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_probe_droid</EncyclopediaImagePath>
     <Description>Refined Material Cost:	1
 Maintenance Cost:		1
@@ -203,6 +208,7 @@ Probe droids are designed as reconnaissance and information-gathering units by t
     <TypeID>SPEM002</TypeID>
     <DisplayName>Imperial Espionage Droid</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_espionage_droid_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_imperial_espionage_droid</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_espionage_droid</EncyclopediaImagePath>
     <Description>Refined Material Cost:	1
 Maintenance Cost:		1
@@ -241,6 +247,7 @@ Imperial espionage droids are designed to look like any other protocol droid, ex
     <TypeID>SPEM003</TypeID>
     <DisplayName>Imperial Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_commandos_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_imperial_commandos</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_imperial_commandos</EncyclopediaImagePath>
     <Description>Refined Material Cost:	2
 Maintenance Cost:		1
@@ -281,6 +288,7 @@ Imperial commandos are elite special forces whose missions usually entail the in
     <TypeID>SPEM004</TypeID>
     <DisplayName>Noghri Death Commandos</DisplayName>
     <DisplayImagePath>Art/UI/Units/ent_special_forces_empire_noghri_primary</DisplayImagePath>
+    <MessageImagePath>Art/UI/Messages/ui_message_overlay_special_force_noghri_death_commandos</MessageImagePath>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_troop_noghri_death_commandos</EncyclopediaImagePath>
     <Description>Refined Material Cost:	2
 Maintenance Cost:		1

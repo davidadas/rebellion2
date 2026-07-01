@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -33,10 +34,13 @@ namespace Rebellion.Game.Messages
         UprisingStarted,
         UprisingEnded,
         PlanetJoinedBySupport,
+        PlanetJoinedEnemyBySupport,
+        PlanetDeclaredNeutralityBySupport,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
         MaintenanceAutoscrap,
+        RecruitmentExhausted,
         SpaceBattle,
         Bombardment,
         PlanetaryAssault,
@@ -86,8 +90,11 @@ namespace Rebellion.Game.Messages
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
         public string ImageKey { get; set; }
-        public MessageImageMap ImageMap { get; set; }
+        public string ImagePath { get; set; }
+        public Dictionary<string, string> ImagePaths { get; set; } =
+            new Dictionary<string, string>();
         public string VoicePath { get; set; }
-        public MessageImageMap VoiceMap { get; set; }
+        public Dictionary<string, string> VoicePaths { get; set; } =
+            new Dictionary<string, string>();
     }
 }

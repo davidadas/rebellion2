@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Game.Messages
 {
@@ -27,7 +28,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(fleet, destination);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new UnitArrivedResult { Unit = fleet, Destination = destination }
             );
@@ -52,7 +53,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new UnitArrivedResult { Unit = firstShip, Destination = destination },
                 new UnitArrivedResult { Unit = secondShip, Destination = destination }
@@ -67,7 +68,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
             Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new SeatOfPowerChangedResult { Officer = officer, IsAtSeat = true }
             );
@@ -83,12 +84,11 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Agent",
                 OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath =
-                    "Art/UI/Messages/Characters/ui_message_character_alliance_ackbar",
+                MessageImagePath = "Art/UI/Units/ui_message_character_alliance_ackbar",
             };
             game.AttachNode(officer, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new OfficerRecruitedResult
                 {
@@ -111,8 +111,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Agent",
                 OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath =
-                    "Art/UI/Messages/Characters/ui_message_character_alliance_ackbar",
+                MessageImagePath = "Art/UI/Units/ui_message_character_alliance_ackbar",
             };
             game.AttachNode(officer, origin);
 
@@ -238,6 +237,167 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_WithConfiguredActorMissionReportDefinition_UsesParticipantTitle()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new DiplomacyMission
+            {
+                ConfigKey = MissionTypeIDs.Diplomacy,
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayName = "Diplomacy",
+            };
+            Officer participant = new Officer
+            {
+                DisplayName = "Han Solo",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = CreateSingleMessage(
+                game,
+                alliance,
+                new MissionCompletedResult
+                {
+                    Mission = mission,
+                    MissionName = "Diplomacy",
+                    TargetName = target.DisplayName,
+                    Participants = new List<IMissionParticipant> { participant },
+                    Outcome = MissionOutcome.Success,
+                }
+            );
+
+            Assert.AreEqual("Han Solo Mission Report", message.Title);
+            Assert.AreEqual(
+                "My diplomacy mission to Yavin has increased popular support on that system.  ",
+                message.Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredSpecialForcesMissionReportDefinition_UsesParticipantOverlay()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new ReconnaissanceMission
+            {
+                ConfigKey = MissionTypeIDs.Reconnaissance,
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayName = "Reconnaissance",
+            };
+            SpecialForces participant = ResourceManager
+                .GetEntityData<SpecialForces>()
+                .Single(specialForces => specialForces.TypeID == "SPAL003")
+                .GetDeepCopy();
+            participant.OwnerInstanceID = alliance.InstanceID;
+            game.AttachNode(mission, target);
+
+            Message message = CreateSingleMessage(
+                game,
+                alliance,
+                new MissionCompletedResult
+                {
+                    Mission = mission,
+                    MissionName = "Reconnaissance",
+                    TargetName = target.DisplayName,
+                    Participants = new List<IMissionParticipant> { participant },
+                    Outcome = MissionOutcome.Success,
+                }
+            );
+
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_overlay_special_force_longprobe_y_wing_recon_team",
+                message.OverlayImagePath
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredRecruitmentExhaustedDefinition_ReturnsRecruitmentDone()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Mission mission = new RecruitmentMission
+            {
+                ConfigKey = MissionTypeIDs.Recruitment,
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayName = "Recruitment",
+            };
+            Officer participant = new Officer
+            {
+                DisplayName = "Han Solo",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, origin);
+
+            List<Message> messages = CreateMessages(
+                    game,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Recruitment",
+                        Participants = new List<IMissionParticipant> { participant },
+                        Outcome = MissionOutcome.Success,
+                        CanContinue = false,
+                    }
+                )
+                .Where(delivery => delivery.faction == alliance)
+                .Select(delivery => delivery.message)
+                .ToList();
+
+            Assert.AreEqual(2, messages.Count);
+            Assert.AreEqual("Recruitment Done", messages[1].Title);
+            Assert.AreEqual(
+                "We regret to report that there are no more candidates to be recruited.",
+                messages[1].Body
+            );
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_mission_report_recruitment_alliance",
+                messages[1].DisplayImagePath
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredFoiledMissionDefinitions_UsesActorAndEnemyTitles()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Mission mission = new SabotageMission
+            {
+                ConfigKey = MissionTypeIDs.Sabotage,
+                OwnerInstanceID = alliance.InstanceID,
+                DisplayName = "Sabotage",
+            };
+            Officer participant = new Officer
+            {
+                DisplayName = "Han Solo",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new MissionCompletedResult
+                {
+                    Mission = mission,
+                    MissionName = "Sabotage",
+                    TargetName = target.DisplayName,
+                    Participants = new List<IMissionParticipant> { participant },
+                    Outcome = MissionOutcome.Foiled,
+                }
+            );
+
+            Message actorMessage = deliveries
+                .Single(delivery => delivery.faction == alliance)
+                .message;
+            Message enemyMessage = deliveries
+                .Single(delivery => delivery.faction == empire)
+                .message;
+            Assert.AreEqual("Han Solo Mission Foiled", actorMessage.Title);
+            Assert.AreEqual(
+                "My Sabotage mission to Yavin has been foiled by opposing forces.  ",
+                actorMessage.Body
+            );
+            Assert.AreEqual("Enemy Mission Foiled", enemyMessage.Title);
+        }
+
+        [Test]
         public void CreateMessages_WithConfiguredForceGrowthDefinition_UsesMissionReportKey()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -246,8 +406,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
                 ForceValue = game.Config.Jedi.RankLabelForceKnight,
-                MessageImagePath =
-                    "Art/UI/Messages/Characters/ui_message_character_alliance_luke_skywalker",
+                MessageImagePath = "Art/UI/Units/ui_message_character_alliance_luke_skywalker",
             };
             game.AttachNode(officer, origin);
 
@@ -281,7 +440,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mine, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new GameObjectDeployedResult { GameObject = mine }
             );
@@ -294,7 +453,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new ManufacturingCompletedResult
                 {
@@ -326,7 +485,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new GameObjectSabotagedResult { SabotagedObject = building, Context = target },
                 new MissionCompletedResult
@@ -355,7 +514,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new MissionCompletedResult
                 {
@@ -375,7 +534,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new ResearchOrderedResult
                 {
@@ -400,14 +559,14 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new PlanetUprisingStartedResult { Planet = target, InstigatorFaction = alliance }
             );
 
             AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
             AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
-            Message message = deliveries.First(delivery => delivery.Faction == alliance).Message;
+            Message message = deliveries.First(delivery => delivery.faction == alliance).message;
             Assert.IsNull(message.DisplayImageKey);
             Assert.AreEqual(
                 "Art/UI/Messages/ui_message_uprising_started",
@@ -420,7 +579,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new PlanetUprisingEndedResult { Planet = target }
             );
@@ -434,7 +593,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new PlanetOwnershipChangedResult
                 {
@@ -446,9 +605,74 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
-            Message message = deliveries.Single().Message;
-            Assert.AreEqual("planet_allegiance_evolves", message.DisplayImageKey);
-            Assert.IsNull(message.DisplayImagePath);
+            Message message = deliveries.Single().message;
+            Assert.IsNull(message.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance",
+                message.DisplayImagePath
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredPlanetJoinedEnemyDefinition_ReturnsPreviousOwnerDelivery()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = alliance,
+                    Reason = PlanetOwnershipChangeReason.PopularSupport,
+                }
+            );
+
+            AssertOnlyDeliveries(deliveries, alliance, MessageType.PopularSupport, 1);
+            AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
+            Message message = deliveries.Single(delivery => delivery.faction == empire).message;
+            Assert.AreEqual("Yavin Joins Enemy", message.Title);
+            Assert.AreEqual(
+                "Popular dissent on Yavin has caused that world to join the Alliance.",
+                message.Body
+            );
+            Assert.IsNull(message.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance",
+                message.DisplayImagePath
+            );
+        }
+
+        [Test]
+        public void CreateMessages_WithConfiguredPlanetNeutralityDefinition_ReturnsPreviousOwnerDelivery()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = null,
+                    Reason = PlanetOwnershipChangeReason.PopularSupport,
+                }
+            );
+
+            AssertOnlyDeliveries(deliveries, empire, MessageType.PopularSupport, 1);
+            Message message = deliveries.Single().message;
+            Assert.AreEqual("Yavin Declares Neutrality", message.Title);
+            Assert.AreEqual(
+                "Divided loyalty on Yavin has caused that world to abandon the Empire cause.",
+                message.Body
+            );
+            Assert.IsNull(message.DisplayImageKey);
+            Assert.AreEqual(
+                "Art/UI/Messages/ui_message_planet_allegiance_evolves_empire",
+                message.DisplayImagePath
+            );
         }
 
         [Test]
@@ -462,7 +686,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new BlockadeChangedResult
                 {
@@ -474,6 +698,22 @@ namespace Rebellion.Tests.Game.Messages
 
             AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);
             AssertOnlyDeliveries(deliveries, empire, MessageType.Fleet, 1);
+            Assert.AreEqual(
+                "Fleet Initiates Blockade of Yavin",
+                deliveries.Single(delivery => delivery.faction == alliance).message.Title
+            );
+            Assert.AreEqual(
+                "Fleet 1 has initiated a blockade of Yavin.",
+                deliveries.Single(delivery => delivery.faction == alliance).message.Body
+            );
+            Assert.AreEqual(
+                "Yavin Under Blockade",
+                deliveries.Single(delivery => delivery.faction == empire).message.Title
+            );
+            Assert.AreEqual(
+                "Alliance ships have been detected at Yavin.  The world is under enemy blockade.",
+                deliveries.Single(delivery => delivery.faction == empire).message.Body
+            );
         }
 
         [Test]
@@ -481,7 +721,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new EvacuationLossesResult
                 {
@@ -506,7 +746,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(shipyard, origin);
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new MaintenanceRequiredResult { Faction = alliance, Amount = 12 },
                 new GameObjectAutoscrappedResult { DestroyedObject = shipyard, Context = origin }
@@ -521,7 +761,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new SpaceCombatResult
                 {
@@ -542,7 +782,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new BombardmentResult { AttackingFaction = alliance, Planet = target }
             );
@@ -557,7 +797,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<MessageDelivery> deliveries = CreateMessages(
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new PlanetaryAssaultResult
                 {
@@ -642,7 +882,7 @@ namespace Rebellion.Tests.Game.Messages
             return (game, alliance, empire, origin, target);
         }
 
-        private static List<MessageDelivery> CreateMessages(
+        private static List<(Faction faction, Message message)> CreateMessages(
             GameRoot game,
             params GameResult[] results
         )
@@ -660,8 +900,8 @@ namespace Rebellion.Tests.Game.Messages
         )
         {
             return CreateMessages(game, results)
-                .Single(delivery => delivery.Faction == faction)
-                .Message;
+                .Single(delivery => delivery.faction == faction)
+                .message;
         }
 
         private static void AssertMessageImage(
@@ -675,19 +915,19 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         private static void AssertOnlyDeliveries(
-            List<MessageDelivery> deliveries,
+            List<(Faction faction, Message message)> deliveries,
             Faction faction,
             MessageType messageType,
             int expectedCount
         )
         {
-            List<MessageDelivery> factionDeliveries = deliveries
-                .Where(delivery => delivery.Faction == faction)
+            List<(Faction faction, Message message)> factionDeliveries = deliveries
+                .Where(delivery => delivery.faction == faction)
                 .ToList();
             Assert.AreEqual(expectedCount, factionDeliveries.Count);
 
-            foreach (MessageDelivery delivery in factionDeliveries)
-                Assert.AreEqual(messageType, delivery.Message.Type);
+            foreach ((Faction faction, Message message) delivery in factionDeliveries)
+                Assert.AreEqual(messageType, delivery.message.Type);
         }
     }
 }

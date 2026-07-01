@@ -7,10 +7,16 @@
     <TitleTemplate>Fleet Arrives at {system}</TitleTemplate>
     <BodyTemplate>{fleet} has arrived at {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_fleet_arrives</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_fleet_arrived_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_fleet_arrived_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_fleet_arrived_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_fleet_arrived_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Ships Arrived</DisplayName>
@@ -18,10 +24,16 @@
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Ships arrive at {system}</TitleTemplate>
     <BodyTemplate>The following ships have arrived at {system}:&#10;{ships}</BodyTemplate>
-    <VoiceMap>
-      <FNALL1>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_alliance</FNALL1>
-      <FNEMP1>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_empire</FNEMP1>
-    </VoiceMap>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_empire</Value>
+      </Entry>
+    </VoicePaths>
     <ImageKey>ships_arrived</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
@@ -38,10 +50,16 @@
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Squadron at Full Strength</TitleTemplate>
     <BodyTemplate>The {item} attached to {attachment} has replaced all fighters lost in combat.</BodyTemplate>
-    <VoiceMap>
-      <FNALL1>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_squadron_arrives_alliance</FNALL1>
-      <FNEMP1>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_squadron_arrives_empire</FNEMP1>
-    </VoiceMap>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_squadron_arrives_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_squadron_arrives_empire</Value>
+      </Entry>
+    </VoicePaths>
     <ImageKey>starfighter_repaired</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
@@ -51,9 +69,7 @@
     <TitleTemplate>Emperor Arrives at Coruscant</TitleTemplate>
     <BodyTemplate>I have returned to the Seat of Power at Coruscant.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_seat_of_power</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_emperor_seat_of_power</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_emperor_seat_of_power</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Mine Deployed</DisplayName>
@@ -63,9 +79,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mine_deployed</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_mine_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Refinery Deployed</DisplayName>
@@ -75,9 +89,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_refinery_deployed</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_refinery_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Shipyard Deployed</DisplayName>
@@ -87,9 +99,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_shipyard_deployed</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_shipyard_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Training Facility Deployed</DisplayName>
@@ -99,9 +109,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_training_facility_deployed</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_training_facility_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Construction Yard Deployed</DisplayName>
@@ -111,9 +119,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_construction_yard_deployed</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_construction_yard_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Shipyard Idle</DisplayName>
@@ -123,9 +129,7 @@
     <TitleTemplate>Shipyard Idle on {system}</TitleTemplate>
     <BodyTemplate>The Shipyards at {system} are available for new construction orders.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_shipyard_idle</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_shipyard_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Training Facility Idle</DisplayName>
@@ -135,9 +139,7 @@
     <TitleTemplate>Training Facility Idle on {system}</TitleTemplate>
     <BodyTemplate>The Training Facilities at {system} are no longer in use.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_training_facility_idle</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_training_facility_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Construction Yard Idle</DisplayName>
@@ -147,9 +149,7 @@
     <TitleTemplate>Construction Yard Idle on {system}</TitleTemplate>
     <BodyTemplate>The Construction Yards at {system} have completed their assigned tasks.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_construction_yard_idle</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_construction_yard_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Diplomacy Mission Report Success</DisplayName>
@@ -157,11 +157,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Diplomacy</MissionTypeID>
-    <TitleTemplate>Diplomacy Mission Report</TitleTemplate>
-    <BodyTemplate>The diplomacy mission to {system} has increased popular support on that system.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_diplomacy</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My diplomacy mission to {system} has increased popular support on that system.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recon Mission Report Success</DisplayName>
@@ -171,9 +169,7 @@
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
     <BodyTemplate>The reconnaissance mission to {system} was successful.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Success</DisplayName>
@@ -181,11 +177,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Espionage</MissionTypeID>
-    <TitleTemplate>Espionage Mission Report</TitleTemplate>
-    <BodyTemplate>The espionage mission to {system} was successful.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My espionage mission to {system} was successful.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Sabotage Mission Report Success</DisplayName>
@@ -193,11 +187,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Sabotage</MissionTypeID>
-    <TitleTemplate>Sabotage Mission Report</TitleTemplate>
-    <BodyTemplate>The sabotage mission to {system} targeting the {target} is complete.  The target was destroyed.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My sabotage mission to {system} targeting the {target} is complete.  The target was destroyed.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Mission Report Success</DisplayName>
@@ -205,11 +197,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>InciteUprising</MissionTypeID>
-    <TitleTemplate>Incite Uprising Mission Report</TitleTemplate>
-    <BodyTemplate>The Incite Uprising mission to {system} was successful.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My Incite Uprising mission to {system} was successful.  The system has gone into uprising.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recruitment Mission Report Success</DisplayName>
@@ -219,10 +209,16 @@
     <MissionTypeID>Recruitment</MissionTypeID>
     <TitleTemplate>{participant} Recruits {officer}</TitleTemplate>
     <BodyTemplate>My recruitment mission to {system} was successful. {officer} is at your command.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Abduction Mission Report Success</DisplayName>
@@ -230,11 +226,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Abduction</MissionTypeID>
-    <TitleTemplate>Abduction Mission Report</TitleTemplate>
-    <BodyTemplate>The mission to abduct {officer} from {system} succeeded.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My mission to abduct {officer} from {system} was a success.&#10;</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assassination Mission Report Success</DisplayName>
@@ -242,11 +236,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Assassination</MissionTypeID>
-    <TitleTemplate>Assassination Mission Report</TitleTemplate>
-    <BodyTemplate>The assassination mission to {system} is complete.  {officer} {assassination_result}.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My assassination mission to {system} is complete.  {officer} {assassination_result}.&#10;</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Subdue Uprising Mission Report Success</DisplayName>
@@ -254,11 +246,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>SubdueUprising</MissionTypeID>
-    <TitleTemplate>Subdue Uprising Mission Report</TitleTemplate>
-    <BodyTemplate>The Subdue Uprising mission to {system} was successful.  Order has been restored.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My mission to subdue the uprising on {system} was successful.  Order has been restored.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Rescue Mission Report Success</DisplayName>
@@ -266,11 +256,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Rescue</MissionTypeID>
-    <TitleTemplate>Rescue Mission Report</TitleTemplate>
-    <BodyTemplate>The mission to rescue {officer} from {system} succeeded.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My mission to rescue {officer} from {system} was a success.&#10;</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Mission Report Success</DisplayName>
@@ -278,11 +266,9 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Research</MissionTypeID>
-    <TitleTemplate>{mission} Mission Report</TitleTemplate>
-    <BodyTemplate>The {mission} Mission at {system} has produced valuable results.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My {mission} Research mission at {system} has produced valuable results.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Jedi Training Mission Report Success</DisplayName>
@@ -290,8 +276,8 @@
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>JediTraining</MissionTypeID>
-    <TitleTemplate>Jedi Training Mission Report</TitleTemplate>
-    <BodyTemplate>The Jedi Training mission on {system} has been a success.</BodyTemplate>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My Jedi Training mission on {system} was a success.</BodyTemplate>
     <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
@@ -300,11 +286,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Diplomacy</MissionTypeID>
-    <TitleTemplate>Diplomacy Mission Report</TitleTemplate>
-    <BodyTemplate>The diplomacy mission to {system} had no effect on our popular support on that system.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_diplomacy</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My diplomacy mission to {system} had no effect on popular support in that system.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recon Mission Report Failed</DisplayName>
@@ -314,9 +298,7 @@
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
     <BodyTemplate>The reconnaissance mission to {system} failed.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Failed</DisplayName>
@@ -324,11 +306,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Espionage</MissionTypeID>
-    <TitleTemplate>Espionage Mission Report</TitleTemplate>
-    <BodyTemplate>The espionage mission to {system} was not successful.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My espionage mission to {system} was not successful.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Sabotage Mission Report Failed</DisplayName>
@@ -336,11 +316,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Sabotage</MissionTypeID>
-    <TitleTemplate>Sabotage Mission Report</TitleTemplate>
-    <BodyTemplate>The sabotage mission to {system} targeting the {target} is complete.    The target was not destroyed.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My sabotage mission to {system} targeting the {target} is complete.    The target was not destroyed.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Mission Report Failed</DisplayName>
@@ -348,11 +326,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>InciteUprising</MissionTypeID>
-    <TitleTemplate>Incite Uprising Mission Report</TitleTemplate>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My Incite Uprising mission to {system} has not produced results.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recruitment Mission Report Failed</DisplayName>
@@ -362,10 +338,33 @@
     <MissionTypeID>Recruitment</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My recruitment mission to {system} is complete.  I have failed to recruit anyone.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Recruitment Exhausted</DisplayName>
+    <ResultType>RecruitmentExhausted</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Recruitment Done</TitleTemplate>
+    <BodyTemplate>We regret to report that there are no more candidates to be recruited.</BodyTemplate>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Abduction Mission Report Failed</DisplayName>
@@ -373,11 +372,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Abduction</MissionTypeID>
-    <TitleTemplate>Abduction Mission Report</TitleTemplate>
-    <BodyTemplate>The mission to abduct {officer} from {system} failed.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My mission to abduct {officer} from {system} failed.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assassination Mission Report Failed</DisplayName>
@@ -385,11 +382,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Assassination</MissionTypeID>
-    <TitleTemplate>Assassination Mission Report</TitleTemplate>
-    <BodyTemplate>The assassination mission to {system} is complete.  {officer} has not been eliminated.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My assassination mission to {system} is complete.  {officer} has not been eliminated.&#10;</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Subdue Uprising Mission Report Failed</DisplayName>
@@ -397,11 +392,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>SubdueUprising</MissionTypeID>
-    <TitleTemplate>Subdue Uprising Mission Report</TitleTemplate>
-    <BodyTemplate>The Subdue Uprising mission to {system} failed.  The populace is still in a state of uprising.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_subdue_uprising</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My Subdue Uprising mission to {system} has not met with success.  The world is still in a state of uprising.&#10;</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Rescue Mission Report Failed</DisplayName>
@@ -409,11 +402,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Rescue</MissionTypeID>
-    <TitleTemplate>Rescue Mission Report</TitleTemplate>
-    <BodyTemplate>The mission to rescue {officer} from {system} failed.&#10;</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_mission_report_espionage</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My mission to rescue {officer} from {system} failed.</BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Mission Report Failed</DisplayName>
@@ -421,11 +412,9 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>Research</MissionTypeID>
-    <TitleTemplate>{mission} Mission Report</TitleTemplate>
-    <BodyTemplate>The {mission} Mission at {system} has not produced new information.  </BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My {mission} Research mission at {system} has not produced new information.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Jedi Training Mission Report Failed</DisplayName>
@@ -433,9 +422,18 @@
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
     <MissionTypeID>JediTraining</MissionTypeID>
-    <TitleTemplate>Jedi Training Mission Report</TitleTemplate>
-    <BodyTemplate>The Jedi Training mission on  {system} has failed.</BodyTemplate>
+    <TitleTemplate>{participant} Mission Report</TitleTemplate>
+    <BodyTemplate>My Jedi Training mission on {system} has not met with success.</BodyTemplate>
     <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Mission Report Foiled</DisplayName>
+    <ResultType>MissionReport</ResultType>
+    <Outcome>Foiled</Outcome>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{participant} Mission Foiled</TitleTemplate>
+    <BodyTemplate>My {mission} mission to {system} has been foiled by opposing forces.  </BodyTemplate>
+    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Enemy Mission Foiled</DisplayName>
@@ -445,10 +443,16 @@
     <MissionTypeID>InciteUprising</MissionTypeID>
     <TitleTemplate>Enemy Mission Foiled</TitleTemplate>
     <BodyTemplate>An enemy {mission} mission to {system} has been foiled by our forces.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Enemy Mission Foiled</DisplayName>
@@ -457,10 +461,16 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>Enemy Mission Foiled</TitleTemplate>
     <BodyTemplate>An enemy {mission} mission to {system} has been foiled by our forces.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_enemy_mission_foiled_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_enemy_mission_foiled_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Saboteurs Strike</DisplayName>
@@ -469,10 +479,16 @@
     <TitleTemplate>Saboteurs Strike at {system}</TitleTemplate>
     <BodyTemplate>The following units were destroyed by saboteurs at {system}:&#10;{item}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_sabotage_maintenance_explosion</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_destroyed_object_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_destroyed_object_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_destroyed_object_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_destroyed_object_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Recruited</DisplayName>
@@ -480,10 +496,16 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Recruited</TitleTemplate>
     <BodyTemplate>{officer} has joined our forces at {system}.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_mission_report_recruitment_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Captured</DisplayName>
@@ -491,10 +513,16 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Captured</TitleTemplate>
     <BodyTemplate>{officer} was captured at {system}.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_character_captured_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_character_captured_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_character_captured_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_character_captured_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Released</DisplayName>
@@ -502,9 +530,7 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Escaped</TitleTemplate>
     <BodyTemplate>{officer} has escaped from imprisonment at {system}.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_prisoner_escape</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_prisoner_escape</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Injured</DisplayName>
@@ -513,9 +539,7 @@
     <TitleTemplate>{officer} Injured</TitleTemplate>
     <BodyTemplate>{officer} has been injured.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_character_injured</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_character_injured</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_character_injured</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Recovered</DisplayName>
@@ -523,9 +547,7 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Healed</TitleTemplate>
     <BodyTemplate>{officer} has been healed of all injuries.</BodyTemplate>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_character_recovered</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_character_recovered</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Killed</DisplayName>
@@ -533,10 +555,16 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Killed</TitleTemplate>
     <BodyTemplate>{officer} has been killed.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_character_killed_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_character_killed_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_character_killed_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_character_killed_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Force Growth</DisplayName>
@@ -554,9 +582,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Troop</DisplayName>
@@ -566,9 +592,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Facility</DisplayName>
@@ -578,9 +602,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Ship</DisplayName>
@@ -590,9 +612,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in ship construction.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Troop</DisplayName>
@@ -602,9 +622,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in troop training.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Facility</DisplayName>
@@ -614,9 +632,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in facility construction.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_research_report</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Uprising Started</DisplayName>
@@ -625,9 +641,7 @@
     <TitleTemplate>Uprising Begins on {system}</TitleTemplate>
     <BodyTemplate>An uprising has begun on the {faction} controlled system {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_uprising_started</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_uprising_started</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_uprising_started</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Uprising Ended</DisplayName>
@@ -636,10 +650,16 @@
     <TitleTemplate>Uprising Ends on {system}</TitleTemplate>
     <BodyTemplate>The uprising on {system} has ended.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_uprising_ended</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_uprising_ended_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_uprising_ended_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_uprising_ended_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_uprising_ended_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Planet Joined by Support</DisplayName>
@@ -648,7 +668,52 @@
     <TitleTemplate>{system} Joins</TitleTemplate>
     <BodyTemplate>Popular support on {system} has caused that world to join the {faction}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImageKey>planet_allegiance_evolves</ImageKey>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Planet Joined Enemy by Support</DisplayName>
+    <ResultType>PlanetJoinedEnemyBySupport</ResultType>
+    <MessageType>PopularSupport</MessageType>
+    <TitleTemplate>{system} Joins Enemy</TitleTemplate>
+    <BodyTemplate>Popular dissent on {system} has caused that world to join the {faction}.</BodyTemplate>
+    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Planet Declared Neutrality by Support</DisplayName>
+    <ResultType>PlanetDeclaredNeutralityBySupport</ResultType>
+    <MessageType>PopularSupport</MessageType>
+    <TitleTemplate>{system} Declares Neutrality</TitleTemplate>
+    <BodyTemplate>Divided loyalty on {system} has caused that world to abandon the {faction} cause.</BodyTemplate>
+    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Blockade Initiated</DisplayName>
@@ -657,10 +722,16 @@
     <TitleTemplate>Fleet Initiates Blockade of {system}</TitleTemplate>
     <BodyTemplate>{fleet} has initiated a blockade of {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_blockade</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_blockade_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_blockade_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_blockade_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_blockade_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Blockade Detected</DisplayName>
@@ -669,10 +740,16 @@
     <TitleTemplate>{system} Under Blockade</TitleTemplate>
     <BodyTemplate>{faction} ships have been detected at {system}.  The world is under enemy blockade.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_blockade</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_blockade_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_blockade_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_blockade_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_blockade_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Evacuation Losses</DisplayName>
@@ -680,10 +757,16 @@
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Evacuation Losses</TitleTemplate>
     <BodyTemplate>The following units were lost running an enemy blockade of {system}.&#10;{units}</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_evacuation_losses_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_evacuation_losses_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_evacuation_losses_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_evacuation_losses_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Maintenance Autoscrap</DisplayName>
@@ -692,10 +775,16 @@
     <TitleTemplate>Maintenance Shortfall</TitleTemplate>
     <BodyTemplate>The following units have been destroyed at {system} due to a maintenance shortfall:&#10;{item}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_sabotage_maintenance_explosion</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_destroyed_object_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_destroyed_object_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_destroyed_object_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_destroyed_object_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Space Battle Victory</DisplayName>
@@ -704,10 +793,16 @@
     <MessageType>Conflict</MessageType>
     <TitleTemplate>Battle at {system}</TitleTemplate>
     <BodyTemplate>The {faction} fleet is victorious.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance_victory</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire_victory</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_alliance_victory</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_empire_victory</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Space Battle Defeat</DisplayName>
@@ -716,10 +811,16 @@
     <MessageType>Conflict</MessageType>
     <TitleTemplate>Battle at {system}</TitleTemplate>
     <BodyTemplate>The {faction} fleet is defeated.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance_defeat</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire_defeat</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_alliance_defeat</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_empire_defeat</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Space Battle Stalemate</DisplayName>
@@ -728,10 +829,16 @@
     <MessageType>Conflict</MessageType>
     <TitleTemplate>Battle at {system}</TitleTemplate>
     <BodyTemplate>The battle at {system} is indecisive.</BodyTemplate>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_space_battle_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_space_battle_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_space_battle_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Owned No Losses</DisplayName>
@@ -742,9 +849,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_no_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Owned Target Losses</DisplayName>
@@ -755,9 +860,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_target_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Owned Attacker Losses</DisplayName>
@@ -768,9 +871,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_attacker_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral No Losses</DisplayName>
@@ -781,9 +882,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_no_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral Target Losses</DisplayName>
@@ -794,9 +893,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_target_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral Attacker Losses</DisplayName>
@@ -807,9 +904,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImageMap>
-      <Default>Art/UI/Messages/ui_message_bombardment_attacker_losses</Default>
-    </ImageMap>
+    <ImagePath>Art/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assault Captured Owned System</DisplayName>
@@ -820,10 +915,16 @@
     <TitleTemplate>Assault on {system}</TitleTemplate>
     <BodyTemplate>{faction} troops have taken control of the {target} system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_assault</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_assault_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_assault_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assault Defended Owned System</DisplayName>
@@ -834,10 +935,16 @@
     <TitleTemplate>Assault on {system}</TitleTemplate>
     <BodyTemplate>{target} Troops have defended {system} from an {faction} assault.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_assault</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_assault_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_assault_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assault Neutral Success</DisplayName>
@@ -848,10 +955,16 @@
     <TitleTemplate>Assault on {system}</TitleTemplate>
     <BodyTemplate>{faction} troops have seized control of the neutral system {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_assault</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_assault_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_assault_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assault Neutral Failed</DisplayName>
@@ -862,9 +975,15 @@
     <TitleTemplate>Assault on {system}</TitleTemplate>
     <BodyTemplate>The neutral system {system} has repulsed an attack by {faction} troops.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_assault</VoicePath>
-    <ImageMap>
-      <FNALL1>Art/UI/Messages/ui_message_assault_alliance</FNALL1>
-      <FNEMP1>Art/UI/Messages/ui_message_assault_empire</FNEMP1>
-    </ImageMap>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+      </Entry>
+    </ImagePaths>
   </MessageDefinition>
 </MessageDefinitions>
