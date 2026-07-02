@@ -557,9 +557,9 @@ namespace Rebellion.Util.Serialization
         /// <returns>The read collection.</returns>
         private static object ReadCollection(Type type, XmlReader reader)
         {
-            Type elementType = type.IsArray
-                ? type.GetElementType()
-                : type.GetGenericArguments().FirstOrDefault();
+            Type elementType = GetCollectionElementType(type);
+            if (elementType == null)
+                throw new ArgumentException($"Collection type {type.Name} has no element type.");
 
             if (type.IsArray)
             {
@@ -598,6 +598,32 @@ namespace Rebellion.Util.Serialization
                     return instance;
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the element type for a collection type.
+        /// </summary>
+        /// <param name="type">The collection type.</param>
+        /// <returns>The collection element type, or null when it cannot be resolved.</returns>
+        private static Type GetCollectionElementType(Type type)
+        {
+            if (type.IsArray)
+                return type.GetElementType();
+
+            Type elementType = type.GetGenericArguments().FirstOrDefault();
+            if (elementType != null)
+                return elementType;
+
+            foreach (Type interfaceType in type.GetInterfaces())
+            {
+                if (
+                    interfaceType.IsGenericType
+                    && interfaceType.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                )
+                    return interfaceType.GetGenericArguments()[0];
+            }
+
+            return null;
         }
 
         /// <summary>

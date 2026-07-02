@@ -281,8 +281,6 @@ namespace Rebellion.Generation
         public List<string> TargetPlanets;
         public string FactionID;
         public int SpawnChancePct;
-        public List<UnitEntry> Ships;
-        public List<UnitEntry> Cargo;
         public List<FixedFleetShip> ShipEntries;
     }
 

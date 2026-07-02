@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -10,7 +11,17 @@ public sealed class UIContext
     private readonly GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
 
-    public UIContext(GameRoot game, FactionThemeLibrary themeLibrary)
+    /// <summary>
+    /// Creates a UI context for strategy views.
+    /// </summary>
+    /// <param name="game">The active game state.</param>
+    /// <param name="themeLibrary">The faction theme library.</param>
+    /// <param name="encyclopediaCatalog">The encyclopedia catalog.</param>
+    public UIContext(
+        GameRoot game,
+        FactionThemeLibrary themeLibrary,
+        EncyclopediaCatalog encyclopediaCatalog
+    )
     {
         if (game == null)
             throw new ArgumentNullException(nameof(game));
@@ -18,11 +29,16 @@ public sealed class UIContext
         if (themeLibrary == null)
             throw new ArgumentNullException(nameof(themeLibrary));
 
+        if (encyclopediaCatalog == null)
+            throw new ArgumentNullException(nameof(encyclopediaCatalog));
+
         this.game = game;
         this.themeLibrary = themeLibrary;
+        EncyclopediaCatalog = encyclopediaCatalog;
     }
 
     public GameRoot Game => game;
+    public EncyclopediaCatalog EncyclopediaCatalog { get; }
 
     public FactionTheme GetTheme(string factionInstanceId)
     {

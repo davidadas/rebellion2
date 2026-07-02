@@ -4,6 +4,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
@@ -30,6 +31,14 @@ namespace Rebellion.Game.Units
         ForceStudent,
         ForceKnight,
         ForceMaster,
+    }
+
+    public enum OfficerVoiceLineType
+    {
+        Order,
+        MissionSuccess,
+        MissionFailure,
+        MissionAbort,
     }
 
     /// <summary>
@@ -116,6 +125,10 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+        public List<string> OrderVoicePaths { get; set; } = new List<string>();
+        public List<string> MissionSuccessVoicePaths { get; set; } = new List<string>();
+        public List<string> MissionFailureVoicePaths { get; set; } = new List<string>();
+        public List<string> MissionAbortVoicePaths { get; set; } = new List<string>();
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
@@ -327,6 +340,46 @@ namespace Rebellion.Game.Units
             if (GetParent() is Mission mission)
                 return mission.IsComplete() && Movement == null;
             return Movement == null;
+        }
+
+        public string GetVoicePath(
+            OfficerVoiceLineType voiceLineType,
+            IRandomNumberProvider provider
+        )
+        {
+            return SelectVoicePath(GetVoicePaths(voiceLineType), provider);
+        }
+
+        public bool HasVoicePath(OfficerVoiceLineType voiceLineType)
+        {
+            IReadOnlyList<string> paths = GetVoicePaths(voiceLineType);
+            return paths?.Count > 0;
+        }
+
+        private IReadOnlyList<string> GetVoicePaths(OfficerVoiceLineType voiceLineType)
+        {
+            return voiceLineType switch
+            {
+                OfficerVoiceLineType.Order => OrderVoicePaths,
+                OfficerVoiceLineType.MissionSuccess => MissionSuccessVoicePaths,
+                OfficerVoiceLineType.MissionFailure => MissionFailureVoicePaths,
+                OfficerVoiceLineType.MissionAbort => MissionAbortVoicePaths,
+                _ => null,
+            };
+        }
+
+        private static string SelectVoicePath(
+            IReadOnlyList<string> paths,
+            IRandomNumberProvider provider
+        )
+        {
+            if (paths == null || paths.Count == 0)
+                return null;
+
+            if (paths.Count == 1 || provider == null)
+                return paths[0];
+
+            return paths[provider.NextInt(0, paths.Count)];
         }
     }
 }

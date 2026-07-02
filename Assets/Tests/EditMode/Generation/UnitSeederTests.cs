@@ -352,11 +352,10 @@ namespace Rebellion.Tests.Generation
                             PlanetTypeID = "PLSEW05",
                             FactionID = "FNEMP1",
                             SpawnChancePct = 100,
-                            Ships = new List<UnitEntry>
+                            ShipEntries = new List<FixedFleetShip>
                             {
-                                new UnitEntry { TypeID = "SDESDS3", Count = 2 },
+                                new FixedFleetShip { TypeID = "SDESDS3", Count = 2 },
                             },
-                            Cargo = new List<UnitEntry>(),
                         },
                     },
                     FactionBudgets = new List<FactionBudget>(),

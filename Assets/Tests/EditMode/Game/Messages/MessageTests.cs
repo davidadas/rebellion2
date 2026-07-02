@@ -1,7 +1,7 @@
 using NUnit.Framework;
-using Rebellion.Game.Factions;
+using Rebellion.Game.Messages;
 
-namespace Rebellion.Tests.Game.Factions
+namespace Rebellion.Tests.Game.Messages
 {
     [TestFixture]
     public class MessageTests
@@ -54,6 +54,8 @@ namespace Rebellion.Tests.Game.Factions
             Message message = new Message(MessageType.PopularSupport, "Support gained")
             {
                 InstanceID = "MSG1",
+                DisplayImageKey = "mission_report",
+                OverlayImagePath = "overlay-card",
                 Read = true,
             };
 
@@ -79,6 +81,16 @@ namespace Rebellion.Tests.Game.Factions
                 message.Read,
                 deserialized.Read,
                 "Read should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.DisplayImageKey,
+                deserialized.DisplayImageKey,
+                "DisplayImageKey should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.OverlayImagePath,
+                deserialized.OverlayImagePath,
+                "OverlayImagePath should be correctly deserialized."
             );
         }
     }

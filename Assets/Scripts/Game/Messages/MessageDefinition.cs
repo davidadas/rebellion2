@@ -1,5 +1,6 @@
-using Rebellion.Game.Factions;
+using System.Collections.Generic;
 using Rebellion.Game.Research;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -18,15 +19,28 @@ namespace Rebellion.Game.Messages
         ManufacturingIdle,
         MissionReport,
         EnemyMissionFoiled,
+        OfficerRecruited,
+        OfficerCaptured,
+        OfficerReleased,
+        OfficerInjured,
+        OfficerRecovered,
+        OfficerKilled,
+        ForceGrowth,
+        CapitalShipRepaired,
+        StarfighterRepaired,
         SabotageStrike,
         ResearchComplete,
         ResearchExhausted,
         UprisingStarted,
         UprisingEnded,
+        PlanetJoinedBySupport,
+        PlanetJoinedEnemyBySupport,
+        PlanetDeclaredNeutralityBySupport,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
         MaintenanceAutoscrap,
+        RecruitmentExhausted,
         SpaceBattle,
         Bombardment,
         PlanetaryAssault,
@@ -68,11 +82,19 @@ namespace Rebellion.Game.Messages
         public MessageResultOutcome Outcome { get; set; }
         public MessagePlanetOwnership PlanetOwnership { get; set; }
         public MessageType MessageType { get; set; }
+        public string MissionTypeID { get; set; }
+        public MissionCompletionReason MissionCompletionReason { get; set; }
         public BuildingType BuildingType { get; set; }
         public ManufacturingType ManufacturingType { get; set; }
         public ResearchDiscipline ResearchDiscipline { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
-        public MessageImageMap ImageMap { get; set; }
+        public string ImageKey { get; set; }
+        public string ImagePath { get; set; }
+        public Dictionary<string, string> ImagePaths { get; set; } =
+            new Dictionary<string, string>();
+        public string VoicePath { get; set; }
+        public Dictionary<string, string> VoicePaths { get; set; } =
+            new Dictionary<string, string>();
     }
 }

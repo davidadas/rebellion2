@@ -89,7 +89,7 @@ namespace Rebellion.Generation
         {
             int galaxySize = (int)_summary.GalaxySize;
             PlanetSystem[] systems = ResourceManager
-                .GetGameData<PlanetSystem>()
+                .GetEntityData<PlanetSystem>()
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
 
@@ -101,14 +101,14 @@ namespace Rebellion.Generation
                 Rng = _randomProvider,
 
                 Systems = systems,
-                Factions = ResourceManager.GetGameData<Faction>(),
-                Buildings = ResourceManager.GetGameData<Building>(),
-                CapitalShips = ResourceManager.GetGameData<CapitalShip>(),
-                Starfighters = ResourceManager.GetGameData<Starfighter>(),
-                Regiments = ResourceManager.GetGameData<Regiment>(),
-                SpecialForces = ResourceManager.GetGameData<SpecialForces>(),
-                Officers = ResourceManager.GetGameData<Officer>(),
-                Events = ResourceManager.GetGameData<GameEvent>(),
+                Factions = ResourceManager.GetEntityData<Faction>(),
+                Buildings = ResourceManager.GetEntityData<Building>(),
+                CapitalShips = ResourceManager.GetEntityData<CapitalShip>(),
+                Starfighters = ResourceManager.GetEntityData<Starfighter>(),
+                Regiments = ResourceManager.GetEntityData<Regiment>(),
+                SpecialForces = ResourceManager.GetEntityData<SpecialForces>(),
+                Officers = ResourceManager.GetEntityData<Officer>(),
+                Events = ResourceManager.GetEntityData<GameEvent>(),
             };
         }
 

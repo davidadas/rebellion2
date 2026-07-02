@@ -53,7 +53,7 @@ public static class ResourceManager
     /// Loads and deserializes all game data entities of type T
     /// from the Resources/Data folder.
     /// </summary>
-    public static T[] GetGameData<T>()
+    public static T[] GetEntityData<T>()
         where T : BaseGameEntity
     {
         string typeName = typeof(T).Name;
@@ -79,6 +79,33 @@ public static class ResourceManager
         }
 
         return (T[])result;
+    }
+
+    /// <summary>
+    /// Loads and deserializes a strongly typed data object from the Resources/Data folder.
+    /// </summary>
+    /// <typeparam name="T">The data object type to load.</typeparam>
+    /// <returns>The loaded data object.</returns>
+    public static T GetData<T>()
+        where T : class
+    {
+        string typeName = typeof(T).Name;
+        string filePath = Path.Combine("Data", typeName);
+
+        UnityEngine.TextAsset asset = UnityEngine.Resources.Load<UnityEngine.TextAsset>(filePath);
+        if (asset == null)
+            throw new Exception($"Data not found at: {filePath}");
+
+        GameSerializerSettings settings = new GameSerializerSettings { RootName = typeName };
+        GameSerializer serializer = new GameSerializer(typeof(T), settings);
+
+        using MemoryStream stream = new MemoryStream(asset.bytes);
+        object result = serializer.Deserialize(stream);
+
+        if (result == null)
+            throw new Exception($"Failed to deserialize data: {typeName}");
+
+        return (T)result;
     }
 
     /// <summary>
@@ -149,7 +176,7 @@ public static class ResourceManager
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = UnityEngine.Resources.Load<T>(path);
+        T resource = string.IsNullOrEmpty(path) ? null : UnityEngine.Resources.Load<T>(path);
 
         if (resource == null)
         {

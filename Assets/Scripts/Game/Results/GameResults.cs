@@ -73,6 +73,12 @@ namespace Rebellion.Game.Results
         Assault,
     }
 
+    public enum PlanetOwnershipChangeReason
+    {
+        None,
+        PopularSupport,
+    }
+
     public enum FleetStateType
     {
         Battle,
@@ -195,6 +201,7 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public Faction PreviousOwner { get; set; }
         public Faction NewOwner { get; set; }
+        public PlanetOwnershipChangeReason Reason { get; set; }
     }
 
     /// <summary>
@@ -427,6 +434,8 @@ namespace Rebellion.Game.Results
     {
         public Officer Officer { get; set; }
         public int ExperienceGained { get; set; }
+        public int PreviousForceRank { get; set; }
+        public int CurrentForceRank { get; set; }
         public int Detail { get; set; }
     }
 
@@ -537,6 +546,7 @@ namespace Rebellion.Game.Results
     {
         public IGameEntity Unit { get; set; }
         public Planet Destination { get; set; }
+        public string MovementGroupID { get; set; }
     }
 
     /// <summary>
@@ -700,6 +710,7 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public Planet Planet { get; set; }
     }
 
     public class BombardmentStrikeEvent
@@ -728,11 +739,6 @@ namespace Rebellion.Game.Results
         public List<Starfighter> DestroyedStarfighters { get; set; } = new List<Starfighter>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
-
-        /// <summary>
-        /// Garrison requirement computed during Stage 5 (defender garrison wiped, attacker still has
-        /// troops aboard). Zero when Stage 5 is skipped.
-        /// </summary>
         public int GarrisonRequirement { get; set; }
     }
 

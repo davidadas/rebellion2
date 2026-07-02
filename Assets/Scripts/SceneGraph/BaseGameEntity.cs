@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
@@ -28,7 +30,12 @@ namespace Rebellion.SceneGraph
         public string TypeID { get; set; }
         public string DisplayName { get; set; }
         public string DisplayImagePath { get; set; }
+        public string MessageImagePath { get; set; }
         public string Description { get; set; }
+        public string EncyclopediaImagePath { get; set; }
+        public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
+            new List<EncyclopediaEntryStat>();
+        public string EncyclopediaDescription { get; set; }
 
         /// <summary>
         /// Returns the instance ID of the entity.
