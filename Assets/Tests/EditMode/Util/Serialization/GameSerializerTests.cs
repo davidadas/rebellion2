@@ -274,6 +274,7 @@ namespace Rebellion.Tests.Util.Serialization
             {
                 TransitTicks = 9,
                 TicksElapsed = 4,
+                MovementGroupID = "group-1",
                 OriginPosition = new Point(12, 34),
                 CurrentPosition = new Point(56, 78),
             };
@@ -286,6 +287,7 @@ namespace Rebellion.Tests.Util.Serialization
 
             Assert.AreEqual(9, deserialized.TransitTicks);
             Assert.AreEqual(4, deserialized.TicksElapsed);
+            Assert.AreEqual("group-1", deserialized.MovementGroupID);
             Assert.AreEqual(new Point(12, 34), deserialized.OriginPosition);
             Assert.AreEqual(new Point(56, 78), deserialized.CurrentPosition);
         }

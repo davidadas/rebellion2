@@ -177,6 +177,22 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_ValidDestination_SetsMovementGroupID()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsFalse(string.IsNullOrEmpty(officer.Movement.MovementGroupID));
+        }
+
+        [Test]
         public void RequestMove_WhenUnitAlreadyInTransit_DoesNotRedirect()
         {
             (
@@ -347,6 +363,25 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(officer, enroute.GameObject);
             Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => r.IsActive));
             Assert.IsTrue(results.OfType<GameObjectEnrouteActiveResult>().Any(r => !r.IsActive));
+        }
+
+        [Test]
+        public void UpdateMovement_OnArrival_PreservesMovementGroupIDInArrivalResult()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            movement.RequestMove(officer, destination);
+            string movementGroupID = officer.Movement.MovementGroupID;
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+
+            UnitArrivedResult arrival = movement.ProcessTick().OfType<UnitArrivedResult>().Single();
+
+            Assert.AreEqual(movementGroupID, arrival.MovementGroupID);
         }
 
         [Test]
@@ -548,13 +583,60 @@ namespace Rebellion.Tests.Systems
             Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
             game.AttachNode(officer2, origin);
 
-            movement.RequestMove(
-                new System.Collections.Generic.List<IMovable> { officer, officer2 },
-                destination
-            );
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
 
             Assert.AreEqual(destination, officer.GetParent());
             Assert.AreEqual(destination, officer2.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_GroupNonCapturedUnits_SetsSharedMovementGroupID()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+
+            Assert.IsFalse(string.IsNullOrEmpty(officer.Movement.MovementGroupID));
+            Assert.AreEqual(officer.Movement.MovementGroupID, officer2.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void UpdateMovement_GroupNonCapturedUnits_PreservesMovementGroupIDInArrivalResults()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Officer officer2 = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(officer2, origin);
+
+            movement.RequestMove(new List<IMovable> { officer, officer2 }, destination);
+            string movementGroupID = officer.Movement.MovementGroupID;
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks;
+            officer2.Movement.TicksElapsed = officer2.Movement.TransitTicks;
+
+            List<UnitArrivedResult> arrivals = movement
+                .ProcessTick()
+                .OfType<UnitArrivedResult>()
+                .Where(result => result.Unit == officer || result.Unit == officer2)
+                .ToList();
+
+            Assert.AreEqual(2, arrivals.Count);
+            Assert.IsFalse(string.IsNullOrEmpty(movementGroupID));
+            Assert.IsTrue(arrivals.All(result => result.MovementGroupID == movementGroupID));
         }
 
         [Test]

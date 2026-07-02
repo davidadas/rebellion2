@@ -147,6 +147,7 @@ namespace Rebellion.Systems
             {
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
+                MovementGroupID = Guid.NewGuid().ToString("N"),
                 OriginPosition = origin.GetPosition(),
                 CurrentPosition = origin.GetPosition(),
             };
@@ -173,8 +174,9 @@ namespace Rebellion.Systems
             if (!CanMoveGroup(units, destination))
                 return;
 
+            string movementGroupID = Guid.NewGuid().ToString("N");
             foreach (IMovable unit in units)
-                ExecuteMove(unit, destination);
+                ExecuteMove(unit, destination, movementGroupID);
         }
 
         /// <summary>
@@ -388,6 +390,8 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
+            string movementGroupID = movable.Movement?.MovementGroupID;
+
             if (TryFollowMovingFleetDestination(movable, destination))
                 return;
 
@@ -406,7 +410,7 @@ namespace Rebellion.Systems
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet);
-                AddArrivalResults(movable, destinationPlanet, results);
+                AddArrivalResults(movable, destinationPlanet, movementGroupID, results);
             }
             catch (SceneAccessException ex)
             {
@@ -437,10 +441,12 @@ namespace Rebellion.Systems
                 return true;
 
             Point currentPosition = movable.Movement.CurrentPosition;
+            string movementGroupID = movable.Movement.MovementGroupID;
             movable.Movement = new MovementState
             {
                 TransitTicks = CalculateTransitTicks(movable, currentPosition, newDestination),
                 TicksElapsed = 0,
+                MovementGroupID = movementGroupID,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };
@@ -581,10 +587,12 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="movable">The arriving unit.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="movementGroupID">The movement order id that produced the arrival.</param>
         /// <param name="results">The results generated this tick.</param>
         private void AddArrivalResults(
             IMovable movable,
             Planet destinationPlanet,
+            string movementGroupID,
             List<GameResult> results
         )
         {
@@ -601,6 +609,7 @@ namespace Rebellion.Systems
                 {
                     Unit = movable,
                     Destination = destinationPlanet,
+                    MovementGroupID = movementGroupID,
                     Tick = _game.CurrentTick,
                 }
             );
@@ -697,8 +706,14 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target scene node to reparent into.</param>
-        private void ExecuteMove(IMovable unit, ISceneNode destination)
+        /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
+        private void ExecuteMove(
+            IMovable unit,
+            ISceneNode destination,
+            string movementGroupID = null
+        )
         {
+            movementGroupID ??= Guid.NewGuid().ToString("N");
             destination = ResolveLiveNode(destination);
 
             if (
@@ -760,6 +775,7 @@ namespace Rebellion.Systems
             {
                 TransitTicks = transitTicks,
                 TicksElapsed = 0,
+                MovementGroupID = movementGroupID,
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };

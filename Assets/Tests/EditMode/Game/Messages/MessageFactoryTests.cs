@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ShipArrivals_GroupsShipsByOwnerAndDestination()
+        public void CreateMessages_ShipArrivalsWithSameMovementGroup_GroupsShips()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             CapitalShip firstShip = new CapitalShip
@@ -144,8 +144,18 @@ namespace Rebellion.Tests.Game.Messages
                             imagePaths: FactionImages()
                         ),
                     },
-                    new UnitArrivedResult { Unit = firstShip, Destination = destination },
-                    new UnitArrivedResult { Unit = secondShip, Destination = destination }
+                    new UnitArrivedResult
+                    {
+                        Unit = firstShip,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = secondShip,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    }
                 ),
                 alliance
             );
@@ -154,6 +164,88 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("ships:Yavin", message.Title);
             Assert.AreEqual("body:Nebulon-B Frigate\nCorellian Corvette", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_ShipArrivalsWithDifferentMovementGroups_ReturnsSeparateMessages()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            CapitalShip firstShip = new CapitalShip
+            {
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                DisplayName = "Corellian Corvette",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.ShipsArrived,
+                        MessageType.Fleet,
+                        "ships:{system}",
+                        "body:{ships}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new UnitArrivedResult
+                {
+                    Unit = firstShip,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                },
+                new UnitArrivedResult
+                {
+                    Unit = secondShip,
+                    Destination = destination,
+                    MovementGroupID = "group-2",
+                }
+            );
+
+            List<Message> messages = deliveries.ConvertAll(delivery => delivery.message);
+
+            Assert.AreEqual(2, messages.Count);
+            Assert.IsTrue(messages.Any(message => message.Body == "body:Nebulon-B Frigate"));
+            Assert.IsTrue(messages.Any(message => message.Body == "body:Corellian Corvette"));
+        }
+
+        [Test]
+        public void CreateMessages_ShipArrivalsWithoutMovementGroup_ReturnsSeparateMessages()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            CapitalShip firstShip = new CapitalShip
+            {
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                DisplayName = "Corellian Corvette",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.ShipsArrived,
+                        MessageType.Fleet,
+                        "ships:{system}",
+                        "body:{ships}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new UnitArrivedResult { Unit = firstShip, Destination = destination },
+                new UnitArrivedResult { Unit = secondShip, Destination = destination }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
         }
 
         [Test]

@@ -25,6 +25,11 @@ namespace Rebellion.Game.Movement
         public int TicksElapsed { get; set; }
 
         /// <summary>
+        /// Identifier shared by units that were issued the same movement order.
+        /// </summary>
+        public string MovementGroupID { get; set; }
+
+        /// <summary>
         /// Position at the start of transit (origin planet coordinates).
         /// Used for interpolating position during transit.
         /// </summary>

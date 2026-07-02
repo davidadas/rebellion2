@@ -55,8 +55,18 @@ namespace Rebellion.Tests.Game.Messages
 
             List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
-                new UnitArrivedResult { Unit = firstShip, Destination = destination },
-                new UnitArrivedResult { Unit = secondShip, Destination = destination }
+                new UnitArrivedResult
+                {
+                    Unit = firstShip,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                },
+                new UnitArrivedResult
+                {
+                    Unit = secondShip,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                }
             );
 
             AssertOnlyDeliveries(deliveries, alliance, MessageType.Fleet, 1);

@@ -18,6 +18,7 @@ namespace Rebellion.Game.Messages
     public class MessageFactory
     {
         private readonly MessageDefinition[] _definitions;
+        private readonly MessageTemplateBuilder _templateBuilder = new MessageTemplateBuilder();
 
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
@@ -956,19 +957,16 @@ namespace Rebellion.Game.Messages
             List<(Faction faction, Message message)> deliveries
         )
         {
-            Dictionary<
-                (string OwnerInstanceID, string DestinationInstanceID),
-                List<CapitalShip>
-            > shipGroups =
+            var shipGroups =
                 new Dictionary<
-                    (string OwnerInstanceID, string DestinationInstanceID),
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
                     List<CapitalShip>
                 >();
-            Dictionary<
-                (string OwnerInstanceID, string DestinationInstanceID),
-                Planet
-            > shipDestinations =
-                new Dictionary<(string OwnerInstanceID, string DestinationInstanceID), Planet>();
+            var shipDestinations =
+                new Dictionary<
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
+                    Planet
+                >();
 
             foreach (UnitArrivedResult arrival in arrivals)
             {
@@ -985,7 +983,14 @@ namespace Rebellion.Game.Messages
 
                 if (arrival.Unit is CapitalShip ship)
                 {
-                    var key = (ship.GetOwnerInstanceID(), arrival.Destination?.GetInstanceID());
+                    string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
+                        ? ship.GetInstanceID()
+                        : arrival.MovementGroupID;
+                    var key = (
+                        ship.GetOwnerInstanceID(),
+                        arrival.Destination?.GetInstanceID(),
+                        movementGroupID
+                    );
                     if (!shipGroups.TryGetValue(key, out List<CapitalShip> ships))
                     {
                         ships = new List<CapitalShip>();
@@ -1008,12 +1013,7 @@ namespace Rebellion.Game.Messages
                 }
             }
 
-            foreach (
-                KeyValuePair<
-                    (string OwnerInstanceID, string DestinationInstanceID),
-                    List<CapitalShip>
-                > group in shipGroups
-            )
+            foreach (var group in shipGroups)
             {
                 Faction faction = GetFaction(game, group.Key.OwnerInstanceID);
                 AddDelivery(
@@ -1643,55 +1643,15 @@ namespace Rebellion.Game.Messages
             string officerVoicePath = null
         )
         {
-            if (definition == null)
-                return null;
-
-            string title = Interpolate(definition.TitleTemplate, values);
-            string body = Interpolate(definition.BodyTemplate, values);
-
-            return new Message(definition.MessageType, title, body)
-            {
-                DisplayName = title,
-                DisplayImageKey = definition.ImageKey,
-                DisplayImagePath =
-                    imageOverride
-                    ?? GetAssetPath(
-                        definition.ImagePath,
-                        definition.ImagePaths,
-                        (imageFaction ?? faction)?.InstanceID
-                    ),
-                OverlayImagePath = overlayImagePath,
-                MessageVoicePath = GetAssetPath(
-                    definition.VoicePath,
-                    definition.VoicePaths,
-                    faction?.InstanceID
-                ),
-                OfficerVoicePath = officerVoicePath,
-            };
-        }
-
-        /// <summary>
-        /// Resolves a configured asset path using an optional keyed override.
-        /// </summary>
-        /// <param name="defaultPath">The fallback asset path.</param>
-        /// <param name="keyedPaths">The keyed asset paths.</param>
-        /// <param name="key">The key to look up.</param>
-        /// <returns>The keyed asset path when available; otherwise the fallback path.</returns>
-        private static string GetAssetPath(
-            string defaultPath,
-            Dictionary<string, string> keyedPaths,
-            string key
-        )
-        {
-            if (
-                !string.IsNullOrEmpty(key)
-                && keyedPaths != null
-                && keyedPaths.TryGetValue(key, out string path)
-                && !string.IsNullOrEmpty(path)
-            )
-                return path;
-
-            return defaultPath;
+            return _templateBuilder.Build(
+                definition,
+                faction,
+                values,
+                imageFaction,
+                imageOverride,
+                overlayImagePath,
+                officerVoicePath
+            );
         }
 
         /// <summary>
@@ -2266,21 +2226,6 @@ namespace Rebellion.Game.Messages
                 .Concat(result.LostRegiments);
 
             return string.Join("\n", units.Select(GetDisplayName).Where(name => name.Length > 0));
-        }
-
-        /// <summary>
-        /// Replaces template tokens with provided values.
-        /// </summary>
-        /// <param name="template">The message template text.</param>
-        /// <param name="values">The values to substitute into the template.</param>
-        /// <returns>The interpolated message text.</returns>
-        private static string Interpolate(string template, Dictionary<string, string> values)
-        {
-            string result = template ?? string.Empty;
-            foreach (KeyValuePair<string, string> value in values)
-                result = result.Replace("{" + value.Key + "}", value.Value ?? string.Empty);
-
-            return result;
         }
 
         /// <summary>
