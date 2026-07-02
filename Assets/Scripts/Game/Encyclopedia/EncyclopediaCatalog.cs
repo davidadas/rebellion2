@@ -22,10 +22,6 @@ namespace Rebellion.Game.Encyclopedia
                 entries?.Where(entry => entry != null).ToList() ?? new List<EncyclopediaEntry>();
         }
 
-        public int Count => _entries.Count;
-
-        public EncyclopediaEntry this[int index] => _entries[index];
-
         /// <summary>
         /// Gets the entries visible in an encyclopedia category for a faction.
         /// </summary>
@@ -50,6 +46,10 @@ namespace Rebellion.Game.Encyclopedia
         {
             return FindEntry(_entries, typeId, factionInstanceId);
         }
+
+        public int Count => _entries.Count;
+
+        public EncyclopediaEntry this[int index] => _entries[index];
 
         /// <summary>
         /// Gets an enumerator over the catalog entries.

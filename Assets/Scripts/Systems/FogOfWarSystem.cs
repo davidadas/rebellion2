@@ -47,6 +47,11 @@ namespace Rebellion.Systems
             _recorder.RecordPlanetSnapshot(faction, planet, system, currentTick);
         }
 
+        /// <summary>
+        /// Removes an entity from all saved planet snapshots for a faction.
+        /// </summary>
+        /// <param name="faction">The faction whose snapshots are updated.</param>
+        /// <param name="entityId">The entity instance ID to remove.</param>
         public void RemoveEntityFromSnapshots(Faction faction, string entityId)
         {
             _recorder.RemoveEntityFromSnapshots(faction, entityId);

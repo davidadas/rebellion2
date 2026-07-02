@@ -4,6 +4,38 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Encyclopedia
 {
+    public enum EncyclopediaEntryCategory
+    {
+        Concept,
+        System,
+        Ship,
+        Facility,
+        Mission,
+        Troop,
+        Personnel,
+    }
+
+    [PersistableObject]
+    public sealed class EncyclopediaEntryStat
+    {
+        public string Label { get; set; }
+        public string Value { get; set; }
+
+        /// <summary>
+        /// Builds the rendered text for one encyclopedia stat row.
+        /// </summary>
+        /// <returns>The formatted stat row text.</returns>
+        public string GetText()
+        {
+            if (string.IsNullOrEmpty(Label))
+                return Value;
+            if (string.IsNullOrEmpty(Value))
+                return Label + ":";
+
+            return Label + ":\t" + Value;
+        }
+    }
+
     [PersistableObject]
     public sealed class EncyclopediaEntry
     {
@@ -49,38 +81,6 @@ namespace Rebellion.Game.Encyclopedia
 
             return builder.ToString();
         }
-    }
-
-    [PersistableObject]
-    public sealed class EncyclopediaEntryStat
-    {
-        public string Label { get; set; }
-        public string Value { get; set; }
-
-        /// <summary>
-        /// Builds the rendered text for one encyclopedia stat row.
-        /// </summary>
-        /// <returns>The formatted stat row text.</returns>
-        public string GetText()
-        {
-            if (string.IsNullOrEmpty(Label))
-                return Value;
-            if (string.IsNullOrEmpty(Value))
-                return Label + ":";
-
-            return Label + ":\t" + Value;
-        }
-    }
-
-    public enum EncyclopediaEntryCategory
-    {
-        Concept,
-        System,
-        Ship,
-        Facility,
-        Mission,
-        Troop,
-        Personnel,
     }
 
     [PersistableObject]

@@ -176,7 +176,7 @@ public static class ResourceManager
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = TryLoadResource<T>(path);
+        T resource = string.IsNullOrEmpty(path) ? null : UnityEngine.Resources.Load<T>(path);
 
         if (resource == null)
         {
@@ -184,15 +184,6 @@ public static class ResourceManager
         }
 
         return resource;
-    }
-
-    private static T TryLoadResource<T>(string path)
-        where T : UnityEngine.Object
-    {
-        if (string.IsNullOrEmpty(path))
-            return null;
-
-        return UnityEngine.Resources.Load<T>(path);
     }
 
     private static T[] LoadResourceGroup<T>(string folderPath, string errorPrefix)

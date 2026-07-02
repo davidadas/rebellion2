@@ -213,7 +213,7 @@ Refineries convert the raw materials extracted by mines into refined material.  
 Maintenance Cost:			10
 Bombardment Defense:		4
 
-An Advance Training Facility trains new troops in half the time of a standard training facility.</Description>
+An Advanced Training Facility trains new troops in half the time of a standard training facility.</Description>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -228,7 +228,7 @@ An Advance Training Facility trains new troops in half the time of a standard tr
         <Value>4</Value>
       </EncyclopediaEntryStat>
     </EncyclopediaStats>
-    <EncyclopediaDescription>An Advance Training Facility trains new troops in half the time of a standard training facility.</EncyclopediaDescription>
+    <EncyclopediaDescription>An Advanced Training Facility trains new troops in half the time of a standard training facility.</EncyclopediaDescription>
     <ProductionType>Troop</ProductionType>
     <ConstructionCost>10</ConstructionCost>
     <MaintenanceCost>10</MaintenanceCost>
@@ -424,7 +424,7 @@ Maintenance Cost:			4
 Bombardment Defense:		5
 Attack Strength:			2000
 
-The KDY v-150 is a system based ion cannon used to fire on ships which are bombarding the system on which the KDY is deployed.  As with all ion cannons, the KDY does no physical damage.  It drains energy from the target vessel, reducing its shields and rendering it unable to fire its weapons.  This is especially useful when attempting to pass units through a enemy blockade.</Description>
+The KDY v-150 is a system based ion cannon used to fire on ships which are bombarding the system on which the KDY is deployed.  As with all ion cannons, the KDY does no physical damage.  It drains energy from the target vessel, reducing its shields and rendering it unable to fire its weapons.  This is especially useful when attempting to pass units through an enemy blockade.</Description>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -443,7 +443,7 @@ The KDY v-150 is a system based ion cannon used to fire on ships which are bomba
         <Value>2000</Value>
       </EncyclopediaEntryStat>
     </EncyclopediaStats>
-    <EncyclopediaDescription>The KDY v-150 is a system based ion cannon used to fire on ships which are bombarding the system on which the KDY is deployed.  As with all ion cannons, the KDY does no physical damage.  It drains energy from the target vessel, reducing its shields and rendering it unable to fire its weapons.  This is especially useful when attempting to pass units through a enemy blockade.</EncyclopediaDescription>
+    <EncyclopediaDescription>The KDY v-150 is a system based ion cannon used to fire on ships which are bombarding the system on which the KDY is deployed.  As with all ion cannons, the KDY does no physical damage.  It drains energy from the target vessel, reducing its shields and rendering it unable to fire its weapons.  This is especially useful when attempting to pass units through an enemy blockade.</EncyclopediaDescription>
     <ProductionType>None</ProductionType>
     <ConstructionCost>4</ConstructionCost>
     <MaintenanceCost>4</MaintenanceCost>

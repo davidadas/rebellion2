@@ -62,6 +62,11 @@ namespace Rebellion.Game.FogOfWar
             systemSnapshot.Planets[planet.InstanceID] = planetSnapshot;
         }
 
+        /// <summary>
+        /// Removes an entity from all saved planet snapshots for a faction.
+        /// </summary>
+        /// <param name="faction">The faction whose snapshots are updated.</param>
+        /// <param name="entityId">The entity instance ID to remove.</param>
         public void RemoveEntityFromSnapshots(Faction faction, string entityId)
         {
             if (faction == null || string.IsNullOrEmpty(entityId))

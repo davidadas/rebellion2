@@ -139,7 +139,7 @@ Attack Strength (Ion Cannon):		0
 Shield Energy:						0
 Hyperdrive:							No
 
-An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and manueverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</Description>
+An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and maneuverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</Description>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -166,7 +166,7 @@ An improvement over the original TIE design, the interceptor incorporates the be
         <Value>No</Value>
       </EncyclopediaEntryStat>
     </EncyclopediaStats>
-    <EncyclopediaDescription>An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and manueverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</EncyclopediaDescription>
+    <EncyclopediaDescription>An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and maneuverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
@@ -201,7 +201,7 @@ Attack Strength (Ion Cannon):		0
 Shield Energy:						5
 Hyperdrive:							Yes
 
-The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient manuevering thrusters are housed in the three odd shaped solar panels which give the Defender manuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</Description>
+The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient maneuvering thrusters are housed in the three odd shaped solar panels which give the Defender maneuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</Description>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -228,7 +228,7 @@ The TIE defender marks a departure from the normal line of Imperial fighter desi
         <Value>Yes</Value>
       </EncyclopediaEntryStat>
     </EncyclopediaStats>
-    <EncyclopediaDescription>The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient manuevering thrusters are housed in the three odd shaped solar panels which give the Defender manuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</EncyclopediaDescription>
+    <EncyclopediaDescription>The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient maneuvering thrusters are housed in the three odd shaped solar panels which give the Defender maneuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
     </AllowedOwnerInstanceIDs>
