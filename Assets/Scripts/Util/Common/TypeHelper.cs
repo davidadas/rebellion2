@@ -12,20 +12,38 @@ namespace Rebellion.Util.Common
     public static class TypeHelper
     {
         /// <summary>
-        /// Determines whether the specified type is a primitive type.
+        /// Determines whether the specified type is a scalar type.
         /// </summary>
         /// <param name="type">The type to check.</param>
-        /// <returns>True if the type is primitive, otherwise false.</returns>
-        public static bool IsPrimitive(Type type)
+        /// <returns>True if the type is scalar, otherwise false.</returns>
+        public static bool IsScalar(Type type)
         {
-            return type.IsPrimitive || type == typeof(string);
+            return type == typeof(string)
+                || type == typeof(bool)
+                || type == typeof(byte)
+                || type == typeof(sbyte)
+                || type == typeof(short)
+                || type == typeof(ushort)
+                || type == typeof(int)
+                || type == typeof(uint)
+                || type == typeof(long)
+                || type == typeof(ulong)
+                || type == typeof(float)
+                || type == typeof(double)
+                || type == typeof(decimal)
+                || type == typeof(char)
+                || type.IsEnum
+                || type == typeof(DateTime)
+                || type == typeof(DateTimeOffset)
+                || type == typeof(TimeSpan)
+                || type == typeof(Guid);
         }
 
         /// <summary>
-        /// Determines whether the specified type is a numeric type.
+        /// Determines whether the specified type stores values directly.
         /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if the type is a value type or string; otherwise false.</returns>
         public static bool IsValueType(Type type)
         {
             return type.IsValueType || type == typeof(string);
@@ -138,31 +156,53 @@ namespace Rebellion.Util.Common
         }
 
         /// <summary>
-        /// Converts a string to a primitive type.
+        /// Converts a string to a scalar type.
         /// </summary>
         /// <param name="content">The string to convert.</param>
-        /// <param name="targetType">The target primitive type.</param>
-        /// <returns>The converted primitive value.</returns>
-        public static object ConvertToPrimitive(string content, Type targetType)
+        /// <param name="targetType">The target scalar type.</param>
+        /// <returns>The converted scalar value.</returns>
+        public static object ConvertToScalar(string content, Type targetType)
         {
             if (targetType.IsEnum)
                 return Enum.Parse(targetType, content);
             if (targetType == typeof(string))
                 return content;
-            if (targetType == typeof(int))
-                return int.Parse(content);
-            if (targetType == typeof(short))
-                return short.Parse(content);
-            if (targetType == typeof(double))
-                return double.Parse(content, CultureInfo.InvariantCulture);
             if (targetType == typeof(bool))
                 return bool.Parse(content);
+            if (targetType == typeof(byte))
+                return byte.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(sbyte))
+                return sbyte.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(short))
+                return short.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(ushort))
+                return ushort.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(int))
+                return int.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(uint))
+                return uint.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(long))
+                return long.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(ulong))
+                return ulong.Parse(content, CultureInfo.InvariantCulture);
             if (targetType == typeof(float))
                 return float.Parse(content, CultureInfo.InvariantCulture);
-            if (targetType == typeof(long))
-                return long.Parse(content);
+            if (targetType == typeof(double))
+                return double.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(decimal))
+                return decimal.Parse(content, CultureInfo.InvariantCulture);
+            if (targetType == typeof(char))
+                return char.Parse(content);
+            if (targetType == typeof(DateTime))
+                return DateTime.Parse(content, null, DateTimeStyles.RoundtripKind);
+            if (targetType == typeof(DateTimeOffset))
+                return DateTimeOffset.Parse(content, null, DateTimeStyles.RoundtripKind);
+            if (targetType == typeof(TimeSpan))
+                return TimeSpan.ParseExact(content, "c", CultureInfo.InvariantCulture);
+            if (targetType == typeof(Guid))
+                return Guid.Parse(content);
 
-            throw new ArgumentException($"Unsupported primitive type: {targetType.FullName}");
+            throw new ArgumentException($"Unsupported scalar type: {targetType.FullName}");
         }
 
         /// <summary>
@@ -170,7 +210,7 @@ namespace Rebellion.Util.Common
         /// </summary>
         /// <param name="value">The value to convert.</param>
         /// <returns>A string representation of the value.</returns>
-        public static string ConvertToString(object value)
+        public static string ConvertScalarToString(object value)
         {
             if (value == null)
                 return string.Empty;
@@ -179,14 +219,24 @@ namespace Rebellion.Util.Common
 
             if (type.IsEnum)
                 return value.ToString();
+            if (type == typeof(string))
+                return (string)value;
+            if (type == typeof(bool))
+                return value.ToString();
+            if (type == typeof(char))
+                return value.ToString();
             if (type == typeof(DateTime))
                 return ((DateTime)value).ToString("o");
             if (type == typeof(DateTimeOffset))
                 return ((DateTimeOffset)value).ToString("o");
             if (type == typeof(TimeSpan))
                 return ((TimeSpan)value).ToString("c");
+            if (type == typeof(Guid))
+                return ((Guid)value).ToString("D");
+            if (IsScalar(type) && value is IFormattable formattable)
+                return formattable.ToString(null, CultureInfo.InvariantCulture);
 
-            return value.ToString();
+            throw new ArgumentException($"Unsupported scalar type: {type.FullName}");
         }
     }
 }

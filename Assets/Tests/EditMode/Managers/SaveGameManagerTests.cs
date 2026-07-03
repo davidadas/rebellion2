@@ -324,6 +324,57 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_GameWithSummary_StoresPlayerFactionInMetadata()
+        {
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNEMP1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
+        }
+
+        [Test]
+        public void SaveGameData_QuickSaveFileName_StoresQuicksaveDisplayName()
+        {
+            _saveFileName = SaveGameManager.QuickSaveFileName;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Medium,
+                Difficulty = GameDifficulty.Medium,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+            };
+
+            GameRoot game = new GameRoot
+            {
+                Summary = summary,
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [Test]
         public void SaveAndLoadGame_GameWithSummaryFields_PreservesAllGameSummaryFields()
         {
             GameSummary summary = new GameSummary
@@ -484,6 +535,7 @@ namespace Rebellion.Tests.Managers
             TickSpeed[] speeds = new TickSpeed[]
             {
                 TickSpeed.Paused,
+                TickSpeed.VerySlow,
                 TickSpeed.Slow,
                 TickSpeed.Medium,
                 TickSpeed.Fast,

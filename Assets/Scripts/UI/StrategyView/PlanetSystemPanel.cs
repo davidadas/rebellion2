@@ -90,7 +90,7 @@ public sealed class PlanetSystemPanel : MonoBehaviour
 
         BuildPlanets();
 
-        AudioManager.Instance.PlaySFX(
+        AudioManager.Instance.PlaySfx(
             "Audio/SFX/StrategyView/sfx_strategyview_planet_system_panel_open"
         );
     }
@@ -176,7 +176,7 @@ public sealed class PlanetSystemPanel : MonoBehaviour
     private void CloseWindow()
     {
         OnClosed?.Invoke(this);
-        AudioManager.Instance.PlaySFX(
+        AudioManager.Instance.PlaySfx(
             "Audio/SFX/StrategyView/sfx_strategyview_planet_system_panel_close"
         );
     }

@@ -13,6 +13,11 @@ public sealed class SaveGameEntry
     public string FileName { get; }
     public GameMetadata Metadata { get; }
 
+    /// <summary>
+    /// Creates a save game entry for one discovered save file.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="metadata">The metadata read from the save file.</param>
     public SaveGameEntry(string fileName, GameMetadata metadata)
     {
         FileName = fileName;
@@ -25,6 +30,8 @@ public sealed class SaveGameEntry
 /// </summary>
 public class SaveGameManager
 {
+    public const string QuickSaveFileName = "quicksave";
+
     // Singleton instance.
     private static SaveGameManager _instance;
 
@@ -121,7 +128,8 @@ public class SaveGameManager
     /// </summary>
     /// <param name="game">The game data to save.</param>
     /// <param name="fileName">The name of the save file.</param>
-    public void SaveGameData(GameRoot game, string fileName)
+    /// <param name="displayName">The display name to store in save metadata.</param>
+    public void SaveGameData(GameRoot game, string fileName, string displayName = null)
     {
         string saveDirectory = GetSaveDirectoryPath();
 
@@ -136,6 +144,11 @@ public class SaveGameManager
 
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
+        game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        if (!string.IsNullOrEmpty(displayName))
+            game.Metadata.SaveDisplayName = displayName;
+        else if (fileName == QuickSaveFileName)
+            game.Metadata.SaveDisplayName = _quickSaveDisplayName;
 
         // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
@@ -202,5 +215,6 @@ public class SaveGameManager
         }
     }
 
+    private const string _quickSaveDisplayName = "Quicksave";
     private const string _metadataElementName = "Metadata";
 }
