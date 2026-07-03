@@ -74,5 +74,5 @@ dotnet_diagnostic.RCS1163.severity = none
 dotnet_diagnostic.RCS1213.severity = none
 dotnet_naming_rule.private_fields_underscore.severity = none
 
-[Assets/Scripts/Managers/InputActionsManager.cs]
+[Assets/Scripts/Managers/InputManager.cs]
 dotnet_diagnostic.RCS1213.severity = none

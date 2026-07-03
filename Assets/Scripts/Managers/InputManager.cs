@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Owns the generated input action asset and binding override persistence.
 /// </summary>
-public sealed class InputActionsManager : MonoBehaviour
+public sealed class InputManager : MonoBehaviour
 {
     private Rebellion.Input.PlayerInputActions _actions;
 

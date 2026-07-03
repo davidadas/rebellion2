@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
@@ -44,7 +45,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
-        public void Build_WithEntityWithoutEncyclopediaData_UsesDisplayFields()
+        public void Build_WithEntityWithoutEncyclopediaImage_DoesNotUseDisplayImage()
         {
             Building building = new Building
             {
@@ -64,7 +65,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNotNull(entry);
             Assert.AreEqual("Construction Yard", entry.DisplayName);
             Assert.AreEqual(EncyclopediaEntryCategory.Facility, entry.Category);
-            Assert.AreEqual("Art/UI/Units/construction_yard", entry.ImagePath);
+            Assert.IsNull(entry.ImagePath);
             Assert.AreEqual("Static building description.", entry.Description);
         }
 
@@ -156,6 +157,21 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.AreEqual(EncyclopediaEntryCategory.System, entry.Category);
             Assert.AreEqual("Art/HD/UI/Encyclopedia/balmorra", entry.ImagePath);
             Assert.AreEqual("Planet encyclopedia description.", entry.Description);
+        }
+
+        [Test]
+        public void Build_FromResourceData_UsesEncyclopediaImages()
+        {
+            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build();
+
+            List<EncyclopediaEntry> entriesWithWrongImagePath = catalog
+                .Where(entry =>
+                    string.IsNullOrEmpty(entry.ImagePath)
+                    || !entry.ImagePath.StartsWith("Art/HD/UI/Encyclopedia/")
+                )
+                .ToList();
+
+            Assert.IsEmpty(entriesWithWrongImagePath);
         }
 
         [Test]

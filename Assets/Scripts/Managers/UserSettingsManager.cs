@@ -10,7 +10,7 @@ public sealed class UserSettingsManager
     private const string _settingsFileName = "user-settings.json";
 
     private readonly AudioManager _audioManager;
-    private readonly InputActionsManager _inputActionsManager;
+    private readonly InputManager _inputManager;
 
     /// <summary>
     /// Gets the active user settings.
@@ -21,11 +21,11 @@ public sealed class UserSettingsManager
     /// Creates a user settings manager for the supplied runtime systems.
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
-    /// <param name="inputActionsManager">The input manager that receives binding overrides.</param>
-    public UserSettingsManager(AudioManager audioManager, InputActionsManager inputActionsManager)
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    public UserSettingsManager(AudioManager audioManager, InputManager inputManager)
     {
         _audioManager = audioManager;
-        _inputActionsManager = inputActionsManager;
+        _inputManager = inputManager;
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public sealed class UserSettingsManager
         Settings.Normalize();
 
         _audioManager?.ApplySettings(Settings.Audio);
-        _inputActionsManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
+        _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
     }
 
     /// <summary>
@@ -118,8 +118,8 @@ public sealed class UserSettingsManager
         Settings ??= CreateDefaults();
         if (_audioManager != null)
             Settings.Audio = _audioManager.CreateSettingsSnapshot();
-        if (_inputActionsManager != null)
-            Settings.Input.BindingOverridesJson = _inputActionsManager.SaveBindingOverrides();
+        if (_inputManager != null)
+            Settings.Input.BindingOverridesJson = _inputManager.SaveBindingOverrides();
 
         Settings.Normalize();
     }

@@ -16,7 +16,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private AppInputController inputController;
 
     [SerializeField]
-    private InputActionsManager inputActionsManager;
+    private InputManager inputManager;
 
     [SerializeField]
     private AudioManager audioManager;
@@ -66,28 +66,28 @@ public sealed class AppBootstrap : MonoBehaviour
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
 
-        if (inputActionsManager == null)
-            inputActionsManager = CreateInputActionsManager();
+        if (inputManager == null)
+            inputManager = CreateInputManager();
 
-        _userSettingsManager = new UserSettingsManager(audioManager, inputActionsManager);
+        _userSettingsManager = new UserSettingsManager(audioManager, inputManager);
         _userSettingsManager.Load();
 
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputActionsManager, _runtime);
+        inputController?.Initialize(inputManager, _runtime);
     }
 
     /// <summary>
-    /// Creates the input actions manager under the bootstrap object.
+    /// Creates the input manager under the bootstrap object.
     /// </summary>
-    /// <returns>The created input actions manager.</returns>
-    private InputActionsManager CreateInputActionsManager()
+    /// <returns>The created input manager.</returns>
+    private InputManager CreateInputManager()
     {
-        GameObject inputObj = new GameObject("InputActionsManager");
+        GameObject inputObj = new GameObject("InputManager");
         inputObj.transform.SetParent(transform);
 
-        return inputObj.AddComponent<InputActionsManager>();
+        return inputObj.AddComponent<InputManager>();
     }
 
     /// <summary>
@@ -124,12 +124,12 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the application input actions manager.
+    /// Returns the application input manager.
     /// </summary>
-    /// <returns>The active input actions manager.</returns>
-    public InputActionsManager GetInputActionsManager()
+    /// <returns>The active input manager.</returns>
+    public InputManager GetInputManager()
     {
-        return inputActionsManager;
+        return inputManager;
     }
 
     /// <summary>

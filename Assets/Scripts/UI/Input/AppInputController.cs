@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 public sealed class AppInputController : MonoBehaviour
 {
     private readonly Stack<InputContext> _contextStack = new();
-    private InputActionsManager _inputActionsManager;
+    private InputManager _inputManager;
     private GameRuntime _runtime;
 
     /// <summary>
@@ -37,14 +37,14 @@ public sealed class AppInputController : MonoBehaviour
     /// <summary>
     /// Connects this controller to input actions and runtime commands.
     /// </summary>
-    /// <param name="inputActionsManager">The input actions manager to listen to.</param>
+    /// <param name="inputManager">The input manager to listen to.</param>
     /// <param name="runtime">The runtime that receives global commands.</param>
-    public void Initialize(InputActionsManager inputActionsManager, GameRuntime runtime)
+    public void Initialize(InputManager inputManager, GameRuntime runtime)
     {
-        if (_inputActionsManager != null)
+        if (_inputManager != null)
             DetachInputActions();
 
-        _inputActionsManager = inputActionsManager;
+        _inputManager = inputManager;
         _runtime = runtime;
 
         AttachInputActions();
@@ -83,10 +83,10 @@ public sealed class AppInputController : MonoBehaviour
     /// </summary>
     private void AttachInputActions()
     {
-        if (_inputActionsManager == null)
+        if (_inputManager == null)
             return;
 
-        PlayerInputActions.GlobalActions globalActions = _inputActionsManager.Actions.Global;
+        PlayerInputActions.GlobalActions globalActions = _inputManager.Actions.Global;
         globalActions.CancelOrSettings.performed += OnCancelOrSettings;
         globalActions.QuickSave.performed += OnQuickSave;
         globalActions.QuickLoad.performed += OnQuickLoad;
@@ -98,10 +98,7 @@ public sealed class AppInputController : MonoBehaviour
     /// </summary>
     private void DetachInputActions()
     {
-        if (
-            _inputActionsManager == null
-            || !_inputActionsManager.TryGetActions(out PlayerInputActions actions)
-        )
+        if (_inputManager == null || !_inputManager.TryGetActions(out PlayerInputActions actions))
             return;
 
         PlayerInputActions.GlobalActions globalActions = actions.Global;
