@@ -122,7 +122,9 @@ public sealed class AudioManagerTests
 
     private static void DestroyAudioManagers()
     {
-        foreach (AudioManager manager in Object.FindObjectsByType<AudioManager>())
+        foreach (
+            AudioManager manager in Object.FindObjectsByType<AudioManager>(FindObjectsSortMode.None)
+        )
         {
             Object.DestroyImmediate(manager.gameObject);
         }
