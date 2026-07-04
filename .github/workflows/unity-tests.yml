@@ -96,8 +96,28 @@ jobs:
       - name: Format check
         run: dotnet csharpier check Assets/
 
+      - name: Extract Unity managed assemblies
+        run: |
+          IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          for attempt in 1 2 3; do
+            docker pull "$IMAGE" && break
+            if [ "$attempt" = "3" ]; then
+              exit 1
+            fi
+            echo "Attempt $attempt failed, retrying in 30s..."
+            sleep 30
+          done
+
+          CONTAINER_ID="$(docker create "$IMAGE")"
+          mkdir -p .unity-lint-assemblies
+
+          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/
+          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/
+
+          docker rm "$CONTAINER_ID"
+
       - name: Lint
-        run: bash build.sh lint
+        run: UnityManagedAssembliesPath="$PWD/.unity-lint-assemblies" bash build.sh lint
 
   test:
     name: Test
