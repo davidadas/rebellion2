@@ -20,6 +20,7 @@ namespace Rebellion.Game
         Medium,
         Slow,
         Paused,
+        VerySlow,
     }
 
     /// <summary>
@@ -67,7 +68,7 @@ namespace Rebellion.Game
 
         // Game state.
         public int CurrentTick;
-        public TickSpeed GameSpeed = TickSpeed.Medium;
+        public TickSpeed GameSpeed = TickSpeed.Slow;
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
@@ -497,7 +498,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Adds a game event to the list of completed event IDs.
         /// </summary>
-        /// <param name="gameEvent"></param>
+        /// <param name="gameEvent">The completed game event.</param>
         public void AddCompletedEvent(GameEvent gameEvent)
         {
             CompletedEventIDs.Add(gameEvent.InstanceID);
@@ -535,16 +536,15 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Removes a reference node from the game.
+        /// Registers a scene node by instance ID.
         /// </summary>
-        /// <param name="node">The game node to remove as a reference.</param>
+        /// <param name="node">The scene node to register.</param>
         public void AddSceneNodeByInstanceID(ISceneNode node)
         {
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
             }
-            // If the node already exists in the game, throw an exception.
             catch (ArgumentException)
             {
                 throw new InvalidOperationException(

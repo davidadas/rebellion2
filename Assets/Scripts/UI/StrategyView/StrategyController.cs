@@ -88,10 +88,8 @@ public sealed class StrategyController : MonoBehaviour
 
     private void OnGameReady()
     {
-        gameManager.SetGameSpeed(TickSpeed.Fast);
-
-        AudioManager.Instance.PlaySFX("Audio/SFX/StrategyView/sfx_strategyview_open");
-        AudioManager.Instance.PlayPlaylistPaths(tracks, true);
+        AudioManager.Instance.PlaySfx("Audio/SFX/StrategyView/sfx_strategyview_open");
+        AudioManager.Instance.PlayPlaylist(tracks, true);
 
         ApplyFactionUI();
         Canvas.ForceUpdateCanvases();

@@ -1,345 +1,603 @@
 using System.Collections;
 using System.Linq;
 using Rebellion.Util.Extensions;
+using UnityEngine;
 
 /// <summary>
-/// Centralized audio controller responsible for music, SFX, ambience,
-/// and playlist sequencing across the game. Supports both preloaded
-/// AudioClip playlists and just-in-time loading using resource paths.
+/// Manages global music, sound effect, and ambience playback for the running application.
 /// </summary>
-public class AudioManager : UnityEngine.MonoBehaviour
+public sealed class AudioManager : MonoBehaviour
 {
-    public static AudioManager Instance { get; private set; }
+    private const string _managerObjectName = "AudioManager";
 
-    [UnityEngine.Header("Sources")]
-    [UnityEngine.SerializeField]
-    private UnityEngine.AudioSource musicSource;
+    [SerializeField]
+    private AudioSource musicSource;
 
-    [UnityEngine.SerializeField]
-    private UnityEngine.AudioSource sfxSource;
+    [SerializeField]
+    private AudioSource sfxSource;
 
-    [UnityEngine.SerializeField]
-    private UnityEngine.AudioSource ambienceSource;
+    [SerializeField]
+    private AudioSource ambienceSource;
 
-    [UnityEngine.Header("Settings")]
-    [UnityEngine.Range(0f, 1f)]
-    public float masterVolume = 1f;
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float masterVolume = 1f;
 
-    [UnityEngine.Range(0f, 1f)]
-    public float musicVolume = 1f;
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float musicVolume = 1f;
 
-    [UnityEngine.Range(0f, 1f)]
-    public float sfxVolume = 1f;
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float sfxVolume = 1f;
 
-    [UnityEngine.Range(0f, 1f)]
-    public float ambienceVolume = 1f;
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float ambienceVolume = 1f;
 
-    private UnityEngine.AudioClip[] _currentPlaylist;
-    private string[] _currentPlaylistPaths;
+    private AudioClip[] _clipPlaylist;
+    private string[] _activePlaylistPaths;
+    private string[] _requestedPlaylistPaths;
     private int _playlistIndex;
-    private bool _playlistShuffle;
+    private bool _shufflePlaylist;
+    private string _activeTrackPath;
+    private Coroutine _playlistCoroutine;
+    private Coroutine _fadeOutCoroutine;
 
     /// <summary>
-    /// Ensures singleton instance and persists across scene loads.
+    /// Gets the active global audio manager instance.
+    /// </summary>
+    public static AudioManager Instance { get; private set; }
+
+    /// <summary>
+    /// Gets the master volume used by all audio channels.
+    /// </summary>
+    public float MasterVolume => masterVolume;
+
+    /// <summary>
+    /// Gets the music channel volume.
+    /// </summary>
+    public float MusicVolume => musicVolume;
+
+    /// <summary>
+    /// Gets the sound effect channel volume.
+    /// </summary>
+    public float SfxVolume => sfxVolume;
+
+    /// <summary>
+    /// Gets the ambience channel volume.
+    /// </summary>
+    public float AmbienceVolume => ambienceVolume;
+
+    /// <summary>
+    /// Returns the global audio manager, creating one when the scene does not already contain it.
+    /// </summary>
+    /// <param name="parent">The optional parent to use for a newly created manager.</param>
+    /// <returns>The active audio manager.</returns>
+    public static AudioManager EnsureExists(Transform parent = null)
+    {
+        if (Instance != null)
+            return Instance;
+
+        AudioManager existing = Object.FindAnyObjectByType<AudioManager>();
+        if (existing != null)
+        {
+            existing.BecomeInstance();
+            return existing;
+        }
+
+        GameObject audioObject = new GameObject(_managerObjectName);
+        if (parent != null)
+            audioObject.transform.SetParent(parent);
+
+        AudioManager manager = audioObject.AddComponent<AudioManager>();
+        if (Instance != manager)
+            manager.BecomeInstance();
+
+        return manager;
+    }
+
+    /// <summary>
+    /// Initializes the singleton when Unity creates the component.
     /// </summary>
     private void Awake()
     {
-        if (Instance != null)
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-        ApplyVolumes();
+        BecomeInstance();
     }
 
     /// <summary>
-    /// Plays a single music track from a Resources path.
+    /// Clears the singleton reference when Unity destroys the active manager.
     /// </summary>
-    /// <param name="resourcePath">Resources path to the audio file.</param>
-    /// <param name="loop">Whether to loop the track.</param>
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    /// <summary>
+    /// Plays one music track loaded from a Resources path.
+    /// </summary>
+    /// <param name="resourcePath">The Resources path for the music clip.</param>
+    /// <param name="loop">Whether the track should loop.</param>
     public void PlayTrack(string resourcePath, bool loop = false)
     {
-        UnityEngine.AudioClip clip = ResourceManager.GetAudio(resourcePath);
+        if (string.IsNullOrWhiteSpace(resourcePath))
+            return;
+
+        EnsureAudioSources();
+        if (IsPlayingResourceTrack(resourcePath, loop))
+        {
+            ApplyVolumes();
+            return;
+        }
+
+        AudioClip clip = ResourceManager.GetAudio(resourcePath);
+        if (clip == null)
+            return;
+
         PlayTrack(clip, loop);
+        _activeTrackPath = resourcePath;
     }
 
     /// <summary>
-    /// Plays a single music clip.
+    /// Plays one music track from an already loaded clip.
     /// </summary>
-    /// <param name="clip">The AudioClip to play.</param>
-    /// <param name="loop">Whether to loop the clip.</param>
-    public void PlayTrack(UnityEngine.AudioClip clip, bool loop)
+    /// <param name="clip">The music clip to play.</param>
+    /// <param name="loop">Whether the track should loop.</param>
+    public void PlayTrack(AudioClip clip, bool loop = false)
     {
         if (clip == null)
             return;
 
+        EnsureAudioSources();
         StopPlaylist();
+        StopFadeOut();
 
+        _activeTrackPath = null;
         musicSource.clip = clip;
         musicSource.loop = loop;
-
-        ApplyVolumes(); // ← ADD THIS
-
+        ApplyVolumes();
         musicSource.Play();
     }
 
     /// <summary>
-    /// Plays a playlist of preloaded AudioClips.
+    /// Plays a playlist from already loaded clips.
     /// </summary>
-    /// <param name="tracks">Array of AudioClips to play in sequence.</param>
-    /// <param name="shuffle">Whether to shuffle the playlist order.</param>
-    public void PlayPlaylist(UnityEngine.AudioClip[] tracks, bool shuffle = false)
+    /// <param name="clips">The clips to play.</param>
+    /// <param name="shuffle">Whether the playlist should be shuffled before playback.</param>
+    public void PlayPlaylist(AudioClip[] clips, bool shuffle = false)
     {
-        if (tracks == null || tracks.Length == 0)
+        AudioClip[] playableClips = clips?.Where(clip => clip != null).ToArray();
+        if (playableClips == null || playableClips.Length == 0)
+            return;
+
+        EnsureAudioSources();
+        StopPlaylist();
+        StopFadeOut();
+
+        _activeTrackPath = null;
+        _activePlaylistPaths = null;
+        _requestedPlaylistPaths = null;
+        _clipPlaylist = shuffle ? playableClips.Shuffle().ToArray() : playableClips;
+        _playlistIndex = 0;
+        _shufflePlaylist = shuffle;
+
+        _playlistCoroutine = StartCoroutine(RunClipPlaylist());
+    }
+
+    /// <summary>
+    /// Plays a playlist from Resources paths.
+    /// </summary>
+    /// <param name="resourcePaths">The Resources paths for the playlist tracks.</param>
+    /// <param name="shuffle">Whether the playlist should be shuffled before playback.</param>
+    public void PlayPlaylist(string[] resourcePaths, bool shuffle = false)
+    {
+        string[] playablePaths = GetPlayablePaths(resourcePaths);
+        if (playablePaths.Length == 0)
+            return;
+
+        EnsureAudioSources();
+        if (IsPlayingResourcePlaylist(playablePaths, shuffle))
         {
+            ApplyVolumes();
             return;
         }
 
         StopPlaylist();
+        StopFadeOut();
 
-        _currentPlaylist = new UnityEngine.AudioClip[tracks.Length];
-        for (int i = 0; i < tracks.Length; i++)
-        {
-            _currentPlaylist[i] = tracks[i];
-        }
-
+        _activeTrackPath = null;
+        _clipPlaylist = null;
+        _requestedPlaylistPaths = playablePaths.ToArray();
+        _activePlaylistPaths = shuffle
+            ? playablePaths.Shuffle().ToArray()
+            : playablePaths.ToArray();
         _playlistIndex = 0;
-        _playlistShuffle = shuffle;
+        _shufflePlaylist = shuffle;
 
-        if (_playlistShuffle)
-        {
-            _currentPlaylist = _currentPlaylist.Shuffle().ToArray();
-        }
-
-        PlayNextTrack();
+        _playlistCoroutine = StartCoroutine(RunPathPlaylist());
     }
 
     /// <summary>
-    /// Plays a playlist using resource paths (loaded just-in-time).
-    /// </summary>
-    /// <param name="paths">Array of Resources paths to load and play.</param>
-    /// <param name="shuffle">Whether to shuffle the playlist order.</param>
-    public void PlayPlaylistPaths(string[] paths, bool shuffle = false)
-    {
-        if (paths == null || paths.Length == 0)
-        {
-            return;
-        }
-
-        StopPlaylist();
-
-        _currentPlaylistPaths = new string[paths.Length];
-        for (int i = 0; i < paths.Length; i++)
-        {
-            _currentPlaylistPaths[i] = paths[i];
-        }
-
-        _playlistIndex = 0;
-        _playlistShuffle = shuffle;
-
-        if (_playlistShuffle)
-        {
-            _currentPlaylistPaths = _currentPlaylistPaths.Shuffle().ToArray();
-        }
-
-        PlayNextTrackFromPaths();
-    }
-
-    /// <summary>
-    /// Stops any active playlist and coroutines.
+    /// Stops playlist sequencing without stopping the currently assigned music clip.
     /// </summary>
     public void StopPlaylist()
     {
-        StopAllCoroutines();
+        StopPlaylistCoroutine();
 
-        _currentPlaylist = null;
-        _currentPlaylistPaths = null;
+        _clipPlaylist = null;
+        _activePlaylistPaths = null;
+        _requestedPlaylistPaths = null;
         _playlistIndex = 0;
+        _shufflePlaylist = false;
     }
 
     /// <summary>
-    /// Stops currently playing music.
+    /// Stops all music playback.
     /// </summary>
     public void StopMusic()
     {
-        musicSource.Stop();
+        EnsureAudioSources();
         StopPlaylist();
+        StopFadeOut();
+
+        _activeTrackPath = null;
+        musicSource.Stop();
     }
 
     /// <summary>
-    /// Fades out music over a duration.
+    /// Fades out the current music source.
     /// </summary>
-    /// <param name="duration">Fade time in seconds.</param>
+    /// <param name="duration">The fade duration in seconds.</param>
     public void FadeOutMusic(float duration)
     {
-        StartCoroutine(FadeOut(musicSource, duration));
+        EnsureAudioSources();
+        StopFadeOut();
+
+        _fadeOutCoroutine = StartCoroutine(FadeOut(musicSource, duration));
     }
 
     /// <summary>
-    /// Coroutine to fade out an AudioSource.
+    /// Plays one sound effect loaded from a Resources path.
     /// </summary>
-    /// <param name="source">The AudioSource to fade.</param>
-    /// <param name="duration">Fade time in seconds.</param>
-    /// <returns>Coroutine enumerator.</returns>
-    private IEnumerator FadeOut(UnityEngine.AudioSource source, float duration)
+    /// <param name="resourcePath">The Resources path for the sound effect clip.</param>
+    public void PlaySfx(string resourcePath)
     {
-        float startVolume = source.volume;
-        float time = 0f;
+        if (string.IsNullOrWhiteSpace(resourcePath))
+            return;
 
-        while (time < duration)
-        {
-            time += UnityEngine.Time.unscaledDeltaTime;
-
-            float newVolume = UnityEngine.Mathf.Lerp(startVolume, 0f, time / duration);
-            source.volume = newVolume;
-
-            yield return null;
-        }
-
-        source.Stop();
-
-        // Restore proper volume from settings (NOT previous value)
-        ApplyVolumes();
+        PlaySfx(ResourceManager.GetAudio(resourcePath));
     }
 
     /// <summary>
-    /// Plays a sound effect from a Resources path.
+    /// Plays one already loaded sound effect clip.
     /// </summary>
-    /// <param name="resourcePath">Resources path to the SFX audio file.</param>
-    public void PlaySFX(string resourcePath)
-    {
-        UnityEngine.AudioClip clip = ResourceManager.GetAudio(resourcePath);
-        // TODO: Pull volume from config.
-        PlaySFX(clip, 1f);
-    }
-
-    /// <summary>
-    /// Plays a sound effect clip.
-    /// </summary>
-    /// <param name="clip">The AudioClip to play.</param>
-    /// <param name="volumeScale">Volume multiplier for this effect.</param>
-    public void PlaySFX(UnityEngine.AudioClip clip, float volumeScale = 1f)
+    /// <param name="clip">The sound effect clip to play.</param>
+    /// <param name="volumeScale">The per-effect volume scale.</param>
+    public void PlaySfx(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null)
-        {
             return;
-        }
 
-        float volume = volumeScale * sfxVolume * masterVolume;
-        sfxSource.PlayOneShot(clip, volume);
+        EnsureAudioSources();
+        sfxSource.PlayOneShot(clip, volumeScale * sfxVolume * masterVolume);
     }
 
     /// <summary>
-    /// Plays looping ambience.
+    /// Plays ambience from an already loaded clip.
     /// </summary>
-    /// <param name="clip">The ambience AudioClip to play.</param>
-    /// <param name="loop">Whether to loop the ambience.</param>
-    public void PlayAmbience(UnityEngine.AudioClip clip, bool loop)
+    /// <param name="clip">The ambience clip to play.</param>
+    /// <param name="loop">Whether the ambience clip should loop.</param>
+    public void PlayAmbience(AudioClip clip, bool loop = false)
     {
         if (clip == null)
-        {
             return;
-        }
 
+        EnsureAudioSources();
         ambienceSource.clip = clip;
         ambienceSource.loop = loop;
+        ApplyVolumes();
         ambienceSource.Play();
     }
 
     /// <summary>
-    /// Applies volume multipliers to audio sources.
+    /// Applies persisted audio settings to the active audio sources.
+    /// </summary>
+    /// <param name="settings">The settings to apply.</param>
+    public void ApplySettings(UserAudioSettings settings)
+    {
+        settings ??= new UserAudioSettings();
+        settings.Normalize();
+
+        masterVolume = settings.MasterVolume;
+        musicVolume = settings.MusicVolume;
+        sfxVolume = settings.SfxVolume;
+        ambienceVolume = settings.AmbienceVolume;
+
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Captures the current audio state as persisted settings.
+    /// </summary>
+    /// <returns>The current audio settings.</returns>
+    public UserAudioSettings CreateSettingsSnapshot()
+    {
+        return new UserAudioSettings
+        {
+            MasterVolume = masterVolume,
+            MusicVolume = musicVolume,
+            SfxVolume = sfxVolume,
+            AmbienceVolume = ambienceVolume,
+        };
+    }
+
+    /// <summary>
+    /// Sets the master volume.
+    /// </summary>
+    /// <param name="volume">The requested volume.</param>
+    public void SetMasterVolume(float volume)
+    {
+        masterVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Sets the music channel volume.
+    /// </summary>
+    /// <param name="volume">The requested volume.</param>
+    public void SetMusicVolume(float volume)
+    {
+        musicVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Sets the sound effect channel volume.
+    /// </summary>
+    /// <param name="volume">The requested volume.</param>
+    public void SetSfxVolume(float volume)
+    {
+        sfxVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Sets the ambience channel volume.
+    /// </summary>
+    /// <param name="volume">The requested volume.</param>
+    public void SetAmbienceVolume(float volume)
+    {
+        ambienceVolume = Mathf.Clamp01(volume);
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Makes this component the active singleton and initializes its audio sources.
+    /// </summary>
+    private void BecomeInstance()
+    {
+        Instance = this;
+        if (GetComponentInParent<AppBootstrap>() == null)
+        {
+            transform.SetParent(null);
+            if (Application.isPlaying)
+                DontDestroyOnLoad(gameObject);
+        }
+
+        EnsureAudioSources();
+        ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Ensures every playback channel has an AudioSource.
+    /// </summary>
+    private void EnsureAudioSources()
+    {
+        if (musicSource == null)
+            musicSource = CreateAudioSource();
+        if (sfxSource == null)
+            sfxSource = CreateAudioSource();
+        if (ambienceSource == null)
+            ambienceSource = CreateAudioSource();
+    }
+
+    /// <summary>
+    /// Creates an AudioSource configured for two-dimensional UI and music playback.
+    /// </summary>
+    /// <returns>The configured audio source.</returns>
+    private AudioSource CreateAudioSource()
+    {
+        AudioSource source = gameObject.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.spatialBlend = 0f;
+        return source;
+    }
+
+    /// <summary>
+    /// Applies the current volume settings to every persistent channel source.
     /// </summary>
     private void ApplyVolumes()
     {
+        EnsureAudioSources();
         musicSource.volume = musicVolume * masterVolume;
         ambienceSource.volume = ambienceVolume * masterVolume;
         sfxSource.volume = sfxVolume * masterVolume;
     }
 
     /// <summary>
-    /// Plays next track in AudioClip playlist.
+    /// Returns normalized, playable resource paths from a requested playlist.
     /// </summary>
-    private void PlayNextTrack()
+    /// <param name="resourcePaths">The requested playlist paths.</param>
+    /// <returns>The playable paths.</returns>
+    private static string[] GetPlayablePaths(string[] resourcePaths)
     {
-        if (_currentPlaylist == null || _currentPlaylist.Length == 0)
-        {
-            return;
-        }
-
-        musicSource.clip = _currentPlaylist[_playlistIndex];
-        musicSource.loop = false;
-        musicSource.Play();
-
-        StartCoroutine(WaitForTrackEndClip());
+        return resourcePaths
+                ?.Where(resourcePath => !string.IsNullOrWhiteSpace(resourcePath))
+                .ToArray()
+            ?? new string[0];
     }
 
     /// <summary>
-    /// Plays next track in path-based playlist.
+    /// Returns whether the requested resource track is already playing.
     /// </summary>
-    private void PlayNextTrackFromPaths()
+    /// <param name="resourcePath">The requested Resources path.</param>
+    /// <param name="loop">The requested loop state.</param>
+    /// <returns>True when the requested track is already active.</returns>
+    private bool IsPlayingResourceTrack(string resourcePath, bool loop)
     {
-        if (_currentPlaylistPaths == null || _currentPlaylistPaths.Length == 0)
-        {
-            return;
-        }
-
-        string path = _currentPlaylistPaths[_playlistIndex];
-        UnityEngine.AudioClip clip = ResourceManager.GetAudio(path);
-
-        if (clip == null)
-        {
-            return;
-        }
-
-        musicSource.clip = clip;
-        musicSource.loop = false;
-        musicSource.Play();
-
-        StartCoroutine(WaitForTrackEndPath());
+        return musicSource?.isPlaying == true
+            && _activeTrackPath == resourcePath
+            && musicSource.loop == loop
+            && _activePlaylistPaths == null;
     }
 
     /// <summary>
-    /// Waits for clip playlist track to finish.
+    /// Returns whether the requested path playlist is already playing.
     /// </summary>
-    /// <returns>Coroutine enumerator.</returns>
-    private IEnumerator WaitForTrackEndClip()
+    /// <param name="resourcePaths">The requested playlist paths.</param>
+    /// <param name="shuffle">The requested shuffle state.</param>
+    /// <returns>True when the requested playlist is already active.</returns>
+    private bool IsPlayingResourcePlaylist(string[] resourcePaths, bool shuffle)
     {
-        while (musicSource.isPlaying)
+        return musicSource?.isPlaying == true
+            && _activePlaylistPaths != null
+            && _requestedPlaylistPaths != null
+            && _shufflePlaylist == shuffle
+            && resourcePaths.SequenceEqual(_requestedPlaylistPaths);
+    }
+
+    /// <summary>
+    /// Stops the active playlist coroutine.
+    /// </summary>
+    private void StopPlaylistCoroutine()
+    {
+        if (_playlistCoroutine == null)
+            return;
+
+        StopCoroutine(_playlistCoroutine);
+        _playlistCoroutine = null;
+    }
+
+    /// <summary>
+    /// Stops the active fade coroutine.
+    /// </summary>
+    private void StopFadeOut()
+    {
+        if (_fadeOutCoroutine == null)
+            return;
+
+        StopCoroutine(_fadeOutCoroutine);
+        _fadeOutCoroutine = null;
+    }
+
+    /// <summary>
+    /// Plays the active clip playlist until it is stopped or replaced.
+    /// </summary>
+    /// <returns>The coroutine enumerator.</returns>
+    private IEnumerator RunClipPlaylist()
+    {
+        while (HasClipPlaylist())
         {
+            musicSource.clip = _clipPlaylist[_playlistIndex];
+            musicSource.loop = false;
+            ApplyVolumes();
+            musicSource.Play();
+
+            while (musicSource.isPlaying)
+                yield return null;
+
+            AdvancePlaylistIndex(_clipPlaylist.Length);
+        }
+
+        _playlistCoroutine = null;
+    }
+
+    /// <summary>
+    /// Plays the active path playlist until it is stopped or replaced.
+    /// </summary>
+    /// <returns>The coroutine enumerator.</returns>
+    private IEnumerator RunPathPlaylist()
+    {
+        while (HasPathPlaylist())
+        {
+            musicSource.clip = ResourceManager.GetAudio(_activePlaylistPaths[_playlistIndex]);
+            musicSource.loop = false;
+            ApplyVolumes();
+            musicSource.Play();
+
+            while (musicSource.isPlaying)
+                yield return null;
+
+            AdvancePlaylistIndex(_activePlaylistPaths.Length);
+        }
+
+        _playlistCoroutine = null;
+    }
+
+    /// <summary>
+    /// Returns whether a clip playlist is active.
+    /// </summary>
+    /// <returns>True when a clip playlist is active.</returns>
+    private bool HasClipPlaylist()
+    {
+        return _clipPlaylist?.Length > 0;
+    }
+
+    /// <summary>
+    /// Returns whether a path playlist is active.
+    /// </summary>
+    /// <returns>True when a path playlist is active.</returns>
+    private bool HasPathPlaylist()
+    {
+        return _activePlaylistPaths?.Length > 0;
+    }
+
+    /// <summary>
+    /// Advances the active playlist index.
+    /// </summary>
+    /// <param name="playlistLength">The active playlist length.</param>
+    private void AdvancePlaylistIndex(int playlistLength)
+    {
+        _playlistIndex++;
+        if (_playlistIndex >= playlistLength)
+            _playlistIndex = 0;
+    }
+
+    /// <summary>
+    /// Fades out one audio source.
+    /// </summary>
+    /// <param name="source">The source to fade.</param>
+    /// <param name="duration">The fade duration in seconds.</param>
+    /// <returns>The coroutine enumerator.</returns>
+    private IEnumerator FadeOut(AudioSource source, float duration)
+    {
+        if (duration <= 0f)
+        {
+            source.Stop();
+            ApplyVolumes();
+            _fadeOutCoroutine = null;
+            yield break;
+        }
+
+        float startVolume = source.volume;
+        float time = 0f;
+
+        while (time < duration)
+        {
+            time += Time.unscaledDeltaTime;
+            source.volume = Mathf.Lerp(startVolume, 0f, time / duration);
             yield return null;
         }
 
-        _playlistIndex++;
-
-        if (_playlistIndex >= _currentPlaylist.Length)
-        {
-            _playlistIndex = 0;
-        }
-
-        PlayNextTrack();
-    }
-
-    /// <summary>
-    /// Waits for path playlist track to finish.
-    /// </summary>
-    /// <returns>Coroutine enumerator.</returns>
-    private IEnumerator WaitForTrackEndPath()
-    {
-        while (musicSource.isPlaying)
-        {
-            yield return null;
-        }
-
-        _playlistIndex++;
-
-        if (_playlistIndex >= _currentPlaylistPaths.Length)
-        {
-            _playlistIndex = 0;
-        }
-
-        PlayNextTrackFromPaths();
+        source.Stop();
+        ApplyVolumes();
+        _fadeOutCoroutine = null;
     }
 }

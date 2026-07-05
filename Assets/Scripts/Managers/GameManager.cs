@@ -42,6 +42,11 @@ public class GameManager
     private readonly Stopwatch _stopwatch;
 
     /// <summary>
+    /// Raised when the active game speed changes.
+    /// </summary>
+    public event Action GameSpeedChanged;
+
+    /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
@@ -177,6 +182,7 @@ public class GameManager
     /// <param name="speed">The desired tick speed.</param>
     public void SetGameSpeed(TickSpeed speed)
     {
+        TickSpeed previousSpeed = _game.GetGameSpeed();
         _game.SetGameSpeed(speed);
 
         switch (speed)
@@ -190,6 +196,9 @@ public class GameManager
             case TickSpeed.Slow:
                 _tickInterval = _game.Config.GameSpeed.SlowTickIntervalSeconds;
                 break;
+            case TickSpeed.VerySlow:
+                _tickInterval = _game.Config.GameSpeed.VerySlowTickIntervalSeconds;
+                break;
             case TickSpeed.Paused:
                 _stopwatch.Stop();
                 _tickInterval = null;
@@ -198,6 +207,18 @@ public class GameManager
 
         if (_tickInterval != null)
             _stopwatch.Start();
+
+        if (previousSpeed != speed)
+            GameSpeedChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns the active game speed.
+    /// </summary>
+    /// <returns>The active game speed.</returns>
+    public TickSpeed GetGameSpeed()
+    {
+        return _game.GetGameSpeed();
     }
 
     /// <summary>
@@ -295,12 +316,20 @@ public class GameManager
         }
     }
 
+    /// <summary>
+    /// Applies fog-of-war side effects for a result batch.
+    /// </summary>
+    /// <param name="results">The game results to process.</param>
     private void ProcessFogOfWarResults(List<GameResult> results)
     {
         foreach (GameObjectSabotagedResult result in results.OfType<GameObjectSabotagedResult>())
             RemoveSabotagedObjectFromActorSnapshot(result);
     }
 
+    /// <summary>
+    /// Removes a sabotaged object from the actor faction's fog-of-war snapshots.
+    /// </summary>
+    /// <param name="result">The sabotage result to process.</param>
     private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
     {
         if (result?.SabotagedObject == null || result.Saboteur is not ISceneNode saboteur)

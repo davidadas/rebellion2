@@ -58,6 +58,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(1f, config.GameSpeed.FastTickIntervalSeconds);
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
+            Assert.AreEqual(120f, config.GameSpeed.VerySlowTickIntervalSeconds);
             Assert.AreEqual(50, config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability);
             Assert.AreEqual(1, config.SupportShift.DiplomacyCompletionSupportBonus);
             Assert.AreEqual(1, config.SupportShift.DiplomacyOwnedPlanetSupportBase);
@@ -131,6 +132,7 @@ namespace Rebellion.Tests.Game
             config.GameSpeed.FastTickIntervalSeconds = 2.5f;
             config.GameSpeed.MediumTickIntervalSeconds = 12.5f;
             config.GameSpeed.SlowTickIntervalSeconds = 90.5f;
+            config.GameSpeed.VerySlowTickIntervalSeconds = 120.5f;
             GameRoot game = new GameRoot(config);
             GameManager manager = new GameManager(game);
 
@@ -142,6 +144,9 @@ namespace Rebellion.Tests.Game
 
             manager.SetGameSpeed(TickSpeed.Slow);
             Assert.AreEqual(90.5f, GetTickInterval(manager));
+
+            manager.SetGameSpeed(TickSpeed.VerySlow);
+            Assert.AreEqual(120.5f, GetTickInterval(manager));
         }
 
         [Test]

@@ -191,17 +191,13 @@ namespace Rebellion.Game.Encyclopedia
             if (entity == null)
                 return null;
 
-            string imagePath = entity.DisplayImagePath;
-            if (entity is Planet planet && string.IsNullOrEmpty(imagePath))
-                imagePath = planet.PlanetIconPath;
-
             return new EncyclopediaEntry
             {
                 TypeID = entity.TypeID,
                 DisplayName = entity.DisplayName,
                 Category = category,
                 OwnerInstanceID = GetEncyclopediaOwnerInstanceID(entity),
-                ImagePath = GetEncyclopediaImagePath(entity, imagePath),
+                ImagePath = entity.EncyclopediaImagePath,
                 Stats = CloneStats(entity.EncyclopediaStats),
                 Description = GetEncyclopediaDescription(entity),
             };
@@ -224,22 +220,6 @@ namespace Rebellion.Game.Encyclopedia
             return node.AllowedOwnerInstanceIDs?.Count == 1
                 ? node.AllowedOwnerInstanceIDs[0]
                 : null;
-        }
-
-        /// <summary>
-        /// Gets the image path used by the encyclopedia for an entity.
-        /// </summary>
-        /// <param name="entity">The entity whose encyclopedia image is being resolved.</param>
-        /// <param name="fallbackImagePath">The image path to use when the entity has no encyclopedia image.</param>
-        /// <returns>The encyclopedia image path.</returns>
-        private static string GetEncyclopediaImagePath(
-            BaseGameEntity entity,
-            string fallbackImagePath
-        )
-        {
-            return string.IsNullOrEmpty(entity.EncyclopediaImagePath)
-                ? fallbackImagePath
-                : entity.EncyclopediaImagePath;
         }
 
         /// <summary>

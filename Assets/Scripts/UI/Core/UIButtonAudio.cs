@@ -91,30 +91,30 @@ public sealed class UIButtonAudio : MonoBehaviour
     private void PlayHoverSound()
     {
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(hoverSound, hoverVolume);
+            AudioManager.Instance.PlaySfx(hoverSound, hoverVolume);
     }
 
     private void PlayPressSound()
     {
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(pressSound, pressVolume);
+            AudioManager.Instance.PlaySfx(pressSound, pressVolume);
     }
 
     private void PlayReleaseSound()
     {
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(releaseSound, releaseVolume);
+            AudioManager.Instance.PlaySfx(releaseSound, releaseVolume);
     }
 
     private void PlayClickSound()
     {
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(clickSound, clickVolume);
+            AudioManager.Instance.PlaySfx(clickSound, clickVolume);
     }
 
     private void PlayDoubleClickSound()
     {
         if (AudioManager.Instance != null)
-            AudioManager.Instance.PlaySFX(doubleClickSound, doubleClickVolume);
+            AudioManager.Instance.PlaySfx(doubleClickSound, doubleClickVolume);
     }
 }

@@ -352,6 +352,11 @@ namespace Rebellion.Tests.Game.Units
                 "Officers should be correctly deserialized."
             );
             Assert.AreEqual(
+                _capitalShip.SpecialForces.Count,
+                deserialized.SpecialForces.Count,
+                "SpecialForces should be correctly deserialized."
+            );
+            Assert.AreEqual(
                 _capitalShip.Starfighters.Count,
                 deserialized.Starfighters.Count,
                 "Starfighters should be correctly deserialized."

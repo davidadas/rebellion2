@@ -626,9 +626,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetGameSpeed_InitialState_ReturnsDefaultSpeed()
         {
-            // Verify default speed is Medium.
             TickSpeed speed = _game.GetGameSpeed();
-            Assert.AreEqual(TickSpeed.Medium, speed, "Default game speed should be Medium");
+            Assert.AreEqual(TickSpeed.Slow, speed, "Default game speed should be Slow");
         }
 
         [Test]

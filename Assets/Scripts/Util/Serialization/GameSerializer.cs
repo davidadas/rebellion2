@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -158,17 +159,13 @@ namespace Rebellion.Util.Serialization
 
             Type objType = obj.GetType();
 
-            if (TypeHelper.IsPrimitive(objType))
+            if (TypeHelper.IsScalar(objType))
             {
-                WritePrimitive(obj, writer, name);
+                WriteScalar(obj, writer, name);
             }
-            else if (objType.IsEnum)
+            else if (objType == typeof(Point))
             {
-                WriteEnum(obj, writer, name);
-            }
-            else if (objType == typeof(DateTime))
-            {
-                WriteDateTime((DateTime)obj, writer, name);
+                WritePoint((Point)obj, writer, name);
             }
             else if (obj is IDictionary dictionary)
             {
@@ -189,58 +186,36 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Writes a primitive value to XML.
+        /// Writes a scalar value to XML.
         /// </summary>
-        /// <param name="obj">The primitive object to write.</param>
+        /// <param name="obj">The scalar object to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
         /// <param name="key">The optional key for the XML element.</param>
-        private static void WritePrimitive(object obj, XmlWriter writer, string key = null)
+        private static void WriteScalar(object obj, XmlWriter writer, string key = null)
         {
+            string value = TypeHelper.ConvertScalarToString(obj);
             if (key != null)
             {
-                writer.WriteElementString(key, obj.ToString());
+                writer.WriteElementString(key, value);
             }
             else
             {
-                writer.WriteValue(obj);
+                writer.WriteString(value);
             }
         }
 
         /// <summary>
-        /// Writes an enum value to XML.
+        /// Writes a point value to XML attributes.
         /// </summary>
-        /// <param name="obj">The enum object to write.</param>
+        /// <param name="point">The point value to write.</param>
         /// <param name="writer">The XmlWriter to use.</param>
         /// <param name="key">The optional key for the XML element.</param>
-        private static void WriteEnum(object obj, XmlWriter writer, string key = null)
+        private static void WritePoint(Point point, XmlWriter writer, string key = null)
         {
-            if (key != null)
-            {
-                writer.WriteElementString(key, obj.ToString());
-            }
-            else
-            {
-                writer.WriteString(obj.ToString());
-            }
-        }
-
-        /// <summary>
-        /// Writes a DateTime value to XML.
-        /// </summary>
-        /// <param name="dateTime">The DateTime object to write.</param>
-        /// <param name="writer">The XmlWriter to use.</param>
-        /// <param name="key">The optional key for the XML element.</param>
-        private static void WriteDateTime(DateTime dateTime, XmlWriter writer, string key = null)
-        {
-            string isoString = dateTime.ToString("o"); // ISO 8601 roundtrip format
-            if (key != null)
-            {
-                writer.WriteElementString(key, isoString);
-            }
-            else
-            {
-                writer.WriteString(isoString);
-            }
+            writer.WriteStartElement(key ?? nameof(Point));
+            writer.WriteAttributeString(nameof(Point.X), point.X.ToString());
+            writer.WriteAttributeString(nameof(Point.Y), point.Y.ToString());
+            writer.WriteEndElement();
         }
 
         /// <summary>
@@ -329,7 +304,7 @@ namespace Rebellion.Util.Serialization
 
                 if (attributeValue != null)
                 {
-                    string stringValue = TypeHelper.ConvertToString(attributeValue);
+                    string stringValue = TypeHelper.ConvertScalarToString(attributeValue);
                     string attributeName = !string.IsNullOrEmpty(persistableAttr.Name)
                         ? persistableAttr.Name
                         : attribute.Name;
@@ -407,17 +382,13 @@ namespace Rebellion.Util.Serialization
             PersistableAttributes attributes = default
         )
         {
-            if (TypeHelper.IsPrimitive(objType))
+            if (TypeHelper.IsScalar(objType))
             {
-                return ReadPrimitive(objType, reader);
+                return ReadScalar(objType, reader);
             }
-            if (objType.IsEnum)
+            if (objType == typeof(Point))
             {
-                return ReadEnum(objType, reader);
-            }
-            if (objType == typeof(DateTime))
-            {
-                return ReadDateTime(reader);
+                return ReadPoint(reader);
             }
             if (reader.NodeType == XmlNodeType.Element)
             {
@@ -444,12 +415,12 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Reads a primitive value from XML.
+        /// Reads a scalar value from XML.
         /// </summary>
-        /// <param name="type">The type of primitive to read.</param>
+        /// <param name="type">The type of scalar to read.</param>
         /// <param name="reader">The XmlReader to use.</param>
-        /// <returns>The read primitive value.</returns>
-        private static object ReadPrimitive(Type type, XmlReader reader)
+        /// <returns>The read scalar value.</returns>
+        private static object ReadScalar(Type type, XmlReader reader)
         {
             string content;
             if (reader.NodeType == XmlNodeType.Element)
@@ -464,36 +435,20 @@ namespace Rebellion.Util.Serialization
             {
                 content = reader.ReadContentAsString();
             }
-            return TypeHelper.ConvertToPrimitive(content, type);
+            return TypeHelper.ConvertToScalar(content, type);
         }
 
         /// <summary>
-        /// Reads an enum value from XML.
-        /// </summary>
-        /// <param name="type">The type of enum to read.</param>
-        /// <param name="reader">The XmlReader to use.</param>
-        /// <returns>The read enum value.</returns>
-        private static object ReadEnum(Type type, XmlReader reader)
-        {
-            string content =
-                reader.NodeType == XmlNodeType.Element
-                    ? reader.ReadElementContentAsString()
-                    : reader.ReadContentAsString();
-            return Enum.Parse(type, content);
-        }
-
-        /// <summary>
-        /// Reads a DateTime value from XML.
+        /// Reads a point value from XML attributes.
         /// </summary>
         /// <param name="reader">The XmlReader to use.</param>
-        /// <returns>The read DateTime value.</returns>
-        private static DateTime ReadDateTime(XmlReader reader)
+        /// <returns>The read point value.</returns>
+        private static Point ReadPoint(XmlReader reader)
         {
-            string content =
-                reader.NodeType == XmlNodeType.Element
-                    ? reader.ReadElementContentAsString()
-                    : reader.ReadContentAsString();
-            return DateTime.Parse(content, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            int x = int.Parse(reader.GetAttribute(nameof(Point.X)));
+            int y = int.Parse(reader.GetAttribute(nameof(Point.Y)));
+            reader.Skip();
+            return new Point(x, y);
         }
 
         /// <summary>
@@ -811,7 +766,7 @@ namespace Rebellion.Util.Serialization
                 if (attributes.TryGetValue(reader.Name, out MemberInfo attribute))
                 {
                     Type attributeType = ReflectionHelper.GetMemberType(attribute);
-                    object value = TypeHelper.ConvertToPrimitive(reader.Value, attributeType);
+                    object value = TypeHelper.ConvertToScalar(reader.Value, attributeType);
                     ReflectionHelper.SetMemberValue(attribute, obj, value);
                 }
             }
@@ -878,11 +833,11 @@ namespace Rebellion.Util.Serialization
         {
             Type type = ReflectionHelper.GetMemberType(info);
 
-            // Validate primitive types.
-            if (TypeHelper.IsPrimitive(type) && reader.HasAttributes)
+            // Validate scalar types.
+            if (TypeHelper.IsScalar(type) && reader.HasAttributes)
             {
                 throw new InvalidOperationException(
-                    $"Element '{reader.Name}' cannot have attributes when deserializing primitive type '{type.Name}'."
+                    $"Element '{reader.Name}' cannot have attributes when deserializing scalar type '{type.Name}'."
                 );
             }
 
@@ -897,7 +852,7 @@ namespace Rebellion.Util.Serialization
                 );
             }
 
-            if (reader.IsEmptyElement && TypeHelper.IsPrimitive(type))
+            if (reader.IsEmptyElement && TypeHelper.IsScalar(type))
             {
                 reader.Read();
                 return null;
@@ -1149,7 +1104,7 @@ namespace Rebellion.Util.Serialization
         /// Returns the XML element name used for a persistable object type.
         /// </summary>
         /// <param name="type">The type whose element name should be returned.</param>
-        /// <returns>The configured persistable name, or the CLR type name when none is configured.</returns>
+        /// <returns>The configured persistable name, or the type name when none is configured.</returns>
         public static string GetPersistableElementName(Type type)
         {
             PersistableObjectAttribute attr = (PersistableObjectAttribute)
@@ -1229,27 +1184,6 @@ namespace Rebellion.Util.Serialization
                 PropertyInfo property => property.PropertyType,
                 _ => throw new ArgumentException($"Unsupported member type: {info.GetType()}"),
             };
-
-        /// <summary>
-        /// Returns a type given the type name.
-        /// </summary>
-        /// <param name="typeName">The name of the type to get.</param>
-        /// <returns>The Type object for the given type name.</returns>
-        public static Type GetTypeByName(string typeName)
-        {
-            Assembly currentAssembly = Assembly.GetExecutingAssembly();
-            Type foundType = currentAssembly.GetType(typeName);
-
-            if (foundType == null)
-            {
-                foundType = AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .Select(a => a.GetType(typeName))
-                    .FirstOrDefault(t => t != null);
-            }
-
-            return foundType;
-        }
     }
 
     /// <summary>

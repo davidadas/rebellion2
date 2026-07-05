@@ -22,22 +22,106 @@ namespace Rebellion.Tests.Util
 
         private class UntaggedClass { }
 
-        [Test]
-        public void IsPrimitive_Int_ReturnsTrue()
+        private static IEnumerable<Type> ScalarTypes()
         {
-            Assert.IsTrue(TypeHelper.IsPrimitive(typeof(int)));
+            yield return typeof(string);
+            yield return typeof(bool);
+            yield return typeof(byte);
+            yield return typeof(sbyte);
+            yield return typeof(short);
+            yield return typeof(ushort);
+            yield return typeof(int);
+            yield return typeof(uint);
+            yield return typeof(long);
+            yield return typeof(ulong);
+            yield return typeof(float);
+            yield return typeof(double);
+            yield return typeof(decimal);
+            yield return typeof(char);
+            yield return typeof(SampleEnum);
+            yield return typeof(DateTime);
+            yield return typeof(DateTimeOffset);
+            yield return typeof(TimeSpan);
+            yield return typeof(Guid);
+        }
+
+        private static IEnumerable<TestCaseData> ScalarParseCases()
+        {
+            yield return new TestCaseData("hello", typeof(string), "hello");
+            yield return new TestCaseData("True", typeof(bool), true);
+            yield return new TestCaseData("8", typeof(byte), (byte)8);
+            yield return new TestCaseData("-8", typeof(sbyte), (sbyte)-8);
+            yield return new TestCaseData("-16", typeof(short), (short)-16);
+            yield return new TestCaseData("16", typeof(ushort), (ushort)16);
+            yield return new TestCaseData("-32", typeof(int), -32);
+            yield return new TestCaseData("32", typeof(uint), 32u);
+            yield return new TestCaseData("-64", typeof(long), -64L);
+            yield return new TestCaseData("64", typeof(ulong), 64ul);
+            yield return new TestCaseData("1.25", typeof(float), 1.25f);
+            yield return new TestCaseData("2.5", typeof(double), 2.5d);
+            yield return new TestCaseData("3.75", typeof(decimal), 3.75m);
+            yield return new TestCaseData("Q", typeof(char), 'Q');
+            yield return new TestCaseData("B", typeof(SampleEnum), SampleEnum.B);
+            yield return new TestCaseData(
+                "2024-01-15T12:00:00.0000000Z",
+                typeof(DateTime),
+                new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc)
+            );
+            yield return new TestCaseData(
+                "2024-01-15T12:00:00.0000000+00:00",
+                typeof(DateTimeOffset),
+                new DateTimeOffset(2024, 1, 15, 12, 0, 0, TimeSpan.Zero)
+            );
+            yield return new TestCaseData("01:02:03", typeof(TimeSpan), new TimeSpan(1, 2, 3));
+            yield return new TestCaseData(
+                "5f6a6ec4-655d-497b-8d10-bbd8dc155cfd",
+                typeof(Guid),
+                Guid.Parse("5f6a6ec4-655d-497b-8d10-bbd8dc155cfd")
+            );
+        }
+
+        private static IEnumerable<TestCaseData> ScalarStringCases()
+        {
+            yield return new TestCaseData("hello", "hello");
+            yield return new TestCaseData(true, "True");
+            yield return new TestCaseData((byte)8, "8");
+            yield return new TestCaseData((sbyte)-8, "-8");
+            yield return new TestCaseData((short)-16, "-16");
+            yield return new TestCaseData((ushort)16, "16");
+            yield return new TestCaseData(-32, "-32");
+            yield return new TestCaseData(32u, "32");
+            yield return new TestCaseData(-64L, "-64");
+            yield return new TestCaseData(64ul, "64");
+            yield return new TestCaseData(1.25f, "1.25");
+            yield return new TestCaseData(2.5d, "2.5");
+            yield return new TestCaseData(3.75m, "3.75");
+            yield return new TestCaseData('Q', "Q");
+            yield return new TestCaseData(SampleEnum.B, "B");
+            yield return new TestCaseData(
+                new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc),
+                "2024-01-15T12:00:00.0000000Z"
+            );
+            yield return new TestCaseData(
+                new DateTimeOffset(2024, 1, 15, 12, 0, 0, TimeSpan.Zero),
+                "2024-01-15T12:00:00.0000000+00:00"
+            );
+            yield return new TestCaseData(new TimeSpan(1, 2, 3), "01:02:03");
+            yield return new TestCaseData(
+                Guid.Parse("5f6a6ec4-655d-497b-8d10-bbd8dc155cfd"),
+                "5f6a6ec4-655d-497b-8d10-bbd8dc155cfd"
+            );
+        }
+
+        [TestCaseSource(nameof(ScalarTypes))]
+        public void IsScalar_SupportedType_ReturnsTrue(Type type)
+        {
+            Assert.IsTrue(TypeHelper.IsScalar(type));
         }
 
         [Test]
-        public void IsPrimitive_String_ReturnsTrue()
+        public void IsScalar_Class_ReturnsFalse()
         {
-            Assert.IsTrue(TypeHelper.IsPrimitive(typeof(string)));
-        }
-
-        [Test]
-        public void IsPrimitive_Class_ReturnsFalse()
-        {
-            Assert.IsFalse(TypeHelper.IsPrimitive(typeof(UntaggedClass)));
+            Assert.IsFalse(TypeHelper.IsScalar(typeof(UntaggedClass)));
         }
 
         [Test]
@@ -71,7 +155,7 @@ namespace Rebellion.Tests.Util
         }
 
         [Test]
-        public void IsStruct_Primitive_ReturnsFalse()
+        public void IsStruct_ClrPrimitive_ReturnsFalse()
         {
             Assert.IsFalse(TypeHelper.IsStruct(typeof(int)));
         }
@@ -168,99 +252,45 @@ namespace Rebellion.Tests.Util
             );
         }
 
-        [Test]
-        public void ConvertToPrimitive_Int_ReturnsParsedValue()
+        [TestCaseSource(nameof(ScalarParseCases))]
+        public void ConvertToScalar_SupportedType_ReturnsParsedValue(
+            string content,
+            Type targetType,
+            object expected
+        )
         {
-            Assert.AreEqual(42, TypeHelper.ConvertToPrimitive("42", typeof(int)));
+            Assert.AreEqual(expected, TypeHelper.ConvertToScalar(content, targetType));
         }
 
         [Test]
-        public void ConvertToPrimitive_String_ReturnsSameValue()
-        {
-            Assert.AreEqual("hello", TypeHelper.ConvertToPrimitive("hello", typeof(string)));
-        }
-
-        [Test]
-        public void ConvertToPrimitive_Bool_ReturnsParsedValue()
-        {
-            Assert.AreEqual(true, TypeHelper.ConvertToPrimitive("True", typeof(bool)));
-        }
-
-        [Test]
-        public void ConvertToPrimitive_Float_ReturnsParsedValue()
-        {
-            Assert.AreEqual(1.5f, TypeHelper.ConvertToPrimitive("1.5", typeof(float)));
-        }
-
-        [Test]
-        public void ConvertToPrimitive_Double_ReturnsParsedValue()
-        {
-            Assert.AreEqual(
-                3.14,
-                (double)TypeHelper.ConvertToPrimitive("3.14", typeof(double)),
-                0.0001
-            );
-        }
-
-        [Test]
-        public void ConvertToPrimitive_Long_ReturnsParsedValue()
-        {
-            Assert.AreEqual(9999999999L, TypeHelper.ConvertToPrimitive("9999999999", typeof(long)));
-        }
-
-        [Test]
-        public void ConvertToPrimitive_Enum_ReturnsParsedValue()
-        {
-            Assert.AreEqual(SampleEnum.B, TypeHelper.ConvertToPrimitive("B", typeof(SampleEnum)));
-        }
-
-        [Test]
-        public void ConvertToPrimitive_UnsupportedType_ThrowsArgumentException()
+        public void ConvertToScalar_UnsupportedType_ThrowsArgumentException()
         {
             Assert.Throws<ArgumentException>(() =>
-                TypeHelper.ConvertToPrimitive("x", typeof(DateTime))
+                TypeHelper.ConvertToScalar("x", typeof(UntaggedClass))
             );
         }
 
         [Test]
-        public void ConvertToString_Null_ReturnsEmptyString()
+        public void ConvertScalarToString_Null_ReturnsEmptyString()
         {
-            Assert.AreEqual(string.Empty, TypeHelper.ConvertToString(null));
+            Assert.AreEqual(string.Empty, TypeHelper.ConvertScalarToString(null));
+        }
+
+        [TestCaseSource(nameof(ScalarStringCases))]
+        public void ConvertScalarToString_SupportedValue_ReturnsSerializedValue(
+            object value,
+            string expected
+        )
+        {
+            Assert.AreEqual(expected, TypeHelper.ConvertScalarToString(value));
         }
 
         [Test]
-        public void ConvertToString_Int_ReturnsStringRepresentation()
+        public void ConvertScalarToString_UnsupportedType_ThrowsArgumentException()
         {
-            Assert.AreEqual("7", TypeHelper.ConvertToString(7));
-        }
-
-        [Test]
-        public void ConvertToString_Enum_ReturnsName()
-        {
-            Assert.AreEqual("A", TypeHelper.ConvertToString(SampleEnum.A));
-        }
-
-        [Test]
-        public void ConvertToString_DateTime_ReturnsIso8601()
-        {
-            DateTime dt = new DateTime(2024, 1, 15, 12, 0, 0, DateTimeKind.Utc);
-            string result = TypeHelper.ConvertToString(dt);
-            StringAssert.StartsWith("2024-01-15T12:00:00", result);
-        }
-
-        [Test]
-        public void ConvertToString_DateTimeOffset_ReturnsIso8601()
-        {
-            DateTimeOffset dto = new DateTimeOffset(2024, 1, 15, 12, 0, 0, TimeSpan.Zero);
-            string result = TypeHelper.ConvertToString(dto);
-            StringAssert.StartsWith("2024-01-15T12:00:00", result);
-        }
-
-        [Test]
-        public void ConvertToString_TimeSpan_ReturnsConstantFormat()
-        {
-            TimeSpan ts = new TimeSpan(1, 2, 3);
-            Assert.AreEqual("01:02:03", TypeHelper.ConvertToString(ts));
+            Assert.Throws<ArgumentException>(() =>
+                TypeHelper.ConvertScalarToString(new UntaggedClass())
+            );
         }
     }
 }

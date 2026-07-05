@@ -705,10 +705,7 @@ namespace Rebellion.Game.Galaxy
         /// <param name="officer">The officer to add.</param>
         private void AddOfficer(Officer officer)
         {
-            if (!IsColonized)
-                throw new SceneAccessException(officer, this);
-
-            if (!officer.IsCaptured && officer.GetOwnerInstanceID() != this.OwnerInstanceID)
+            if (!CanAcceptOfficer(officer))
             {
                 throw new SceneAccessException(officer, this);
             }
@@ -903,8 +900,7 @@ namespace Rebellion.Game.Galaxy
                 case Mission _:
                     return true;
                 case Officer officer:
-                    return IsColonized
-                        && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
+                    return CanAcceptOfficer(officer);
                 case Regiment regiment:
                     if (!IsColonized && string.IsNullOrEmpty(GetOwnerInstanceID()))
                         return true;
@@ -922,6 +918,17 @@ namespace Rebellion.Game.Galaxy
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Returns whether this planet can accept the supplied officer.
+        /// </summary>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <returns>True when the officer can be added to this planet; otherwise false.</returns>
+        private bool CanAcceptOfficer(Officer officer)
+        {
+            return IsColonized
+                && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
         }
 
         /// <summary>
