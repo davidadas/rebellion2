@@ -109,12 +109,30 @@ jobs:
           done
 
           CONTAINER_ID="$(docker create "$IMAGE")"
+          trap 'docker rm "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
           mkdir -p .unity-lint-assemblies
 
-          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/
-          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/
+          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEngine/." .unity-lint-assemblies/ 2>/dev/null || true
+          if docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/UnityEditor/." .unity-lint-assemblies/ 2>/dev/null; then
+            echo "Copied UnityEditor assemblies from Managed/UnityEditor"
+          elif docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Managed/." .unity-lint-assemblies/ 2>/dev/null; then
+            echo "Copied Unity managed assemblies from Managed"
+          else
+            echo "ERROR: Could not locate Unity managed assemblies in $IMAGE"
+            exit 1
+          fi
+
+          find .unity-lint-assemblies/UnityEngine .unity-lint-assemblies/UnityEditor -maxdepth 1 -name "*.dll" -exec cp {} .unity-lint-assemblies/ \; 2>/dev/null || true
+
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll; do
+            if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
+              echo "ERROR: Missing required Unity lint assembly: $assembly"
+              exit 1
+            fi
+          done
 
           docker rm "$CONTAINER_ID"
+          trap - EXIT
 
       - name: Lint
         run: UnityManagedAssembliesPath="$PWD/.unity-lint-assemblies" bash build.sh lint
