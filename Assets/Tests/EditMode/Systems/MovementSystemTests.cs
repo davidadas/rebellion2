@@ -177,6 +177,139 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RequestMove_SameSystemDestination_CanUseLocalTransitMinimum()
+        {
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, system);
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            game.AttachNode(destination, system);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+
+            movement.RequestMove(officer, destination);
+
+            Assert.Less(officer.Movement.TransitTicks, config.Movement.MinTransitTicks);
+            Assert.GreaterOrEqual(
+                officer.Movement.TransitTicks,
+                config.Movement.SameSystemMinTransitTicks
+            );
+        }
+
+        [Test]
+        public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
+        {
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem originSystem = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(originSystem, game.GetGalaxyMap());
+
+            Planet origin = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, originSystem);
+
+            PlanetSystem destinationSystem = new PlanetSystem { InstanceID = "sys2" };
+            game.AttachNode(destinationSystem, game.GetGalaxyMap());
+
+            Planet destination = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            game.AttachNode(destination, destinationSystem);
+
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreEqual(config.Movement.MinTransitTicks, officer.Movement.TransitTicks);
+        }
+
+        [Test]
+        public void TryGetTransitTicks_ValidDestination_DoesNotMoveUnit()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            bool result = movement.TryGetTransitTicks(
+                new List<IMovable> { officer },
+                destination,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(result);
+            Assert.Greater(transitTicks, 0);
+            Assert.AreEqual(origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            bool result = movement.TryEstimateManufacturedTransitTicks(
+                officer,
+                origin,
+                destination,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(result);
+            Assert.Greater(transitTicks, 0);
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_ValidDestination_SetsMovementGroupID()
         {
             (
@@ -1059,6 +1192,146 @@ namespace Rebellion.Tests.Systems
                 officer.Movement,
                 "Officer should still be en route after fleet moved away."
             );
+        }
+
+        [Test]
+        public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
+        {
+            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            Planet planetA = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(planetA, system);
+
+            Planet planetB = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(planetB, system);
+
+            Planet planetC = new Planet
+            {
+                InstanceID = "pC",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 10000,
+                PositionY = 0,
+            };
+            game.AttachNode(planetC, system);
+
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination", "empire");
+            game.AttachNode(destinationFleet, planetB);
+
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+                RegimentCapacity = 2,
+            };
+            game.AttachNode(carrier, destinationFleet);
+
+            Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
+            game.AttachNode(sourceFleet, planetA);
+
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, sourceFleet);
+
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(starfighter, planetA);
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, planetA);
+
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, planetA);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, planetA);
+
+            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            IMovable[] inboundUnits =
+            {
+                capitalShip,
+                starfighter,
+                regiment,
+                officer,
+                specialForces,
+            };
+
+            foreach (IMovable inboundUnit in inboundUnits)
+                movement.RequestMove(inboundUnit, destinationFleet);
+
+            movement.ProcessTick();
+
+            Dictionary<IMovable, MovementState> previousMovements = inboundUnits.ToDictionary(
+                unit => unit,
+                unit => unit.Movement
+            );
+
+            movement.RequestMove(destinationFleet, planetC);
+
+            foreach (IMovable inboundUnit in inboundUnits)
+            {
+                MovementState previousMovement = previousMovements[inboundUnit];
+                Assert.IsNotNull(inboundUnit.Movement);
+                Assert.AreNotSame(previousMovement, inboundUnit.Movement);
+                Assert.AreEqual(
+                    previousMovement.CurrentPosition,
+                    inboundUnit.Movement.OriginPosition
+                );
+                Assert.AreEqual(
+                    previousMovement.CurrentPosition,
+                    inboundUnit.Movement.CurrentPosition
+                );
+                Assert.AreEqual(
+                    previousMovement.MovementGroupID,
+                    inboundUnit.Movement.MovementGroupID
+                );
+                Assert.AreEqual(0, inboundUnit.Movement.TicksElapsed);
+                Assert.Greater(
+                    inboundUnit.Movement.TransitTicks,
+                    previousMovement.TicksRemaining()
+                );
+            }
         }
 
         private (

@@ -50,8 +50,9 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0f, config.AI.Selection.MinimumSelectableScore);
 
             // Movement defaults
-            Assert.AreEqual(2, config.Movement.DistanceScale);
+            Assert.AreEqual(12, config.Movement.DistanceScale);
             Assert.AreEqual(10, config.Movement.MinTransitTicks);
+            Assert.AreEqual(1, config.Movement.SameSystemMinTransitTicks);
             Assert.AreEqual(60, config.Movement.DefaultFighterHyperdrive);
 
             Assert.AreEqual(2, config.Uprising.WeakSupportPenaltyDivisor);
@@ -234,7 +235,7 @@ namespace Rebellion.Tests.Game
                 "GameConfig.xml"
             );
             string xml = File.ReadAllText(configPath)
-                .Replace("<DistanceScale>2</DistanceScale>", "<DistanceScale>0</DistanceScale>");
+                .Replace("<DistanceScale>12</DistanceScale>", "<DistanceScale>0</DistanceScale>");
 
             Assert.Throws<XmlSchemaValidationException>(() =>
                 TestConfig.DeserializeWithSchema(xml)

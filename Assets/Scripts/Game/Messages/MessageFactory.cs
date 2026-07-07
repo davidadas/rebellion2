@@ -970,6 +970,9 @@ namespace Rebellion.Game.Messages
 
             foreach (UnitArrivedResult arrival in arrivals)
             {
+                if (!IsArrivedUnitStillPresent(arrival))
+                    continue;
+
                 if (arrival.Unit is Fleet fleet)
                 {
                     Faction faction = GetFaction(game, fleet.GetOwnerInstanceID());
@@ -1022,6 +1025,16 @@ namespace Rebellion.Game.Messages
                     CreateShipsArrived(faction, group.Value, shipDestinations[group.Key])
                 );
             }
+        }
+
+        /// <summary>
+        /// Returns whether an arrival result still references a unit attached to the scene graph.
+        /// </summary>
+        /// <param name="arrival">The arrival result to evaluate.</param>
+        /// <returns>True when the arrived unit is still attached; otherwise false.</returns>
+        private static bool IsArrivedUnitStillPresent(UnitArrivedResult arrival)
+        {
+            return arrival?.Unit is ISceneNode node && node.GetParent() != null;
         }
 
         /// <summary>

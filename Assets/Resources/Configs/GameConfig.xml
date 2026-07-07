@@ -653,8 +653,10 @@
   </AI>
   <!-- Distance scaling, transit minimums, and hyperdrive defaults for fleet and unit movement. -->
   <Movement>
-    <DistanceScale>2</DistanceScale>
+    <DistanceScale>12</DistanceScale>
     <MinTransitTicks>10</MinTransitTicks>
+    <!-- Minimum transit ticks when origin and destination are planets in the same system. -->
+    <SameSystemMinTransitTicks>1</SameSystemMinTransitTicks>
     <DefaultFighterHyperdrive>60</DefaultFighterHyperdrive>
   </Movement>
   <!-- Capital-ship production rolls and blockade-driven production penalties. -->

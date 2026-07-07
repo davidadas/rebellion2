@@ -173,10 +173,46 @@ public static class ResourceManager
         return LoadResource<UnityEngine.Sprite>(path, "Sprite not found at: ");
     }
 
+    /// <summary>
+    /// Loads a Texture2D from the specified Resources path.
+    /// </summary>
+    /// <param name="path">Resources path to the texture.</param>
+    /// <returns>The loaded Texture2D.</returns>
+    public static UnityEngine.Texture2D GetTexture(string path)
+    {
+        return LoadResource<UnityEngine.Texture2D>(path, "Texture not found at: ");
+    }
+
+    /// <summary>
+    /// Attempts to load a Texture2D from the specified Resources path.
+    /// </summary>
+    /// <param name="path">Resources path to the texture.</param>
+    /// <returns>The loaded Texture2D, or null when no texture is found.</returns>
+    public static UnityEngine.Texture2D TryGetTexture(string path)
+    {
+        return TryLoadResource<UnityEngine.Texture2D>(path);
+    }
+
+    /// <summary>
+    /// Attempts to load a Sprite from the specified Resources path.
+    /// </summary>
+    /// <param name="path">Resources path to the sprite.</param>
+    /// <returns>The loaded Sprite, or null when no sprite is found.</returns>
+    public static UnityEngine.Sprite TryGetSprite(string path)
+    {
+        return TryLoadResource<UnityEngine.Sprite>(path);
+    }
+
+    /// <summary>
+    /// Loads a required resource from a Resources path.
+    /// </summary>
+    /// <param name="path">Resources path to load.</param>
+    /// <param name="errorPrefix">The exception message prefix when the resource is missing.</param>
+    /// <returns>The loaded resource.</returns>
     private static T LoadResource<T>(string path, string errorPrefix)
         where T : UnityEngine.Object
     {
-        T resource = string.IsNullOrEmpty(path) ? null : UnityEngine.Resources.Load<T>(path);
+        T resource = TryLoadResource<T>(path);
 
         if (resource == null)
         {
@@ -184,6 +220,20 @@ public static class ResourceManager
         }
 
         return resource;
+    }
+
+    /// <summary>
+    /// Attempts to load a resource from a Resources path.
+    /// </summary>
+    /// <param name="path">Resources path to load.</param>
+    /// <returns>The loaded resource, or null when no resource is found.</returns>
+    private static T TryLoadResource<T>(string path)
+        where T : UnityEngine.Object
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        return UnityEngine.Resources.Load<T>(path);
     }
 
     private static T[] LoadResourceGroup<T>(string folderPath, string errorPrefix)

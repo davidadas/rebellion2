@@ -142,7 +142,7 @@ namespace Rebellion.Systems
             }
 
             // Calculate transit time and set the unit in motion.
-            int transitTicks = CalculateTransitTicks(unit, origin.GetPosition(), destinationPlanet);
+            int transitTicks = CalculateTransitTicks(unit, origin, destinationPlanet);
             unit.Movement = new MovementState
             {
                 TransitTicks = transitTicks,
@@ -177,6 +177,130 @@ namespace Rebellion.Systems
             string movementGroupID = Guid.NewGuid().ToString("N");
             foreach (IMovable unit in units)
                 ExecuteMove(unit, destination, movementGroupID);
+        }
+
+        /// <summary>
+        /// Estimates the longest transit time for a group movement without changing scene state.
+        /// </summary>
+        /// <param name="units">The units that would receive the move order.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="transitTicks">The estimated movement duration when the estimate succeeds.</param>
+        /// <returns>True if every unit can be evaluated for the destination; otherwise false.</returns>
+        public bool TryGetTransitTicks(
+            IReadOnlyList<IMovable> units,
+            ISceneNode destination,
+            out int transitTicks
+        )
+        {
+            transitTicks = 0;
+            if (units == null || units.Count == 0 || destination == null)
+                return false;
+
+            destination = ResolveLiveNode(destination);
+            int maxTransitTicks = 0;
+            foreach (IMovable unit in units)
+            {
+                IMovable liveUnit = ResolveLiveNode(unit as ISceneNode) as IMovable;
+                if (liveUnit == null)
+                    return false;
+
+                if (!CanReceiveMoveOrder(liveUnit, allowManufacturingRetarget: false))
+                    return false;
+
+                Planet origin = liveUnit.GetParentOfType<Planet>();
+                if (origin == null)
+                    return false;
+
+                if (
+                    !TryGetDestinationPlanetForTransit(
+                        liveUnit,
+                        destination,
+                        out Planet destinationPlanet
+                    )
+                )
+                    return false;
+
+                int unitTransitTicks = ReferenceEquals(destinationPlanet, origin)
+                    ? 0
+                    : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
+                maxTransitTicks = Math.Max(maxTransitTicks, unitTransitTicks);
+            }
+
+            transitTicks = maxTransitTicks;
+            return true;
+        }
+
+        /// <summary>
+        /// Estimates delivery transit time for a manufactured unit without assigning movement state.
+        /// </summary>
+        /// <param name="unit">The manufactured unit to evaluate.</param>
+        /// <param name="origin">The production planet.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="transitTicks">The estimated delivery duration when transit is required.</param>
+        /// <returns>True if the destination can be evaluated; otherwise false.</returns>
+        public bool TryEstimateManufacturedTransitTicks(
+            IMovable unit,
+            Planet origin,
+            ISceneNode destination,
+            out int transitTicks
+        )
+        {
+            transitTicks = 0;
+            if (unit == null || origin == null || destination == null)
+                return false;
+
+            Planet destinationPlanet;
+            try
+            {
+                destinationPlanet = RequireDestinationPlanet(destination);
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+
+            if (
+                destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
+                && !CanEnterHostileOrbit(unit, destination)
+            )
+            {
+                return true;
+            }
+
+            if (destinationPlanet == origin)
+                return true;
+
+            transitTicks = CalculateTransitTicks(unit, origin, destinationPlanet);
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves the planet used for transit calculations for a requested destination.
+        /// </summary>
+        /// <param name="unit">The unit being evaluated.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="destinationPlanet">The resolved destination planet.</param>
+        /// <returns>True if a valid transit destination planet was found; otherwise false.</returns>
+        private bool TryGetDestinationPlanetForTransit(
+            IMovable unit,
+            ISceneNode destination,
+            out Planet destinationPlanet
+        )
+        {
+            destinationPlanet = null;
+            if (unit is CapitalShip && destination is Planet planet)
+            {
+                destinationPlanet = planet;
+                return true;
+            }
+
+            if (TryResolveAcceptedDestination(unit, destination, out ISceneNode accepted))
+            {
+                destinationPlanet = RequireDestinationPlanet(accepted);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -440,16 +564,7 @@ namespace Rebellion.Systems
             if (newDestination == null)
                 return true;
 
-            Point currentPosition = movable.Movement.CurrentPosition;
-            string movementGroupID = movable.Movement.MovementGroupID;
-            movable.Movement = new MovementState
-            {
-                TransitTicks = CalculateTransitTicks(movable, currentPosition, newDestination),
-                TicksElapsed = 0,
-                MovementGroupID = movementGroupID,
-                OriginPosition = currentPosition,
-                CurrentPosition = currentPosition,
-            };
+            RetargetMovement(movable, newDestination);
             return true;
         }
 
@@ -487,22 +602,27 @@ namespace Rebellion.Systems
             Planet destinationPlanet
         )
         {
-            string destinationOwner = destination.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(destinationOwner))
-                destinationOwner = destinationPlanet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(destinationOwner))
-                return false;
+            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            string movableOwner = GetMovementControlOwner(movable);
+            return !string.IsNullOrEmpty(destinationOwner)
+                && destinationOwner != movableOwner
+                && !CanEnterHostileOrbit(movable, destination);
+        }
 
-            if (destinationOwner == movable.GetOwnerInstanceID())
-                return false;
-
+        /// <summary>
+        /// Returns the faction that controls movement and arrival visibility for a unit.
+        /// </summary>
+        /// <param name="movable">The unit whose controlling owner should be resolved.</param>
+        /// <returns>The controlling owner instance id, or null when none is available.</returns>
+        private static string GetMovementControlOwner(IMovable movable)
+        {
             if (
-                movable is Officer { IsCaptured: true } officer
-                && officer.CaptorInstanceID == destinationOwner
+                movable is Officer { IsCaptured: true } capturedOfficer
+                && !string.IsNullOrEmpty(capturedOfficer.CaptorInstanceID)
             )
-                return false;
+                return capturedOfficer.CaptorInstanceID;
 
-            return !CanEnterHostileOrbit(movable, destination);
+            return movable.GetOwnerInstanceID();
         }
 
         /// <summary>
@@ -556,7 +676,7 @@ namespace Rebellion.Systems
             if (movable is Building && destination is Planet arrivalPlanet)
                 arrivalPlanet.IsColonized = true;
 
-            string arrivingOwner = movable.GetOwnerInstanceID();
+            string arrivingOwner = GetMovementControlOwner(movable);
             if (!string.IsNullOrEmpty(arrivingOwner))
                 destinationPlanet.AddVisitor(arrivingOwner);
 
@@ -752,7 +872,12 @@ namespace Rebellion.Systems
             }
 
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
-            int transitTicks = CalculateTransitTicks(unit, originPosition, destinationPlanet);
+            int transitTicks = CalculateTransitTicks(
+                unit,
+                originPosition,
+                originPlanet,
+                destinationPlanet
+            );
 
             if (unit.GetParent() == destination)
             {
@@ -779,6 +904,9 @@ namespace Rebellion.Systems
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };
+
+            if (unit is Fleet movingFleet)
+                RetargetInTransitFleetJoiners(movingFleet, destinationPlanet);
 
             _pendingResults.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -807,6 +935,38 @@ namespace Rebellion.Systems
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+        }
+
+        /// <summary>
+        /// Retargets units that are already moving to join a fleet after the fleet receives a new destination.
+        /// </summary>
+        /// <param name="fleet">The fleet whose inbound units should be retargeted.</param>
+        /// <param name="destinationPlanet">The fleet's new destination planet.</param>
+        private void RetargetInTransitFleetJoiners(Fleet fleet, Planet destinationPlanet)
+        {
+            foreach (
+                IMovable joiner in fleet.GetChildren<IMovable>(movable => movable.Movement != null)
+            )
+                RetargetMovement(joiner, destinationPlanet);
+        }
+
+        /// <summary>
+        /// Replaces a unit's active movement state with a route from its current position to a new destination.
+        /// </summary>
+        /// <param name="movable">The moving unit to retarget.</param>
+        /// <param name="destinationPlanet">The new destination planet.</param>
+        private void RetargetMovement(IMovable movable, Planet destinationPlanet)
+        {
+            Point currentPosition = movable.Movement.CurrentPosition;
+            string movementGroupID = movable.Movement.MovementGroupID;
+            movable.Movement = new MovementState
+            {
+                TransitTicks = CalculateTransitTicks(movable, currentPosition, destinationPlanet),
+                TicksElapsed = 0,
+                MovementGroupID = movementGroupID,
+                OriginPosition = currentPosition,
+                CurrentPosition = currentPosition,
+            };
         }
 
         /// <summary>
@@ -972,13 +1132,71 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Calculates transit time in ticks.
+        /// Calculates movement duration from one planet to another.
         /// </summary>
-        /// <param name="unit">The unit whose hyperdrive rating determines speed.</param>
-        /// <param name="originPos">The starting position.</param>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="origin">The origin planet.</param>
         /// <param name="destination">The destination planet.</param>
-        /// <returns>Number of ticks the transit will take.</returns>
+        /// <returns>The movement duration in ticks.</returns>
+        private int CalculateTransitTicks(IMovable unit, Planet origin, Planet destination)
+        {
+            return CalculateTransitTicks(
+                unit,
+                origin.GetPosition(),
+                destination,
+                IsSameSystem(origin, destination)
+            );
+        }
+
+        /// <summary>
+        /// Calculates movement duration from a current position with a known origin planet.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="originPos">The current movement origin position.</param>
+        /// <param name="origin">The origin planet used for local movement rules.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <returns>The movement duration in ticks.</returns>
+        private int CalculateTransitTicks(
+            IMovable unit,
+            Point originPos,
+            Planet origin,
+            Planet destination
+        )
+        {
+            return CalculateTransitTicks(
+                unit,
+                originPos,
+                destination,
+                IsSameSystem(origin, destination)
+            );
+        }
+
+        /// <summary>
+        /// Calculates movement duration from a current position to a destination planet.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="originPos">The current movement origin position.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <returns>The movement duration in ticks.</returns>
         private int CalculateTransitTicks(IMovable unit, Point originPos, Planet destination)
+        {
+            return CalculateTransitTicks(unit, originPos, destination, false);
+        }
+
+        /// <summary>
+        /// Calculates movement duration using a caller-supplied local movement classification.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="originPos">The current movement origin position.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <param name="sameSystem">Whether the movement remains within one planet system.</param>
+        /// <returns>The movement duration in ticks.</returns>
+        private int CalculateTransitTicks(
+            IMovable unit,
+            Point originPos,
+            Planet destination,
+            bool sameSystem
+        )
         {
             double distance = destination.GetRawDistanceTo(originPos);
 
@@ -1013,7 +1231,24 @@ namespace Rebellion.Systems
                     distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
                 );
 
-            return Math.Max(baseTicks - speedBonus, _game.GetConfig().Movement.MinTransitTicks);
+            int minimumTransitTicks = sameSystem
+                ? _game.GetConfig().Movement.SameSystemMinTransitTicks
+                : _game.GetConfig().Movement.MinTransitTicks;
+
+            return Math.Max(baseTicks - speedBonus, minimumTransitTicks);
+        }
+
+        /// <summary>
+        /// Returns whether two planets belong to the same planet system.
+        /// </summary>
+        /// <param name="origin">The origin planet.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <returns>True if both planets share a parent planet system; otherwise false.</returns>
+        private static bool IsSameSystem(Planet origin, Planet destination)
+        {
+            PlanetSystem originSystem = origin?.GetParentOfType<PlanetSystem>();
+            PlanetSystem destinationSystem = destination?.GetParentOfType<PlanetSystem>();
+            return originSystem != null && ReferenceEquals(originSystem, destinationSystem);
         }
 
         /// <summary>

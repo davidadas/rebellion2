@@ -157,6 +157,116 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(viewedPlanet.Buildings.Any(b => b.InstanceID == "MINE1"));
         }
 
+        [Test]
+        public void ProcessTick_FleetDestroyedAfterArrival_DoesNotAddFleetArrivalMessage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create())
+            {
+                Random = new QueueRNG(0.5, 0.5, 0.5, 0.5),
+            };
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.Factions.Add(alliance);
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            game.AttachNode(system, game.GetGalaxyMap());
+            Planet origin = new Planet
+            {
+                InstanceID = "ORIGIN",
+                DisplayName = "Origin",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "DEST",
+                DisplayName = "Destination",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(destination, system);
+
+            Fleet arrivingFleet = CreateCombatFleet(
+                game,
+                "ARRIVING",
+                alliance.InstanceID,
+                origin,
+                hullStrength: 1,
+                weaponPower: 0
+            );
+            Fleet defendingFleet = CreateCombatFleet(
+                game,
+                "DEFENDING",
+                empire.InstanceID,
+                destination,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            defendingFleet.CapitalShips[0].HasGravityWell = true;
+
+            GameManager manager = new GameManager(game);
+            manager.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ARRIVING"));
+            List<Message> fleetMessages = alliance.Messages.TryGetValue(
+                MessageType.Fleet,
+                out List<Message> messages
+            )
+                ? messages
+                : new List<Message>();
+            Assert.IsFalse(
+                fleetMessages.Any(message => message.Body == "ARRIVING has arrived at Destination.")
+            );
+        }
+
+        private static Fleet CreateCombatFleet(
+            GameRoot game,
+            string instanceId,
+            string ownerId,
+            Planet planet,
+            int hullStrength,
+            int weaponPower
+        )
+        {
+            Fleet fleet = new Fleet
+            {
+                InstanceID = instanceId,
+                DisplayName = instanceId,
+                OwnerInstanceID = ownerId,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = instanceId + "_SHIP",
+                DisplayName = instanceId + " Ship",
+                OwnerInstanceID = ownerId,
+                MaxHullStrength = hullStrength,
+                CurrentHullStrength = hullStrength,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            if (weaponPower > 0)
+            {
+                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
+                {
+                    weaponPower,
+                    weaponPower,
+                    weaponPower,
+                    weaponPower,
+                };
+            }
+
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            return fleet;
+        }
+
         private sealed class EmitResultAction : GameAction
         {
             private readonly GameResult _result;
