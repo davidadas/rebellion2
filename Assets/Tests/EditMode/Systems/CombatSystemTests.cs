@@ -105,18 +105,31 @@ namespace Rebellion.Tests.Systems
 
         private static bool HasDamageFor(List<GameResult> results, CapitalShip ship)
         {
-            return results
-                .OfType<GameObjectDamagedResult>()
+            return GetDamageResults(results)
                 .Any(result => result.GameObject == ship && result.DamageValue > 0);
         }
 
         private static int GetDamageFor(List<GameResult> results, CapitalShip ship)
         {
-            GameObjectDamagedResult damageResult = results
-                .OfType<GameObjectDamagedResult>()
+            GameObjectDamagedResult damageResult = GetDamageResults(results)
                 .FirstOrDefault(result => result.GameObject == ship);
 
             return damageResult?.DamageValue ?? 0;
+        }
+
+        private static IEnumerable<GameObjectDamagedResult> GetDamageResults(
+            List<GameResult> results
+        )
+        {
+            return results
+                .OfType<SpaceCombatResult>()
+                .SelectMany(result => result.Events)
+                .OfType<GameObjectDamagedResult>();
+        }
+
+        private static SpaceCombatResult GetCombatResult(List<GameResult> results)
+        {
+            return results.OfType<SpaceCombatResult>().Single();
         }
 
         private List<int> ResolveDamageValues(double randomValue)
@@ -145,8 +158,7 @@ namespace Rebellion.Tests.Systems
             );
             TryRunCombat(MakeCombat(game, rng), out List<GameResult> results);
 
-            List<int> damageValues = results
-                .OfType<GameObjectDamagedResult>()
+            List<int> damageValues = GetDamageResults(results)
                 .Select(result => result.DamageValue)
                 .ToList();
 
@@ -191,7 +203,79 @@ namespace Rebellion.Tests.Systems
 
             bool combatOccurred =
                 HasDamageFor(results, empireShip) || HasDamageFor(results, allianceShip);
+            SpaceCombatResult combatResult = GetCombatResult(results);
             Assert.IsTrue(combatOccurred, "Combat should occur between hostile factions");
+            Assert.IsNotEmpty(combatResult.ShipDamage);
+            foreach (ShipDamageResult damage in combatResult.ShipDamage)
+            {
+                GameObjectDamagedResult lastDamageEvent = combatResult
+                    .Events.OfType<GameObjectDamagedResult>()
+                    .Last(result => result.GameObject == damage.Ship);
+                Assert.AreEqual(damage.HullBefore - damage.HullAfter, lastDamageEvent.DamageValue);
+            }
+            Assert.IsFalse(results.OfType<GameObjectDamagedResult>().Any());
+        }
+
+        [Test]
+        public void Resolve_MultipleCombatRounds_ReturnsAggregateDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                100,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                10,
+                shieldRechargeRate: 0
+            );
+            CombatSystem manager = MakeCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            var repeatedDamage = combatResult
+                .ShipDamage.Select(damage => new
+                {
+                    Damage = damage,
+                    Events = combatResult
+                        .Events.OfType<GameObjectDamagedResult>()
+                        .Where(result => result.GameObject == damage.Ship)
+                        .ToList(),
+                })
+                .FirstOrDefault(entry => entry.Events.Count > 1);
+
+            Assert.IsNotNull(repeatedDamage);
+            Assert.AreEqual(100, repeatedDamage.Damage.HullBefore);
+            Assert.AreEqual(
+                repeatedDamage.Damage.Ship.CurrentHullStrength,
+                repeatedDamage.Damage.HullAfter
+            );
+            Assert.AreEqual(
+                repeatedDamage.Damage.HullBefore - repeatedDamage.Damage.HullAfter,
+                repeatedDamage.Events.Last().DamageValue
+            );
         }
 
         [Test]

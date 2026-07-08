@@ -484,6 +484,7 @@ namespace Rebellion.Systems
         )
         {
             List<GameResult> results = new List<GameResult>();
+            SpaceCombatResult combatEncounterResult = null;
             Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
                 decision.AttackerFleetInstanceID
             );
@@ -504,7 +505,10 @@ namespace Rebellion.Systems
                         _provider
                     );
                     if (combatResult != null)
-                        results.AddRange(combatResult.Events);
+                    {
+                        combatEncounterResult ??= CreateCombatEncounterResult(combatResult);
+                        AddCombatRoundResult(combatEncounterResult, combatResult);
+                    }
 
                     attacker = _game.GetSceneNodeByInstanceID<Fleet>(
                         decision.AttackerFleetInstanceID
@@ -528,7 +532,110 @@ namespace Rebellion.Systems
                 ClearCombatFlags(decision);
             }
 
+            if (combatEncounterResult != null)
+                results.Add(combatEncounterResult);
+
             return results;
+        }
+
+        /// <summary>
+        /// Creates the single encounter result that will aggregate every combat round.
+        /// </summary>
+        /// <param name="roundResult">The first combat round result in the encounter.</param>
+        /// <returns>The encounter result.</returns>
+        private static SpaceCombatResult CreateCombatEncounterResult(SpaceCombatResult roundResult)
+        {
+            return new SpaceCombatResult
+            {
+                AttackerFleet = roundResult.AttackerFleet,
+                DefenderFleet = roundResult.DefenderFleet,
+                Planet = roundResult.Planet,
+                Winner = roundResult.Winner,
+                Tick = roundResult.Tick,
+            };
+        }
+
+        /// <summary>
+        /// Adds one combat round's outcome into an encounter-level combat result.
+        /// </summary>
+        /// <param name="encounterResult">The encounter result to update.</param>
+        /// <param name="roundResult">The combat round result to merge.</param>
+        private static void AddCombatRoundResult(
+            SpaceCombatResult encounterResult,
+            SpaceCombatResult roundResult
+        )
+        {
+            encounterResult.Winner = roundResult.Winner;
+            encounterResult.Tick = roundResult.Tick;
+            AddShipDamage(encounterResult.ShipDamage, roundResult.ShipDamage);
+            AddFighterLosses(encounterResult.FighterLosses, roundResult.FighterLosses);
+            encounterResult.Events.AddRange(roundResult.Events);
+        }
+
+        /// <summary>
+        /// Adds round ship damage into an encounter-level damage list.
+        /// </summary>
+        /// <param name="encounterDamage">The encounter-level damage list to update.</param>
+        /// <param name="roundDamage">The round damage list to merge.</param>
+        private static void AddShipDamage(
+            List<ShipDamageResult> encounterDamage,
+            List<ShipDamageResult> roundDamage
+        )
+        {
+            foreach (ShipDamageResult damage in roundDamage)
+            {
+                ShipDamageResult existingDamage = encounterDamage.FirstOrDefault(result =>
+                    result.Ship == damage.Ship
+                );
+
+                if (existingDamage == null)
+                {
+                    encounterDamage.Add(
+                        new ShipDamageResult
+                        {
+                            Ship = damage.Ship,
+                            HullBefore = damage.HullBefore,
+                            HullAfter = damage.HullAfter,
+                        }
+                    );
+                    continue;
+                }
+
+                existingDamage.HullAfter = damage.HullAfter;
+            }
+        }
+
+        /// <summary>
+        /// Adds round fighter losses into an encounter-level loss list.
+        /// </summary>
+        /// <param name="encounterLosses">The encounter-level loss list to update.</param>
+        /// <param name="roundLosses">The round loss list to merge.</param>
+        private static void AddFighterLosses(
+            List<FighterLossResult> encounterLosses,
+            List<FighterLossResult> roundLosses
+        )
+        {
+            foreach (FighterLossResult loss in roundLosses)
+            {
+                FighterLossResult existingLoss = encounterLosses.FirstOrDefault(result =>
+                    result.Fighter != null && result.Fighter == loss.Fighter
+                );
+
+                if (existingLoss == null)
+                {
+                    encounterLosses.Add(
+                        new FighterLossResult
+                        {
+                            Fighter = loss.Fighter,
+                            SquadsBefore = loss.SquadsBefore,
+                            SquadsAfter = loss.SquadsAfter,
+                        }
+                    );
+                    continue;
+                }
+
+                existingLoss.SquadsAfter = loss.SquadsAfter;
+            }
         }
 
         private void SeparateStalematedFleets(Fleet attacker, Fleet defender)

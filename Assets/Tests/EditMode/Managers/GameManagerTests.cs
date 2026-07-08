@@ -158,7 +158,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_FleetDestroyedAfterArrival_DoesNotAddFleetArrivalMessage()
+        public void ProcessTick_FleetDestroyedAfterArrival_AddsFleetArrivalAndBattleMessages()
         {
             GameRoot game = new GameRoot(TestConfig.Create())
             {
@@ -220,8 +220,18 @@ namespace Rebellion.Tests.Managers
             )
                 ? messages
                 : new List<Message>();
-            Assert.IsFalse(
+            Assert.IsTrue(
                 fleetMessages.Any(message => message.Body == "ARRIVING has arrived at Destination.")
+            );
+
+            List<Message> conflictMessages = alliance.Messages.TryGetValue(
+                MessageType.Conflict,
+                out List<Message> battles
+            )
+                ? battles
+                : new List<Message>();
+            Assert.IsTrue(
+                conflictMessages.Any(message => message.Title == "Battle at Destination")
             );
         }
 

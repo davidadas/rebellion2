@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_DetachedFleetArrival_ReturnsNoDelivery()
+        public void CreateMessages_DetachedFleetArrival_CreatesArrivalDelivery()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Fleet fleet = new Fleet
@@ -131,22 +131,28 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(fleet, destination);
             game.DetachNode(fleet);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
-                game,
-                new[]
-                {
-                    Definition(
-                        MessageResultType.FleetArrived,
-                        MessageType.Fleet,
-                        "arrived:{fleet}:{system}",
-                        "body:{fleet}:{system}",
-                        imagePaths: FactionImages()
-                    ),
-                },
-                new UnitArrivedResult { Unit = fleet, Destination = destination }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FleetArrived,
+                            MessageType.Fleet,
+                            "arrived:{fleet}:{system}",
+                            "body:{fleet}:{system}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = fleet, Destination = destination }
+                ),
+                alliance
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual(MessageType.Fleet, message.Type);
+            Assert.AreEqual("arrived:Fleet 1:Yavin", message.Title);
+            Assert.AreEqual("body:Fleet 1:Yavin", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
         [Test]
@@ -208,7 +214,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_DetachedShipArrival_ReturnsNoDelivery()
+        public void CreateMessages_DetachedShipArrival_CreatesArrivalDelivery()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Fleet fleet = new Fleet
@@ -225,27 +231,33 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(ship, fleet);
             game.DetachNode(ship);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
-                game,
-                new[]
-                {
-                    Definition(
-                        MessageResultType.ShipsArrived,
-                        MessageType.Fleet,
-                        "ships:{system}",
-                        "body:{ships}",
-                        imagePaths: FactionImages()
-                    ),
-                },
-                new UnitArrivedResult
-                {
-                    Unit = ship,
-                    Destination = destination,
-                    MovementGroupID = "group-1",
-                }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ShipsArrived,
+                            MessageType.Fleet,
+                            "ships:{system}",
+                            "body:{ships}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = ship,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    }
+                ),
+                alliance
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual(MessageType.Fleet, message.Type);
+            Assert.AreEqual("ships:Yavin", message.Title);
+            Assert.AreEqual("body:Nebulon-B Frigate", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
         }
 
         [Test]
