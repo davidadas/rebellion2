@@ -152,7 +152,6 @@ public sealed class FleetsPane : MonoBehaviour
 
         ApplyFactionTint(theme);
         ApplyFleetImage(theme);
-        ApplyFleetTabSprites(theme);
     }
 
     private void ApplyFactionTint(FactionTheme theme)
@@ -183,48 +182,6 @@ public sealed class FleetsPane : MonoBehaviour
         }
 
         fleetImage.sprite = ResourceManager.GetSprite(path);
-    }
-
-    private void ApplyFleetTabSprites(FactionTheme theme)
-    {
-        FleetTabsTheme tabs = theme?.GetFleetTabsTheme();
-
-        if (tabs == null)
-            return;
-
-        ApplyTabSprites(capitalShipsTab, tabs.CapitalShips);
-        ApplyTabSprites(starfightersTab, tabs.Starfighters);
-        ApplyTabSprites(regimentsTab, tabs.Regiments);
-        ApplyTabSprites(officersTab, tabs.Officers);
-    }
-
-    private void ApplyTabSprites(IconButton button, FleetTabIconSet tab)
-    {
-        if (button == null || tab == null)
-            return;
-
-        Sprite normal = TryLoad(tab.NormalImagePath);
-        Sprite selected = TryLoad(tab.SelectedImagePath);
-        Sprite disabled = TryLoad(tab.DisabledImagePath);
-
-        if (disabled == null)
-            disabled = normal;
-
-        button.SetSprites(
-            normalSprite: normal,
-            hoverSprite: normal,
-            pressedSprite: normal,
-            disabledSprite: disabled,
-            selectedSprite: selected
-        );
-    }
-
-    private Sprite TryLoad(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return null;
-
-        return ResourceManager.GetSprite(path);
     }
 
     public void Refresh()

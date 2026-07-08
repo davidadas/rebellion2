@@ -68,15 +68,15 @@ namespace Rebellion.Systems
         /// point; its position interpolates over subsequent ticks.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
-        /// <param name="destination">The target scene node to move toward.</param>
-        public void RequestMove(IMovable unit, ISceneNode destination)
+        /// <param name="destination">The target container to move toward.</param>
+        public void RequestMove(IMovable unit, ContainerNode destination)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            destination = ResolveLiveNode(destination);
+            destination = ResolveLiveContainer(destination);
 
             if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
                 return;
@@ -109,9 +109,9 @@ namespace Rebellion.Systems
         /// destination in the scene graph.
         /// </summary>
         /// <param name="unit">The unit to set in transit.</param>
-        /// <param name="destination">The pre-assigned destination scene node.</param>
+        /// <param name="destination">The pre-assigned destination container.</param>
         /// <param name="origin">The production planet the unit departs from visually.</param>
-        public void RequestMove(IMovable unit, ISceneNode destination, Planet origin)
+        public void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -120,11 +120,10 @@ namespace Rebellion.Systems
             if (origin == null)
                 throw new ArgumentNullException(nameof(origin));
 
-            // Determine the destination planet for the unit.
-            // All movement must resolve to a planet location for transit purposes.
+            destination = ResolveLiveContainer(destination);
+
             Planet destinationPlanet = RequireDestinationPlanet(destination);
 
-            // If the destination planet is hostile and the unit cannot enter hostile orbit, reject the move order.
             if (
                 destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
                 && !CanEnterHostileOrbit(unit, destination)
@@ -134,14 +133,12 @@ namespace Rebellion.Systems
                 return;
             }
 
-            // If the unit is already at the destination, do nothing.
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
                 return;
             }
 
-            // Calculate transit time and set the unit in motion.
             int transitTicks = CalculateTransitTicks(unit, origin, destinationPlanet);
             unit.Movement = new MovementState
             {
@@ -161,15 +158,15 @@ namespace Rebellion.Systems
         /// Moves a group of units to the same destination after validating the whole group.
         /// </summary>
         /// <param name="units">The units to move as a group.</param>
-        /// <param name="destination">The shared target scene node.</param>
-        public void RequestMove(List<IMovable> units, ISceneNode destination)
+        /// <param name="destination">The shared target container.</param>
+        public void RequestMove(List<IMovable> units, ContainerNode destination)
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            destination = ResolveLiveNode(destination);
+            destination = ResolveLiveContainer(destination);
 
             if (!CanMoveGroup(units, destination))
                 return;
@@ -188,7 +185,7 @@ namespace Rebellion.Systems
         /// <returns>True if every unit can be evaluated for the destination; otherwise false.</returns>
         public bool TryGetTransitTicks(
             IReadOnlyList<IMovable> units,
-            ISceneNode destination,
+            ContainerNode destination,
             out int transitTicks
         )
         {
@@ -196,7 +193,7 @@ namespace Rebellion.Systems
             if (units == null || units.Count == 0 || destination == null)
                 return false;
 
-            destination = ResolveLiveNode(destination);
+            destination = ResolveLiveContainer(destination);
             int maxTransitTicks = 0;
             foreach (IMovable unit in units)
             {
@@ -241,7 +238,7 @@ namespace Rebellion.Systems
         public bool TryEstimateManufacturedTransitTicks(
             IMovable unit,
             Planet origin,
-            ISceneNode destination,
+            ContainerNode destination,
             out int transitTicks
         )
         {
@@ -283,7 +280,7 @@ namespace Rebellion.Systems
         /// <returns>True if a valid transit destination planet was found; otherwise false.</returns>
         private bool TryGetDestinationPlanetForTransit(
             IMovable unit,
-            ISceneNode destination,
+            ContainerNode destination,
             out Planet destinationPlanet
         )
         {
@@ -294,7 +291,7 @@ namespace Rebellion.Systems
                 return true;
             }
 
-            if (TryResolveAcceptedDestination(unit, destination, out ISceneNode accepted))
+            if (TryResolveAcceptedDestination(unit, destination, out ContainerNode accepted))
             {
                 destinationPlanet = RequireDestinationPlanet(accepted);
                 return true;
@@ -309,7 +306,7 @@ namespace Rebellion.Systems
         /// <param name="units">The units being moved together.</param>
         /// <param name="destination">The shared destination.</param>
         /// <returns>True if the whole group can move.</returns>
-        private bool CanMoveGroup(List<IMovable> units, ISceneNode destination)
+        private bool CanMoveGroup(List<IMovable> units, ContainerNode destination)
         {
             Planet groupOrigin = null;
             foreach (IMovable unit in units)
@@ -348,11 +345,11 @@ namespace Rebellion.Systems
 
             foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
             {
-                if (HasCaptorEscortInGroup(capturedOfficer, units))
+                if (HasEscortForCapturedOfficer(capturedOfficer, units))
                     continue;
 
                 GameLogger.Warning(
-                    $"RequestMove rejected: {capturedOfficer.GetDisplayName()} has no capturing officer escort."
+                    $"RequestMove rejected: {capturedOfficer.GetDisplayName()} has no captor escort."
                 );
                 return false;
             }
@@ -426,25 +423,27 @@ namespace Rebellion.Systems
         /// <param name="capturedOfficer">The captured officer to check.</param>
         /// <param name="units">The units being moved together.</param>
         /// <returns>True if the group includes an escort from the captor faction.</returns>
-        private static bool HasCaptorEscortInGroup(Officer capturedOfficer, List<IMovable> units)
+        private static bool HasEscortForCapturedOfficer(
+            Officer capturedOfficer,
+            List<IMovable> units
+        )
         {
             string captorId = capturedOfficer.CaptorInstanceID;
             return !string.IsNullOrEmpty(captorId)
-                && units.Any(escort =>
-                    !ReferenceEquals(escort, capturedOfficer)
-                    && !IsCapturedOfficer(escort)
-                    && escort.GetOwnerInstanceID() == captorId
-                );
+                && units.Any(escort => CanEscortCapturedOfficer(escort, capturedOfficer));
         }
 
         /// <summary>
-        /// Returns whether a movable unit is a captured officer.
+        /// Returns whether a unit can escort a specific captured officer during group movement.
         /// </summary>
-        /// <param name="unit">The movable unit to inspect.</param>
-        /// <returns>True if the unit is a captured officer.</returns>
-        private static bool IsCapturedOfficer(IMovable unit)
+        /// <param name="escort">The possible escort.</param>
+        /// <param name="capturedOfficer">The captured officer that needs an escort.</param>
+        /// <returns>True if the unit can escort the captured officer.</returns>
+        private static bool CanEscortCapturedOfficer(IMovable escort, Officer capturedOfficer)
         {
-            return unit is Officer officer && officer.IsCaptured;
+            return !ReferenceEquals(escort, capturedOfficer)
+                && escort.GetOwnerInstanceID() == capturedOfficer.CaptorInstanceID
+                && (escort is SpecialForces || escort is Officer officer && !officer.IsCaptured);
         }
 
         /// <summary>
@@ -469,7 +468,11 @@ namespace Rebellion.Systems
                     $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
                 );
 
-            ISceneNode destination = movable.GetParent();
+            ContainerNode destination =
+                movable.GetParent() as ContainerNode
+                ?? throw new InvalidOperationException(
+                    $"Unit {movable.GetDisplayName()} is in transit but has no container destination."
+                );
 
             movable.Movement.TicksElapsed++;
             movable.SetPosition(CalculateInterpolatedPosition(movable, destinationPlanet));
@@ -504,12 +507,12 @@ namespace Rebellion.Systems
         /// Handles unit arrival at its destination.
         /// </summary>
         /// <param name="movable">The moving unit.</param>
-        /// <param name="destination">The destination node.</param>
+        /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <param name="results">The results generated this tick.</param>
         private void CheckArrival(
             IMovable movable,
-            ISceneNode destination,
+            ContainerNode destination,
             Planet destinationPlanet,
             List<GameResult> results
         )
@@ -552,7 +555,7 @@ namespace Rebellion.Systems
         /// <param name="movable">The moving unit.</param>
         /// <param name="destination">The requested destination.</param>
         /// <returns>True if the unit was redirected to continue chasing the fleet.</returns>
-        private bool TryFollowMovingFleetDestination(IMovable movable, ISceneNode destination)
+        private bool TryFollowMovingFleetDestination(IMovable movable, ContainerNode destination)
         {
             Fleet movingFleet = destination is Fleet fleet
                 ? fleet
@@ -593,12 +596,12 @@ namespace Rebellion.Systems
         /// Returns true when a destination's ownership now rejects the arriving unit.
         /// </summary>
         /// <param name="movable">The arriving unit.</param>
-        /// <param name="destination">The destination node.</param>
+        /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <returns>True if the unit cannot complete arrival.</returns>
         private static bool HasArrivalOwnerConflict(
             IMovable movable,
-            ISceneNode destination,
+            ContainerNode destination,
             Planet destinationPlanet
         )
         {
@@ -661,11 +664,11 @@ namespace Rebellion.Systems
         /// Applies the scene-graph and visibility effects of a successful arrival.
         /// </summary>
         /// <param name="movable">The arriving unit.</param>
-        /// <param name="destination">The destination node.</param>
+        /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         private void CompleteArrival(
             IMovable movable,
-            ISceneNode destination,
+            ContainerNode destination,
             Planet destinationPlanet
         )
         {
@@ -739,9 +742,9 @@ namespace Rebellion.Systems
         /// Returns true when the unit type is allowed to finish movement at a hostile planet.
         /// </summary>
         /// <param name="movable">The unit completing movement.</param>
-        /// <param name="destination">The destination node receiving the unit.</param>
+        /// <param name="destination">The destination container receiving the unit.</param>
         /// <returns>True if hostile arrival is a valid end state for this unit.</returns>
-        private static bool CanEnterHostileOrbit(IMovable movable, ISceneNode destination)
+        private static bool CanEnterHostileOrbit(IMovable movable, ContainerNode destination)
         {
             if (movable is Fleet)
                 return true;
@@ -825,22 +828,22 @@ namespace Rebellion.Systems
         /// Reparents the unit to the destination and starts visual transit.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
-        /// <param name="destination">The target scene node to reparent into.</param>
+        /// <param name="destination">The target container to reparent into.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         private void ExecuteMove(
             IMovable unit,
-            ISceneNode destination,
+            ContainerNode destination,
             string movementGroupID = null
         )
         {
             movementGroupID ??= Guid.NewGuid().ToString("N");
-            destination = ResolveLiveNode(destination);
+            destination = ResolveLiveContainer(destination);
 
             if (
                 !TryResolveAcceptedDestination(
                     unit,
                     destination,
-                    out ISceneNode resolvedDestination
+                    out ContainerNode resolvedDestination
                 )
             )
                 return;
@@ -961,7 +964,12 @@ namespace Rebellion.Systems
             string movementGroupID = movable.Movement.MovementGroupID;
             movable.Movement = new MovementState
             {
-                TransitTicks = CalculateTransitTicks(movable, currentPosition, destinationPlanet),
+                TransitTicks = CalculateTransitTicks(
+                    movable,
+                    currentPosition,
+                    destinationPlanet,
+                    sameSystem: false
+                ),
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 OriginPosition = currentPosition,
@@ -975,7 +983,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
         /// <returns>The node that should receive the unit, or null if none is available.</returns>
-        private ISceneNode ResolveMoveDestination(IMovable unit, ISceneNode destination)
+        private ContainerNode ResolveMoveDestination(IMovable unit, ContainerNode destination)
         {
             if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
                 return ResolveFleetTarget(unit, targetFleet);
@@ -988,13 +996,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The item being manufactured.</param>
         /// <param name="destination">The requested destination.</param>
-        private void RetargetManufacturingDestination(IMovable unit, ISceneNode destination)
+        private void RetargetManufacturingDestination(IMovable unit, ContainerNode destination)
         {
             if (
                 !TryResolveAcceptedDestination(
                     unit,
                     destination,
-                    out ISceneNode resolvedDestination
+                    out ContainerNode resolvedDestination
                 )
             )
                 return;
@@ -1011,8 +1019,8 @@ namespace Rebellion.Systems
         /// <returns>True if the destination can receive the unit.</returns>
         private bool TryResolveAcceptedDestination(
             IMovable unit,
-            ISceneNode destination,
-            out ISceneNode resolvedDestination
+            ContainerNode destination,
+            out ContainerNode resolvedDestination
         )
         {
             resolvedDestination = ResolveMoveDestination(unit, destination);
@@ -1047,7 +1055,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
         /// <returns>True if the move is allowed for the uncolonized planet rule.</returns>
-        private static bool CanMoveToUncolonizedPlanet(IMovable unit, ISceneNode destination)
+        private static bool CanMoveToUncolonizedPlanet(IMovable unit, ContainerNode destination)
         {
             if (unit.GetParent() == destination)
                 return true;
@@ -1120,7 +1128,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The non-fleet unit being assigned.</param>
         /// <param name="fleet">The fleet to find a suitable ship within.</param>
         /// <returns>The target ship, or null if no valid ship exists.</returns>
-        private ISceneNode ResolveFleetTarget(IMovable unit, Fleet fleet)
+        private ContainerNode ResolveFleetTarget(IMovable unit, Fleet fleet)
         {
             if (unit is Starfighter)
                 return fleet.FindShipForStarfighter();
@@ -1169,18 +1177,6 @@ namespace Rebellion.Systems
                 destination,
                 IsSameSystem(origin, destination)
             );
-        }
-
-        /// <summary>
-        /// Calculates movement duration from a current position to a destination planet.
-        /// </summary>
-        /// <param name="unit">The moving unit.</param>
-        /// <param name="originPos">The current movement origin position.</param>
-        /// <param name="destination">The destination planet.</param>
-        /// <returns>The movement duration in ticks.</returns>
-        private int CalculateTransitTicks(IMovable unit, Point originPos, Planet destination)
-        {
-            return CalculateTransitTicks(unit, originPos, destination, false);
         }
 
         /// <summary>
@@ -1265,11 +1261,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Resolves a possibly copied container to the live scene container when available.
+        /// </summary>
+        /// <param name="node">The container to resolve.</param>
+        /// <returns>The live container with the same instance ID, or the supplied container.</returns>
+        private ContainerNode ResolveLiveContainer(ContainerNode node)
+        {
+            if (node == null)
+                return null;
+
+            return _game.GetSceneNodeByInstanceID<ContainerNode>(node.InstanceID) ?? node;
+        }
+
+        /// <summary>
         /// Returns the planet that contains a movement destination.
         /// </summary>
         /// <param name="destination">The destination to resolve.</param>
         /// <returns>The planet containing the destination.</returns>
-        private static Planet RequireDestinationPlanet(ISceneNode destination)
+        private static Planet RequireDestinationPlanet(ContainerNode destination)
         {
             Planet destinationPlanet =
                 destination as Planet ?? destination.GetParentOfType<Planet>();

@@ -334,7 +334,7 @@ namespace Rebellion.Systems
             Faction faction = _game
                 .GetFactions()
                 .FirstOrDefault(faction => faction.InstanceID == mission.OwnerInstanceID);
-            ISceneNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
+            ContainerNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
 
             MoveCapturedParticipants(mission, missionPlanet);
             MoveReturnPassengersToOrigin(mission, completedResult, origin);
@@ -348,13 +348,13 @@ namespace Rebellion.Systems
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
         /// <param name="faction">The faction that owns the mission.</param>
         /// <returns>The return location, or null if no valid location exists.</returns>
-        private ISceneNode ResolveReturnOrigin(
+        private ContainerNode ResolveReturnOrigin(
             Mission mission,
             Planet missionPlanet,
             Faction faction
         )
         {
-            ISceneNode origin = GetMissionReturnOrigin(mission, missionPlanet);
+            ContainerNode origin = GetMissionReturnOrigin(mission, missionPlanet);
 
             if (origin == null && faction != null)
                 origin = faction.GetNearestFriendlyPlanetTo(mission);
@@ -371,12 +371,12 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
         /// <returns>The recorded origin, or null if it is unavailable or no longer local.</returns>
-        private ISceneNode GetMissionReturnOrigin(Mission mission, Planet missionPlanet)
+        private ContainerNode GetMissionReturnOrigin(Mission mission, Planet missionPlanet)
         {
             if (mission.OriginInstanceID == null)
                 return null;
 
-            ISceneNode origin = _game.GetSceneNodeByInstanceID<ISceneNode>(
+            ContainerNode origin = _game.GetSceneNodeByInstanceID<ContainerNode>(
                 mission.OriginInstanceID
             );
             if (origin == null)
@@ -397,7 +397,7 @@ namespace Rebellion.Systems
         private void MoveReturnPassengersToOrigin(
             Mission mission,
             MissionCompletedResult completedResult,
-            ISceneNode origin
+            ContainerNode origin
         )
         {
             if (origin == null)

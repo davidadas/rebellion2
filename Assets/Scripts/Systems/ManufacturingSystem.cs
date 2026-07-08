@@ -821,7 +821,7 @@ namespace Rebellion.Systems
         {
             item.ManufacturingStatus = ManufacturingStatus.Complete;
 
-            ISceneNode destination = item.GetParent();
+            ContainerNode destination = item.GetParent() as ContainerNode;
             if (destination != null)
                 _movementSystem.RequestMove(item, destination, productionPlanet);
         }

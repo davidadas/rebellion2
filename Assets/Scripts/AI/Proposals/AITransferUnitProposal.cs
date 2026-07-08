@@ -20,8 +20,8 @@ namespace Rebellion.AI.Proposals
         /// <param name="targetFleet">Fleet being reinforced.</param>
         /// <param name="targetPlanet">Attack target associated with the transfer.</param>
         public AITransferUnitProposal(
-            ISceneNode sourceContainer,
-            ISceneNode destination,
+            ContainerNode sourceContainer,
+            ContainerNode destination,
             IManufacturable unit,
             Fleet targetFleet,
             Planet targetPlanet
@@ -34,9 +34,9 @@ namespace Rebellion.AI.Proposals
             TargetPlanet = targetPlanet;
         }
 
-        public ISceneNode SourceContainer { get; }
+        public ContainerNode SourceContainer { get; }
 
-        public ISceneNode Destination { get; }
+        public ContainerNode Destination { get; }
 
         public IManufacturable Unit { get; }
 

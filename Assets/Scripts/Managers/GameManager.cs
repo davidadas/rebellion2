@@ -177,7 +177,7 @@ public class GameManager
     /// </summary>
     /// <param name="units">The units to move.</param>
     /// <param name="destination">The shared destination.</param>
-    public void RequestMove(List<IMovable> units, ISceneNode destination)
+    public void RequestMove(List<IMovable> units, ContainerNode destination)
     {
         _movementManager.RequestMove(units, destination);
     }
@@ -191,7 +191,7 @@ public class GameManager
     /// <returns>True when the move can be estimated.</returns>
     public bool TryGetTransitTicks(
         IReadOnlyList<IMovable> units,
-        ISceneNode destination,
+        ContainerNode destination,
         out int transitTicks
     )
     {
@@ -209,7 +209,7 @@ public class GameManager
     public bool TryEstimateManufacturedTransitTicks(
         IMovable unit,
         Planet origin,
-        ISceneNode destination,
+        ContainerNode destination,
         out int transitTicks
     )
     {
