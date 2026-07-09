@@ -310,6 +310,58 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryEstimateManufacturedTransitTicks_ViewFleetDestination_UsesLiveFleetLocation()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+
+            Fleet liveFleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(liveFleet, destination);
+
+            Fleet viewFleet = EntityFactory.CreateFleet(liveFleet.InstanceID, "empire");
+
+            bool result = movement.TryEstimateManufacturedTransitTicks(
+                officer,
+                origin,
+                viewFleet,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(result);
+            Assert.Greater(transitTicks, 0);
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryEstimateManufacturedTransitTicks_HostilePlanetDestination_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+
+            bool result = movement.TryEstimateManufacturedTransitTicks(
+                officer,
+                origin,
+                destination,
+                out int transitTicks
+            );
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(0, transitTicks);
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_ValidDestination_SetsMovementGroupID()
         {
             (

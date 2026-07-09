@@ -246,6 +246,8 @@ namespace Rebellion.Systems
             if (unit == null || origin == null || destination == null)
                 return false;
 
+            destination = ResolveLiveContainer(destination);
+
             Planet destinationPlanet;
             try
             {
@@ -261,7 +263,7 @@ namespace Rebellion.Systems
                 && !CanEnterHostileOrbit(unit, destination)
             )
             {
-                return true;
+                return false;
             }
 
             if (destinationPlanet == origin)
