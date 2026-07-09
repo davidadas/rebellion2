@@ -24,6 +24,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Fleet 1",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            game.AttachNode(fleet, destination);
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -58,6 +59,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Fleet 1",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            game.AttachNode(fleet, destination);
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -90,6 +92,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Fleet 1",
                 OwnerInstanceID = empire.InstanceID,
             };
+            game.AttachNode(fleet, destination);
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -117,6 +120,42 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DetachedFleetArrival_CreatesArrivalDelivery()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Fleet fleet = new Fleet
+            {
+                DisplayName = "Fleet 1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+            game.DetachNode(fleet);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FleetArrived,
+                            MessageType.Fleet,
+                            "arrived:{fleet}:{system}",
+                            "body:{fleet}:{system}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = fleet, Destination = destination }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Fleet, message.Type);
+            Assert.AreEqual("arrived:Fleet 1:Yavin", message.Title);
+            Assert.AreEqual("body:Fleet 1:Yavin", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_ShipArrivalsWithSameMovementGroup_GroupsShips()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
@@ -130,6 +169,14 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Corellian Corvette",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(firstShip, fleet);
+            game.AttachNode(secondShip, fleet);
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -167,6 +214,53 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DetachedShipArrival_CreatesArrivalDelivery()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+            game.DetachNode(ship);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ShipsArrived,
+                            MessageType.Fleet,
+                            "ships:{system}",
+                            "body:{ships}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = ship,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Fleet, message.Type);
+            Assert.AreEqual("ships:Yavin", message.Title);
+            Assert.AreEqual("body:Nebulon-B Frigate", message.Body);
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_ShipArrivalsWithDifferentMovementGroups_ReturnsSeparateMessages()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
@@ -180,6 +274,14 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Corellian Corvette",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(firstShip, fleet);
+            game.AttachNode(secondShip, fleet);
 
             List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
@@ -228,6 +330,14 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Corellian Corvette",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(firstShip, fleet);
+            game.AttachNode(secondShip, fleet);
 
             List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,

@@ -7,6 +7,12 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <xs:simpleType name="PositiveDecimalType">
+    <xs:restriction base="xs:decimal">
+      <xs:minExclusive value="0" />
+    </xs:restriction>
+  </xs:simpleType>
+
   <!-- Decimal in [0.0, 1.0] for probabilities -->
   <xs:simpleType name="ProbabilityType">
     <xs:restriction base="xs:decimal">
@@ -420,8 +426,9 @@
         <xs:element name="Movement">
           <xs:complexType>
             <xs:all>
-              <xs:element name="DistanceScale" type="PositiveIntType" />
+              <xs:element name="DistanceScale" type="PositiveDecimalType" />
               <xs:element name="MinTransitTicks" type="xs:nonNegativeInteger" />
+              <xs:element name="SameSystemMinTransitTicks" type="xs:nonNegativeInteger" />
               <xs:element name="DefaultFighterHyperdrive" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>

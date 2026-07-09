@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -37,6 +38,7 @@ public class GameManager
     private MessageFactory _messageFactory;
     private IRandomNumberProvider _randomProvider;
     private CombatDecisionContext _pendingCombatDecision;
+    private readonly List<GameResult> _pendingCombatMessageResults = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
     private readonly Stopwatch _stopwatch;
@@ -171,6 +173,55 @@ public class GameManager
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
 
     /// <summary>
+    /// Requests a group move through the movement system.
+    /// </summary>
+    /// <param name="units">The units to move.</param>
+    /// <param name="destination">The shared destination.</param>
+    public void RequestMove(List<IMovable> units, ContainerNode destination)
+    {
+        _movementManager.RequestMove(units, destination);
+    }
+
+    /// <summary>
+    /// Estimates transit time for a group move without changing scene state.
+    /// </summary>
+    /// <param name="units">The units to evaluate.</param>
+    /// <param name="destination">The shared destination.</param>
+    /// <param name="transitTicks">The maximum transit ticks for the group.</param>
+    /// <returns>True when the move can be estimated.</returns>
+    public bool TryGetTransitTicks(
+        IReadOnlyList<IMovable> units,
+        ContainerNode destination,
+        out int transitTicks
+    )
+    {
+        return _movementManager.TryGetTransitTicks(units, destination, out transitTicks);
+    }
+
+    /// <summary>
+    /// Estimates manufactured unit transit time without assigning movement.
+    /// </summary>
+    /// <param name="unit">The manufactured unit to evaluate.</param>
+    /// <param name="origin">The production planet.</param>
+    /// <param name="destination">The requested destination.</param>
+    /// <param name="transitTicks">The estimated transit ticks.</param>
+    /// <returns>True when the destination can be evaluated.</returns>
+    public bool TryEstimateManufacturedTransitTicks(
+        IMovable unit,
+        Planet origin,
+        ContainerNode destination,
+        out int transitTicks
+    )
+    {
+        return _movementManager.TryEstimateManufacturedTransitTicks(
+            unit,
+            origin,
+            destination,
+            out transitTicks
+        );
+    }
+
+    /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
@@ -250,8 +301,14 @@ public class GameManager
         if (_pendingCombatDecision == null)
             throw new InvalidOperationException("No pending combat to resolve.");
 
-        ProcessResults(_combatManager.Resolve(_pendingCombatDecision, autoResolve));
+        CombatDecisionContext decision = _pendingCombatDecision;
         _pendingCombatDecision = null;
+        List<GameResult> combatResults = _combatManager.Resolve(decision, autoResolve);
+        ProcessResults(combatResults, processMessages: false);
+
+        List<GameResult> messageResults = ConsumePendingCombatMessageResults();
+        messageResults.AddRange(combatResults);
+        ProcessMessageDeliveries(messageResults);
     }
 
     /// <summary>
@@ -266,10 +323,20 @@ public class GameManager
         ProcessResults(_manufacturingManager.ProcessTick());
         ProcessResults(_maintenanceManager.ProcessTick());
 
-        ProcessResults(_movementManager.ProcessTick());
-        ProcessResults(_combatManager.ProcessTick());
+        List<GameResult> movementResults = _movementManager.ProcessTick();
+        ProcessResults(movementResults, processMessages: false);
+
+        List<GameResult> combatResults = _combatManager.ProcessTick();
+        ProcessResults(combatResults, processMessages: false);
+
+        List<GameResult> movementAndCombatResults = CombineResults(movementResults, combatResults);
         if (_pendingCombatDecision != null)
+        {
+            StorePendingCombatMessageResults(movementAndCombatResults);
             return;
+        }
+
+        ProcessMessageDeliveries(movementAndCombatResults);
 
         ProcessResults(_missionManager.ProcessTick());
         ProcessResults(_eventManager.ProcessEvents(_game.GetEventPool()));
@@ -290,10 +357,12 @@ public class GameManager
     /// Per-result logging is the responsibility of the system that produced the result.
     /// </summary>
     /// <param name="results">Batch of results from a system tick.</param>
-    private void ProcessResults(List<GameResult> results)
+    /// <param name="processMessages">Whether to create faction messages for this batch.</param>
+    private void ProcessResults(List<GameResult> results, bool processMessages = true)
     {
         ProcessFogOfWarResults(results);
-        ProcessMessageDeliveries(results);
+        if (processMessages)
+            ProcessMessageDeliveries(results);
 
         foreach (VictoryResult result in results.OfType<VictoryResult>())
         {
@@ -312,8 +381,50 @@ public class GameManager
         foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
         {
             if (result.Outcome == MissionOutcome.Success)
-                ProcessResults(_jediSystem.ApplyForceGrowth(result.Mission.MainParticipants));
+                ProcessResults(
+                    _jediSystem.ApplyForceGrowth(result.Mission.MainParticipants),
+                    processMessages
+                );
         }
+    }
+
+    /// <summary>
+    /// Combines result batches while preserving their original order.
+    /// </summary>
+    /// <param name="resultBatches">The result batches to combine.</param>
+    /// <returns>A single ordered result list.</returns>
+    private static List<GameResult> CombineResults(params List<GameResult>[] resultBatches)
+    {
+        List<GameResult> results = new List<GameResult>();
+        foreach (List<GameResult> resultBatch in resultBatches)
+        {
+            if (resultBatch != null)
+                results.AddRange(resultBatch);
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Stores movement and combat results until the pending combat decision is resolved.
+    /// </summary>
+    /// <param name="results">The results whose messages must wait for combat resolution.</param>
+    private void StorePendingCombatMessageResults(List<GameResult> results)
+    {
+        _pendingCombatMessageResults.Clear();
+        if (results != null)
+            _pendingCombatMessageResults.AddRange(results);
+    }
+
+    /// <summary>
+    /// Returns and clears movement and combat results waiting on a combat decision.
+    /// </summary>
+    /// <returns>The pending message result batch.</returns>
+    private List<GameResult> ConsumePendingCombatMessageResults()
+    {
+        List<GameResult> results = new List<GameResult>(_pendingCombatMessageResults);
+        _pendingCombatMessageResults.Clear();
+        return results;
     }
 
     /// <summary>

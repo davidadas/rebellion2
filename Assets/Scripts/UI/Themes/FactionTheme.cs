@@ -111,17 +111,6 @@ public class BuildingsTabsTheme
 public class FleetsPaneTheme
 {
     public string FleetsImagePath { get; set; }
-
-    public FleetTabsTheme FleetTabs { get; set; }
-}
-
-[PersistableObject]
-public class FleetTabsTheme
-{
-    public FleetTabIconSet CapitalShips { get; set; }
-    public FleetTabIconSet Starfighters { get; set; }
-    public FleetTabIconSet Regiments { get; set; }
-    public FleetTabIconSet Officers { get; set; }
 }
 
 [PersistableObject]
@@ -203,11 +192,6 @@ public class FactionTheme
     public string GetFleetsPaneImagePath()
     {
         return PlanetWindowTheme?.FleetsPane?.FleetsImagePath;
-    }
-
-    public FleetTabsTheme GetFleetTabsTheme()
-    {
-        return PlanetWindowTheme?.FleetsPane?.FleetTabs;
     }
 
     public GarrisonPanelTheme GetGarrisonPanelTheme()

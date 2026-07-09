@@ -471,10 +471,13 @@ namespace Rebellion.Game
         public class MovementConfig
         {
             /// <summary>Distance scaling factor for transit time.</summary>
-            public int DistanceScale { get; set; }
+            public double DistanceScale { get; set; }
 
             /// <summary>Minimum transit ticks regardless of distance.</summary>
             public int MinTransitTicks { get; set; }
+
+            /// <summary>Minimum transit ticks for movement between planets in the same system.</summary>
+            public int SameSystemMinTransitTicks { get; set; }
 
             /// <summary>Default hyperdrive rating for fighters and troops.</summary>
             public int DefaultFighterHyperdrive { get; set; }

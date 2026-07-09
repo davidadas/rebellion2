@@ -89,27 +89,6 @@
       </BuildingsPane>
       <FleetsPane>
         <FleetsImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_rebel_icon</FleetsImagePath>
-        <FleetTabs>
-          <CapitalShips>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_capitalship_rebel_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_capitalship_rebel_selected_icon</SelectedImagePath>
-          </CapitalShips>
-          <Starfighters>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_rebel_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_rebel_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_rebel_disabled_icon</DisabledImagePath>
-          </Starfighters>
-          <Regiments>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_rebel_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_rebel_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_rebel_disabled_icon</DisabledImagePath>
-          </Regiments>
-          <Officers>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_rebel_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_rebel_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_rebel_disabled_icon</DisabledImagePath>
-          </Officers>
-        </FleetTabs>
       </FleetsPane>
       <GarrisonPanel>
         <Officers>
@@ -242,27 +221,6 @@
       </BuildingsPane>
       <FleetsPane>
         <FleetsImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_empire_icon</FleetsImagePath>
-        <FleetTabs>
-          <CapitalShips>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_capitalship_empire_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_capitalship_empire_selected_icon</SelectedImagePath>
-          </CapitalShips>
-          <Starfighters>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_empire_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_empire_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_starfighter_empire_disabled_icon</DisabledImagePath>
-          </Starfighters>
-          <Regiments>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_empire_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_empire_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_regiment_empire_disabled_icon</DisabledImagePath>
-          </Regiments>
-          <Officers>
-            <NormalImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_empire_icon</NormalImagePath>
-            <SelectedImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_empire_selected_icon</SelectedImagePath>
-            <DisabledImagePath>Art/UI/StrategyView/ui_strategyview_fleetspane_officer_empire_disabled_icon</DisabledImagePath>
-          </Officers>
-        </FleetTabs>
       </FleetsPane>
       <GarrisonPanel>
         <Officers>
