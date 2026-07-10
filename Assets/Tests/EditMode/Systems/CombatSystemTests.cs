@@ -332,6 +332,128 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_FleetsWithOnlyInTransitShips_DoesNotRunCombat()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            empireFleet.CapitalShips[0].Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+            allianceFleet.CapitalShips[0].Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.IsFalse(allianceFleet.IsInCombat);
+        }
+
+        [Test]
+        public void Resolve_InTransitCapitalShipAttachedToFleet_DoesNotTakeCombatDamage()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
+            CapitalShip inTransitShip = new CapitalShip
+            {
+                InstanceID = "f1_ship_moving",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 1000,
+                CurrentHullStrength = 1000,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 5,
+                    TicksElapsed = 1,
+                    OriginPosition = planet.GetPosition(),
+                    CurrentPosition = planet.GetPosition(),
+                },
+            };
+            game.AttachNode(inTransitShip, empireFleet);
+
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out _);
+
+            Assert.AreEqual(1000, inTransitShip.CurrentHullStrength);
+        }
+
+        [Test]
+        public void Resolve_InTransitStarfighterAttachedToFleet_DoesNotTakeCombatLosses()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
+            CapitalShip empireCarrier = empireFleet.CapitalShips[0];
+            empireCarrier.StarfighterCapacity = 1;
+            Starfighter inTransitFighter = new Starfighter
+            {
+                InstanceID = "f1_fighter_moving",
+                OwnerInstanceID = "empire",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 5,
+                    TicksElapsed = 1,
+                    OriginPosition = planet.GetPosition(),
+                    CurrentPosition = planet.GetPosition(),
+                },
+            };
+            game.AttachNode(inTransitFighter, empireCarrier);
+
+            Fleet allianceFleet = CreateFleetWithFighters(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                1000,
+                0,
+                100
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out _);
+
+            Assert.AreEqual(12, inTransitFighter.CurrentSquadronSize);
+        }
+
+        [Test]
         public void Resolve_SingleFactionFleets_DoesNotRunCombat()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1083,6 +1205,7 @@ namespace Rebellion.Tests.Systems
                 MaxHullStrength = 1,
                 CurrentHullStrength = 1,
                 ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             CapitalShip strongShip = new CapitalShip
             {
@@ -1091,6 +1214,7 @@ namespace Rebellion.Tests.Systems
                 MaxHullStrength = 1000,
                 CurrentHullStrength = 1000,
                 ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             allianceFleet.CapitalShips.Add(weakShip);
             weakShip.SetParent(allianceFleet);
@@ -1154,6 +1278,7 @@ namespace Rebellion.Tests.Systems
                 MaxHullStrength = 1,
                 CurrentHullStrength = 1,
                 ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             allianceFleet.CapitalShips.Add(ship);
             ship.SetParent(allianceFleet);
