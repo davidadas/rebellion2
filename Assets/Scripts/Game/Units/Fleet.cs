@@ -248,10 +248,14 @@ namespace Rebellion.Game.Units
         /// </summary>
         public int GetCombatValue()
         {
-            int capitalShipCombat = CapitalShips.Sum(ship => ship.GetCombatValue());
+            IEnumerable<CapitalShip> activeShips = CapitalShips.Where(ship =>
+                ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null
+            );
+
+            int capitalShipCombat = activeShips.Sum(ship => ship.GetCombatValue());
 
             int starfighterCombat = 0;
-            foreach (Starfighter f in GetStarfighters())
+            foreach (Starfighter f in activeShips.SelectMany(ship => ship.Starfighters))
             {
                 if (f.ManufacturingStatus != ManufacturingStatus.Complete || f.Movement != null)
                     continue;

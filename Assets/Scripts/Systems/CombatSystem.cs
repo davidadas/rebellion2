@@ -265,7 +265,7 @@ namespace Rebellion.Systems
                             !f.IsInCombat
                             && !excludedFleetIds.Contains(f.GetInstanceID())
                             && f.Movement == null
-                            && (f.CapitalShips.Count > 0 || f.GetStarfighters().Any()),
+                            && SpaceCombatResolver.HasActiveSpaceUnits(f),
                         recurse: false
                     )
                     .ToList();
@@ -302,6 +302,8 @@ namespace Rebellion.Systems
                 && firstPlanet == secondPlanet
                 && firstFleet.Movement == null
                 && secondFleet.Movement == null
+                && SpaceCombatResolver.HasActiveSpaceUnits(firstFleet)
+                && SpaceCombatResolver.HasActiveSpaceUnits(secondFleet)
                 && firstFleet.GetOwnerInstanceID() != secondFleet.GetOwnerInstanceID();
         }
 
@@ -720,15 +722,10 @@ namespace Rebellion.Systems
             if (fleetPlanet == null || fleetPlanet != opponent.GetParentOfType<Planet>())
                 return false;
 
-            return opponent.CapitalShips.Any(ship =>
-                ship.HasGravityWell
-                && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                && ship.Movement == null
-                && ship.CurrentHullStrength > 0
-            );
+            return GetActiveCapitalShips(opponent).Any(ship => ship.HasGravityWell);
         }
 
-        private static bool AreFleetsContestingPlanet(Fleet attacker, Fleet defender)
+        internal static bool AreFleetsContestingPlanet(Fleet attacker, Fleet defender)
         {
             if (attacker == null || defender == null)
                 return false;
@@ -740,7 +737,17 @@ namespace Rebellion.Systems
                 && attackerPlanet == defenderPlanet
                 && attacker.Movement == null
                 && defender.Movement == null
+                && HasActiveSpaceUnits(attacker)
+                && HasActiveSpaceUnits(defender)
                 && attacker.GetOwnerInstanceID() != defender.GetOwnerInstanceID();
+        }
+
+        internal static bool HasActiveSpaceUnits(Fleet fleet)
+        {
+            if (fleet == null)
+                return false;
+
+            return GetActiveCapitalShips(fleet).Any() || GetActiveStarfighters(fleet).Any();
         }
 
         private static bool IsSpaceCombatStalemated(
@@ -768,24 +775,44 @@ namespace Rebellion.Systems
             if (fleet == null)
                 return false;
 
-            return fleet.CapitalShips.Any(IsArmedOperationalCapitalShip)
-                || fleet.GetStarfighters().Any(IsArmedOperationalStarfighter);
+            return GetActiveCapitalShips(fleet).Any(IsArmedCapitalShip)
+                || GetActiveStarfighters(fleet).Any(IsArmedStarfighter);
         }
 
-        private static bool IsArmedOperationalCapitalShip(CapitalShip ship)
+        private static IEnumerable<CapitalShip> GetActiveCapitalShips(Fleet fleet)
+        {
+            return fleet.CapitalShips.Where(IsActiveCapitalShip);
+        }
+
+        private static IEnumerable<Starfighter> GetActiveStarfighters(Fleet fleet)
+        {
+            return GetActiveCapitalShips(fleet)
+                .SelectMany(ship => ship.Starfighters)
+                .Where(IsActiveStarfighter);
+        }
+
+        private static bool IsActiveCapitalShip(CapitalShip ship)
         {
             return ship.ManufacturingStatus == ManufacturingStatus.Complete
                 && ship.Movement == null
-                && ship.CurrentHullStrength > 0
-                && ship.GetPrimaryWeaponStrength() > 0;
+                && ship.CurrentHullStrength > 0;
         }
 
-        private static bool IsArmedOperationalStarfighter(Starfighter starfighter)
+        private static bool IsActiveStarfighter(Starfighter starfighter)
         {
             return starfighter.ManufacturingStatus == ManufacturingStatus.Complete
                 && starfighter.Movement == null
-                && starfighter.CurrentSquadronSize > 0
-                && starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes > 0;
+                && starfighter.CurrentSquadronSize > 0;
+        }
+
+        private static bool IsArmedCapitalShip(CapitalShip ship)
+        {
+            return ship.GetPrimaryWeaponStrength() > 0;
+        }
+
+        private static bool IsArmedStarfighter(Starfighter starfighter)
+        {
+            return starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes > 0;
         }
 
         private SpaceCombatResult ResolveCombatRound(
@@ -853,10 +880,8 @@ namespace Rebellion.Systems
             GameConfig.CombatConfig config
         )
         {
-            (List<ShipSnap> atkShips, List<int> atkFighters) = SnapshotFleet(attackerFleet);
-            (List<ShipSnap> defShips, List<int> defFighters) = SnapshotFleet(defenderFleet);
-            List<int> atkInitialFighters = atkFighters.ToList();
-            List<int> defInitialFighters = defFighters.ToList();
+            (List<ShipSnap> atkShips, List<FighterSnap> atkFighters) = SnapshotFleet(attackerFleet);
+            (List<ShipSnap> defShips, List<FighterSnap> defFighters) = SnapshotFleet(defenderFleet);
 
             bool anyArmed =
                 HasOperationalSpaceWeapons(attackerFleet)
@@ -864,18 +889,9 @@ namespace Rebellion.Systems
 
             if (anyArmed)
             {
-                PhaseWeaponFire(attackerFleet, atkShips, defShips, rng, config);
-                PhaseWeaponFire(defenderFleet, defShips, atkShips, rng, config);
-                PhaseFighterEngage(
-                    attackerFleet,
-                    defenderFleet,
-                    atkFighters,
-                    defFighters,
-                    atkShips,
-                    defShips,
-                    rng,
-                    config
-                );
+                PhaseWeaponFire(atkShips, defShips, rng, config);
+                PhaseWeaponFire(defShips, atkShips, rng, config);
+                PhaseFighterEngage(atkFighters, defFighters, atkShips, defShips, rng, config);
             }
 
             return BuildSpaceResult(
@@ -886,8 +902,6 @@ namespace Rebellion.Systems
                 defShips,
                 atkFighters,
                 defFighters,
-                atkInitialFighters,
-                defInitialFighters,
                 tick
             );
         }
@@ -898,18 +912,18 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="atkShips">Attacker ship snapshots.</param>
         /// <param name="defShips">Defender ship snapshots.</param>
-        /// <param name="atkFighters">Attacker fighter squadron sizes.</param>
-        /// <param name="defFighters">Defender fighter squadron sizes.</param>
+        /// <param name="atkFighters">Attacker fighter snapshots.</param>
+        /// <param name="defFighters">Defender fighter snapshots.</param>
         /// <returns>The winning side, or Draw.</returns>
         private static CombatSide DetermineWinner(
             List<ShipSnap> atkShips,
             List<ShipSnap> defShips,
-            List<int> atkFighters,
-            List<int> defFighters
+            List<FighterSnap> atkFighters,
+            List<FighterSnap> defFighters
         )
         {
-            bool atkAlive = atkShips.Any(s => s.Alive) || atkFighters.Any(c => c > 0);
-            bool defAlive = defShips.Any(s => s.Alive) || defFighters.Any(c => c > 0);
+            bool atkAlive = atkShips.Any(s => s.Alive) || atkFighters.Any(fighter => fighter.Alive);
+            bool defAlive = defShips.Any(s => s.Alive) || defFighters.Any(fighter => fighter.Alive);
 
             if (atkAlive && !defAlive)
                 return CombatSide.Attacker;
@@ -924,15 +938,16 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleet">Fleet to snapshot.</param>
         /// <returns>Ship snapshots and parallel list of squadron sizes.</returns>
-        private static (List<ShipSnap> ships, List<int> fighters) SnapshotFleet(Fleet fleet)
+        private static (List<ShipSnap> ships, List<FighterSnap> fighters) SnapshotFleet(Fleet fleet)
         {
             List<ShipSnap> ships = new List<ShipSnap>();
 
-            foreach (CapitalShip ship in fleet.CapitalShips)
+            foreach (CapitalShip ship in GetActiveCapitalShips(fleet))
             {
                 ships.Add(
                     new ShipSnap
                     {
+                        Ship = ship,
                         HullCurrent = ship.CurrentHullStrength,
                         HullMax = ship.MaxHullStrength,
                         ShieldNibble = Math.Min(ship.ShieldRechargeRate, 15),
@@ -942,9 +957,15 @@ namespace Rebellion.Systems
                 );
             }
 
-            List<int> fighters = fleet
-                .GetStarfighters()
-                .Select(f => f.CurrentSquadronSize)
+            List<FighterSnap> fighters = ships
+                .SelectMany(ship => ship.Ship.Starfighters)
+                .Where(IsActiveStarfighter)
+                .Select(fighter => new FighterSnap
+                {
+                    Fighter = fighter,
+                    InitialSquadronSize = fighter.CurrentSquadronSize,
+                    CurrentSquadronSize = fighter.CurrentSquadronSize,
+                })
                 .ToList();
 
             return (ships, fighters);
@@ -955,20 +976,18 @@ namespace Rebellion.Systems
         /// each ship's weapon nibble, divided evenly across alive targets, and applied with
         /// shield absorption and configured damage variance.
         /// </summary>
-        /// <param name="firingFleet">Fleet doing the firing (used for weapon data).</param>
         /// <param name="firing">Firing side's ship snapshots.</param>
         /// <param name="targets">Target side's ship snapshots (mutated with damage).</param>
         /// <param name="rng">Random-number provider for variance.</param>
         /// <param name="config">Combat configuration supplying damage variance.</param>
         private static void PhaseWeaponFire(
-            Fleet firingFleet,
             List<ShipSnap> firing,
             List<ShipSnap> targets,
             IRandomNumberProvider rng,
             GameConfig.CombatConfig config
         )
         {
-            int totalFire = CalculateTotalFirepower(firingFleet, firing);
+            int totalFire = CalculateTotalFirepower(firing);
             if (totalFire == 0)
                 return;
 
@@ -992,10 +1011,9 @@ namespace Rebellion.Systems
         /// Sums primary weapon arc values across all alive ships, scaled by each ship's
         /// weapon nibble (0-15).
         /// </summary>
-        /// <param name="fleet">Fleet owning the ships (used for weapon data).</param>
         /// <param name="ships">Ship snapshots with alive/weapon-nibble state.</param>
         /// <returns>Total firepower for the side this tick.</returns>
-        private static int CalculateTotalFirepower(Fleet fleet, List<ShipSnap> ships)
+        private static int CalculateTotalFirepower(List<ShipSnap> ships)
         {
             int totalFire = 0;
             for (int i = 0; i < ships.Count; i++)
@@ -1003,7 +1021,7 @@ namespace Rebellion.Systems
                 if (!ships[i].Alive)
                     continue;
 
-                CapitalShip ship = fleet.CapitalShips[i];
+                CapitalShip ship = ships[i].Ship;
                 int raw = ship.GetPrimaryWeaponStrength();
 
                 totalFire += raw * ships[i].WeaponNibble / 15;
@@ -1044,30 +1062,26 @@ namespace Rebellion.Systems
         /// Fighter phase: each side's fighters attack enemy capital ships, then opposing
         /// squadrons dogfight each other.
         /// </summary>
-        /// <param name="attackerFleet">Attacker fleet (used for fighter weapon data).</param>
-        /// <param name="defenderFleet">Defender fleet (used for fighter weapon data).</param>
-        /// <param name="atkFighters">Attacker squadron sizes (mutated).</param>
-        /// <param name="defFighters">Defender squadron sizes (mutated).</param>
+        /// <param name="atkFighters">Attacker fighter snapshots (mutated).</param>
+        /// <param name="defFighters">Defender fighter snapshots (mutated).</param>
         /// <param name="atkShips">Attacker ship snapshots (targets for defender fighters).</param>
         /// <param name="defShips">Defender ship snapshots (targets for attacker fighters).</param>
         /// <param name="rng">Random-number provider.</param>
         /// <param name="config">Combat configuration supplying damage/loss tuning.</param>
         private static void PhaseFighterEngage(
-            Fleet attackerFleet,
-            Fleet defenderFleet,
-            List<int> atkFighters,
-            List<int> defFighters,
+            List<FighterSnap> atkFighters,
+            List<FighterSnap> defFighters,
             List<ShipSnap> atkShips,
             List<ShipSnap> defShips,
             IRandomNumberProvider rng,
             GameConfig.CombatConfig config
         )
         {
-            FightersAttackShips(atkFighters, attackerFleet, defShips, rng, config);
-            FightersAttackShips(defFighters, defenderFleet, atkShips, rng, config);
+            FightersAttackShips(atkFighters, defShips, rng, config);
+            FightersAttackShips(defFighters, atkShips, rng, config);
 
-            int atkTotal = atkFighters.Sum();
-            int defTotal = defFighters.Sum();
+            int atkTotal = atkFighters.Sum(fighter => fighter.CurrentSquadronSize);
+            int defTotal = defFighters.Sum(fighter => fighter.CurrentSquadronSize);
 
             if (atkTotal == 0 || defTotal == 0)
                 return;
@@ -1090,14 +1104,12 @@ namespace Rebellion.Systems
         /// Each fighter squadron picks a random alive enemy capital ship and attacks it
         /// with total squadron firepower times squadron size, with configured damage spread.
         /// </summary>
-        /// <param name="squadrons">Squadron sizes for the attacking side.</param>
-        /// <param name="fleet">Fleet owning the fighters (used for weapon data).</param>
+        /// <param name="squadrons">Fighter snapshots for the attacking side.</param>
         /// <param name="enemyShips">Enemy ship snapshots to attack (mutated).</param>
         /// <param name="rng">Random-number provider.</param>
         /// <param name="config">Combat configuration supplying damage range.</param>
         private static void FightersAttackShips(
-            List<int> squadrons,
-            Fleet fleet,
+            List<FighterSnap> squadrons,
             List<ShipSnap> enemyShips,
             IRandomNumberProvider rng,
             GameConfig.CombatConfig config
@@ -1112,16 +1124,16 @@ namespace Rebellion.Systems
             if (aliveTargets.Count == 0)
                 return;
 
-            List<Starfighter> fighters = fleet.GetStarfighters().ToList();
             for (int sqIdx = 0; sqIdx < squadrons.Count; sqIdx++)
             {
-                if (squadrons[sqIdx] == 0 || sqIdx >= fighters.Count)
+                FighterSnap squadron = squadrons[sqIdx];
+                if (!squadron.Alive)
                     continue;
 
-                Starfighter fighter = fighters[sqIdx];
+                Starfighter fighter = squadron.Fighter;
                 int totalAttack =
                     (fighter.LaserCannon + fighter.IonCannon + fighter.Torpedoes)
-                    * squadrons[sqIdx];
+                    * squadron.CurrentSquadronSize;
 
                 if (totalAttack == 0)
                     continue;
@@ -1150,34 +1162,40 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies fighter losses across the affected squadrons.
         /// </summary>
-        /// <param name="squadrons">Squadron sizes to reduce (mutated).</param>
+        /// <param name="squadrons">Fighter snapshots to reduce (mutated).</param>
         /// <param name="totalLosses">Total number of fighters to remove.</param>
-        private static void ApplyFighterLosses(List<int> squadrons, int totalLosses)
+        private static void ApplyFighterLosses(List<FighterSnap> squadrons, int totalLosses)
         {
             if (totalLosses == 0)
                 return;
 
             int remaining = totalLosses;
-            int total = squadrons.Sum();
+            int total = squadrons.Sum(fighter => fighter.CurrentSquadronSize);
 
             if (total == 0)
                 return;
 
             for (int i = 0; i < squadrons.Count && remaining > 0; i++)
             {
-                if (squadrons[i] == 0)
+                if (!squadrons[i].Alive)
                     continue;
 
-                int loss = Math.Min(squadrons[i] * totalLosses / total, remaining);
-                squadrons[i] = Math.Max(squadrons[i] - loss, 0);
+                int loss = Math.Min(
+                    squadrons[i].CurrentSquadronSize * totalLosses / total,
+                    remaining
+                );
+                squadrons[i].CurrentSquadronSize = Math.Max(
+                    squadrons[i].CurrentSquadronSize - loss,
+                    0
+                );
                 remaining -= loss;
             }
 
             for (int i = 0; i < squadrons.Count && remaining > 0; i++)
             {
-                if (squadrons[i] > 0)
+                if (squadrons[i].Alive)
                 {
-                    squadrons[i]--;
+                    squadrons[i].CurrentSquadronSize--;
                     remaining--;
                 }
             }
@@ -1192,10 +1210,8 @@ namespace Rebellion.Systems
         /// <param name="planet">Planet where combat occurred.</param>
         /// <param name="atkShips">Post-combat attacker ship snapshots.</param>
         /// <param name="defShips">Post-combat defender ship snapshots.</param>
-        /// <param name="atkFighters">Post-combat attacker squadron sizes.</param>
-        /// <param name="defFighters">Post-combat defender squadron sizes.</param>
-        /// <param name="atkInitialFighters">Pre-combat attacker squadron sizes.</param>
-        /// <param name="defInitialFighters">Pre-combat defender squadron sizes.</param>
+        /// <param name="atkFighters">Post-combat attacker fighter snapshots.</param>
+        /// <param name="defFighters">Post-combat defender fighter snapshots.</param>
         /// <param name="tick">Game tick when combat occurred.</param>
         /// <returns>The populated combat result.</returns>
         private static SpaceCombatResult BuildSpaceResult(
@@ -1204,10 +1220,8 @@ namespace Rebellion.Systems
             Planet planet,
             List<ShipSnap> atkShips,
             List<ShipSnap> defShips,
-            List<int> atkFighters,
-            List<int> defFighters,
-            List<int> atkInitialFighters,
-            List<int> defInitialFighters,
+            List<FighterSnap> atkFighters,
+            List<FighterSnap> defFighters,
             int tick
         )
         {
@@ -1220,20 +1234,10 @@ namespace Rebellion.Systems
                 Tick = tick,
             };
 
-            CollectShipDamage(result.ShipDamage, attackerFleet, atkShips);
-            CollectShipDamage(result.ShipDamage, defenderFleet, defShips);
-            CollectFighterLosses(
-                result.FighterLosses,
-                attackerFleet,
-                atkFighters,
-                atkInitialFighters
-            );
-            CollectFighterLosses(
-                result.FighterLosses,
-                defenderFleet,
-                defFighters,
-                defInitialFighters
-            );
+            CollectShipDamage(result.ShipDamage, atkShips);
+            CollectShipDamage(result.ShipDamage, defShips);
+            CollectFighterLosses(result.FighterLosses, atkFighters);
+            CollectFighterLosses(result.FighterLosses, defFighters);
 
             return result;
         }
@@ -1242,13 +1246,8 @@ namespace Rebellion.Systems
         /// Appends a ShipDamageResult for each ship that took hull damage during the battle.
         /// </summary>
         /// <param name="results">List to append damage entries to.</param>
-        /// <param name="fleet">Fleet owning the ships.</param>
         /// <param name="ships">Post-combat ship snapshots.</param>
-        private static void CollectShipDamage(
-            List<ShipDamageResult> results,
-            Fleet fleet,
-            List<ShipSnap> ships
-        )
+        private static void CollectShipDamage(List<ShipDamageResult> results, List<ShipSnap> ships)
         {
             for (int i = 0; i < ships.Count; i++)
             {
@@ -1257,7 +1256,7 @@ namespace Rebellion.Systems
                     results.Add(
                         new ShipDamageResult
                         {
-                            Ship = fleet.CapitalShips[i],
+                            Ship = ships[i].Ship,
                             HullBefore = ships[i].HullMax,
                             HullAfter = ships[i].HullCurrent,
                         }
@@ -1270,27 +1269,22 @@ namespace Rebellion.Systems
         /// Appends a FighterLossResult for each squadron that took casualties.
         /// </summary>
         /// <param name="results">List to append loss entries to.</param>
-        /// <param name="fleet">Fleet owning the squadrons.</param>
-        /// <param name="fighters">Post-combat squadron sizes.</param>
-        /// <param name="initialFighters">Pre-combat squadron sizes.</param>
+        /// <param name="fighters">Post-combat fighter snapshots.</param>
         private static void CollectFighterLosses(
             List<FighterLossResult> results,
-            Fleet fleet,
-            List<int> fighters,
-            List<int> initialFighters
+            List<FighterSnap> fighters
         )
         {
-            List<Starfighter> allFighters = fleet.GetStarfighters().ToList();
             for (int i = 0; i < fighters.Count; i++)
             {
-                if (fighters[i] < initialFighters[i])
+                if (fighters[i].CurrentSquadronSize < fighters[i].InitialSquadronSize)
                 {
                     results.Add(
                         new FighterLossResult
                         {
-                            Fighter = i < allFighters.Count ? allFighters[i] : null,
-                            SquadsBefore = initialFighters[i],
-                            SquadsAfter = fighters[i],
+                            Fighter = fighters[i].Fighter,
+                            SquadsBefore = fighters[i].InitialSquadronSize,
+                            SquadsAfter = fighters[i].CurrentSquadronSize,
                         }
                     );
                 }
@@ -1387,6 +1381,7 @@ namespace Rebellion.Systems
         /// <summary>Mutable per-battle snapshot of one capital ship.</summary>
         private class ShipSnap
         {
+            public CapitalShip Ship;
             public int HullCurrent;
             public int HullMax;
 
@@ -1397,6 +1392,15 @@ namespace Rebellion.Systems
             public int WeaponNibble;
 
             public bool Alive;
+        }
+
+        private class FighterSnap
+        {
+            public Starfighter Fighter;
+            public int InitialSquadronSize;
+            public int CurrentSquadronSize;
+
+            public bool Alive => CurrentSquadronSize > 0;
         }
     }
 
