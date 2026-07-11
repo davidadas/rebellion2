@@ -1146,6 +1146,13 @@ namespace Rebellion.Tests.Systems
                 results.OfType<PendingCombatResult>().Any(),
                 "Player-involved encounter should emit a PendingCombatResult"
             );
+            Assert.IsTrue(manager.HasPendingDecision);
+            Assert.IsEmpty(manager.ProcessTick());
+
+            List<GameResult> resolvedResults = manager.ResolvePendingCombat(autoResolve: true);
+
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsNotEmpty(resolvedResults);
         }
 
         [Test]

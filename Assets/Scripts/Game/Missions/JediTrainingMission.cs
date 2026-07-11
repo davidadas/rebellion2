@@ -72,11 +72,16 @@ namespace Rebellion.Game.Missions
             if (planet.GetOwnerInstanceID() != ctx.OwnerInstanceId)
                 return null;
 
-            if (!AreStudentsEligible(ctx.MainParticipants))
+            if (!TryGetTrainingStudents(ctx.MainParticipants, out List<Officer> students))
                 return null;
 
-            string trainerId = SelectTrainer(ctx.Game, ctx.OwnerInstanceId, planet);
-            if (trainerId == null)
+            Officer trainer = SelectTrainer(ctx.Game, ctx.OwnerInstanceId, planet, students);
+            if (
+                trainer == null
+                || !students.All(student =>
+                    CanStudentImproveWithTrainer(student, trainer, ctx.Game)
+                )
+            )
                 return null;
 
             return new JediTrainingMission(
@@ -84,7 +89,7 @@ namespace Rebellion.Game.Missions
                 ctx.Location,
                 ctx.MainParticipants,
                 ctx.DecoyParticipants,
-                trainerId
+                trainer.InstanceID
             );
         }
 
@@ -94,10 +99,19 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="ownerInstanceId">Faction requesting training.</param>
         /// <param name="planet">Planet where training would occur.</param>
-        /// <returns>The selected trainer instance ID, or null if none are eligible.</returns>
-        private static string SelectTrainer(GameRoot game, string ownerInstanceId, Planet planet)
+        /// <param name="students">The officers selected as training students.</param>
+        /// <returns>The selected trainer, or null if none are eligible.</returns>
+        private static Officer SelectTrainer(
+            GameRoot game,
+            string ownerInstanceId,
+            Planet planet,
+            IEnumerable<Officer> students
+        )
         {
-            Officer trainer = game.GetSceneNodesByType<Officer>()
+            HashSet<string> studentIds = new HashSet<string>(
+                students.Select(student => student.InstanceID)
+            );
+            return game.GetSceneNodesByType<Officer>()
                 .Where(o =>
                     o.GetOwnerInstanceID() == ownerInstanceId
                     && o.IsJedi
@@ -105,26 +119,68 @@ namespace Rebellion.Game.Missions
                     && o.IsForceEligible
                     && o.GetParentOfType<Planet>() == planet
                     && !o.IsCaptured
+                    && !o.IsKilled
                     && !o.IsOnMission()
+                    && !studentIds.Contains(o.InstanceID)
                 )
                 .OrderByDescending(o => o.ForceRank)
                 .FirstOrDefault();
-            return trainer?.InstanceID;
         }
 
         /// <summary>
-        /// Returns whether every selected student can receive Jedi training.
+        /// Returns every selected officer when all selected participants can receive Jedi training.
         /// </summary>
-        /// <param name="students">Selected mission participants to train.</param>
+        /// <param name="participants">Selected mission participants to train.</param>
+        /// <param name="students">The selected Jedi students.</param>
         /// <returns>True when at least one eligible Jedi student was selected and no ineligible participants were selected.</returns>
-        private static bool AreStudentsEligible(List<IMissionParticipant> students)
+        private static bool TryGetTrainingStudents(
+            List<IMissionParticipant> participants,
+            out List<Officer> students
+        )
         {
-            if (students == null || students.Count == 0)
+            students = new List<Officer>();
+            if (participants == null || participants.Count == 0)
                 return false;
 
-            return students.All(participant =>
-                participant is Officer { IsJedi: true, IsForceEligible: true }
-            );
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (
+                    participant is not Officer student
+                    || student.IsJedi != true
+                    || !student.IsForceEligible
+                    || student.IsCaptured
+                    || student.IsKilled
+                )
+                    return false;
+
+                students.Add(student);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether the selected trainer can improve the selected student.
+        /// </summary>
+        /// <param name="student">The student to inspect.</param>
+        /// <param name="trainer">The trainer to inspect.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the trainer can improve the student's Force rank.</returns>
+        private static bool CanStudentImproveWithTrainer(
+            Officer student,
+            Officer trainer,
+            GameRoot game
+        )
+        {
+            return student?.IsJedi == true
+                && student.IsForceEligible
+                && !student.IsCaptured
+                && !student.IsKilled
+                && trainer?.IsForceEligible == true
+                && !trainer.IsCaptured
+                && !trainer.IsKilled
+                && student.ForceRank < trainer.ForceRank
+                && student.ForceRank < game.Config.Jedi.ForceQualifiedThreshold;
         }
 
         /// <summary>
@@ -190,10 +246,7 @@ namespace Rebellion.Game.Missions
 
             foreach (Officer student in MainParticipants.OfType<Officer>())
             {
-                if (!student.IsForceEligible)
-                    continue;
-
-                if (student.ForceRank >= trainer.ForceRank)
+                if (!CanStudentImproveWithTrainer(student, trainer, game))
                     continue;
 
                 int gap = trainer.ForceRank - student.ForceRank;
@@ -233,8 +286,10 @@ namespace Rebellion.Game.Missions
             if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
                 return false;
 
-            int threshold = game.Config.Jedi.ForceQualifiedThreshold;
-            return MainParticipants.OfType<Officer>().Any(s => s.ForceRank < threshold);
+            Officer trainer = game.GetSceneNodeByInstanceID<Officer>(TrainerInstanceID);
+            return MainParticipants
+                .OfType<Officer>()
+                .Any(student => CanStudentImproveWithTrainer(student, trainer, game));
         }
     }
 }

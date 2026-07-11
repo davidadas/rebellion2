@@ -136,6 +136,38 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_SelectedTrainerWithoutSeparateStudent_ReturnsNull()
+        {
+            Mission mission = CreateMission(_trainer);
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_StudentAlreadyAtTrainerRank_ReturnsNull()
+        {
+            _student.ForceValue = _trainer.ForceRank;
+
+            Mission mission = CreateMission();
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void TryCreate_MultipleStudentsWithFinishedStudent_ReturnsNull()
+        {
+            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
+            student2.IsJedi = true;
+            student2.IsForceEligible = true;
+            student2.ForceValue = 30;
+            _game.AttachNode(student2, _planet);
+            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+
+            Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void TryCreate_ValidArgs_SetsTrainerInstanceID()
         {
             Mission mission = CreateMission();
@@ -159,8 +191,8 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void OnSuccess_StudentAboveTrainer_NoAdjustment()
         {
-            _student.ForceValue = 150;
             Mission mission = CreateMission();
+            _student.ForceValue = 150;
             mission.Initiate(0);
             mission.SetExecutionTick(0);
 
@@ -315,12 +347,13 @@ namespace Rebellion.Tests.Game.Missions
             Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
             student2.IsJedi = true;
             student2.IsForceEligible = true;
-            student2.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+            student2.ForceValue = 10;
             _game.AttachNode(student2, _planet);
 
             Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
 
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+            student2.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
 
             Assert.IsFalse(
                 mission.ShouldRepeatAfterCompletion(_game),

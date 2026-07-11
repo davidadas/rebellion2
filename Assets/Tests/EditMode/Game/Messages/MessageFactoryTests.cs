@@ -1056,19 +1056,6 @@ namespace Rebellion.Tests.Game.Messages
         public void CreateMessages_RecruitmentMissionExhausted_ReturnsRecruitmentDoneReport()
         {
             (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
-            Mission mission = new RecruitmentMission
-            {
-                ConfigKey = MissionTypeIDs.Recruitment,
-                DisplayName = "Recruitment",
-                OwnerInstanceID = alliance.InstanceID,
-            };
-            Officer participant = new Officer
-            {
-                DisplayName = "Recruiter",
-                OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath = "participant-card",
-            };
-            game.AttachNode(mission, origin);
 
             List<Message> messages = CreateMessages(
                     game,
@@ -1091,23 +1078,16 @@ namespace Rebellion.Tests.Game.Messages
                             DefaultImage("recruitment-done-image")
                         ),
                     },
-                    new MissionCompletedResult
-                    {
-                        Mission = mission,
-                        MissionName = "Recruitment",
-                        Outcome = MissionOutcome.Success,
-                        CanContinue = false,
-                        Participants = new List<IMissionParticipant> { participant },
-                    }
+                    new RecruitmentExhaustedResult { Faction = alliance, Planet = origin }
                 )
                 .Where(delivery => delivery.faction == alliance)
                 .Select(delivery => delivery.message)
                 .ToList();
 
-            Assert.AreEqual(2, messages.Count);
-            Assert.AreEqual("recruitment-done", messages[1].Title);
-            Assert.AreEqual("recruitment-exhausted", messages[1].Body);
-            Assert.AreEqual("participant-card", messages[1].OverlayImagePath);
+            Assert.AreEqual(1, messages.Count);
+            Assert.AreEqual("recruitment-done", messages[0].Title);
+            Assert.AreEqual("recruitment-exhausted", messages[0].Body);
+            Assert.IsNull(messages[0].OverlayImagePath);
         }
 
         [Test]

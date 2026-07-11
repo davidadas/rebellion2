@@ -35,10 +35,9 @@ public class GameManager
     private PlanetaryControlSystem _planetaryControlSystem;
     private UprisingSystem _uprisingManager;
     private VictorySystem _victoryManager;
-    private MessageFactory _messageFactory;
+    private MessageSystem _messageSystem;
     private IRandomNumberProvider _randomProvider;
-    private CombatDecisionContext _pendingCombatDecision;
-    private readonly List<GameResult> _pendingCombatMessageResults = new List<GameResult>();
+    private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
     private readonly Stopwatch _stopwatch;
@@ -98,7 +97,10 @@ public class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        _messageFactory = new MessageFactory(ResourceManager.GetEntityData<MessageDefinition>());
+        _messageSystem = new MessageSystem(
+            _game,
+            ResourceManager.GetEntityData<MessageDefinition>()
+        );
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
@@ -278,7 +280,7 @@ public class GameManager
     /// </summary>
     public void Update()
     {
-        if (_pendingCombatDecision != null || _tickInterval == null)
+        if (_combatManager.HasPendingDecision || _tickInterval == null)
             return;
 
         float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
@@ -298,17 +300,17 @@ public class GameManager
     /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
     public void ResolveCombat(bool autoResolve)
     {
-        if (_pendingCombatDecision == null)
-            throw new InvalidOperationException("No pending combat to resolve.");
-
-        CombatDecisionContext decision = _pendingCombatDecision;
-        _pendingCombatDecision = null;
-        List<GameResult> combatResults = _combatManager.Resolve(decision, autoResolve);
+        List<GameResult> combatResults = _combatManager.ResolvePendingCombat(autoResolve);
         ProcessResults(combatResults, processMessages: false);
 
-        List<GameResult> messageResults = ConsumePendingCombatMessageResults();
+        List<GameResult> messageResults = FlushDeferredResults();
         messageResults.AddRange(combatResults);
-        ProcessMessageDeliveries(messageResults);
+        _messageSystem.ProcessResults(messageResults);
+        _tickTimer = 0f;
+        if (_tickInterval == null)
+            _stopwatch.Reset();
+        else
+            _stopwatch.Restart();
     }
 
     /// <summary>
@@ -316,6 +318,9 @@ public class GameManager
     /// </summary>
     public void ProcessTick()
     {
+        if (_combatManager.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
+            return;
+
         _game.CurrentTick++;
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
@@ -329,14 +334,17 @@ public class GameManager
         List<GameResult> combatResults = _combatManager.ProcessTick();
         ProcessResults(combatResults, processMessages: false);
 
-        List<GameResult> movementAndCombatResults = CombineResults(movementResults, combatResults);
-        if (_pendingCombatDecision != null)
+        List<GameResult> resultsWaitingForCombatResolution = CombineResults(
+            movementResults,
+            combatResults
+        );
+        if (_combatManager.HasPendingDecision)
         {
-            StorePendingCombatMessageResults(movementAndCombatResults);
+            DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
             return;
         }
 
-        ProcessMessageDeliveries(movementAndCombatResults);
+        _messageSystem.ProcessResults(resultsWaitingForCombatResolution);
 
         ProcessResults(_missionManager.ProcessTick());
         ProcessResults(_eventManager.ProcessEvents(_game.GetEventPool()));
@@ -360,22 +368,13 @@ public class GameManager
     /// <param name="processMessages">Whether to create faction messages for this batch.</param>
     private void ProcessResults(List<GameResult> results, bool processMessages = true)
     {
-        ProcessFogOfWarResults(results);
+        _fogOfWarManager.ProcessResults(results);
         if (processMessages)
-            ProcessMessageDeliveries(results);
+            _messageSystem.ProcessResults(results);
 
         foreach (VictoryResult result in results.OfType<VictoryResult>())
         {
             // TODO: Set game over flag, trigger victory screen.
-        }
-
-        foreach (PendingCombatResult result in results.OfType<PendingCombatResult>())
-        {
-            _pendingCombatDecision = new CombatDecisionContext
-            {
-                AttackerFleetInstanceID = result.AttackerFleet?.GetInstanceID(),
-                DefenderFleetInstanceID = result.DefenderFleet?.GetInstanceID(),
-            };
         }
 
         foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
@@ -409,77 +408,21 @@ public class GameManager
     /// Stores movement and combat results until the pending combat decision is resolved.
     /// </summary>
     /// <param name="results">The results whose messages must wait for combat resolution.</param>
-    private void StorePendingCombatMessageResults(List<GameResult> results)
+    private void DeferResultsUntilCombatResolution(List<GameResult> results)
     {
-        _pendingCombatMessageResults.Clear();
+        _resultsWaitingForCombatResolution.Clear();
         if (results != null)
-            _pendingCombatMessageResults.AddRange(results);
+            _resultsWaitingForCombatResolution.AddRange(results);
     }
 
     /// <summary>
     /// Returns and clears movement and combat results waiting on a combat decision.
     /// </summary>
     /// <returns>The pending message result batch.</returns>
-    private List<GameResult> ConsumePendingCombatMessageResults()
+    private List<GameResult> FlushDeferredResults()
     {
-        List<GameResult> results = new List<GameResult>(_pendingCombatMessageResults);
-        _pendingCombatMessageResults.Clear();
+        List<GameResult> results = new List<GameResult>(_resultsWaitingForCombatResolution);
+        _resultsWaitingForCombatResolution.Clear();
         return results;
-    }
-
-    /// <summary>
-    /// Applies fog-of-war side effects for a result batch.
-    /// </summary>
-    /// <param name="results">The game results to process.</param>
-    private void ProcessFogOfWarResults(List<GameResult> results)
-    {
-        foreach (GameObjectSabotagedResult result in results.OfType<GameObjectSabotagedResult>())
-            RemoveSabotagedObjectFromActorSnapshot(result);
-    }
-
-    /// <summary>
-    /// Removes a sabotaged object from the actor faction's fog-of-war snapshots.
-    /// </summary>
-    /// <param name="result">The sabotage result to process.</param>
-    private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
-    {
-        if (result?.SabotagedObject == null || result.Saboteur is not ISceneNode saboteur)
-            return;
-
-        Faction faction = _game
-            .GetFactions()
-            .FirstOrDefault(f => f.InstanceID == saboteur.GetOwnerInstanceID());
-        if (faction == null)
-            return;
-
-        _fogOfWarManager.RemoveEntityFromSnapshots(faction, result.SabotagedObject.GetInstanceID());
-    }
-
-    /// <summary>
-    /// Creates and applies faction messages for a result batch.
-    /// </summary>
-    /// <param name="results">The game results to translate into messages.</param>
-    private void ProcessMessageDeliveries(List<GameResult> results)
-    {
-        foreach (
-            (Faction faction, Message message) delivery in _messageFactory.CreateMessages(
-                results,
-                _game
-            )
-        )
-            AddMessage(delivery.faction, delivery.message);
-    }
-
-    /// <summary>
-    /// Adds a message to a faction when both are available.
-    /// </summary>
-    /// <param name="faction">The faction that should receive the message.</param>
-    /// <param name="message">The message to add.</param>
-    private static void AddMessage(Faction faction, Message message)
-    {
-        if (faction == null || message == null)
-            return;
-
-        faction.AddMessage(message);
     }
 }
