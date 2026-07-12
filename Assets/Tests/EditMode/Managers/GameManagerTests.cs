@@ -235,6 +235,70 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        [Test]
+        public void ProcessTick_PendingCombat_DoesNotAdvanceTick()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction alliance = new Faction
+            {
+                InstanceID = "FNALL1",
+                DisplayName = "Alliance",
+                PlayerID = "player",
+            };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.Factions.Add(alliance);
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            game.AttachNode(system, game.GetGalaxyMap());
+            Planet planet = new Planet
+            {
+                InstanceID = "DEST",
+                DisplayName = "Destination",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(planet, system);
+
+            CreateCombatFleet(
+                game,
+                "ALLIANCE",
+                alliance.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            CreateCombatFleet(
+                game,
+                "EMPIRE",
+                empire.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+
+            GameManager manager = new GameManager(game);
+
+            manager.ProcessTick();
+            int pendingCombatTick = game.CurrentTick;
+            manager.ProcessTick();
+
+            Assert.AreEqual(pendingCombatTick, game.CurrentTick);
+        }
+
+        [Test]
+        public void ProcessTick_PausedGame_DoesNotAdvanceTick()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            GameManager manager = new GameManager(game);
+            manager.SetGameSpeed(TickSpeed.Paused);
+
+            manager.ProcessTick();
+
+            Assert.AreEqual(0, game.CurrentTick);
+        }
+
         private static Fleet CreateCombatFleet(
             GameRoot game,
             string instanceId,

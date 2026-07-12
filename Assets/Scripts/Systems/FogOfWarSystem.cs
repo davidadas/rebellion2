@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
@@ -55,6 +56,18 @@ namespace Rebellion.Systems
         public void RemoveEntityFromSnapshots(Faction faction, string entityId)
         {
             _recorder.RemoveEntityFromSnapshots(faction, entityId);
+        }
+
+        /// <summary>
+        /// Applies fog-of-war side effects for a result batch.
+        /// </summary>
+        /// <param name="results">The game results to process.</param>
+        public void ProcessResults(List<GameResult> results)
+        {
+            foreach (
+                GameObjectSabotagedResult result in results.OfType<GameObjectSabotagedResult>()
+            )
+                RemoveSabotagedObjectFromActorSnapshot(result);
         }
 
         /// <summary>
@@ -169,6 +182,24 @@ namespace Rebellion.Systems
         private static bool IsOwnedBy(ISceneNode unit, Faction faction)
         {
             return unit.GetOwnerInstanceID() == faction.InstanceID;
+        }
+
+        /// <summary>
+        /// Removes a sabotaged object from the actor faction's fog-of-war snapshots.
+        /// </summary>
+        /// <param name="result">The sabotage result to process.</param>
+        private void RemoveSabotagedObjectFromActorSnapshot(GameObjectSabotagedResult result)
+        {
+            if (result?.SabotagedObject == null || result.Saboteur is not ISceneNode saboteur)
+                return;
+
+            Faction faction = _game
+                .GetFactions()
+                .FirstOrDefault(f => f.InstanceID == saboteur.GetOwnerInstanceID());
+            if (faction == null)
+                return;
+
+            RemoveEntityFromSnapshots(faction, result.SabotagedObject.GetInstanceID());
         }
 
         /// <summary>

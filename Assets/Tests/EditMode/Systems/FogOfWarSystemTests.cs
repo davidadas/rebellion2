@@ -7,6 +7,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -264,6 +265,30 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void CaptureSnapshot_UnvisitedPlanet_MarksPlanetVisited()
+        {
+            Assert.IsFalse(_coruscant.WasVisitedBy(_alliance.InstanceID));
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
+        }
+
+        [Test]
+        public void BuildFactionView_SnapshotPlanet_ReturnsVisitedViewPlanet()
+        {
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsTrue(viewCoruscant.WasVisitedBy(_alliance.InstanceID));
+            Assert.IsFalse(viewCoruscant.IsUnexploredView);
+        }
+
+        [Test]
         public void CaptureSnapshot_EntityMoves_RemovedFromOldPlanetSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
@@ -286,6 +311,36 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, tatooineSnapshot.Officers.Count);
             Assert.AreEqual("VADER", tatooineSnapshot.Officers[0].InstanceID);
+        }
+
+        [Test]
+        public void ProcessResults_SabotagedObject_RemovesObjectFromActorSnapshot()
+        {
+            _coruscant.EnergyCapacity = 1;
+            Building mine = CreateBuilding("MINE1", _empire);
+            _game.AttachNode(mine, _coruscant);
+
+            Officer han = CreateOfficer("HAN", _alliance);
+            _game.AttachNode(han, _hoth);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _game.DetachNode(mine);
+
+            _fogSystem.ProcessResults(
+                new List<GameResult>
+                {
+                    new GameObjectSabotagedResult
+                    {
+                        SabotagedObject = mine,
+                        Saboteur = han,
+                        Context = _coruscant,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
+            Assert.IsFalse(snapshot.Buildings.Any(b => b.InstanceID == "MINE1"));
         }
 
         [Test]

@@ -35,6 +35,8 @@ namespace Rebellion.Game.FogOfWar
             if (faction == null || planet == null || system == null)
                 return;
 
+            planet.AddVisitor(faction.InstanceID);
+
             SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
             faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -60,6 +61,32 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
             return (planet, system);
+        }
+
+        /// <summary>
+        /// Random-number provider that throws from every roll.
+        /// </summary>
+        protected class ThrowingRNG : IRandomNumberProvider
+        {
+            /// <summary>
+            /// Throws when a double roll is requested.
+            /// </summary>
+            /// <returns>This method always throws.</returns>
+            public double NextDouble()
+            {
+                throw new InvalidOperationException("RNG failure");
+            }
+
+            /// <summary>
+            /// Throws when an integer roll is requested.
+            /// </summary>
+            /// <param name="min">Minimum roll value.</param>
+            /// <param name="max">Maximum roll value.</param>
+            /// <returns>This method always throws.</returns>
+            public int NextInt(int min, int max)
+            {
+                throw new InvalidOperationException("RNG failure");
+            }
         }
     }
 
@@ -1146,6 +1173,39 @@ namespace Rebellion.Tests.Systems
                 results.OfType<PendingCombatResult>().Any(),
                 "Player-involved encounter should emit a PendingCombatResult"
             );
+            Assert.IsTrue(manager.HasPendingDecision);
+            Assert.IsEmpty(manager.ProcessTick());
+
+            List<GameResult> resolvedResults = manager.ResolvePendingCombat(autoResolve: true);
+
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsNotEmpty(resolvedResults);
+        }
+
+        [Test]
+        public void ResolvePendingCombat_WhenResolveThrows_KeepsPendingDecision()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(sys, game.Galaxy);
+            game.AttachNode(planet, sys);
+            CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+
+            CombatSystem manager = MakeCombat(game, new ThrowingRNG());
+
+            manager.ProcessTick();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                manager.ResolvePendingCombat(autoResolve: true)
+            );
+            Assert.IsTrue(manager.HasPendingDecision);
         }
 
         [Test]

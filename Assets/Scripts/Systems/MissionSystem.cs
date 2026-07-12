@@ -49,13 +49,116 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
             List<Mission> missions = _game.GetSceneNodesByType<Mission>();
+            Dictionary<string, bool> recruitmentAvailabilityBefore =
+                GetRecruitmentAvailabilityByFaction();
 
             foreach (Mission mission in missions)
             {
                 results.AddRange(UpdateMission(mission));
             }
 
+            AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
+        }
+
+        /// <summary>
+        /// Captures whether each faction has officers available for recruitment.
+        /// </summary>
+        /// <returns>Recruitment availability keyed by faction instance ID.</returns>
+        private Dictionary<string, bool> GetRecruitmentAvailabilityByFaction()
+        {
+            return _game
+                .GetFactions()
+                .ToDictionary(faction => faction.InstanceID, HasRecruitmentCandidates);
+        }
+
+        /// <summary>
+        /// Returns whether a faction has unrecruited officers available.
+        /// </summary>
+        /// <param name="faction">The faction to inspect.</param>
+        /// <returns>True when at least one unrecruited officer may join the faction.</returns>
+        private bool HasRecruitmentCandidates(Faction faction)
+        {
+            return faction != null && _game.GetUnrecruitedOfficers(faction.InstanceID).Count > 0;
+        }
+
+        /// <summary>
+        /// Appends recruitment exhaustion results for factions that exhausted recruitment this tick.
+        /// </summary>
+        /// <param name="results">The mission results produced this tick.</param>
+        /// <param name="recruitmentAvailabilityBefore">Recruitment availability captured before missions advanced.</param>
+        private void AddRecruitmentExhaustedResults(
+            List<GameResult> results,
+            Dictionary<string, bool> recruitmentAvailabilityBefore
+        )
+        {
+            foreach (Faction faction in _game.GetFactions())
+            {
+                bool hadCandidates =
+                    recruitmentAvailabilityBefore != null
+                    && recruitmentAvailabilityBefore.TryGetValue(faction.InstanceID, out bool had)
+                    && had;
+                bool hasCandidates = HasRecruitmentCandidates(faction);
+
+                if (!hadCandidates || hasCandidates)
+                    continue;
+
+                results.Add(
+                    new RecruitmentExhaustedResult
+                    {
+                        Faction = faction,
+                        Planet = GetRecruitmentExhaustedPlanet(results, faction),
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Returns the planet associated with the recruitment exhaustion message.
+        /// </summary>
+        /// <param name="results">The mission results produced this tick.</param>
+        /// <param name="faction">The faction whose recruitment pool was exhausted.</param>
+        /// <returns>The most relevant recruitment planet, or null if none can be resolved.</returns>
+        private static Planet GetRecruitmentExhaustedPlanet(
+            IEnumerable<GameResult> results,
+            Faction faction
+        )
+        {
+            Planet recruitedPlanet = results
+                .OfType<OfficerRecruitedResult>()
+                .Where(result => result.Faction?.InstanceID == faction.InstanceID)
+                .Select(result => result.Planet)
+                .LastOrDefault(planet => planet != null);
+            if (recruitedPlanet != null)
+                return recruitedPlanet;
+
+            return results
+                .OfType<MissionCompletedResult>()
+                .Where(result =>
+                    result.Outcome == MissionOutcome.Success
+                    && IsRecruitmentMissionResult(result, faction)
+                )
+                .Select(result => result.Mission?.GetParent() as Planet)
+                .LastOrDefault(planet => planet != null);
+        }
+
+        /// <summary>
+        /// Returns whether the mission completion result belongs to a recruitment mission for the faction.
+        /// </summary>
+        /// <param name="result">The mission completion result to inspect.</param>
+        /// <param name="faction">The faction whose recruitment mission is being matched.</param>
+        /// <returns>True when the result is for the faction's recruitment mission.</returns>
+        private static bool IsRecruitmentMissionResult(
+            MissionCompletedResult result,
+            Faction faction
+        )
+        {
+            return result?.Mission?.OwnerInstanceID == faction.InstanceID
+                && (
+                    result.MissionTypeID == MissionTypeIDs.Recruitment
+                    || result.Mission.ConfigKey == MissionTypeIDs.Recruitment
+                );
         }
 
         /// <summary>

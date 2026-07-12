@@ -272,6 +272,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A side has no remaining officers available for recruitment.
+    /// </summary>
+    public class RecruitmentExhaustedResult : GameResult
+    {
+        public Faction Faction { get; set; }
+        public Planet Planet { get; set; }
+    }
+
+    /// <summary>
     /// A faction has won the game.
     /// </summary>
     public class VictoryResult : GameResult

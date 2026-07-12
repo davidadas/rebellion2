@@ -58,6 +58,7 @@ namespace Rebellion.Game.Messages
 
             AddArrivalMessages(resultArray.OfType<UnitArrivedResult>(), game, deliveries);
             AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
+            AddRecruitmentMessages(resultArray.OfType<RecruitmentExhaustedResult>(), deliveries);
             AddOfficerMessages(
                 resultArray.OfType<OfficerRecruitedResult>(),
                 resultArray.OfType<OfficerCaptureStateResult>(),
@@ -689,34 +690,20 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Creates a message when recruitment can no longer continue because no candidates remain.
         /// </summary>
-        /// <param name="faction">The faction receiving the message.</param>
-        /// <param name="result">The completed recruitment mission result.</param>
-        /// <param name="target">The mission planet.</param>
+        /// <param name="result">The recruitment exhausted result.</param>
         /// <returns>The recruitment exhausted message, or null when the result does not match.</returns>
-        private Message CreateRecruitmentExhausted(
-            Faction faction,
-            MissionCompletedResult result,
-            Planet target
-        )
+        private Message CreateRecruitmentExhausted(RecruitmentExhaustedResult result)
         {
-            if (
-                faction == null
-                || result?.Outcome != MissionOutcome.Success
-                || result.CanContinue
-                || GetMissionTypeID(result) != MissionTypeIDs.Recruitment
-            )
-            {
+            if (result?.Faction == null)
                 return null;
-            }
 
             return WithEventLocation(
                 CreateMessage(
                     GetDefinition(MessageResultType.RecruitmentExhausted),
-                    faction,
-                    new Dictionary<string, string>(),
-                    overlayImagePath: GetMissionParticipantOverlayImagePath(result)
+                    result.Faction,
+                    new Dictionary<string, string>()
                 ),
-                target
+                result.Planet
             );
         }
 
@@ -1064,11 +1051,6 @@ namespace Rebellion.Game.Messages
                         sabotageResults
                     )
                 );
-                AddDelivery(
-                    deliveries,
-                    actorFaction,
-                    CreateRecruitmentExhausted(actorFaction, result, target)
-                );
 
                 Faction targetFaction = GetFaction(game, target?.OwnerInstanceID);
                 if (targetFaction?.InstanceID == actorFaction?.InstanceID)
@@ -1080,6 +1062,20 @@ namespace Rebellion.Game.Messages
                     CreateEnemyMissionFoiled(targetFaction, result, target)
                 );
             }
+        }
+
+        /// <summary>
+        /// Adds messages for side-level recruitment exhaustion results.
+        /// </summary>
+        /// <param name="results">The recruitment exhausted results to process.</param>
+        /// <param name="deliveries">The delivery list to append messages to.</param>
+        private void AddRecruitmentMessages(
+            IEnumerable<RecruitmentExhaustedResult> results,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (RecruitmentExhaustedResult result in results)
+                AddDelivery(deliveries, result.Faction, CreateRecruitmentExhausted(result));
         }
 
         /// <summary>

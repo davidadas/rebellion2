@@ -879,6 +879,57 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_RecruitmentMissionsExhaustCandidates_ReturnsOneRecruitmentExhaustedResult()
+        {
+            (GameRoot game, Planet planet, Officer firstOfficer, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            Faction faction = game.GetFactions().Single(faction => faction.InstanceID == "empire");
+            firstOfficer.IsMain = true;
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            secondOfficer.IsMain = true;
+            game.AttachNode(secondOfficer, planet);
+
+            Officer firstTarget = EntityFactory.CreateOfficer("target1", "rebels");
+            firstTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            Officer secondTarget = EntityFactory.CreateOfficer("target2", "rebels");
+            secondTarget.AllowedOwnerInstanceIDs = new List<string> { "empire" };
+            game.UnrecruitedOfficers.Add(firstTarget);
+            game.UnrecruitedOfficers.Add(secondTarget);
+
+            Mission firstMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Recruitment,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { firstOfficer }
+            );
+            Mission secondMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Recruitment,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { secondOfficer }
+            );
+            game.AttachNode(firstMission, planet);
+            game.AttachNode(secondMission, planet);
+            game.DetachNode(firstOfficer);
+            game.DetachNode(secondOfficer);
+            game.AttachNode(firstOfficer, firstMission);
+            game.AttachNode(secondOfficer, secondMission);
+            firstMission.Initiate(0);
+            secondMission.Initiate(0);
+
+            MissionSystem system = new MissionSystem(game, new FixedRNG(0.0), movement);
+            List<GameResult> results = system.ProcessTick();
+
+            RecruitmentExhaustedResult exhausted = results
+                .OfType<RecruitmentExhaustedResult>()
+                .Single();
+            Assert.AreEqual(faction, exhausted.Faction);
+            Assert.AreEqual(planet, exhausted.Planet);
+        }
+
+        [Test]
         public void Execute_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
@@ -1783,6 +1834,27 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Sabotage));
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_SelectedTrainerWithoutStudent_ExcludesJediTrainingOption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.IsJedi = true;
+            officer.IsJediTrainer = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 120;
+            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+
+            List<MissionOption> options = missions.GetAvailableMissionOptions(
+                CreateRequest(null, officer, planet)
+            );
+
+            Assert.IsFalse(
+                options.Any(option => option.MissionTypeID == MissionTypeIDs.JediTraining)
+            );
         }
 
         [Test]

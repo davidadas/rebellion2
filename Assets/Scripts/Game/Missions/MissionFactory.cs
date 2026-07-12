@@ -17,6 +17,11 @@ namespace Rebellion.Game.Missions
         {
             new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
             new MissionOption(
+                RecruitmentMission.MissionTypeID,
+                "Recruitment",
+                OfficerRating.Leadership
+            ),
+            new MissionOption(
                 RescueMission.MissionTypeID,
                 "Rescue",
                 OfficerRating.Combat,
@@ -80,11 +85,6 @@ namespace Rebellion.Game.Missions
                 "Facility Design Research",
                 OfficerRating.FacilityResearch,
                 discipline: ResearchDiscipline.FacilityDesign
-            ),
-            new MissionOption(
-                RecruitmentMission.MissionTypeID,
-                "Recruitment",
-                OfficerRating.Leadership
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,
