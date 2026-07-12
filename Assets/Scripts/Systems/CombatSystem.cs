@@ -211,8 +211,9 @@ namespace Rebellion.Systems
                 throw new InvalidOperationException("No pending combat to resolve.");
 
             CombatDecisionContext decision = _pendingDecision;
+            List<GameResult> results = Resolve(decision, autoResolve);
             _pendingDecision = null;
-            return Resolve(decision, autoResolve);
+            return results;
         }
 
         /// <summary>
