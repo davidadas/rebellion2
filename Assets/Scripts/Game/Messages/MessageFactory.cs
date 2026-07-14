@@ -179,6 +179,35 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        private Message CreatePersonnelArrived(
+            Faction faction,
+            IEnumerable<Officer> personnel,
+            Planet destination
+        )
+        {
+            Officer[] officers =
+                personnel?.Where(officer => officer != null).ToArray() ?? Array.Empty<Officer>();
+            if (officers.Length == 0)
+                return null;
+
+            return WithEventLocation(
+                CreateMessage(
+                    GetDefinition(MessageResultType.PersonnelArrived),
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        {
+                            "personnel",
+                            string.Join("\n", officers.Select(officer => officer.GetDisplayName()))
+                        },
+                        { "system", destination?.GetDisplayName() ?? string.Empty },
+                    },
+                    overlayImagePath: GetMessageImagePath(officers[0])
+                ),
+                destination
+            );
+        }
+
         /// <summary>
         /// Creates the emperor seat-of-power message.
         /// </summary>
@@ -289,12 +318,14 @@ namespace Rebellion.Game.Messages
             };
             MissionCompletionReason completionReason = GetMissionCompletionReason(result);
             string missionName = GetMissionName(result);
-            string participantName = GetMissionParticipantName(result);
+            Officer jediTrainer = GetJediTrainer(result, game);
+            string participantName =
+                jediTrainer?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
 
-            return WithEventLocation(
+            Message message = WithEventLocation(
                 CreateMessage(
                     GetMissionDefinition(
                         MessageResultType.MissionReport,
@@ -315,11 +346,20 @@ namespace Rebellion.Game.Messages
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
                         { "assassination_result", assassinationResult },
                     },
-                    overlayImagePath: GetMissionParticipantOverlayImagePath(result),
-                    officerVoicePath: GetMissionParticipantVoicePath(result, game)
+                    overlayImagePath: jediTrainer == null
+                        ? GetMissionParticipantOverlayImagePath(result)
+                        : GetMessageImagePath(jediTrainer),
+                    officerVoicePath: jediTrainer == null
+                        ? GetMissionParticipantVoicePath(result, game)
+                        : jediTrainer.GetVoicePath(GetMissionVoiceLineType(result), game?.Random)
                 ),
                 target
             );
+
+            if (message != null && result.CanContinue)
+                message.MissionInstanceID = result.MissionInstanceID;
+
+            return message;
         }
 
         /// <summary>
@@ -427,6 +467,37 @@ namespace Rebellion.Game.Messages
                     overlayImagePath: GetMessageImagePath(result.Officer)
                 ),
                 result.Officer.GetParentOfType<Planet>()
+            );
+        }
+
+        private Message CreateForceUserDiscovered(
+            Faction faction,
+            ForceDiscoveryResult result,
+            GameRoot game
+        )
+        {
+            if (result?.Officer == null || result.Discoverer == null)
+                return null;
+
+            bool canTrain =
+                result.Discoverer.IsForceEligible
+                && result.Discoverer.ForceRank
+                    >= (game?.Config?.Jedi?.ForceQualifiedThreshold ?? int.MaxValue);
+            MessageResultType resultType = canTrain
+                ? MessageResultType.ForceUserDiscovered
+                : MessageResultType.ForceUserDiscoveredByStudent;
+
+            return WithEventLocation(
+                CreateMessage(
+                    GetDefinition(resultType),
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "officer", result.Officer.GetDisplayName() ?? string.Empty },
+                    },
+                    overlayImagePath: GetMessageImagePath(result.Discoverer)
+                ),
+                GetOfficerPlanet(result.Officer)
             );
         }
 
@@ -930,7 +1001,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds messages for arriving fleets, ships, and buildings.
+        /// Adds messages for arriving fleets, ships, personnel, and buildings.
         /// </summary>
         /// <param name="arrivals">The arrival results to process.</param>
         /// <param name="game">The game state used to resolve owning factions.</param>
@@ -947,6 +1018,16 @@ namespace Rebellion.Game.Messages
                     List<CapitalShip>
                 >();
             var shipDestinations =
+                new Dictionary<
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
+                    Planet
+                >();
+            var personnelGroups =
+                new Dictionary<
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
+                    List<Officer>
+                >();
+            var personnelDestinations =
                 new Dictionary<
                     (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
                     Planet
@@ -986,6 +1067,27 @@ namespace Rebellion.Game.Messages
                     continue;
                 }
 
+                if (arrival.Unit is Officer officer)
+                {
+                    string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
+                        ? officer.GetInstanceID()
+                        : arrival.MovementGroupID;
+                    var key = (
+                        officer.GetOwnerInstanceID(),
+                        arrival.Destination?.GetInstanceID(),
+                        movementGroupID
+                    );
+                    if (!personnelGroups.TryGetValue(key, out List<Officer> personnel))
+                    {
+                        personnel = new List<Officer>();
+                        personnelGroups[key] = personnel;
+                        personnelDestinations[key] = arrival.Destination;
+                    }
+
+                    personnel.Add(officer);
+                    continue;
+                }
+
                 if (arrival.Unit is Building building)
                 {
                     Faction faction = GetFaction(game, building.GetOwnerInstanceID());
@@ -1004,6 +1106,16 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateShipsArrived(faction, group.Value, shipDestinations[group.Key])
+                );
+            }
+
+            foreach (var group in personnelGroups)
+            {
+                Faction faction = GetFaction(game, group.Key.OwnerInstanceID);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreatePersonnelArrived(faction, group.Value, personnelDestinations[group.Key])
                 );
             }
         }
@@ -1213,13 +1325,24 @@ namespace Rebellion.Game.Messages
             List<(Faction faction, Message message)> deliveries
         )
         {
-            HashSet<string> discoveredOfficerIDs = (
+            ForceDiscoveryResult[] discoveryArray = (
                 discoveryResults ?? Enumerable.Empty<ForceDiscoveryResult>()
-            )
+            ).ToArray();
+            HashSet<string> discoveredOfficerIDs = discoveryArray
                 .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
                 .Select(result => result.Officer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
+
+            foreach (
+                ForceDiscoveryResult result in discoveryArray.Where(result =>
+                    result.EventType == ForceEventType.ForceUserDiscovered
+                )
+            )
+            {
+                Faction faction = GetOwnerFaction(game, result.Officer);
+                AddDelivery(deliveries, faction, CreateForceUserDiscovered(faction, result, game));
+            }
 
             foreach (ForceExperienceResult result in experienceResults)
             {
@@ -1809,6 +1932,29 @@ namespace Rebellion.Game.Messages
                 GetFirstParticipantDisplayName(result?.Participants)
                 ?? GetFirstParticipantDisplayName(result?.Mission?.GetAllParticipants());
             return name ?? string.Empty;
+        }
+
+        private static Officer GetJediTrainer(MissionCompletedResult result, GameRoot game)
+        {
+            if (result?.Mission is not JediTrainingMission mission)
+                return null;
+
+            return FindOfficer(result.Participants, mission.TrainerInstanceID)
+                ?? FindOfficer(mission.GetAllParticipants(), mission.TrainerInstanceID)
+                ?? game?.GetSceneNodeByInstanceID<Officer>(mission.TrainerInstanceID);
+        }
+
+        private static Officer FindOfficer(
+            IEnumerable<IMissionParticipant> participants,
+            string instanceID
+        )
+        {
+            if (string.IsNullOrEmpty(instanceID))
+                return null;
+
+            return (participants ?? Enumerable.Empty<IMissionParticipant>())
+                .OfType<Officer>()
+                .FirstOrDefault(officer => officer.InstanceID == instanceID);
         }
 
         /// <summary>

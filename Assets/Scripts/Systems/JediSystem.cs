@@ -222,6 +222,7 @@ namespace Rebellion.Systems
                 {
                     EventType = ForceEventType.ForceUserDiscovered,
                     Officer = candidate,
+                    Discoverer = scanner,
                     ForceRank = candidate.ForceRank,
                     Tick = _game.CurrentTick,
                 }

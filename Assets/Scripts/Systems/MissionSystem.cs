@@ -196,6 +196,21 @@ namespace Rebellion.Systems
             return context != null && CreateAndBeginMission(context);
         }
 
+        public bool AbortMission(string missionInstanceID)
+        {
+            if (string.IsNullOrEmpty(missionInstanceID))
+                return false;
+
+            Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
+            if (mission == null)
+                return false;
+            if (mission.IsWaitingForParticipants())
+                return false;
+
+            TearDownMission(mission, null);
+            return true;
+        }
+
         /// <summary>
         /// Resolves a mission start request against live scene graph objects.
         /// </summary>
@@ -305,7 +320,11 @@ namespace Rebellion.Systems
         /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
         {
-            return AdvanceMission(mission);
+            List<GameResult> results = AdvanceMission(mission);
+            foreach (GameResult result in results)
+                result.MissionInstanceID = mission.InstanceID;
+
+            return results;
         }
 
         /// <summary>

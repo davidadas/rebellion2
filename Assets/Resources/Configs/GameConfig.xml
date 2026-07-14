@@ -1511,8 +1511,8 @@
           <Spread>10</Spread>
         </Research>
         <JediTraining>
-          <Base>10</Base>
-          <Spread>10</Spread>
+          <Base>60</Base>
+          <Spread>30</Spread>
         </JediTraining>
       </TickRanges>
       <Foil>

@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessOutcome_AlwaysIncludesMissionCompletedResult()
+        public void Execute_SuccessOutcome_IncludesMissionCompletedResultWithMissionInstanceID()
         {
             (
                 GameRoot game,
@@ -142,11 +142,9 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
 
-            Assert.IsTrue(
-                results.OfType<MissionCompletedResult>().Any(),
-                "Execute should always include MissionCompletedResult"
-            );
+            Assert.AreEqual(mission.InstanceID, completed.MissionInstanceID);
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -322,6 +323,19 @@ namespace Rebellion.Tests.Game.Missions
             );
 
             Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void GetAvailableMissionOptions_MultipleOptions_ReturnsEspionageLast()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(game, null, "empire", officer, planet);
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Diplomacy));
+            Assert.AreEqual(MissionTypeIDs.Espionage, options.Last().MissionTypeID);
         }
     }
 }

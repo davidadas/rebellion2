@@ -152,6 +152,7 @@ namespace Rebellion.Game.Results
     {
         public ForceEventType EventType { get; set; }
         public Officer Officer { get; set; }
+        public Officer Discoverer { get; set; }
         public int ForceRank { get; set; }
     }
 

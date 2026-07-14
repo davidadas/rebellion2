@@ -37,6 +37,24 @@
     <ImageKey>ships_arrived</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Personnel Arrived</DisplayName>
+    <ResultType>PersonnelArrived</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Personnel arrive at {system}</TitleTemplate>
+    <BodyTemplate>The following personnel have arrived at {system}:&#10;{personnel}</BodyTemplate>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Capital Ship Repaired</DisplayName>
     <ResultType>CapitalShipRepaired</ResultType>
     <MessageType>Fleet</MessageType>
@@ -169,7 +187,7 @@
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
     <BodyTemplate>The reconnaissance mission to {system} was successful.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Success</DisplayName>
@@ -298,7 +316,7 @@
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
     <BodyTemplate>The reconnaissance mission to {system} failed.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Failed</DisplayName>
@@ -572,6 +590,22 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>Force Growth</TitleTemplate>
     <BodyTemplate>My recent experience has given me new insights and I have grown in my skills in the Force.  My ranking is {rank}.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Future Jedi Discovered</DisplayName>
+    <ResultType>ForceUserDiscovered</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Future Jedi Discovered</TitleTemplate>
+    <BodyTemplate>I have detected that {officer} has the ability to use the Force.  We should consider allowing me to conduct training in the way of the Force.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Future Jedi Discovered By Student</DisplayName>
+    <ResultType>ForceUserDiscoveredByStudent</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Future Jedi Discovered</TitleTemplate>
+    <BodyTemplate>I have detected that {officer} has the ability to use the Force.  Once I reach the rank of Jedi Knight, I should conduct training in the use of the Force.</BodyTemplate>
     <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>

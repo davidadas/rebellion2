@@ -235,6 +235,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(leia.IsForceEligible);
             Assert.Greater(leia.ForceValue, 0);
             Assert.AreEqual(1, results.Count);
+            Assert.AreEqual(luke, results[0].Discoverer);
         }
 
         [Test]

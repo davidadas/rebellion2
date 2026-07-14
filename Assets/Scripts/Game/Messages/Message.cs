@@ -26,6 +26,7 @@ namespace Rebellion.Game.Messages
         public string MessageVoicePath;
         public string OfficerVoicePath;
         public string EventLocationInstanceID;
+        public string MissionInstanceID;
         public bool Read;
 
         /// <summary>
