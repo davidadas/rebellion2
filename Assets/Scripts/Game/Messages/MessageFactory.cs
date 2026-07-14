@@ -318,7 +318,7 @@ namespace Rebellion.Game.Messages
             };
             MissionCompletionReason completionReason = GetMissionCompletionReason(result);
             string missionName = GetMissionName(result);
-            Officer jediTrainer = GetJediTrainer(result, game);
+            Officer jediTrainer = (result.Mission as JediTrainingMission)?.Trainer;
             string participantName =
                 jediTrainer?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
@@ -1932,29 +1932,6 @@ namespace Rebellion.Game.Messages
                 GetFirstParticipantDisplayName(result?.Participants)
                 ?? GetFirstParticipantDisplayName(result?.Mission?.GetAllParticipants());
             return name ?? string.Empty;
-        }
-
-        private static Officer GetJediTrainer(MissionCompletedResult result, GameRoot game)
-        {
-            if (result?.Mission is not JediTrainingMission mission)
-                return null;
-
-            return FindOfficer(result.Participants, mission.TrainerInstanceID)
-                ?? FindOfficer(mission.GetAllParticipants(), mission.TrainerInstanceID)
-                ?? game?.GetSceneNodeByInstanceID<Officer>(mission.TrainerInstanceID);
-        }
-
-        private static Officer FindOfficer(
-            IEnumerable<IMissionParticipant> participants,
-            string instanceID
-        )
-        {
-            if (string.IsNullOrEmpty(instanceID))
-                return null;
-
-            return (participants ?? Enumerable.Empty<IMissionParticipant>())
-                .OfType<Officer>()
-                .FirstOrDefault(officer => officer.InstanceID == instanceID);
         }
 
         /// <summary>

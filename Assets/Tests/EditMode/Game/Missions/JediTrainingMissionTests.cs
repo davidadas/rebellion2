@@ -171,6 +171,7 @@ namespace Rebellion.Tests.Game.Missions
             JediTrainingMission mission = CreateMission();
 
             Assert.AreEqual(_trainer.InstanceID, mission.TrainerInstanceID);
+            Assert.AreEqual(_trainer, mission.Trainer);
             CollectionAssert.AreEqual(
                 new IMissionParticipant[] { _trainer, _student },
                 mission.MainParticipants

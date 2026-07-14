@@ -5,6 +5,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Missions
 {
@@ -19,6 +20,12 @@ namespace Rebellion.Game.Missions
         /// Instance ID of the officer selected as the trainer.
         /// </summary>
         public string TrainerInstanceID { get; set; }
+
+        [PersistableIgnore]
+        public Officer Trainer =>
+            MainParticipants
+                .OfType<Officer>()
+                .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
 
         /// <summary>
         /// Parameterless constructor for deserialization.
@@ -130,13 +137,6 @@ namespace Rebellion.Game.Missions
                 && officer.ForceRank >= game.Config.Jedi.ForceQualifiedThreshold;
         }
 
-        private Officer ResolveTrainer()
-        {
-            return MainParticipants
-                .OfType<Officer>()
-                .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
-        }
-
         /// <summary>
         /// Returns why Jedi training must stop before advancing.
         /// </summary>
@@ -151,7 +151,7 @@ namespace Rebellion.Game.Missions
             if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
                 return MissionCompletionReason.TargetUnavailable;
 
-            Officer trainer = ResolveTrainer();
+            Officer trainer = Trainer;
             if (!IsTrainer(trainer, game))
                 return MissionCompletionReason.Failure;
 
@@ -175,7 +175,7 @@ namespace Rebellion.Game.Missions
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
-            Officer trainer = ResolveTrainer();
+            Officer trainer = Trainer;
 
             if (trainer != null)
             {
