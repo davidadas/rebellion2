@@ -668,16 +668,7 @@
     <TitleTemplate>{system} Joins</TitleTemplate>
     <BodyTemplate>Popular support on {system} has caused that world to join the {faction}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePaths>
-      <Entry>
-        <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
-      </Entry>
-      <Entry>
-        <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
-      </Entry>
-    </ImagePaths>
+    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Planet Joined Enemy by Support</DisplayName>
@@ -686,16 +677,7 @@
     <TitleTemplate>{system} Joins Enemy</TitleTemplate>
     <BodyTemplate>Popular dissent on {system} has caused that world to join the {faction}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePaths>
-      <Entry>
-        <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
-      </Entry>
-      <Entry>
-        <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
-      </Entry>
-    </ImagePaths>
+    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Planet Declared Neutrality by Support</DisplayName>
@@ -704,16 +686,7 @@
     <TitleTemplate>{system} Declares Neutrality</TitleTemplate>
     <BodyTemplate>Divided loyalty on {system} has caused that world to abandon the {faction} cause.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePaths>
-      <Entry>
-        <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_alliance</Value>
-      </Entry>
-      <Entry>
-        <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_planet_allegiance_evolves_empire</Value>
-      </Entry>
-    </ImagePaths>
+    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Blockade Initiated</DisplayName>

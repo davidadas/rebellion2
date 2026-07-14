@@ -80,7 +80,7 @@ namespace Rebellion.Systems
             if (item is CapitalShip)
                 return false;
 
-            if (!destination.IsColonized)
+            if (!destination.IsColonized && item is not Building)
                 return false;
 
             if (!destination.CanAcceptChild(item))
@@ -658,7 +658,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Completes manufactured items and emits queue-completion results.
+        /// Completes manufactured items and emits queue-idle results.
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type.</param>
@@ -671,18 +671,14 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            IManufacturable lastCompleted = null;
             foreach (IManufacturable item in completed)
-            {
                 results.AddRange(CompleteManufacturing(planet, item));
-                lastCompleted = item;
-            }
 
-            if (lastCompleted == null || GetQueuedItems(planet, type).Count > 0)
+            if (completed.Count == 0 || GetQueuedItems(planet, type).Count > 0)
                 return;
 
             ResetProductionFacilities(planet, type);
-            results.Add(CreateQueueCompletedResult(planet, type, lastCompleted));
+            results.Add(CreateQueueIdleResult(planet, type));
         }
 
         /// <summary>
@@ -699,25 +695,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Creates the queue-completed result for the last item produced by a queue.
+        /// Creates the result emitted when a manufacturing queue becomes idle.
         /// </summary>
         /// <param name="planet">The production planet.</param>
-        /// <param name="type">The completed manufacturing type.</param>
-        /// <param name="lastCompleted">The last item completed by the queue.</param>
-        /// <returns>The queue-completed result.</returns>
-        private ManufacturingCompletedResult CreateQueueCompletedResult(
-            Planet planet,
-            ManufacturingType type,
-            IManufacturable lastCompleted
-        )
+        /// <param name="type">The idle manufacturing type.</param>
+        /// <returns>The queue-idle result.</returns>
+        private ManufacturingIdleResult CreateQueueIdleResult(Planet planet, ManufacturingType type)
         {
-            return new ManufacturingCompletedResult
+            return new ManufacturingIdleResult
             {
-                GameObject = lastCompleted,
                 ProductionPlanet = planet,
                 Faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID()),
-                ProductType = type,
-                ProductName = lastCompleted.GetDisplayName(),
+                ManufacturingType = type,
                 Tick = _game.CurrentTick,
             };
         }

@@ -115,10 +115,7 @@ namespace Rebellion.Game.Messages
                 deliveries
             );
             AddDeploymentMessages(resultArray.OfType<GameObjectDeployedResult>(), game, deliveries);
-            AddManufacturingMessages(
-                resultArray.OfType<ManufacturingCompletedResult>(),
-                deliveries
-            );
+            AddManufacturingMessages(resultArray.OfType<ManufacturingIdleResult>(), deliveries);
             AddSeatOfPowerMessages(
                 resultArray.OfType<SeatOfPowerChangedResult>(),
                 game,
@@ -1557,22 +1554,22 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds messages for completed manufacturing queues.
+        /// Adds messages for idle manufacturing queues.
         /// </summary>
-        /// <param name="results">The manufacturing completed results to process.</param>
+        /// <param name="results">The manufacturing idle results to process.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddManufacturingMessages(
-            IEnumerable<ManufacturingCompletedResult> results,
+            IEnumerable<ManufacturingIdleResult> results,
             List<(Faction faction, Message message)> deliveries
         )
         {
-            foreach (ManufacturingCompletedResult result in results)
+            foreach (ManufacturingIdleResult result in results)
                 AddDelivery(
                     deliveries,
                     result.Faction,
                     CreateManufacturingIdle(
                         result.Faction,
-                        result.ProductType,
+                        result.ManufacturingType,
                         result.ProductionPlanet
                     )
                 );

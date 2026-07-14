@@ -621,7 +621,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ManufacturingCompleted_UsesQueueTypeDefinition()
+        public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
@@ -639,10 +639,10 @@ namespace Rebellion.Tests.Game.Messages
                             manufacturingType: ManufacturingType.Building
                         ),
                     },
-                    new ManufacturingCompletedResult
+                    new ManufacturingIdleResult
                     {
                         Faction = alliance,
-                        ProductType = ManufacturingType.Building,
+                        ManufacturingType = ManufacturingType.Building,
                         ProductionPlanet = origin,
                     }
                 ),

@@ -503,18 +503,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A manufactured item finished production.
-    /// </summary>
-    public class ManufacturingCompletedResult : GameResult
-    {
-        public IGameEntity GameObject { get; set; }
-        public Planet ProductionPlanet { get; set; }
-        public Faction Faction { get; set; }
-        public ManufacturingType ProductType { get; set; }
-        public string ProductName { get; set; }
-    }
-
-    /// <summary>
     /// A game object was deployed.
     /// </summary>
     public class GameObjectDeployedResult : GameResult
@@ -793,6 +781,16 @@ namespace Rebellion.Game.Results
     #endregion
 
     #region Manufacturing
+
+    /// <summary>
+    /// A manufacturing queue became idle.
+    /// </summary>
+    public class ManufacturingIdleResult : GameResult
+    {
+        public Planet ProductionPlanet { get; set; }
+        public Faction Faction { get; set; }
+        public ManufacturingType ManufacturingType { get; set; }
+    }
 
     /// <summary>
     /// The remaining item count for a manufacturing queue changed.

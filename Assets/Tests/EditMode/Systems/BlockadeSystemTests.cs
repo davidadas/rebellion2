@@ -54,7 +54,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
-            (GameRoot game, Planet planet, _) = BuildScene();
+            (GameRoot game, Planet planet, Fleet hostileFleet) = BuildScene();
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
 
             List<GameResult> results = manager.ProcessTick();
@@ -63,6 +63,24 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Blockaded);
             Assert.AreEqual(planet, result.Planet);
+            Assert.AreEqual(hostileFleet, result.BlockadingFleet);
+        }
+
+        [Test]
+        public void ProcessTick_HostileFleetInTransit_EmitsBlockadeOnlyAfterArrival()
+        {
+            (GameRoot game, _, Fleet hostileFleet) = BuildScene();
+            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
+
+            List<GameResult> inTransitResults = manager.ProcessTick();
+            hostileFleet.Movement = null;
+            List<GameResult> arrivalResults = manager.ProcessTick();
+
+            Assert.IsFalse(inTransitResults.OfType<BlockadeChangedResult>().Any());
+            BlockadeChangedResult result = arrivalResults.OfType<BlockadeChangedResult>().Single();
+            Assert.IsTrue(result.Blockaded);
+            Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
         [Test]
