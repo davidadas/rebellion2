@@ -113,7 +113,7 @@ namespace Rebellion.Game.Missions
             List<Officer> officers = new List<Officer>();
             foreach (IMissionParticipant participant in participants)
             {
-                if (participant is not Officer officer || !CanParticipateInTraining(officer))
+                if (participant is not Officer officer || !CanParticipate(officer))
                     return false;
 
                 officers.Add(officer);
@@ -137,7 +137,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
         /// <returns>True when the officer is a known, active Jedi.</returns>
-        private static bool CanParticipateInTraining(Officer officer)
+        private static bool CanParticipate(Officer officer)
         {
             return officer?.IsJedi == true
                 && officer.IsForceEligible
@@ -154,7 +154,7 @@ namespace Rebellion.Game.Missions
         internal static bool CanLeadTraining(Officer officer, GameRoot game)
         {
             return game != null
-                && CanParticipateInTraining(officer)
+                && CanParticipate(officer)
                 && officer.IsJediTrainer
                 && officer.ForceRank >= game.Config.Jedi.ForceQualifiedThreshold;
         }
@@ -181,7 +181,7 @@ namespace Rebellion.Game.Missions
             return
                 officerCount == MainParticipants.Count
                 && officerCount >= 2
-                && MainParticipants.OfType<Officer>().All(CanParticipateInTraining)
+                && MainParticipants.OfType<Officer>().All(CanParticipate)
                 ? null
                 : MissionCompletionReason.Failure;
         }
