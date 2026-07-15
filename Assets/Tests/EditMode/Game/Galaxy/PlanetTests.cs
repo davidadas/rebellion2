@@ -822,14 +822,17 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void IsBlockaded_EnemyFleetPresent_ReturnsTrue()
+        public void IsBlockaded_EnemyFleetWithOperationalCapitalShip_ReturnsTrue()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             _planet.AddChild(enemyFleet);
 
             bool isBlockaded = _planet.IsBlockaded();
 
-            Assert.IsTrue(isBlockaded, "Planet should be blockaded when enemy fleet is present.");
+            Assert.IsTrue(
+                isBlockaded,
+                "Planet should be blockaded when an enemy operational capital ship is present."
+            );
         }
 
         [Test]
@@ -845,7 +848,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void IsBlockaded_EnemyFleetWithoutArrivedCapitalShips_ReturnsFalse()
+        public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             enemyFleet.CapitalShips.Single().Movement = new MovementState { TransitTicks = 10 };
@@ -855,7 +858,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void IsBlockaded_MixedFleets_ReturnsFalse()
+        public void IsBlockaded_DefendingFleetPresent_ReturnsFalse()
         {
             Fleet friendlyFleet = CreateOperationalFleet("FNALL1");
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");

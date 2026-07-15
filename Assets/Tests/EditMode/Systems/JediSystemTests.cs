@@ -54,6 +54,47 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_tatooine, system);
         }
 
+        private Officer CreateJediTrainer(string id, int forceValue)
+        {
+            Officer officer = CreateKnownJedi(id, forceValue);
+            officer.IsJediTrainer = true;
+            return officer;
+        }
+
+        private Officer CreateKnownJedi(string id, int forceValue)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = _alliance.InstanceID,
+                IsJedi = true,
+                IsForceEligible = true,
+                ForceValue = forceValue,
+                ForceTrainingAdjustment = 0,
+            };
+            _game.AttachNode(officer, _tatooine);
+            return officer;
+        }
+
+        private Officer CreateDormantJedi(string id)
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = _alliance.InstanceID,
+                IsJedi = true,
+                IsForceEligible = false,
+                ForceValue = 0,
+                ForceTrainingAdjustment = 0,
+                JediLevel = 10,
+                JediLevelVariance = 0,
+            };
+            _game.AttachNode(officer, _tatooine);
+            return officer;
+        }
+
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {
@@ -141,7 +182,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_NonJediOfficer_Skipped()
+        public void ProcessTick_NonJediOfficer_ClearsDiscoveringState()
         {
             Officer han = new Officer
             {
@@ -180,7 +221,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_DormantJediNotForceEligible_Skipped()
+        public void ProcessTick_ForceIneligibleJedi_ClearsDiscoveringState()
         {
             Officer leia = CreateDormantJedi("LEIA");
             leia.IsJediTrainer = true;
@@ -299,10 +340,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LowRankScanner_CannotDiscover()
+        public void ProcessTick_NonPositiveDiscoveryChance_DoesNotDiscover()
         {
-            // Rank 50 + 0 - 100 = -50% -> impossible
-            Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
+            Officer luke = CreateJediTrainer(
+                "LUKE",
+                _game.Config.Jedi.DiscoveringForceUserThreshold
+            );
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -313,9 +356,10 @@ namespace Rebellion.Tests.Systems
                 .Where(r => r.EventType == ForceEventType.ForceUserDiscovered)
                 .ToList();
 
+            Assert.IsTrue(luke.IsDiscoveringForceUser);
             Assert.IsFalse(leia.IsForceEligible);
             Assert.AreEqual(0, leia.ForceValue);
-            Assert.AreEqual(0, results.Count);
+            Assert.IsEmpty(results);
         }
 
         [Test]
@@ -436,47 +480,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
-        }
-
-        private Officer CreateJediTrainer(string id, int forceValue)
-        {
-            Officer officer = CreateKnownJedi(id, forceValue);
-            officer.IsJediTrainer = true;
-            return officer;
-        }
-
-        private Officer CreateKnownJedi(string id, int forceValue)
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = _alliance.InstanceID,
-                IsJedi = true,
-                IsForceEligible = true,
-                ForceValue = forceValue,
-                ForceTrainingAdjustment = 0,
-            };
-            _game.AttachNode(officer, _tatooine);
-            return officer;
-        }
-
-        private Officer CreateDormantJedi(string id)
-        {
-            Officer officer = new Officer
-            {
-                InstanceID = id,
-                DisplayName = id,
-                OwnerInstanceID = _alliance.InstanceID,
-                IsJedi = true,
-                IsForceEligible = false,
-                ForceValue = 0,
-                ForceTrainingAdjustment = 0,
-                JediLevel = 10,
-                JediLevelVariance = 0,
-            };
-            _game.AttachNode(officer, _tatooine);
-            return officer;
         }
 
         [Test]

@@ -161,49 +161,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_BuildingDeliveredToOwnedUncolonizedPlanet_MarksPlanetColonized()
-        {
-            PlanetSystem system = _coruscant.GetParentOfType<PlanetSystem>();
-            Planet destination = new Planet
-            {
-                InstanceID = "OUTER_RIM",
-                OwnerInstanceID = "EMPIRE",
-                IsColonized = false,
-                EnergyCapacity = 5,
-            };
-            _game.AttachNode(destination, system);
-            _game.AttachNode(
-                new Regiment { InstanceID = "GARRISON", OwnerInstanceID = "EMPIRE" },
-                destination
-            );
-
-            Building mine = new Building
-            {
-                InstanceID = "OUTER_RIM_MINE",
-                OwnerInstanceID = "EMPIRE",
-                ConstructionCost = 1,
-                BuildingType = BuildingType.Mine,
-            };
-
-            bool enqueued = _manager.Enqueue(_coruscant, mine, destination, ignoreCost: true);
-            _manager.ProcessTick();
-
-            Assert.IsTrue(enqueued);
-            Assert.IsFalse(destination.IsColonized);
-            Assert.IsNotNull(mine.Movement);
-
-            int transitTicks = mine.Movement.TransitTicks;
-            for (int i = 0; i < transitTicks; i++)
-            {
-                _movement.ProcessTick();
-            }
-
-            Assert.IsNull(mine.Movement);
-            Assert.IsTrue(destination.IsColonized);
-            Assert.AreSame(destination, mine.GetParent());
-        }
-
-        [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
             Building building1 = new Building
@@ -2583,6 +2540,49 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
             Assert.IsNotNull(mine.Movement, "Should have _movement state for shipping.");
             Assert.Greater(mine.Movement.TransitTicks, 0, "Should have travel time.");
+        }
+
+        [Test]
+        public void ProcessTick_BuildingForOwnedUncolonizedPlanet_ColonizesOnArrival()
+        {
+            PlanetSystem system = _coruscant.GetParentOfType<PlanetSystem>();
+            Planet destination = new Planet
+            {
+                InstanceID = "OUTER_RIM",
+                OwnerInstanceID = "EMPIRE",
+                IsColonized = false,
+                EnergyCapacity = 5,
+            };
+            _game.AttachNode(destination, system);
+            _game.AttachNode(
+                new Regiment { InstanceID = "GARRISON", OwnerInstanceID = "EMPIRE" },
+                destination
+            );
+
+            Building mine = new Building
+            {
+                InstanceID = "OUTER_RIM_MINE",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Mine,
+            };
+
+            bool enqueued = _manager.Enqueue(_coruscant, mine, destination, ignoreCost: true);
+            _manager.ProcessTick();
+
+            Assert.IsTrue(enqueued);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsNotNull(mine.Movement);
+
+            int transitTicks = mine.Movement.TransitTicks;
+            for (int i = 0; i < transitTicks; i++)
+            {
+                _movement.ProcessTick();
+            }
+
+            Assert.IsNull(mine.Movement);
+            Assert.IsTrue(destination.IsColonized);
+            Assert.AreSame(destination, mine.GetParent());
         }
 
         [Test]
