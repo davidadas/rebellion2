@@ -196,6 +196,11 @@ namespace Rebellion.Systems
             return context != null && CreateAndBeginMission(context);
         }
 
+        /// <summary>
+        /// Aborts an active mission and returns its participants to their mission origin.
+        /// </summary>
+        /// <param name="missionInstanceID">The instance ID of the mission to abort.</param>
+        /// <returns>True when the mission was found and aborted.</returns>
         public bool AbortMission(string missionInstanceID)
         {
             if (string.IsNullOrEmpty(missionInstanceID))

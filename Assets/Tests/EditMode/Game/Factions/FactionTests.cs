@@ -25,6 +25,19 @@ namespace Rebellion.Tests.Game.Factions
         private Building _building;
         private Technology _technology;
 
+        private static Fleet CreateOperationalFleet(string instanceID, string ownerInstanceID)
+        {
+            Fleet fleet = new Fleet { InstanceID = instanceID, OwnerInstanceID = ownerInstanceID };
+            fleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = ownerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            return fleet;
+        }
+
         [SetUp]
         public void SetUp()
         {
@@ -578,11 +591,7 @@ namespace Rebellion.Tests.Game.Factions
 
             _planet2.NumRawResourceNodes = 15;
             // Add an enemy fleet to planet2 to blockade it
-            Fleet enemyFleet = new Fleet
-            {
-                InstanceID = "ENEMYFLEET1",
-                OwnerInstanceID = "FACTION2",
-            };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
             _planet2.Fleets.Add(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
@@ -793,11 +802,7 @@ namespace Rebellion.Tests.Game.Factions
                 };
                 _planet2.AddChild(mine);
             }
-            Fleet enemyFleet = new Fleet
-            {
-                InstanceID = "ENEMYFLEET1",
-                OwnerInstanceID = "FACTION2",
-            };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
             _planet2.Fleets.Add(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
@@ -873,11 +878,7 @@ namespace Rebellion.Tests.Game.Factions
                 };
                 _planet2.AddChild(refinery);
             }
-            Fleet enemyFleet = new Fleet
-            {
-                InstanceID = "ENEMYFLEET1",
-                OwnerInstanceID = "FACTION2",
-            };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
             _planet2.Fleets.Add(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);
@@ -973,11 +974,7 @@ namespace Rebellion.Tests.Game.Factions
                 };
                 _planet2.AddChild(refinery);
             }
-            Fleet enemyFleet = new Fleet
-            {
-                InstanceID = "ENEMYFLEET1",
-                OwnerInstanceID = "FACTION2",
-            };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMYFLEET1", "FACTION2");
             _planet2.Fleets.Add(enemyFleet);
 
             _faction.AddOwnedUnit(_planet1);

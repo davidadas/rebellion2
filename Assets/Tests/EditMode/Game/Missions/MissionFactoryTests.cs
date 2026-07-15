@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -231,6 +232,57 @@ namespace Rebellion.Tests.Game.Missions
             context.DecoyParticipants.Add(rebelDecoy);
 
             bool created = factory.TryCreateMission(context, out _);
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_ParticipantOnExistingMission_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            StubMission existingMission = EntityFactory.CreateMission(
+                "existing-mission",
+                "empire",
+                planet.InstanceID
+            );
+            game.AttachNode(existingMission, planet);
+            existingMission.MainParticipants.Add(officer);
+            game.MoveNode(officer, existingMission);
+
+            bool created = factory.TryCreateMission(
+                CreateContext(
+                    game,
+                    MissionTypeIDs.Sabotage,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                ),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_ParticipantInTransit_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            officer.Movement = new MovementState { TransitTicks = 10 };
+
+            bool created = factory.TryCreateMission(
+                CreateContext(
+                    game,
+                    MissionTypeIDs.Sabotage,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                ),
+                out _
+            );
 
             Assert.IsFalse(created);
         }

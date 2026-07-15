@@ -179,6 +179,13 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates a grouped arrival report for personnel that traveled together.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="personnel">The officers included in the arrival.</param>
+        /// <param name="destination">The planet where the officers arrived.</param>
+        /// <returns>The personnel arrival message, or null when no officers were provided.</returns>
         private Message CreatePersonnelArrived(
             Faction faction,
             IEnumerable<Officer> personnel,
@@ -470,6 +477,13 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates a report identifying an officer whose Force potential was discovered.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="result">The Force discovery result.</param>
+        /// <param name="game">The game state used to evaluate the discoverer's training rank.</param>
+        /// <returns>The Force discovery message, or null when the result is incomplete.</returns>
         private Message CreateForceUserDiscovered(
             Faction faction,
             ForceDiscoveryResult result,
@@ -479,10 +493,7 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null || result.Discoverer == null)
                 return null;
 
-            bool canTrain =
-                result.Discoverer.IsForceEligible
-                && result.Discoverer.ForceRank
-                    >= (game?.Config?.Jedi?.ForceQualifiedThreshold ?? int.MaxValue);
+            bool canTrain = JediTrainingMission.CanLeadTraining(result.Discoverer, game);
             MessageResultType resultType = canTrain
                 ? MessageResultType.ForceUserDiscovered
                 : MessageResultType.ForceUserDiscoveredByStudent;
@@ -1340,7 +1351,7 @@ namespace Rebellion.Game.Messages
                 )
             )
             {
-                Faction faction = GetOwnerFaction(game, result.Officer);
+                Faction faction = GetOwnerFaction(game, result.Discoverer);
                 AddDelivery(deliveries, faction, CreateForceUserDiscovered(faction, result, game));
             }
 

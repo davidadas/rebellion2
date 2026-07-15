@@ -1594,8 +1594,14 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsEmpty(deliveries);
         }
 
-        [Test]
-        public void CreateMessages_ForceUserDiscovered_UsesDiscovererImageInsteadOfForceGrowth()
+        [TestCase(true, 0, "qualified")]
+        [TestCase(true, -1, "student")]
+        [TestCase(false, 0, "student")]
+        public void CreateMessages_ForceUserDiscovered_SelectsReportByTrainerQualification(
+            bool isJediTrainer,
+            int rankOffset,
+            string expectedTitle
+        )
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer discoverer = new Officer
@@ -1603,8 +1609,10 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Discoverer",
                 InstanceID = "discoverer",
                 OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
                 IsForceEligible = true,
-                ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
+                IsJediTrainer = isJediTrainer,
+                ForceValue = game.Config.Jedi.ForceQualifiedThreshold + rankOffset,
                 MessageImagePath = "discoverer-card",
             };
             Officer candidate = new Officer
@@ -1633,7 +1641,13 @@ namespace Rebellion.Tests.Game.Messages
                         Definition(
                             MessageResultType.ForceUserDiscovered,
                             MessageType.Mission,
-                            "future jedi",
+                            "qualified",
+                            "discovered:{officer}"
+                        ),
+                        Definition(
+                            MessageResultType.ForceUserDiscoveredByStudent,
+                            MessageType.Mission,
+                            "student",
                             "discovered:{officer}"
                         ),
                     },
@@ -1648,7 +1662,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("future jedi", message.Title);
+            Assert.AreEqual(expectedTitle, message.Title);
             Assert.AreEqual("discovered:Student", message.Body);
             Assert.AreEqual("discoverer-card", message.OverlayImagePath);
         }

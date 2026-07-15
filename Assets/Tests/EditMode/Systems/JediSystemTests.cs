@@ -21,6 +21,7 @@ namespace Rebellion.Tests.Systems
         private GameRoot _game;
         private JediSystem _system;
         private Faction _alliance;
+        private Faction _empire;
         private Planet _tatooine;
 
         [SetUp]
@@ -31,7 +32,9 @@ namespace Rebellion.Tests.Systems
             _system = new JediSystem(_game, new FixedRNG());
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             _game.Factions.Add(_alliance);
+            _game.Factions.Add(_empire);
 
             PlanetSystem system = new PlanetSystem
             {
@@ -54,7 +57,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ForceRankAboveThreshold_EntersDiscoveringState()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 85);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 85);
 
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
@@ -71,7 +74,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ForceRankExactlyAtThreshold_EntersDiscoveringState()
         {
             // Default threshold is 80
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 80);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 80);
 
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
@@ -85,7 +88,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ForceRankBelowThreshold_NoDiscovery()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 79);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 79);
 
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
@@ -99,7 +102,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CapturedOfficer_NoDiscoveringState()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 100);
             luke.IsCaptured = true;
 
             List<ForceDiscoveryResult> results = _system
@@ -114,7 +117,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_AlreadyDiscovering_NoRepeatedEvent()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 100);
             luke.IsDiscoveringForceUser = true;
 
             List<ForceDiscoveryResult> results = _system
@@ -129,7 +132,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_ForceRankDropsBelowThreshold_ClearsDiscoveringState()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
             luke.IsDiscoveringForceUser = true; // Was set previously
 
             _system.ProcessTick();
@@ -146,7 +149,9 @@ namespace Rebellion.Tests.Systems
                 DisplayName = "Han",
                 OwnerInstanceID = _alliance.InstanceID,
                 IsJedi = false,
+                IsForceEligible = true,
                 ForceValue = 100,
+                IsDiscoveringForceUser = true,
             };
             _game.AttachNode(han, _tatooine);
 
@@ -155,13 +160,31 @@ namespace Rebellion.Tests.Systems
                 .OfType<ForceDiscoveryResult>()
                 .ToList();
 
-            Assert.AreEqual(0, results.Count);
+            Assert.IsFalse(han.IsDiscoveringForceUser);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ProcessTick_NonTrainerJedi_ClearsDiscoveringState()
+        {
+            Officer luke = CreateKnownJedi("LUKE", forceValue: 100);
+            luke.IsDiscoveringForceUser = true;
+
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick()
+                .OfType<ForceDiscoveryResult>()
+                .ToList();
+
+            Assert.IsFalse(luke.IsDiscoveringForceUser);
+            Assert.IsEmpty(results);
         }
 
         [Test]
         public void ProcessTick_DormantJediNotForceEligible_Skipped()
         {
             Officer leia = CreateDormantJedi("LEIA");
+            leia.IsJediTrainer = true;
+            leia.IsDiscoveringForceUser = true;
 
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
@@ -169,7 +192,7 @@ namespace Rebellion.Tests.Systems
                 .ToList();
 
             Assert.IsFalse(leia.IsDiscoveringForceUser);
-            Assert.AreEqual(0, results.Count);
+            Assert.IsEmpty(results);
         }
 
         [Test]
@@ -186,8 +209,8 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleOfficers_AllProcessed()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 85);
-            Officer vader = CreateKnownJedi("VADER", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 85);
+            Officer vader = CreateJediTrainer("VADER", forceValue: 120);
 
             List<ForceDiscoveryResult> results = _system
                 .ProcessTick()
@@ -203,7 +226,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_OfficerWithTrainingAdjustment_IncludesAdjustmentInRank()
         {
             // ForceValue 70 alone is below threshold 80, but with adjustment of 15 => rank 85
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 70);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 70);
             luke.ForceTrainingAdjustment = 15;
 
             List<ForceDiscoveryResult> results = _system
@@ -219,7 +242,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_DiscoveringJediWithDormantCandidate_DiscoversDormant()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -239,10 +262,47 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_EnemyDormantCandidate_DoesNotDiscover()
+        {
+            CreateJediTrainer("LUKE", forceValue: 120);
+            Fleet fleet = new Fleet(_empire.InstanceID, "Imperial Fleet")
+            {
+                InstanceID = "IMPERIAL_FLEET",
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "IMPERIAL_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            Officer vader = new Officer
+            {
+                InstanceID = "VADER",
+                DisplayName = "VADER",
+                OwnerInstanceID = _empire.InstanceID,
+                IsJedi = true,
+                IsForceEligible = false,
+                JediLevel = 10,
+            };
+            _game.AttachNode(fleet, _tatooine);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(vader, ship);
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            List<ForceDiscoveryResult> results = _system
+                .ProcessTick()
+                .OfType<ForceDiscoveryResult>()
+                .Where(result => result.EventType == ForceEventType.ForceUserDiscovered)
+                .ToList();
+
+            Assert.IsFalse(vader.IsForceEligible);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void ProcessTick_LowRankScanner_CannotDiscover()
         {
             // Rank 50 + 0 - 100 = -50% -> impossible
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -262,7 +322,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_BelowThresholdJedi_NoScan()
         {
             // ForceRank 50 is below threshold 80, so no discovering state
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 50);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
 
             Officer leia = CreateDormantJedi("LEIA");
 
@@ -281,7 +341,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_AlreadyEligibleCandidate_Skipped()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer vader = CreateKnownJedi("VADER", forceValue: 100);
@@ -299,7 +359,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_CapturedCandidate_Skipped()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -319,7 +379,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_OnMissionCandidate_Skipped()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -344,7 +404,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_HighRoll_DiscoveryFails()
         {
             // Rank 101 + 0 - 100 = 1%. MaxRNG returns 0.99 -> roll = 99.0 >= 1%
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 101);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 101);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -363,7 +423,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_OfficerWithTemplate_InitializesForceValue()
         {
-            Officer luke = CreateKnownJedi("LUKE", forceValue: 120);
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
             luke.IsDiscoveringForceUser = true;
 
             Officer leia = CreateDormantJedi("LEIA");
@@ -376,6 +436,13 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(10, leia.ForceValue);
+        }
+
+        private Officer CreateJediTrainer(string id, int forceValue)
+        {
+            Officer officer = CreateKnownJedi(id, forceValue);
+            officer.IsJediTrainer = true;
+            return officer;
         }
 
         private Officer CreateKnownJedi(string id, int forceValue)

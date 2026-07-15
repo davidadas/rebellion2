@@ -21,6 +21,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TrainerInstanceID { get; set; }
 
+        /// <summary>
+        /// Gets the selected trainer from the mission's current participants.
+        /// </summary>
         [PersistableIgnore]
         public Officer Trainer =>
             MainParticipants
@@ -90,6 +93,13 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Validates the selected participants and chooses the highest-ranked qualified trainer.
+        /// </summary>
+        /// <param name="participants">The officers selected for Jedi training.</param>
+        /// <param name="game">The game state containing Jedi qualification thresholds.</param>
+        /// <param name="trainer">The selected trainer when the team is valid.</param>
+        /// <returns>True when every participant can train under the selected trainer.</returns>
         private static bool TryGetTrainingTeam(
             List<IMissionParticipant> participants,
             GameRoot game,
@@ -103,14 +113,14 @@ namespace Rebellion.Game.Missions
             List<Officer> officers = new List<Officer>();
             foreach (IMissionParticipant participant in participants)
             {
-                if (participant is not Officer officer || !IsAvailableJedi(officer))
+                if (participant is not Officer officer || !CanParticipateInTraining(officer))
                     return false;
 
                 officers.Add(officer);
             }
 
             Officer selectedTrainer = officers
-                .Where(officer => IsTrainer(officer, game))
+                .Where(officer => CanLeadTraining(officer, game))
                 .OrderByDescending(officer => officer.ForceRank)
                 .FirstOrDefault();
             if (selectedTrainer == null)
@@ -122,7 +132,12 @@ namespace Rebellion.Game.Missions
                 .All(officer => officer.ForceRank < selectedTrainer.ForceRank);
         }
 
-        private static bool IsAvailableJedi(Officer officer)
+        /// <summary>
+        /// Returns whether an officer can participate in Jedi training.
+        /// </summary>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <returns>True when the officer is a known, active Jedi.</returns>
+        private static bool CanParticipateInTraining(Officer officer)
         {
             return officer?.IsJedi == true
                 && officer.IsForceEligible
@@ -130,9 +145,16 @@ namespace Rebellion.Game.Missions
                 && !officer.IsKilled;
         }
 
-        private static bool IsTrainer(Officer officer, GameRoot game)
+        /// <summary>
+        /// Returns whether an officer is qualified to lead Jedi training.
+        /// </summary>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="game">The game state containing the trainer rank threshold.</param>
+        /// <returns>True when the officer can participate and qualifies as a trainer.</returns>
+        internal static bool CanLeadTraining(Officer officer, GameRoot game)
         {
-            return IsAvailableJedi(officer)
+            return game != null
+                && CanParticipateInTraining(officer)
                 && officer.IsJediTrainer
                 && officer.ForceRank >= game.Config.Jedi.ForceQualifiedThreshold;
         }
@@ -152,14 +174,14 @@ namespace Rebellion.Game.Missions
                 return MissionCompletionReason.TargetUnavailable;
 
             Officer trainer = Trainer;
-            if (!IsTrainer(trainer, game))
+            if (!CanLeadTraining(trainer, game))
                 return MissionCompletionReason.Failure;
 
             int officerCount = MainParticipants.OfType<Officer>().Count();
             return
                 officerCount == MainParticipants.Count
                 && officerCount >= 2
-                && MainParticipants.OfType<Officer>().All(IsAvailableJedi)
+                && MainParticipants.OfType<Officer>().All(CanParticipateInTraining)
                 ? null
                 : MissionCompletionReason.Failure;
         }
@@ -172,6 +194,12 @@ namespace Rebellion.Game.Missions
         /// <returns>Always 0.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
+        /// <summary>
+        /// Resolves one training attempt for each selected officer and completes the mission.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random number provider used for training rolls.</param>
+        /// <returns>The training progress results followed by the mission completion result.</returns>
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
@@ -198,6 +226,14 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <summary>
+        /// Attempts to improve one officer's Force training adjustment toward the trainer's rank.
+        /// </summary>
+        /// <param name="officer">The officer receiving training.</param>
+        /// <param name="trainer">The officer leading the training.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random number provider used for the training rolls.</param>
+        /// <returns>The training result when progress was made; otherwise, null.</returns>
         private static ForceTrainingResult TrainOfficer(
             Officer officer,
             Officer trainer,

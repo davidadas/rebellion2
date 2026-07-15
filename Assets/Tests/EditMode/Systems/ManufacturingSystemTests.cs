@@ -2800,6 +2800,7 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = $"hs{i}",
                     OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 _game.AttachNode(ship, hostileFleet);
             }
@@ -2859,6 +2860,7 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = $"hs{i}",
                     OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 _game.AttachNode(ship, hostileFleet);
             }

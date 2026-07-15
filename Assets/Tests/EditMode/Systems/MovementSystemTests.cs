@@ -2416,6 +2416,13 @@ namespace Rebellion.Tests.Systems
             // Hostile fleet creates the blockade
             Fleet hostile = EntityFactory.CreateFleet("hostile", "rebels");
             game.AttachNode(hostile, origin);
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileShip, hostile);
 
             Assert.IsTrue(origin.IsBlockaded());
 

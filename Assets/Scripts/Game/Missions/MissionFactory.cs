@@ -168,6 +168,8 @@ namespace Rebellion.Game.Missions
             {
                 if (
                     missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
+                    || missionParticipant.IsOnMission()
+                    || !missionParticipant.IsMovable()
                     || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
                 )
                     return false;

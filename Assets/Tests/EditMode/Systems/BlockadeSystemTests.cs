@@ -47,8 +47,22 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
             game.AttachNode(hostileFleet, planet);
+            AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
 
             return (game, planet, hostileFleet);
+        }
+
+        private static void AttachOperationalCapitalShip(GameRoot game, Fleet fleet, string id)
+        {
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    OwnerInstanceID = fleet.OwnerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
         }
 
         [Test]
@@ -111,6 +125,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
             };
             game.AttachNode(defenderFleet, planet);
+            AttachOperationalCapitalShip(game, defenderFleet, "defender-ship");
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -181,6 +196,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(safe, sys2);
             game.AttachNode(hostile, blockaded);
             game.AttachNode(defender, safe);
+            AttachOperationalCapitalShip(game, hostile, "hostile-ship");
+            AttachOperationalCapitalShip(game, defender, "defender-ship");
 
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
             List<GameResult> results = manager.ProcessTick();

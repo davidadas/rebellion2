@@ -64,8 +64,8 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Checks if the planet is blockaded.
-        /// A planet is blockaded only when stationary hostile fleets are present and no stationary
-        /// defending fleets exist.
+        /// A planet is blockaded only when a stationary hostile fleet has an operational capital
+        /// ship and no equivalent defending fleet is present.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
@@ -75,10 +75,14 @@ namespace Rebellion.Game.Galaxy
                 return false;
 
             bool hasHostile = Fleets.Any(f =>
-                f.Movement == null && f.OwnerInstanceID != OwnerInstanceID
+                f.Movement == null
+                && f.OwnerInstanceID != OwnerInstanceID
+                && f.HasOperationalCapitalShips()
             );
             bool hasDefender = Fleets.Any(f =>
-                f.Movement == null && f.OwnerInstanceID == OwnerInstanceID
+                f.Movement == null
+                && f.OwnerInstanceID == OwnerInstanceID
+                && f.HasOperationalCapitalShips()
             );
 
             return hasHostile && !hasDefender;

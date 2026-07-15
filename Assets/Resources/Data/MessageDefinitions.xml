@@ -45,11 +45,11 @@
     <VoicePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_alliance</Value>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_units_arrive_empire</Value>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
       </Entry>
     </VoicePaths>
     <ImageKey>mission_report</ImageKey>
