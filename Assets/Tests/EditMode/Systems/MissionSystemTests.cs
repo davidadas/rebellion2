@@ -1621,6 +1621,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(sf);
             sf.SetParent(mission);
+            string missionInstanceID = mission.InstanceID;
 
             MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
 
@@ -1631,6 +1632,47 @@ namespace Rebellion.Tests.Systems
                 results.Any(r => r is GameObjectDestroyedResult),
                 "Should produce GameObjectDestroyedResult for destroyed SpecialForces"
             );
+            Assert.IsTrue(
+                results.All(result => result.MissionInstanceID == missionInstanceID),
+                "Every result produced while advancing a mission should identify that mission"
+            );
+        }
+
+        [Test]
+        public void AbortMission_ActiveMission_ReturnsParticipantAndDetachesMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.OriginInstanceID = planet.InstanceID;
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            bool aborted = system.AbortMission(mission.InstanceID);
+
+            Assert.IsTrue(aborted);
+            Assert.AreEqual(planet, officer.GetParent());
+            Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
+        public void AbortMission_ParticipantInTransit_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            officer.Movement = new MovementState { TransitTicks = 10 };
+            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+
+            bool aborted = system.AbortMission(mission.InstanceID);
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(mission, officer.GetParent());
+            Assert.AreEqual(planet, mission.GetParent());
         }
 
         [Test]
@@ -1660,6 +1702,47 @@ namespace Rebellion.Tests.Systems
                 ((ResearchMission)mission).Discipline
             );
             Assert.AreEqual(planet, mission.GetParent());
+        }
+
+        [TestCase(0, 60)]
+        [TestCase(30, 90)]
+        public void InitiateMission_JediTraining_UsesConfiguredExecutionRange(
+            int rolledSpread,
+            int expectedTicks
+        )
+        {
+            (GameRoot game, Planet planet, Officer trainer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            trainer.IsJedi = true;
+            trainer.IsJediTrainer = true;
+            trainer.IsForceEligible = true;
+            trainer.ForceValue = 120;
+            Officer student = EntityFactory.CreateOfficer("student", "empire");
+            student.IsJedi = true;
+            student.IsForceEligible = true;
+            student.ForceValue = 40;
+            game.AttachNode(student, planet);
+            MissionSystem system = new MissionSystem(
+                game,
+                new SequenceRNG(intValues: new[] { rolledSpread }),
+                movement
+            );
+
+            bool created = system.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.JediTraining,
+                    new List<IMissionParticipant> { trainer, student },
+                    new List<IMissionParticipant>(),
+                    planet
+                )
+            );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(
+                expectedTicks,
+                game.GetSceneNodesByType<JediTrainingMission>().Single().MaxProgress
+            );
         }
 
         [Test]

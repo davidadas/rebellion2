@@ -661,6 +661,7 @@ namespace Rebellion.Game.Missions
             return new MissionCompletedResult
             {
                 Mission = this,
+                MissionInstanceID = InstanceID,
                 MissionName = DisplayName,
                 MissionTypeID = TypeID,
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,

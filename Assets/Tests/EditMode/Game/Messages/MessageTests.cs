@@ -56,6 +56,7 @@ namespace Rebellion.Tests.Game.Messages
                 InstanceID = "MSG1",
                 DisplayImageKey = "mission_report",
                 OverlayImagePath = "overlay-card",
+                MissionInstanceID = "mission-1",
                 Read = true,
             };
 
@@ -91,6 +92,11 @@ namespace Rebellion.Tests.Game.Messages
                 message.OverlayImagePath,
                 deserialized.OverlayImagePath,
                 "OverlayImagePath should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.MissionInstanceID,
+                deserialized.MissionInstanceID,
+                "MissionInstanceID should be correctly deserialized."
             );
         }
     }

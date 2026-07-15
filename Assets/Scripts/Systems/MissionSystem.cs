@@ -197,6 +197,26 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Aborts an active mission and returns its participants to their mission origin.
+        /// </summary>
+        /// <param name="missionInstanceID">The instance ID of the mission to abort.</param>
+        /// <returns>True when the mission was found and aborted.</returns>
+        public bool AbortMission(string missionInstanceID)
+        {
+            if (string.IsNullOrEmpty(missionInstanceID))
+                return false;
+
+            Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
+            if (mission == null)
+                return false;
+            if (mission.IsWaitingForParticipants())
+                return false;
+
+            TearDownMission(mission, null);
+            return true;
+        }
+
+        /// <summary>
         /// Resolves a mission start request against live scene graph objects.
         /// </summary>
         /// <param name="request">The mission start request to resolve.</param>
@@ -305,7 +325,11 @@ namespace Rebellion.Systems
         /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
         {
-            return AdvanceMission(mission);
+            List<GameResult> results = AdvanceMission(mission);
+            foreach (GameResult result in results)
+                result.MissionInstanceID = mission.InstanceID;
+
+            return results;
         }
 
         /// <summary>

@@ -38,12 +38,8 @@ namespace Rebellion.Systems
 
             // Update discovery state for all officers.
             foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
-            {
-                if (!officer.IsJedi || !officer.IsForceEligible)
-                    continue;
-
                 UpdateForceDiscoveryState(officer, results);
-            }
+
             // Scan for hidden force users at each active scanner's location.
             ScanForHiddenForceUsers(results);
 
@@ -92,7 +88,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Sets or clears IsDiscoveringForceUser based on whether the officer meets the
+        /// Sets or clears IsDiscoveringForceUser based on whether a Jedi trainer meets the
         /// ForceRank threshold and is available to scan.
         /// </summary>
         /// <param name="officer">The officer to evaluate.</param>
@@ -101,7 +97,10 @@ namespace Rebellion.Systems
         {
             int threshold = _game.Config.Jedi.DiscoveringForceUserThreshold;
             bool shouldDiscover =
-                officer.ForceRank >= threshold
+                officer.IsJedi
+                && officer.IsForceEligible
+                && officer.IsJediTrainer
+                && officer.ForceRank >= threshold
                 && !officer.IsCaptured
                 && !officer.IsKilled
                 && !officer.IsOnMission();
@@ -157,7 +156,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Scans one officer's current planet for hidden force users.
+        /// Scans one officer's current planet for hidden force users belonging to that officer's faction.
         /// </summary>
         /// <param name="scanner">The scanning officer.</param>
         /// <param name="results">Collection to append discovery results to.</param>
@@ -182,7 +181,12 @@ namespace Rebellion.Systems
         /// <returns>True when the candidate is discovered.</returns>
         private bool CanDiscoverForceUser(Officer scanner, Officer candidate)
         {
-            if (!candidate.IsUndiscoveredForceUser())
+            string scannerOwnerInstanceID = scanner.GetOwnerInstanceID();
+            if (
+                string.IsNullOrEmpty(scannerOwnerInstanceID)
+                || candidate.GetOwnerInstanceID() != scannerOwnerInstanceID
+                || !candidate.IsUndiscoveredForceUser()
+            )
                 return false;
 
             int probability =
@@ -222,6 +226,7 @@ namespace Rebellion.Systems
                 {
                     EventType = ForceEventType.ForceUserDiscovered,
                     Officer = candidate,
+                    Discoverer = scanner,
                     ForceRank = candidate.ForceRank,
                     Tick = _game.CurrentTick,
                 }

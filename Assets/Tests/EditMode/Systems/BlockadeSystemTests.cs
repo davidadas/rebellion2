@@ -47,14 +47,28 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
             game.AttachNode(hostileFleet, planet);
+            AttachOperationalCapitalShip(game, hostileFleet, "hostile-ship");
 
             return (game, planet, hostileFleet);
+        }
+
+        private static void AttachOperationalCapitalShip(GameRoot game, Fleet fleet, string id)
+        {
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    OwnerInstanceID = fleet.OwnerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
         }
 
         [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
-            (GameRoot game, Planet planet, _) = BuildScene();
+            (GameRoot game, Planet planet, Fleet hostileFleet) = BuildScene();
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
 
             List<GameResult> results = manager.ProcessTick();
@@ -63,6 +77,24 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Blockaded);
             Assert.AreEqual(planet, result.Planet);
+            Assert.AreEqual(hostileFleet, result.BlockadingFleet);
+        }
+
+        [Test]
+        public void ProcessTick_HostileFleetInTransit_EmitsBlockadeOnlyAfterArrival()
+        {
+            (GameRoot game, _, Fleet hostileFleet) = BuildScene();
+            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
+
+            List<GameResult> inTransitResults = manager.ProcessTick();
+            hostileFleet.Movement = null;
+            List<GameResult> arrivalResults = manager.ProcessTick();
+
+            Assert.IsFalse(inTransitResults.OfType<BlockadeChangedResult>().Any());
+            BlockadeChangedResult result = arrivalResults.OfType<BlockadeChangedResult>().Single();
+            Assert.IsTrue(result.Blockaded);
+            Assert.AreEqual(hostileFleet, result.BlockadingFleet);
         }
 
         [Test]
@@ -93,6 +125,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
             };
             game.AttachNode(defenderFleet, planet);
+            AttachOperationalCapitalShip(game, defenderFleet, "defender-ship");
 
             List<GameResult> results = manager.ProcessTick();
 
@@ -163,6 +196,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(safe, sys2);
             game.AttachNode(hostile, blockaded);
             game.AttachNode(defender, safe);
+            AttachOperationalCapitalShip(game, hostile, "hostile-ship");
+            AttachOperationalCapitalShip(game, defender, "defender-ship");
 
             BlockadeSystem manager = new BlockadeSystem(game, new StubRNG());
             List<GameResult> results = manager.ProcessTick();

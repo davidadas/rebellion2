@@ -272,12 +272,6 @@ namespace Rebellion.Tests.Systems
                 _coruscant.GetManufacturingQueue();
             Assert.AreEqual(0, queue[ManufacturingType.Building].Count);
             Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
-            ManufacturingCompletedResult completed = results
-                .OfType<ManufacturingCompletedResult>()
-                .FirstOrDefault();
-            Assert.IsNotNull(completed);
-            Assert.AreEqual(mine, completed.GameObject);
-            Assert.AreEqual(_empire, completed.Faction);
             ManufacturingDeployedResult deployed = results
                 .OfType<ManufacturingDeployedResult>()
                 .FirstOrDefault();
@@ -2549,6 +2543,49 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_BuildingForOwnedUncolonizedPlanet_ColonizesOnArrival()
+        {
+            PlanetSystem system = _coruscant.GetParentOfType<PlanetSystem>();
+            Planet destination = new Planet
+            {
+                InstanceID = "OUTER_RIM",
+                OwnerInstanceID = "EMPIRE",
+                IsColonized = false,
+                EnergyCapacity = 5,
+            };
+            _game.AttachNode(destination, system);
+            _game.AttachNode(
+                new Regiment { InstanceID = "GARRISON", OwnerInstanceID = "EMPIRE" },
+                destination
+            );
+
+            Building mine = new Building
+            {
+                InstanceID = "OUTER_RIM_MINE",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Mine,
+            };
+
+            bool enqueued = _manager.Enqueue(_coruscant, mine, destination, ignoreCost: true);
+            _manager.ProcessTick();
+
+            Assert.IsTrue(enqueued);
+            Assert.IsFalse(destination.IsColonized);
+            Assert.IsNotNull(mine.Movement);
+
+            int transitTicks = mine.Movement.TransitTicks;
+            for (int i = 0; i < transitTicks; i++)
+            {
+                _movement.ProcessTick();
+            }
+
+            Assert.IsNull(mine.Movement);
+            Assert.IsTrue(destination.IsColonized);
+            Assert.AreSame(destination, mine.GetParent());
+        }
+
+        [Test]
         public void ProcessTick_BuildingCompleteDestinationChangedSides_RedirectsToProductionPlanet()
         {
             // Mine queued from planetA to planetB. planetB captured before completion.
@@ -2763,6 +2800,7 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = $"hs{i}",
                     OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 _game.AttachNode(ship, hostileFleet);
             }
@@ -2822,6 +2860,7 @@ namespace Rebellion.Tests.Systems
                 {
                     InstanceID = $"hs{i}",
                     OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
                 };
                 _game.AttachNode(ship, hostileFleet);
             }
@@ -3598,7 +3637,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LastItemCompletes_EmitsCompletedResult()
+        public void ProcessTick_LastItemCompletes_EmitsIdleResult()
         {
             Building mine = new Building
             {
@@ -3614,11 +3653,14 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
             List<GameResult> results = _manager.ProcessTick();
 
-            Assert.IsTrue(results.OfType<ManufacturingCompletedResult>().Any());
+            ManufacturingIdleResult idle = results.OfType<ManufacturingIdleResult>().Single();
+            Assert.AreEqual(_empire, idle.Faction);
+            Assert.AreEqual(_coruscant, idle.ProductionPlanet);
+            Assert.AreEqual(ManufacturingType.Building, idle.ManufacturingType);
         }
 
         [Test]
-        public void ProcessTick_FirstOfTwoItemsCompletes_DoesNotEmitCompletedResult()
+        public void ProcessTick_FirstOfTwoItemsCompletes_DoesNotEmitIdleResult()
         {
             Building mine1 = new Building
             {
@@ -3650,8 +3692,8 @@ namespace Rebellion.Tests.Systems
                 "deployed should fire for completed item"
             );
             Assert.IsFalse(
-                results.OfType<ManufacturingCompletedResult>().Any(),
-                "completed should not fire while queue still has items"
+                results.OfType<ManufacturingIdleResult>().Any(),
+                "idle should not fire while queue still has items"
             );
         }
 

@@ -34,12 +34,6 @@ namespace Rebellion.Game.Missions
                 OfficerRating.Espionage
             ),
             new MissionOption(
-                EspionageMission.MissionTypeID,
-                "Espionage",
-                OfficerRating.Espionage,
-                OfficerRating.Espionage
-            ),
-            new MissionOption(
                 AbductionMission.MissionTypeID,
                 "Abduction",
                 OfficerRating.Combat,
@@ -90,6 +84,12 @@ namespace Rebellion.Game.Missions
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
                 OfficerRating.Diplomacy
+            ),
+            new MissionOption(
+                EspionageMission.MissionTypeID,
+                "Espionage",
+                OfficerRating.Espionage,
+                OfficerRating.Espionage
             ),
         };
 
@@ -168,6 +168,8 @@ namespace Rebellion.Game.Missions
             {
                 if (
                     missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
+                    || missionParticipant.IsOnMission()
+                    || !missionParticipant.IsMovable()
                     || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
                 )
                     return false;

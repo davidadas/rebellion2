@@ -131,7 +131,9 @@ namespace Rebellion.Systems
                     {
                         Planet = planet,
                         BlockadingFleet = planet.Fleets.FirstOrDefault(f =>
-                            f.OwnerInstanceID != planet.OwnerInstanceID
+                            f.Movement == null
+                            && f.OwnerInstanceID != planet.OwnerInstanceID
+                            && f.HasOperationalCapitalShips()
                         ),
                         Blockaded = true,
                         Tick = _game.CurrentTick,

@@ -21,8 +21,7 @@ namespace Rebellion.Tests.Game.Missions
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = TestConfig.Create();
-            _game = new GameRoot(config);
+            _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
@@ -36,42 +35,41 @@ namespace Rebellion.Tests.Game.Missions
             };
             _game.AttachNode(_planet, system);
 
-            _trainer = EntityFactory.CreateOfficer("trainer", "rebels");
-            _trainer.IsJedi = true;
-            _trainer.IsJediTrainer = true;
-            _trainer.IsForceEligible = true;
-            _trainer.ForceValue = 120;
-            _game.AttachNode(_trainer, _planet);
-
-            _student = EntityFactory.CreateOfficer("student", "rebels");
-            _student.IsJedi = true;
-            _student.IsForceEligible = true;
-            _student.ForceValue = 40;
-            _student.JediProbability = 100;
-            _game.AttachNode(_student, _planet);
+            _trainer = CreateJedi("trainer", 120, isTrainer: true);
+            _student = CreateJedi("student", 40);
         }
 
-        private Mission CreateMission(Officer student = null, Planet planet = null)
+        private Officer CreateJedi(string instanceID, int forceValue, bool isTrainer = false)
         {
-            student = student ?? _student;
-            return CreateMission(new List<IMissionParticipant> { student }, planet);
+            Officer officer = EntityFactory.CreateOfficer(instanceID, "rebels");
+            officer.IsJedi = true;
+            officer.IsJediTrainer = isTrainer;
+            officer.IsForceEligible = true;
+            officer.ForceValue = forceValue;
+            _game.AttachNode(officer, _planet);
+            return officer;
         }
 
-        private Mission CreateMission(List<IMissionParticipant> students, Planet planet = null)
+        private JediTrainingMission CreateMission(
+            List<IMissionParticipant> participants = null,
+            Planet planet = null
+        )
         {
-            planet = planet ?? _planet;
+            participants ??= new List<IMissionParticipant> { _trainer, _student };
+            planet ??= _planet;
 
             Mission mission = MissionTestFactory.TryCreate(
                 MissionTypeIDs.JediTraining,
                 _game,
                 "rebels",
                 planet,
-                students,
+                participants,
                 new List<IMissionParticipant>()
             );
             if (mission != null)
                 _game.AttachNode(mission, planet);
-            return mission;
+
+            return mission as JediTrainingMission;
         }
 
         [Test]
@@ -79,169 +77,203 @@ namespace Rebellion.Tests.Game.Missions
         {
             _planet.OwnerInstanceID = "empire";
 
-            Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.JediTraining,
-                _game,
-                "rebels",
-                _planet,
-                new List<IMissionParticipant> { _student },
-                new List<IMissionParticipant>()
-            );
-            Assert.IsNull(mission);
+            Assert.IsNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_NoStudents_ReturnsNull()
+        public void TryCreate_NoParticipants_ReturnsNull()
         {
-            Mission mission = CreateMission(new List<IMissionParticipant>());
-            Assert.IsNull(mission);
+            Assert.IsNull(CreateMission(new List<IMissionParticipant>()));
         }
 
         [Test]
-        public void TryCreate_NonOfficerStudent_ReturnsNull()
+        public void TryCreate_TrainerOnly_ReturnsNull()
         {
-            SpecialForces spec = new SpecialForces
+            Assert.IsNull(CreateMission(new List<IMissionParticipant> { _trainer }));
+        }
+
+        [Test]
+        public void TryCreate_StudentOnly_ReturnsNull()
+        {
+            Assert.IsNull(CreateMission(new List<IMissionParticipant> { _student }));
+        }
+
+        [Test]
+        public void TryCreate_NonOfficerParticipant_ReturnsNull()
+        {
+            SpecialForces specialForces = new SpecialForces
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = "rebels",
             };
-            _game.AttachNode(spec, _planet);
+            _game.AttachNode(specialForces, _planet);
 
-            Mission mission = CreateMission(new List<IMissionParticipant> { spec });
-            Assert.IsNull(mission);
+            Assert.IsNull(
+                CreateMission(new List<IMissionParticipant> { _trainer, _student, specialForces })
+            );
         }
 
         [Test]
-        public void TryCreate_NonJediStudent_ReturnsNull()
+        public void TryCreate_ParticipantWithoutKnownForceAbility_ReturnsNull()
         {
-            Officer nonJedi = EntityFactory.CreateOfficer("nonjedi", "rebels");
-            nonJedi.IsJedi = false;
-            nonJedi.IsForceEligible = true;
-            _game.AttachNode(nonJedi, _planet);
+            _student.IsForceEligible = false;
 
-            Mission mission = CreateMission(nonJedi);
-            Assert.IsNull(mission);
+            Assert.IsNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_NonForceEligibleStudent_ReturnsNull()
+        public void TryCreate_NonJediParticipant_ReturnsNull()
         {
-            Officer dormant = EntityFactory.CreateOfficer("dormant", "rebels");
-            dormant.IsJedi = true;
-            dormant.IsForceEligible = false;
-            _game.AttachNode(dormant, _planet);
+            _student.IsJedi = false;
 
-            Mission mission = CreateMission(dormant);
-            Assert.IsNull(mission);
+            Assert.IsNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_SelectedTrainerWithoutSeparateStudent_ReturnsNull()
+        public void TryCreate_TrainerBelowQualifiedThreshold_ReturnsNull()
         {
-            Mission mission = CreateMission(_trainer);
-            Assert.IsNull(mission);
+            _trainer.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
+
+            Assert.IsNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_StudentAlreadyAtTrainerRank_ReturnsNull()
+        public void TryCreate_ParticipantAtTrainerRank_ReturnsNull()
         {
             _student.ForceValue = _trainer.ForceRank;
 
-            Mission mission = CreateMission();
-
-            Assert.IsNull(mission);
+            Assert.IsNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_MultipleStudentsWithFinishedStudent_ReturnsNull()
+        public void TryCreate_QualifiedParticipantBelowTrainer_ReturnsMission()
         {
-            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
-            student2.IsJedi = true;
-            student2.IsForceEligible = true;
-            student2.ForceValue = 30;
-            _game.AttachNode(student2, _planet);
             _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
 
-            Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
-
-            Assert.IsNull(mission);
+            Assert.IsNotNull(CreateMission());
         }
 
         [Test]
-        public void TryCreate_ValidArgs_SetsTrainerInstanceID()
+        public void TryCreate_MultipleTrainers_SelectsHighestRankedTrainer()
         {
-            Mission mission = CreateMission();
-            Assert.AreEqual(_trainer.InstanceID, ((JediTrainingMission)mission).TrainerInstanceID);
+            Officer higherTrainer = CreateJedi("higher-trainer", 160, isTrainer: true);
+
+            JediTrainingMission mission = CreateMission(
+                new List<IMissionParticipant> { _trainer, _student, higherTrainer }
+            );
+
+            Assert.AreEqual(higherTrainer.InstanceID, mission.TrainerInstanceID);
         }
 
         [Test]
-        public void OnSuccess_StudentBelowTrainer_GainsTrainingAdjustment()
+        public void TryCreate_ValidTeam_StoresSelectedTrainerAndTeam()
         {
-            Mission mission = CreateMission();
-            mission.Initiate(0);
-            mission.SetExecutionTick(0);
+            JediTrainingMission mission = CreateMission();
 
-            // QueueRNG(0.0, 0.99): first value passes the success roll,
-            // second value (0.99) makes NextInt return near-max of catch-up range
-            mission.Execute(_game, new QueueRNG(0.0, 0.99));
-
-            Assert.Greater(_student.ForceTrainingAdjustment, 0);
+            Assert.AreEqual(_trainer.InstanceID, mission.TrainerInstanceID);
+            Assert.AreEqual(_trainer, mission.Trainer);
+            CollectionAssert.AreEqual(
+                new IMissionParticipant[] { _trainer, _student },
+                mission.MainParticipants
+            );
         }
 
         [Test]
-        public void OnSuccess_StudentAboveTrainer_NoAdjustment()
+        public void Execute_IndependentParticipantRolls_TrainsOnlySuccessfulParticipant()
         {
-            Mission mission = CreateMission();
-            _student.ForceValue = 150;
-            mission.Initiate(0);
-            mission.SetExecutionTick(0);
+            Officer secondStudent = CreateJedi("student2", 30);
+            JediTrainingMission mission = CreateMission(
+                new List<IMissionParticipant> { _trainer, _student, secondStudent }
+            );
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            List<GameResult> results = mission.Execute(
+                _game,
+                new SequenceRNG(intValues: new[] { 0, 0, 20, 99 })
+            );
 
+            ForceTrainingResult training = results.OfType<ForceTrainingResult>().Single();
+            Assert.AreEqual(_student, training.Officer);
+            Assert.AreEqual(20, training.Progress);
+            Assert.AreEqual(20, _student.ForceTrainingAdjustment);
+            Assert.AreEqual(0, secondStudent.ForceTrainingAdjustment);
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void Execute_PassedTrainingRollWithZeroProgress_ReturnsFailedReport()
+        {
+            JediTrainingMission mission = CreateMission();
+
+            List<GameResult> results = mission.Execute(
+                _game,
+                new SequenceRNG(intValues: new[] { 0, 0, 0 })
+            );
+
+            Assert.IsEmpty(results.OfType<ForceTrainingResult>());
             Assert.AreEqual(0, _student.ForceTrainingAdjustment);
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
         }
 
         [Test]
-        public void Execute_Success_DoesNotAwardSkillImprovements()
+        public void Execute_FailedTrainingRoll_ReturnsFailedReport()
         {
-            int diplomacyBefore = _student.Ratings[OfficerRating.Diplomacy];
-            Mission mission = CreateMission();
-            mission.Initiate(0);
-            mission.SetExecutionTick(0);
+            JediTrainingMission mission = CreateMission();
 
-            mission.Execute(_game, new FixedRNG(0.0));
+            List<GameResult> results = mission.Execute(
+                _game,
+                new SequenceRNG(intValues: new[] { 0, 99 })
+            );
 
-            Assert.AreEqual(diplomacyBefore, _student.Ratings[OfficerRating.Diplomacy]);
+            Assert.IsEmpty(results.OfType<ForceTrainingResult>());
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
+        [Test]
+        public void Execute_TrainingProgress_DoesNotImproveDiplomacyRating()
+        {
+            int trainerDiplomacy = _trainer.GetBaseRating(OfficerRating.Diplomacy);
+            int studentDiplomacy = _student.GetBaseRating(OfficerRating.Diplomacy);
+            JediTrainingMission mission = CreateMission();
+
+            mission.Execute(_game, new SequenceRNG(intValues: new[] { 0, 0, 20 }));
+
+            Assert.AreEqual(trainerDiplomacy, _trainer.GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(studentDiplomacy, _student.GetBaseRating(OfficerRating.Diplomacy));
         }
 
         [Test]
         public void GetAbortReason_TrainerCaptured_ReturnsFailure()
         {
-            Mission mission = CreateMission();
+            JediTrainingMission mission = CreateMission();
             _trainer.IsCaptured = true;
+
             Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
-        public void GetAbortReason_TrainerKilled_ReturnsFailure()
+        public void GetAbortReason_ParticipantKilled_ReturnsFailure()
         {
-            Mission mission = CreateMission();
-            _trainer.IsKilled = true;
-            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
-        }
+            JediTrainingMission mission = CreateMission();
+            _student.IsKilled = true;
 
-        [Test]
-        public void GetAbortReason_TrainerAlive_ReturnsNull()
-        {
-            Mission mission = CreateMission();
-            Assert.IsNull(mission.GetAbortReason(_game));
+            Assert.AreEqual(MissionCompletionReason.Failure, mission.GetAbortReason(_game));
         }
 
         [Test]
         public void GetAbortReason_PlanetLost_ReturnsTargetUnavailable()
         {
-            Mission mission = CreateMission();
+            JediTrainingMission mission = CreateMission();
             _planet.OwnerInstanceID = "empire";
+
             Assert.AreEqual(
                 MissionCompletionReason.TargetUnavailable,
                 mission.GetAbortReason(_game)
@@ -249,116 +281,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ShouldRepeatAfterCompletion_StudentForceQualified_ReturnsFalse()
+        public void ShouldRepeatAfterCompletion_ValidAssignment_ReturnsFalse()
         {
-            Mission mission = CreateMission();
-            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
+            JediTrainingMission mission = CreateMission();
+
             Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_StudentBelowForceQualified_ReturnsTrue()
-        {
-            Mission mission = CreateMission();
-            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold - 1;
-            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_PlanetLost_ReturnsFalse()
-        {
-            Mission mission = CreateMission();
-            _planet.OwnerInstanceID = "empire";
-            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
-        }
-
-        [Test]
-        public void OnSuccess_StudentBelowTrainer_ReturnsForceTrainingResult()
-        {
-            Mission mission = CreateMission();
-            mission.Initiate(0);
-            mission.SetExecutionTick(0);
-
-            List<GameResult> results = mission.Execute(_game, new QueueRNG(0.0, 0.99));
-
-            Assert.IsTrue(
-                results.Any(r => r is ForceTrainingResult),
-                "Should return a ForceTrainingResult on successful training"
-            );
-
-            ForceTrainingResult trainingResult = results.OfType<ForceTrainingResult>().First();
-            Assert.AreEqual(_student, trainingResult.Officer);
-            Assert.Greater(trainingResult.Progress, 0);
-        }
-
-        [Test]
-        public void OnSuccess_MultipleStudents_TrainsAll()
-        {
-            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
-            student2.IsJedi = true;
-            student2.IsForceEligible = true;
-            student2.ForceValue = 30;
-            student2.JediProbability = 100;
-            _game.AttachNode(student2, _planet);
-
-            Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
-            mission.Initiate(0);
-            mission.SetExecutionTick(0);
-
-            // 0.0 passes the success roll (first student triggers early return),
-            // 0.5 gives mid-range catch-up for student1,
-            // 0.5 gives mid-range catch-up for student2
-            mission.Execute(_game, new QueueRNG(0.0, 0.5, 0.5));
-
-            Assert.Greater(
-                _student.ForceTrainingAdjustment,
-                0,
-                "First student should gain training adjustment"
-            );
-            Assert.Greater(
-                student2.ForceTrainingAdjustment,
-                0,
-                "Second student should gain training adjustment"
-            );
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_MultipleStudentsOneQualified_ReturnsTrue()
-        {
-            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
-            student2.IsJedi = true;
-            student2.IsForceEligible = true;
-            student2.ForceValue = 10;
-            _game.AttachNode(student2, _planet);
-
-            Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
-
-            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
-
-            Assert.IsTrue(
-                mission.ShouldRepeatAfterCompletion(_game),
-                "Should repeat while any student is below threshold"
-            );
-        }
-
-        [Test]
-        public void ShouldRepeatAfterCompletion_MultipleStudentsAllQualified_ReturnsFalse()
-        {
-            Officer student2 = EntityFactory.CreateOfficer("student2", "rebels");
-            student2.IsJedi = true;
-            student2.IsForceEligible = true;
-            student2.ForceValue = 10;
-            _game.AttachNode(student2, _planet);
-
-            Mission mission = CreateMission(new List<IMissionParticipant> { _student, student2 });
-
-            _student.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
-            student2.ForceValue = _game.Config.Jedi.ForceQualifiedThreshold;
-
-            Assert.IsFalse(
-                mission.ShouldRepeatAfterCompletion(_game),
-                "Should stop when all students are qualified"
-            );
         }
     }
 }

@@ -214,6 +214,62 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_PersonnelArrivalsWithSameMovementGroup_UsesPersonnelReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Officer firstOfficer = new Officer
+            {
+                InstanceID = "officer-1",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "luke-card",
+            };
+            Officer secondOfficer = new Officer
+            {
+                InstanceID = "officer-2",
+                DisplayName = "Han Solo",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "han-card",
+            };
+            game.AttachNode(firstOfficer, destination);
+            game.AttachNode(secondOfficer, destination);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PersonnelArrived,
+                        MessageType.Mission,
+                        "personnel:{system}",
+                        "body:{personnel}",
+                        imageKey: "mission_report"
+                    ),
+                },
+                new UnitArrivedResult
+                {
+                    Unit = firstOfficer,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                },
+                new UnitArrivedResult
+                {
+                    Unit = secondOfficer,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                }
+            );
+
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual(MessageType.Mission, message.Type);
+            Assert.AreEqual("personnel:Yavin", message.Title);
+            Assert.AreEqual("body:Luke Skywalker\nHan Solo", message.Body);
+            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("luke-card", message.OverlayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_DetachedShipArrival_CreatesArrivalDelivery()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
@@ -621,7 +677,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_ManufacturingCompleted_UsesQueueTypeDefinition()
+        public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
@@ -639,10 +695,10 @@ namespace Rebellion.Tests.Game.Messages
                             manufacturingType: ManufacturingType.Building
                         ),
                     },
-                    new ManufacturingCompletedResult
+                    new ManufacturingIdleResult
                     {
                         Faction = alliance,
-                        ProductType = ManufacturingType.Building,
+                        ManufacturingType = ManufacturingType.Building,
                         ProductionPlanet = origin,
                     }
                 ),
@@ -694,6 +750,46 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("success:Sabotage:Yavin", message.Title);
             Assert.AreEqual("body:Sabotage:Yavin", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_ContinuingMissionReport_CarriesMissionInstanceID()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "mission-1",
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "success",
+                            "body",
+                            outcome: MessageResultOutcome.Success
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionInstanceID = mission.InstanceID,
+                        MissionName = "Sabotage",
+                        Outcome = MissionOutcome.Success,
+                        CanContinue = true,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
         }
 
         [Test]
@@ -938,26 +1034,20 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_MissionReportWithParticipants_UsesFirstParticipantImageOverlay()
+        public void CreateMessages_ReconnaissanceReportWithSpecialForces_UsesReconUnitImageOverlay()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
-            Mission mission = new DiplomacyMission
+            Mission mission = new ReconnaissanceMission
             {
-                ConfigKey = MissionTypeIDs.Diplomacy,
-                DisplayName = "Diplomacy",
+                ConfigKey = MissionTypeIDs.Reconnaissance,
+                DisplayName = "Reconnaissance",
                 OwnerInstanceID = alliance.InstanceID,
             };
-            Officer firstParticipant = new Officer
+            SpecialForces reconUnit = new SpecialForces
             {
-                DisplayName = "First",
+                DisplayName = "Longprobe Y-wing Recon Team",
                 OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath = "first-card",
-            };
-            Officer secondParticipant = new Officer
-            {
-                DisplayName = "Second",
-                OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath = "second-card",
+                MessageImagePath = "recon-unit-image",
             };
             game.AttachNode(mission, target);
 
@@ -969,30 +1059,91 @@ namespace Rebellion.Tests.Game.Messages
                         Definition(
                             MessageResultType.MissionReport,
                             MessageType.Mission,
-                            "failed:{mission}:{system}",
+                            "success:{mission}:{system}",
                             "body:{mission}:{system}",
-                            DefaultImage("diplomacy-image"),
-                            outcome: MessageResultOutcome.Failed,
-                            missionTypeID: MissionTypeIDs.Diplomacy
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeID: MissionTypeIDs.Reconnaissance,
+                            imageKey: "mission_report"
                         ),
                     },
                     new MissionCompletedResult
                     {
                         Mission = mission,
-                        MissionName = "Diplomacy",
-                        Outcome = MissionOutcome.Failed,
-                        Participants = new List<IMissionParticipant>
-                        {
-                            firstParticipant,
-                            secondParticipant,
-                        },
+                        MissionName = "Reconnaissance",
+                        MissionTypeID = MissionTypeIDs.Reconnaissance,
+                        Outcome = MissionOutcome.Success,
+                        Participants = new List<IMissionParticipant> { reconUnit },
                     }
                 ),
                 alliance
             );
 
-            Assert.AreEqual("diplomacy-image", message.DisplayImagePath);
-            Assert.AreEqual("first-card", message.OverlayImagePath);
+            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_JediTrainingReport_UsesTrainerAsReporter()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Officer student = new Officer
+            {
+                InstanceID = "student",
+                DisplayName = "Student",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "student-card",
+                MissionSuccessVoicePaths = new List<string> { "student-success" },
+            };
+            Officer trainer = new Officer
+            {
+                InstanceID = "trainer",
+                DisplayName = "Trainer",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "trainer-card",
+                MissionSuccessVoicePaths = new List<string> { "trainer-success" },
+            };
+            JediTrainingMission mission = new JediTrainingMission
+            {
+                ConfigKey = MissionTypeIDs.JediTraining,
+                DisplayName = "Jedi Training",
+                OwnerInstanceID = alliance.InstanceID,
+                TrainerInstanceID = trainer.InstanceID,
+                MainParticipants = new List<IMissionParticipant> { student, trainer },
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "report:{participant}",
+                            "body:{participant}",
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeID: MissionTypeIDs.JediTraining,
+                            imageKey: "mission_report"
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Jedi Training",
+                        MissionTypeID = MissionTypeIDs.JediTraining,
+                        Outcome = MissionOutcome.Success,
+                        Participants = new List<IMissionParticipant> { student, trainer },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("report:Trainer", message.Title);
+            Assert.AreEqual("body:Trainer", message.Body);
+            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("trainer-card", message.OverlayImagePath);
+            Assert.AreEqual("trainer-success", message.OfficerVoicePath);
         }
 
         [Test]
@@ -1443,35 +1594,77 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsEmpty(deliveries);
         }
 
-        [Test]
-        public void CreateMessages_ForceUserDiscovered_DoesNotUseForceGrowthMessage()
+        [TestCase(true, 0, "qualified")]
+        [TestCase(true, -1, "student")]
+        [TestCase(false, 0, "student")]
+        public void CreateMessages_ForceUserDiscovered_SelectsReportByTrainerQualification(
+            bool isJediTrainer,
+            int rankOffset,
+            string expectedTitle
+        )
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            Officer officer = new Officer
+            Officer discoverer = new Officer
+            {
+                DisplayName = "Discoverer",
+                InstanceID = "discoverer",
+                OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
+                IsForceEligible = true,
+                IsJediTrainer = isJediTrainer,
+                ForceValue = game.Config.Jedi.ForceQualifiedThreshold + rankOffset,
+                MessageImagePath = "discoverer-card",
+            };
+            Officer candidate = new Officer
             {
                 DisplayName = "Student",
                 InstanceID = "student",
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
                 ForceValue = game.Config.Jedi.RankLabelTrainee,
+                MessageImagePath = "student-card",
             };
-            game.AttachNode(officer, origin);
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(candidate, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
-                game,
-                new[]
-                {
-                    Definition(MessageResultType.ForceGrowth, MessageType.Mission, "force", "body"),
-                },
-                new ForceExperienceResult { Officer = officer, ExperienceGained = 5 },
-                new ForceDiscoveryResult
-                {
-                    EventType = ForceEventType.ForceUserDiscovered,
-                    Officer = officer,
-                }
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ForceGrowth,
+                            MessageType.Mission,
+                            "force",
+                            "growth"
+                        ),
+                        Definition(
+                            MessageResultType.ForceUserDiscovered,
+                            MessageType.Mission,
+                            "qualified",
+                            "discovered:{officer}"
+                        ),
+                        Definition(
+                            MessageResultType.ForceUserDiscoveredByStudent,
+                            MessageType.Mission,
+                            "student",
+                            "discovered:{officer}"
+                        ),
+                    },
+                    new ForceExperienceResult { Officer = candidate, ExperienceGained = 5 },
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.ForceUserDiscovered,
+                        Officer = candidate,
+                        Discoverer = discoverer,
+                    }
+                ),
+                alliance
             );
 
-            Assert.IsEmpty(deliveries);
+            Assert.AreEqual(expectedTitle, message.Title);
+            Assert.AreEqual("discovered:Student", message.Body);
+            Assert.AreEqual("discoverer-card", message.OverlayImagePath);
         }
 
         [Test]

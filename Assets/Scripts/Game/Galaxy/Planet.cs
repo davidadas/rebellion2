@@ -64,7 +64,8 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Checks if the planet is blockaded.
-        /// A planet is blockaded ONLY when hostile fleets are present AND no defending fleets exist.
+        /// A planet is blockaded only when a stationary hostile fleet has an operational capital
+        /// ship and no equivalent defending fleet is present.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
@@ -73,8 +74,16 @@ namespace Rebellion.Game.Galaxy
             if (string.IsNullOrEmpty(OwnerInstanceID))
                 return false;
 
-            bool hasHostile = Fleets.Any(f => f.OwnerInstanceID != OwnerInstanceID);
-            bool hasDefender = Fleets.Any(f => f.OwnerInstanceID == OwnerInstanceID);
+            bool hasHostile = Fleets.Any(f =>
+                f.Movement == null
+                && f.OwnerInstanceID != OwnerInstanceID
+                && f.HasOperationalCapitalShips()
+            );
+            bool hasDefender = Fleets.Any(f =>
+                f.Movement == null
+                && f.OwnerInstanceID == OwnerInstanceID
+                && f.HasOperationalCapitalShips()
+            );
 
             return hasHostile && !hasDefender;
         }
@@ -583,8 +592,8 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Calculates the production modifier applied when this planet is under blockade.
         /// Returns a value from 0 to 100, where 100 means no reduction and 0 means fully
-        /// suppressed. Each hostile capital ship and starfighter reduces the modifier by the
-        /// supplied penalty values.
+        /// suppressed. Each stationary hostile capital ship and starfighter reduces the modifier
+        /// by the supplied penalty values.
         /// </summary>
         /// <param name="capitalShipPenalty">Reduction per hostile capital ship.</param>
         /// <param name="fighterPenalty">Reduction per hostile starfighter.</param>
@@ -594,11 +603,17 @@ namespace Rebellion.Game.Galaxy
             string ownerId = GetOwnerInstanceID();
 
             int hostileCapitalShips = Fleets
-                .Where(f => f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != ownerId)
-                .Sum(f => f.CapitalShips.Count);
+                .Where(f =>
+                    f.Movement == null
+                    && f.GetOwnerInstanceID() != null
+                    && f.GetOwnerInstanceID() != ownerId
+                )
+                .Sum(f => f.CapitalShips.Count(ship => ship.Movement == null));
 
             int hostileFighters = Starfighters.Count(s =>
-                s.GetOwnerInstanceID() != null && s.GetOwnerInstanceID() != ownerId
+                s.Movement == null
+                && s.GetOwnerInstanceID() != null
+                && s.GetOwnerInstanceID() != ownerId
             );
 
             int modifier =
@@ -658,11 +673,11 @@ namespace Rebellion.Game.Galaxy
         /// Adds a building to the planet.
         /// </summary>
         /// <param name="building">The building to add.</param>
-        /// <exception cref="SceneAccessException">Thrown when the planet is not colonized or ownership is invalid.</exception>
+        /// <exception cref="SceneAccessException">Thrown when a completed building targets an uncolonized planet or ownership is invalid.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the planet is at capacity.</exception>
         private void AddBuilding(Building building)
         {
-            if (!IsColonized)
+            if (!IsColonized && building.ManufacturingStatus != ManufacturingStatus.Building)
                 throw new SceneAccessException(building, this);
 
             ValidateBuilding(building);
@@ -886,9 +901,9 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Returns true if this planet can accept the child. Fleets and Missions are always
-        /// accepted. Uncolonized planets only accept regiments, and claimed uncolonized planets
-        /// only accept their owner's regiments. Colonized planets accept surface children only
-        /// when ownership and capacity rules permit them.
+        /// accepted. Uncolonized planets accept regiments and facilities under construction;
+        /// claimed uncolonized planets only accept their owner's units. Colonized planets accept
+        /// surface children only when ownership and capacity rules permit them.
         /// </summary>
         /// <param name="child">The candidate child node.</param>
         /// <returns>True if AddChild would succeed; otherwise false.</returns>
@@ -912,7 +927,10 @@ namespace Rebellion.Game.Galaxy
                 case Starfighter starfighter:
                     return IsColonized && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
                 case Building building:
-                    return IsColonized
+                    return (
+                            IsColonized
+                            || building.ManufacturingStatus == ManufacturingStatus.Building
+                        )
                         && building.GetOwnerInstanceID() == GetOwnerInstanceID()
                         && GetAvailableEnergy() > 0;
                 default:

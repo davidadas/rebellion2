@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -22,6 +24,19 @@ namespace Rebellion.Tests.Game.Galaxy
                 EnergyCapacity = 5,
                 OwnerInstanceID = "FNALL1",
             };
+        }
+
+        private static Fleet CreateOperationalFleet(string ownerInstanceID)
+        {
+            Fleet fleet = new Fleet { OwnerInstanceID = ownerInstanceID };
+            fleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = ownerInstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            return fleet;
         }
 
         [Test]
@@ -103,12 +118,31 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddBuilding_UncolonizedPlanet_ThrowsException()
+        public void AddBuilding_CompletedBuildingOnUncolonizedPlanet_ThrowsException()
         {
             _planet.IsColonized = false;
-            Building building = new Building { OwnerInstanceID = "FNALL1" };
+            Building building = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
 
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(building));
+        }
+
+        [Test]
+        public void AddBuilding_UnderConstructionOnOwnedUncolonizedPlanet_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Building building = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            _planet.AddChild(building);
+
+            Assert.Contains(building, _planet.Buildings);
         }
 
         [Test]
@@ -388,7 +422,7 @@ namespace Rebellion.Tests.Game.Galaxy
         public void GetAvailableResourceNodes_Blockaded_ReturnsZero()
         {
             _planet.NumRawResourceNodes = 8;
-            Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             _planet.AddChild(enemyFleet);
 
             int availableNodes = _planet.GetAvailableResourceNodes();
@@ -767,7 +801,7 @@ namespace Rebellion.Tests.Game.Galaxy
         [Test]
         public void IsBlockaded_NoEnemyFleets_ReturnsFalse()
         {
-            Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
+            Fleet friendlyFleet = CreateOperationalFleet("FNALL1");
             _planet.AddChild(friendlyFleet);
 
             bool isBlockaded = _planet.IsBlockaded();
@@ -779,21 +813,55 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void IsBlockaded_EnemyFleetPresent_ReturnsTrue()
+        public void IsBlockaded_EnemyFleetWithoutCapitalShips_ReturnsFalse()
         {
             Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
             _planet.AddChild(enemyFleet);
 
-            bool isBlockaded = _planet.IsBlockaded();
-
-            Assert.IsTrue(isBlockaded, "Planet should be blockaded when enemy fleet is present.");
+            Assert.IsFalse(_planet.IsBlockaded());
         }
 
         [Test]
-        public void IsBlockaded_MixedFleets_ReturnsFalse()
+        public void IsBlockaded_EnemyFleetWithOperationalCapitalShip_ReturnsTrue()
         {
-            Fleet friendlyFleet = new Fleet { OwnerInstanceID = "FNALL1" };
-            Fleet enemyFleet = new Fleet { OwnerInstanceID = "ENEMY" };
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            _planet.AddChild(enemyFleet);
+
+            bool isBlockaded = _planet.IsBlockaded();
+
+            Assert.IsTrue(
+                isBlockaded,
+                "Planet should be blockaded when an enemy operational capital ship is present."
+            );
+        }
+
+        [Test]
+        public void IsBlockaded_EnemyFleetInTransit_ReturnsFalse()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            enemyFleet.Movement = new MovementState { TransitTicks = 10 };
+            _planet.AddChild(enemyFleet);
+
+            bool isBlockaded = _planet.IsBlockaded();
+
+            Assert.IsFalse(isBlockaded);
+        }
+
+        [Test]
+        public void IsBlockaded_EnemyCapitalShipInTransit_ReturnsFalse()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            enemyFleet.CapitalShips.Single().Movement = new MovementState { TransitTicks = 10 };
+            _planet.AddChild(enemyFleet);
+
+            Assert.IsFalse(_planet.IsBlockaded());
+        }
+
+        [Test]
+        public void IsBlockaded_DefendingFleetPresent_ReturnsFalse()
+        {
+            Fleet friendlyFleet = CreateOperationalFleet("FNALL1");
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             _planet.AddChild(friendlyFleet);
             _planet.AddChild(enemyFleet);
 
@@ -803,6 +871,20 @@ namespace Rebellion.Tests.Game.Galaxy
                 isBlockaded,
                 "Planet should not be blockaded when defending fleets are present."
             );
+        }
+
+        [Test]
+        public void IsBlockaded_DefendingFleetInTransit_ReturnsTrue()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            Fleet friendlyFleet = CreateOperationalFleet("FNALL1");
+            friendlyFleet.Movement = new MovementState { TransitTicks = 10 };
+            _planet.AddChild(enemyFleet);
+            _planet.AddChild(friendlyFleet);
+
+            bool isBlockaded = _planet.IsBlockaded();
+
+            Assert.IsTrue(isBlockaded);
         }
 
         [Test]
@@ -865,7 +947,7 @@ namespace Rebellion.Tests.Game.Galaxy
         public void IsBlockadePenalized_BlockadedWithoutKDY_ReturnsTrue()
         {
             Planet planet = new Planet { OwnerInstanceID = "empire" };
-            Fleet hostileFleet = new Fleet { OwnerInstanceID = "rebels" };
+            Fleet hostileFleet = CreateOperationalFleet("rebels");
             planet.AddChild(hostileFleet);
 
             Assert.IsTrue(planet.IsBlockadePenalized());
@@ -880,7 +962,7 @@ namespace Rebellion.Tests.Game.Galaxy
                 IsColonized = true,
                 EnergyCapacity = 5,
             };
-            Fleet hostileFleet = new Fleet { OwnerInstanceID = "rebels" };
+            Fleet hostileFleet = CreateOperationalFleet("rebels");
             planet.AddChild(hostileFleet);
             Building kdy = new Building
             {
@@ -891,6 +973,32 @@ namespace Rebellion.Tests.Game.Galaxy
             planet.AddChild(kdy);
 
             Assert.IsFalse(planet.IsBlockadePenalized());
+        }
+
+        [Test]
+        public void GetBlockadeModifier_UnitsInTransit_IgnoresTheirStrength()
+        {
+            Fleet hostileFleet = new Fleet { OwnerInstanceID = "ENEMY" };
+            hostileFleet.AddChild(new CapitalShip { OwnerInstanceID = "ENEMY" });
+            hostileFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = "ENEMY",
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+            Fleet incomingFleet = new Fleet
+            {
+                OwnerInstanceID = "ENEMY",
+                Movement = new MovementState { TransitTicks = 10 },
+            };
+            incomingFleet.AddChild(new CapitalShip { OwnerInstanceID = "ENEMY" });
+            _planet.AddChild(hostileFleet);
+            _planet.AddChild(incomingFleet);
+
+            int modifier = _planet.GetBlockadeModifier(5, 5);
+
+            Assert.AreEqual(95, modifier);
         }
 
         [Test]
