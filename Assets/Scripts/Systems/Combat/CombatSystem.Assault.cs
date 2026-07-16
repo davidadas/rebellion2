@@ -7,28 +7,21 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
-    internal class PlanetaryAssaultResolver
+    public partial class CombatSystem
     {
-        private readonly GameRoot _game;
-        private readonly IRandomNumberProvider _provider;
-        private readonly PlanetaryControlSystem _ownership;
-
-        public PlanetaryAssaultResolver(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            PlanetaryControlSystem ownership
+        /// <summary>
+        /// Runs the planetary-assault pipeline against a defending planet.
+        /// </summary>
+        /// <param name="attackingFleets">Fleets performing the assault (all must share a faction).</param>
+        /// <param name="defendingPlanet">Planet being assaulted.</param>
+        /// <returns>Assault outcome, including destroyed units and any ownership change.</returns>
+        public PlanetaryAssaultResult ExecutePlanetaryAssault(
+            List<Fleet> attackingFleets,
+            Planet defendingPlanet
         )
-        {
-            _game = game;
-            _provider = provider;
-            _ownership = ownership;
-        }
-
-        public PlanetaryAssaultResult Execute(List<Fleet> attackingFleets, Planet defendingPlanet)
         {
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
@@ -56,10 +49,10 @@ namespace Rebellion.Systems
             if (attackers.Count == 0)
                 return result;
 
-            SetCombatState(attackingFleets, defendingPlanet, true);
+            SetAssaultCombatState(attackingFleets, defendingPlanet, true);
             try
             {
-                ResolveDefenseFire(defendingPlanet, attackers, result);
+                ResolveAssaultDefenseFire(defendingPlanet, attackers, result);
                 int actualDuels = ResolveGroundCombat(
                     defendingPlanet,
                     attackers,
@@ -81,10 +74,16 @@ namespace Rebellion.Systems
             }
             finally
             {
-                SetCombatState(attackingFleets, defendingPlanet, false);
+                SetAssaultCombatState(attackingFleets, defendingPlanet, false);
             }
         }
 
+        /// <summary>
+        /// Determines whether the supplied fleets can begin an assault at the planet.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the assault.</param>
+        /// <param name="planet">Planet being assaulted.</param>
+        /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
         private static bool CanAssault(List<Fleet> fleets, Planet planet)
         {
             if (planet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
@@ -99,7 +98,17 @@ namespace Rebellion.Systems
                 );
         }
 
-        private static void SetCombatState(List<Fleet> attackers, Planet planet, bool isInCombat)
+        /// <summary>
+        /// Sets the combat state for the attacking fleets and fleets stationed at the planet.
+        /// </summary>
+        /// <param name="attackers">Fleets performing the assault.</param>
+        /// <param name="planet">Planet where the assault is occurring.</param>
+        /// <param name="isInCombat">Whether the affected fleets are in combat.</param>
+        private static void SetAssaultCombatState(
+            List<Fleet> attackers,
+            Planet planet,
+            bool isInCombat
+        )
         {
             foreach (Fleet fleet in attackers)
                 fleet.IsInCombat = isInCombat;
@@ -108,37 +117,50 @@ namespace Rebellion.Systems
                 fleet.IsInCombat = isInCombat;
         }
 
+        /// <summary>
+        /// Determines whether active planetary shields prevent an assault.
+        /// </summary>
+        /// <param name="planet">Planet whose shield facilities are evaluated.</param>
+        /// <returns>True when the active shield count meets the configured limit.</returns>
         private bool IsBlockedByShields(Planet planet)
         {
             int activeShieldCount = planet
                 .GetAllBuildings()
                 .Count(building =>
-                    IsActive(building)
+                    IsActiveAssaultUnit(building)
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 );
-            return activeShieldCount >= _game.Config.Combat.AssaultShieldGeneratorLimit;
+            return activeShieldCount >= _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
         }
 
-        private void ResolveDefenseFire(
+        /// <summary>
+        /// Resolves planetary defense-facility fire against the assault force.
+        /// </summary>
+        /// <param name="planet">Planet containing the defending facilities.</param>
+        /// <param name="attackers">Assault troops available as targets.</param>
+        /// <param name="result">Assault result receiving destroyed attackers.</param>
+        private void ResolveAssaultDefenseFire(
             Planet planet,
             List<AssaultTroop> attackers,
             PlanetaryAssaultResult result
         )
         {
             int initialAttackerCount = attackers.Count;
-            int divisor = _game.Config.Combat.AssaultDefenseFireDivisor;
+            int divisor = _game.Config.Combat.PlanetaryAssault.DefenseFireDivisor;
 
             foreach (
                 Building facility in planet
                     .GetAllBuildings()
-                    .Where(building => IsActive(building) && IsDefenseFacility(building))
+                    .Where(building =>
+                        IsActiveAssaultUnit(building) && IsAssaultDefenseFacility(building)
+                    )
             )
             {
                 if (GetSurvivingAttackers(attackers).Count == 0)
                     break;
 
                 int chance = facility.WeaponPower / divisor;
-                if (!RollPercent(chance))
+                if (!RollAssaultPercent(chance))
                     continue;
 
                 List<AssaultTroop> survivors = GetSurvivingAttackers(attackers);
@@ -152,6 +174,14 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Resolves each surviving attacker's ground-combat attempt.
+        /// </summary>
+        /// <param name="planet">Planet where ground combat occurs.</param>
+        /// <param name="attackers">Assault troops taking turns.</param>
+        /// <param name="defenders">Defending regiments available as targets.</param>
+        /// <param name="result">Assault result receiving destroyed regiments.</param>
+        /// <returns>The number of attacker-defender contests that occurred.</returns>
         private int ResolveGroundCombat(
             Planet planet,
             List<AssaultTroop> attackers,
@@ -179,14 +209,14 @@ namespace Rebellion.Systems
                 Regiment defender = survivingDefenders[defenderIndex];
                 actualDuels++;
                 int score = CalculateContestScore(attacker, defender, planet);
-                GameConfig.CombatConfig config = _game.Config.Combat;
+                GameConfig.PlanetaryAssaultConfig config = _game.Config.Combat.PlanetaryAssault;
 
-                if (score <= config.AssaultDefenderWinsMaximum)
+                if (score <= config.DefenderWinsMaximum)
                 {
                     result.DestroyedAttackerRegiments.Add(attacker.Regiment);
                     _game.DetachNode(attacker.Regiment);
                 }
-                else if (score >= config.AssaultAttackerWinsMinimum)
+                else if (score >= config.AttackerWinsMinimum)
                 {
                     result.DestroyedDefenderRegiments.Add(defender);
                     _game.DetachNode(defender);
@@ -196,23 +226,30 @@ namespace Rebellion.Systems
             return actualDuels;
         }
 
+        /// <summary>
+        /// Calculates the outcome score for one ground-combat contest.
+        /// </summary>
+        /// <param name="attacker">Attacking regiment and its carrier.</param>
+        /// <param name="defender">Defending regiment.</param>
+        /// <param name="planet">Planet supplying the defending command staff.</param>
+        /// <returns>The contest score used to determine casualties.</returns>
         private int CalculateContestScore(AssaultTroop attacker, Regiment defender, Planet planet)
         {
-            GameConfig.CombatConfig config = _game.Config.Combat;
+            GameConfig.PlanetaryAssaultConfig config = _game.Config.Combat.PlanetaryAssault;
             Fleet fleet = attacker.Ship.GetParentOfType<Fleet>();
-            int attackerLeadership = GetLeadership(
+            int attackerLeadership = GetAssaultLeadership(
                 fleet?.GetOfficers(),
                 OfficerRank.General,
                 fleet?.GetOwnerInstanceID()
             );
-            int defenderLeadership = GetLeadership(
+            int defenderLeadership = GetAssaultLeadership(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
                 planet.GetOwnerInstanceID()
             );
-            int attackerBonus = attackerLeadership / config.AssaultGeneralLeadershipDivisor;
-            int defenderBonus = defenderLeadership / config.AssaultGeneralLeadershipDivisor;
-            int roll = _provider.NextInt(0, config.AssaultContestRollMaximum + 1);
+            int attackerBonus = attackerLeadership / config.GeneralLeadershipDivisor;
+            int defenderBonus = defenderLeadership / config.GeneralLeadershipDivisor;
+            int roll = _provider.NextInt(0, config.ContestRollMaximum + 1);
             return roll
                 + attacker.Regiment.AttackRating
                 + attackerBonus
@@ -220,6 +257,12 @@ namespace Rebellion.Systems
                 - defenderBonus;
         }
 
+        /// <summary>
+        /// Resolves collateral-damage trials generated by ground combat.
+        /// </summary>
+        /// <param name="planet">Planet containing potential collateral targets.</param>
+        /// <param name="trialCount">Number of collateral-damage trials.</param>
+        /// <param name="result">Assault result receiving collateral damage.</param>
         private void ResolveCollateralDamage(
             Planet planet,
             int trialCount,
@@ -229,7 +272,9 @@ namespace Rebellion.Systems
             int successfulTrials = 0;
             for (int trial = 0; trial < trialCount; trial++)
             {
-                if (RollPercent(_game.Config.Combat.AssaultCollateralDamagePercent))
+                if (
+                    RollAssaultPercent(_game.Config.Combat.PlanetaryAssault.CollateralDamagePercent)
+                )
                     successfulTrials++;
             }
 
@@ -243,11 +288,16 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Builds the currently valid collateral targets on a planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>Active facilities and damageable energy pools.</returns>
         private static List<CollateralTarget> BuildCollateralTargets(Planet planet)
         {
             List<CollateralTarget> targets = planet
                 .GetAllBuildings()
-                .Where(IsActive)
+                .Where(IsActiveAssaultUnit)
                 .Select(building =>
                 {
                     return new CollateralTarget
@@ -266,6 +316,12 @@ namespace Rebellion.Systems
             return targets;
         }
 
+        /// <summary>
+        /// Applies one collateral-damage result to its selected target.
+        /// </summary>
+        /// <param name="planet">Planet containing the target.</param>
+        /// <param name="target">Collateral target to damage or destroy.</param>
+        /// <param name="result">Assault result receiving the applied damage.</param>
         private void ApplyCollateralTarget(
             Planet planet,
             CollateralTarget target,
@@ -290,6 +346,14 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Transfers an undefended planet and lands the required surviving garrison.
+        /// </summary>
+        /// <param name="planet">Planet to capture.</param>
+        /// <param name="attacker">Faction performing the assault.</param>
+        /// <param name="attackers">Assault troops that may form the garrison.</param>
+        /// <param name="defenders">Defending regiments used to verify the victory.</param>
+        /// <param name="result">Assault result receiving ownership and landing details.</param>
         private void CapturePlanet(
             Planet planet,
             Faction attacker,
@@ -303,7 +367,7 @@ namespace Rebellion.Systems
                 return;
 
             result.OwnershipChange = _ownership.TransferPlanet(planet, attacker);
-            int garrisonRequirement = _game.Config.Combat.AssaultCaptureGarrisonCount;
+            int garrisonRequirement = _game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
 
             foreach (AssaultTroop assaultTroop in survivingAttackers.Take(garrisonRequirement))
             {
@@ -314,44 +378,77 @@ namespace Rebellion.Systems
             result.Success = true;
         }
 
+        /// <summary>
+        /// Captures the active carried regiments participating in an assault.
+        /// </summary>
+        /// <param name="fleets">Fleets supplying assault troops.</param>
+        /// <returns>Active regiments paired with their carrier ships.</returns>
         private static List<AssaultTroop> SnapshotAttackers(IEnumerable<Fleet> fleets)
         {
             return fleets
                 .SelectMany(fleet => fleet.CapitalShips)
-                .Where(IsActive)
+                .Where(IsActiveAssaultUnit)
                 .SelectMany(ship =>
-                    ship.Regiments.Where(IsActive)
+                    ship.Regiments.Where(IsActiveAssaultUnit)
                         .Select(regiment => new AssaultTroop { Regiment = regiment, Ship = ship })
                 )
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns active defending regiments owned by the specified faction.
+        /// </summary>
+        /// <param name="planet">Planet containing the defenders.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <returns>The active defending regiments.</returns>
         private static List<Regiment> GetActiveDefenders(Planet planet, string defenderId)
         {
             return planet
                 .GetAllRegiments()
                 .Where(regiment =>
-                    IsActive(regiment) && regiment.GetOwnerInstanceID() == defenderId
+                    IsActiveAssaultUnit(regiment) && regiment.GetOwnerInstanceID() == defenderId
                 )
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns assault troops whose regiments remain attached to the scene graph.
+        /// </summary>
+        /// <param name="attackers">Assault troops to inspect.</param>
+        /// <returns>The surviving assault troops.</returns>
         private static List<AssaultTroop> GetSurvivingAttackers(IEnumerable<AssaultTroop> attackers)
         {
             return attackers.Where(attacker => attacker.Regiment.GetParent() != null).ToList();
         }
 
+        /// <summary>
+        /// Returns defending regiments that remain attached to the scene graph.
+        /// </summary>
+        /// <param name="defenders">Defending regiments to inspect.</param>
+        /// <returns>The surviving defending regiments.</returns>
         private static List<Regiment> GetSurvivingDefenders(IEnumerable<Regiment> defenders)
         {
             return defenders.Where(defender => defender.GetParent() != null).ToList();
         }
 
-        private bool RollPercent(int chance)
+        /// <summary>
+        /// Rolls a percentage chance for an assault event.
+        /// </summary>
+        /// <param name="chance">Percentage chance threshold.</param>
+        /// <returns>True when the roll succeeds.</returns>
+        private bool RollAssaultPercent(int chance)
         {
             return _provider.NextInt(0, 100) < chance;
         }
 
-        private static int GetLeadership(
+        /// <summary>
+        /// Returns the leadership rating of the first eligible commander.
+        /// </summary>
+        /// <param name="officers">Officers to search.</param>
+        /// <param name="rank">Required command rank.</param>
+        /// <param name="ownerId">Required faction instance ID.</param>
+        /// <returns>The commander's leadership rating, or zero when none is eligible.</returns>
+        private static int GetAssaultLeadership(
             IEnumerable<Officer> officers,
             OfficerRank rank,
             string ownerId
@@ -365,18 +462,33 @@ namespace Rebellion.Systems
             return commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
         }
 
-        private static bool IsActive(IManufacturable unit)
+        /// <summary>
+        /// Determines whether a manufacturable unit is complete and stationary.
+        /// </summary>
+        /// <param name="unit">Unit to inspect.</param>
+        /// <returns>True when the unit can participate in an assault.</returns>
+        private static bool IsActiveAssaultUnit(IManufacturable unit)
         {
             return unit.ManufacturingStatus == ManufacturingStatus.Complete
                 && unit.Movement == null;
         }
 
-        private static bool IsActive(CapitalShip ship)
+        /// <summary>
+        /// Determines whether a capital ship can supply assault troops.
+        /// </summary>
+        /// <param name="ship">Capital ship to inspect.</param>
+        /// <returns>True when the ship is active and has remaining hull strength.</returns>
+        private static bool IsActiveAssaultUnit(CapitalShip ship)
         {
-            return IsActive((IManufacturable)ship) && ship.CurrentHullStrength > 0;
+            return IsActiveAssaultUnit((IManufacturable)ship) && ship.CurrentHullStrength > 0;
         }
 
-        private static bool IsDefenseFacility(Building building)
+        /// <summary>
+        /// Determines whether a building participates in assault defense fire.
+        /// </summary>
+        /// <param name="building">Building to inspect.</param>
+        /// <returns>True when the building is a planetary defense facility.</returns>
+        private static bool IsAssaultDefenseFacility(Building building)
         {
             return building.DefenseFacilityClass
                 is DefenseFacilityClass.KDY

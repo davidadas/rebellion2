@@ -654,7 +654,10 @@ namespace Rebellion.AI.Director
             return GetOrAdd(
                 _fleetAssaultStrengths,
                 fleet.InstanceID,
-                () => fleet.GetAssaultStrength(_context.Game.Config.Combat.AssaultPersonnelDivisor)
+                () =>
+                    fleet.GetAssaultStrength(
+                        _context.Game.Config.Combat.PlanetaryAssault.PersonnelDivisor
+                    )
             );
         }
 
@@ -673,7 +676,7 @@ namespace Rebellion.AI.Director
                 fleet.InstanceID,
                 () =>
                 {
-                    int divisor = _context.Game.Config.Combat.AssaultPersonnelDivisor;
+                    int divisor = _context.Game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
                     Officer commander = fleet
                         .GetOfficers()
                         .FirstOrDefault(officer => officer.CurrentRank == OfficerRank.General);

@@ -8,31 +8,36 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
-    internal class OrbitalBombardmentResolver
+    public enum BombardmentType
     {
-        private readonly GameRoot _game;
-        private readonly IRandomNumberProvider _provider;
-        private readonly MovementSystem _movement;
-        private readonly PlanetaryControlSystem _ownership;
+        Military,
+        Civilian,
+        General,
+        DestroySystem,
+    }
 
-        public OrbitalBombardmentResolver(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            MovementSystem movement,
-            PlanetaryControlSystem ownership
-        )
-        {
-            _game = game;
-            _provider = provider;
-            _movement = movement;
-            _ownership = ownership;
-        }
+    public enum BombardmentTargetType
+    {
+        Regiment,
+        Building,
+        Headquarters,
+        EnergyCapacity,
+        AllocatedEnergy,
+    }
 
-        public BombardmentResult Execute(
+    public partial class CombatSystem
+    {
+        /// <summary>
+        /// Runs the 6-stage orbital bombardment pipeline against a target planet.
+        /// </summary>
+        /// <param name="attackingFleets">Fleets performing the bombardment (all must share a faction).</param>
+        /// <param name="targetPlanet">Planet being bombarded.</param>
+        /// <param name="type">Targets and consequences selected for the bombardment.</param>
+        /// <returns>Bombardment outcome, including strikes and any ship/regiment/building destruction.</returns>
+        public BombardmentResult ExecuteOrbitalBombardment(
             List<Fleet> attackingFleets,
             Planet targetPlanet,
             BombardmentType type
@@ -56,7 +61,7 @@ namespace Rebellion.Systems
             ).Count;
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
 
-            SetCombatState(attackingFleets, targetPlanet, true);
+            SetBombardmentCombatState(attackingFleets, targetPlanet, true);
             try
             {
                 bool destroysPlanet =
@@ -65,7 +70,7 @@ namespace Rebellion.Systems
                 if (destroysPlanet)
                     DestroyPlanet(targetPlanet, result);
 
-                ResolveDefenseFire(attackingFleets, targetPlanet, result);
+                ResolveBombardmentDefenseFire(attackingFleets, targetPlanet, result);
                 if (destroysPlanet)
                 {
                     AddOwnershipChanges(
@@ -113,10 +118,16 @@ namespace Rebellion.Systems
             }
             finally
             {
-                SetCombatState(attackingFleets, targetPlanet, false);
+                SetBombardmentCombatState(attackingFleets, targetPlanet, false);
             }
         }
 
+        /// <summary>
+        /// Determines whether the supplied fleets can bombard the target planet.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the bombardment.</param>
+        /// <param name="targetPlanet">Planet being targeted.</param>
+        /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
         private static bool CanBombard(List<Fleet> fleets, Planet targetPlanet)
         {
             if (targetPlanet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
@@ -131,7 +142,17 @@ namespace Rebellion.Systems
                 );
         }
 
-        private static void SetCombatState(List<Fleet> attackers, Planet planet, bool isInCombat)
+        /// <summary>
+        /// Sets the combat state for the attacking fleets and fleets stationed at the planet.
+        /// </summary>
+        /// <param name="attackers">Fleets performing the bombardment.</param>
+        /// <param name="planet">Planet where the bombardment is occurring.</param>
+        /// <param name="isInCombat">Whether the affected fleets are in combat.</param>
+        private static void SetBombardmentCombatState(
+            List<Fleet> attackers,
+            Planet planet,
+            bool isInCombat
+        )
         {
             foreach (Fleet fleet in attackers)
                 fleet.IsInCombat = isInCombat;
@@ -140,14 +161,19 @@ namespace Rebellion.Systems
                 fleet.IsInCombat = isInCombat;
         }
 
+        /// <summary>
+        /// Calculates the total effective bombardment strength of the attacking fleets.
+        /// </summary>
+        /// <param name="fleets">Fleets contributing ships and starfighters.</param>
+        /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
         private int CalculateBombardmentStrength(List<Fleet> fleets)
         {
-            int divisor = _game.Config.Combat.BombardmentAdmiralLeadershipDivisor;
+            int divisor = _game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
             int total = 0;
 
             foreach (Fleet fleet in fleets)
             {
-                int leadership = GetLeadership(
+                int leadership = GetBombardmentLeadership(
                     fleet.GetOfficers(),
                     OfficerRank.Admiral,
                     fleet.GetOwnerInstanceID()
@@ -155,7 +181,7 @@ namespace Rebellion.Systems
                 int multiplier = leadership / divisor + 1;
                 int fleetStrength = 0;
 
-                foreach (CapitalShip ship in fleet.CapitalShips.Where(IsActive))
+                foreach (CapitalShip ship in fleet.CapitalShips.Where(IsActiveBombardmentUnit))
                 {
                     fleetStrength += ScaleByCondition(
                         ship.Bombardment,
@@ -163,7 +189,7 @@ namespace Rebellion.Systems
                         ship.MaxHullStrength
                     );
                     fleetStrength += ship
-                        .Starfighters.Where(IsActive)
+                        .Starfighters.Where(IsActiveBombardmentUnit)
                         .Sum(fighter =>
                             ScaleByCondition(
                                 fighter.Bombardment,
@@ -179,18 +205,29 @@ namespace Rebellion.Systems
             return total;
         }
 
+        /// <summary>
+        /// Calculates the total protection supplied by active planetary shield facilities.
+        /// </summary>
+        /// <param name="planet">Planet whose shields are evaluated.</param>
+        /// <returns>The combined active shield strength.</returns>
         private static int CalculatePlanetShieldStrength(Planet planet)
         {
             return planet
                 .GetAllBuildings()
                 .Where(building =>
-                    IsActive(building)
+                    IsActiveBombardmentUnit(building)
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 )
                 .Sum(building => building.ShieldStrength);
         }
 
-        private void ResolveDefenseFire(
+        /// <summary>
+        /// Resolves planetary defense-facility fire against the attacking capital ships.
+        /// </summary>
+        /// <param name="attackingFleets">Fleets exposed to defense fire.</param>
+        /// <param name="planet">Planet containing the defending facilities.</param>
+        /// <param name="result">Bombardment result receiving ship damage and destruction.</param>
+        private void ResolveBombardmentDefenseFire(
             List<Fleet> attackingFleets,
             Planet planet,
             BombardmentResult result
@@ -200,13 +237,13 @@ namespace Rebellion.Systems
             if (targets.Count == 0)
                 return;
 
-            int leadership = GetLeadership(
+            int leadership = GetBombardmentLeadership(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
                 planet.GetOwnerInstanceID()
             );
             int multiplier =
-                leadership / _game.Config.Combat.BombardmentDefenseGeneralLeadershipDivisor + 1;
+                leadership / _game.Config.Combat.Bombardment.DefenderLeadershipDivisor + 1;
             Dictionary<CapitalShip, int> remainingShields = targets.ToDictionary(
                 ship => ship,
                 GetEffectiveShieldStrength
@@ -255,6 +292,14 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Resolves the available bombardment strike attempts against eligible targets.
+        /// </summary>
+        /// <param name="planet">Planet containing the targets.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <param name="type">Bombardment mode controlling eligible target lanes.</param>
+        /// <param name="result">Bombardment result receiving successful strikes.</param>
+        /// <returns>True when at least one civilian target was destroyed.</returns>
         private bool ResolveStrikes(
             Planet planet,
             string defenderId,
@@ -293,6 +338,12 @@ namespace Rebellion.Systems
             return civilianTargetsDestroyed;
         }
 
+        /// <summary>
+        /// Attempts one collateral strike against a civilian target.
+        /// </summary>
+        /// <param name="planet">Planet containing potential targets.</param>
+        /// <param name="result">Bombardment result receiving a successful strike.</param>
+        /// <returns>True when a civilian target was successfully struck.</returns>
         private bool TryStrikeCivilianTarget(Planet planet, BombardmentResult result)
         {
             List<BombardmentTarget> targets = BuildCivilianTargets(planet);
@@ -307,6 +358,13 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Builds the currently eligible target list for a bombardment mode.
+        /// </summary>
+        /// <param name="planet">Planet containing potential targets.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <param name="type">Bombardment mode controlling eligible target lanes.</param>
+        /// <returns>The ordered list of eligible targets.</returns>
         private List<BombardmentTarget> BuildTargets(
             Planet planet,
             string defenderId,
@@ -340,12 +398,18 @@ namespace Rebellion.Systems
             return targets;
         }
 
+        /// <summary>
+        /// Builds the active military targets on a planet.
+        /// </summary>
+        /// <param name="planet">Planet containing potential targets.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <returns>Defending regiments, defense facilities, and an eligible headquarters.</returns>
         private List<BombardmentTarget> BuildMilitaryTargets(Planet planet, string defenderId)
         {
             List<BombardmentTarget> targets = planet
                 .GetAllRegiments()
                 .Where(regiment =>
-                    IsActive(regiment) && regiment.GetOwnerInstanceID() == defenderId
+                    IsActiveBombardmentUnit(regiment) && regiment.GetOwnerInstanceID() == defenderId
                 )
                 .Select(regiment => new BombardmentTarget
                 {
@@ -358,7 +422,9 @@ namespace Rebellion.Systems
             targets.AddRange(
                 planet
                     .GetAllBuildings()
-                    .Where(building => IsActive(building) && IsDefenseFacility(building))
+                    .Where(building =>
+                        IsActiveBombardmentUnit(building) && IsBombardmentDefenseFacility(building)
+                    )
                     .Select(building => new BombardmentTarget
                     {
                         Type = BombardmentTargetType.Building,
@@ -373,7 +439,7 @@ namespace Rebellion.Systems
                     new BombardmentTarget
                     {
                         Type = BombardmentTargetType.Headquarters,
-                        Resistance = _game.Config.Combat.BombardmentHeadquartersResistance,
+                        Resistance = _game.Config.Combat.Bombardment.HeadquartersResistance,
                     }
                 );
             }
@@ -381,11 +447,18 @@ namespace Rebellion.Systems
             return targets;
         }
 
+        /// <summary>
+        /// Builds the active civilian facility targets on a planet.
+        /// </summary>
+        /// <param name="planet">Planet containing potential targets.</param>
+        /// <returns>The eligible civilian facilities.</returns>
         private static List<BombardmentTarget> BuildCivilianTargets(Planet planet)
         {
             return planet
                 .GetAllBuildings()
-                .Where(building => IsActive(building) && IsCivilianBuilding(building))
+                .Where(building =>
+                    IsActiveBombardmentUnit(building) && IsCivilianBuilding(building)
+                )
                 .Select(building => new BombardmentTarget
                 {
                     Type = BombardmentTargetType.Building,
@@ -396,6 +469,11 @@ namespace Rebellion.Systems
                 .ToList();
         }
 
+        /// <summary>
+        /// Adds damageable energy-capacity targets to a target list.
+        /// </summary>
+        /// <param name="planet">Planet supplying the energy pools.</param>
+        /// <param name="targets">Target list to update.</param>
         private void AddEnergyTargets(Planet planet, List<BombardmentTarget> targets)
         {
             if (planet.EnergyCapacity > 0)
@@ -404,7 +482,7 @@ namespace Rebellion.Systems
                     new BombardmentTarget
                     {
                         Type = BombardmentTargetType.EnergyCapacity,
-                        Resistance = _game.Config.Combat.BombardmentEnergyResistance,
+                        Resistance = _game.Config.Combat.Bombardment.EnergyResistance,
                     }
                 );
             }
@@ -415,22 +493,31 @@ namespace Rebellion.Systems
                     new BombardmentTarget
                     {
                         Type = BombardmentTargetType.AllocatedEnergy,
-                        Resistance = _game.Config.Combat.BombardmentAllocatedEnergyResistance,
+                        Resistance = _game.Config.Combat.Bombardment.AllocatedEnergyResistance,
                     }
                 );
             }
         }
 
+        /// <summary>
+        /// Determines whether a strike overcomes a target's resistance.
+        /// </summary>
+        /// <param name="resistance">Resistance of the selected target.</param>
+        /// <returns>True when the strike succeeds.</returns>
         private bool RollStrike(int resistance)
         {
-            GameConfig.CombatConfig config = _game.Config.Combat;
-            int roll = _provider.NextInt(
-                config.BombardmentStrikeRollMinimum,
-                config.BombardmentStrikeRollMaximum + 1
-            );
+            GameConfig.BombardmentConfig config = _game.Config.Combat.Bombardment;
+            int roll = _provider.NextInt(config.StrikeRollMinimum, config.StrikeRollMaximum + 1);
             return resistance < roll;
         }
 
+        /// <summary>
+        /// Applies a successful strike and records its outcome.
+        /// </summary>
+        /// <param name="planet">Planet containing the target.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <param name="target">Target selected for the strike.</param>
+        /// <param name="result">Bombardment result receiving the strike details.</param>
         private void ApplyStrike(
             Planet planet,
             string defenderId,
@@ -474,6 +561,12 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Removes a faction headquarters from its planet and owning faction.
+        /// </summary>
+        /// <param name="planet">Planet containing the headquarters.</param>
+        /// <param name="defenderId">Owning faction instance ID.</param>
+        /// <param name="result">Bombardment result receiving the destruction flag.</param>
         private void DestroyHeadquarters(Planet planet, string defenderId, BombardmentResult result)
         {
             planet.IsHeadquarters = false;
@@ -482,6 +575,11 @@ namespace Rebellion.Systems
             result.HeadquartersDestroyed = true;
         }
 
+        /// <summary>
+        /// Returns the display name used to report a bombardment target.
+        /// </summary>
+        /// <param name="target">Target to describe.</param>
+        /// <returns>The target's report display name.</returns>
         private static string GetTargetName(BombardmentTarget target)
         {
             return target.Type switch
@@ -493,6 +591,12 @@ namespace Rebellion.Systems
             };
         }
 
+        /// <summary>
+        /// Determines whether the defending headquarters is an eligible target.
+        /// </summary>
+        /// <param name="planet">Planet containing the headquarters.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <returns>True when the headquarters exists and its faction permits bombardment.</returns>
         private bool CanBombardHeadquarters(Planet planet, string defenderId)
         {
             return planet.IsHeadquarters
@@ -502,13 +606,23 @@ namespace Rebellion.Systems
                     .Settings.HeadquartersCanBeBombarded;
         }
 
+        /// <summary>
+        /// Determines whether the attacking fleets contain an active planet-destroying ship.
+        /// </summary>
+        /// <param name="fleets">Attacking fleets to inspect.</param>
+        /// <returns>True when an active configured ship type is present.</returns>
         private bool HasPlanetDestroyingShip(List<Fleet> fleets)
         {
             HashSet<string> typeIds =
-                _game.Config.Combat.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
+                _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
             return GetActiveCapitalShips(fleets).Any(ship => typeIds.Contains(ship.GetTypeID()));
         }
 
+        /// <summary>
+        /// Marks a planet destroyed and resolves effects on eligible personnel.
+        /// </summary>
+        /// <param name="planet">Planet being destroyed.</param>
+        /// <param name="result">Bombardment result receiving personnel consequences.</param>
         private void DestroyPlanet(Planet planet, BombardmentResult result)
         {
             planet.IsDestroyed = true;
@@ -521,7 +635,11 @@ namespace Rebellion.Systems
                     .ToList()
             )
             {
-                if (!RollPercent(_game.Config.Combat.DestroySystemPersonnelInjuryPercent))
+                if (
+                    !RollBombardmentPercent(
+                        _game.Config.Combat.Bombardment.DestroySystemPersonnelInjuryPercent
+                    )
+                )
                     continue;
 
                 officer.ApplyInjury(1, _game.Config.Recovery.MaxInjuryPoints);
@@ -534,7 +652,11 @@ namespace Rebellion.Systems
                     }
                 );
 
-                if (!RollPercent(_game.Config.Combat.DestroySystemMinorPersonnelDeathPercent))
+                if (
+                    !RollBombardmentPercent(
+                        _game.Config.Combat.Bombardment.DestroySystemMinorPersonnelDeathPercent
+                    )
+                )
                     continue;
 
                 officer.IsKilled = true;
@@ -550,6 +672,12 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Applies direct and local-system support penalties for civilian destruction.
+        /// </summary>
+        /// <param name="planet">Planet where civilian targets were destroyed.</param>
+        /// <param name="attacker">Faction responsible for the bombardment.</param>
+        /// <returns>Ownership changes caused by the support shifts.</returns>
         private List<PlanetOwnershipChangedResult> ApplyCivilianBombardmentPenalty(
             Planet planet,
             Faction attacker
@@ -571,12 +699,18 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Applies the direct popular-support penalty at the bombarded planet.
+        /// </summary>
+        /// <param name="planet">Planet receiving the support shift.</param>
+        /// <param name="attacker">Faction responsible for the bombardment.</param>
+        /// <returns>Ownership changes caused by the support shift.</returns>
         private List<PlanetOwnershipChangedResult> ApplyDirectBombardmentPenalty(
             Planet planet,
             Faction attacker
         )
         {
-            int shift = _game.Config.Combat.CivilianBombardmentSupportPenalty;
+            int shift = _game.Config.Combat.Bombardment.CivilianSupportPenalty;
             if (planet.GetParentOfType<PlanetSystem>()?.SystemType == PlanetSystemType.CoreSystem)
             {
                 bool weaken = attacker.Settings.WeakSupportPenaltyTrigger switch
@@ -592,21 +726,32 @@ namespace Rebellion.Systems
             return _ownership.ShiftBombardmentSupport(new[] { planet }, attacker, shift);
         }
 
+        /// <summary>
+        /// Returns the local-system support penalty for civilian destruction.
+        /// </summary>
+        /// <param name="system">Planet system where the destruction occurred.</param>
+        /// <param name="attacker">Faction responsible for the bombardment.</param>
+        /// <returns>The applicable popular-support shift.</returns>
         private int GetCivilianSystemPenalty(PlanetSystem system, Faction attacker)
         {
             bool empire = attacker.Settings.InvertSupportShift;
             if (system.SystemType == PlanetSystemType.CoreSystem)
             {
                 return empire
-                    ? _game.Config.Combat.CivilianBombardmentCoreEmpireSupportPenalty
-                    : _game.Config.Combat.CivilianBombardmentCoreAllianceSupportPenalty;
+                    ? _game.Config.Combat.Bombardment.CivilianCoreEmpireSupportPenalty
+                    : _game.Config.Combat.Bombardment.CivilianCoreAllianceSupportPenalty;
             }
 
             return empire
-                ? _game.Config.Combat.CivilianBombardmentOuterRimEmpireSupportPenalty
-                : _game.Config.Combat.CivilianBombardmentOuterRimAllianceSupportPenalty;
+                ? _game.Config.Combat.Bombardment.CivilianOuterRimEmpireSupportPenalty
+                : _game.Config.Combat.Bombardment.CivilianOuterRimAllianceSupportPenalty;
         }
 
+        /// <summary>
+        /// Applies galaxy-wide support penalties after a planet is destroyed.
+        /// </summary>
+        /// <param name="attacker">Faction responsible for destroying the planet.</param>
+        /// <returns>Ownership changes caused by the support shifts.</returns>
         private List<PlanetOwnershipChangedResult> ApplyDestroyedSystemPenalty(Faction attacker)
         {
             List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
@@ -619,7 +764,7 @@ namespace Rebellion.Systems
                 _ownership.ShiftBombardmentSupport(
                     corePlanets,
                     attacker,
-                    _game.Config.Combat.DestroySystemCoreSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroySystemCoreSupportPenalty
                 )
             );
 
@@ -629,19 +774,26 @@ namespace Rebellion.Systems
                 .SelectMany(GetAffectedPlanets)
                 .Where(planet =>
                     planet.GetPopularSupport(attacker.InstanceID)
-                    < _game.Config.Combat.DestroySystemOuterRimSupportThreshold
+                    < _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportThreshold
                 )
                 .ToList();
             results.AddRange(
                 _ownership.ShiftBombardmentSupport(
                     outerRimPlanets,
                     attacker,
-                    _game.Config.Combat.DestroySystemOuterRimSupportPenalty
+                    _game.Config.Combat.Bombardment.DestroySystemOuterRimSupportPenalty
                 )
             );
             return results;
         }
 
+        /// <summary>
+        /// Reconciles planet control after bombardment removes the defending garrison.
+        /// </summary>
+        /// <param name="planet">Bombarded planet.</param>
+        /// <param name="previousOwnerId">Faction instance ID that controlled the planet.</param>
+        /// <param name="initialDefenderRegimentCount">Number of active defenders before bombardment.</param>
+        /// <returns>Ownership changes caused by the garrison removal.</returns>
         private List<PlanetOwnershipChangedResult> ReconcileControl(
             Planet planet,
             string previousOwnerId,
@@ -658,6 +810,11 @@ namespace Rebellion.Systems
             return _ownership.ResolveBombardmentControl(planet, previousOwnerId);
         }
 
+        /// <summary>
+        /// Merges ownership changes into the bombardment result by affected planet.
+        /// </summary>
+        /// <param name="result">Bombardment result to update.</param>
+        /// <param name="changes">Ownership changes to merge.</param>
         private static void AddOwnershipChanges(
             BombardmentResult result,
             IEnumerable<PlanetOwnershipChangedResult> changes
@@ -688,6 +845,12 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Combines sequential ownership changes for one planet.
+        /// </summary>
+        /// <param name="first">Existing ownership change.</param>
+        /// <param name="second">Subsequent ownership change.</param>
+        /// <returns>The combined change, or null when the planet returns to its original owner.</returns>
         private static PlanetOwnershipChangedResult MergeOwnershipChanges(
             PlanetOwnershipChangedResult first,
             PlanetOwnershipChangedResult second
@@ -702,11 +865,21 @@ namespace Rebellion.Systems
             return first;
         }
 
-        private bool RollPercent(int chance)
+        /// <summary>
+        /// Rolls a percentage chance for a bombardment event.
+        /// </summary>
+        /// <param name="chance">Percentage chance threshold.</param>
+        /// <returns>True when the roll succeeds.</returns>
+        private bool RollBombardmentPercent(int chance)
         {
             return _provider.NextInt(0, 100) < chance;
         }
 
+        /// <summary>
+        /// Returns populated, undestroyed planets affected by a system support shift.
+        /// </summary>
+        /// <param name="system">Planet system to inspect.</param>
+        /// <returns>The planets eligible for the shift.</returns>
         private static List<Planet> GetAffectedPlanets(PlanetSystem system)
         {
             return system
@@ -714,11 +887,25 @@ namespace Rebellion.Systems
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns active capital ships from the supplied fleets.
+        /// </summary>
+        /// <param name="fleets">Fleets to inspect.</param>
+        /// <returns>The active capital ships.</returns>
         private static List<CapitalShip> GetActiveCapitalShips(IEnumerable<Fleet> fleets)
         {
-            return fleets.SelectMany(fleet => fleet.CapitalShips).Where(IsActive).ToList();
+            return fleets
+                .SelectMany(fleet => fleet.CapitalShips)
+                .Where(IsActiveBombardmentUnit)
+                .ToList();
         }
 
+        /// <summary>
+        /// Returns active defense facilities of a specified class.
+        /// </summary>
+        /// <param name="planet">Planet containing the facilities.</param>
+        /// <param name="defenseClass">Defense-facility class to select.</param>
+        /// <returns>The matching active facilities.</returns>
         private static IEnumerable<Building> GetActiveDefenseFacilities(
             Planet planet,
             DefenseFacilityClass defenseClass
@@ -727,21 +914,35 @@ namespace Rebellion.Systems
             return planet
                 .GetAllBuildings()
                 .Where(building =>
-                    IsActive(building) && building.DefenseFacilityClass == defenseClass
+                    IsActiveBombardmentUnit(building)
+                    && building.DefenseFacilityClass == defenseClass
                 );
         }
 
+        /// <summary>
+        /// Returns active defending regiments owned by the specified faction.
+        /// </summary>
+        /// <param name="planet">Planet containing the defenders.</param>
+        /// <param name="defenderId">Defending faction instance ID.</param>
+        /// <returns>The active defending regiments.</returns>
         private static List<Regiment> GetActiveDefenderRegiments(Planet planet, string defenderId)
         {
             return planet
                 .GetAllRegiments()
                 .Where(regiment =>
-                    IsActive(regiment) && regiment.GetOwnerInstanceID() == defenderId
+                    IsActiveBombardmentUnit(regiment) && regiment.GetOwnerInstanceID() == defenderId
                 )
                 .ToList();
         }
 
-        private static int GetLeadership(
+        /// <summary>
+        /// Returns the leadership rating of the first eligible bombardment commander.
+        /// </summary>
+        /// <param name="officers">Officers to search.</param>
+        /// <param name="rank">Required command rank.</param>
+        /// <param name="ownerId">Required faction instance ID.</param>
+        /// <returns>The commander's leadership rating, or zero when none is eligible.</returns>
+        private static int GetBombardmentLeadership(
             IEnumerable<Officer> officers,
             OfficerRank rank,
             string ownerId
@@ -755,6 +956,11 @@ namespace Rebellion.Systems
             return commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
         }
 
+        /// <summary>
+        /// Returns a capital ship's shield strength at its current hull condition.
+        /// </summary>
+        /// <param name="ship">Capital ship to evaluate.</param>
+        /// <returns>The effective shield strength.</returns>
         private static int GetEffectiveShieldStrength(CapitalShip ship)
         {
             return ScaleByCondition(
@@ -764,28 +970,56 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Scales a unit value by its current condition.
+        /// </summary>
+        /// <param name="value">Undamaged value.</param>
+        /// <param name="current">Current condition.</param>
+        /// <param name="maximum">Maximum condition.</param>
+        /// <returns>The condition-adjusted value.</returns>
         private static int ScaleByCondition(int value, int current, int maximum)
         {
             return maximum > 0 ? value * Math.Max(0, current) / maximum : value;
         }
 
-        private static bool IsActive(IManufacturable unit)
+        /// <summary>
+        /// Determines whether a manufacturable unit is complete and stationary.
+        /// </summary>
+        /// <param name="unit">Unit to inspect.</param>
+        /// <returns>True when the unit can participate in bombardment.</returns>
+        private static bool IsActiveBombardmentUnit(IManufacturable unit)
         {
             return unit.ManufacturingStatus == ManufacturingStatus.Complete
                 && unit.Movement == null;
         }
 
-        private static bool IsActive(CapitalShip ship)
+        /// <summary>
+        /// Determines whether a capital ship can participate in bombardment.
+        /// </summary>
+        /// <param name="ship">Capital ship to inspect.</param>
+        /// <returns>True when the ship is active and has remaining hull strength.</returns>
+        private static bool IsActiveBombardmentUnit(CapitalShip ship)
         {
-            return IsActive((IManufacturable)ship) && ship.CurrentHullStrength > 0;
+            return IsActiveBombardmentUnit((IManufacturable)ship) && ship.CurrentHullStrength > 0;
         }
 
-        private static bool IsActive(Starfighter fighter)
+        /// <summary>
+        /// Determines whether a starfighter group can contribute to bombardment.
+        /// </summary>
+        /// <param name="fighter">Starfighter group to inspect.</param>
+        /// <returns>True when the group is active and has remaining fighters.</returns>
+        private static bool IsActiveBombardmentUnit(Starfighter fighter)
         {
-            return IsActive((IManufacturable)fighter) && fighter.CurrentSquadronSize > 0;
+            return IsActiveBombardmentUnit((IManufacturable)fighter)
+                && fighter.CurrentSquadronSize > 0;
         }
 
-        private static bool IsDefenseFacility(Building building)
+        /// <summary>
+        /// Determines whether a building belongs to a bombardment defense target lane.
+        /// </summary>
+        /// <param name="building">Building to inspect.</param>
+        /// <returns>True when the building is a planetary defense facility.</returns>
+        private static bool IsBombardmentDefenseFacility(Building building)
         {
             return building.DefenseFacilityClass
                 is DefenseFacilityClass.KDY
@@ -794,6 +1028,11 @@ namespace Rebellion.Systems
                     or DefenseFacilityClass.DeathStarShield;
         }
 
+        /// <summary>
+        /// Determines whether a building belongs to a civilian bombardment target lane.
+        /// </summary>
+        /// <param name="building">Building to inspect.</param>
+        /// <returns>True when the building is a civilian or manufacturing facility.</returns>
         private static bool IsCivilianBuilding(Building building)
         {
             return building.BuildingType

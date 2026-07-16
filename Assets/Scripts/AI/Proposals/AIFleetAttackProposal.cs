@@ -263,7 +263,7 @@ namespace Rebellion.AI.Proposals
             if (context.Game?.Config?.AI.EnablePlanetaryAssaults != true)
                 return false;
 
-            int assaultDivisor = context.Game.Config.Combat.AssaultPersonnelDivisor;
+            int assaultDivisor = context.Game.Config.Combat.PlanetaryAssault.PersonnelDivisor;
             int assaultStrength = Fleet.GetAssaultStrength(assaultDivisor);
             int minimumStrength = context.Game.Config.AI.FleetDeployment.MinimumAttackStrength;
             int defenseRequirement =

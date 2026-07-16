@@ -514,29 +514,29 @@ namespace Rebellion.Game
         [PersistableObject]
         public class CombatConfig
         {
-            /// <summary>Personnel divisor for the assault strength calculation.</summary>
-            public int AssaultPersonnelDivisor { get; set; }
+            public BombardmentConfig Bombardment { get; set; } = new BombardmentConfig();
 
-            public int BombardmentAdmiralLeadershipDivisor { get; set; }
-            public int BombardmentDefenseGeneralLeadershipDivisor { get; set; }
-            public int BombardmentStrikeRollMinimum { get; set; }
-            public int BombardmentStrikeRollMaximum { get; set; }
-            public int BombardmentEnergyResistance { get; set; }
-            public int BombardmentAllocatedEnergyResistance { get; set; }
-            public int BombardmentHeadquartersResistance { get; set; }
-            public int AssaultShieldGeneratorLimit { get; set; }
-            public int AssaultDefenseFireDivisor { get; set; }
-            public int AssaultCollateralDamagePercent { get; set; }
-            public int AssaultGeneralLeadershipDivisor { get; set; }
-            public int AssaultContestRollMaximum { get; set; }
-            public int AssaultDefenderWinsMaximum { get; set; }
-            public int AssaultAttackerWinsMinimum { get; set; }
-            public int AssaultCaptureGarrisonCount { get; set; }
-            public int CivilianBombardmentSupportPenalty { get; set; }
-            public int CivilianBombardmentCoreAllianceSupportPenalty { get; set; }
-            public int CivilianBombardmentCoreEmpireSupportPenalty { get; set; }
-            public int CivilianBombardmentOuterRimAllianceSupportPenalty { get; set; }
-            public int CivilianBombardmentOuterRimEmpireSupportPenalty { get; set; }
+            public PlanetaryAssaultConfig PlanetaryAssault { get; set; } =
+                new PlanetaryAssaultConfig();
+
+            public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
+        }
+
+        [PersistableObject]
+        public class BombardmentConfig
+        {
+            public int AttackerLeadershipDivisor { get; set; }
+            public int DefenderLeadershipDivisor { get; set; }
+            public int StrikeRollMinimum { get; set; }
+            public int StrikeRollMaximum { get; set; }
+            public int EnergyResistance { get; set; }
+            public int AllocatedEnergyResistance { get; set; }
+            public int HeadquartersResistance { get; set; }
+            public int CivilianSupportPenalty { get; set; }
+            public int CivilianCoreAllianceSupportPenalty { get; set; }
+            public int CivilianCoreEmpireSupportPenalty { get; set; }
+            public int CivilianOuterRimAllianceSupportPenalty { get; set; }
+            public int CivilianOuterRimEmpireSupportPenalty { get; set; }
             public int DestroySystemPersonnelInjuryPercent { get; set; }
             public int DestroySystemMinorPersonnelDeathPercent { get; set; }
             public int DestroySystemCoreSupportPenalty { get; set; }
@@ -544,7 +544,25 @@ namespace Rebellion.Game
             public int DestroySystemOuterRimSupportThreshold { get; set; }
             public List<string> PlanetDestroyingCapitalShipTypeIDs { get; set; } =
                 new List<string>();
+        }
 
+        [PersistableObject]
+        public class PlanetaryAssaultConfig
+        {
+            public int PersonnelDivisor { get; set; }
+            public int ShieldGeneratorLimit { get; set; }
+            public int DefenseFireDivisor { get; set; }
+            public int CollateralDamagePercent { get; set; }
+            public int GeneralLeadershipDivisor { get; set; }
+            public int ContestRollMaximum { get; set; }
+            public int DefenderWinsMaximum { get; set; }
+            public int AttackerWinsMinimum { get; set; }
+            public int CaptureGarrisonCount { get; set; }
+        }
+
+        [PersistableObject]
+        public class SpaceCombatConfig
+        {
             /// <summary>Percent variance applied symmetrically to each weapon damage roll.</summary>
             public int WeaponDamageVariancePercent { get; set; }
 
