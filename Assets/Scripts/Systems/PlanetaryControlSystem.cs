@@ -19,6 +19,8 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementSystem;
         private readonly ManufacturingSystem _manufacturingSystem;
         private readonly FogOfWarSystem _fogOfWarSystem;
+        private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
+        private int _controlShiftTick = -1;
 
         /// <summary>
         /// Creates a new PlanetaryControlSystem.
@@ -129,6 +131,125 @@ namespace Rebellion.Systems
         /// <returns>The ownership-change result.</returns>
         public PlanetOwnershipChangedResult ClearPlanetOwnership(Planet planet)
         {
+            PlanetOwnershipChangedResult result = NeutralizePlanet(planet);
+
+            foreach (Faction faction in _game.GetFactions())
+                planet.SetPopularSupport(faction.InstanceID, 0);
+
+            return result;
+        }
+
+        internal List<PlanetOwnershipChangedResult> ResolveBombardmentControl(
+            Planet planet,
+            string previousOwnerId
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            Faction provisionalOwner = GetPlanetController(planet);
+            if (provisionalOwner?.InstanceID == previousOwnerId)
+                return results;
+
+            PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
+                planet,
+                provisionalOwner
+            );
+            if (controlChange != null)
+                results.Add(controlChange);
+
+            Faction supportBeneficiary =
+                provisionalOwner
+                ?? _game
+                    .GetFactions()
+                    .FirstOrDefault(faction => faction.InstanceID != previousOwnerId);
+            results.AddRange(
+                ShiftBombardmentSupport(
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSystem>()),
+                    supportBeneficiary,
+                    _game.Config.SupportShift.GarrisonRemovalSupportShift
+                )
+            );
+
+            return results;
+        }
+
+        internal List<PlanetOwnershipChangedResult> ShiftBombardmentSupport(
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            Queue<(Planet planet, Faction faction, int shift)> pending =
+                new Queue<(Planet planet, Faction faction, int shift)>();
+            EnqueueSupportShifts(pending, planets, faction, shift);
+
+            while (pending.Count > 0)
+            {
+                (Planet planet, Faction shiftFaction, int supportShift) = pending.Dequeue();
+                Faction previousController = GetPlanetController(planet);
+                ShiftPopularSupport(planet, shiftFaction, supportShift);
+                Faction newController = GetPlanetController(planet);
+                if (previousController?.InstanceID == newController?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
+                    planet,
+                    newController
+                );
+                if (controlChange != null)
+                    results.Add(controlChange);
+
+                if (!CanApplyControlSupportShift(previousController))
+                    continue;
+
+                Faction beneficiary =
+                    newController
+                    ?? _game
+                        .GetFactions()
+                        .FirstOrDefault(candidate =>
+                            candidate.InstanceID != previousController?.InstanceID
+                        );
+                EnqueueSupportShifts(
+                    pending,
+                    GetAffectedPlanets(planet.GetParentOfType<PlanetSystem>()),
+                    beneficiary,
+                    _game.Config.SupportShift.ControlChangeSupportShift
+                );
+            }
+
+            return results;
+        }
+
+        internal void ShiftPopularSupport(Planet planet, Faction faction, int shift)
+        {
+            if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
+                return;
+
+            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
+            int newSupport = System.Math.Clamp(currentSupport + shift, 0, 100);
+            if (newSupport == currentSupport)
+                return;
+
+            if (shift > 0)
+            {
+                planet.SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+
+            Faction opposingFaction = _game
+                .GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
+            if (opposingFaction == null)
+            {
+                planet.SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+
+            planet.SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        private PlanetOwnershipChangedResult NeutralizePlanet(Planet planet)
+        {
             string previousOwnerId = planet.GetOwnerInstanceID();
             Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
                 ? null
@@ -139,13 +260,83 @@ namespace Rebellion.Systems
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
             _game.DeregsiterOwnedUnit(planet);
             planet.SetOwnerInstanceID(null);
-
-            foreach (Faction faction in _game.GetFactions())
-                planet.SetPopularSupport(faction.InstanceID, 0);
-
             CaptureSnapshotForFaction(planet, previousOwner);
 
             return CreateOwnershipChangedResult(planet, previousOwner, null);
+        }
+
+        private PlanetOwnershipChangedResult ChangePlanetControl(Planet planet, Faction newOwner)
+        {
+            if (planet.GetOwnerInstanceID() == newOwner?.InstanceID)
+                return null;
+
+            return newOwner == null ? NeutralizePlanet(planet) : TransferPlanet(planet, newOwner);
+        }
+
+        private Faction GetSupportController(Planet planet)
+        {
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            return _game
+                .GetFactions()
+                .Where(faction => planet.GetPopularSupport(faction.InstanceID) >= threshold)
+                .OrderByDescending(faction => planet.GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+        }
+
+        private Faction GetPlanetController(Planet planet)
+        {
+            List<string> regimentOwners = planet
+                .GetAllRegiments()
+                .Where(regiment =>
+                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                )
+                .Select(regiment => regiment.GetOwnerInstanceID())
+                .Where(ownerId => !string.IsNullOrEmpty(ownerId))
+                .Distinct()
+                .ToList();
+
+            if (regimentOwners.Count == 1)
+                return _game.GetFactionByOwnerInstanceID(regimentOwners[0]);
+
+            if (regimentOwners.Count > 1)
+                return null;
+
+            return GetSupportController(planet);
+        }
+
+        private bool CanApplyControlSupportShift(Faction previousController)
+        {
+            if (previousController == null)
+                return true;
+
+            if (_controlShiftTick != _game.CurrentTick)
+            {
+                _controlShiftTick = _game.CurrentTick;
+                _controlShiftedOwners.Clear();
+            }
+
+            return _controlShiftedOwners.Add(previousController.InstanceID);
+        }
+
+        private static void EnqueueSupportShifts(
+            Queue<(Planet planet, Faction faction, int shift)> pending,
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            if (planets == null || faction == null || shift == 0)
+                return;
+
+            foreach (Planet planet in planets)
+                pending.Enqueue((planet, faction, shift));
+        }
+
+        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSystem system)
+        {
+            return system?.Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                ?? Enumerable.Empty<Planet>();
         }
 
         /// <summary>
@@ -164,7 +355,7 @@ namespace Rebellion.Systems
                 foreach (Faction faction in _game.GetFactions())
                 {
                     int support = planet.GetPopularSupport(faction.InstanceID);
-                    if (support <= threshold)
+                    if (support < threshold)
                         continue;
 
                     PlanetOwnershipChangedResult result = TransferPlanet(planet, faction);

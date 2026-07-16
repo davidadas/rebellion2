@@ -55,7 +55,13 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(1, config.Movement.SameSystemMinTransitTicks);
             Assert.AreEqual(60, config.Movement.DefaultFighterHyperdrive);
 
-            Assert.AreEqual(2, config.Uprising.WeakSupportPenaltyDivisor);
+            Assert.AreEqual(2, config.SupportShift.WeakSupportPenaltyDivisor);
+            Assert.AreEqual(10, config.SupportShift.GarrisonRemovalSupportShift);
+            Assert.AreEqual(1, config.SupportShift.ControlChangeSupportShift);
+            Assert.AreEqual(6, config.Combat.AssaultCaptureGarrisonCount);
+            Assert.AreEqual(-2, config.Combat.DestroySystemOuterRimSupportPenalty);
+            Assert.AreEqual(90, config.Combat.DestroySystemOuterRimSupportThreshold);
+            CollectionAssert.Contains(config.Combat.PlanetDestroyingCapitalShipTypeIDs, "CSEM015");
             Assert.AreEqual(1f, config.GameSpeed.FastTickIntervalSeconds);
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);

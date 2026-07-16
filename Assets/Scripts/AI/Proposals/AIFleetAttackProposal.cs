@@ -3,6 +3,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Systems;
 
 namespace Rebellion.AI.Proposals
 {
@@ -182,9 +183,11 @@ namespace Rebellion.AI.Proposals
 
             BombardmentResult bombardmentResult = context.Combat.ExecuteOrbitalBombardment(
                 new List<Fleet> { Fleet },
-                TargetPlanet
+                TargetPlanet,
+                BombardmentType.Military
             );
             context.AddResult(bombardmentResult);
+            context.AddResults(bombardmentResult.Events);
             context.AddResult(bombardmentResult.OwnershipChange);
 
             if (TryClearCompletedAttackOrder(context) || !CanExecute(context))

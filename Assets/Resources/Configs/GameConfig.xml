@@ -538,14 +538,6 @@
     </Garrison>
     <DeploymentGateLow>20</DeploymentGateLow>
     <DeploymentGateHigh>80</DeploymentGateHigh>
-    <CapitalShipProduction>
-      <FacilityPersonnelDivisor>40</FacilityPersonnelDivisor>
-      <StrikeThresholdLow>1</StrikeThresholdLow>
-      <StrikeThresholdHigh>10</StrikeThresholdHigh>
-      <EnergyStrikeResistance>9</EnergyStrikeResistance>
-      <AllocatedEnergyStrikeResistance>9</AllocatedEnergyStrikeResistance>
-      <OrbitalStrikeSupportShift>-20</OrbitalStrikeSupportShift>
-    </CapitalShipProduction>
     <Selection>
       <MinimumSelectableScore>0</MinimumSelectableScore>
       <CandidatePoolSize>3</CandidatePoolSize>
@@ -701,16 +693,34 @@
   <!-- Personnel scaling, bombardment resistance, and damage-roll parameters for space and ground combat. -->
   <Combat>
     <AssaultPersonnelDivisor>40</AssaultPersonnelDivisor>
-    <BombardmentStrikeThresholdLow>1</BombardmentStrikeThresholdLow>
-    <BombardmentStrikeThresholdHigh>10</BombardmentStrikeThresholdHigh>
+    <BombardmentAdmiralLeadershipDivisor>40</BombardmentAdmiralLeadershipDivisor>
+    <BombardmentDefenseGeneralLeadershipDivisor>40</BombardmentDefenseGeneralLeadershipDivisor>
+    <BombardmentStrikeRollMinimum>1</BombardmentStrikeRollMinimum>
+    <BombardmentStrikeRollMaximum>10</BombardmentStrikeRollMaximum>
     <BombardmentEnergyResistance>9</BombardmentEnergyResistance>
-    <BombardmentShieldBlockThreshold>1</BombardmentShieldBlockThreshold>
-    <DefenseFacilityResponseDivisor>10</DefenseFacilityResponseDivisor>
-    <RepeatTrialProbability>50</RepeatTrialProbability>
-    <GroundCombatCommanderDivisor>30</GroundCombatCommanderDivisor>
-    <GroundCombatContestDiceRange>10</GroundCombatContestDiceRange>
-    <GroundCombatDefenderWinsThreshold>4</GroundCombatDefenderWinsThreshold>
-    <GroundCombatAttackerWinsThreshold>6</GroundCombatAttackerWinsThreshold>
+    <BombardmentAllocatedEnergyResistance>9</BombardmentAllocatedEnergyResistance>
+    <BombardmentHeadquartersResistance>9</BombardmentHeadquartersResistance>
+    <AssaultShieldGeneratorLimit>2</AssaultShieldGeneratorLimit>
+    <AssaultDefenseFireDivisor>5</AssaultDefenseFireDivisor>
+    <AssaultCollateralDamagePercent>8</AssaultCollateralDamagePercent>
+    <AssaultGeneralLeadershipDivisor>30</AssaultGeneralLeadershipDivisor>
+    <AssaultContestRollMaximum>10</AssaultContestRollMaximum>
+    <AssaultDefenderWinsMaximum>4</AssaultDefenderWinsMaximum>
+    <AssaultAttackerWinsMinimum>6</AssaultAttackerWinsMinimum>
+    <AssaultCaptureGarrisonCount>6</AssaultCaptureGarrisonCount>
+    <CivilianBombardmentSupportPenalty>-20</CivilianBombardmentSupportPenalty>
+    <CivilianBombardmentCoreAllianceSupportPenalty>-4</CivilianBombardmentCoreAllianceSupportPenalty>
+    <CivilianBombardmentCoreEmpireSupportPenalty>-3</CivilianBombardmentCoreEmpireSupportPenalty>
+    <CivilianBombardmentOuterRimAllianceSupportPenalty>-2</CivilianBombardmentOuterRimAllianceSupportPenalty>
+    <CivilianBombardmentOuterRimEmpireSupportPenalty>-1</CivilianBombardmentOuterRimEmpireSupportPenalty>
+    <DestroySystemPersonnelInjuryPercent>50</DestroySystemPersonnelInjuryPercent>
+    <DestroySystemMinorPersonnelDeathPercent>25</DestroySystemMinorPersonnelDeathPercent>
+    <DestroySystemCoreSupportPenalty>-10</DestroySystemCoreSupportPenalty>
+    <DestroySystemOuterRimSupportPenalty>-2</DestroySystemOuterRimSupportPenalty>
+    <DestroySystemOuterRimSupportThreshold>90</DestroySystemOuterRimSupportThreshold>
+    <PlanetDestroyingCapitalShipTypeIDs>
+      <String>CSEM015</String>
+    </PlanetDestroyingCapitalShipTypeIDs>
     <WeaponDamageVariancePercent>20</WeaponDamageVariancePercent>
     <FighterDogfightLossRatePercent>30</FighterDogfightLossRatePercent>
     <FighterDamageBasePercent>80</FighterDamageBasePercent>
@@ -754,7 +764,6 @@
     </SecondaryConsequenceTable>
     <!-- Per-tick popular support shift applied to the controlling faction during uprising -->
     <ControllerSupportShift>-1</ControllerSupportShift>
-    <WeakSupportPenaltyDivisor>2</WeakSupportPenaltyDivisor>
     <!-- Minimum ticks between active-uprising support drift pulses -->
     <ActiveSupportDriftMinTicks>144</ActiveSupportDriftMinTicks>
     <!-- Maximum ticks between active-uprising support drift pulses -->
@@ -776,6 +785,9 @@
     <FighterPenalty>5</FighterPenalty>
     <TroopPenalty>2</TroopPenalty>
     <OwnershipTransferThreshold>60</OwnershipTransferThreshold>
+    <WeakSupportPenaltyDivisor>2</WeakSupportPenaltyDivisor>
+    <GarrisonRemovalSupportShift>10</GarrisonRemovalSupportShift>
+    <ControlChangeSupportShift>1</ControlChangeSupportShift>
     <BlockadeMatchShift>1</BlockadeMatchShift>
     <BlockadeOpposeShift>-1</BlockadeOpposeShift>
     <DiplomacyCompletionSupportBonus>1</DiplomacyCompletionSupportBonus>
