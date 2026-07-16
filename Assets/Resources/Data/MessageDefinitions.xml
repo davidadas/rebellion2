@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <MessageDefinitions>
   <MessageDefinition>
     <DisplayName>Fleet Arrived</DisplayName>
@@ -10,11 +10,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_fleet_arrived_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_fleet_arrived_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_fleet_arrived_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_fleet_arrived_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -23,7 +23,8 @@
     <ResultType>ShipsArrived</ResultType>
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Ships arrive at {system}</TitleTemplate>
-    <BodyTemplate>The following ships have arrived at {system}:&#10;{ships}</BodyTemplate>
+    <BodyTemplate>The following ships have arrived at {system}:
+{ships}</BodyTemplate>
     <VoicePaths>
       <Entry>
         <Key>FNALL1</Key>
@@ -40,8 +41,6 @@
     <DisplayName>Personnel Arrived</DisplayName>
     <ResultType>PersonnelArrived</ResultType>
     <MessageType>Mission</MessageType>
-    <TitleTemplate>Personnel arrive at {system}</TitleTemplate>
-    <BodyTemplate>The following personnel have arrived at {system}:&#10;{personnel}</BodyTemplate>
     <VoicePaths>
       <Entry>
         <Key>FNALL1</Key>
@@ -52,7 +51,46 @@
         <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
       </Entry>
     </VoicePaths>
-    <ImageKey>mission_report</ImageKey>
+    <TitleTemplate>Personnel arrive at {system}</TitleTemplate>
+    <BodyTemplate>The following personnel have arrived at {system}:
+{personnel}</BodyTemplate>
+    <ImageKey>ships_arrived</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Arrived</DisplayName>
+    <ResultType>PersonnelArrivedByOfficer</ResultType>
+    <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <TitleTemplate>{officer} Arrives at {system}</TitleTemplate>
+    <BodyTemplate>I have arrived at {system}.</BodyTemplate>
+    <ImageKey>ships_arrived</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Officer Arrived With Personnel</DisplayName>
+    <ResultType>PersonnelArrivedByOfficerWithCompany</ResultType>
+    <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <TitleTemplate>{officer} Arrives at {system}</TitleTemplate>
+    <BodyTemplate>I have arrived at {system}.  The following personnel have arrived with me:&#10;{personnel}</BodyTemplate>
+    <ImageKey>ships_arrived</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Capital Ship Repaired</DisplayName>
@@ -60,6 +98,7 @@
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Capital Ship Repaired</TitleTemplate>
     <BodyTemplate>{item} attached to {attachment} has repaired all battle damage and is fully operational.</BodyTemplate>
+    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_capital_ship_repaired</VoicePath>
     <ImageKey>capital_ship_repaired</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
@@ -87,7 +126,7 @@
     <TitleTemplate>Emperor Arrives at Coruscant</TitleTemplate>
     <BodyTemplate>I have returned to the Seat of Power at Coruscant.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_seat_of_power</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_emperor_seat_of_power</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_emperor_seat_of_power</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Mine Deployed</DisplayName>
@@ -97,7 +136,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_mine_deployed</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mine_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Refinery Deployed</DisplayName>
@@ -107,7 +146,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_refinery_deployed</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_refinery_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Shipyard Deployed</DisplayName>
@@ -117,7 +156,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_shipyard_deployed</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_shipyard_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Training Facility Deployed</DisplayName>
@@ -127,7 +166,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_training_facility_deployed</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_training_facility_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Construction Yard Deployed</DisplayName>
@@ -137,7 +176,7 @@
     <TitleTemplate>{item} Deployed at {system}</TitleTemplate>
     <BodyTemplate>A new {item} has been deployed to {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_construction_yard_deployed</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_construction_yard_deployed</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Shipyard Idle</DisplayName>
@@ -147,7 +186,7 @@
     <TitleTemplate>Shipyard Idle on {system}</TitleTemplate>
     <BodyTemplate>The Shipyards at {system} are available for new construction orders.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_shipyard_idle</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_shipyard_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Training Facility Idle</DisplayName>
@@ -157,7 +196,7 @@
     <TitleTemplate>Training Facility Idle on {system}</TitleTemplate>
     <BodyTemplate>The Training Facilities at {system} are no longer in use.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_training_facility_idle</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_training_facility_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Construction Yard Idle</DisplayName>
@@ -167,74 +206,135 @@
     <TitleTemplate>Construction Yard Idle on {system}</TitleTemplate>
     <BodyTemplate>The Construction Yards at {system} have completed their assigned tasks.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_production_complete</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_construction_yard_idle</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_construction_yard_idle</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Diplomacy Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Diplomacy</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My diplomacy mission to {system} has increased popular support on that system.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recon Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
-    <BodyTemplate>The reconnaissance mission to {system} was successful.&#10;</BodyTemplate>
-    <ImageKey>mission_report</ImageKey>
+    <BodyTemplate>The reconnaissance mission to {system} was successful.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Espionage</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My espionage mission to {system} was successful.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Sabotage Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Sabotage</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My sabotage mission to {system} targeting the {target} is complete.  The target was destroyed.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>InciteUprising</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My Incite Uprising mission to {system} was successful.  The system has gone into uprising.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recruitment Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Recruitment</MissionTypeID>
     <TitleTemplate>{participant} Recruits {officer}</TitleTemplate>
     <BodyTemplate>My recruitment mission to {system} was successful. {officer} is at your command.</BodyTemplate>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -243,56 +343,119 @@
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Abduction</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My mission to abduct {officer} from {system} was a success.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <BodyTemplate>My mission to abduct {officer} from {system} was a success.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assassination Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Assassination</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My assassination mission to {system} is complete.  {officer} {assassination_result}.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <BodyTemplate>My assassination mission to {system} is complete.  {officer} {assassination_result}.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Subdue Uprising Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>SubdueUprising</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My mission to subdue the uprising on {system} was successful.  Order has been restored.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Rescue Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Rescue</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My mission to rescue {officer} from {system} was a success.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <BodyTemplate>My mission to rescue {officer} from {system} was a success.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Research</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My {mission} Research mission at {system} has produced valuable results.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Jedi Training Mission Report Success</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Success</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>JediTraining</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My Jedi Training mission on {system} was a success.</BodyTemplate>
@@ -303,84 +466,129 @@
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Diplomacy</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My diplomacy mission to {system} had no effect on popular support in that system.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_diplomacy</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recon Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Reconnaissance</MissionTypeID>
     <TitleTemplate>Recon Mission Report</TitleTemplate>
-    <BodyTemplate>The reconnaissance mission to {system} failed.&#10;</BodyTemplate>
-    <ImageKey>mission_report</ImageKey>
+    <BodyTemplate>The reconnaissance mission to {system} failed.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Espionage Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Espionage</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My espionage mission to {system} was not successful.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Sabotage Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Sabotage</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My sabotage mission to {system} targeting the {target} is complete.    The target was not destroyed.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>InciteUprising</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My Incite Uprising mission to {system} has not produced results.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
+    <BodyTemplate>My Incite Uprising mission to {system} has not produced results.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Recruitment Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Recruitment</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My recruitment mission to {system} is complete.  I have failed to recruit anyone.</BodyTemplate>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
-      </Entry>
-    </ImagePaths>
-  </MessageDefinition>
-  <MessageDefinition>
-    <DisplayName>Recruitment Exhausted</DisplayName>
-    <ResultType>RecruitmentExhausted</ResultType>
-    <MessageType>Mission</MessageType>
-    <TitleTemplate>Recruitment Done</TitleTemplate>
-    <BodyTemplate>We regret to report that there are no more candidates to be recruited.</BodyTemplate>
-    <ImagePaths>
-      <Entry>
-        <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
-      </Entry>
-      <Entry>
-        <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -389,56 +597,118 @@
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Abduction</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My mission to abduct {officer} from {system} failed.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assassination Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Assassination</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My assassination mission to {system} is complete.  {officer} has not been eliminated.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <BodyTemplate>My assassination mission to {system} is complete.  {officer} has not been eliminated.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Subdue Uprising Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>SubdueUprising</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
-    <BodyTemplate>My Subdue Uprising mission to {system} has not met with success.  The world is still in a state of uprising.&#10;</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
+    <BodyTemplate>My Subdue Uprising mission to {system} has not met with success.  The world is still in a state of uprising.
+</BodyTemplate>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_subdue_uprising</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Rescue Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Rescue</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My mission to rescue {officer} from {system} failed.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>Research</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My {mission} Research mission at {system} has not produced new information.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Jedi Training Mission Report Failed</DisplayName>
     <ResultType>MissionReport</ResultType>
     <Outcome>Failed</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>JediTraining</MissionTypeID>
     <TitleTemplate>{participant} Mission Report</TitleTemplate>
     <BodyTemplate>My Jedi Training mission on {system} has not met with success.</BodyTemplate>
@@ -451,24 +721,34 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{participant} Mission Foiled</TitleTemplate>
     <BodyTemplate>My {mission} mission to {system} has been foiled by opposing forces.  </BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_mission_report_espionage</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_mission_report_espionage</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Incite Uprising Enemy Mission Foiled</DisplayName>
     <ResultType>EnemyMissionFoiled</ResultType>
     <Outcome>Foiled</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <MissionTypeID>InciteUprising</MissionTypeID>
     <TitleTemplate>Enemy Mission Foiled</TitleTemplate>
     <BodyTemplate>An enemy {mission} mission to {system} has been foiled by our forces.</BodyTemplate>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_enemy_mission_foiled_incite_uprising_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -477,16 +757,26 @@
     <ResultType>EnemyMissionFoiled</ResultType>
     <Outcome>Foiled</Outcome>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <TitleTemplate>Enemy Mission Foiled</TitleTemplate>
     <BodyTemplate>An enemy {mission} mission to {system} has been foiled by our forces.</BodyTemplate>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_enemy_mission_foiled_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_enemy_mission_foiled_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_enemy_mission_foiled_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -495,16 +785,17 @@
     <ResultType>SabotageStrike</ResultType>
     <MessageType>Mission</MessageType>
     <TitleTemplate>Saboteurs Strike at {system}</TitleTemplate>
-    <BodyTemplate>The following units were destroyed by saboteurs at {system}:&#10;{item}</BodyTemplate>
+    <BodyTemplate>The following units were destroyed by saboteurs at {system}:
+{item}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_sabotage_maintenance_explosion</VoicePath>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_destroyed_object_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_destroyed_object_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_destroyed_object_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_destroyed_object_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -517,11 +808,38 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Recruitment Exhausted</DisplayName>
+    <ResultType>RecruitmentExhausted</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Recruitment Done</TitleTemplate>
+    <BodyTemplate>We regret to report that there are no more candidates to be recruited.</BodyTemplate>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_mission_report_recruitment_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -534,11 +852,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_character_captured_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_character_captured_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_character_captured_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_character_captured_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -548,7 +866,8 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Escaped</TitleTemplate>
     <BodyTemplate>{officer} has escaped from imprisonment at {system}.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_prisoner_escape</ImagePath>
+    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_prisoner_escape</VoicePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_prisoner_escape</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Injured</DisplayName>
@@ -557,7 +876,7 @@
     <TitleTemplate>{officer} Injured</TitleTemplate>
     <BodyTemplate>{officer} has been injured.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_character_injured</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_character_injured</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_character_injured</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Recovered</DisplayName>
@@ -565,7 +884,7 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Healed</TitleTemplate>
     <BodyTemplate>{officer} has been healed of all injuries.</BodyTemplate>
-    <ImagePath>Art/UI/Messages/ui_message_character_recovered</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_character_recovered</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Officer Killed</DisplayName>
@@ -576,11 +895,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_character_killed_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_character_killed_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_character_killed_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_character_killed_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -588,6 +907,16 @@
     <DisplayName>Force Growth</DisplayName>
     <ResultType>ForceGrowth</ResultType>
     <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
     <TitleTemplate>Force Growth</TitleTemplate>
     <BodyTemplate>My recent experience has given me new insights and I have grown in my skills in the Force.  My ranking is {rank}.</BodyTemplate>
     <ImageKey>mission_report</ImageKey>
@@ -609,6 +938,41 @@
     <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Leia Uses Force</DisplayName>
+    <ResultType>ForceAbilityRevealed</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Leia Uses Force</TitleTemplate>
+    <BodyTemplate>My heritage as a member of the Skywalker family has given me the ability to use the Force, as it has my brother and father.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Luke Leaves Dagobah</DisplayName>
+    <ResultType>DagobahCompleted</ResultType>
+    <MessageType>Mission</MessageType>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_faction_report_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <TitleTemplate>Luke Leaves Dagobah</TitleTemplate>
+    <BodyTemplate>I have finished my training with Yoda.</BodyTemplate>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Luke Discovers His Heritage</DisplayName>
+    <ResultType>HeritageRevealed</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>Luke Discovers His Heritage</TitleTemplate>
+    <BodyTemplate>Luke has learned that Vader is his father.</BodyTemplate>
+    <VoicePath>Audio/SFX/StrategyView/Voice/Events/voice_event_1397</VoicePath>
+    <ImageKey>mission_report</ImageKey>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Research Complete Ship</DisplayName>
     <ResultType>ResearchComplete</ResultType>
     <MessageType>Manufacturing</MessageType>
@@ -616,7 +980,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Troop</DisplayName>
@@ -626,7 +990,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Complete Facility</DisplayName>
@@ -636,7 +1000,7 @@
     <TitleTemplate>{item} Research Complete</TitleTemplate>
     <BodyTemplate>R&amp;D Reports that the {item} is now available for manufacture.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Ship</DisplayName>
@@ -646,7 +1010,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in ship construction.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Troop</DisplayName>
@@ -656,7 +1020,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in troop training.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Research Exhausted Facility</DisplayName>
@@ -666,7 +1030,7 @@
     <TitleTemplate>Research Exhausted</TitleTemplate>
     <BodyTemplate>There are no further advances expected in facility construction.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_research_successful</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_research_report</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Uprising Started</DisplayName>
@@ -675,7 +1039,7 @@
     <TitleTemplate>Uprising Begins on {system}</TitleTemplate>
     <BodyTemplate>An uprising has begun on the {faction} controlled system {system}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_uprising_started</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_uprising_started</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_uprising_started</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Uprising Ended</DisplayName>
@@ -687,11 +1051,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_uprising_ended_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_uprising_ended_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_uprising_ended_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_uprising_ended_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -702,7 +1066,7 @@
     <TitleTemplate>{system} Joins</TitleTemplate>
     <BodyTemplate>Popular support on {system} has caused that world to join the {faction}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
+    <ImageKey>planet_allegiance_evolves</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Planet Joined Enemy by Support</DisplayName>
@@ -711,7 +1075,7 @@
     <TitleTemplate>{system} Joins Enemy</TitleTemplate>
     <BodyTemplate>Popular dissent on {system} has caused that world to join the {faction}.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
+    <ImageKey>planet_allegiance_evolves</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Planet Declared Neutrality by Support</DisplayName>
@@ -720,7 +1084,7 @@
     <TitleTemplate>{system} Declares Neutrality</TitleTemplate>
     <BodyTemplate>Divided loyalty on {system} has caused that world to abandon the {faction} cause.</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
+    <ImageKey>planet_allegiance_evolves</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Blockade Initiated</DisplayName>
@@ -732,11 +1096,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_blockade_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_blockade_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_blockade_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_blockade_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -750,11 +1114,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_blockade_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_blockade_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_blockade_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_blockade_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -763,15 +1127,26 @@
     <ResultType>EvacuationLosses</ResultType>
     <MessageType>Fleet</MessageType>
     <TitleTemplate>Evacuation Losses</TitleTemplate>
-    <BodyTemplate>The following units were lost running an enemy blockade of {system}.&#10;{units}</BodyTemplate>
-    <ImagePaths>
+    <BodyTemplate>The following units were lost running an enemy blockade of {system}.
+{units}</BodyTemplate>
+    <VoicePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_evacuation_losses_alliance</Value>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_blockade_breach_failed_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_evacuation_losses_empire</Value>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_blockade_breach_failed_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_evacuation_losses_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_evacuation_losses_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -780,16 +1155,17 @@
     <ResultType>MaintenanceAutoscrap</ResultType>
     <MessageType>Resource</MessageType>
     <TitleTemplate>Maintenance Shortfall</TitleTemplate>
-    <BodyTemplate>The following units have been destroyed at {system} due to a maintenance shortfall:&#10;{item}</BodyTemplate>
+    <BodyTemplate>The following units have been destroyed at {system} due to a maintenance shortfall:
+{item}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_sabotage_maintenance_explosion</VoicePath>
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_destroyed_object_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_destroyed_object_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_destroyed_object_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_destroyed_object_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -803,11 +1179,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_alliance_victory</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_alliance_victory</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_empire_victory</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_empire_victory</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -821,11 +1197,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_alliance_defeat</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_alliance_defeat</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_empire_defeat</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_empire_defeat</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -839,11 +1215,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_space_battle_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_space_battle_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -856,7 +1232,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Owned Target Losses</DisplayName>
@@ -867,7 +1243,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Owned Attacker Losses</DisplayName>
@@ -878,7 +1254,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the {target} system of {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral No Losses</DisplayName>
@@ -889,7 +1265,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_no_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral Target Losses</DisplayName>
@@ -900,7 +1276,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Bombardment Neutral Attacker Losses</DisplayName>
@@ -911,7 +1287,7 @@
     <TitleTemplate>Orbital bombardment of {system}</TitleTemplate>
     <BodyTemplate>{faction} ships have conducted an orbital strike on the non-aligned system {system}</BodyTemplate>
     <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_orbital_bombardment</VoicePath>
-    <ImagePath>Art/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
+    <ImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
     <DisplayName>Assault Captured Owned System</DisplayName>
@@ -925,11 +1301,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -945,11 +1321,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -965,11 +1341,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>
@@ -985,11 +1361,11 @@
     <ImagePaths>
       <Entry>
         <Key>FNALL1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_alliance</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_alliance</Value>
       </Entry>
       <Entry>
         <Key>FNEMP1</Key>
-        <Value>Art/UI/Messages/ui_message_assault_empire</Value>
+        <Value>Art/HD/UI/Messages/ui_message_assault_empire</Value>
       </Entry>
     </ImagePaths>
   </MessageDefinition>

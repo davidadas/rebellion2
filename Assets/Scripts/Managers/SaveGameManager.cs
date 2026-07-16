@@ -31,6 +31,11 @@ public sealed class SaveGameEntry
 public class SaveGameManager
 {
     public const string QuickSaveFileName = "quicksave";
+    private const int _saveSlotCount = 6;
+    private const string _quickSaveDisplayName = "Quicksave";
+    private const string _saveSlotFilePrefix = "save_slot_";
+    private const string _saveSlotDisplayPrefix = "Save Slot ";
+    private const string _metadataElementName = "Metadata";
 
     // Singleton instance.
     private static SaveGameManager _instance;
@@ -46,6 +51,44 @@ public class SaveGameManager
             }
             return _instance;
         }
+    }
+
+    public int SaveSlotCount => _saveSlotCount;
+
+    /// <summary>
+    /// Returns whether the supplied save slot index is valid.
+    /// </summary>
+    /// <param name="slot">The zero-based save slot index.</param>
+    /// <returns>True when the save slot index is valid.</returns>
+    public bool IsValidSaveSlot(int slot)
+    {
+        return slot >= 0 && slot < _saveSlotCount;
+    }
+
+    /// <summary>
+    /// Returns the save file name for a numbered save slot.
+    /// </summary>
+    /// <param name="slot">The zero-based save slot index.</param>
+    /// <returns>The save file name for the slot.</returns>
+    public string GetSaveSlotFileName(int slot)
+    {
+        if (!IsValidSaveSlot(slot))
+            throw new ArgumentOutOfRangeException(nameof(slot));
+
+        return _saveSlotFilePrefix + (slot + 1);
+    }
+
+    /// <summary>
+    /// Returns the display name for a numbered save slot.
+    /// </summary>
+    /// <param name="slot">The zero-based save slot index.</param>
+    /// <returns>The display name for the slot.</returns>
+    public string GetSaveSlotDisplayName(int slot)
+    {
+        if (!IsValidSaveSlot(slot))
+            throw new ArgumentOutOfRangeException(nameof(slot));
+
+        return _saveSlotDisplayPrefix + (slot + 1);
     }
 
     /// <summary>
@@ -119,7 +162,7 @@ public class SaveGameManager
         }
 
         // Sort newest first (based on metadata, not file system)
-        return saves.OrderByDescending(s => s.Metadata.LastSavedUtc).ToList();
+        return saves.OrderByDescending(save => save.Metadata.LastSavedUtc).ToList();
     }
 
     /// <summary>
@@ -155,6 +198,36 @@ public class SaveGameManager
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
         using FileStream fileStream = new FileStream(saveFilePath, FileMode.Create);
         serializer.Serialize(fileStream, game);
+    }
+
+    /// <summary>
+    /// Saves game data to the quicksave slot.
+    /// </summary>
+    /// <param name="game">The game data to save.</param>
+    public void SaveQuickGameData(GameRoot game)
+    {
+        SaveGameData(game, QuickSaveFileName, _quickSaveDisplayName);
+    }
+
+    /// <summary>
+    /// Saves game data to one numbered save slot.
+    /// </summary>
+    /// <param name="game">The game data to save.</param>
+    /// <param name="slot">The zero-based save slot index.</param>
+    public void SaveSlotGameData(GameRoot game, int slot)
+    {
+        SaveSlotGameData(game, slot, null);
+    }
+
+    public void SaveSlotGameData(GameRoot game, int slot, string displayName)
+    {
+        if (!IsValidSaveSlot(slot))
+            throw new ArgumentOutOfRangeException(nameof(slot));
+
+        string resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
+            ? GetSaveSlotDisplayName(slot)
+            : displayName.Trim();
+        SaveGameData(game, GetSaveSlotFileName(slot), resolvedDisplayName);
     }
 
     /// <summary>
@@ -214,7 +287,4 @@ public class SaveGameManager
             );
         }
     }
-
-    private const string _quickSaveDisplayName = "Quicksave";
-    private const string _metadataElementName = "Metadata";
 }

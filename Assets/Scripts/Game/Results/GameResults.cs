@@ -43,6 +43,14 @@ namespace Rebellion.Game.Results
         Draw,
     }
 
+    public enum SpaceCombatSideOutcome
+    {
+        Unknown,
+        Active,
+        Destroyed,
+        Withdrawn,
+    }
+
     public enum PlanetStatType
     {
         Energy,
@@ -693,8 +701,12 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
         public CombatSide Winner { get; set; }
+        public SpaceCombatSideOutcome AttackerOutcome { get; set; }
+        public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
@@ -709,6 +721,8 @@ namespace Rebellion.Game.Results
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
         public Planet Planet { get; set; }
+        public bool AttackerCanRetreat { get; set; }
+        public bool DefenderCanRetreat { get; set; }
     }
 
     public class BombardmentStrikeEvent

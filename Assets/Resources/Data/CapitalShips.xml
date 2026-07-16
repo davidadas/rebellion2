@@ -1,13 +1,17 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <CapitalShips>
-  <!--   **************************************************  -->
-  <!--   ******************* EMPRE SHIPS ******************  -->
-  <!--   **************************************************  -->
   <CapitalShip>
     <TypeID>CSEM001</TypeID>
     <DisplayName>Imperial Dreadnaught</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_dreadnaught</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	44
 Maintenance Cost:		33
 Fighter Capacity:		1
@@ -21,6 +25,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. Standard Imperial Dreadnaughts are basically the same as the original Old Republic Dreadnaughts except they now carry a hangar deck for a squadron of TIE fighters. Because of its relatively slow speed, the Imperial Dreadnaught primarily serves as a convoy escort or patrol ship.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_dreadnaught</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -136,8 +141,15 @@ The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old 
   <CapitalShip>
     <TypeID>CSEM002</TypeID>
     <DisplayName>Galleon</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_galleon</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	10
 Maintenance Cost:		10
 Fighter Capacity:		0
@@ -151,6 +163,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 This older model starship dates from the time of the Old Republic.  Specifically designed as a transport ship, the Galleon is completely unarmed.  Later adopted by the Empire, the Galleon now serves mainly as a troop transport. </Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_galleon</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -266,8 +279,15 @@ This older model starship dates from the time of the Old Republic.  Specifically
   <CapitalShip>
     <TypeID>CSEM003</TypeID>
     <DisplayName>Imperial Escort Carrier</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_escort_carrier</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	34
 Maintenance Cost:		30
 Fighter Capacity:		6
@@ -281,6 +301,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		30		30		60		60
 
 Imperial escort carriers were designed to complement a fleet's starfighter capacity and provide a hyperspace capable platform for TIE class fighters to use during hyperspace transport.  Escort carriers are very lightly armed and shielded, but are capable of carrying entire wings of fighters and shuttles.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_escort_carrier</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -397,8 +418,15 @@ Imperial escort carriers were designed to complement a fleet's starfighter capac
   <CapitalShip>
     <TypeID>CSEM004</TypeID>
     <DisplayName>Carrack Light Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_carrack_light_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	26
 Maintenance Cost:		24
 Fighter Capacity:		0
@@ -412,6 +440,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		60		60		90		90
 
 The Carrack light cruiser is by far the fastest Imperial escort ship.  Approximately 350 meters in length, it carries a crew of just over one thousand and an ample amount of firepower. It is well suited for a variety of escort and combat missions.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_carrack_light_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -527,8 +556,15 @@ The Carrack light cruiser is by far the fastest Imperial escort ship.  Approxima
   <CapitalShip>
     <TypeID>CSEM005</TypeID>
     <DisplayName>Victory Destroyer I</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_destroyer_i</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	68
 Maintenance Cost:		44
 Fighter Capacity:		2
@@ -542,6 +578,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Victory Destroyer is an older star cruiser that proved to be an important part of the Imperial space fleet. This vessel was designed with planetary bombardment in mind. While a capable combat vessel, the Victory Star Destroyer can deliver accurate and devastating bombardments from orbit.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_destroyer_i</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -657,8 +694,15 @@ The Victory Destroyer is an older star cruiser that proved to be an important pa
   <CapitalShip>
     <TypeID>CSEM006</TypeID>
     <DisplayName>Imperial Star Destroyer</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_star_destroyer</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	112
 Maintenance Cost:		71
 Fighter Capacity:		6
@@ -672,6 +716,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core of the Imperial Navy.  True marvels of starship engineering,  Imperial Star Destroyers are 1,600 meters long and have over one hundred weapon emplacements for deep-space combat.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_star_destroyer</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -787,8 +832,15 @@ The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core
   <CapitalShip>
     <TypeID>CSEM007</TypeID>
     <DisplayName>Lancer Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_lancer_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_lancer_frigate</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	14
 Maintenance Cost:		30
 Fighter Capacity:		0
@@ -802,6 +854,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		150		150		150		150
 
 The Lancer frigate is a 250-meter long, capital combat starship that the Empire designed specifically to combat Rebel starfighters.  These vessels were designed by the Empire shortly after a small number of Rebel X-wing and Y-wing fighters destroyed the Death Star battle station.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_lancer_frigate</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -917,8 +970,15 @@ The Lancer frigate is a 250-meter long, capital combat starship that the Empire 
   <CapitalShip>
     <TypeID>CSEM008</TypeID>
     <DisplayName>Star Galleon</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_star_galleon</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	15
 Maintenance Cost:		20
 Fighter Capacity:		0
@@ -932,6 +992,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		30		30		30
 
 The 300-meter long Imperial Star Galleon is designed to combine the cargo space of a bulk freighter with the armament of a combat ship.  This vessel can carry cargo and defend itself, thus eliminating the need to have separate freighters and escort craft.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_star_galleon</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1047,8 +1108,15 @@ The 300-meter long Imperial Star Galleon is designed to combine the cargo space 
   <CapitalShip>
     <TypeID>CSEM009</TypeID>
     <DisplayName>Assault Transport</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_assault_transport</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	12
 Maintenance Cost:		29
 Fighter Capacity:		0
@@ -1062,6 +1130,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		150		0		60		60
 
 Assault transports are designed to delivery Imperial assault troops anywhere in the galaxy quickly with little or no escort. While only capable of carrying one regiment, the Assault transport has the firepower, speed, and maneuverability to attack lightly defended systems without escort. Additionally, Assault transports are equipped with the fastest available hyperdrive systems.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_assault_transport</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1177,8 +1246,15 @@ Assault transports are designed to delivery Imperial assault troops anywhere in 
   <CapitalShip>
     <TypeID>CSEM010</TypeID>
     <DisplayName>Interdictor Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_interdictor_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_interdictor_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	40
 Maintenance Cost:		34
 Fighter Capacity:		0
@@ -1192,6 +1268,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		90		0		60		60
 
 The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but it carries an artificial gravity-well generator and four gravity-well projectors which, when activated, prevent nearby starships from escaping into hyperspace.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_interdictor_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1307,8 +1384,15 @@ The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but
   <CapitalShip>
     <TypeID>CSEM011</TypeID>
     <DisplayName>Victory II Star Destroyer</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	72
 Maintenance Cost:		63
 Fighter Capacity:		2
@@ -1322,6 +1406,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Victory II is an upgrade of the older Victory model starship.  The Victory II was designed with space combat in mind, outfitted with larger weapons and hangar bays than the original Victory.  The Victory II works well as a patrol or blockade starship and maintains its predecessor's bombardment capabilities.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1437,8 +1522,15 @@ The Victory II is an upgrade of the older Victory model starship.  The Victory I
   <CapitalShip>
     <TypeID>CSEM012</TypeID>
     <DisplayName>Strike Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_strike_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_strike_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	70
 Maintenance Cost:		60
 Fighter Capacity:		1
@@ -1452,6 +1544,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 This 450-meter long Imperial star cruiser was designed to be massed-produced in a short amount of time.  Thanks to their modular design, the cruisers' interiors can be configured to accommodate specific mission profiles.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_strike_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1567,8 +1660,15 @@ This 450-meter long Imperial star cruiser was designed to be massed-produced in 
   <CapitalShip>
     <TypeID>CSEM013</TypeID>
     <DisplayName>Imperial Star Destroyer II</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_star_destroyer_ii</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	158
 Maintenance Cost:		99
 Fighter Capacity:		6
@@ -1582,6 +1682,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 An upgraded version of the Imperial Star Destroyer which boasts a heavily reinforced hull and more powerful heavy turbolaser batteries and cannons.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_imperial_star_destroyer_ii</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1697,8 +1798,15 @@ An upgraded version of the Imperial Star Destroyer which boasts a heavily reinfo
   <CapitalShip>
     <TypeID>CSEM014</TypeID>
     <DisplayName>Super Star Destroyer</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_super_star_destroyer_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_super_star_destroyer</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	282
 Maintenance Cost:		170
 Fighter Capacity:		12
@@ -1712,6 +1820,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Super-class Star Destroyer, the newest model in the fleet, is eight kilometers long, dwarfing even the massive Imperial Star Destroyers. The Super Star Destroyer is approximately five times as powerful as its smaller predecessor. Frequently used as a command vessel, the Super Star Destroyer is the most powerful conventional warship in the Imperial inventory.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_super_star_destroyer</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1827,14 +1936,22 @@ The Super-class Star Destroyer, the newest model in the fleet, is eight kilomete
   <CapitalShip>
     <TypeID>CSEM015</TypeID>
     <DisplayName>Death Star</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_empire_death_star_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_death_star</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	584
 Maintenance Cost:		600
 Fighter Capacity:		24
 Troop Capacity:			18
 
 An immense battle station 120-kilometers in diameter, the Death Star was the pinnacle of Imperial engineering.  Designed by Chief Engineer Bevel Lemelisk and constructed above the penal colony of Despyre, the Death Star was Grand Moff Tarkin's ultimate symbol of rule by fear of force.  It carried a crew of over 750,000 and enough firepower to destroy an entire system.  Tarkin demonstrated the power of his masterpiece by destroying the world of Alderaan in an attempt to persuade Princess Leia Organa to reveal the location of the Alliance base.  The Death Star relies on its world destroying superlaser and vast numbers of turbolasers on its surface to defend against large scale attacks, but appears to be vulnerable to small starfighters.  The Death Star was later destroyed in the Battle of Yavin.  Grand Moff Tarkin died with his creation at Yavin, but it is unknown how many more Death Stars he was constructing.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_death_star</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -1927,14 +2044,18 @@ An immense battle station 120-kilometers in diameter, the Death Star was the pin
     <HasGravityWell>false</HasGravityWell>
     <DetectionRating>5</DetectionRating>
   </CapitalShip>
-  <!--   **************************************************  -->
-  <!--   ***************** ALLIANCE SHIPS *****************  -->
-  <!--   **************************************************  -->
   <CapitalShip>
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_alliance_dreadnaught</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	44
 Maintenance Cost:		33
 Fighter Capacity:		1
@@ -1948,6 +2069,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. The Alliance has refit many of these ancient vessels with automated controls and faster sublight engines.  Many of these became what are known as Rebel Assault Frigates.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_alliance_dreadnaught</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2063,8 +2185,15 @@ The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old 
   <CapitalShip>
     <TypeID>CSAL002</TypeID>
     <DisplayName>Bulk Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulk_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	30
 Maintenance Cost:		30
 Fighter Capacity:		0
@@ -2078,6 +2207,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The aging bulk cruiser class of capital ships has existed since the time of the Old Republic.  Extremely reliable and rugged, the cruiser has become one of the mainstay ships of the Alliance fleet.  Sporting a reasonable amount of firepower and shielding, the cruiser is suited for most any type of operation.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulk_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2193,8 +2323,15 @@ The aging bulk cruiser class of capital ships has existed since the time of the 
   <CapitalShip>
     <TypeID>ALCS003</TypeID>
     <DisplayName>Medium Transport</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_medium_transport_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_medium_transport</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	10
 Maintenance Cost:		12
 Fighter Capacity:		0
@@ -2208,6 +2345,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		30		30
 
 These vessels can haul an immense amount of equipment considering that they are only 90 meters long.  The medium transport's outer hull is little more than a thick shell; the interior is mainly open space.  These transports are useful in transporting medicine, food, fuel, spare parts, weapons, raw materials, and troops.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_medium_transport</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2323,8 +2461,15 @@ These vessels can haul an immense amount of equipment considering that they are 
   <CapitalShip>
     <TypeID>ALCS004</TypeID>
     <DisplayName>Bulk Transport</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulk_transport_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulk_transport</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	24
 Maintenance Cost:		22
 Fighter Capacity:		0
@@ -2338,6 +2483,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		  0
 
 The bulk transport is the life blood of intergalactic trade and commerce.  The extensive cargo capacity of the transport makes it ideal for moving everything from loads of juri juice to regiments of troops.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulk_transport</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2453,8 +2599,15 @@ The bulk transport is the life blood of intergalactic trade and commerce.  The e
   <CapitalShip>
     <TypeID>ALCS005</TypeID>
     <DisplayName>Alliance Escort Carrier</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_alliance_escort_carrier</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	32
 Maintenance Cost:		29
 Fighter Capacity:		6
@@ -2468,6 +2621,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		30		0		60		60
 
 Alliance escort carriers serve a similar purpose to their Imperial counterparts.  Escort carriers are capable of carrying and refueling wings of starfighters and dramatically increase the starfighter capacity of the fleet to which they are attached.  Alliance carriers have better shielding than the Imperial models, but have relatively weak firepower.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_alliance_escort_carrier</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2584,8 +2738,15 @@ Alliance escort carriers serve a similar purpose to their Imperial counterparts.
   <CapitalShip>
     <TypeID>ALCS006</TypeID>
     <DisplayName>Corellian Corvette</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_corellian_corvette_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_corellian_corvette</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	14
 Maintenance Cost:		23
 Fighter Capacity:		0
@@ -2599,6 +2760,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		120		9 0		120		120
 
 A mid-sized capital ship constructed in the Corellian shipyards, the Corvette has had a long history of service. At 150 meters long and carrying a reasonable complement of shielding and armament, it can function as a cargo transport, or front line warship. Since this vessel sees a lot of action with the Corellian pirates and the Alliance, it has been nicknamed the Blockade Runner.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_corellian_corvette</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2713,8 +2875,15 @@ A mid-sized capital ship constructed in the Corellian shipyards, the Corvette ha
   </CapitalShip>
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_nebulon_b_frigate</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	34
 Maintenance Cost:		35
 Fighter Capacity:		2
@@ -2728,6 +2897,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		60		60		30		30
 
 The Nebulon-B frigate is 300 meters long and was originally designed for use against starfighters. This vessel has more weaponry than most ships of its class, and its capacity to carry two squadrons of fighters makes it a superior vessel.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_nebulon_b_frigate</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2844,8 +3014,15 @@ The Nebulon-B frigate is 300 meters long and was originally designed for use aga
   <CapitalShip>
     <TypeID>ALCS008</TypeID>
     <DisplayName>Mon Calamari Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_mon_calamari_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	92
 Maintenance Cost:		70
 Fighter Capacity:		3
@@ -2859,6 +3036,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Mon Calamari cruisers were originally spaceliners which were converted into military use.  This 1,200-meter long cylindrical ship looks more organic than technological, but they are considered to be among the finest vessels traveling space.  Built with many redundant systems, the Mon Cal cruiser is difficult to repair and service but extremely reliable in combat situations.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_mon_calamari_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -2974,8 +3152,15 @@ The Mon Calamari cruisers were originally spaceliners which were converted into 
   <CapitalShip>
     <TypeID>CSAL009</TypeID>
     <DisplayName>Corellian Gunship</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_corellian_gunship</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	10
 Maintenance Cost:		23
 Fighter Capacity:		0
@@ -2989,6 +3174,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		90		90		150		150
 
 The Corellian Gunship was designed to be two things, fast and deadly.  Engines fill more than half of its interior structure while the external hull mounts a large number of turbolaser batteries, and quad laser cannons making it an ideal anti-starfighter platform.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_corellian_gunship</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3104,8 +3290,15 @@ The Corellian Gunship was designed to be two things, fast and deadly.  Engines f
   <CapitalShip>
     <TypeID>CSAL010</TypeID>
     <DisplayName>CC-7700 Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_cc_7700_frigate</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	42
 Maintenance Cost:		37
 Fighter Capacity:		0
@@ -3119,6 +3312,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		60		90		90		90
 
 The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, the CC-7700 is designed primarily as a platform for a gravity well projector. The function of this vessel is to prevent the withdrawal of enemy vessels from a battle zone. </Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_cc_7700_frigate</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3234,8 +3428,15 @@ The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, t
   <CapitalShip>
     <TypeID>CSAL011</TypeID>
     <DisplayName>Assault Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_assault_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_assault_frigate</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	60
 Maintenance Cost:		60
 Fighter Capacity:		0
@@ -3249,6 +3450,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The assault frigate is one of the Rebel Alliance's main front line warships. Built using the framework of Old Republic Dreadnaughts, Alliance engineers created a ship with greater speed and maneuverability while still retaining the Dreadnaught's weapon complement.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_assault_frigate</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3365,8 +3567,15 @@ The assault frigate is one of the Rebel Alliance's main front line warships. Bui
   <CapitalShip>
     <TypeID>CSAL012</TypeID>
     <DisplayName>Liberator Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_liberator_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	66
 Maintenance Cost:		55
 Fighter Capacity:		6
@@ -3380,6 +3589,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The SoroSuub Liberator's slender hull disguises the fact that it can carry three troop regiments and six fighter squadrons.  For a capital ship, the Liberator is diminutive of size, but still finds room to host a formidable weapons complement consisting of ion cannons and heavy turbolaser batteries. Utilizing state-of-the-art hull armor, new shielding and drive unit technology, the Liberator is one of the most advanced warships in the galaxy.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_liberator_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3495,8 +3705,15 @@ The SoroSuub Liberator's slender hull disguises the fact that it can carry three
   <CapitalShip>
     <TypeID>CSAL013</TypeID>
     <DisplayName>CC-9600 Frigate</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_cc_9600_frigate</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	58
 Maintenance Cost:		53
 Fighter Capacity:		0
@@ -3511,6 +3728,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 
 The CC-9600 is the latest iteration of the CC series of capital ships.  It is more compact and requires fewer crew members than the previous CC-7700.  While the CC-7700 was primarily a platform for gravity well projectors, the CC-9600 is a pure combat vessel. The firepower and shielding of the CC-9600 are considerable, while allowing enough cargo space to accommodate two regiments of ground troops.
 </Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_cc_9600_frigate</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3626,8 +3844,15 @@ The CC-9600 is the latest iteration of the CC series of capital ships.  It is mo
   <CapitalShip>
     <TypeID>CSAL014</TypeID>
     <DisplayName>Dauntless Cruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_liberator_cruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_dauntless_cruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	136
 Maintenance Cost:		90
 Fighter Capacity:		4
@@ -3641,6 +3866,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The Dauntless is the second largest cruiser in the Alliance fleet.  Built from the hull of a luxury liner, it carries an excellent sensor package and countermeasure equipment.  Extra shielding and armaments were added to make the Dauntless an effective front line ship.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_dauntless_cruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -3757,8 +3983,15 @@ The Dauntless is the second largest cruiser in the Alliance fleet.  Built from t
   <CapitalShip>
     <TypeID>CSAL015</TypeID>
     <DisplayName>Bulwark Battlecruiser</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_primary</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulwark_battlecruiser</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_primary</DisplayImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result_in_transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_small</SmallDisplayImagePath>
+    <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_in_transit</InTransitImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_in_transit_small</InTransitSmallImagePath>
+    <DamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_damaged</DamagedImagePath>
+    <DamagedSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_damaged_small</DamagedSmallImagePath>
     <Description>Refined Material Cost:	248
 Maintenance Cost:		175
 Fighter Capacity:		10
@@ -3772,6 +4005,7 @@ Attack Strength:		Fore	Aft		Port	Starboard
 	Laser Cannon:		0		0		0		0
 
 The TransGalMeg Industries Bulwark class capital ship is a mobile fortress.  It is one of the most battle-proof ships employed by the Rebel Alliance.  Though plagued by rumors of unreliable electronics and sensors, the Bulwark's extensive arsenal, shielding and carrying capacity make it ideal for large scale operations.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_bulwark_battlecruiser</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>

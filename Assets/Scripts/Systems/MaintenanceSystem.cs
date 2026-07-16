@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -56,6 +57,44 @@ namespace Rebellion.Systems
         public int GetMaintenanceRequired(Faction faction)
         {
             return faction.GetTotalMaintenanceCost();
+        }
+
+        /// <summary>
+        /// Scraps owned manufacturable units selected by the player.
+        /// </summary>
+        /// <param name="items">The units selected for scrapping.</param>
+        /// <param name="ownerInstanceId">The faction authorized to scrap the units.</param>
+        /// <returns>True when every selected unit was scrapped.</returns>
+        public bool Scrap(IReadOnlyList<IManufacturable> items, string ownerInstanceId)
+        {
+            if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            List<IManufacturable> liveItems = new List<IManufacturable>(items.Count);
+            foreach (IManufacturable item in items)
+            {
+                ISceneNode selectedNode = item as ISceneNode;
+                ISceneNode liveNode = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                    selectedNode?.InstanceID
+                );
+                if (
+                    liveNode is not IManufacturable liveItem
+                    || liveNode.GetParent() == null
+                    || !string.Equals(
+                        liveNode.GetOwnerInstanceID(),
+                        ownerInstanceId,
+                        System.StringComparison.Ordinal
+                    )
+                )
+                    return false;
+
+                liveItems.Add(liveItem);
+            }
+
+            foreach (IManufacturable item in liveItems)
+                Scrap(item);
+
+            return true;
         }
 
         /// <summary>
@@ -176,12 +215,7 @@ namespace Rebellion.Systems
             IManufacturable victim = candidates[_provider.NextInt(0, candidates.Count)];
             Planet location = victim.GetParentOfType<Planet>();
 
-            Fleet parentFleet = victim is CapitalShip ? victim.GetParent() as Fleet : null;
-
-            _game.DetachNode(victim);
-
-            if (parentFleet?.CapitalShips.Count == 0)
-                _game.DetachNode(parentFleet);
+            Scrap(victim);
 
             GameLogger.Log(
                 $"Maintenance shortfall: scrapped {victim.GetDisplayName()} from {faction.DisplayName}"
@@ -208,6 +242,14 @@ namespace Rebellion.Systems
                     or Starfighter
                     or SpecialForces
                     or Building;
+        }
+
+        private void Scrap(IManufacturable item)
+        {
+            ISceneNode node = item as ISceneNode;
+            Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
+            _game.DetachNode(node);
+            _game.RemoveEmptyFleet(parentFleet);
         }
     }
 }

@@ -15,6 +15,7 @@
 *.meta
 Unity_lic.alf
 /temp
+/temp-source/
 /[Ll]ibrary/
 /[Tt]emp/
 /[Bb]in/

@@ -46,10 +46,65 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="UnityEngine.TextRenderingModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.TextRenderingModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.UIModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UIModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.InputLegacyModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.InputLegacyModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.AnimationModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Unity.TextMeshPro"
+      Condition="Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
+    >
+      <HintPath>Library/ScriptAssemblies/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.UI"
+      Condition="Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')"
+    >
+      <HintPath>Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Unity.InputSystem"
+      Condition="Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')"
+    >
+      <HintPath>Library/ScriptAssemblies/Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="Rebellion.InputActions"
+      Condition="Exists('Library/ScriptAssemblies/Rebellion.InputActions.dll')"
+    >
+      <HintPath>Library/ScriptAssemblies/Rebellion.InputActions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
-    <Compile Remove="Assets/Scripts/UI/**/*.cs" />
     <Compile Remove="Assets/Scripts/Core/AppBootstrap.cs" />
     <Compile Remove="Assets/Scripts/Core/GameRuntime.cs" />
   </ItemGroup>

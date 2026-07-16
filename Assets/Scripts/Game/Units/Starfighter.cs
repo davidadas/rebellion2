@@ -9,6 +9,10 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class Starfighter : LeafNode, IManufacturable, IMovable
     {
+        public string BattleResultImagePath { get; set; }
+        public string BattleResultInTransitImagePath { get; set; }
+        public string BattleResultDamagedImagePath { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }

@@ -17,8 +17,10 @@ namespace Rebellion.Tests.Game.Encyclopedia
             {
                 TypeID = "SHIP1",
                 DisplayName = "Static Ship",
-                DisplayImagePath = "Art/UI/Units/static_ship",
-                EncyclopediaImagePath = "Art/HD/UI/Encyclopedia/static_ship",
+                DisplayImagePath =
+                    "Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary",
+                EncyclopediaImagePath =
+                    "Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer",
                 EncyclopediaStats = new List<EncyclopediaEntryStat>
                 {
                     new EncyclopediaEntryStat { Label = "Maintenance Cost", Value = "4" },
@@ -37,7 +39,10 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNotNull(entry);
             Assert.AreEqual("Static Ship", entry.DisplayName);
             Assert.AreEqual(EncyclopediaEntryCategory.Ship, entry.Category);
-            Assert.AreEqual("Art/HD/UI/Encyclopedia/static_ship", entry.ImagePath);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_ship_victory_ii_star_destroyer",
+                entry.ImagePath
+            );
             Assert.AreEqual(1, entry.Stats.Count);
             Assert.AreEqual("Maintenance Cost", entry.Stats[0].Label);
             Assert.AreEqual("4", entry.Stats[0].Value);
@@ -51,7 +56,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
             {
                 TypeID = "BUILDING1",
                 DisplayName = "Construction Yard",
-                DisplayImagePath = "Art/UI/Units/construction_yard",
+                DisplayImagePath = "Art/HD/UI/Units/ent_building_construction_yard",
                 Description = "Static building description.",
             };
 
@@ -110,7 +115,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                     DisplayName = "Fleet",
                     Category = EncyclopediaEntryCategory.Concept,
                     VisibleFactionInstanceID = "FNALL1",
-                    ImagePath = "Art/HD/UI/Encyclopedia/fleet",
+                    ImagePath = "Art/HD/UI/Encyclopedia/ui_encyclopedia_concept_fleet",
                     Description = "Concept description.",
                 },
             };
@@ -121,7 +126,10 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             Assert.IsNotNull(entry);
             Assert.AreEqual(EncyclopediaEntryCategory.Concept, entry.Category);
-            Assert.AreEqual("Art/HD/UI/Encyclopedia/fleet", entry.ImagePath);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_concept_fleet",
+                entry.ImagePath
+            );
             Assert.AreEqual("Concept description.", entry.Description);
             Assert.IsNull(catalog.FindEntry("FLEET", "FNEMP1"));
         }
@@ -137,8 +145,10 @@ namespace Rebellion.Tests.Game.Encyclopedia
                     {
                         TypeID = "PLANET1",
                         DisplayName = "Balmorra",
-                        PlanetIconPath = "Art/UI/StrategyView/balmorra",
-                        EncyclopediaImagePath = "Art/HD/UI/Encyclopedia/balmorra",
+                        PlanetIconPath =
+                            "Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview",
+                        EncyclopediaImagePath =
+                            "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
                         Description = "Planet description.",
                         EncyclopediaDescription = "Planet encyclopedia description.",
                     },
@@ -155,7 +165,10 @@ namespace Rebellion.Tests.Game.Encyclopedia
             Assert.IsNotNull(entry);
             Assert.AreEqual("Balmorra", entry.DisplayName);
             Assert.AreEqual(EncyclopediaEntryCategory.System, entry.Category);
-            Assert.AreEqual("Art/HD/UI/Encyclopedia/balmorra", entry.ImagePath);
+            Assert.AreEqual(
+                "Art/HD/UI/Encyclopedia/ui_encyclopedia_system_ringed_planet",
+                entry.ImagePath
+            );
             Assert.AreEqual("Planet encyclopedia description.", entry.Description);
         }
 

@@ -457,5 +457,63 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
+
+        [Test]
+        public void Scrap_OwnedAttachedUnit_RemovesUnit()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(regiment, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+
+            bool scrapped = maintenanceSystem.Scrap(
+                new List<IManufacturable> { regiment },
+                "empire"
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.IsNull(regiment.GetParent());
+        }
+
+        [Test]
+        public void Scrap_OtherFactionUnit_PreservesUnit()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(regiment, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+
+            bool scrapped = maintenanceSystem.Scrap(
+                new List<IManufacturable> { regiment },
+                "alliance"
+            );
+
+            Assert.IsFalse(scrapped);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(planet, regiment.GetParent());
+        }
     }
 }

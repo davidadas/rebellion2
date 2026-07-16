@@ -1,0 +1,107 @@
+using System.Collections.Generic;
+using Rebellion.SceneGraph;
+
+/// <summary>
+/// Builds context-menu commands for one planet-system window hit.
+/// </summary>
+internal static class PlanetSystemWindowContextMenuBuilder
+{
+    /// <summary>
+    /// Creates context commands for one planet-system hit.
+    /// </summary>
+    /// <param name="hit">The active semantic planet hit.</param>
+    /// <param name="fleetItems">The player-controlled fleet items at the hit planet.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <returns>The available context commands in display order.</returns>
+    public static List<StrategyMenuCommand> Create(
+        PlanetSystemWindowHit hit,
+        List<ISceneNode> fleetItems,
+        string playerFactionId
+    )
+    {
+        if (hit?.GalaxyMapPlanet == null)
+            return CreatePlanetInformationCommands(false);
+        if (hit.PlanetImage || hit.Icon == PlanetIcon.None)
+            return CreatePlanetInformationCommands(true);
+
+        return hit.Icon switch
+        {
+            PlanetIcon.Facility => CreatePlanetInformationCommands(true),
+            PlanetIcon.Defense => CreatePlanetInformationCommands(true),
+            PlanetIcon.Fleet => CreateFleetCommands(fleetItems, playerFactionId),
+            PlanetIcon.Mission => new List<StrategyMenuCommand>
+            {
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.Encyclopedia,
+                    "Encyclopedia",
+                    false
+                ),
+                new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", false),
+                new StrategyMenuCommand(StrategyContextMenuActions.Abort, "Abort", false),
+            },
+            _ => CreatePlanetInformationCommands(false),
+        };
+    }
+
+    /// <summary>
+    /// Creates planet information commands.
+    /// </summary>
+    /// <param name="enabled">Whether planet information is available.</param>
+    /// <returns>The planet information commands.</returns>
+    private static List<StrategyMenuCommand> CreatePlanetInformationCommands(bool enabled)
+    {
+        return new List<StrategyMenuCommand>
+        {
+            new StrategyMenuCommand(
+                StrategyContextMenuActions.Encyclopedia,
+                "Encyclopedia",
+                enabled
+            ),
+            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", enabled),
+        };
+    }
+
+    /// <summary>
+    /// Creates fleet commands for one planet-system fleet overlay.
+    /// </summary>
+    /// <param name="fleetItems">The player-controlled fleet items at the planet.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <returns>The fleet commands.</returns>
+    private static List<StrategyMenuCommand> CreateFleetCommands(
+        List<ISceneNode> fleetItems,
+        string playerFactionId
+    )
+    {
+        bool canCommandFleets = StrategyContextMenuAvailability.CanMoveItems(
+            fleetItems,
+            playerFactionId
+        );
+        bool canShowSingleFleetInfo = fleetItems?.Count == 1;
+        return new List<StrategyMenuCommand>
+        {
+            new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canCommandFleets),
+            new StrategyMenuCommand(
+                StrategyContextMenuActions.MoveConfirm,
+                "Confirmed Move",
+                canCommandFleets
+            ),
+            new StrategyMenuCommand(
+                StrategyContextMenuActions.PlanetaryBombardment,
+                "Planetary Bombardment",
+                canCommandFleets
+            ),
+            new StrategyMenuCommand(
+                StrategyContextMenuActions.DestroySystem,
+                "Destroy System",
+                false
+            ),
+            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", false),
+            new StrategyMenuCommand(
+                StrategyContextMenuActions.Status,
+                "Status",
+                canShowSingleFleetInfo
+            ),
+            new StrategyMenuCommand(StrategyContextMenuActions.Scrap, "Scrap", canCommandFleets),
+        };
+    }
+}

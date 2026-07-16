@@ -14,4 +14,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/StrategyView.unity
     guid: 8806444e5c1414aa6a36b91b519ed6cd
+  - enabled: 1
+    path: Assets/Scenes/SaveMenu.unity
+    guid: b19299a31035c427ca6207edf32ca3cf
   m_configObjects: {}

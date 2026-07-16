@@ -3804,5 +3804,278 @@ namespace Rebellion.Tests.Systems
                 .First();
             Assert.AreEqual(50, pointsResult.RequiredPoints);
         }
+
+        [Test]
+        public void StartManufacturing_CapitalShips_CreatesOneDestinationFleet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                0
+            );
+
+            bool started = manager.StartManufacturing(planet, template, planet, 2, "empire");
+
+            Assert.IsTrue(started);
+            List<Fleet> fleets = planet.GetFleets();
+            Assert.AreEqual(1, fleets.Count);
+            Assert.AreEqual(2, fleets[0].CapitalShips.Count);
+            Assert.AreEqual(2, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+            Assert.AreSame(
+                fleets[0].CapitalShips[0],
+                planet.GetManufacturingQueue()[ManufacturingType.Ship][0]
+            );
+            Assert.AreSame(
+                fleets[0].CapitalShips[1],
+                planet.GetManufacturingQueue()[ManufacturingType.Ship][1]
+            );
+        }
+
+        [Test]
+        public void StartManufacturing_CapitalShipRejected_RemovesEmptyDestinationFleet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1
+            );
+
+            bool started = manager.StartManufacturing(planet, template, planet, 1, "empire");
+
+            Assert.IsFalse(started);
+            Assert.AreEqual(0, planet.GetFleets().Count);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+        }
+
+        [Test]
+        public void StartManufacturing_OrderExceedsDestinationCapacity_DoesNotQueuePartialOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
+            destination.EnergyCapacity = 1;
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+
+            bool started = manager.StartManufacturing(producer, template, destination, 2, "empire");
+
+            Assert.IsFalse(started);
+            Assert.AreEqual(0, destination.Buildings.Count);
+            Assert.IsFalse(
+                producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
+        public void ClearQueue_BuildingQueue_ClearsQueueAndQueuedDestinationBuildings()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+
+            bool started = manager.StartManufacturing(producer, template, destination, 2, "empire");
+            List<IManufacturable> queued = new List<IManufacturable>(
+                producer.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+
+            bool stopped = manager.ClearQueue(producer, ManufacturingType.Building);
+
+            Assert.IsTrue(started);
+            Assert.IsTrue(stopped);
+            Assert.IsFalse(
+                producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+            Assert.AreEqual(0, destination.Buildings.Count);
+            foreach (IManufacturable item in queued)
+                Assert.IsNull(((ISceneNode)item).GetParent());
+        }
+
+        [Test]
+        public void ClearQueue_EmptyQueue_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+
+            bool stopped = manager.ClearQueue(planet, ManufacturingType.Building);
+
+            Assert.IsFalse(stopped);
+        }
+
+        [Test]
+        public void EstimateManufacturingTicks_MixedFacilityRates_UsesIntegerRateShares()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            game.AttachNode(CreateOrderTestConstructionFacility("yard1", "empire", 3), planet);
+            game.AttachNode(CreateOrderTestConstructionFacility("yard2", "empire", 6), planet);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            template.ConstructionCost = 1;
+
+            int? estimate = ManufacturingSystem.EstimateManufacturingTicks(planet, template, 1);
+
+            Assert.AreEqual(3, estimate);
+        }
+
+        [Test]
+        public void CancelManufacturing_QueuedItem_RemovesOnlySelectedItem()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(producer, template, destination, 2, "empire"));
+            List<IManufacturable> queue = producer.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            IManufacturable cancelled = queue[0];
+            IManufacturable retained = queue[1];
+
+            bool result = manager.CancelManufacturing(cancelled, "empire");
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreSame(retained, queue[0]);
+            Assert.IsNull(((ISceneNode)cancelled).GetParent());
+            Assert.AreSame(destination, ((ISceneNode)retained).GetParent());
+        }
+
+        [Test]
+        public void CancelManufacturing_OtherFaction_DoesNotRemoveItem()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
+            ManufacturingSystem manager = new ManufacturingSystem(game, game.Random);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(producer, template, destination, 1, "empire"));
+            IManufacturable queued = producer.GetManufacturingQueue()[ManufacturingType.Building][
+                0
+            ];
+
+            bool result = manager.CancelManufacturing(queued, "other");
+
+            Assert.IsFalse(result);
+            Assert.AreSame(destination, ((ISceneNode)queued).GetParent());
+            Assert.AreSame(queued, producer.GetManufacturingQueue()[ManufacturingType.Building][0]);
+        }
+
+        private static GameRoot CreateOrderTestGame()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            return game;
+        }
+
+        private static Planet CreateOrderTestShipyardPlanet(
+            GameRoot game,
+            string planetId,
+            string factionId
+        )
+        {
+            Planet planet = CreateOrderTestPlanet(game, planetId, factionId);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = $"{planetId}_shipyard",
+                    OwnerInstanceID = factionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            return planet;
+        }
+
+        private static Planet CreateOrderTestConstructionPlanet(
+            GameRoot game,
+            string planetId,
+            string factionId
+        )
+        {
+            Planet planet = CreateOrderTestPlanet(game, planetId, factionId);
+            game.AttachNode(
+                CreateOrderTestConstructionFacility($"{planetId}_construction", factionId, 1),
+                planet
+            );
+            return planet;
+        }
+
+        private static Building CreateOrderTestConstructionFacility(
+            string instanceId,
+            string factionId,
+            int processRate
+        )
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = factionId,
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = processRate,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
+        private static Planet CreateOrderTestPlanet(
+            GameRoot game,
+            string planetId,
+            string factionId
+        )
+        {
+            PlanetSystem system = new PlanetSystem { InstanceID = $"{planetId}_system" };
+            game.AttachNode(system, game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = planetId,
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                NumRawResourceNodes = 10,
+            };
+            game.AttachNode(planet, system);
+            return planet;
+        }
+
+        private static CapitalShip CreateOrderTestCapitalShipTemplate(
+            string typeId,
+            string displayName,
+            int maintenanceCost
+        )
+        {
+            return new CapitalShip
+            {
+                TypeID = typeId,
+                DisplayName = displayName,
+                ConstructionCost = 10,
+                MaintenanceCost = maintenanceCost,
+                BaseBuildSpeed = 1,
+            };
+        }
+
+        private static Building CreateOrderTestBuildingTemplate(string typeId)
+        {
+            return new Building
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                BuildingType = BuildingType.Mine,
+            };
+        }
     }
 }

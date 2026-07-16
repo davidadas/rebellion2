@@ -1,8 +1,5 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <Buildings>
-  <!--   **************************************************  -->
-  <!--   ******************* FACILITIES *******************  -->
-  <!--   **************************************************  -->
   <Building>
     <TypeID>BDFA01</TypeID>
     <AllowedOwnerInstanceIDs>
@@ -11,14 +8,16 @@
     </AllowedOwnerInstanceIDs>
     <BuildingType>ConstructionFacility</BuildingType>
     <DisplayName>Construction Facility</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_construction_yard</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_construction_facility</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_construction_yard_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_construction_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_construction_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_construction_yard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_construction_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		10
 Maintenance Cost:			10
 Bombardment Defense:		3
 
 Construction yards convert refined materials into facilities.  Construction yards are used to build all types of facilities on any system controlled by your side.  Construction yards are deployed on systems.  In order to deploy a construction yard on a system, there must be at least one free energy point there.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_construction_facility</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -50,14 +49,16 @@ Construction yards convert refined materials into facilities.  Construction yard
     </AllowedOwnerInstanceIDs>
     <BuildingType>TrainingFacility</BuildingType>
     <DisplayName>Training Facility</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_training_facility</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_training_facility</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_training_facility_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_training_facility</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_training_facility_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_training_facility_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_training_facility_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		10
 Maintenance Cost:			10
 Bombardment Defense:		3
 
 Training facilities train new trooper regiments and SpecForces by converting refined materials into the equipment used by the new trooper regiments. In order to deploy a training facility at a system, there must be at least one unused energy point at that system.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_training_facility</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -89,14 +90,16 @@ Training facilities train new trooper regiments and SpecForces by converting ref
     </AllowedOwnerInstanceIDs>
     <BuildingType>Shipyard</BuildingType>
     <DisplayName>Orbital Shipyard</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_ship_yard</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_orbital_shipyard</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_shipyard_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_ship_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_ship_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_shipyard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_ship_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		20
 Maintenance Cost:			13
 Bombardment Defense:		2
 
 Shipyards convert refined material points into ships and fighters.  Shipyards are deployed at systems.  In order to deploy a shipyard to a system, there must be at least one free energy point at the target system.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_orbital_shipyard</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -128,14 +131,16 @@ Shipyards convert refined material points into ships and fighters.  Shipyards ar
     </AllowedOwnerInstanceIDs>
     <BuildingType>Mine</BuildingType>
     <DisplayName>Mining Facility</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_mine</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_mining_facility</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_mine_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_mine</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_mine_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_mine_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_mine_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		20
 Maintenance Cost:			0
 Bombardment Defense:		5
 
 Mines are used to extract raw materials from systems.  In order to deploy a mine on a system, the system must have one unused energy point and one unused raw material point.  Mines work together with refineries to produce maintenance points.  Maintenance points are required to provide the materials and parts required to keep units in the field.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_mining_facility</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -167,14 +172,16 @@ Mines are used to extract raw materials from systems.  In order to deploy a mine
     </AllowedOwnerInstanceIDs>
     <BuildingType>Refinery</BuildingType>
     <DisplayName>Refinery</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_refinery</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_refinery</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_refinery_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_refinery</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_refinery_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_refinery_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_refinery_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		20
 Maintenance Cost:			0
 Bombardment Defense:		2
 
 Refineries convert the raw materials extracted by mines into refined material.  Refined material is used by manufacturing facilities (such as shipyards) to build ships and facilities, and to equip troops.  Refineries are deployed on systems.  There must be at least one unused energy point at a system before a refinery can be deployed there.  Refineries work together with mines to produce maintenance points.  Maintenance points are required to provide the materials and parts required to keep units in the field.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_refinery</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -206,14 +213,16 @@ Refineries convert the raw materials extracted by mines into refined material.  
     </AllowedOwnerInstanceIDs>
     <BuildingType>TrainingFacility</BuildingType>
     <DisplayName>Advanced Training Facility</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_advanced_training_facility</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_training_facility</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_training_facility_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_advanced_training_facility</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_advanced_training_facility_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_advanced_training_facility_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_advanced_training_facility_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		10
 Maintenance Cost:			10
 Bombardment Defense:		4
 
 An Advanced Training Facility trains new troops in half the time of a standard training facility.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_training_facility</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -245,14 +254,16 @@ An Advanced Training Facility trains new troops in half the time of a standard t
     </AllowedOwnerInstanceIDs>
     <BuildingType>Shipyard</BuildingType>
     <DisplayName>Advanced Orbital Shipyard</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_advanced_ship_yard</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_orbital_shipyard</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_shipyard_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_advanced_ship_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_advanced_ship_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_advanced_shipyard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_advanced_ship_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		20
 Maintenance Cost:			20
 Bombardment Defense:		2
 
 An Advanced Shipyard is an advanced form of shipyard which builds ships in half the time of a standard shipyard.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_orbital_shipyard</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -284,14 +295,16 @@ An Advanced Shipyard is an advanced form of shipyard which builds ships in half 
     </AllowedOwnerInstanceIDs>
     <BuildingType>ConstructionFacility</BuildingType>
     <DisplayName>Advanced Construction Yard</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_advanced_construction_yard</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_construction_yard</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Messages/ui_message_construction_yard_deployed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_advanced_construction_yard</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_advanced_construction_yard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/ui_message_advanced_construction_yard_deployed</MessageImagePath>
+    <InTransitSmallImagePath>Art/HD/UI/Units/ent_building_advanced_construction_yard_in_transit_small</InTransitSmallImagePath>
     <Description>Refined Material Cost:		10
 Maintenance Cost:			10
 Bombardment Defense:		4
 
 An Advanced Construction Yard can produce new facilities in half the time of a standard construction yard.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_advanced_construction_yard</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -315,9 +328,6 @@ An Advanced Construction Yard can produce new facilities in half the time of a s
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
-  <!--   **************************************************  -->
-  <!--   ******************** DEFENSES ********************  -->
-  <!--   **************************************************  -->
   <Building>
     <TypeID>BDDF01</TypeID>
     <AllowedOwnerInstanceIDs>
@@ -326,14 +336,15 @@ An Advanced Construction Yard can produce new facilities in half the time of a s
     </AllowedOwnerInstanceIDs>
     <BuildingType>Weapon</BuildingType>
     <DisplayName>LNR Series I</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_lnr_series_1</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_lnr_series_i</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_lnr_series_1</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_lnr_series_1_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		7
 Maintenance Cost:			7
 Bombardment Defense:		4
 Attack Strength:			800
 
 The LNR series of planetary based turbolaser batteries provide exceptional firepower to protect systems from unwanted guests.  The LNR-I is a single cannon turbolaser capable of damaging even the most heavily armored starships.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_lnr_series_i</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -372,14 +383,15 @@ The LNR series of planetary based turbolaser batteries provide exceptional firep
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>GenCore Level I</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_gencore_level_1</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_gencore_level_i</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_gencore_level_1</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_gencore_level_1_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		12
 Maintenance Cost:			12
 Bombardment Defense:		2
 Shield Strength:				40
 
 GenCores are responsible for generating planetary shields to protect the system from orbital bombardment. Type I GenCores are an excellent choice for planetary defense, but are expensive to maintain.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_gencore_level_i</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -417,14 +429,15 @@ GenCores are responsible for generating planetary shields to protect the system 
     </AllowedOwnerInstanceIDs>
     <BuildingType>Weapon</BuildingType>
     <DisplayName>KDY-150</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_kdy_150</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_kdy_150</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_kdy_150</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_kdy_150_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		4
 Maintenance Cost:			4
 Bombardment Defense:		5
 Attack Strength:			2000
 
 The KDY v-150 is a system based ion cannon used to fire on ships which are bombarding the system on which the KDY is deployed.  As with all ion cannons, the KDY does no physical damage.  It drains energy from the target vessel, reducing its shields and rendering it unable to fire its weapons.  This is especially useful when attempting to pass units through an enemy blockade.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_kdy_150</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -463,13 +476,14 @@ The KDY v-150 is a system based ion cannon used to fire on ships which are bomba
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>Death Star Shield</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_death_star_shield</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_death_star_shield</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_death_star_shield</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_death_star_shield_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		25
 Maintenance Cost:			20
 Bombardment Defense:		1
 
 The Death Star Shield is a planetary base shield generator designed to provide a protective shield around the Death Star while it is present in the system.  Immense power generators and a projection dish antenna create a bubble of nearly impenetrable energy around the Death Star.  While operational, nothing can directly harm the Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_death_star_shield</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -503,14 +517,15 @@ The Death Star Shield is a planetary base shield generator designed to provide a
     </AllowedOwnerInstanceIDs>
     <BuildingType>Weapon</BuildingType>
     <DisplayName>LNR Series II</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_lnr_series_2</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_lnr_series_ii</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_lnr_series_2</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_lnr_series_2_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		10
 Maintenance Cost:			4
 Bombardment Defense:		3
 Attack Strength:			5000
 
 Like the LNR-I, the LNR-II is an exceptional planetary based turbolaser battery.  The LNR-II increases the firepower of the Series I by the addition of another cannon.  However, some external armoring had to be sacrificed to make room for the additional cannon and power generators.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_lnr_series_ii</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>
@@ -549,14 +564,15 @@ Like the LNR-I, the LNR-II is an exceptional planetary based turbolaser battery.
     </AllowedOwnerInstanceIDs>
     <BuildingType>Defense</BuildingType>
     <DisplayName>GenCore Level II</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_building_gencore_level_2</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_gencore_level_ii</EncyclopediaImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_building_gencore_level_2</DisplayImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_building_gencore_level_2_small</SmallDisplayImagePath>
     <Description>Refined Material Cost:		20
 Maintenance Cost:			7
 Bombardment Defense:		3
 Shield Strength:				80
 
 GenCores are responsible for generating planetary shields to protect the system from orbital bombardment. Type II GenCores provide 50% more shielding power than the older Type I's and are cheaper to maintain.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_facility_gencore_level_ii</EncyclopediaImagePath>
     <EncyclopediaStats>
       <EncyclopediaEntryStat>
         <Label>Refined Material Cost</Label>

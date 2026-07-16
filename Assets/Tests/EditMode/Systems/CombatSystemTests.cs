@@ -119,11 +119,14 @@ namespace Rebellion.Tests.Systems
             out List<GameResult> results
         )
         {
+            Planet planet =
+                attacker.GetParentOfType<Planet>() ?? defender.GetParentOfType<Planet>();
             results = manager.Resolve(
                 new CombatDecisionContext
                 {
                     AttackerFleetInstanceID = attacker.InstanceID,
                     DefenderFleetInstanceID = defender.InstanceID,
+                    PlanetInstanceID = planet?.InstanceID,
                 },
                 true
             );
@@ -1168,11 +1171,13 @@ namespace Rebellion.Tests.Systems
             CombatSystem manager = MakeCombat(game, rng);
 
             List<GameResult> results = manager.ProcessTick();
+            PendingCombatResult pending = results.OfType<PendingCombatResult>().SingleOrDefault();
 
-            Assert.IsTrue(
-                results.OfType<PendingCombatResult>().Any(),
+            Assert.IsNotNull(
+                pending,
                 "Player-involved encounter should emit a PendingCombatResult"
             );
+            Assert.AreSame(planet, pending.Planet);
             Assert.IsTrue(manager.HasPendingDecision);
             Assert.IsEmpty(manager.ProcessTick());
 
@@ -1180,6 +1185,82 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsFalse(manager.HasPendingDecision);
             Assert.IsNotEmpty(resolvedResults);
+        }
+
+        [Test]
+        public void ProcessTick_PlayerInvolvedEncounter_SetsRetreatAvailability()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(sys, game.Galaxy);
+            game.AttachNode(planet, sys);
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            CombatSystem manager = MakeCombat(game, new QueueRNG());
+
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+
+            bool empireCanRetreat = ReferenceEquals(pending.AttackerFleet, empireFleet)
+                ? pending.AttackerCanRetreat
+                : pending.DefenderCanRetreat;
+            bool allianceCanRetreat = ReferenceEquals(pending.AttackerFleet, allianceFleet)
+                ? pending.AttackerCanRetreat
+                : pending.DefenderCanRetreat;
+
+            Assert.IsFalse(empireCanRetreat);
+            Assert.IsTrue(allianceCanRetreat);
+        }
+
+        [Test]
+        public void ResolvePendingCombatRetreat_PlayerFleet_MovesToFriendlyPlanet()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            empireHome.PositionX = 100;
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            CombatSystem manager = MakeCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+            List<GameResult> results = manager.ResolvePendingCombatRetreat("empire");
+
+            Assert.IsNotNull(results);
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+            Assert.AreSame(combatPlanet, combatResult.Planet);
+            bool empireWasAttacker = ReferenceEquals(combatResult.AttackerFleet, empireFleet);
+            Assert.AreSame(
+                allianceFleet,
+                empireWasAttacker ? combatResult.DefenderFleet : combatResult.AttackerFleet
+            );
+            Assert.AreEqual(
+                empireWasAttacker ? CombatSide.Defender : CombatSide.Attacker,
+                combatResult.Winner
+            );
+            Assert.AreEqual(
+                SpaceCombatSideOutcome.Withdrawn,
+                empireWasAttacker ? combatResult.AttackerOutcome : combatResult.DefenderOutcome
+            );
+            Assert.AreEqual(
+                SpaceCombatSideOutcome.Active,
+                empireWasAttacker ? combatResult.DefenderOutcome : combatResult.AttackerOutcome
+            );
         }
 
         [Test]

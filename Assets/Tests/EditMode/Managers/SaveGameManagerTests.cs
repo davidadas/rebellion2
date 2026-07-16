@@ -59,6 +59,42 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveSlotAccessors_ReturnCanonicalNamesAndValidateBounds()
+        {
+            SaveGameManager manager = SaveGameManager.Instance;
+
+            Assert.AreEqual(6, manager.SaveSlotCount);
+            Assert.IsFalse(manager.IsValidSaveSlot(-1));
+            Assert.IsTrue(manager.IsValidSaveSlot(0));
+            Assert.IsTrue(manager.IsValidSaveSlot(5));
+            Assert.IsFalse(manager.IsValidSaveSlot(6));
+            Assert.AreEqual("save_slot_1", manager.GetSaveSlotFileName(0));
+            Assert.AreEqual("save_slot_6", manager.GetSaveSlotFileName(5));
+            Assert.AreEqual("Save Slot 1", manager.GetSaveSlotDisplayName(0));
+            Assert.AreEqual("Save Slot 6", manager.GetSaveSlotDisplayName(5));
+            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotFileName(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotDisplayName(6));
+        }
+
+        [Test]
+        public void SaveSlotGameData_CustomDisplayName_StoresDisplayName()
+        {
+            SaveGameManager manager = SaveGameManager.Instance;
+            _saveFileName = manager.GetSaveSlotFileName(0);
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            manager.SaveSlotGameData(game, 0, "Coruscant Campaign");
+            GameRoot loadedGame = manager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [Test]
         public void LoadGameData_ValidSavedFile_LoadsGame()
         {
             GameSummary summary = new GameSummary

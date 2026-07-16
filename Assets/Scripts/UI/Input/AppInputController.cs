@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game;
 using Rebellion.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -6,10 +7,11 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Routes global input actions to application-level runtime commands.
 /// </summary>
-public sealed class AppInputController : MonoBehaviour
+public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlobalActions
 {
     private readonly Stack<InputContext> _contextStack = new();
     private InputManager _inputManager;
+    private CancelStack _cancelStack;
     private GameRuntime _runtime;
 
     /// <summary>
@@ -23,7 +25,7 @@ public sealed class AppInputController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        _contextStack.Push(InputContext.None);
+        EnsureBaseContext();
     }
 
     /// <summary>
@@ -38,15 +40,18 @@ public sealed class AppInputController : MonoBehaviour
     /// Connects this controller to input actions and runtime commands.
     /// </summary>
     /// <param name="inputManager">The input manager to listen to.</param>
+    /// <param name="cancelStack">The cancel stack used before opening settings.</param>
     /// <param name="runtime">The runtime that receives global commands.</param>
-    public void Initialize(InputManager inputManager, GameRuntime runtime)
+    public void Initialize(InputManager inputManager, CancelStack cancelStack, GameRuntime runtime)
     {
         if (_inputManager != null)
             DetachInputActions();
 
         _inputManager = inputManager;
+        _cancelStack = cancelStack;
         _runtime = runtime;
 
+        EnsureBaseContext();
         AttachInputActions();
     }
 
@@ -86,11 +91,8 @@ public sealed class AppInputController : MonoBehaviour
         if (_inputManager == null)
             return;
 
-        PlayerInputActions.GlobalActions globalActions = _inputManager.Actions.Global;
-        globalActions.CancelOrSettings.performed += OnCancelOrSettings;
-        globalActions.QuickSave.performed += OnQuickSave;
-        globalActions.QuickLoad.performed += OnQuickLoad;
-        globalActions.Enable();
+        _inputManager.Actions.Global.AddCallbacks(this);
+        _inputManager.Actions.Global.Enable();
     }
 
     /// <summary>
@@ -101,20 +103,23 @@ public sealed class AppInputController : MonoBehaviour
         if (_inputManager == null || !_inputManager.TryGetActions(out PlayerInputActions actions))
             return;
 
-        PlayerInputActions.GlobalActions globalActions = actions.Global;
-        globalActions.CancelOrSettings.performed -= OnCancelOrSettings;
-        globalActions.QuickSave.performed -= OnQuickSave;
-        globalActions.QuickLoad.performed -= OnQuickLoad;
-        globalActions.Disable();
+        actions.Global.RemoveCallbacks(this);
+        actions.Global.Disable();
     }
 
     /// <summary>
     /// Handles the cancel or settings action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
-    private void OnCancelOrSettings(InputAction.CallbackContext context)
+    public void OnCancelOrSettings(InputAction.CallbackContext context)
     {
+        if (!context.performed)
+            return;
+
         if (CurrentContext == InputContext.Cutscene)
+            return;
+
+        if (_cancelStack?.TryCancel() == true)
             return;
 
         _runtime?.ToggleSettingsMenu();
@@ -124,8 +129,11 @@ public sealed class AppInputController : MonoBehaviour
     /// Handles the quick save action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
-    private void OnQuickSave(InputAction.CallbackContext context)
+    public void OnQuickSave(InputAction.CallbackContext context)
     {
+        if (!context.performed)
+            return;
+
         if (!CanUseGameplayShortcuts())
             return;
 
@@ -136,12 +144,81 @@ public sealed class AppInputController : MonoBehaviour
     /// Handles the quick load action.
     /// </summary>
     /// <param name="context">The input callback context.</param>
-    private void OnQuickLoad(InputAction.CallbackContext context)
+    public void OnQuickLoad(InputAction.CallbackContext context)
     {
+        if (!context.performed)
+            return;
+
         if (!CanUseGameplayShortcuts())
             return;
 
         _runtime?.QuickLoad();
+    }
+
+    /// <summary>
+    /// Handles the decrease game speed action.
+    /// </summary>
+    /// <param name="context">The input callback context.</param>
+    public void OnDecreaseGameSpeed(InputAction.CallbackContext context)
+    {
+        if (!context.performed)
+            return;
+
+        if (!CanUseGameplayShortcuts())
+            return;
+
+        GameManager gameManager = _runtime?.GetActiveGameManager();
+        if (gameManager != null)
+            gameManager.SetGameSpeed(GetSlowerGameSpeed(gameManager.GetGameSpeed()));
+    }
+
+    /// <summary>
+    /// Handles the increase game speed action.
+    /// </summary>
+    /// <param name="context">The input callback context.</param>
+    public void OnIncreaseGameSpeed(InputAction.CallbackContext context)
+    {
+        if (!context.performed)
+            return;
+
+        if (!CanUseGameplayShortcuts())
+            return;
+
+        GameManager gameManager = _runtime?.GetActiveGameManager();
+        if (gameManager != null)
+            gameManager.SetGameSpeed(GetFasterGameSpeed(gameManager.GetGameSpeed()));
+    }
+
+    /// <summary>
+    /// Returns the next slower supported game speed.
+    /// </summary>
+    /// <param name="speed">The current game speed.</param>
+    /// <returns>The next slower speed, bounded at paused.</returns>
+    internal static TickSpeed GetSlowerGameSpeed(TickSpeed speed)
+    {
+        return speed switch
+        {
+            TickSpeed.Fast => TickSpeed.Medium,
+            TickSpeed.Medium => TickSpeed.Slow,
+            TickSpeed.Slow => TickSpeed.VerySlow,
+            _ => TickSpeed.Paused,
+        };
+    }
+
+    /// <summary>
+    /// Returns the next faster supported game speed.
+    /// </summary>
+    /// <param name="speed">The current game speed.</param>
+    /// <returns>The next faster speed, bounded at fast.</returns>
+    internal static TickSpeed GetFasterGameSpeed(TickSpeed speed)
+    {
+        return speed switch
+        {
+            TickSpeed.Paused => TickSpeed.VerySlow,
+            TickSpeed.VerySlow => TickSpeed.Slow,
+            TickSpeed.Slow => TickSpeed.Medium,
+            _ => TickSpeed.Fast,
+        };
     }
 
     /// <summary>
@@ -153,5 +230,14 @@ public sealed class AppInputController : MonoBehaviour
         return CurrentContext == InputContext.Strategy
             || CurrentContext == InputContext.Tactical
             || CurrentContext == InputContext.None;
+    }
+
+    /// <summary>
+    /// Ensures the context stack always has a default context.
+    /// </summary>
+    private void EnsureBaseContext()
+    {
+        if (_contextStack.Count == 0)
+            _contextStack.Push(InputContext.None);
     }
 }

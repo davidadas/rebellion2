@@ -194,6 +194,23 @@ public static class TestConfig
     }
 }
 
+public static class MapPositionTestHelper
+{
+    public static Planet WithMapPosition(this Planet planet, int x, int y)
+    {
+        planet.PositionX = x;
+        planet.PositionY = y;
+        return planet;
+    }
+
+    public static PlanetSystem WithMapPosition(this PlanetSystem system, int x, int y)
+    {
+        system.PositionX = x;
+        system.PositionY = y;
+        return system;
+    }
+}
+
 public static class MissionSceneBuilder
 {
     public static (

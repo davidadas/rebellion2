@@ -496,9 +496,14 @@ namespace Rebellion.Tests.Systems
             int before = luke.ForceValue;
             int growth = _game.Config.Jedi.ForceGrowthPerMission;
 
-            _system.ApplyForceGrowth(new List<IMissionParticipant> { luke });
+            List<GameResult> results = _system.ApplyForceGrowth(
+                new List<IMissionParticipant> { luke }
+            );
+            ForceExperienceResult result = results.OfType<ForceExperienceResult>().Single();
 
             Assert.AreEqual(before + growth, luke.ForceValue);
+            Assert.AreEqual(before, result.PreviousForceRank);
+            Assert.AreEqual(before + growth, result.CurrentForceRank);
         }
 
         [Test]

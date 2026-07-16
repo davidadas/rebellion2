@@ -356,5 +356,33 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Espionage));
             Assert.IsTrue(officer.CanPerformMission(MissionTypeIDs.Assassination));
         }
+
+        [Test]
+        public void GetVoicePath_AdvancedVoiceEnabled_UsesAdvancedEventPool()
+        {
+            Officer officer = new Officer
+            {
+                UsesAdvancedVoiceLines = true,
+                PersonnelArrivedVoicePaths = new List<string> { "standard" },
+                AdvancedPersonnelArrivedVoicePaths = new List<string> { "advanced" },
+            };
+
+            Assert.AreEqual(
+                "advanced",
+                officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
+            );
+        }
+
+        [Test]
+        public void GetVoicePath_AdvancedPoolMissing_FallsBackToStandardPool()
+        {
+            Officer officer = new Officer
+            {
+                UsesAdvancedVoiceLines = true,
+                ReleasedVoicePaths = new List<string> { "standard" },
+            };
+
+            Assert.AreEqual("standard", officer.GetVoicePath(OfficerVoiceLineType.Released, null));
+        }
     }
 }

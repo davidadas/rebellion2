@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -16,6 +17,8 @@ namespace Rebellion.Systems
     /// </summary>
     public class ManufacturingSystem : IGameSystem
     {
+        private const int _productionRateScale = 100;
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementSystem;
@@ -55,6 +58,328 @@ namespace Rebellion.Systems
                 results.AddRange(ProcessPlanetManufacturing(planet));
             }
             return results;
+        }
+
+        /// <summary>
+        /// Creates and queues copies of a manufacturing template for one destination.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        public bool StartManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (!CanStartManufacturing(producer, template, destination, count, ownerInstanceId))
+                return false;
+
+            bool started = false;
+            Fleet capitalShipDestination = null;
+            Planet destinationPlanet = destination as Planet;
+            Fleet destinationFleet = destination as Fleet;
+            CapitalShip destinationShip = destination as CapitalShip;
+
+            for (int index = 0; index < count; index++)
+            {
+                IManufacturable item = template.GetDeepCopy();
+                if (item is not ISceneNode sceneNode)
+                    return started;
+
+                sceneNode.OwnerInstanceID = producer.GetOwnerInstanceID();
+                item.ManufacturingStatus = ManufacturingStatus.Building;
+                item.ManufacturingProgress = 0;
+                if (item is IMovable movable)
+                    movable.Movement = null;
+
+                bool enqueued;
+                if (destinationFleet != null)
+                {
+                    enqueued = Enqueue(producer, item, destinationFleet);
+                }
+                else if (destinationShip != null)
+                {
+                    enqueued = Enqueue(producer, item, destinationShip);
+                }
+                else if (destinationPlanet != null && item is CapitalShip)
+                {
+                    capitalShipDestination ??= _game.CreateFleetAtPlanet(
+                        destinationPlanet,
+                        producer.GetOwnerInstanceID()
+                    );
+                    if (capitalShipDestination == null)
+                        return started;
+
+                    enqueued = Enqueue(producer, item, capitalShipDestination);
+                }
+                else if (destinationPlanet != null)
+                {
+                    enqueued = Enqueue(producer, item, destinationPlanet);
+                }
+                else
+                {
+                    return started;
+                }
+
+                if (!enqueued)
+                {
+                    _game.RemoveEmptyFleet(capitalShipDestination);
+                    return started;
+                }
+
+                started = true;
+            }
+
+            return started;
+        }
+
+        /// <summary>
+        /// Determines whether an owner can queue copies of a manufacturing template for one destination.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the complete order can be queued.</returns>
+        public bool CanStartManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                producer == null
+                || template == null
+                || destination == null
+                || count <= 0
+                || string.IsNullOrEmpty(ownerInstanceId)
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+                || !template.HasAllowedOwnerInstanceID(ownerInstanceId)
+                || producer.GetProductionFacilityCount(template.GetManufacturingType()) <= 0
+                || !HasDestinationCapacity(producer, destination, template, count)
+            )
+                return false;
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            return HasMaintenanceHeadroom(faction, template, count);
+        }
+
+        /// <summary>
+        /// Determines whether a destination has capacity for a complete manufacturing order.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <returns>True when the destination has sufficient capacity.</returns>
+        private static bool HasDestinationCapacity(
+            Planet producer,
+            ISceneNode destination,
+            IManufacturable template,
+            int count
+        )
+        {
+            string ownerInstanceId = producer.GetOwnerInstanceID();
+            if (destination is Planet planet)
+            {
+                if (template is CapitalShip)
+                    return true;
+
+                ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
+                return candidate != null
+                    && planet.CanAcceptChild(candidate)
+                    && (template is not Building || planet.GetAvailableEnergy() >= count);
+            }
+
+            if (destination is Fleet fleet)
+                return HasFleetCapacity(fleet, template, count, ownerInstanceId);
+
+            return destination is CapitalShip capitalShip
+                && HasCapitalShipCapacity(capitalShip, template, count, ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Determines whether a fleet has capacity for a complete manufacturing order.
+        /// </summary>
+        /// <param name="fleet">The fleet that receives completed items.</param>
+        /// <param name="template">The unit template to manufacture.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the fleet has sufficient capacity.</returns>
+        private static bool HasFleetCapacity(
+            Fleet fleet,
+            IManufacturable template,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !string.Equals(
+                    fleet.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+                || fleet.Movement != null
+            )
+                return false;
+
+            if (template is CapitalShip)
+                return true;
+
+            ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
+            IEnumerable<CapitalShip> carriers = fleet.CapitalShips.Where(
+                IsManufacturingCarrierAvailable
+            );
+            if (candidate is Starfighter)
+                return carriers.Sum(ship => ship.GetExcessStarfighterCapacity()) >= count;
+
+            return candidate is Regiment
+                && carriers.Sum(ship => ship.GetExcessRegimentCapacity()) >= count;
+        }
+
+        /// <summary>
+        /// Determines whether a capital ship has capacity for a complete manufacturing order.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship that receives completed items.</param>
+        /// <param name="template">The unit template to manufacture.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the capital ship has sufficient capacity.</returns>
+        private static bool HasCapitalShipCapacity(
+            CapitalShip capitalShip,
+            IManufacturable template,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !string.Equals(
+                    capitalShip.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                ) || !IsManufacturingCarrierAvailable(capitalShip)
+            )
+                return false;
+
+            ISceneNode candidate = CreateManufacturingCandidate(ownerInstanceId, template);
+            if (candidate is Starfighter)
+                return capitalShip.GetExcessStarfighterCapacity() >= count;
+
+            return candidate is Regiment && capitalShip.GetExcessRegimentCapacity() >= count;
+        }
+
+        /// <summary>
+        /// Creates a detached manufactured item for destination-capacity validation.
+        /// </summary>
+        /// <param name="ownerInstanceId">The owner assigned to the candidate.</param>
+        /// <param name="template">The manufacturing template to copy.</param>
+        /// <returns>The detached scene node, or null when the template is not a scene node.</returns>
+        private static ISceneNode CreateManufacturingCandidate(
+            string ownerInstanceId,
+            IManufacturable template
+        )
+        {
+            IManufacturable item = template.GetDeepCopy();
+            if (item is not ISceneNode sceneNode)
+                return null;
+
+            sceneNode.OwnerInstanceID = ownerInstanceId;
+            item.ManufacturingStatus = ManufacturingStatus.Building;
+            item.ManufacturingProgress = 0;
+            if (item is IMovable movable)
+                movable.Movement = null;
+
+            return sceneNode;
+        }
+
+        /// <summary>
+        /// Estimates the production time for copies of one manufacturing template.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The item template to manufacture.</param>
+        /// <param name="count">The number of copies to manufacture.</param>
+        /// <returns>The estimated production ticks, or null when no facility can produce the item.</returns>
+        public static int? EstimateManufacturingTicks(
+            Planet producer,
+            IManufacturable template,
+            int count
+        )
+        {
+            if (producer == null || template == null || count <= 0)
+                return null;
+
+            long requiredProgress = (long)Math.Max(template.GetConstructionCost(), 0) * count;
+            return EstimateManufacturingTicks(
+                producer,
+                template.GetManufacturingType(),
+                requiredProgress
+            );
+        }
+
+        /// <summary>
+        /// Estimates when the current queue for one manufacturing category will finish.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="type">The manufacturing category to inspect.</param>
+        /// <returns>The estimated remaining production ticks, or null when no estimate is available.</returns>
+        public static int? EstimateQueueCompletionTicks(Planet producer, ManufacturingType type)
+        {
+            if (
+                producer == null
+                || type == ManufacturingType.None
+                || !producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(type, out List<IManufacturable> queue)
+                || queue == null
+                || queue.Count == 0
+            )
+                return null;
+
+            long requiredProgress = queue.Sum(item =>
+                (long)Math.Max(item.GetConstructionCost() - item.GetManufacturingProgress(), 0)
+            );
+            return EstimateManufacturingTicks(producer, type, requiredProgress);
+        }
+
+        /// <summary>
+        /// Estimates production ticks from remaining progress and active facility rates.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="type">The manufacturing category to inspect.</param>
+        /// <param name="requiredProgress">The remaining production progress.</param>
+        /// <returns>The estimated production ticks, or null when no progress can be made.</returns>
+        private static int? EstimateManufacturingTicks(
+            Planet producer,
+            ManufacturingType type,
+            long requiredProgress
+        )
+        {
+            if (requiredProgress <= 0)
+                return 0;
+
+            int productionRate = producer
+                .GetProductionFacilities(type)
+                .Where(facility => facility.GetProcessRate() > 0)
+                .Sum(facility => _productionRateScale / facility.GetProcessRate());
+            if (productionRate <= 0)
+                return null;
+
+            long scaledProgress = requiredProgress * _productionRateScale;
+            long estimatedTicks = (scaledProgress + productionRate - 1) / productionRate;
+            return estimatedTicks <= int.MaxValue ? (int)estimatedTicks : int.MaxValue;
         }
 
         /// <summary>
@@ -276,6 +601,27 @@ namespace Rebellion.Systems
             int projectedHeadroom = faction.GetProjectedMaintenanceHeadroom(item);
 
             return projectedHeadroom >= minimumHeadroom;
+        }
+
+        /// <summary>
+        /// Determines whether a faction can afford a complete manufacturing order.
+        /// </summary>
+        /// <param name="faction">The faction committing the order.</param>
+        /// <param name="item">The item template being manufactured.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <returns>True when the projected maintenance headroom remains above its floor.</returns>
+        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, int count)
+        {
+            if (faction == null)
+                return false;
+
+            int maintenanceCost = item.GetMaintenanceCost();
+            if (maintenanceCost <= 0)
+                return true;
+
+            int minimumHeadroom = _game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
+            return faction.ProjectedMaintenanceHeadroom - maintenanceCost * count
+                >= minimumHeadroom;
         }
 
         /// <summary>
@@ -851,6 +1197,63 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Cancels one queued manufacturing item owned by the supplied faction.
+        /// </summary>
+        /// <param name="item">The queued item to cancel.</param>
+        /// <param name="ownerInstanceId">The faction authorized to cancel the item.</param>
+        /// <returns>True when the queued item was removed; otherwise false.</returns>
+        public bool CancelManufacturing(IManufacturable item, string ownerInstanceId)
+        {
+            if (
+                item is not ISceneNode sceneNode
+                || item.ManufacturingStatus != ManufacturingStatus.Building
+                || string.IsNullOrEmpty(item.ProducerPlanetID)
+                || string.IsNullOrEmpty(ownerInstanceId)
+            )
+                return false;
+
+            Planet producer = _game.GetSceneNodeByInstanceID<Planet>(item.ProducerPlanetID);
+            if (
+                producer == null
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+                return false;
+
+            ManufacturingType type = item.GetManufacturingType();
+            Dictionary<ManufacturingType, List<IManufacturable>> queues =
+                producer.GetManufacturingQueue();
+            if (!queues.TryGetValue(type, out List<IManufacturable> queue) || queue == null)
+                return false;
+
+            IManufacturable queuedItem = queue.FirstOrDefault(candidate =>
+                ReferenceEquals(candidate, item)
+                || candidate is ISceneNode candidateNode
+                    && !string.IsNullOrEmpty(sceneNode.InstanceID)
+                    && string.Equals(
+                        candidateNode.InstanceID,
+                        sceneNode.InstanceID,
+                        StringComparison.Ordinal
+                    )
+            );
+            if (queuedItem == null)
+                return false;
+
+            queue.Remove(queuedItem);
+            DetachQueuedItem(queuedItem);
+            if (queue.Count == 0)
+            {
+                queues.Remove(type);
+                ResetProductionFacilities(producer, type);
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Detaches queued manufacturing items and resets the facilities assigned to their queue.
         /// </summary>
         /// <param name="planet">The planet whose queued items are being cleared.</param>
@@ -864,18 +1267,7 @@ namespace Rebellion.Systems
         {
             foreach (IManufacturable item in items.ToList())
             {
-                ISceneNode sceneNode = item;
-                ISceneNode parent = sceneNode.GetParent();
-                if (parent != null)
-                    _game.DetachNode(sceneNode);
-
-                if (
-                    parent is Fleet fleet
-                    && fleet.CapitalShips.Count == 0
-                    && fleet.GetParent() != null
-                )
-                    _game.DetachNode(fleet);
-
+                DetachQueuedItem(item);
                 GameLogger.Debug(
                     $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
                 );
@@ -883,6 +1275,21 @@ namespace Rebellion.Systems
 
             items.Clear();
             ResetProductionFacilities(planet, type);
+        }
+
+        /// <summary>
+        /// Detaches one queued item and removes an empty destination fleet.
+        /// </summary>
+        /// <param name="item">The queued item to detach.</param>
+        private void DetachQueuedItem(IManufacturable item)
+        {
+            ISceneNode sceneNode = item;
+            ISceneNode parent = sceneNode.GetParent();
+            if (parent != null)
+                _game.DetachNode(sceneNode);
+
+            if (parent is Fleet fleet && fleet.CapitalShips.Count == 0 && fleet.GetParent() != null)
+                _game.DetachNode(fleet);
         }
 
         /// <summary>

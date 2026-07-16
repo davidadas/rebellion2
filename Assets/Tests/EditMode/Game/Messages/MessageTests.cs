@@ -56,6 +56,9 @@ namespace Rebellion.Tests.Game.Messages
                 InstanceID = "MSG1",
                 DisplayImageKey = "mission_report",
                 OverlayImagePath = "overlay-card",
+                EventLocationInstanceID = "PLANET1",
+                NavigationTargetInstanceID = "OFFICER1",
+                NavigationSecondaryTargetInstanceID = "MISSION1",
                 MissionInstanceID = "mission-1",
                 Read = true,
             };
@@ -92,6 +95,21 @@ namespace Rebellion.Tests.Game.Messages
                 message.OverlayImagePath,
                 deserialized.OverlayImagePath,
                 "OverlayImagePath should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.EventLocationInstanceID,
+                deserialized.EventLocationInstanceID,
+                "EventLocationInstanceID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.NavigationTargetInstanceID,
+                deserialized.NavigationTargetInstanceID,
+                "NavigationTargetInstanceID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.NavigationSecondaryTargetInstanceID,
+                deserialized.NavigationSecondaryTargetInstanceID,
+                "NavigationSecondaryTargetInstanceID should be correctly deserialized."
             );
             Assert.AreEqual(
                 message.MissionInstanceID,

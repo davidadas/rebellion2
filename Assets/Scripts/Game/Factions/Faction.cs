@@ -134,6 +134,15 @@ namespace Rebellion.Game.Factions
             { MessageType.Advice, new List<Message>() },
         };
 
+        public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
+
+        public Dictionary<MessageType, bool> AdvisorMessageNotifications { get; set; } =
+            new Dictionary<MessageType, bool>();
+
+        public bool TranslateCounterpart { get; set; } = true;
+
+        public bool AgentAdvice { get; set; } = true;
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
@@ -527,6 +536,29 @@ namespace Rebellion.Game.Factions
             }
 
             messages.Add(message);
+        }
+
+        public bool IsAdvisorMessageNotificationEnabled(MessageType messageType)
+        {
+            return
+                AdvisorMessageNotifications != null
+                && AdvisorMessageNotifications.TryGetValue(messageType, out bool enabled)
+                ? enabled
+                : AdvisorMessageNotificationsEnabled;
+        }
+
+        public void ToggleAdvisorMessageNotification(MessageType messageType)
+        {
+            AdvisorMessageNotifications ??= new Dictionary<MessageType, bool>();
+            AdvisorMessageNotifications[messageType] = !IsAdvisorMessageNotificationEnabled(
+                messageType
+            );
+        }
+
+        public void ToggleAllAdvisorMessageNotifications()
+        {
+            AdvisorMessageNotificationsEnabled = !AdvisorMessageNotificationsEnabled;
+            AdvisorMessageNotifications?.Clear();
         }
 
         /// <summary>
