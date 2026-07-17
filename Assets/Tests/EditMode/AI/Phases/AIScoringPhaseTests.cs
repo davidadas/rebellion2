@@ -38,7 +38,16 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithInjectedScorer_AssignsScore()
         {
             TestAIProposal proposal = new TestAIProposal();
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
             context.AddProposal(proposal);
             AIScoringPhase phase = new AIScoringPhase(
                 new IAIProposalScorer[] { new TestProposalScorer() }
@@ -53,7 +62,16 @@ namespace Rebellion.Tests.AI.Phases
         [Test]
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
             context.AddProposal(new TestAIProposal());
 
             Assert.Throws<InvalidOperationException>(() => new AIScoringPhase().Execute(context));

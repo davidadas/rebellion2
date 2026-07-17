@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -9,8 +10,257 @@ using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
-    public partial class CombatSystem
+    /// <summary>
+    /// Identifies a fleet encounter waiting for space-combat resolution.
+    /// </summary>
+    internal sealed class SpaceCombatDecision
     {
+        public string AttackerFleetInstanceID { get; set; }
+        public string DefenderFleetInstanceID { get; set; }
+    }
+
+    /// <summary>
+    /// Detects and resolves hostile fleet encounters.
+    /// </summary>
+    public class SpaceCombatSystem : IGameSystem
+    {
+        private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
+        private readonly MovementSystem _movement;
+        private SpaceCombatDecision _pendingDecision;
+
+        /// <summary>
+        /// Whether a player-involved combat encounter is waiting for resolution.
+        /// </summary>
+        public bool HasPendingDecision => _pendingDecision != null;
+
+        /// <summary>
+        /// Creates the space-combat system.
+        /// </summary>
+        /// <param name="game">Active game state.</param>
+        /// <param name="provider">Random-number provider used by combat resolution.</param>
+        /// <param name="movement">Movement system used for retreats and evacuation.</param>
+        public SpaceCombatSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            MovementSystem movement
+        )
+        {
+            _game = game;
+            _provider = provider;
+            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+        }
+
+        /// <summary>
+        /// Resolves all AI-vs-AI combat encounters this tick in a single pass.
+        /// When a player-involved encounter is found, emits a PendingCombatResult and stops.
+        /// </summary>
+        /// <returns>Combat results generated this tick.</returns>
+        public List<GameResult> ProcessTick()
+        {
+            List<GameResult> results = new List<GameResult>();
+            if (_pendingDecision != null)
+                return results;
+
+            HashSet<string> resolvedFleetIds = new HashSet<string>();
+
+            while (TryBeginFleetCombat(resolvedFleetIds, out SpaceCombatDecision decision))
+            {
+                if (TryAutoResolveAICombat(decision, resolvedFleetIds, results))
+                    continue;
+
+                _pendingDecision = decision;
+                results.Add(BuildPendingCombatResult(decision));
+                return results;
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Attempts to auto-resolve a detected combat encounter when both sides are AI-controlled.
+        /// </summary>
+        /// <param name="decision">The detected encounter to resolve.</param>
+        /// <param name="resolvedFleetIds">Set updated with both fleet IDs on successful resolution.</param>
+        /// <param name="results">Output list that receives combat results.</param>
+        /// <returns>True if auto-resolved; false if either side is player-controlled.</returns>
+        private bool TryAutoResolveAICombat(
+            SpaceCombatDecision decision,
+            HashSet<string> resolvedFleetIds,
+            List<GameResult> results
+        )
+        {
+            if (!BothSidesAIControlled(decision))
+                return false;
+
+            results.AddRange(ResolveAutomaticFleetEncounter(decision));
+
+            if (IsEncounterStillContested(decision))
+            {
+                resolvedFleetIds.Add(decision.AttackerFleetInstanceID);
+                resolvedFleetIds.Add(decision.DefenderFleetInstanceID);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Checks whether both fleets in the encounter still occupy a contested planet.
+        /// </summary>
+        /// <param name="decision">The combat decision to evaluate.</param>
+        /// <returns>True when both fleets still contest the same planet.</returns>
+        private bool IsEncounterStillContested(SpaceCombatDecision decision)
+        {
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
+
+            return AreFleetsContestingPlanet(attacker, defender);
+        }
+
+        /// <summary>
+        /// Returns whether both fleets belong to AI-controlled factions.
+        /// </summary>
+        /// <param name="decision">The combat decision to evaluate.</param>
+        /// <returns>True when both sides are AI-controlled.</returns>
+        private bool BothSidesAIControlled(SpaceCombatDecision decision)
+        {
+            Faction attacker = GetFleetFaction(decision.AttackerFleetInstanceID);
+            Faction defender = GetFleetFaction(decision.DefenderFleetInstanceID);
+            return attacker != null
+                && defender != null
+                && attacker.IsAIControlled()
+                && defender.IsAIControlled();
+        }
+
+        /// <summary>
+        /// Looks up the controlling faction for a fleet.
+        /// </summary>
+        /// <param name="fleetInstanceId">The fleet's scene-graph instance ID.</param>
+        /// <returns>The faction that owns the fleet, or null if it cannot be resolved.</returns>
+        private Faction GetFleetFaction(string fleetInstanceId)
+        {
+            Fleet fleet = _game.GetSceneNodeByInstanceID<Fleet>(fleetInstanceId);
+            return _game.GetFactionByOwnerInstanceID(fleet?.GetOwnerInstanceID());
+        }
+
+        /// <summary>
+        /// Builds the result that pauses a player-involved encounter.
+        /// </summary>
+        /// <param name="decision">The pending combat decision.</param>
+        /// <returns>The pending-combat result.</returns>
+        private PendingCombatResult BuildPendingCombatResult(SpaceCombatDecision decision)
+        {
+            return new PendingCombatResult
+            {
+                AttackerFleet = _game.GetSceneNodeByInstanceID<Fleet>(
+                    decision.AttackerFleetInstanceID
+                ),
+                DefenderFleet = _game.GetSceneNodeByInstanceID<Fleet>(
+                    decision.DefenderFleetInstanceID
+                ),
+                Tick = _game.CurrentTick,
+            };
+        }
+
+        /// <summary>
+        /// Resolves and clears the player-involved encounter waiting for a decision.
+        /// </summary>
+        /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
+        /// <returns>Combat results generated by the encounter.</returns>
+        public List<GameResult> ResolvePending(bool autoResolve)
+        {
+            if (_pendingDecision == null)
+                throw new InvalidOperationException("No pending combat to resolve.");
+
+            SpaceCombatDecision decision = _pendingDecision;
+            List<GameResult> results = Resolve(decision, autoResolve);
+            _pendingDecision = null;
+            return results;
+        }
+
+        /// <summary>
+        /// Detects a hostile fleet encounter while skipping fleets already handled this tick.
+        /// </summary>
+        /// <param name="excludedFleetIds">Fleet instance IDs to skip.</param>
+        /// <param name="decision">The detected encounter.</param>
+        /// <returns>True if a hostile encounter was detected.</returns>
+        private bool TryBeginFleetCombat(
+            HashSet<string> excludedFleetIds,
+            out SpaceCombatDecision decision
+        )
+        {
+            decision = null;
+
+            if (
+                !TryFindContestedFleetPair(excludedFleetIds, out Fleet attacker, out Fleet defender)
+            )
+                return false;
+
+            attacker.IsInCombat = true;
+            defender.IsInCombat = true;
+
+            decision = new SpaceCombatDecision
+            {
+                AttackerFleetInstanceID = attacker.GetInstanceID(),
+                DefenderFleetInstanceID = defender.GetInstanceID(),
+            };
+
+            return true;
+        }
+
+        /// <summary>
+        /// Finds the first pair of hostile fleets occupying the same planet.
+        /// </summary>
+        /// <param name="excludedFleetIds">Fleet instance IDs to skip.</param>
+        /// <param name="attacker">The attacking fleet.</param>
+        /// <param name="defender">The defending fleet.</param>
+        /// <returns>True if a hostile fleet pair was found.</returns>
+        private bool TryFindContestedFleetPair(
+            HashSet<string> excludedFleetIds,
+            out Fleet attacker,
+            out Fleet defender
+        )
+        {
+            attacker = null;
+            defender = null;
+
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                List<Fleet> fleets = planet
+                    .GetChildren<Fleet>(
+                        fleet =>
+                            !fleet.IsInCombat
+                            && !excludedFleetIds.Contains(fleet.GetInstanceID())
+                            && fleet.Movement == null
+                            && HasActiveSpaceUnits(fleet),
+                        recurse: false
+                    )
+                    .ToList();
+
+                if (fleets.Count < 2)
+                    continue;
+
+                List<IGrouping<string, Fleet>> factionGroups = fleets
+                    .GroupBy(fleet => fleet.GetOwnerInstanceID())
+                    .Where(group => group.Key != null)
+                    .OrderBy(group => group.Key)
+                    .ToList();
+
+                if (factionGroups.Count < 2)
+                    continue;
+
+                attacker = factionGroups[0].First();
+                defender = factionGroups[1].First();
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Resolves a pending combat encounter. Applies damage to the game world and clears
         /// IsInCombat on both fleets regardless of outcome.
@@ -18,7 +268,7 @@ namespace Rebellion.Systems
         /// <param name="decision">The combat decision to resolve.</param>
         /// <param name="autoResolve">True to use auto-resolve; false to use manual combat.</param>
         /// <returns>Combat results generated by the encounter.</returns>
-        public List<GameResult> Resolve(CombatDecisionContext decision, bool autoResolve)
+        internal List<GameResult> Resolve(SpaceCombatDecision decision, bool autoResolve)
         {
             if (autoResolve)
                 return ResolveFleetEncounter(decision, allowRetreatBeforeCombat: false);
@@ -33,7 +283,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="decision">Encounter context to resolve.</param>
         /// <returns>Combat results generated by the encounter.</returns>
-        private List<GameResult> ResolveAutomaticFleetEncounter(CombatDecisionContext decision)
+        private List<GameResult> ResolveAutomaticFleetEncounter(SpaceCombatDecision decision)
         {
             return ResolveFleetEncounter(decision, allowRetreatBeforeCombat: true);
         }
@@ -45,7 +295,7 @@ namespace Rebellion.Systems
         /// <param name="allowRetreatBeforeCombat">Whether an outmatched fleet may retreat first.</param>
         /// <returns>The aggregated result for the encounter.</returns>
         private List<GameResult> ResolveFleetEncounter(
-            CombatDecisionContext decision,
+            SpaceCombatDecision decision,
             bool allowRetreatBeforeCombat
         )
         {
@@ -237,7 +487,7 @@ namespace Rebellion.Systems
         /// Clears combat state from fleets that remain after an encounter.
         /// </summary>
         /// <param name="decision">Encounter identifying the affected fleets.</param>
-        private void ClearCombatFlags(CombatDecisionContext decision)
+        private void ClearCombatFlags(SpaceCombatDecision decision)
         {
             Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
                 decision.AttackerFleetInstanceID
@@ -1000,7 +1250,7 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    DestroyCapitalShip(_game, _movement, ship);
+                    CapitalShipDestruction.Resolve(_game, _movement, ship);
                 }
             }
 

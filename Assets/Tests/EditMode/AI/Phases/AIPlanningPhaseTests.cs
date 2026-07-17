@@ -46,7 +46,16 @@ namespace Rebellion.Tests.AI.Phases
             AIPlanningPhase phase = new AIPlanningPhase(
                 new IAIProposalPlanner[] { new TestPlanner(proposal) }
             );
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
 
             phase.Execute(context);
 

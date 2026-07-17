@@ -1,0 +1,1393 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Systems;
+using Rebellion.Util.Common;
+
+namespace Rebellion.Tests.Systems
+{
+    /// <summary>
+    /// Tests for SpaceCombatSystem.
+    /// Validates the 7-phase combat pipeline.
+    /// </summary>
+    [TestFixture]
+    public class SpaceCombatSystemTests : CombatTestBase
+    {
+        /// <summary>
+        /// Runs a full combat cycle: detect then resolve (auto).
+        /// Returns true if combat was detected and resolved.
+        /// </summary>
+        private bool RunCombat(SpaceCombatSystem manager)
+        {
+            return TryRunCombat(manager, out _);
+        }
+
+        private bool TryRunCombat(SpaceCombatSystem manager, out List<GameResult> results)
+        {
+            results = manager.ProcessTick();
+            return results.Count > 0;
+        }
+
+        private bool TryResolveCombat(
+            SpaceCombatSystem manager,
+            Fleet attacker,
+            Fleet defender,
+            out List<GameResult> results
+        )
+        {
+            results = manager.Resolve(
+                new SpaceCombatDecision
+                {
+                    AttackerFleetInstanceID = attacker.InstanceID,
+                    DefenderFleetInstanceID = defender.InstanceID,
+                },
+                true
+            );
+            return results.Count > 0;
+        }
+
+        private static bool HasDamageFor(List<GameResult> results, CapitalShip ship)
+        {
+            return GetDamageResults(results)
+                .Any(result => result.GameObject == ship && result.DamageValue > 0);
+        }
+
+        private static int GetDamageFor(List<GameResult> results, CapitalShip ship)
+        {
+            GameObjectDamagedResult damageResult = GetDamageResults(results)
+                .FirstOrDefault(result => result.GameObject == ship);
+
+            return damageResult?.DamageValue ?? 0;
+        }
+
+        private static IEnumerable<GameObjectDamagedResult> GetDamageResults(
+            List<GameResult> results
+        )
+        {
+            return results
+                .OfType<SpaceCombatResult>()
+                .SelectMany(result => result.Events)
+                .OfType<GameObjectDamagedResult>();
+        }
+
+        private static SpaceCombatResult GetCombatResult(List<GameResult> results)
+        {
+            return results.OfType<SpaceCombatResult>().Single();
+        }
+
+        private List<int> ResolveDamageValues(double randomValue)
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
+            CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+
+            QueueRNG rng = new QueueRNG(
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue,
+                randomValue
+            );
+            TryRunCombat(MakeSpaceCombat(game, rng), out List<GameResult> results);
+
+            List<int> damageValues = GetDamageResults(results)
+                .Select(result => result.DamageValue)
+                .ToList();
+
+            CollectionAssert.IsNotEmpty(damageValues, "Combat should emit damage results.");
+            return damageValues;
+        }
+
+        private bool HasOpposingReadyFleets(Planet planet)
+        {
+            return planet
+                    .GetFleets()
+                    .Where(fleet => fleet.Movement == null)
+                    .Select(fleet => fleet.GetOwnerInstanceID())
+                    .Where(ownerInstanceId => !string.IsNullOrEmpty(ownerInstanceId))
+                    .Distinct()
+                    .Count() > 1;
+        }
+
+        [Test]
+        public void Resolve_TwoFactionFleets_RunsSpaceCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
+
+            bool combatOccurred =
+                HasDamageFor(results, empireShip) || HasDamageFor(results, allianceShip);
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            Assert.IsTrue(combatOccurred, "Combat should occur between hostile factions");
+            Assert.IsNotEmpty(combatResult.ShipDamage);
+            foreach (ShipDamageResult damage in combatResult.ShipDamage)
+            {
+                GameObjectDamagedResult lastDamageEvent = combatResult
+                    .Events.OfType<GameObjectDamagedResult>()
+                    .Last(result => result.GameObject == damage.Ship);
+                Assert.AreEqual(damage.HullBefore - damage.HullAfter, lastDamageEvent.DamageValue);
+            }
+            Assert.IsFalse(results.OfType<GameObjectDamagedResult>().Any());
+        }
+
+        [Test]
+        public void Resolve_MultipleCombatRounds_ReturnsAggregateDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                100,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                10,
+                shieldRechargeRate: 0
+            );
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            var repeatedDamage = combatResult
+                .ShipDamage.Select(damage => new
+                {
+                    Damage = damage,
+                    Events = combatResult
+                        .Events.OfType<GameObjectDamagedResult>()
+                        .Where(result => result.GameObject == damage.Ship)
+                        .ToList(),
+                })
+                .FirstOrDefault(entry => entry.Events.Count > 1);
+
+            Assert.IsNotNull(repeatedDamage);
+            Assert.AreEqual(100, repeatedDamage.Damage.HullBefore);
+            Assert.AreEqual(
+                repeatedDamage.Damage.Ship.CurrentHullStrength,
+                repeatedDamage.Damage.HullAfter
+            );
+            Assert.AreEqual(
+                repeatedDamage.Damage.HullBefore - repeatedDamage.Damage.HullAfter,
+                repeatedDamage.Events.Last().DamageValue
+            );
+        }
+
+        [Test]
+        public void Resolve_NoHostileFleets_DoesNotRunCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet fleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            int initialHull = fleet.CapitalShips[0].CurrentHullStrength;
+
+            QueueRNG rng = new QueueRNG();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            bool detected = RunCombat(manager);
+
+            Assert.IsFalse(detected, "No combat should be detected");
+            Assert.AreEqual(
+                initialHull,
+                fleet.CapitalShips[0].CurrentHullStrength,
+                "No combat should occur"
+            );
+        }
+
+        [Test]
+        public void ProcessTick_WithInTransitFleet_IgnoresInTransitFleet()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            empireFleet.Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.IsFalse(allianceFleet.IsInCombat);
+        }
+
+        [Test]
+        public void ProcessTick_FleetsWithOnlyInTransitShips_DoesNotRunCombat()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            empireFleet.CapitalShips[0].Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+            allianceFleet.CapitalShips[0].Movement = new MovementState
+            {
+                TransitTicks = 5,
+                TicksElapsed = 1,
+                OriginPosition = planet.GetPosition(),
+                CurrentPosition = planet.GetPosition(),
+            };
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(empireFleet.IsInCombat);
+            Assert.IsFalse(allianceFleet.IsInCombat);
+        }
+
+        [Test]
+        public void Resolve_InTransitCapitalShipAttachedToFleet_DoesNotTakeCombatDamage()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
+            CapitalShip inTransitShip = new CapitalShip
+            {
+                InstanceID = "f1_ship_moving",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 1000,
+                CurrentHullStrength = 1000,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 5,
+                    TicksElapsed = 1,
+                    OriginPosition = planet.GetPosition(),
+                    CurrentPosition = planet.GetPosition(),
+                },
+            };
+            game.AttachNode(inTransitShip, empireFleet);
+
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out _);
+
+            Assert.AreEqual(1000, inTransitShip.CurrentHullStrength);
+        }
+
+        [Test]
+        public void Resolve_InTransitStarfighterAttachedToFleet_DoesNotTakeCombatLosses()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
+            CapitalShip empireCarrier = empireFleet.CapitalShips[0];
+            empireCarrier.StarfighterCapacity = 1;
+            Starfighter inTransitFighter = new Starfighter
+            {
+                InstanceID = "f1_fighter_moving",
+                OwnerInstanceID = "empire",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 5,
+                    TicksElapsed = 1,
+                    OriginPosition = planet.GetPosition(),
+                    CurrentPosition = planet.GetPosition(),
+                },
+            };
+            game.AttachNode(inTransitFighter, empireCarrier);
+
+            Fleet allianceFleet = CreateFleetWithFighters(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                1000,
+                0,
+                100
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, empireFleet, allianceFleet, out _);
+
+            Assert.AreEqual(12, inTransitFighter.CurrentSquadronSize);
+        }
+
+        [Test]
+        public void Resolve_SingleFactionFleets_DoesNotRunCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet fleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet fleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
+
+            QueueRNG rng = new QueueRNG();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.AreEqual(100, fleet1.CapitalShips[0].CurrentHullStrength);
+            Assert.AreEqual(100, fleet2.CapitalShips[0].CurrentHullStrength);
+        }
+
+        [Test]
+        public void Resolve_MultipleAttackerFleets_OnlyFirstPairFights()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet1 = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet empireFleet2 = CreateFleet(game, "f2", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f3", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip1 = empireFleet1.CapitalShips[0];
+            CapitalShip empireShip2 = empireFleet2.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            TryResolveCombat(manager, empireFleet1, allianceFleet, out List<GameResult> results);
+
+            bool firstPairFought =
+                HasDamageFor(results, empireShip1) || HasDamageFor(results, allianceShip);
+            Assert.IsTrue(firstPairFought, "First fleet fights");
+            Assert.IsFalse(HasDamageFor(results, empireShip2), "Second fleet does not fight");
+            Assert.AreEqual(
+                100,
+                empireFleet2.CapitalShips[0].CurrentHullStrength,
+                "Second fleet does not fight"
+            );
+        }
+
+        [Test]
+        public void Resolve_AttackerDestroysDefender_ReturnsAttackerVictory()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender fleet destroyed");
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
+        }
+
+        [Test]
+        public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1, 0);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 100);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker fleet destroyed");
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
+        }
+
+        [Test]
+        public void Resolve_MutualDestruction_RemovesBothFleets()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                10,
+                3,
+                shieldRechargeRate: 0
+            );
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                10,
+                3,
+                shieldRechargeRate: 0
+            );
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            bool anyDestroyed =
+                game.GetSceneNodeByInstanceID<Fleet>("f1") == null
+                || game.GetSceneNodeByInstanceID<Fleet>("f2") == null;
+            Assert.IsTrue(
+                anyDestroyed,
+                "At least one fleet should be destroyed in evenly-matched combat"
+            );
+        }
+
+        [Test]
+        public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 10);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            TryRunCombat(manager, out List<GameResult> results);
+
+            Assert.IsTrue(
+                HasDamageFor(results, empireShip),
+                "Ships should take damage during combat"
+            );
+        }
+
+        [Test]
+        public void Resolve_ShipDestroyed_RemovedFromFleet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.AreEqual(
+                0,
+                allianceFleet.CapitalShips.Count,
+                "Destroyed ship removed from fleet"
+            );
+        }
+
+        [Test]
+        public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleetWithFighters(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1000,
+                1,
+                100
+            );
+            Fleet allianceFleet = CreateFleetWithFighters(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                50,
+                1,
+                10
+            );
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Fleet allianceFleet2 = game.GetSceneNodeByInstanceID<Fleet>("f2");
+            if (allianceFleet2 != null)
+            {
+                List<Starfighter> allFighters = allianceFleet2.GetStarfighters().ToList();
+                if (allFighters.Count > 0)
+                {
+                    Assert.Less(
+                        allFighters[0].CurrentSquadronSize,
+                        10,
+                        "Alliance fighters should take losses"
+                    );
+                    return;
+                }
+            }
+
+            Fleet empFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
+            Assert.IsNotNull(empFleet, "Empire fleet should still exist");
+            List<Starfighter> empFighters = empFleet.GetStarfighters().ToList();
+            Assert.Greater(empFighters.Count, 0, "Empire should have fighters");
+            Assert.Less(
+                empFighters[0].CurrentSquadronSize,
+                100,
+                "Empire fighters should take some losses"
+            );
+        }
+
+        [Test]
+        public void Resolve_EmptyFleet_RemovedFromScene()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 1000, 100);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1, 0);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("f2"));
+            bool foundFleet = false;
+            foreach (Fleet fleet in planet.GetChildren<Fleet>(null, recurse: false))
+            {
+                if (fleet == allianceFleet)
+                {
+                    foundFleet = true;
+                    break;
+                }
+            }
+            Assert.IsFalse(foundFleet, "Destroyed fleet should not be in planet's children");
+        }
+
+        [Test]
+        public void Resolve_BothSidesZeroWeapons_AppliesNoDamageAndSeparatesFleets()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 0);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
+
+            empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
+            allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.AreEqual(
+                100,
+                empireFleet.CapitalShips[0].CurrentHullStrength,
+                "No damage without weapons"
+            );
+            Assert.AreEqual(
+                100,
+                allianceFleet.CapitalShips[0].CurrentHullStrength,
+                "No damage without weapons"
+            );
+            Assert.IsFalse(
+                HasOpposingReadyFleets(planet),
+                "Opposing fleets should not remain ready at the same planet"
+            );
+        }
+
+        [Test]
+        public void Resolve_WeaponFire_DamagesTargets()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+            CapitalShip empireShip = empireFleet.CapitalShips[0];
+            CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            TryRunCombat(manager, out List<GameResult> results);
+
+            Assert.IsTrue(HasDamageFor(results, empireShip));
+            Assert.IsTrue(HasDamageFor(results, allianceShip));
+        }
+
+        [Test]
+        public void Resolve_ShieldAbsorption_ReducesDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet shieldedFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
+            Fleet unshieldedFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
+            CapitalShip shieldedShip = shieldedFleet.CapitalShips[0];
+            CapitalShip unshieldedShip = unshieldedFleet.CapitalShips[0];
+
+            shieldedFleet.CapitalShips[0].ShieldRechargeRate = 15;
+            unshieldedFleet.CapitalShips[0].ShieldRechargeRate = 0;
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            TryRunCombat(manager, out List<GameResult> results);
+
+            int shieldedDamage = GetDamageFor(results, shieldedShip);
+            int unshieldedDamage = GetDamageFor(results, unshieldedShip);
+
+            Assert.Greater(unshieldedDamage, shieldedDamage, "Shields should reduce damage");
+        }
+
+        [Test]
+        public void Resolve_FightersAttackCapitalShips_AppliesDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet fighterFleet = CreateFleetWithFighters(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                50,
+                5,
+                12
+            );
+            Fleet targetFleet = CreateFleet(game, "f2", "alliance", planet, 1, 1000, 5);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Fleet target = game.GetSceneNodeByInstanceID<Fleet>("f2");
+            Assert.IsNotNull(target, "Target fleet should still exist");
+            Assert.Less(
+                target.CapitalShips[0].CurrentHullStrength,
+                1000,
+                "Fighters should damage capital ships"
+            );
+        }
+
+        [Test]
+        public void Resolve_DifferentRNGValues_ProducesDifferentDamage()
+        {
+            int damage1 = ResolveDamageValues(0.0).First();
+            int damage2 = ResolveDamageValues(1.0).First();
+
+            Assert.AreNotEqual(damage1, damage2, "Damage should vary with different RNG");
+        }
+
+        [Test]
+        public void Resolve_SameRNGSeed_ProducesSameOutcome()
+        {
+            CollectionAssert.AreEqual(
+                ResolveDamageValues(0.5),
+                ResolveDamageValues(0.5),
+                "Same RNG should produce identical results"
+            );
+        }
+
+        [Test]
+        public void Resolve_DifferentRNGSeeds_ProduceDifferentOutcomes()
+        {
+            CollectionAssert.AreNotEqual(
+                ResolveDamageValues(0.0),
+                ResolveDamageValues(1.0),
+                "Different RNG should produce different results"
+            );
+        }
+
+        [Test]
+        public void Resolve_EmptyFleets_DoesNotRunCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "empire" };
+            Fleet allianceFleet = new Fleet { InstanceID = "f2", OwnerInstanceID = "alliance" };
+            game.AttachNode(empireFleet, planet);
+            game.AttachNode(allianceFleet, planet);
+
+            QueueRNG rng = new QueueRNG();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.Pass("Empty fleets should not cause combat");
+        }
+
+        [Test]
+        public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet empireFleet = CreateFleet(game, "f1", "empire", planet, 1, 10000, 1);
+            Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 10000, 1);
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            manager.ProcessTick();
+
+            Fleet survivingEmpireFleet = game.GetSceneNodeByInstanceID<Fleet>("f1");
+            Fleet survivingAllianceFleet = game.GetSceneNodeByInstanceID<Fleet>("f2");
+
+            if (survivingEmpireFleet != null)
+                Assert.IsFalse(
+                    survivingEmpireFleet.IsInCombat,
+                    "IsInCombat should be cleared after resolution"
+                );
+            if (survivingAllianceFleet != null)
+                Assert.IsFalse(
+                    survivingAllianceFleet.IsInCombat,
+                    "IsInCombat should be cleared after resolution"
+                );
+        }
+
+        [Test]
+        public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            for (int i = 1; i <= 3; i++)
+            {
+                PlanetSystem sys = new PlanetSystem { InstanceID = $"sys{i}" };
+                Planet planet = new Planet { InstanceID = $"p{i}" };
+                game.AttachNode(sys, game.Galaxy);
+                game.AttachNode(planet, sys);
+                CreateFleet(game, $"ef{i}", "empire", planet, 1, 1000, 20);
+                CreateFleet(game, $"af{i}", "alliance", planet, 1, 1000, 20);
+            }
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5, 0.5, 0.5);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsFalse(
+                results.OfType<PendingCombatResult>().Any(),
+                "All AI encounters should auto-resolve with no pending decision"
+            );
+
+            for (int i = 1; i <= 3; i++)
+            {
+                Planet planet = game.GetSceneNodeByInstanceID<Planet>($"p{i}");
+                Assert.IsFalse(HasHostileFleets(planet));
+            }
+        }
+
+        [Test]
+        public void ProcessTick_WeakerAIFleetCanRetreat_MovesToFriendlyPlanet()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
+            Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            CreateFleet(game, "ef1", "empire", combatPlanet, 1, 1, 1, shieldRechargeRate: 0);
+            Fleet allianceFleet = CreateFleet(
+                game,
+                "af1",
+                "alliance",
+                combatPlanet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            allianceFleet.CapitalShips[0].HasGravityWell = true;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            manager.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+            Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_UnarmedAIFleets_RetreatsBoth()
+        {
+            GameRoot game = CreateGame();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            (Planet allianceHome, _) = CreatePlanet(game, "allianceHome", owner: "alliance");
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
+            empireFleet.CapitalShips[0].PrimaryWeapons.Clear();
+            allianceFleet.CapitalShips[0].PrimaryWeapons.Clear();
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            manager.ProcessTick();
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.AreSame(allianceHome, allianceFleet.GetParentOfType<Planet>());
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
+        public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(sys, game.Galaxy);
+            game.AttachNode(planet, sys);
+            CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+
+            QueueRNG rng = new QueueRNG();
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsTrue(
+                results.OfType<PendingCombatResult>().Any(),
+                "Player-involved encounter should emit a PendingCombatResult"
+            );
+            Assert.IsTrue(manager.HasPendingDecision);
+            Assert.IsEmpty(manager.ProcessTick());
+
+            List<GameResult> resolvedResults = manager.ResolvePending(autoResolve: true);
+
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsNotEmpty(resolvedResults);
+        }
+
+        [Test]
+        public void ResolvePending_WhenResolveThrows_KeepsPendingDecision()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(sys, game.Galaxy);
+            game.AttachNode(planet, sys);
+            CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new ThrowingRNG());
+
+            manager.ProcessTick();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                manager.ResolvePending(autoResolve: true)
+            );
+            Assert.IsTrue(manager.HasPendingDecision);
+        }
+
+        [Test]
+        public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = null };
+            Faction alliance = new Faction { InstanceID = "alliance", PlayerID = null };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "p1",
+                OwnerInstanceID = "alliance",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { "alliance", 80 } },
+            };
+            game.AttachNode(planet, sys);
+
+            // Weak empire fleet vs strong alliance fleet — alliance defends
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1, 0);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 3, 1000, 100);
+
+            QueueRNG rng = new QueueRNG(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+
+            RunCombat(manager);
+
+            Assert.AreEqual(
+                "alliance",
+                planet.GetOwnerInstanceID(),
+                "Defender winning on own planet should not change ownership"
+            );
+        }
+
+        [Test]
+        public void EvacuateOfficers_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "alliance" });
+
+            PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys, game.Galaxy);
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(planet, sys);
+
+            // Alliance fleet: two ships. Weak ship dies, strong ship survives.
+            Fleet allianceFleet = new Fleet { InstanceID = "af1", OwnerInstanceID = "alliance" };
+            CapitalShip weakShip = new CapitalShip
+            {
+                InstanceID = "weak",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip strongShip = new CapitalShip
+            {
+                InstanceID = "strong",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1000,
+                CurrentHullStrength = 1000,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            allianceFleet.CapitalShips.Add(weakShip);
+            weakShip.SetParent(allianceFleet);
+            allianceFleet.CapitalShips.Add(strongShip);
+            strongShip.SetParent(allianceFleet);
+            game.AttachNode(allianceFleet, planet);
+
+            Officer officer = new Officer { InstanceID = "han", OwnerInstanceID = "alliance" };
+            game.AttachNode(officer, weakShip);
+
+            // Overwhelming empire fleet destroys the weak ship.
+            Fleet empireFleet = CreateFleet(
+                game,
+                "ef1",
+                "empire",
+                planet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            TryResolveCombat(MakeSpaceCombat(game, rng), empireFleet, allianceFleet, out _);
+
+            Assert.Contains(
+                officer,
+                strongShip.Officers,
+                "Officer should be evacuated to the surviving ship"
+            );
+        }
+
+        [Test]
+        public void EvacuateOfficers_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "alliance" });
+
+            PlanetSystem sys1 = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(sys1, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "p1" };
+            game.AttachNode(combatPlanet, sys1);
+
+            PlanetSystem sys2 = new PlanetSystem { InstanceID = "sys2" };
+            game.AttachNode(sys2, game.Galaxy);
+            Planet alliancePlanet = new Planet
+            {
+                InstanceID = "p2",
+                OwnerInstanceID = "alliance",
+                IsColonized = true,
+            };
+            game.AttachNode(alliancePlanet, sys2);
+
+            // Alliance fleet: single ship that is immediately destroyed.
+            Fleet allianceFleet = new Fleet { InstanceID = "af1", OwnerInstanceID = "alliance" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship1",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            allianceFleet.CapitalShips.Add(ship);
+            ship.SetParent(allianceFleet);
+            game.AttachNode(allianceFleet, combatPlanet);
+
+            Officer officer = new Officer { InstanceID = "leia", OwnerInstanceID = "alliance" };
+            game.AttachNode(officer, ship);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "ef1",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+
+            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
+            TryResolveCombat(MakeSpaceCombat(game, rng), empireFleet, allianceFleet, out _);
+
+            Assert.Contains(
+                officer,
+                alliancePlanet.Officers,
+                "Officer should be evacuated to the nearest friendly planet"
+            );
+        }
+
+        private Fleet CreateFleet(
+            GameRoot game,
+            string instanceId,
+            string ownerId,
+            Planet planet,
+            int shipCount,
+            int hullStrength,
+            int weaponPower,
+            int shieldRechargeRate = 5
+        )
+        {
+            Fleet fleet = new Fleet { InstanceID = instanceId, OwnerInstanceID = ownerId };
+
+            for (int i = 0; i < shipCount; i++)
+            {
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = $"{instanceId}_ship{i}",
+                    OwnerInstanceID = ownerId,
+                    MaxHullStrength = hullStrength,
+                    CurrentHullStrength = hullStrength,
+                    ShieldRechargeRate = shieldRechargeRate,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+
+                // Add weapon arcs
+                if (weaponPower > 0)
+                {
+                    ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
+                    {
+                        weaponPower,
+                        weaponPower,
+                        weaponPower,
+                        weaponPower,
+                    };
+                }
+
+                fleet.CapitalShips.Add(ship);
+                ship.SetParent(fleet);
+            }
+
+            game.AttachNode(fleet, planet);
+            return fleet;
+        }
+
+        private static bool HasHostileFleets(Planet planet)
+        {
+            List<string> owners = planet
+                .GetFleets()
+                .Where(fleet => fleet.Movement == null)
+                .Select(fleet => fleet.GetOwnerInstanceID())
+                .Where(owner => !string.IsNullOrEmpty(owner))
+                .Distinct()
+                .ToList();
+
+            return owners.Count > 1;
+        }
+
+        private Fleet CreateFleetWithFighters(
+            GameRoot game,
+            string instanceId,
+            string ownerId,
+            Planet planet,
+            int shipCount,
+            int hullStrength,
+            int weaponPower,
+            int squadronSize
+        )
+        {
+            Fleet fleet = CreateFleet(
+                game,
+                instanceId,
+                ownerId,
+                planet,
+                shipCount,
+                hullStrength,
+                weaponPower
+            );
+
+            // Add fighters to first ship
+            if (fleet.CapitalShips.Count > 0)
+            {
+                Starfighter fighter = new Starfighter
+                {
+                    InstanceID = $"{instanceId}_fighter",
+                    OwnerInstanceID = ownerId,
+                    MaxSquadronSize = squadronSize,
+                    CurrentSquadronSize = squadronSize,
+                    LaserCannon = 5,
+                    IonCannon = 3,
+                    Torpedoes = 2,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                fleet.CapitalShips[0].Starfighters.Add(fighter);
+            }
+
+            return fleet;
+        }
+    }
+}

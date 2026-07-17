@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -7,21 +8,43 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
-    public partial class CombatSystem
+    /// <summary>
+    /// Resolves planetary assaults and captures.
+    /// </summary>
+    public class PlanetaryAssaultSystem
     {
+        private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
+        private readonly PlanetaryControlSystem _ownership;
+
+        /// <summary>
+        /// Creates the planetary-assault system.
+        /// </summary>
+        /// <param name="game">Active game state.</param>
+        /// <param name="provider">Random-number provider used by assault resolution.</param>
+        /// <param name="ownership">Planetary control system used to capture planets.</param>
+        public PlanetaryAssaultSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            PlanetaryControlSystem ownership
+        )
+        {
+            _game = game;
+            _provider = provider;
+            _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+        }
+
         /// <summary>
         /// Runs the planetary-assault pipeline against a defending planet.
         /// </summary>
         /// <param name="attackingFleets">Fleets performing the assault (all must share a faction).</param>
         /// <param name="defendingPlanet">Planet being assaulted.</param>
         /// <returns>Assault outcome, including destroyed units and any ownership change.</returns>
-        public PlanetaryAssaultResult ExecutePlanetaryAssault(
-            List<Fleet> attackingFleets,
-            Planet defendingPlanet
-        )
+        public PlanetaryAssaultResult Execute(List<Fleet> attackingFleets, Planet defendingPlanet)
         {
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {

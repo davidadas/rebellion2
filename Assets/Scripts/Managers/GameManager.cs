@@ -26,7 +26,9 @@ public class GameManager
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
     private ResourceProductionSystem _resourceProductionManager;
-    private CombatSystem _combatManager;
+    private SpaceCombatSystem _spaceCombatSystem;
+    private BombardmentSystem _bombardmentSystem;
+    private PlanetaryAssaultSystem _planetaryAssaultSystem;
     private FogOfWarSystem _fogOfWarManager;
     private BlockadeSystem _blockadeManager;
     private ResearchSystem _researchManager;
@@ -116,10 +118,16 @@ public class GameManager
         );
         _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(_game, _randomProvider, _movementManager);
-        _combatManager = new CombatSystem(
+        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementManager);
+        _bombardmentSystem = new BombardmentSystem(
             _game,
             _randomProvider,
             _movementManager,
+            _planetaryControlSystem
+        );
+        _planetaryAssaultSystem = new PlanetaryAssaultSystem(
+            _game,
+            _randomProvider,
             _planetaryControlSystem
         );
         _researchManager = new ResearchSystem(_game, _randomProvider);
@@ -131,7 +139,8 @@ public class GameManager
             _missionManager,
             _movementManager,
             _manufacturingManager,
-            _combatManager,
+            _bombardmentSystem,
+            _planetaryAssaultSystem,
             _randomProvider
         );
     }
@@ -280,7 +289,7 @@ public class GameManager
     /// </summary>
     public void Update()
     {
-        if (_combatManager.HasPendingDecision || _tickInterval == null)
+        if (_spaceCombatSystem.HasPendingDecision || _tickInterval == null)
             return;
 
         float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
@@ -300,7 +309,7 @@ public class GameManager
     /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
     public void ResolveCombat(bool autoResolve)
     {
-        List<GameResult> combatResults = _combatManager.ResolvePendingCombat(autoResolve);
+        List<GameResult> combatResults = _spaceCombatSystem.ResolvePending(autoResolve);
         ProcessResults(combatResults, processMessages: false);
 
         List<GameResult> messageResults = FlushDeferredResults();
@@ -318,7 +327,7 @@ public class GameManager
     /// </summary>
     public void ProcessTick()
     {
-        if (_combatManager.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
+        if (_spaceCombatSystem.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
             return;
 
         _game.CurrentTick++;
@@ -331,14 +340,14 @@ public class GameManager
         List<GameResult> movementResults = _movementManager.ProcessTick();
         ProcessResults(movementResults, processMessages: false);
 
-        List<GameResult> combatResults = _combatManager.ProcessTick();
+        List<GameResult> combatResults = _spaceCombatSystem.ProcessTick();
         ProcessResults(combatResults, processMessages: false);
 
         List<GameResult> resultsWaitingForCombatResolution = CombineResults(
             movementResults,
             combatResults
         );
-        if (_combatManager.HasPendingDecision)
+        if (_spaceCombatSystem.HasPendingDecision)
         {
             DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
             return;

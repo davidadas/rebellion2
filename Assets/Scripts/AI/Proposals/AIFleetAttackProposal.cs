@@ -172,16 +172,16 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (context.Combat == null)
-                return;
-
             if (ShouldAssault(context))
             {
                 ExecuteAssault(context);
                 return;
             }
 
-            BombardmentResult bombardmentResult = context.Combat.ExecuteOrbitalBombardment(
+            if (context.Bombardment == null)
+                return;
+
+            BombardmentResult bombardmentResult = context.Bombardment.Execute(
                 new List<Fleet> { Fleet },
                 TargetPlanet,
                 BombardmentType.Military
@@ -203,7 +203,10 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         private void ExecuteAssault(AITurnContext context)
         {
-            PlanetaryAssaultResult assaultResult = context.Combat.ExecutePlanetaryAssault(
+            if (context.PlanetaryAssault == null)
+                return;
+
+            PlanetaryAssaultResult assaultResult = context.PlanetaryAssault.Execute(
                 new List<Fleet> { Fleet },
                 TargetPlanet
             );

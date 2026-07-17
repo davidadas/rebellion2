@@ -18,7 +18,8 @@ namespace Rebellion.AI.Director
         private readonly MissionSystem _missions;
         private readonly MovementSystem _movement;
         private readonly ManufacturingSystem _manufacturing;
-        private readonly CombatSystem _combat;
+        private readonly BombardmentSystem _bombardment;
+        private readonly PlanetaryAssaultSystem _planetaryAssault;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
@@ -28,14 +29,16 @@ namespace Rebellion.AI.Director
         /// <param name="missions">Mission system used by mission proposals.</param>
         /// <param name="movement">Movement system used by movement proposals.</param>
         /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="combat">Combat system used by fleet attack proposals.</param>
+        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
+        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         public AIDirector(
             GameRoot game,
             MissionSystem missions,
             MovementSystem movement,
             ManufacturingSystem manufacturing,
-            CombatSystem combat,
+            BombardmentSystem bombardment,
+            PlanetaryAssaultSystem planetaryAssault,
             IRandomNumberProvider random
         )
         {
@@ -44,7 +47,8 @@ namespace Rebellion.AI.Director
             _missions = missions;
             _movement = movement;
             _manufacturing = manufacturing;
-            _combat = combat;
+            _bombardment = bombardment;
+            _planetaryAssault = planetaryAssault;
             _turnPhases = new List<IAITurnPhase>
             {
                 new AIPlanningPhase(),
@@ -67,7 +71,8 @@ namespace Rebellion.AI.Director
                 _missions,
                 _movement,
                 _manufacturing,
-                _combat,
+                _bombardment,
+                _planetaryAssault,
                 _random
             );
 

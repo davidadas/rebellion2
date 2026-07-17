@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
@@ -28,8 +29,36 @@ namespace Rebellion.Systems
         AllocatedEnergy,
     }
 
-    public partial class CombatSystem
+    /// <summary>
+    /// Resolves orbital bombardment against planets.
+    /// </summary>
+    public class BombardmentSystem
     {
+        private readonly GameRoot _game;
+        private readonly IRandomNumberProvider _provider;
+        private readonly MovementSystem _movement;
+        private readonly PlanetaryControlSystem _ownership;
+
+        /// <summary>
+        /// Creates the bombardment system.
+        /// </summary>
+        /// <param name="game">Active game state.</param>
+        /// <param name="provider">Random-number provider used by bombardment resolution.</param>
+        /// <param name="movement">Movement system used for surviving passenger evacuation.</param>
+        /// <param name="ownership">Planetary control system used for support and ownership changes.</param>
+        public BombardmentSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            MovementSystem movement,
+            PlanetaryControlSystem ownership
+        )
+        {
+            _game = game;
+            _provider = provider;
+            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+        }
+
         /// <summary>
         /// Runs the 6-stage orbital bombardment pipeline against a target planet.
         /// </summary>
@@ -37,7 +66,7 @@ namespace Rebellion.Systems
         /// <param name="targetPlanet">Planet being bombarded.</param>
         /// <param name="type">Targets and consequences selected for the bombardment.</param>
         /// <returns>Bombardment outcome, including strikes and any ship/regiment/building destruction.</returns>
-        public BombardmentResult ExecuteOrbitalBombardment(
+        public BombardmentResult Execute(
             List<Fleet> attackingFleets,
             Planet targetPlanet,
             BombardmentType type
@@ -288,7 +317,7 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                CombatSystem.DestroyCapitalShip(_game, _movement, ship);
+                CapitalShipDestruction.Resolve(_game, _movement, ship);
             }
         }
 
